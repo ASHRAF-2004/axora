@@ -39,4 +39,4 @@ COPY --from=builder --chown=axora:axora /app/licenses ./licenses
 
 USER axora
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "if [ -n \"${DATABASE_URL:-}\" ]; then exec sh server-tools/render-start.sh; else exec node server.js; fi"]
