@@ -1,0 +1,24 @@
+{$AXORA_HOST} {
+    tls internal
+    encode zstd gzip
+
+    header {
+        -Server
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "no-referrer"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
+    reverse_proxy app:3000 {
+        health_uri /api/health/ready
+        health_interval 10s
+        health_timeout 3s
+        lb_try_duration 5s
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}

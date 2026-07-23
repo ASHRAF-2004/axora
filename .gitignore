@@ -1,0 +1,26 @@
+# dependencies and builds
+/node_modules/
+/.next/
+/out/
+/coverage/
+*.tsbuildinfo
+
+# local secrets and runtime data
+.env
+.env.local
+.env.production
+secrets/*
+!secrets/README.md
+backups/
+data/uploads/*
+!data/uploads/README.md
+*.log
+
+# operating-system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# generated local certificates
+caddy-root.crt

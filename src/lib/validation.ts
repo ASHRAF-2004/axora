@@ -1,0 +1,50 @@
+import { z } from "zod";
+import { COD_PAYMENT_METHOD } from "./types";
+
+const required = (label: string, max = 200) => z.string().trim().min(1, `${label} is required.`).max(max);
+const optional = (max = 500) => z.string().trim().max(max).optional().transform((value) => value || undefined);
+const email = z.string().trim().max(254).refine((value) => value === "" || z.email().safeParse(value).success, "Enter a valid email address.");
+const money = z.coerce.number().finite().min(0).max(100_000_000);
+const positive = z.coerce.number().finite().positive().max(100_000_000);
+const wholeDays = z.coerce.number().int().min(0).max(3650);
+
+export const companySchema = z.object({
+  name: required("Company name"), industry: required("Industry"), mainContactName: required("Main contact"),
+  mainContactEmail: email, mainContactPhone: required("Main contact phone", 50), billingContactName: required("Billing contact"),
+  billingContactEmail: email, billingContactPhone: required("Billing contact phone", 50), billingAddress: required("Billing address", 500),
+  paymentTerms: z.literal(COD_PAYMENT_METHOD), billingCycle: required("Billing cycle", 100), notes: optional(1000),
+});
+
+export const branchSchema = z.object({
+  companyId: required("Company"), name: required("Branch name"), branchCode: required("Branch code", 50), deliveryAddress: required("Delivery address", 500),
+  city: required("City"), contactName: required("Contact name"), contactPhone: required("Contact phone", 50), contactEmail: email,
+  deliveryInstructions: optional(1000), notes: optional(1000),
+});
+
+export const supplierSchema = z.object({
+  name: required("Supplier name"), category: required("Category"), contactName: required("Contact name"), phone: required("Phone", 50),
+  email, address: required("Address", 500), coverageArea: required("Coverage area"), paymentTerms: z.literal(COD_PAYMENT_METHOD),
+  leadTimeDays: wholeDays, minimumOrderQuantity: positive, mainProducts: required("Main products", 500), notes: optional(1000),
+});
+
+export const productSchema = z.object({
+  name: required("Product name"), category: required("Category"), subcategory: required("Subcategory"), brand: optional(100), size: optional(100),
+  unit: required("Unit", 50), packaging: optional(100), description: optional(1000), defaultBuyPrice: money, defaultSellPrice: money,
+  minimumOrderQuantity: positive, deliverySlaDays: wholeDays, preferredSupplierId: z.string().trim().max(100).optional().transform((value) => value || undefined),
+});
+
+export const requestSchema = z.object({
+  companyId: required("Company"), branchId: required("Branch"), requestType: z.enum(["Standard", "Ad-hoc", "Recurring"]),
+  department: required("Department"), requestedBy: required("Requested by"), requesterContact: required("Requester contact", 100),
+  neededByDate: z.iso.date(), urgency: z.enum(["Low", "Normal", "High", "Urgent"]), notes: optional(1000),
+  lines: z.array(z.object({ productId: required("Product"), quantity: positive, specification: optional(500) })).min(1),
+});
+
+export function readFormText(data: FormData, key: string) {
+  return String(data.get(key) ?? "").trim();
+}
+
+export function validationMessage(error: unknown) {
+  if (error instanceof z.ZodError) return error.issues.map((issue) => issue.message).join(" ");
+  return error instanceof Error ? error.message : "The submitted information is invalid.";
+}

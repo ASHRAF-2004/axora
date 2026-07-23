@@ -1,0 +1,150 @@
+name: axora
+
+services:
+  db:
+    image: postgres:18.4-alpine3.24
+    restart: unless-stopped
+    # Secret files are owned by the Ubuntu deployment user (UID/GID 1000).
+    # Add that group so PostgreSQL can read them without making secrets world-readable.
+    group_add:
+      - "1000"
+    environment:
+      POSTGRES_DB: axora
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+    secrets:
+      - postgres_admin_password
+      - axora_app_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./database/migrations:/migrations:ro
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d axora"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  migrate:
+    image: postgres:18.4-alpine3.24
+    restart: "no"
+    group_add:
+      - "1000"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: axora
+      PGHOST: db
+    entrypoint: ["/bin/sh", "/database/init/01-run-migration.sh"]
+    secrets:
+      - postgres_admin_password
+    volumes:
+      - ./database/init:/database/init:ro
+      - ./database/migrations:/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    image: axora-app:1.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    group_add:
+      - "1000"
+    environment:
+      NODE_ENV: production
+      DEMO_MODE: "false"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: axora
+      DB_USER: axora_app
+      DB_PASSWORD_FILE: /run/secrets/axora_app_password
+      SESSION_SECRET_FILE: /run/secrets/session_secret
+      APP_BASE_URL: "https://${AXORA_HOST:?Set AXORA_HOST in .env}"
+    secrets:
+      - axora_app_password
+      - session_secret
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "3000"
+    volumes:
+      - ./data/uploads:/app/data/uploads
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    environment:
+      AXORA_HOST: "${AXORA_HOST:?Set AXORA_HOST in .env}"
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - target: 80
+        published: "80"
+        host_ip: "${LAN_IP:?Set LAN_IP in .env}"
+        protocol: tcp
+      - target: 443
+        published: "443"
+        host_ip: "${LAN_IP:?Set LAN_IP in .env}"
+        protocol: tcp
+    volumes:
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - frontend
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+secrets:
+  postgres_admin_password:
+    file: ./secrets/postgres_admin_password
+  axora_app_password:
+    file: ./secrets/axora_app_password
+  session_secret:
+    file: ./secrets/session_secret

@@ -1,0 +1,52 @@
+{
+  "name": "axora-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Axora internal procurement and pilot operations application",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "qa:visual": "node scripts/qa/visual-smoke.mjs",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": [
+    "axora",
+    "procurement",
+    "operations"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "overrides": {
+    "postcss": "8.5.21",
+    "sharp": "0.35.3"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.4",
+    "lucide-react": "^1.25.0",
+    "next": "^16.2.11",
+    "pg": "^8.22.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
+    "@types/node": "^26.1.1",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.11",
+    "playwright-core": "^1.61.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  }
+}

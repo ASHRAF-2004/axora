@@ -1,0 +1,20 @@
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: { default: "Axora operations", template: "%s | Axora operations" },
+  description: "Internal procurement and pilot operations system for Axora.",
+  icons: {
+    icon: [{ url: "/brand/axora-mark.svg", type: "image/svg+xml" }, { url: "/brand/axora-icon-32.png", sizes: "32x32", type: "image/png" }],
+    shortcut: "/brand/axora-icon-32.png",
+    apple: [{ url: "/brand/axora-apple-180.png", sizes: "180x180", type: "image/png" }],
+  },
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}

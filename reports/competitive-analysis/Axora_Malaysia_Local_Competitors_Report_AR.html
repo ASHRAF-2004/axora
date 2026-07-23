@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>تقرير المنافسين المحليين لمنصة Axora في ماليزيا</title>
+  <style>
+    @page { size: Letter; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #dfe6ee; color: #10263e; }
+    body { font-family: Tahoma, "Segoe UI", Arial, sans-serif; font-size: 8.35pt; line-height: 1.42; direction: rtl; text-align: right; }
+    a { color: #155bd1; text-decoration: none; }
+    .page { width: 8.5in; height: 11in; margin: 0 auto; background: #fff; overflow: hidden; page-break-after: always; break-after: page; }
+    .page:last-child { page-break-after: auto; break-after: auto; }
+    .content-page { display: grid; grid-template-rows: 0.55in 1fr 0.38in; }
+    .page-header { display:flex; align-items:center; justify-content:space-between; padding:0.18in 0.58in 0.12in; border-bottom:1px solid #dbe5ef; color:#52677c; font-size:7.4pt; letter-spacing:.04em; }
+    .page-header-title { font-weight:800; }
+    .page-number { width:.27in; height:.27in; border-radius:50%; background:#e9f0ff; color:#185ade; display:grid; place-items:center; font-weight:800; }
+    .page-body { padding:.25in .58in .18in; overflow:hidden; }
+    .page-footer { margin:0 .58in; padding-top:.09in; border-top:1px solid #dbe5ef; display:flex; align-items:flex-start; justify-content:space-between; gap:.3in; color:#687a8d; font-size:6.7pt; }
+    .page-footer:empty { display:none; }
+    h1,h2,h3,h4,p { margin-top:0; }
+    h2 { margin-bottom:.11in; font-size:19.5pt; line-height:1.08; letter-spacing:-.025em; color:#0b233b; }
+    h2::after { content:""; display:block; width:.78in; height:.06in; margin-top:.11in; background:linear-gradient(90deg,#2868ff,#0fb7a0); border-radius:4px; }
+    h3 { margin-bottom:.06in; font-size:10.8pt; line-height:1.2; color:#0b233b; }
+    h4 { margin-bottom:.04in; font-size:8.1pt; letter-spacing:.04em; color:#2b5fd3; }
+    p { margin-bottom:.08in; }
+    ul,ol { margin:.04in 0 .09in; padding-right:.2in; padding-left:0; }
+    li { margin-bottom:.03in; }
+    .small { font-size:7.3pt; color:#5f7183; }
+    .tiny { font-size:6.8pt; line-height:1.3; }
+    .lead { font-size:10.2pt; line-height:1.55; color:#314b63; }
+    .eyebrow { display:inline-block; color:#2462d7; font-size:7.3pt; font-weight:800; letter-spacing:.08em; margin-bottom:.07in; }
+    .rule { height:.04in; width:.7in; background:#f0a226; border-radius:4px; margin:.04in 0 .12in; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:.11in; }
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:.08in; }
+    .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:.07in; }
+    .card { border:1px solid #dbe5ef; border-radius:.09in; padding:.1in .11in; background:#fff; }
+    .card.blue { background:#eef4ff; border-color:#cbdcff; }
+    .card.teal { background:#e9faf6; border-color:#bfece3; }
+    .card.orange { background:#fff5e6; border-color:#f4d5ad; }
+    .card.red { background:#fff0f0; border-color:#f2caca; }
+    .card h3 { margin-bottom:.045in; }
+    .card p:last-child, .card ul:last-child { margin-bottom:0; }
+    .stat-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:.08in; margin:.13in 0; }
+    .stat { border-right:.035in solid #2563eb; padding:.02in .08in .04in 0; }
+    .stat:nth-child(2) { border-color:#0f9d8a; }.stat:nth-child(3){border-color:#ee9c1a}.stat:nth-child(4){border-color:#7a5dd7}
+    .stat .big { font-size:18pt; font-weight:900; color:#102a43; line-height:1; }.stat .label{font-size:6.8pt;color:#617487;margin-top:.04in;}
+    .callout { border-right:.045in solid #2563eb; background:#eff4ff; border-radius:.06in; padding:.08in .11in; margin:.09in 0; }
+    .callout.teal { border-color:#0f9d8a; background:#e9faf6; }.callout.orange{border-color:#ec9d22;background:#fff5e6}.callout.red{border-color:#c23b3b;background:#fff0f0}
+    .callout strong { color:#0b233b; }
+    .tag { display:inline-block; border-radius:99px; padding:.018in .065in; font-size:6.5pt; font-weight:800; margin-left:.04in; }
+    .tag.direct{background:#dce8ff;color:#1c51ba}.tag.adjacent{background:#dff7f0;color:#087d6d}.tag.substitute{background:#fff0d7;color:#995c16}.tag.public{background:#eee7ff;color:#6542a8}
+    table { width:100%; border-collapse:separate; border-spacing:0; border:1px solid #dbe5ef; border-radius:.07in; overflow:hidden; font-size:7.2pt; }
+    th { background:#102a43; color:#fff; text-align:right; padding:.055in .06in; font-weight:800; }
+    td { border-top:1px solid #dbe5ef; padding:.052in .06in; vertical-align:top; }
+    tr:nth-child(even) td { background:#f8fafc; }
+    .matrix { font-size:6.55pt; table-layout:fixed; }.matrix th,.matrix td{padding:.045in .04in}.matrix th:first-child,.matrix td:first-child{width:18%}.matrix td:not(:first-child){text-align:center}.yes{color:#09816f;font-weight:900}.partial{color:#a56712;font-weight:900}.no{color:#a63636;font-weight:900}.unknown{color:#6d5b8e;font-weight:900}
+    .score-table { font-size:7pt; }.score-table td:first-child{font-weight:800;color:#0b233b;width:22%}
+    .flow { display:grid; grid-template-columns:repeat(5,1fr); gap:.055in; align-items:stretch; margin:.13in 0; direction:ltr; }.flow-box{direction:rtl;text-align:center;border:1px solid #cbdcff;border-radius:.07in;padding:.08in .04in;background:#f7faff}.flow-box strong{display:block;color:#102a43;font-size:8.3pt}.flow-box span{font-size:6.6pt;color:#5b6e80}.arrow{display:grid;place-items:center;color:#2b63d7;font-size:14pt;font-weight:900}
+    .position { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.1in; position:relative; margin:.12in 0; }.position .axis{position:absolute;inset:50% 0 auto;height:1px;background:#cbd7e5}.bubble{position:relative;z-index:1;border-radius:50%;width:1.05in;height:1.05in;display:grid;place-items:center;text-align:center;padding:.12in;font-weight:800;font-size:7.2pt;border:2px solid #fff;box-shadow:0 2px 7px #b9c7d6}.bubble.axora{background:#102a43;color:white;transform:translateY(.15in)}.bubble.market{background:#e9faf6;color:#087d6d}.bubble.procure{background:#eef4ff;color:#1d53be}.bubble.manual{background:#fff5e6;color:#9a5a12}.position .label{font-size:6.8pt;color:#5b6e80;text-align:center;margin-top:.07in}
+    .bar { display:flex; height:.2in; border-radius:99px; overflow:hidden; margin:.06in 0 .03in; }.bar span{display:block}.bar .a{background:#102a43}.bar .b{background:#2563eb}.bar .c{background:#0f9d8a}.bar .d{background:#e6a126}.bar .e{background:#c23b3b}.legend{display:flex;gap:.1in;flex-wrap:wrap;font-size:6.8pt;color:#5b6e80}.legend i{display:inline-block;width:.11in;height:.11in;border-radius:2px;margin-left:.025in;vertical-align:-1px}
+    .quote { border-right:.04in solid #102a43; background:#f4f7fb; padding:.09in .12in; border-radius:.06in; font-size:8.4pt; line-height:1.5; }
+    .source-list { list-style:none; padding:0; margin:0; }.source-list li{padding:.045in 0;border-bottom:1px solid #edf1f5;margin:0}.source-list a{direction:ltr;unicode-bidi:embed;font-size:6.6pt;display:block;color:#2862c8;overflow-wrap:anywhere}.source-list strong{font-size:7.4pt;color:#102a43}
+    .cover { background:linear-gradient(145deg,#071f36 0%,#0c2944 48%,#0b756f 100%); color:#fff; display:flex; flex-direction:column; justify-content:space-between; padding:.6in .68in .48in; }
+    .cover-top { display:flex; justify-content:space-between; align-items:flex-start; }.cover-logo{width:1.35in;filter:brightness(0) invert(1)}.cover-label{font-size:7.3pt;letter-spacing:.1em;color:#84e4d5;font-weight:800}.cover h1{font-size:29pt;line-height:1.1;letter-spacing:-.03em;max-width:6.7in;margin:.85in 0 .16in;color:#fff}.cover .lead{max-width:6.2in;color:#d7e7f2;font-size:12pt}.cover-card{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:.12in;padding:.16in;margin-top:.28in}.cover-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.1in}.cover-stat{border-right:2px solid #38c4b2;padding-right:.1in}.cover-stat b{font-size:21pt;display:block}.cover-stat span{font-size:7pt;color:#d7e7f2}.cover-footer{display:flex;justify-content:space-between;color:#c2d5e4;font-size:7pt;border-top:1px solid rgba(255,255,255,.22);padding-top:.12in}.cover-mark{color:#84e4d5;font-weight:800}
+    .nowrap{white-space:nowrap}.ltr{direction:ltr;unicode-bidi:embed;text-align:left}.muted{color:#617487}.center{text-align:center}.spacer{height:.05in}
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div>
+      <div class="cover-top"><img class="cover-logo" src="../../public/brand/axora-logo.svg" alt="Axora operations"><span class="cover-label">تقرير بحث سوق محلي · نسخة عربية</span></div>
+      <h1>المنافسون المحليون في ماليزيا</h1>
+      <p class="lead">تحليل تفصيلي لمنصات المشتريات وسوق B2B والبدائل العملية التي قد تقارن بها الشركات منصة Axora.</p>
+      <div class="cover-card"><p style="margin:0;color:#e7f5f7">نطاق التقرير: منصة ويب تشغيلية قابلة للتوسع، وثلاث شركات تساعد في اختبار ودي غير تعاقدي، وتحليل للمنافسة المحلية.</p></div>
+    </div>
+    <div class="cover-card">
+      <div class="cover-stats"><div class="cover-stat"><b>6</b><span>فئات منافسة محلية أو بديلة</span></div><div class="cover-stat"><b>5</b><span>منافسون/منصات تجارية رئيسية</span></div><div class="cover-stat"><b>23 يوليو 2026</b><span>تاريخ التحقق من المصادر العامة</span></div></div>
+    </div>
+    <div class="cover-footer"><span class="cover-mark">Axora operations</span><span>إعداد: Ashraf · للاستخدام الداخلي</span></div>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">النتيجة التنفيذية</span><span class="page-number">2</span></header>
+    <main class="page-body"><span class="eyebrow">الخلاصة قبل التفاصيل</span><h2>Axora لا ينافس المتجر؛ ينافس فوضى التنسيق</h2>
+      <p class="lead">السوق الماليزي يحتوي على منصات قوية بالفعل. لذلك لا ينبغي تقديم Axora على أنه «سوق جديد أكبر»، بل كمنصة ويب تشغيلية صغيرة تربط الطلب والموافقة والتوريد والتوصيل والفاتورة وسجل الإثبات للشركات المستخدمة.</p>
+      <p class="small"><strong>توضيح مهم:</strong> الشركات الثلاث تساعد في اختبار ودي غير تعاقدي. النسخة الحالية تجربة صغيرة للتحقق من الفكرة، وليست تعريفًا نهائيًا لنطاق المنتج أو عدد العملاء المستهدفين.</p>
+      <div class="stat-strip"><div class="stat"><div class="big">3</div><div class="label">شركات في اختبار ودي غير تعاقدي</div></div><div class="stat"><div class="big">1</div><div class="label">سير تشغيل من الطلب إلى الفاتورة</div></div><div class="stat"><div class="big">6</div><div class="label">مراحل تشغيل يجب قياسها</div></div><div class="stat"><div class="big">0</div><div class="label">حاجة إلى شبكة موردين وطنية الآن</div></div></div>
+      <div class="grid-2"><div class="card teal"><h3>أقوى تهديد مباشر</h3><p><strong>Supplycart/ADAM</strong> يبيع طبقة مشتريات رقمية للمؤسسات: sourcing، إدارة الموردين، RFx، P2P، الموافقات والتحكم في الإنفاق.</p></div><div class="card orange"><h3>أقوى تهديد سوقي</h3><p><strong>Lapasar وBorong</strong> يقدمان كتالوجًا واسعًا وشبكة موردين وشراء B2B؛ وقد يختصران على العميل الحاجة إلى بناء الموردين بنفسه.</p></div></div>
+      <div class="callout"><strong>الحكم:</strong> فكرة Axora ممكنة فقط إذا قاست قيمة محلية ضيقة: تقليل رسائل المتابعة، وضوح المسؤولية، وسجل قابل للمراجعة لكل طلب وتسليم وفاتورة. لا تحاول تقليد الكتالوج أو التمويل في هذه المرحلة.</div>
+      <p class="small">الأرقام والشعارات التي تنسبها المنصات إلى نفسها في هذا التقرير وسمت بأنها «مطالبات تسويقية معلنة»، وليست حصة سوقية مستقلة.</p>
+    </main><footer class="page-footer"><span>تقرير المنافسين المحليين · Axora</span><span>2</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">حدود البحث وطريقته</span><span class="page-number">3</span></header>
+    <main class="page-body"><span class="eyebrow">كيف نقرأ المنافسة؟</span><h2>لا نخلط بين «المنافس» و«البديل»</h2>
+      <p>المنافس المحلي ليس بالضرورة تطبيقًا يملك كل شاشة موجودة في Axora. قد يكون منصة تبيع للعميل مباشرة، أو برنامجًا ينظم المشتريات، أو Excel وWhatsApp اللذين ما زال الفريق يعتمد عليهما.</p>
+      <div class="grid-3"><div class="card blue"><span class="tag direct">مباشر</span><h3>برنامج مشتريات</h3><p>يحل مشكلة الطلب والموافقة والتوريد داخل الشركة. أقرب مقارنة وظيفية لـ Axora.</p></div><div class="card teal"><span class="tag adjacent">مجاور</span><h3>سوق B2B</h3><p>يجذب العميل بالكتالوج والموردين والتنفيذ أو التمويل، لا بملكية سير عمل شركة واحدة فقط.</p></div><div class="card orange"><span class="tag substitute">بديل</span><h3>العمل اليدوي</h3><p>رسائل وملفات وجداول وسجلات محاسبية منفصلة. رخيص، لكنه يخفي الحالة ويزيد المتابعة.</p></div></div>
+      <h3 style="margin-top:.15in">أسئلة التحقق</h3><ol><li>هل المنصة تخدم المشتري الماليزي، أم هي منصة عالمية يمكن تهيئتها فقط؟</li><li>هل القيمة الأساسية في «اكتشاف المورد» أم في «إدارة عملية داخلية»؟</li><li>هل يمكن للشركات الصغيرة أن تبدأ دون تكامل ERP أو عقد طويل؟</li><li>هل يدعم العرض حالة التسليم والقبول وإثبات الفاتورة، أم يكتفي بالطلب؟</li><li>ما الجزء الذي لا يزال الفريق ينجزه يدويًا بعد شراء الحل؟</li></ol>
+      <div class="callout orange"><strong>قاعدة الدليل:</strong> استخدمنا صفحات الشركات الرسمية والمواد المنشورة منها. عندما لا تعلن الشركة السعر أو طريقة الدفع أو مستوى التكامل، نكتب «غير معلن» ولا نخترع قيمة.</div>
+    </main><footer class="page-footer"><span>المعلومات العامة متغيرة؛ آخر تحقق 23 يوليو 2026</span><span>3</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">خريطة السوق</span><span class="page-number">4</span></header>
+    <main class="page-body"><span class="eyebrow">المشهد المحلي</span><h2>ستة مسارات يتنافس عليها العميل الماليزي</h2>
+      <div class="position"><div class="axis"></div><div><div class="bubble market">كتالوج<br>وموردون</div><div class="label">Lapasar · Borong</div></div><div><div class="bubble axora">سير عمل<br>داخلي + سجل تدقيق</div><div class="label">Axora · اختبار ودي</div></div><div><div class="bubble procure">برنامج<br>مشتريات مؤسسي</div><div class="label">Supplycart/ADAM · Becon</div></div></div>
+      <div class="grid-2"><div class="card blue"><h3>يميل إلى الشراء من منصة</h3><p>شركة تريد منتجات جاهزة، أسعارًا بالجملة، موردين موثقين، توصيلًا أو شروط ائتمان. هي تقارن Lapasar/Borong على اتساع الشبكة واللوجستيات.</p></div><div class="card teal"><h3>يميل إلى بناء سير عمل خاص</h3><p>شركة لديها موردون معروفون، لكنها تضيع في الموافقات والرسائل والمتابعة. هنا تصبح ADAM أو Axora مقارنة أكثر عدلًا.</p></div></div>
+      <table style="margin-top:.12in"><thead><tr><th>الفئة</th><th>ما الذي يشتريه العميل؟</th><th>الخطر على Axora</th><th>فرصة Axora</th></tr></thead><tbody><tr><td>سوق B2B</td><td>كتالوج + موردون + تنفيذ</td><td>قد يحل العميل التوريد كله في منصة واحدة</td><td>لا يحتاج Axora إلى تملك المخزون</td></tr><tr><td>Procure-to-pay</td><td>حوكمة وموافقات وتكامل</td><td>عميل المؤسسة قد يختار نظامًا أوسع</td><td>MVP أسرع وأبسط للشركات الصغيرة</td></tr><tr><td>منصة داخلية</td><td>كتالوج خاص وموافقات فروع</td><td>تقلل الحاجة إلى بناء داخلي</td><td>التخصص في التوصيل والقبول والفاتورة</td></tr><tr><td>عمل يدوي</td><td>مرونة بلا اشتراك</td><td>أصعب بديل من حيث العادة</td><td>إثبات أن الوقت الضائع قابل للقياس</td></tr></tbody></table>
+    </main><footer class="page-footer"><span>الخريطة تفسير تحليلي وليست تصنيفًا قانونيًا</span><span>4</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">المقارنة السريعة</span><span class="page-number">5</span></header>
+    <main class="page-body"><span class="eyebrow">من يقترب من Axora؟</span><h2>الترتيب الواقعي للمنافسين</h2>
+      <table class="score-table"><thead><tr><th>المنصة</th><th>نوعها</th><th>قربها من Axora</th><th>قوتها الأساسية</th><th>ما لا يظهر علنًا أو لا تملكه</th></tr></thead><tbody>
+        <tr><td>Supplycart / ADAM</td><td>برنامج مشتريات SaaS</td><td><span class="tag direct">عالٍ</span></td><td>سير عمل source-to-pay وإدارة الموردين والتكامل</td><td>السعر، مدى ملاءمة الشركات الصغيرة، ونطاق التخصيص</td></tr>
+        <tr><td>Lapasar Mall</td><td>سوق B2B + تنفيذ</td><td><span class="tag adjacent">متوسط</span></td><td>كتالوج، مخزون، توصيل، ائتمان، وموافقات</td><td>ليس أداة محايدة لسير عمل موردين تختارهم الشركة</td></tr>
+        <tr><td>Borong</td><td>سوق B2B + eProcurement</td><td><span class="tag adjacent">متوسط</span></td><td>شبكة مورّدين، منصة محايدة، تكامل ERP وتمويل</td><td>قد يكون أوسع وأكثر تعقيدًا من احتياج MVP</td></tr>
+        <tr><td>Becon B2B</td><td>كتالوج خاص + موافقات</td><td><span class="tag direct">متوسط</span></td><td>فروع/أقسام، كتالوج شخصي، موافقة المدير</td><td>النطاق المعلن يركز على منتجات مكتبية؛ السعر غير معلن</td></tr>
+        <tr><td>ePerolehan</td><td>حكومة إلى أعمال</td><td><span class="tag public">منخفض</span></td><td>مناقصات وعروض وشراء حكومي رسمي</td><td>ليس حلًا خاصًا لشركاتك الثلاث</td></tr>
+        <tr><td>WhatsApp + Excel</td><td>بديل يدوي</td><td><span class="tag substitute">عالٍ جدًا</span></td><td>مألوف، فوري، ولا يحتاج شراء نظام</td><td>لا حالة موحدة ولا سجل موافقة أو تسليم موثوق</td></tr>
+      </tbody></table>
+      <div class="callout teal"><strong>النتيجة:</strong> Supplycart هو معيار الوظائف، Lapasar/Borong معيار اتساع السوق، وWhatsApp/Excel معيار سهولة البداية. يجب أن يفوز Axora على الثلاثة في «وضوح العملية داخل الشركة» فقط.</div>
+    </main><footer class="page-footer"><span>التقييم مبني على المعلومات العامة، وليس اختبارًا مدفوعًا للمنتجات</span><span>5</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">المنافس الأول: Supplycart / ADAM</span><span class="page-number">6</span></header>
+    <main class="page-body"><span class="eyebrow">برنامج مشتريات ماليزي</span><h2>ADAM هو أقوى معيار وظيفي لـ Axora</h2>
+      <p class="lead">صفحة ADAM الرسمية تصف المنصة بأنها مكان واحد لإدارة procurement من sourcing وإدارة الموردين إلى purchasing وpayment. كما تذكر workflows رقمية، رؤية لكل معاملة، وقرارات إنفاق أكثر وضوحًا.<sup><a href="https://adam-procure.com/">[1]</a></sup></p>
+      <div class="grid-2"><div class="card blue"><h3>ما يفعله جيدًا</h3><ul><li>Request أو requisition ثم موافقة.</li><li>RFQ/RFx وشراء من موردين متعددين.</li><li>Supplier/vendor management.</li><li>Source-to-pay وP2P وSpend control.</li><li>تكاملات مع ERP وPunch-out حسب الحالة.</li></ul></div><div class="card teal"><h3>لماذا هو خطير؟</h3><ul><li>يبيع نفس فكرة إزالة الجداول والرسائل.</li><li>لديه قصص عمل مؤسسية وواجهة أكثر نضجًا.</li><li>قد يفوز عندما تحتاج الشركة تكامل SAP/Ariba أو حوكمة واسعة.</li><li>Supplycart شركة ماليزية بعلاقات محلية.</li></ul></div></div>
+      <h3 style="margin-top:.13in">ما الذي لا نعرفه؟</h3><table><thead><tr><th>سؤال الشراء</th><th>حالة الدليل</th><th>كيف يتحقق Axora؟</th></tr></thead><tbody><tr><td>السعر والحد الأدنى للعقد</td><td>غير معلن في الصفحة العامة</td><td>اطلب عرضًا لشركة صغيرة من 3 فروع</td></tr><tr><td>نموذج استخدام المنصة</td><td>الصفحة تصف Cloud-based solution</td><td>اسأل عن تعدد الشركات، الأدوار، ومرونة التهيئة</td></tr><tr><td>مرونة الإغلاق المالي</td><td>لا يوجد وصف علني محدد</td><td>اطلب demo لمسار delivery → invoice → evidence</td></tr><tr><td>إدارة قبول التسليم والreceipt</td><td>غير مفصل في الصفحة المختصرة</td><td>اطلب demo لمسار delivery → invoice</td></tr></tbody></table>
+      <div class="callout orange"><strong>قرار Axora:</strong> لا تنافس ADAM في التكامل أو RFx المؤسسي الآن. استخدمه كـ benchmark لاختبار اكتمال مسار الطلب والموافقة والتوريد والتسليم.</div>
+    </main><footer class="page-footer"><span>المصدر [1] و[2] في صفحة المراجع</span><span>6</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">Supplycart · نموذج العمل</span><span class="page-number">7</span></header>
+    <main class="page-body"><span class="eyebrow">من زاوية المشتري والمورد</span><h2>قوة Supplycart ليست شاشة الطلب فقط</h2>
+      <div class="flow"><div class="flow-box"><strong>طلب</strong><span>احتياج أو PR</span></div><div class="arrow">←</div><div class="flow-box"><strong>RFQ / sourcing</strong><span>موردون وأسعار</span></div><div class="arrow">←</div><div class="flow-box"><strong>PO → دفع</strong><span>معاملة مرئية</span></div></div>
+      <div class="grid-3"><div class="card"><h3>للشركة</h3><p>حوكمة للموافقة، صلاحيات، مصدر واحد للطلب، ورؤية للإنفاق.</p></div><div class="card"><h3>للمورد</h3><p>عرض المنتجات، استقبال RFQ، lead time، وتسليم بعد طلب موثق.</p></div><div class="card"><h3>للتقنية</h3><p>تكامل مع ERP وPunch-out وتقارير تجعل المنصة جزءًا من البنية المالية.</p></div></div>
+      <div class="card orange" style="margin-top:.11in"><h3>إشارة مهمة من دليل الموردين</h3><p>المادة العامة تذكر أن الدفع للمورد يتم بعد تقديم proof of delivery وضمن credit terms متفق عليها، وأن التسجيل وإدراج العروض مجانيان للمورد. هذا يوضح أن Supplycart أقرب إلى شبكة procurement منظمة من كونه سجل تشغيل داخلي خفيف.<sup><a href="https://www.supplycart.my/wp-content/uploads/2020/08/SC-Vendor-Guide-Frequently-Asked-Questions.pdf">[2]</a></sup></p></div>
+      <h3 style="margin-top:.14in">كيف يتعلم Axora منه؟</h3><ul><li>اجعل كل طلب يحمل owner وتاريخًا وحالة واضحة.</li><li>افصل قرار الموافقة عن قرار جمع السعر.</li><li>احتفظ بأثر من غيّر القيمة ومتى ولماذا.</li><li>لا تضف تكاملًا قبل إثبات أن الشركات الثلاث تحتاجه.</li></ul>
+      <div class="callout teal"><strong>مساحة التفوق الضيقة:</strong> Axora يمكن أن يكون أبسط في شركة صغيرة، عبر منصة ويب واحدة، وبسير عمل محدد من الطلب إلى التسليم والفاتورة. هذه فرضية يجب اختبارها لا إعلانها كحقيقة.</div>
+    </main><footer class="page-footer"><span>Supplycart/ADAM: منافس وظيفي مباشر</span><span>7</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">المنافس الثاني: Lapasar</span><span class="page-number">8</span></header>
+    <main class="page-body"><span class="eyebrow">سوق B2B وتنفيذ محلي</span><h2>Lapasar يبيع اتساع الاختيار مع تنفيذ فعلي</h2>
+      <p class="lead">صفحة Lapasar Mall تصفه كسوق B2B للمنتجات الصناعية والمكتبية مع 17,000+ منتج و1,000+ مورد موثق، وأسعار جملة وcontract pricing، وأدوات موافقات وميزانيات ومراكز تكلفة وpurchase requisitions.<sup><a href="https://mall.lapasar.com/b2b-marketplace">[3]</a></sup></p>
+      <div class="stat-strip"><div class="stat"><div class="big">17K+</div><div class="label">منتج معلن</div></div><div class="stat"><div class="big">1K+</div><div class="label">مورد معلن</div></div><div class="stat"><div class="big">200K</div><div class="label">قدم مربع مستودع معلن</div></div><div class="stat"><div class="big">100+</div><div class="label">شاحنة معلنة</div></div></div>
+      <div class="grid-2"><div class="card teal"><h3>ماذا يربح العميل؟</h3><ul><li>كتالوج واسع من مصدر واحد.</li><li>أسعار جملة وcontract pricing.</li><li>توصيل تديره المنصة؛ same-day في Klang Valley حسب الصفحة.</li><li>موافقات وميزانية وتحليل إنفاق.</li></ul></div><div class="card blue"><h3>متى لا يكون هو الحل المناسب؟</h3><ul><li>الشركة تريد الاحتفاظ بمورديها الحاليين.</li><li>الطلب خاص جدًا ولا يوجد في الكتالوج.</li><li>تريد سير عمل خاصًا عبر منصة ويب، لا marketplace عامة.</li><li>تريد حسابات وصلاحيات واضحة لبياناتها وإجراءاتها.</li></ul></div></div>
+      <div class="callout orange"><strong>ملاحظة النموذج:</strong> الصفحة العامة تذكر أن الشركات المعتمدة تتعامل بشروط ائتمان 30 أو 45 أو 60 يومًا. لذلك لا يجوز وصف Lapasar بأنه بديل مكافئ لمنصة Axora؛ بل هو بديل تنفيذ وتمويل مختلف.<sup><a href="https://mall.lapasar.com/b2b-marketplace">[3]</a></sup></div>
+    </main><footer class="page-footer"><span>الأرقام معلنة من Lapasar؛ لا تمثل حصة سوقية مستقلة</span><span>8</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">Lapasar · تحليل التهديد</span><span class="page-number">9</span></header>
+    <main class="page-body"><span class="eyebrow">مقارنة العملية لا العلامة</span><h2>Lapasar قد يفوز بالشراء، لا بالحوكمة الداخلية دائمًا</h2>
+      <table class="matrix"><thead><tr><th>قدرة</th><th>Lapasar</th><th>Axora</th><th>قراءة المنافسة</th></tr></thead><tbody><tr><td>اكتشاف منتجات وموردين</td><td class="yes">قوي</td><td class="partial">محدود</td><td>لا تبنِ catalog عامًا الآن.</td></tr><tr><td>كتالوج خاص بالشركة</td><td class="partial">contract pricing</td><td class="yes">نعم</td><td>Axora يحفظ منتجات وموردين الشركة.</td></tr><tr><td>طلب متعدد العناصر</td><td class="yes">نعم</td><td class="yes">نعم</td><td>نقطة تكافؤ أساسية.</td></tr><tr><td>موافقة وميزانية</td><td class="yes">معلنة</td><td class="partial">مسار موافقة</td><td>اختبر زمن الموافقة لا وجود الزر فقط.</td></tr><tr><td>مورد الشركة الحالي</td><td class="partial">عبر المنصة</td><td class="yes">مركزي</td><td>هذه فرصة Axora.</td></tr><tr><td>قبول التسليم + receipt</td><td class="unknown">غير مفصل علنًا</td><td class="yes">سجل إثبات</td><td>يجب إثباتها في pilot.</td></tr><tr><td>منصة ويب متعددة الشركات</td><td class="yes">نعم</td><td class="yes">نعم</td><td>قارن سهولة التهيئة وعزل بيانات الشركات.</td></tr></tbody></table>
+      <h3 style="margin-top:.14in">التوصية التسويقية</h3><div class="grid-2"><div class="card blue"><h3>لا تقل</h3><p>«لدينا منتجات أكثر من Lapasar» أو «نحن marketplace ماليزيا الجديد».</p></div><div class="card teal"><h3>قل</h3><p>«نحن نربط طلب شركتك وموافقتها وتوريدها وتسليمها في سجل واحد، حتى عندما يكون المورد معروفًا مسبقًا».</p></div></div>
+      <div class="callout"><strong>اختبار قابل للقياس:</strong> خذ 10 طلبات مماثلة من كل شركة، وقارن زمن الطلب إلى الموافقة، وعدد رسائل المتابعة، ونسبة السجلات المكتملة. لا تقارن عدد المنتجات.</div>
+    </main><footer class="page-footer"><span>المنافسة هنا على «نقطة الألم» لا على حجم الكتالوج</span><span>9</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">المنافس الثالث: Borong</span><span class="page-number">10</span></header>
+    <main class="page-body"><span class="eyebrow">من marketplace إلى eProcurement</span><h2>Borong يجمع الموردين وسير العمل والتمويل</h2>
+      <p class="lead">الصفحة الرئيسية الحالية تقدم Borong كمنصة B2B eProcurement محايدة تربط المؤسسات والجهات الحكومية والشركات الصغيرة بموردين موثقين، مع تكامل ERP وامتثال PDPA ومسار موافقات.</p>
+      <div class="grid-2"><div class="card teal"><h3>الطبقات المعلنة</h3><ul><li>Marketplace لشبكة موردين ومنتجات.</li><li>تدفق purchase approval متعدد المستويات.</li><li>فواتير موحدة عند الشراء من عدة موردين.</li><li>ERP integration وspend intelligence.</li><li>Borong Credit وتمويل تجاري.</li></ul></div><div class="card orange"><h3>تحذير قراءة الأرقام</h3><p>الصفحة الرئيسية تعرض 37.9K موردًا و4.1M SKU وRM28B معاملات و190K شركة، بينما صفحة «About» تعرض أرقامًا أخرى مثل 30K بائع و200K مشترٍ. هذه أرقام تسويقية ذات تعريفات مختلفة؛ لا تستخدمها كحجم سوق مؤكد.<sup><a href="https://www.borong.com/">[5]</a> <a href="https://www.borong.com/about-us/">[6]</a></sup></p></div></div>
+      <div class="card blue" style="margin-top:.11in"><h3>متى يصبح Borong بديلًا حقيقيًا؟</h3><p>عندما يكون ألم الشركة هو العثور على موردين، تجميع الشراء، الحصول على ائتمان أو الوصول إلى مشترين حكوميين/كبار. أما إذا كان الموردون معروفين والمشكلة هي status chasing داخل 3 فروع، فالمقارنة الأقرب هي ADAM أو Axora.</p></div>
+      <div class="callout orange"><strong>حد Axora:</strong> Borong قد يملك شبكة وتأثيرًا لا يستطيع MVP بثلاث شركات امتلاكهما. لا تدخل سباق network effects؛ أثبت قيمة workflow evidence أولًا.</div>
+    </main><footer class="page-footer"><span>المصدران [5] و[6]؛ أرقام المنصة موسومة كادعاءات معلنة</span><span>10</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">Borong · موقعه الحقيقي</span><span class="page-number">11</span></header>
+    <main class="page-body"><span class="eyebrow">تفريق مهم</span><h2>لا نعدّ Dropee منافسًا منفصلًا بلا دليل حديث</h2>
+      <p>صفحة PETRONAS القديمة/المستمرة على نطاق Dropee تذكر صراحة أن «Dropee now known as Borong» وأن Borong كان منصة إدارة شراء ومشتريات بين مشتري PETRONAS والموردين المسجلين.<sup><a href="https://petronas.dropee.com/latest-news/get-out-there-hbl7w-wnz68">[8]</a></sup></p>
+      <div class="grid-2"><div class="card blue"><h3>الاستنتاج الصحيح</h3><p>Dropee اسم/قناة تاريخية مرتبطة بمنظومة Borong، وليس من المنهج أن نضعه كمنصة سادسة مستقلة ونكرر الأرقام.</p></div><div class="card teal"><h3>ما نتحقق منه في الميدان</h3><p>اسأل الشركات الثلاث: هل استخدمتم Dropee أو Borong؟ هل كان الشراء من كتالوج أم من مورد محدد؟ هل بقيت الموافقات خارج المنصة؟</p></div></div>
+      <h3 style="margin-top:.14in">تطور السوق الذي يجب مراقبته</h3><div class="flow"><div class="flow-box"><strong>Dropee</strong><span>Marketplace سابق</span></div><div class="arrow">→</div><div class="flow-box"><strong>Borong</strong><span>شبكة B2B</span></div><div class="arrow">→</div><div class="flow-box"><strong>eProcurement</strong><span>مؤسسات وتمويل</span></div></div>
+      <div class="callout red"><strong>خطر الاستنتاج:</strong> وجود منصة كبيرة لا يعني أنها تحل كل workflow. «هل أستطيع شراء المنتج؟» سؤال مختلف عن «هل أستطيع إثبات من طلب ووافق واستلم وأغلق الفاتورة؟».</div>
+      <table><thead><tr><th>سؤال للمقابلة</th><th>إشارة خطر</th><th>إشارة فرصة</th></tr></thead><tbody><tr><td>أين حفظتم الموافقة؟</td><td>WhatsApp أو اتصال فقط</td><td>سجل قابل للتصدير</td></tr><tr><td>من تابع موعد التسليم؟</td><td>شخص واحد يتذكر</td><td>تنبيه وowner واضح</td></tr><tr><td>أين إثبات الدفع؟</td><td>صورة/فاتورة غير مربوطة</td><td>receipt مرتبط بالطلب</td></tr></tbody></table>
+    </main><footer class="page-footer"><span>Dropee/Borong: لا تكرر الكيان في التحليل</span><span>11</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">المنافس الرابع: Becon B2B</span><span class="page-number">12</span></header>
+    <main class="page-body"><span class="eyebrow">كتالوج خاص للشركة</span><h2>Becon يقترب من احتياج الفروع والأقسام</h2>
+      <p class="lead">صفحة Becon B2B تقول إن المنصة صممت لتبسيط شراء الشركات ذات المواقع أو الأقسام المتعددة، عبر كتالوج مخصص، أسعار تنافسية، وموافقة المدير على طلبات الموظفين.<sup><a href="https://b2b.becon.my/">[7]</a></sup></p>
+      <div class="grid-3"><div class="card blue"><h3>كتالوج مخصص</h3><p>منتجات مكتبية وقرطاسية وغيرها، مع catalog مطابق لمتطلبات الشركة.</p></div><div class="card teal"><h3>موافقة</h3><p>المدير يراجع ويوافق طلب الموظف بدل الورق والرسائل.</p></div><div class="card orange"><h3>شراء</h3><p>تجربة تصفح وطلب أسهل من الاتصالات المتكررة مع المورد.</p></div></div>
+      <table style="margin-top:.13in"><thead><tr><th>محور</th><th>Becon بحسب الصفحة العامة</th><th>ماذا يضيف Axora؟</th></tr></thead><tbody><tr><td>الفروع والأقسام</td><td>مذكورة كحالة استخدام</td><td>شركة → فرع → طلب → owner ومراحل</td></tr><tr><td>الموردون</td><td>كتالوج Becon</td><td>حفظ موردين تختارهم الشركة ومقارنة عروضهم</td></tr><tr><td>الموافقة</td><td>Approval system</td><td>حالة وتاريخ وسبب وaudit record</td></tr><tr><td>التوصيل</td><td>غير مفصل علنًا</td><td>Delivery date، قبول، استثناء، proof</td></tr><tr><td>الإغلاق المالي</td><td>غير معلن</td><td>ربط الفاتورة بإثبات التسليم وسجل المراجعة</td></tr></tbody></table>
+      <div class="callout teal"><strong>الدرس:</strong> Becon يثبت أن «كتالوج الشركة + موافقة المدير» فكرة مفهومة محليًا. لكي لا يكون Axora نسخة أصغر، يجب أن يضيف ما بعد الموافقة: sourcing، delivery، invoice، evidence.</div>
+      <p class="small">لا تتوفر في الصفحة العامة معلومات موثوقة عن السعر، التكامل، حجم العملاء أو شروط الدفع؛ يجب اعتبارها أسئلة مقابلة.</p>
+    </main><footer class="page-footer"><span>Becon B2B: منافس مباشر جزئي، لا نبالغ في نطاقه</span><span>12</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">المنافس العام: ePerolehan</span><span class="page-number">13</span></header>
+    <main class="page-body"><span class="eyebrow">بديل حكومي لا تجاري</span><h2>ePerolehan يضع معيارًا مختلفًا للمشتريات الحكومية</h2>
+      <p class="lead">ePerolehan هو نظام ماليزي يمكّن الموردين من عرض الأعمال والسلع والخدمات على الحكومة عبر الإنترنت، ويشمل التسجيل والعروض والمناقصات والشراء المباشر بحسب المصادر الرسمية.<sup><a href="https://www.eperolehan.gov.my/en/web/mobile/home">[9]</a> <a href="https://www.malaysia.gov.my/en/my-initiative/perkhidmatan-digital-keseluruhan-kerajaan/dasar-standard-pekeliling-dan-garis-panduan/perolehan-procurement-bidding-process-dan-belanjawan">[11]</a></sup></p>
+      <div class="grid-2"><div class="card blue"><h3>لماذا هو مهم في المنافسة؟</h3><ul><li>يثبت أن digital procurement مفهوم رسمي في ماليزيا.</li><li>يرفع توقعات الموردين بشأن التسجيل والشفافية.</li><li>يجعل الشركات الحكومية غير مناسبة لـ Axora MVP الخاص.</li></ul></div><div class="card orange"><h3>لماذا ليس منافس Axora المباشر؟</h3><ul><li>هدفه Government-to-Business.</li><li>يخضع لقواعد ومؤهلات ومناقصات حكومية.</li><li>لا يدير سير عمل شركة خاصة صغيرة بثلاث فروع.</li></ul></div></div>
+      <h3 style="margin-top:.14in">ما الذي نتعلمه منه؟</h3><table><thead><tr><th>مبدأ</th><th>تطبيق صغير في Axora</th></tr></thead><tbody><tr><td>هوية المورد</td><td>لا تسمح بتكرار مورد مجهول أو اسم بلا جهة اتصال.</td></tr><tr><td>أثر القرار</td><td>احتفظ بمن وافق ومتى وما القيمة.</td></tr><tr><td>إمكانية التحقق</td><td>اربط الطلب بالعرض والفاتورة وإثبات التسليم.</td></tr><tr><td>حدود الصلاحية</td><td>لا تجعل كل مستخدم قادرًا على اعتماد طلبه.</td></tr></tbody></table>
+      <div class="callout"><strong>الحد:</strong> لا تستخدم نجاح ePerolehan كدليل على أن الشركات الثلاث ستشتري Axora؛ استخدمه فقط كدليل على شرعية المجال وأهمية الحوكمة.</div>
+    </main><footer class="page-footer"><span>ePerolehan سياق حكومي؛ لا يدخل في ترتيب المنافسين التجاريين</span><span>13</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">المنافس الأقوى فعليًا: العمل اليدوي</span><span class="page-number">14</span></header>
+    <main class="page-body"><span class="eyebrow">البديل الذي لا يرسل فاتورة</span><h2>WhatsApp وExcel وEmail منافس حقيقي</h2>
+      <p class="lead">إذا كان الفريق يستطيع مواصلة العمل برسائل وجداول، فتكلفة عدم شراء منصة قد تبدو صفرًا. لذلك يجب أن يثبت Axora وقتًا مهدورًا أو خطأً أو تأخرًا، لا مجرد وجود شاشة أجمل.</p>
+      <div class="flow"><div class="flow-box"><strong>رسالة</strong><span>طلب في WhatsApp</span></div><div class="arrow">→</div><div class="flow-box"><strong>جدول</strong><span>نسخ ولصق</span></div><div class="arrow">→</div><div class="flow-box"><strong>اتصال</strong><span>متابعة المورد</span></div></div>
+      <table><thead><tr><th>المشكلة اليدوية</th><th>الأثر</th><th>ما يقيسه Axora</th></tr></thead><tbody><tr><td>لا يعرف الطالب الحالة</td><td>رسائل متابعة متكررة</td><td>زمن الطلب إلى أول رد</td></tr><tr><td>الموافقة في محادثة منفصلة</td><td>صعوبة إثبات القرار</td><td>نسبة الطلبات ذات approval record</td></tr><tr><td>سعر في ملف وطلب في ملف</td><td>أخطاء قيمة/كمية</td><td>عدد التصحيحات وإعادة الإدخال</td></tr><tr><td>تسليم بلا سجل موحد</td><td>نزاع على الكمية أو التاريخ</td><td>delivery evidence completeness</td></tr><tr><td>إغلاق مالي بلا مرجع</td><td>مخاطر وفروقات</td><td>نسبة السجلات المرتبطة بفاتورة وإثبات</td></tr></tbody></table>
+      <div class="grid-2" style="margin-top:.13in"><div class="card orange"><h3>لماذا يفوز البديل اليدوي؟</h3><p>مألوف، سريع لطلب واحد، لا يحتاج تدريبًا أو موافقة ميزانية.</p></div><div class="card teal"><h3>كيف يهزمه Axora؟</h3><p>اجعل إنشاء الطلب أسرع من الرسائل، والبحث عن الحالة أسهل من سؤال زميل، والتقرير جاهزًا دون تجميع يدوي.</p></div></div>
+      <div class="callout red"><strong>قاعدة pilot:</strong> لا تسمح بعرض demo مرتب مسبقًا كدليل. أدخل طلبات حقيقية أو حالات معاد بناؤها من سجلات الشركة، وقارن baseline قبل Axora.</div>
+    </main><footer class="page-footer"><span>البديل اليدوي هو الاختبار الأصعب والأكثر واقعية</span><span>14</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">مصفوفة الوظائف</span><span class="page-number">15</span></header>
+    <main class="page-body"><span class="eyebrow">مقارنة قابلة للشرح للمشرف</span><h2>Axora يركز على الجزء الذي لا يظهر في المتجر</h2>
+      <table class="matrix"><thead><tr><th>الوظيفة</th><th>ADAM</th><th>Lapasar</th><th>Borong</th><th>Becon</th><th>Axora</th></tr></thead><tbody><tr><td>كتالوج عام واسع</td><td class="partial">محتمل</td><td class="yes">قوي</td><td class="yes">قوي</td><td class="partial">خاص</td><td class="no">لا</td></tr><tr><td>كتالوج الشركة</td><td class="yes">نعم</td><td class="partial">contract</td><td class="partial">حسب الحساب</td><td class="yes">نعم</td><td class="yes">نعم</td></tr><tr><td>طلب متعدد العناصر</td><td class="yes">نعم</td><td class="yes">نعم</td><td class="yes">نعم</td><td class="yes">نعم</td><td class="yes">نعم</td></tr><tr><td>موافقة داخلية</td><td class="yes">قوي</td><td class="yes">معلن</td><td class="yes">معلن</td><td class="yes">معلن</td><td class="yes">نعم</td></tr><tr><td>RFQ/مقارنة عروض</td><td class="yes">قوي</td><td class="partial">طلب عبر catalog</td><td class="partial">حسب الحل</td><td class="unknown">غير معلن</td><td class="yes">نعم</td></tr><tr><td>حالة التوصيل والاستثناء</td><td class="unknown">تحقق مطلوب</td><td class="partial">تنفيذ المنصة</td><td class="partial">تنفيذ/مورد</td><td class="unknown">غير معلن</td><td class="yes">نعم</td></tr><tr><td>فاتورة + إثبات تسليم</td><td class="unknown">غير معلن</td><td class="partial">ضمن التنفيذ</td><td class="partial">حسب الحل</td><td class="unknown">غير معلن</td><td class="yes">مقيد تقنيًا</td></tr><tr><td>منصة ويب متعددة الشركات</td><td class="unknown">غير مفصل</td><td class="yes">نعم</td><td class="yes">نعم</td><td class="partial">حسب الحساب</td><td class="yes">نعم</td></tr><tr><td>شركات خاصة متعددة</td><td class="partial">يتطلب إعداد</td><td class="no">Marketplace</td><td class="no">Marketplace</td><td class="partial">حساب شركة</td><td class="yes">مصمم لذلك</td></tr></tbody></table>
+      <p class="small" style="margin-top:.1in"><span class="yes">نعم</span> = دليل معلن أو موجود في Axora؛ <span class="partial">جزئي</span> = قريب لكن ليس مطابقًا؛ <span class="unknown">غير معلن</span> = لا نستنتج؛ <span class="no">لا</span> = مختلف في نموذج العمل.</p>
+      <div class="callout teal"><strong>المشكلة الصحيحة:</strong> Axora لا يحتاج «فوزًا» في كل خانة. يحتاج فوزًا في الخانات التي تتكرر يوميًا داخل الشركات الثلاث.</div>
+    </main><footer class="page-footer"><span>المصفوفة لا تعني أن المنافسين يفتقدون وظائف غير منشورة</span><span>15</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">مقارنة رحلة العمل</span><span class="page-number">16</span></header>
+    <main class="page-body"><span class="eyebrow">من الطلب إلى الإغلاق</span><h2>المنافسون يبدؤون من نقاط مختلفة</h2>
+      <div class="grid-2"><div class="card blue"><h3>منصة marketplace</h3><p>اكتشف منتجًا → اختر موردًا → نفذ الشراء → تابع الشحن. القيمة في الاتساع والتنفيذ.</p></div><div class="card teal"><h3>برنامج procurement</h3><p>أنشئ طلبًا → وافق → اطلب عرضًا → أصدر PO → طابق الفاتورة. القيمة في السيطرة والأثر.</p></div></div>
+      <div class="grid-2" style="margin-top:.1in"><div class="card orange"><h3>العمل اليدوي</h3><p>رسالة → إعادة كتابة → اتصال → جدول → متابعة. القيمة في المرونة، والثمن هو الاختفاء.</p></div><div class="card"><h3>منصة Axora</h3><p>طلب → تحقق → موافقة → sourcing → supplier/order → delivery → invoice → report.</p></div></div>
+      <div class="flow"><div class="flow-box"><strong>Request</strong><span>بيانات كاملة</span></div><div class="arrow">→</div><div class="flow-box"><strong>Approve</strong><span>قرار واضح</span></div><div class="arrow">→</div><div class="flow-box"><strong>Source</strong><span>عرض واختيار</span></div></div><div class="flow"><div class="flow-box"><strong>Order</strong><span>مورد وPO</span></div><div class="arrow">→</div><div class="flow-box"><strong>Deliver</strong><span>قبول واستثناء</span></div><div class="arrow">→</div><div class="flow-box"><strong>Evidence</strong><span>فاتورة ومراجعة</span></div></div>
+      <div class="callout"><strong>القرار التصميمي:</strong> هذه الرحلة لا تجعل Axora marketplace. إنها منصة ويب لإدارة العملية، وتترك اختيار المورد والقبول والدفع ضمن المسؤوليات البشرية المصرح بها.</div>
+    </main><footer class="page-footer"><span>التميّز المقترح: تكامل السياق، لا كثرة الميزات</span><span>16</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">التحكم المالي في التشغيل</span><span class="page-number">17</span></header>
+    <main class="page-body"><span class="eyebrow">سجل القرار والدليل</span><h2>Axora يسجل العملية؛ ولا يحاول أن يكون بنكًا</h2>
+      <p>المنصات الأكبر تعلن تكاملات وتمويلًا وpayment workflows أوسع. قيمة Axora في هذه المرحلة هي ربط القرار والتسليم والفاتورة والمرجع داخل سجل واحد، مع إبقاء التسوية والمسؤوليات المالية لدى الشركة وموظفيها.</p>
+      <table><thead><tr><th>الطرف</th><th>مسؤوليته في الإغلاق</th><th>ما يظل يدويًا</th></tr></thead><tbody><tr><td>البائع/الموصل</td><td>تسليم الكمية المقبولة وإصدار إثبات</td><td>الحفظ، الإيداع، الاسترجاع، والتعويض</td></tr><tr><td>المستلم</td><td>التحقق من الكمية والحالة</td><td>رفض أو قبول التسليم</td></tr><tr><td>Finance</td><td>ربط invoice + POD + reference</td><td>مراجعة الفروقات والاعتماد</td></tr><tr><td>Axora</td><td>تسجيل الحالة والأثر والتقرير</td><td>لا يحتفظ بالأموال ولا يقرر التعويض</td></tr></tbody></table>
+      <div class="grid-3" style="margin-top:.13in"><div class="card teal"><h3>ميزة</h3><p>سجل واضح للعملية دون بناء شبكة سوق أو نظام مالي كامل.</p></div><div class="card orange"><h3>قيد</h3><p>لا ينبغي وعد العميل بأنه بديل ERP أو marketplace واسع.</p></div><div class="card blue"><h3>اختبار</h3><p>قارن اكتمال الفاتورة وإثبات التسليم وسجل المراجعة.</p></div></div>
+      <div class="callout red"><strong>قاعدة الرسالة:</strong> لا تقل إن Axora «أفضل من Borong» بشكل مطلق. قل إنه يختبر workflow خاصًا بالشركة عبر منصة ويب، ويربط المسؤولية بالدليل في كل مرحلة.</div>
+    </main><footer class="page-footer"><span>التحكم المالي هنا جزء من تشغيل المنصة، وليس وعدًا بمنتج مالي</span><span>17</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">التسعير ونموذج المنصة</span><span class="page-number">18</span></header>
+    <main class="page-body"><span class="eyebrow">ما الذي يدفعه العميل فعليًا؟</span><h2>«مجاني» ليس نقطة تفوق كافية</h2>
+      <p>الأسعار التفصيلية لمعظم المنافسين ليست منشورة في الصفحات التي راجعناها. حتى إن كان Axora بلا اشتراك، يدفع العميل وقت التدريب، الكهرباء، النسخ الاحتياطي، مسؤولية التشغيل، وأي تطوير خاص.</p>
+      <table><thead><tr><th>عنصر التكلفة</th><th>منصة Axora MVP</th><th>منصة SaaS/marketplace</th><th>سؤال يجب طرحه</th></tr></thead><tbody><tr><td>اشتراك البرنامج</td><td>RM0 في النموذج الحالي</td><td>غير معلن/حسب العرض</td><td>هل يوجد minimum contract؟</td></tr><tr><td>الوصول للمنصة</td><td>موقع ويب وحسابات مستخدمين</td><td>تطبيق/موقع المزود</td><td>هل يمكن فصل بيانات كل شركة؟</td></tr><tr><td>كتالوج وموردون</td><td>تضيفهم الشركة عبر المنصة</td><td>شبكة جاهزة نسبيًا</td><td>كم وقت إدخال الموردين؟</td></tr><tr><td>التكامل</td><td>ليس ضمن MVP</td><td>قد يكون متاحًا أو مدفوعًا</td><td>هل يحتاج ERP الآن؟</td></tr><tr><td>الدعم</td><td>مسؤول تشغيل محدد</td><td>فريق مزود</td><td>من يستجيب عند العطل؟</td></tr></tbody></table>
+      <div class="grid-2" style="margin-top:.12in"><div class="card blue"><h3>ميزة Axora</h3><p>منصة ويب بحسابات وصلاحيات واضحة، مناسبة لتجربة محدودة لا تريد شراء SaaS قبل إثبات الحاجة.</p></div><div class="card orange"><h3>نقطة ضعف Axora</h3><p>لا يوجد فريق دعم تجاري أو شبكة موردين أو SLA. يجب ألا تخفي هذه المسؤولية عن المشرف.</p></div></div>
+      <div class="callout"><strong>قاعدة المقارنة:</strong> اطلب من كل منافس عرضًا مكتوبًا لنفس السيناريو: 3 شركات، 3 فروع، 10 موردين، و30 دورة شراء مع إثبات تسليم وفاتورة. عندها فقط تصبح الأسعار قابلة للمقارنة.</div>
+    </main><footer class="page-footer"><span>لا توجد أسعار عامة كافية لإعلان ترتيب سعري</span><span>18</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">ماذا يقلد Axora وماذا يؤجل؟</span><span class="page-number">19</span></header>
+    <main class="page-body"><span class="eyebrow">قرارات المنتج</span><h2>خذ من المنافسين الأنماط، لا حجمهم</h2>
+      <table><thead><tr><th>النمط المشاهد</th><th>القرار الآن</th><th>لماذا</th></tr></thead><tbody><tr><td>كتالوج مصنف ومورد موثق</td><td><span class="tag direct">احتفظ</span></td><td>ضروري لاختيار صحيح وتقليل التكرار.</td></tr><tr><td>موافقة متعددة المستويات</td><td><span class="tag direct">احتفظ</span></td><td>مطلوبة لفصل الطالب عن الموافق.</td></tr><tr><td>RFQ ومقارنة عروض</td><td><span class="tag direct">احتفظ</span></td><td>جوهر القيمة مقابل WhatsApp.</td></tr><tr><td>كتالوج وطني بملايين SKU</td><td><span class="tag substitute">أجّل</span></td><td>ليس مطلوبًا لاختبار الفكرة.</td></tr><tr><td>تمويل ائتماني أو BNPL</td><td><span class="tag substitute">أجّل</span></td><td>ليس جزءًا من فرضية التشغيل الأولى.</td></tr><tr><td>ERP/Punch-out/API واسع</td><td><span class="tag substitute">أجّل</span></td><td>لا دليل على الحاجة قبل pilot.</td></tr><tr><td>Supplier marketplace</td><td><span class="tag substitute">أجّل</span></td><td>لا حاجة إلى شبكة وطنية لاختبار الفكرة.</td></tr><tr><td>تسليم، قبول، receipt، reconciliation</td><td><span class="tag direct">ضاعف التركيز</span></td><td>هذه المساحة غير الواضحة في عروض السوق العامة.</td></tr></tbody></table>
+      <div class="grid-3" style="margin-top:.14in"><div class="card teal"><h3>نسخة MVP</h3><p>سير عمل موثق، متعدد الشركات، مقيد الصلاحيات، يعمل عبر موقع ويب.</p></div><div class="card blue"><h3>نسخة ما بعد الدليل</h3><p>تحسين onboarding، تنبيهات، تقارير، وربما تكامل.</p></div><div class="card orange"><h3>ما بعد fit</h3><p>خدمة مدفوعة، شراكات موردين أو market network إذا طلبها العملاء.</p></div></div>
+    </main><footer class="page-footer"><span>التأجيل ليس ضعفًا؛ هو حماية لصدق تجربة MVP</span><span>19</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">خطة التحقق مع ثلاث شركات</span><span class="page-number">20</span></header>
+    <main class="page-body"><span class="eyebrow">تحويل البحث إلى قرار</span><h2>لا تسأل «هل أعجبكم؟»؛ قارن السلوك</h2>
+      <table><thead><tr><th>الأسبوع</th><th>النشاط</th><th>دليل النجاح</th><th>قرار التوقف</th></tr></thead><tbody><tr><td>0</td><td>baseline من Excel/WhatsApp</td><td>10 دورات شراء مماثلة موثقة</td><td>لا توجد بيانات قابلة للمقارنة</td></tr><tr><td>1</td><td>تهيئة الشركة والمستخدمين</td><td>صلاحيات وفروع وموردون صحيحون</td><td>لا يمكن عزل بيانات الشركات</td></tr><tr><td>2</td><td>طلب وموافقة</td><td>90% طلبات كاملة دون إعادة إدخال</td><td>النظام أبطأ من اليدوي بوضوح</td></tr><tr><td>3</td><td>عرض ومورد</td><td>اختيار موثق وسبب واضح</td><td>اختيار المورد خارج النظام دائمًا</td></tr><tr><td>4</td><td>توصيل وقبول</td><td>invoice + POD + reference مرتبطة</td><td>فروقات غير قابلة للتفسير</td></tr><tr><td>5</td><td>تقرير وإعادة استخدام</td><td>المشرف يرى قيمة دون تجميع يدوي</td><td>لا أحد يريد الاستمرار</td></tr><tr><td>6</td><td>قرار شركة-بشركة</td><td>شركتان تريدان دورة إضافية</td><td>لا تبيع، أصلح أو أوقف</td></tr></tbody></table>
+      <div class="grid-2" style="margin-top:.12in"><div class="card blue"><h3>أسئلة المنافسة في المقابلة</h3><ul><li>هل جرّبتم Borong/Lapasar أو ADAM؟</li><li>ما الذي بقي خارج المنصة؟</li><li>ما قيمة الوقت الضائع في المتابعة؟</li><li>هل تريدون منصة ويب موحدة أم تكاملًا مع أدواتكم الحالية؟</li></ul></div><div class="card teal"><h3>أسئلة قرار الاستمرار</h3><ul><li>هل انخفض زمن approval؟</li><li>هل قلّت الرسائل؟</li><li>هل أصبحت الفاتورة وإثبات التسليم قابلين للمطابقة؟</li><li>هل ستخصصون owner وميزانية؟</li></ul></div></div>
+      <div class="callout orange"><strong>عتبة مقترحة:</strong> لا توسع السوق بعد ثلاث شركات إلا إذا تحققت إشارتان على الأقل في شركتين: تكرار استخدام، قياس أفضل، والتزام مستمر من مالك العملية.</div>
+    </main><footer class="page-footer"><span>الـpilot يقيس سلوكًا متكررًا، لا رأيًا لحظيًا</span><span>20</span></footer>
+  </section>
+
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">التوصية النهائية</span><span class="page-number">21</span></header>
+    <main class="page-body"><span class="eyebrow">قرار المشرف المقترح</span><h2>Axora لديه مساحة، لكن ليست مساحة marketplace</h2>
+      <div class="quote">نوصي بالمضي في اختبار ودي لمدة ستة أسابيع مع الشركات الثلاث، على أساس أن المنصة نسخة صغيرة من منصة ويب تشغيلية قابلة للتوسع، وليست marketplace عامة. لا نوصي ببناء شبكة موردين أو تمويل أو تكاملات واسعة قبل ظهور دليل متكرر من شركات متعددة. هذا الاختبار يحقق التعلم، لكنه لا يحدّد حجم السوق النهائي لـAxora.</div>
+      <h3 style="margin-top:.16in">لماذا؟</h3><div class="grid-3"><div class="card teal"><h3>إشارة إيجابية</h3><p>المشكلة التي يحلها Axora موجودة في كل فئة منافسة: الطلب، الموافقة، المورد، الإنفاق، والتسليم.</p></div><div class="card orange"><h3>إشارة تحذير</h3><p>منافسون محليون يملكون شبكة، تمويلًا، خبرة أو ميزانية أكبر. لا تدخل سباق الاتساع.</p></div><div class="card blue"><h3>اختبار عادل</h3><p>احكم على الزمن والأثر واكتمال الدليل في شركاتك، لا على عدد منتجات المنافس.</p></div></div>
+      <h3 style="margin-top:.15in">شروط الانتقال إلى المرحلة التالية</h3><ul><li>شركتان من ثلاث تستخدمان Axora في دورتين منفصلتين على الأقل.</li><li>تحسن قابل للقياس في زمن الموافقة أو عدد المتابعات.</li><li>90% من سجلات الطلب/التسليم/الفاتورة مكتملة.</li><li>مالك عملية ومراجع Finance محددان لكل شركة.</li><li>قرار مكتوب بشأن نموذج المنصة والدعم والتكلفة قبل أي بيع خارجي.</li></ul>
+      <div class="callout red"><strong>الخلاصة الصريحة:</strong> المنافسة ممكنة إذا كان المنتج «مساعد تشغيل خاصًا» للشركات الصغيرة. وهي غير منطقية إذا كان الهدف الآن تقليد Borong أو Lapasar في الكتالوج والتمويل والشبكة.</div>
+      <p class="small">هذا تقرير بحث سوق أولي مبني على صفحات عامة؛ لا يغني عن مقابلات شراء أو عروض أسعار أو مراجعة قانونية.</p>
+    </main><footer class="page-footer"><span>Axora operations · نهاية التقرير</span><span>21</span></footer>
+  </section>
+
+  <!-- 22 -->
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">العقود والعملاء المعلنون</span><span class="page-number">22</span></header>
+    <main class="page-body"><span class="eyebrow">هل المنافسون مرتبطون فعلًا؟</span><h2>نعم، توجد علاقات معلنة؛ لكن لا توجد قوائم عقود كاملة</h2>
+      <p class="lead">الصفحات العامة تثبت عملاء أو شراكات أو شهادات استخدام، لكنها لا تثبت العدد الكامل للعقود النشطة ولا تمنحنا قائمة «الشركات المتبقية». لذلك نعرض أدناه <strong>الحد الأدنى القابل للإثبات علنًا</strong>، ونفصل بين العميل المعلن والشراكة والرقم التسويقي.</p>
+      <table style="font-size:7.05pt"><thead><tr><th>المنصة</th><th>الدليل العلني</th><th>العدد الذي يمكن قوله بأمان</th><th>ماذا يعني ذلك لـAxora؟</th></tr></thead><tbody>
+        <tr><td><strong>ADAM / Supplycart</strong></td><td>شهادات منشورة من SEGi، L'Oréal Malaysia، Fitness First، Amazin' Graze وAIMS.</td><td><strong>5 جهات مسماة على الأقل</strong>؛ الشهادات ليست قائمة عقود كاملة.</td><td>منافس قوي للشركات التي تريد تكاملًا وشراءً مؤسسيًا؛ لا نفترض أنه يغطي كل شركة صغيرة.</td></tr>
+        <tr><td><strong>Lapasar</strong></td><td>تعلن المنصة عن <strong>100+ عميل مؤسسي</strong>، وشعارات شركات، ودراستَي تنفيذ مؤسسيتين مجهّلتي الاسم.</td><td><strong>100+ عميل معلن ذاتيًا</strong>، و2 تطبيقات موثقة بلا أسماء؛ لا نعدّ الشعارات عقودًا منفصلة.</td><td>المنافس الأكبر في catalog والـfulfilment؛ الفرصة هي الشركة التي تريد مورديها وسيرها الداخلي، لا سوقًا عامًا.</td></tr>
+        <tr><td><strong>Borong</strong></td><td>منصة PETRONAS المعينة رسميًا؛ تعرض 18B+ RM معاملات و56,000+ أمر شراء، وقنوات Shell، وشراكة MYDIN، وتذكر 50,000+ شركة صغيرة ومتوسطة على شبكتها.</td><td><strong>3 علاقات مؤسسية معلنة على الأقل</strong> (PETRONAS، Shell، MYDIN)؛ أرقام المعاملات والأوامر ليست عدد شركات متعاقدة.</td><td>يمتلك شبكة وتمويلًا وتنفيذًا واسعًا؛ لا نقيس Axora بعدد الموردين أو قيمة GMV.</td></tr>
+        <tr><td><strong>Becon B2B</strong></td><td>متجران مخصصان يمكن فهرستهما علنًا لـ Aluminium Company of Malaysia وS L Ng Trading Agency، مع تسجيل حساب شركة.</td><td><strong>متجران عامّان قابلان للتحقق على الأقل</strong>؛ الإجمالي غير منشور.</td><td>يثبت أن catalog خاص بالشركة موجود محليًا؛ يجب أن يبرز Axora سلسلة الطلب–التسليم–الفاتورة–والدليل.</td></tr>
+        <tr><td><strong>ePerolehan</strong></td><td>إحصاء حكومي لعام 2024: 118,298 موردًا بشهادة MOF، و5,566 حسابًا أساسيًا، و155 G2G.</td><td>هذه <strong>حسابات موردين</strong> وليست عدد عملاء مشترين أو عقود منصة تجارية.</td><td>سياق حكومي مختلف؛ لا نطرح هذا الرقم من سوق Axora الخاص.</td></tr>
+        <tr><td><strong>Excel / WhatsApp</strong></td><td>لا توجد عقود منصة؛ هو البديل الحالي داخل كثير من الشركات.</td><td>العدد غير قابل للعدّ من صفحات عامة.</td><td>هنا تكون مقابلات Axora وقياس زمن المتابعة أهم من مقارنة logos.</td></tr>
+      </tbody></table>
+      <div class="callout orange"><strong>قاعدة الدقة:</strong> لا يجوز قول «المنافس لديه X عقدًا» إلا إذا نشر الرقم صراحةً. الشعار أو الشهادة أو الشراكة يثبت علاقة معلنة فقط. ولا يجوز حساب الشركات المتبقية بطرح هذه الأرقام لأن تعريف العميل، وتداخل العملاء، ومدة العقد، والقطاع تختلف بين المنصات.</div>
+    </main><footer class="page-footer"><span>العلاقات المعلنة ليست بالضرورة عقودًا نشطة أو حصرية</span><span>22</span></footer>
+  </section>
+
+  <!-- 23 -->
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">السوق المتبقي</span><span class="page-number">23</span></header>
+    <main class="page-body"><span class="eyebrow">من الرقم الوطني إلى العميل المناسب</span><h2>السوق المتبقي كبير، لكن الرقم الدقيق غير معروف بعد</h2>
+      <div class="stat-strip"><div class="stat"><div class="big">1.086M</div><div class="label">MSME establishments في 2024</div></div><div class="stat"><div class="big">96.1%</div><div class="label">نسبة MSME من المنشآت</div></div><div class="stat"><div class="big">100+</div><div class="label">عميل Lapasar معلن</div></div><div class="stat"><div class="big">3</div><div class="label">شركات في اختبار ودي غير تعاقدي</div></div></div>
+      <p class="small">أرقام المنشآت من SME Corp/DOSM؛ ورقم Lapasar معلن من المنصة؛ و«3» هو نطاق الاختبار المصرح به. هذه الأرقام لا تُجمع في مقام واحد ولا تعني أن كل MSME عميل محتمل.</p>
+      <div class="grid-2"><div class="card teal"><h3>ما نعرفه</h3><ul><li>هناك قاعدة واسعة من الشركات الصغيرة والمتوسطة في ماليزيا.</li><li>هناك منصات قوية أخذت جزءًا من الشركات الكبيرة والشراء العام.</li><li>الكثير من الشركات قد تستخدم أكثر من أداة، أو لا تستخدم منصة مشتريات أصلًا.</li><li>المشكلة الأنسب لـAxora هي تنسيق داخلي متكرر، لا اكتشاف منتج على مستوى الدولة.</li></ul></div><div class="card orange"><h3>ما لا نعرفه</h3><ul><li>كم عقدًا نشطًا لكل منافس، وكم عقدًا انتهى.</li><li>كم عميلًا يتداخل بين Lapasar وBorong وADAM.</li><li>كم شركة صغيرة مستعدة لتغيير Excel/WhatsApp.</li><li>هل تحتاج الشركة نظامًا كاملًا أم يكفيها تحسين طريقتها الحالية.</li></ul></div></div>
+      <table style="margin-top:.15in;font-size:7.45pt"><thead><tr><th>الشريحة المرشحة</th><th>علامة الألم</th><th>ملاءمة Axora</th><th>الإجراء التالي</th></tr></thead><tbody>
+        <tr><td>شركة لها 2–20 فرعًا أو مواقع</td><td>الطلبات والموافقات موزعة بين رسائل وملفات.</td><td class="yes">عالية</td><td>مقابلة المدير وFinance وقياس دورة طلب واحدة.</td></tr>
+        <tr><td>شركة تملك مورديها ولا تريد marketplace</td><td>تكرار RFQ، اختيار المورد، إثبات التسليم والفاتورة.</td><td class="yes">عالية</td><td>تجربة catalog خاص + سجل تدقيق + إثبات تسليم.</td></tr>
+        <tr><td>شركة لديها SAP/Ariba أو منصة منافس</td><td>استثناءات محلية أو فروع صغيرة خارج المسار الرسمي.</td><td class="partial">متوسطة</td><td>اسأل: ما الذي بقي خارج النظام؟ لا تحاول استبدال ERP.</td></tr>
+        <tr><td>شركة صغيرة أحادية الموقع بلا موافقة</td><td>طلبات قليلة ولا تكلفة متابعة واضحة.</td><td class="no">منخفضة</td><td>لا تستهدفها في MVP؛ تكلفة البيع أعلى من الألم.</td></tr>
+      </tbody></table>
+      <div class="callout teal"><strong>كيف نحسب المتبقي بطريقة صحيحة؟</strong> المتبقي القابل للخدمة = الشركات التي تطابق ملف العميل المستهدف − الشركات الراضية عن نظامها الحالي − التداخل بين المنصات − الشركات غير المستعدة للتغيير. لا نستطيع إخراج رقم موثوق من الويب؛ نستطيع تقديره بعد قائمة مقابلات مؤهلة من 30–50 شركة.</div>
+    </main><footer class="page-footer"><span>لا نخلط بين حجم الاقتصاد وحجم السوق القابل للبيع</span><span>23</span></footer>
+  </section>
+
+  <!-- 24 -->
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">ميزة Axora العملية</span><span class="page-number">24</span></header>
+    <main class="page-body"><span class="eyebrow">ما الذي لا تقدمه البدائل بنفس التركيبة؟</span><h2>التفوق ليس في زر واحد؛ بل في سلسلة تشغيل صغيرة ومغلقة</h2>
+      <p class="lead">لا ندّعي أن المنافسين عاجزون تقنيًا عن بناء هذه الوظائف. الادعاء الأدق هو أن Axora يجمعها في منصة ويب خفيفة للشركات، مع أولوية لتخصيص سير العمل وسجل الإثبات، بدل marketplace وكتالوج وcredit.</p>
+      <table style="font-size:7.35pt"><thead><tr><th>الاحتياج</th><th>ما تركز عليه البدائل غالبًا</th><th>ما يعطيه Axora</th><th>دليل النجاح في الـMVP</th></tr></thead><tbody>
+        <tr><td>إبقاء موردي الشركة</td><td>شبكة موردين عامة أو catalog واسع.</td><td>Company/Supplier/Product master خاص بالشركة وفروعها.</td><td>لا يضطر الموظف لإعادة إدخال المورد والمنتج في كل طلب.</td></tr>
+        <tr><td>مسار واحد قابل للمراجعة</td><td>الشراء أو السوق أو الإغلاق كل منها في طبقة منفصلة.</td><td>Request → approval → sourcing → order → delivery → invoice → evidence.</td><td>90% من الدورات تملك timestamps وowner ومرجعًا.</td></tr>
+        <tr><td>تشغيل ويب منخفض المخاطر</td><td>Cloud marketplace وفتح حسابات خارجية.</td><td>منصة ويب بسيطة، أدوار، عزل شركات، وسجل مراجعة.</td><td>تبدأ الشركة بحسابات محددة ومسار طلب قابل للقياس.</td></tr>
+        <tr><td>إغلاق مالي موثوق</td><td>حلول دفع وتمويل أو تنفيذ منفصل.</td><td>ربط الفاتورة بإثبات التسليم والمرجع دون أن يحتفظ Axora بالأموال.</td><td>كل إغلاق مرتبط بفعل ومسؤول ودليل.</td></tr>
+        <tr><td>التعامل مع الاستثناءات</td><td>تنفيذ قياسي يناسب volume كبير.</td><td>سبب مكتوب لـ On Hold/Cancel/رفض التسليم، مع audit trail.</td><td>كل استثناء قابل للبحث ولا يختفي في WhatsApp.</td></tr>
+        <tr><td>تغيير سريع مع العميل</td><td>تنفيذ مؤسسي وتكاملات قد تكون أطول.</td><td>تخصيص صغير مع الشركات الثلاث وقياس الأثر أسبوعيًا.</td><td>نسخة العمل تتبع احتياج الشركة دون تحويل المنتج إلى مشروع ERP.</td></tr>
+      </tbody></table>
+      <div class="grid-2" style="margin-top:.15in"><div class="card blue"><h3>ما لا ينبغي ادعاؤه</h3><p>لا تقل إن Axora يملك شبكة موردين أكبر، أو سعرًا أرخص، أو قدرة مالية أقوى، أو ميزة لا يستطيع المنافس نسخها. هذه ادعاءات غير مثبتة.</p></div><div class="card teal"><h3>التموضع الصحيح</h3><p>Axora منصة ويب تشغيلية للشركات التي لا تريد marketplace عامة، وتحتاج رؤية دقيقة من الموافقة حتى التسليم والفاتورة وسجل المراجعة.</p></div></div>
+      <div class="callout orange"><strong>اختبار الميزة:</strong> اسأل كل شركة تجريبية: «ما الذي بقي خارج منصتكم الحالية؟». إذا كانت الإجابة مجرد catalog أو سعر، فالمنافس قوي. إذا كانت الإجابة متابعة وتسليم وإيصال واستثناءات وفروع، فهذه مساحة Axora.</div>
+    </main><footer class="page-footer"><span>الميزة المعلنة يجب أن تتحول إلى زمن أقل ودليل أكمل</span><span>24</span></footer>
+  </section>
+
+  <!-- 25 -->
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">المراجع والروابط الرسمية</span><span class="page-number">25</span></header>
+    <main class="page-body"><span class="eyebrow">مصادر تمت مراجعتها في 23 يوليو 2026</span><h2>مصادر المنافسين والسياق الماليزي</h2>
+      <ol class="source-list">
+        <li><strong>[1] ADAM Procure / Supplycart — الصفحة الرسمية.</strong><a href="https://adam-procure.com/">https://adam-procure.com/</a></li>
+        <li><strong>[2] Supplycart Vendor FAQ — الدفع بعد proof of delivery وcredit terms.</strong><a href="https://www.supplycart.my/wp-content/uploads/2020/08/SC-Vendor-Guide-Frequently-Asked-Questions.pdf">https://www.supplycart.my/wp-content/uploads/2020/08/SC-Vendor-Guide-Frequently-Asked-Questions.pdf</a></li>
+        <li><strong>[3] Lapasar Mall — B2B marketplace، المنتجات، الموردون، الموافقات والائتمان.</strong><a href="https://mall.lapasar.com/b2b-marketplace">https://mall.lapasar.com/b2b-marketplace</a></li>
+        <li><strong>[4] Lapasar — الصفحة المؤسسية.</strong><a href="https://lapasar.com/">https://lapasar.com/</a></li>
+        <li><strong>[5] Borong — منصة B2B eProcurement وMarketplace.</strong><a href="https://www.borong.com/">https://www.borong.com/</a></li>
+        <li><strong>[6] Borong About Us — أرقام وموقع الشركة العام.</strong><a href="https://www.borong.com/about-us/">https://www.borong.com/about-us/</a></li>
+        <li><strong>[7] Becon B2B — الكتالوج الخاص وموافقة المدير.</strong><a href="https://b2b.becon.my/">https://b2b.becon.my/</a></li>
+        <li><strong>[8] PETRONAS/Dropee — توضيح «Dropee now known as Borong».</strong><a href="https://petronas.dropee.com/latest-news/get-out-there-hbl7w-wnz68">https://petronas.dropee.com/latest-news/get-out-there-hbl7w-wnz68</a></li>
+        <li><strong>[9] ePerolehan — بوابة الحكومة الماليزية.</strong><a href="https://www.eperolehan.gov.my/en/web/mobile/home">https://www.eperolehan.gov.my/en/web/mobile/home</a></li>
+        <li><strong>[10] LHDNM e-Procurement — مثال رسمي على المشتريات الإلكترونية.</strong><a href="https://www.hasil.gov.my/en/quick-links/procurement/e-procurement/">https://www.hasil.gov.my/en/quick-links/procurement/e-procurement/</a></li>
+        <li><strong>[11] Malaysia.gov — تعريف ePerolehan والشراء الحكومي.</strong><a href="https://www.malaysia.gov.my/en/my-initiative/perkhidmatan-digital-keseluruhan-kerajaan/dasar-standard-pekeliling-dan-garis-panduan/perolehan-procurement-bidding-process-dan-belanjawan">https://www.malaysia.gov.my/en/my-initiative/perkhidmatan-digital-keseluruhan-kerajaan/dasar-standard-pekeliling-dan-garis-panduan/perolehan-procurement-bidding-process-dan-belanjawan</a></li>
+      </ol>
+      <div class="callout orange"><strong>طريقة الاستخدام:</strong> افتح الرابط في المتصفح لرؤية العرض الحالي. قد تتغير الأسعار والميزات والعبارات التسويقية بعد تاريخ التقرير؛ لذلك يجب إعادة التحقق قبل قرار شراء.</div>
+    </main><footer class="page-footer"><span>الروابط قابلة للنقر داخل PDF</span><span>25</span></footer>
+  </section>
+
+  <!-- 26 -->
+  <section class="page content-page">
+    <header class="page-header"><span class="page-header-title">مراجع العملاء والسوق</span><span class="page-number">26</span></header>
+    <main class="page-body"><span class="eyebrow">مصادر إضافية للتحقق</span><h2>مصادر الأرقام والعلاقات المعلنة</h2>
+      <ol class="source-list">
+        <li><strong>[12] ADAM / Supplycart — شهادات العملاء المنشورة.</strong><a href="https://adam-procure.com/contact-us/">https://adam-procure.com/contact-us/</a></li>
+        <li><strong>[13] Lapasar — قصص العملاء والنتائج المؤسسية.</strong><a href="https://lapasar.com/customer-stories">https://lapasar.com/customer-stories</a></li>
+        <li><strong>[14] Lapasar — دراسة حالتين مؤسسيتين مجهّلتي الاسم.</strong><a href="https://lapasar.com/research/enterprise-procurement-case-studies">https://lapasar.com/research/enterprise-procurement-case-studies</a></li>
+        <li><strong>[15] PETRONAS @ Borong — المنصة المعينة وإحصاءات المعاملات وأوامر الشراء.</strong><a href="https://petronas.borong.com/">https://petronas.borong.com/</a></li>
+        <li><strong>[16] Borong — إعلان شراكة MYDIN مع Dropee.</strong><a href="https://www.borong.com/newsroom/mydin-announces-partnership-with-dropee-for-improved-end-to-end-ecommerce-operations/">https://www.borong.com/newsroom/mydin-announces-partnership-with-dropee-for-improved-end-to-end-ecommerce-operations/</a></li>
+        <li><strong>[17] Becon — متجر ALCOM المخصص للشركة.</strong><a href="https://b2b.becon.my/alcom/users/sign_in">https://b2b.becon.my/alcom/users/sign_in</a></li>
+        <li><strong>[18] Becon — متجر S L Ng Trading Agency المخصص للشركة.</strong><a href="https://b2b.becon.my/slng/users/sign_in">https://b2b.becon.my/slng/users/sign_in</a></li>
+        <li><strong>[19] ePerolehan — إحصاءات الموردين وقيمة المشتريات 2024.</strong><a href="https://www.eperolehan.gov.my/web/mobile/ep-statistic">https://www.eperolehan.gov.my/web/mobile/ep-statistic</a></li>
+        <li><strong>[20] DOSM — إحصاءات المنشآت الاقتصادية في ماليزيا.</strong><a href="https://www.dosm.gov.my/portal-main/release-content/economic-census--establishment-statistics">https://www.dosm.gov.my/portal-main/release-content/economic-census--establishment-statistics</a></li>
+        <li><strong>[21] SME Corp Malaysia — ملف MSME 2024، استنادًا إلى بيانات DOSM.</strong><a href="https://smecorp.gov.my/index.php/en/policies/2020-02-11-08-01-24/profile-and-importance-to-the-economy">https://smecorp.gov.my/index.php/en/policies/2020-02-11-08-01-24/profile-and-importance-to-the-economy</a></li>
+      </ol>
+      <div class="callout orange"><strong>ملاحظة منهجية:</strong> أرقام العملاء والمعاملات وشعارات الشركات هي إفصاحات أو مطالبات منشورة من أصحاب المنصات، وليست تدقيقًا مستقلًا للعقود. قبل قرار تجاري، اطلب من كل شركة مرشحة وصف نظامها الحالي ومشكلاتها بدل الاعتماد على رقم السوق.</div>
+    </main><footer class="page-footer"><span>المراجع 12–21 · تحقق من الصفحة قبل العرض على المشرف</span><span>26</span></footer>
+  </section>
+</body>
+</html>

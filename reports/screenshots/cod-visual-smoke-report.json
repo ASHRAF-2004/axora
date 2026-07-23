@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "checkedAt": "2026-07-22T09:44:16.553Z",
+  "checks": [
+    {
+      "page": "finance",
+      "value": "Cash on delivery (COD)",
+      "readOnly": true
+    },
+    {
+      "page": "companies",
+      "value": "Cash on delivery (COD)",
+      "readOnly": true
+    },
+    {
+      "page": "suppliers",
+      "value": "Cash on delivery (COD)",
+      "readOnly": true
+    }
+  ]
+}

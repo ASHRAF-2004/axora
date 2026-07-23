@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>دليل تشغيل Axora على كمبيوتر الشركة</title>
+  <style>
+    :root{--navy:#102a43;--blue:#2563eb;--teal:#0f9d8a;--ink:#0f172a;--muted:#52637a;--paper:#fff;--wash:#f4f7fb;--line:#dbe4ef;--soft-blue:#eaf1ff;--soft-teal:#e4faf6;--orange:#e67e22;--soft-orange:#fff2df;--red:#c23b3b;--soft-red:#ffeded}
+    *{box-sizing:border-box} html,body{margin:0;padding:0;background:#dfe7f1;color:var(--ink);font-family:"Segoe UI",Tahoma,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .page{position:relative;width:210mm;height:297mm;margin:8mm auto;background:var(--paper);overflow:hidden;padding:17mm 16mm 16mm;page-break-after:always}
+    .page:last-child{page-break-after:auto}.topline{position:absolute;top:0;right:0;left:0;height:6mm;background:linear-gradient(90deg,var(--teal),var(--blue),var(--navy))}
+    .page-head{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:4mm;margin-bottom:7mm}.page-head img{width:42mm;height:auto}.page-no{font-size:10pt;color:var(--muted);font-weight:700;letter-spacing:.5px}
+    .footer{position:absolute;right:16mm;left:16mm;bottom:7mm;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:2.3mm;color:#728197;font-size:8.2pt}.footer strong{color:var(--navy)}
+    h1,h2,h3,p{margin-top:0} h1{font-size:29pt;line-height:1.25;color:var(--navy);margin-bottom:5mm} h2{font-size:21pt;line-height:1.25;color:var(--navy);margin-bottom:4mm} h3{font-size:13.3pt;line-height:1.3;color:var(--navy);margin-bottom:2mm} p,li{font-size:10.5pt;line-height:1.68;color:#334155} p{margin-bottom:3.5mm}.lead{font-size:13pt;line-height:1.7;color:#334155}.eyebrow{display:inline-block;color:var(--blue);font-size:9pt;font-weight:800;letter-spacing:1.2px;margin-bottom:3mm}.small{font-size:8.8pt;color:var(--muted)}
+    .cover{background:linear-gradient(145deg,#fafdff 0%,#eff5ff 60%,#e7fbf7 100%);padding:0}.cover .hero{height:100%;padding:25mm 18mm 18mm;display:flex;flex-direction:column;justify-content:space-between}.cover-logo{width:70mm}.cover h1{font-size:37pt;max-width:160mm;margin:12mm 0 5mm}.cover .lead{font-size:16pt;max-width:160mm}.cover-card{background:#fff;border:1px solid #d4e2f1;border-radius:7mm;padding:8mm;box-shadow:0 7mm 15mm rgba(16,42,67,.09)}.cover-grid{display:grid;grid-template-columns:1fr 1fr;gap:5mm}.cover-badge{display:flex;gap:3mm;align-items:flex-start;padding:4mm;border-radius:4mm}.cover-badge.blue{background:var(--soft-blue)}.cover-badge.teal{background:var(--soft-teal)}.big-check{width:8mm;height:8mm;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--teal);color:#fff;font-weight:900;flex:0 0 auto}.cover-date{display:flex;justify-content:space-between;color:var(--muted);font-size:9.2pt}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:5mm}.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}.card{border:1px solid var(--line);border-radius:4mm;padding:5mm;background:#fff}.card.blue{background:var(--soft-blue);border-color:#cbdcff}.card.teal{background:var(--soft-teal);border-color:#bfece3}.card.orange{background:var(--soft-orange);border-color:#f4d5ad}.card.red{background:var(--soft-red);border-color:#f2caca}.card p:last-child{margin-bottom:0}.number{display:inline-flex;width:9mm;height:9mm;border-radius:50%;align-items:center;justify-content:center;background:var(--blue);color:#fff;font-size:13pt;font-weight:900;margin-left:2mm}.step{display:grid;grid-template-columns:11mm 1fr;gap:3mm;padding:4mm 0;border-bottom:1px solid var(--line)}.step:last-child{border-bottom:0}.step h3{margin-bottom:1mm}.step p{margin-bottom:0}
+    .flow{direction:ltr;display:grid;grid-template-columns:1fr 11mm 1fr 11mm 1fr 11mm 1fr;align-items:center;margin:8mm 0}.flow-box{direction:rtl;border:1.5px solid #bfd1e6;border-radius:4mm;padding:5mm 3mm;text-align:center;min-height:31mm;background:#fff}.flow-box strong{display:block;color:var(--navy);font-size:11pt;margin-top:2mm}.flow-box span{font-size:8pt;color:var(--muted)}.flow-arrow{color:var(--blue);font-size:22pt;text-align:center;font-weight:900}.icon-circle{width:10mm;height:10mm;border-radius:3mm;background:var(--soft-blue);color:var(--blue);display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:14pt}
+    .command{direction:ltr;text-align:left;background:#0b1f33;color:#edf7ff;border-radius:3.5mm;padding:4mm 5mm;margin:2.5mm 0 4mm;font:9.1pt/1.55 Consolas,"Courier New",monospace;white-space:pre-wrap;word-break:break-word;box-shadow:inset 3px 0 0 var(--teal)}.command-label{display:flex;align-items:center;justify-content:space-between;margin-top:4mm;color:var(--navy);font-size:9pt;font-weight:800}.copy-chip{direction:rtl;background:var(--soft-teal);color:#087d6d;border-radius:99px;padding:1.3mm 3mm;font-size:8pt}.note,.warning,.danger{border-radius:3mm;padding:4mm 5mm;margin:4mm 0}.note{background:var(--soft-blue);border-right:1.4mm solid var(--blue)}.warning{background:var(--soft-orange);border-right:1.4mm solid var(--orange)}.danger{background:var(--soft-red);border-right:1.4mm solid var(--red)}.note strong,.warning strong,.danger strong{display:block;color:var(--navy);margin-bottom:1mm}.danger strong{color:#9f2f2f}.note p,.warning p,.danger p{margin:0;font-size:9.6pt}
+    .checklist{list-style:none;padding:0;margin:0}.checklist li{position:relative;padding:2.3mm 9mm 2.3mm 0;border-bottom:1px solid #e8eef5}.checklist li:before{content:"";position:absolute;right:0;top:3.2mm;width:5mm;height:5mm;border:1.6px solid var(--blue);border-radius:1.2mm}.checklist.done li:before{content:"✓";color:#fff;background:var(--teal);border-color:var(--teal);font-size:9pt;font-weight:900;text-align:center;line-height:4.6mm}.checklist li:last-child{border-bottom:0}
+    .screenshot{width:100%;display:block;border:1px solid #cdd9e7;border-radius:3.5mm;box-shadow:0 3mm 8mm rgba(16,42,67,.10)}.shot-wrap{position:relative}.shot-label{position:absolute;top:3mm;right:3mm;background:rgba(16,42,67,.92);color:#fff;border-radius:2mm;padding:1.5mm 3mm;font-size:8pt;font-weight:700}.shot-caption{font-size:8.7pt;color:var(--muted);text-align:center;margin-top:2mm}.screen-crop{height:86mm;object-fit:cover;object-position:top}.screen-crop.smallcrop{height:66mm}.role-table,.simple-table{width:100%;border-collapse:separate;border-spacing:0;font-size:9.2pt;border:1px solid var(--line);border-radius:3mm;overflow:hidden}.role-table th,.simple-table th{background:var(--navy);color:#fff;padding:2.7mm;text-align:right}.role-table td,.simple-table td{border-top:1px solid var(--line);padding:2.7mm;vertical-align:top}.role-table tr:nth-child(even) td,.simple-table tr:nth-child(even) td{background:#f8fafc}.role-table strong{color:var(--navy)}
+    .folder-tree{direction:ltr;text-align:left;background:#f7f9fc;border:1px solid var(--line);border-radius:4mm;padding:5mm 6mm;font:9pt/1.72 Consolas,"Courier New",monospace;color:#25415e}.folder-tree b{color:var(--blue)}
+    .terminal-key{direction:ltr;display:inline-block;background:#e8edf4;border:1px solid #c9d3df;border-bottom-width:2px;border-radius:1.5mm;padding:.8mm 2mm;font:8.5pt Consolas,monospace;color:#1d334b}.mini{font-size:8.8pt;line-height:1.55}.separator{height:1px;background:var(--line);margin:5mm 0}.big-rule{display:flex;gap:4mm;align-items:center;background:linear-gradient(90deg,#eef4ff,#e8faf7);border:1px solid #c8dcee;border-radius:5mm;padding:6mm;margin:5mm 0}.big-rule .symbol{font-size:28pt;color:var(--blue);font-weight:900}.big-rule p{margin:0}.manual-tag{display:inline-block;border:1px solid #efc998;background:var(--soft-orange);color:#9a5a12;border-radius:99px;padding:1mm 3mm;font-size:8pt;font-weight:800}.auto-tag{display:inline-block;border:1px solid #a8e0d5;background:var(--soft-teal);color:#087d6d;border-radius:99px;padding:1mm 3mm;font-size:8pt;font-weight:800}
+    .dense .page-head{margin-bottom:5mm}.dense h2{margin-bottom:2.5mm}.dense h3{margin-bottom:1mm}.dense p,.dense li{font-size:9.5pt;line-height:1.48}.dense p{margin-bottom:2.3mm}.dense .step{padding:2.5mm 0}.dense .command{padding:3mm 4mm;margin:1.5mm 0 2.5mm;font-size:8.6pt;line-height:1.4}.dense .note,.dense .warning,.dense .danger{padding:3mm 4mm;margin:2.5mm 0}.dense .card{padding:3.5mm}.dense .checklist li{padding-top:1.6mm;padding-bottom:1.6mm}.dense .checklist li:before{top:2.2mm}.dense .big-rule{padding:4mm;margin:3mm 0}.dense .separator{margin:3mm 0}
+    @page{size:A4;margin:0}
+    @media print{html,body{background:#fff}.page{margin:0;width:210mm;height:296.8mm}}
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div class="topline"></div>
+    <div class="hero">
+      <div>
+        <img class="cover-logo" src="../../public/brand/axora-logo.svg" alt="Axora operations" />
+        <div style="margin-top:16mm"><span class="eyebrow">دليل بسيط خطوة بخطوة</span>
+          <h1>تشغيل Axora على كمبيوتر الشركة</h1>
+          <p class="lead">دليل عربي مصوّر يشرح لك ماذا تفتح، ماذا تنسخ، ومتى تتوقف وتسأل المشرف.</p>
+        </div>
+      </div>
+      <div class="cover-card">
+        <div class="cover-grid">
+          <div class="cover-badge blue"><span class="big-check">✓</span><div><h3>جاهز الآن</h3><p class="mini">البرنامج، قاعدة البيانات، الشعار، الاختبارات، النسخ الاحتياطي، وملفات التشغيل.</p></div></div>
+          <div class="cover-badge teal"><span class="big-check">→</span><div><h3>نفعله لاحقًا</h3><p class="mini">تركيب Ubuntu، عنوان الشبكة الحقيقي، تشغيل Docker، واختبار الاسترجاع على جهاز السيرفر.</p></div></div>
+        </div>
+      </div>
+      <div class="cover-date"><span>نسخة داخلية للمشروع — ليست للنشر على الإنترنت</span><span>22 يوليو 2026</span></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">01 / الفكرة في صورة واحدة</span></header>
+    <span class="eyebrow">ابدأ من هنا</span><h2>ما هو السيرفر؟ لا تخف من الكلمة</h2>
+    <p class="lead">السيرفر هنا هو نفس كمبيوترك. الفرق فقط أنه يبقى يعمل ويعطي صفحات Axora لأجهزة المكتب عبر شبكة الشركة.</p>
+    <div class="flow">
+      <div class="flow-box"><span class="icon-circle">PC</span><strong>جهاز الموظف</strong><span>يفتح المتصفح</span></div><div class="flow-arrow">→</div>
+      <div class="flow-box"><span class="icon-circle">LAN</span><strong>شبكة المكتب</strong><span>لا تحتاج إنترنت للاستخدام اليومي</span></div><div class="flow-arrow">→</div>
+      <div class="flow-box"><span class="icon-circle">A</span><strong>كمبيوتر Axora</strong><span>Caddy + البرنامج</span></div><div class="flow-arrow">→</div>
+      <div class="flow-box"><span class="icon-circle">DB</span><strong>قاعدة البيانات</strong><span>PostgreSQL خاصة</span></div>
+    </div>
+    <div class="grid-2">
+      <div class="card teal"><h3>ما الذي يراه الموظف؟</h3><p>يفتح العنوان <span class="terminal-key">https://axora.internal</span>، يسجّل الدخول، ثم يستخدم الطلبات والتوريد والتوصيل والفواتير.</p></div>
+      <div class="card blue"><h3>ما الذي يبقى مخفيًا؟</h3><p>قاعدة البيانات ومنفذ البرنامج لا يظهران للشبكة. Caddy فقط يستقبل المتصفح على المنفذين 80 و443.</p></div>
+    </div>
+    <div class="big-rule"><div class="symbol">!</div><div><h3>القاعدة الذهبية</h3><p>لا تعمل Port Forwarding في الراوتر. Axora مخصص لشبكة المكتب فقط، وليس للإنترنت العام.</p></div></div>
+    <div class="note"><strong>هل كل شيء مجاني؟</strong><p>نعم. Node.js وNext.js وPostgreSQL وDocker وCaddy وUbuntu كلها أدوات مجانية. تحتاج إنترنت فقط لتنزيلها أول مرة والتحديثات لاحقًا.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 2</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">02 / ما الذي استلمته؟</span></header>
+    <span class="eyebrow">محتويات المجلد</span><h2>افتح هذا المجلد أولًا</h2>
+    <p>اسم المجلد هو <span class="terminal-key">axora-app</span>. لا تنقل ملفًا واحدًا فقط؛ انسخ المجلد كاملًا إلى السيرفر.</p>
+    <div class="grid-2">
+      <div class="folder-tree"><b>axora-app/</b>
+├── <b>src/</b>               web application
+├── <b>database/</b>          schema + demo seed
+├── <b>scripts/server/</b>    copy/paste helpers
+├── <b>caddy/</b>             internal HTTPS
+├── <b>public/brand/</b>      Axora logo
+├── <b>tests/</b>             automated checks
+├── <b>reports/</b>           screenshots + this guide
+├── compose.yaml
+├── Dockerfile
+└── README.md</div>
+      <div>
+        <div class="step"><span class="number">1</span><div><h3>افتح File Explorer</h3><p>اذهب إلى <span class="terminal-key">C:\Users\ASHRAF\Desktop\Axora</span>.</p></div></div>
+        <div class="step"><span class="number">2</span><div><h3>ابحث عن axora-app</h3><p>ستجد شعار Axora داخل <span class="terminal-key">public/brand</span> ودليل README في الجذر.</p></div></div>
+        <div class="step"><span class="number">3</span><div><h3>انسخ المجلد كاملًا</h3><p>استخدم USB أو شبكة داخلية معتمدة. لا تنسخ <span class="terminal-key">node_modules</span>؛ أمر Docker سيبنيه من جديد.</p></div></div>
+      </div>
+    </div>
+    <div class="separator"></div>
+    <h3>ما تم إنجازه واختباره هنا</h3>
+    <ul class="checklist done">
+      <li>22 صفحة ومسار في تطبيق Axora مع تصميم سطح مكتب وجوال.</li>
+      <li>3 شركات و3 فروع و10 مورّدين و25 منتجًا و15 سيناريو تجريبيًا آمنًا.</li>
+      <li>حساب الكمية × السعر، الربح، والهامش بطريقة صحيحة.</li>
+      <li>صلاحيات المستخدمين ومسار حالة الطلب ومنع اختيار فرع لشركة خاطئة.</li>
+      <li>27 اختبارًا آليًا، وفحص TypeScript وESLint، وبناء Production ناجح.</li>
+      <li>ملفات Docker وCaddy والنسخ الاحتياطي والاسترجاع جاهزة.</li>
+    </ul>
+    <div class="warning"><strong>لا تنسخ ملف .env.local إلى استخدام حقيقي</strong><p>هذا الملف خاص بالتجربة على Windows. أسرار السيرفر تُنشأ من جديد داخل Ubuntu.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 3</span></div>
+  </section>
+
+  <section class="page dense">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">03 / قبل تشغيل أي أمر</span></header>
+    <span class="eyebrow">أشياء يقررها الإنسان</span><h2>اجمع أربع معلومات من المشرف أو مسؤول الشبكة</h2>
+    <p class="lead">لا تخمّن هذه القيم. اكتبها على ورقة ثم ضعها في الملف لاحقًا.</p>
+    <div class="grid-2">
+      <div class="card blue"><span class="manual-tag">يدوي</span><h3 style="margin-top:2mm">1. عنوان IP ثابت</h3><p>مثال فقط: <span class="terminal-key">192.168.10.50</span>. الأفضل عمل DHCP reservation في راوتر الشركة.</p></div>
+      <div class="card blue"><span class="manual-tag">يدوي</span><h3 style="margin-top:2mm">2. نطاق الشبكة</h3><p>مثال فقط: <span class="terminal-key">192.168.10.0/24</span>. لا تستخدم المثال قبل التأكد.</p></div>
+      <div class="card teal"><span class="manual-tag">يدوي</span><h3 style="margin-top:2mm">3. اسم كرت الشبكة</h3><p>مثل <span class="terminal-key">enp5s0</span>. ستراه بأمر <span class="terminal-key">ip -brief address</span>.</p></div>
+      <div class="card teal"><span class="manual-tag">يدوي</span><h3 style="margin-top:2mm">4. اسم الموقع الداخلي</h3><p>المقترح: <span class="terminal-key">axora.internal</span>. يجب ربطه بالعنوان الثابت.</p></div>
+    </div>
+    <h3 style="margin-top:7mm">تأكد من الجهاز نفسه</h3>
+    <ul class="checklist">
+      <li>تركيب SSD السليم وتثبيت Ubuntu LTS عليه.</li>
+      <li>توصيل Ethernet إن أمكن؛ هو أثبت من Wi‑Fi للسيرفر.</li>
+      <li>تحديث BIOS عند الحاجة، وضبط التشغيل التلقائي بعد عودة الكهرباء إذا وافقت الشركة.</li>
+      <li>تحديد مكان بتهوية جيدة، وعدم سد المراوح.</li>
+      <li>إنشاء مستخدم Ubuntu باسم واضح، وعدم استخدام حساب root يوميًا.</li>
+      <li>تأكيد من يملك صلاحية Admin ومن يملك صلاحية Finance وOperations.</li>
+    </ul>
+    <div class="danger"><strong>توقف إذا لم تعرف IP أو subnet</strong><p>إكمال الجدار الناري بقيم خاطئة قد يمنعك من الوصول للسيرفر. اسأل مسؤول الشبكة بدل التخمين.</p></div>
+    <div class="note"><strong>هل تستخدم واجهة Ubuntu الرسومية؟</strong><p>يمكن ذلك، لكنها ليست مطلوبة. هذا الدليل يستخدم Terminal لأنه أبسط وأخف وأوضح للتكرار.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 4</span></div>
+  </section>
+
+  <section class="page dense">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">04 / نسخ المشروع وفحص الجهاز</span></header>
+    <span class="eyebrow">الخطوة الأولى في Ubuntu</span><h2>افتح Terminal ثم انسخ هذه الأوامر بالترتيب</h2>
+    <div class="step"><span class="number">1</span><div><h3>افتح Terminal</h3><p>اضغط <span class="terminal-key">Ctrl</span> + <span class="terminal-key">Alt</span> + <span class="terminal-key">T</span>.</p></div></div>
+    <div class="step"><span class="number">2</span><div><h3>أنشئ مكان المشروع</h3></div></div>
+    <div class="command-label"><span>الأمر</span><span class="copy-chip">انسخ والصق</span></div><pre class="command">sudo mkdir -p /srv/axora
+sudo chown "$USER":"$USER" /srv/axora</pre>
+    <div class="step"><span class="number">3</span><div><h3>انسخ محتويات axora-app إلى /srv/axora</h3><p>من USB يمكنك استخدام File Manager، أو أمر <span class="terminal-key">cp -a</span> بعد معرفة اسم مسار USB.</p></div></div>
+    <div class="command-label"><span>بعد النسخ، ادخل المجلد</span><span class="copy-chip">انسخ والصق</span></div><pre class="command">cd /srv/axora
+chmod +x scripts/server/*.sh database/init/*.sh
+bash scripts/server/preflight.sh</pre>
+    <div class="grid-2">
+      <div class="card"><h3>ماذا يفعل preflight؟</h3><p>يعرض إصدار Ubuntu، عناوين الشبكة، مساحة القرص، وهل Docker وopenssl وcurl موجودة. لا يغيّر شيئًا.</p></div>
+      <div class="card"><h3>ماذا تكتب في ورقتك؟</h3><p>انسخ اسم كرت Ethernet، عنوان IP الحالي، نطاق الشبكة، والمساحة المتاحة على SSD.</p></div>
+    </div>
+    <div class="warning"><strong>إذا ظهرت كلمة MISS بجانب Docker</strong><p>هذا طبيعي في أول مرة. انتقل إلى الصفحة التالية وثبّت Docker.</p></div>
+    <div class="danger"><strong>لا تعمل على نسخة داخل Downloads</strong><p>المكان النهائي المقترح هو <span class="terminal-key">/srv/axora</span>. تغيير المكان بعد التشغيل يجعل النسخ الاحتياطي والخدمة اليومية أصعب.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 5</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">05 / تثبيت Docker</span></header>
+    <span class="eyebrow">مرة واحدة فقط</span><h2>دع السكربت يثبت Docker من المصدر الرسمي</h2>
+    <p>يحتاج هذا الجزء اتصال إنترنت. السكربت يضيف مستودع Docker الرسمي، يثبت Docker Engine وCompose، ويجعلهما يعملان بعد إعادة التشغيل.</p>
+    <div class="command-label"><span>شغّل المثبت</span><span class="copy-chip">انسخ والصق</span></div><pre class="command">cd /srv/axora
+bash scripts/server/install-docker-ubuntu.sh</pre>
+    <div class="note"><strong>سيطلب كلمة مرور Ubuntu</strong><p>عند كتابة كلمة المرور لن ترى نجومًا أو حروفًا. هذا طبيعي. اكتبها ثم اضغط Enter.</p></div>
+    <div class="step"><span class="number">1</span><div><h3>بعد انتهاء التثبيت</h3><p>اعمل Sign out ثم Sign in مرة واحدة حتى تصبح عضوًا في مجموعة docker.</p></div></div>
+    <div class="step"><span class="number">2</span><div><h3>افتح Terminal جديدًا واختبر</h3></div></div>
+    <pre class="command">docker --version
+docker compose version
+docker run --rm hello-world</pre>
+    <div class="grid-3">
+      <div class="card teal"><h3>docker --version</h3><p class="mini">يعرض الإصدار.</p></div>
+      <div class="card teal"><h3>compose version</h3><p class="mini">يتأكد أن Compose جاهز.</p></div>
+      <div class="card teal"><h3>hello-world</h3><p class="mini">ينزل حاوية صغيرة ويختبر التشغيل.</p></div>
+    </div>
+    <div class="warning"><strong>إذا ظهر Permission denied</strong><p>لم يتم تفعيل عضوية docker بعد. اعمل Sign out وSign in؛ لا تستخدم chmod عشوائيًا على Docker socket.</p></div>
+    <div class="danger"><strong>لا تفتح Docker عبر TCP</strong><p>لا تضف منفذًا مثل 2375 أو 2376 ولا تعرّض Docker daemon للشبكة.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 6</span></div>
+  </section>
+
+  <section class="page dense">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">06 / إعداد العنوان والأسرار</span></header>
+    <span class="eyebrow">لا تنسخ أسرار Windows</span><h2>أنشئ إعدادات السيرفر من الصفر</h2>
+    <div class="step"><span class="number">1</span><div><h3>انسخ نموذج الإعدادات</h3></div></div>
+    <pre class="command">cd /srv/axora
+cp .env.server.example .env
+nano .env</pre>
+    <p class="mini">داخل nano استبدل عنوان المثال بعنوان السيرفر الحقيقي. احفظ بـ <span class="terminal-key">Ctrl+O</span> ثم Enter، واخرج بـ <span class="terminal-key">Ctrl+X</span>.</p>
+    <div class="card blue" style="direction:ltr;text-align:left"><h3 style="direction:rtl;text-align:right">شكل الملف — مثال فقط</h3><pre class="command" style="margin-bottom:0">LAN_IP=192.168.10.50
+AXORA_HOST=axora.internal</pre></div>
+    <div class="step"><span class="number">2</span><div><h3>أنشئ كلمات سر عشوائية قوية</h3></div></div>
+    <pre class="command">bash scripts/server/prepare-secrets.sh</pre>
+    <p>سيُنشئ أربعة ملفات داخل <span class="terminal-key">secrets/</span>: كلمة مدير PostgreSQL، كلمة مستخدم التطبيق، مفتاح الجلسات، وكلمة Admin أولية تُستخدم مرة واحدة.</p>
+    <div class="warning"><strong>انسخ كلمة Admin الأولية إلى Password Manager</strong><p>لا ترسلها في WhatsApp ولا تضعها في PDF. بعد نجاح أول تسجيل دخول سنحذف ملفها فقط.</p></div>
+    <div class="grid-2">
+      <div class="card teal"><span class="auto-tag">آلي</span><h3 style="margin-top:2mm">الأسرار الحقيقية</h3><p>تُنشأ داخل Ubuntu بصلاحية ملف 600 ولا تدخل صورة Docker أو Git.</p></div>
+      <div class="card orange"><span class="manual-tag">يدوي</span><h3 style="margin-top:2mm">عنوان الشبكة</h3><p>يجب أن يؤكده مسؤول الشبكة. السكربت يرفض ترك عنوان المثال.</p></div>
+    </div>
+    <div class="danger"><strong>لا تعرض محتوى ملفات secrets في لقطة شاشة</strong><p>لا تستخدم <span class="terminal-key">cat secrets/*</span> أمام الآخرين. كلمة Admin الأولية فقط تُعرض لك وقت الإنشاء.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 7</span></div>
+  </section>
+
+  <section class="page dense">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">07 / أول تشغيل</span></header>
+    <span class="eyebrow">لحظة التشغيل</span><h2>ابنِ البرنامج وأنشئ أول حساب</h2>
+    <div class="step"><span class="number">1</span><div><h3>شغّل حزمة Axora</h3></div></div>
+    <pre class="command">cd /srv/axora
+bash scripts/server/deploy.sh</pre>
+    <p>الأمر يفحص الإعدادات، يبني صورة البرنامج، يشغّل PostgreSQL، يطبّق migrations، ثم يشغّل التطبيق وCaddy وينتظر حتى تصبح الحاويات Healthy.</p>
+    <div class="step"><span class="number">2</span><div><h3>أنشئ أول Admin</h3><p>بدّل البريد والاسم بالقيم الحقيقية.</p></div></div>
+    <pre class="command">bash scripts/server/create-admin.sh admin@company.com "Administrator name"</pre>
+    <div class="step"><span class="number">3</span><div><h3>اختبر الحالة</h3></div></div>
+    <pre class="command">bash scripts/server/status.sh</pre>
+    <div class="grid-3">
+      <div class="card teal"><h3>db healthy</h3><p class="mini">قاعدة البيانات تقبل الاتصال.</p></div>
+      <div class="card teal"><h3>app healthy</h3><p class="mini">البرنامج حي وقادر على الوصول للقاعدة.</p></div>
+      <div class="card teal"><h3>caddy running</h3><p class="mini">عنوان HTTPS جاهز.</p></div>
+    </div>
+    <div class="step"><span class="number">4</span><div><h3>بعد نجاح تسجيل الدخول</h3></div></div>
+    <pre class="command">rm secrets/admin_initial_password</pre>
+    <div class="danger"><strong>لا تستخدم docker compose down -v</strong><p>الحرف <span class="terminal-key">-v</span> يحذف volumes التي تحتوي قاعدة البيانات وشهادة Caddy. في التشغيل العادي استخدم stop أو restart فقط.</p></div>
+    <div class="note"><strong>بيانات التجربة اختيارية</strong><p>إذا طلب المشرف عرض Demo على السيرفر الخالي: شغّل <span class="terminal-key">bash scripts/server/load-demo.sh</span> واكتب LOAD DEMO. لا تشغله بعد إدخال بيانات حقيقية.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 8</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">08 / ربط أجهزة المكتب</span></header>
+    <span class="eyebrow">هذه الخطوة يدوية</span><h2>اجعل المتصفح يعرف axora.internal</h2>
+    <div class="grid-2">
+      <div class="card blue"><h3>الخيار الأفضل: DNS داخلي</h3><p>اطلب من مسؤول الشبكة إنشاء سجل A باسم <span class="terminal-key">axora.internal</span> يشير إلى IP السيرفر الثابت. كل أجهزة المكتب ستعرفه تلقائيًا.</p></div>
+      <div class="card orange"><h3>الخيار الصغير: hosts file</h3><p>إذا لا يوجد DNS داخلي، أضف السطر في كل جهاز معتمد يدويًا.</p><pre class="command">192.168.10.50 axora.internal</pre></div>
+    </div>
+    <h3 style="margin-top:6mm">صدّر شهادة Caddy العامة</h3>
+    <pre class="command">cd /srv/axora
+bash scripts/server/export-caddy-root.sh</pre>
+    <p>سينتج ملف <span class="terminal-key">caddy-root.crt</span>. هذا ملف عام آمن للتوزيع على أجهزة المكتب المعتمدة.</p>
+    <h3>على جهاز Windows المعتمد</h3>
+    <ol>
+      <li>افتح <strong>caddy-root.crt</strong>.</li>
+      <li>اختر <strong>Install Certificate</strong> ثم <strong>Local Machine</strong>.</li>
+      <li>اختر <strong>Place all certificates in the following store</strong>.</li>
+      <li>اختر <strong>Trusted Root Certification Authorities</strong> ثم Finish.</li>
+      <li>أغلق المتصفح وافتحه من جديد، ثم افتح <span class="terminal-key">https://axora.internal</span>.</li>
+    </ol>
+    <div class="danger"><strong>لا تنسخ root.key أبدًا</strong><p>وزّع الملف <span class="terminal-key">root.crt</span> فقط. المفتاح الخاص يبقى داخل volume اسمها caddy_data ولا يرسل لأي جهاز.</p></div>
+    <div class="warning"><strong>جرّب من جهاز آخر</strong><p>لا تعتبر الشبكة ناجحة لأن الموقع فتح داخل السيرفر نفسه. افتحه من كمبيوتر مكتب آخر بعد تثبيت الشهادة.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 9</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">09 / تسجيل الدخول ولوحة التحكم</span></header>
+    <span class="eyebrow">استخدام Axora يوميًا</span><h2>افتح الموقع ثم ابدأ من Dashboard</h2>
+    <div class="shot-wrap"><span class="shot-label">صورة حقيقية من التطبيق</span><img class="screenshot screen-crop" src="../screenshots/dashboard.png" alt="لوحة تحكم Axora" /></div>
+    <p class="shot-caption">لوحة التحكم تعرض 15 طلبًا تجريبيًا، المبيعات، التكلفة، الربح، الفواتير، والتنبيهات.</p>
+    <div class="grid-3">
+      <div class="card"><span class="number">1</span><h3 style="margin-top:2mm">افتح</h3><p class="mini">اكتب <span class="terminal-key">https://axora.internal</span> في المتصفح.</p></div>
+      <div class="card"><span class="number">2</span><h3 style="margin-top:2mm">سجّل الدخول</h3><p class="mini">استخدم حسابك الشخصي. لا تشارك Admin.</p></div>
+      <div class="card"><span class="number">3</span><h3 style="margin-top:2mm">اقرأ التنبيهات</h3><p class="mini">ابدأ بالطلبات العاجلة والتوصيلات المتأخرة والفواتير غير المدفوعة.</p></div>
+    </div>
+    <div class="note"><strong>لماذا الأرقام مختلفة عن Excel القديم؟</strong><p>Axora يحسب كل سطر هكذا: الكمية × سعر الوحدة. مثال التحقق القديم الصحيح هو مبيعات RM640، تكلفة RM480، ربح RM160، وهامش 25%.</p></div>
+    <div class="warning"><strong>رسوم التوصيل منفصلة</strong><p>لا تدخل رسوم التوصيل داخل المبيعات أو الربح حتى تؤكد Finance طريقة محاسبتها.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 10</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">10 / الطلب من البداية للنهاية</span></header>
+    <span class="eyebrow">سير العمل</span><h2>لا تقفز بين الحالات</h2>
+    <div class="shot-wrap"><span class="shot-label">صفحة تفاصيل الطلب</span><img class="screenshot screen-crop smallcrop" src="../screenshots/request-detail.png" alt="تفاصيل طلب Axora" /></div>
+    <p class="shot-caption">صفحة الطلب تحفظ المنتجات والأسعار والمورّد والتوصيل والفاتورة، وتعرض الحالات المسموح بها فقط.</p>
+    <div class="card blue">
+      <p class="mini" style="text-align:center;margin:0"><strong>New Request</strong> ← Under Verification ← Waiting for Quotation ← Waiting for Approval ← Approved ← Supplier Assigned ← Ordered ← Preparing ← Out for Delivery ← Delivered ← Invoice Issued ← Completed</p>
+    </div>
+    <div class="grid-2" style="margin-top:4mm">
+      <div class="card"><h3>إنشاء طلب</h3><p class="mini">اختر الشركة أولًا؛ سيعرض Axora فروعها فقط. أضف منتجًا أو أكثر وحدد الكمية وتاريخ الحاجة.</p></div>
+      <div class="card"><h3>تغيير الحالة</h3><p class="mini">يعرض النظام الخطوة التالية المسموحة. On Hold وCancelled واستئناف الطلب الموقوف تحتاج سببًا مكتوبًا.</p></div>
+      <div class="card"><h3>لا تحذف التاريخ</h3><p class="mini">عطّل master record أو ألغِ الطلب بسبب. السجل Audit يحتفظ بمن غيّر ومتى.</p></div>
+      <div class="card"><h3>الطلب المغلق</h3><p class="mini">Completed وCancelled لا يتحركان تلقائيًا. التصحيح يحتاج عملية معتمدة من المشرف.</p></div>
+    </div>
+    <div class="danger"><strong>لا تضع سعرًا مخمّنًا</strong><p>أدخل عرض المورّد الحقيقي في Sourcing، ثم اختره بسبب. السعر المختار فقط يصبح تكلفة شراء السطر.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 11</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">11 / التوريد والتوصيل والمالية</span></header>
+    <span class="eyebrow">ثلاث شاشات مهمة</span><h2>كل قسم يسجل دليله</h2>
+    <div class="grid-2">
+      <div><div class="shot-wrap"><span class="shot-label">Sourcing</span><img class="screenshot" style="height:57mm;object-fit:cover;object-position:top" src="../screenshots/sourcing.png" alt="صفحة التوريد" /></div><h3 style="margin-top:3mm">1. التوريد</h3><p class="mini">سجّل المرجع والسعر والرسوم وMOQ ومدة التوصيل. عند الاختيار اكتب السبب.</p></div>
+      <div><div class="shot-wrap"><span class="shot-label">Finance</span><img class="screenshot" style="height:57mm;object-fit:cover;object-position:top" src="../screenshots/finance.png" alt="صفحة المالية" /></div><h3 style="margin-top:3mm">2. الفواتير ودفع COD</h3><p class="mini">الـMVP يسجّل الدفع نقدًا عند الاستلام فقط بعد تأكيد التسليم وإصدار إيصال. هذا قيد أمان للنسخة الحالية وليس الهدف النهائي؛ أي طريقة دفع أخرى تحتاج اعتمادًا مستقلًا. النظام يمنع مبلغًا أكبر من المتبقي.</p></div>
+    </div>
+    <div class="grid-3" style="margin-top:4mm">
+      <div class="card teal"><h3>Approvals</h3><p class="mini">سجّل المراجع والقرار والسبب قبل نقل حالة الطلب إلى Approved.</p></div>
+      <div class="card teal"><h3>Deliveries</h3><p class="mini">أنشئ سجلًا لكل شحنة. التوصيل الجزئي لا يمسح الشحنة السابقة.</p></div>
+      <div class="card teal"><h3>Documents</h3><p class="mini">ارفع PDF أو صورة أو TXT/CSV حتى 2MB. لا ترفع برامج أو كلمات سر.</p></div>
+    </div>
+    <div class="warning"><strong>الكمية المستلمة تراكميًا لا تتجاوز الكمية المطلوبة</strong><p>هذا الفحص موجود في الصفحة وفي PostgreSQL أيضًا. إذا رفض النظام الرقم، راجع سجلات الشحنات السابقة.</p></div>
+    <div class="note"><strong>Export CSV</strong><p>صفحة Requests وReports تعطي ملف طلبات UTF‑8 يفتح في Excel أو LibreOffice. شارك التقرير فقط مع شخص مخوّل.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 12</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">12 / المستخدمون والصلاحيات</span></header>
+    <span class="eyebrow">أقل صلاحية تكفي</span><h2>أنشئ حسابًا لكل شخص</h2>
+    <p>افتح <strong>Users</strong> بحساب Admin. لا تجعل جميع الناس Admin، ولا تستخدم حسابًا مشتركًا.</p>
+    <table class="role-table">
+      <thead><tr><th>الدور</th><th>ماذا يفعل؟</th><th>لمن؟</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Admin / Supervisor</strong></td><td>كل الوظائف، المستخدمون، Audit، وإدارة الموافقات.</td><td>شخص أو شخصان معتمدان.</td></tr>
+        <tr><td><strong>Operations</strong></td><td>الشركات والفروع والمنتجات والمورّدون والطلبات والتوريد والتوصيل.</td><td>فريق العمليات.</td></tr>
+        <tr><td><strong>Finance</strong></td><td>الفواتير وتأكيد دفع COD والإيصالات والتقارير المالية.</td><td>المحاسبة فقط.</td></tr>
+        <tr><td><strong>Viewer</strong></td><td>قراءة التقارير والعمليات بدون تغيير.</td><td>المشرف الذي يريد المتابعة.</td></tr>
+        <tr><td><strong>IT support</strong></td><td>إعدادات وصيانة تقنية بدون اعتماد أعمال.</td><td>مسؤول IT.</td></tr>
+      </tbody>
+    </table>
+    <div class="step"><span class="number">1</span><div><h3>أنشئ المستخدم</h3><p>اكتب الاسم والبريد والدور وكلمة مؤقتة لا تقل عن 14 حرفًا.</p></div></div>
+    <div class="step"><span class="number">2</span><div><h3>أرسل الكلمة بطريقة آمنة</h3><p>استخدم Password Manager أو سلّمها شفهيًا. اطلب تغييرها وفق سياسة الشركة.</p></div></div>
+    <div class="step"><span class="number">3</span><div><h3>عند مغادرة الموظف</h3><p>اضغط Deactivate. لا تحذف حسابه لأن Audit يحتاج معرفة من نفّذ التغييرات القديمة.</p></div></div>
+    <div class="danger"><strong>IT support ليس موافقة مالية</strong><p>الدور التقني لا يعني أن صاحبه يوافق سعرًا أو دفعة أو إلغاء طلب. افصل الصلاحيات.</p></div>
+    <div class="note"><strong>الجلسة تنتهي بعد 8 ساعات</strong><p>Cookie الجلسة HttpOnly وSameSite=Strict، وتعمل Secure في Production. تسجيل الخروج ينهي الجلسة على المتصفح.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 13</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">13 / النسخ الاحتياطي</span></header>
+    <span class="eyebrow">افعلها قبل أن تحتاجها</span><h2>نسخة اليوم + نسخة خارج SSD</h2>
+    <div class="command-label"><span>أنشئ نسخة الآن</span><span class="copy-chip">انسخ والصق</span></div><pre class="command">cd /srv/axora
+bash scripts/server/backup.sh</pre>
+    <p>سينشئ مجلدًا مثل <span class="terminal-key">backups/axora_2026-07-22_021500</span> ويضع داخله:</p>
+    <div class="folder-tree">axora_DATE_TIME/
+├── <b>axora.dump</b>          database
+├── globals.sql         roles without passwords
+├── uploads.tar.gz      uploaded files
+├── caddy_data.tar.gz   HTTPS private CA data
+├── caddy-root.crt      public certificate
+├── manifest.txt
+└── <b>checksums.sha256</b>    integrity proof</div>
+    <div class="command-label"><span>تحقق من النسخة</span><span class="copy-chip">انسخ والصق</span></div><pre class="command">bash scripts/server/verify-backup.sh backups/axora_DATE_TIME</pre>
+    <div class="command-label"><span>اجعل النسخة يومية الساعة 02:15</span><span class="copy-chip">مرة واحدة</span></div><pre class="command">bash scripts/server/install-backup-timer.sh</pre>
+    <div class="grid-2">
+      <div class="card red"><h3>نسخة على نفس SSD</h3><p class="mini">تفيد في خطأ صغير، لكنها تضيع إذا مات SSD أو سُرق الجهاز.</p></div>
+      <div class="card teal"><h3>نسخة على USB أو NAS</h3><p class="mini">هذه هي الحماية الحقيقية من تلف SSD. انسخ مجلد النسخة بعد نجاح checksum.</p></div>
+    </div>
+    <div class="warning"><strong>الاحتفاظ الافتراضي 30 يومًا</strong><p>يمكن تغيير RETENTION_DAYS عند التشغيل. تأكد أن سياسة الشركة توافق قبل حذف النسخ القديمة.</p></div>
+    <div class="danger"><strong>لا تضع USB موصولًا دائمًا بدون حماية</strong><p>افصله بعد النسخ أو استخدم NAS بصلاحيات محدودة؛ الفيروس أو الخطأ قد يمسح الجهاز والنسخة معًا.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 14</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">14 / اختبار الاسترجاع</span></header>
+    <span class="eyebrow">لا تلمس Production أولًا</span><h2>اختبر النسخة في قاعدة مؤقتة</h2>
+    <p class="lead">وجود ملف backup لا يكفي. يجب أن تثبت أن PostgreSQL يستطيع قراءته واسترجاعه.</p>
+    <div class="command-label"><span>اختبار آمن</span><span class="copy-chip">غيّر اسم المجلد</span></div><pre class="command">bash scripts/server/restore-test.sh \
+  backups/axora_DATE_TIME/axora.dump</pre>
+    <div class="grid-3">
+      <div class="card teal"><span class="number">1</span><h3 style="margin-top:2mm">يفحص checksum</h3><p class="mini">يتأكد أن الملفات لم تتغير.</p></div>
+      <div class="card teal"><span class="number">2</span><h3 style="margin-top:2mm">ينشئ قاعدة مؤقتة</h3><p class="mini">لا يوقف Axora ولا يلمس Production.</p></div>
+      <div class="card teal"><span class="number">3</span><h3 style="margin-top:2mm">يعد الجداول ثم يحذفها</h3><p class="mini">يعلن النجاح فقط إذا عاد الهيكل.</p></div>
+    </div>
+    <div class="separator"></div>
+    <h3>الاسترجاع الحقيقي — فقط عند حادث مؤكد</h3>
+    <pre class="command">bash scripts/server/restore-production.sh \
+  backups/axora_DATE_TIME/axora.dump</pre>
+    <p>سيطلب منك كتابة <span class="terminal-key">RESTORE AXORA</span> حرفيًا. قبل الاستبدال ينشئ نسخة أخيرة، يوقف الكتابة، يعيد قاعدة البيانات، يطبق migrations، ثم يفحص الصحة.</p>
+    <div class="danger"><strong>لا تجرب هذا الأمر على البيانات الحقيقية للتعلم</strong><p>استخدم restore-test للتعلم. Production restore يكون بعد موافقة المشرف، تحديد النسخة الصحيحة، وإبلاغ المستخدمين أن النظام سيتوقف.</p></div>
+    <div class="warning"><strong>ملفات uploads وCaddy محفوظة مع النسخة</strong><p>استرجاع كارثة جهاز كامل يحتاج أيضًا إعادة uploads وcaddy_data. نفّذه بمساعدة مسؤول IT حتى لا تتغير شهادة كل أجهزة المكتب.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 15</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">15 / الجدار الناري</span></header>
+    <span class="eyebrow">بعد معرفة الشبكة الحقيقية</span><h2>اسمح للمكتب فقط</h2>
+    <p>Docker يمرر المنافذ قبل بعض قواعد UFW، لذلك السكربت يضع UFW وقاعدة DOCKER-USER معًا.</p>
+    <div class="command-label"><span>مثال — استبدل القيم</span><span class="copy-chip">لا تستخدم المثال كما هو</span></div><pre class="command">bash scripts/server/configure-firewall.sh \
+  192.168.10.0/24 enp5s0 22</pre>
+    <p>سيعرض القيم ثم يطلب كتابة <span class="terminal-key">APPLY FIREWALL</span>. قبل ذلك تأكد أن SSH مسموح من شبكة المكتب.</p>
+    <table class="simple-table">
+      <thead><tr><th>المنفذ</th><th>الحالة الصحيحة</th><th>السبب</th></tr></thead>
+      <tbody>
+        <tr><td>22 / SSH</td><td>من شبكة المكتب فقط</td><td>صيانة Terminal.</td></tr>
+        <tr><td>80 و443</td><td>من شبكة المكتب فقط</td><td>Caddy والموقع.</td></tr>
+        <tr><td>3000</td><td>غير منشور</td><td>Next.js داخل Docker فقط.</td></tr>
+        <tr><td>5432</td><td>غير منشور</td><td>PostgreSQL داخل الشبكة الخاصة فقط.</td></tr>
+        <tr><td>2019</td><td>غير منشور</td><td>Caddy admin API.</td></tr>
+      </tbody>
+    </table>
+    <div class="step"><span class="number">1</span><div><h3>اختبر من جهاز مكتب معتمد</h3><p>يجب أن يفتح HTTPS وتظهر صفحة Sign in.</p></div></div>
+    <div class="step"><span class="number">2</span><div><h3>اختبر من شبكة غير معتمدة إن أمكن</h3><p>يجب ألا يصل إلى Axora.</p></div></div>
+    <div class="step"><span class="number">3</span><div><h3>أعد تشغيل السيرفر</h3><p>تأكد أن قاعدة DOCKER-USER بقيت بعد reboot.</p></div></div>
+    <div class="danger"><strong>إذا انقطع SSH لا تغادر الجهاز</strong><p>أنت أمام الكمبيوتر في المكتب؛ استخدم Terminal المحلي وصحح القيم. لا تفعل firewall عن بعد قبل اختبار الوصول.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 16</span></div>
+  </section>
+
+  <section class="page dense">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">16 / التشغيل والصيانة</span></header>
+    <span class="eyebrow">أوامر قصيرة مفيدة</span><h2>ماذا تفعل كل يوم أو عند مشكلة؟</h2>
+    <table class="simple-table">
+      <thead><tr><th>المطلوب</th><th>الأمر</th></tr></thead>
+      <tbody>
+        <tr><td>فحص كل شيء</td><td dir="ltr"><span class="terminal-key">bash scripts/server/status.sh</span></td></tr>
+        <tr><td>عرض الحاويات</td><td dir="ltr"><span class="terminal-key">docker compose ps</span></td></tr>
+        <tr><td>آخر logs للبرنامج</td><td dir="ltr"><span class="terminal-key">docker compose logs --tail=100 app</span></td></tr>
+        <tr><td>آخر logs للبوابة</td><td dir="ltr"><span class="terminal-key">docker compose logs --tail=100 caddy</span></td></tr>
+        <tr><td>إعادة تشغيل البرنامج</td><td dir="ltr"><span class="terminal-key">docker compose restart app</span></td></tr>
+        <tr><td>نسخة احتياطية</td><td dir="ltr"><span class="terminal-key">bash scripts/server/backup.sh</span></td></tr>
+        <tr><td>رؤية مؤقت النسخ</td><td dir="ltr"><span class="terminal-key">systemctl list-timers axora-backup.timer</span></td></tr>
+      </tbody>
+    </table>
+    <h3 style="margin-top:6mm">طريقة تحديث آمنة</h3>
+    <div class="step"><span class="number">1</span><div><p>أنشئ نسخة backup وتحقق منها.</p></div></div>
+    <div class="step"><span class="number">2</span><div><p>انسخ نسخة المشروع الجديدة بعد مراجعتها، ولا تستبدل secrets أو .env.</p></div></div>
+    <div class="step"><span class="number">3</span><div><p>شغّل <span class="terminal-key">npm run verify</span> على جهاز التطوير.</p></div></div>
+    <div class="step"><span class="number">4</span><div><p>على السيرفر شغّل <span class="terminal-key">bash scripts/server/deploy.sh</span>.</p></div></div>
+    <div class="step"><span class="number">5</span><div><p>اختبر login وطلبًا تجريبيًا من جهاز مكتب آخر.</p></div></div>
+    <div class="warning"><strong>لا تعمل تحديثات حاويات عشوائية تلقائيًا</strong><p>الإصدارات مثبتة في compose.yaml. حدّثها بقصد وبعد backup واختبار، وليس ببرنامج auto-update غير مراقب.</p></div>
+    <div class="note"><strong>هل تستخدم الكمبيوتر للألعاب أثناء عمله كسيرفر؟</strong><p>تقنيًا يمكن، لكن لا يُنصح في الشركة: اللعبة أو restart أو crash يوقف Axora. أثناء الاستضافة اتركه مخصصًا للسيرفر.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 17</span></div>
+  </section>
+
+  <section class="page">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">17 / حل المشكلات بسرعة</span></header>
+    <span class="eyebrow">اقرأ السطر المناسب فقط</span><h2>إذا حدث كذا، افعل كذا</h2>
+    <table class="simple-table">
+      <thead><tr><th>المشكلة</th><th>افحص</th><th>الحل الأول</th></tr></thead>
+      <tbody>
+        <tr><td>الموقع لا يفتح</td><td><span class="terminal-key">status.sh</span> وIP/DNS</td><td>تأكد أن الجهاز يعمل وأن axora.internal يشير إلى IP الصحيح.</td></tr>
+        <tr><td>تحذير شهادة</td><td>caddy-root.crt</td><td>ثبّت الشهادة في Trusted Root ثم أعد فتح المتصفح.</td></tr>
+        <tr><td>app unhealthy</td><td><span class="terminal-key">docker compose logs app</span></td><td>ابحث عن DB connection أو secret file مفقود.</td></tr>
+        <tr><td>db unhealthy</td><td>مساحة SSD وlogs</td><td>لا تحذف volume. افحص القرص ثم اطلب مساعدة IT.</td></tr>
+        <tr><td>Permission denied للرفع</td><td>مالك data/uploads</td><td><span dir="ltr" class="terminal-key">sudo chown -R 1001:1001 data/uploads</span></td></tr>
+        <tr><td>كلمة الدخول لا تعمل</td><td>البريد والدور وحالة Active</td><td>Admin يعيد إنشاء/تفعيل الحساب؛ لا يغيّر قاعدة البيانات يدويًا.</td></tr>
+        <tr><td>Backup فشل</td><td>مساحة backups وحالة db</td><td>أصلح السبب ثم أعد backup؛ لا تعتبر ملف partial نسخة.</td></tr>
+        <tr><td>رقم التوصيل مرفوض</td><td>الشحنات السابقة</td><td>المجموع لا يجوز أن يتجاوز الكمية المطلوبة.</td></tr>
+      </tbody>
+    </table>
+    <div class="danger"><strong>لا تحذف volumes لحل مشكلة</strong><p>إذا رأيت نصيحة على الإنترنت تستخدم <span class="terminal-key">down -v</span> أو تحذف <span class="terminal-key">/var/lib/postgresql</span>، توقف. خذ backup واطلب مراجعة.</p></div>
+    <div class="note"><strong>احتفظ بدليل المشكلة</strong><p>انسخ آخر 100 سطر من log بدون كلمات سر، سجّل الوقت، ماذا فعل المستخدم، وما الذي تغيّر قبل المشكلة.</p></div>
+    <div class="command-label"><span>أمر مفيد لجمع الحالة</span><span class="copy-chip">لا يحتوي كلمات سر</span></div><pre class="command">date
+bash scripts/server/status.sh
+docker compose logs --since=30m --tail=200 app db caddy</pre>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 18</span></div>
+  </section>
+
+  <section class="page dense">
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">18 / ما يبقى يدويًا؟</span></header>
+    <span class="eyebrow">قائمة النهاية</span><h2>عندما تضع علامة على كل مربع، يصبح السيرفر جاهزًا للـ Pilot</h2>
+    <div class="grid-2">
+      <div class="card teal"><h3>جاهز داخل الحزمة الآن</h3><ul class="checklist done">
+        <li>تطبيق Axora وشعاره وتصميمه.</li><li>قاعدة البيانات وmigrations.</li><li>Demo seed آمن.</li><li>صلاحيات ومسار الطلب.</li><li>Docker وCaddy configuration.</li><li>Backup وrestore-test scripts.</li><li>اختبارات وبناء Production.</li><li>هذا الدليل المصوّر.</li>
+      </ul></div>
+      <div class="card orange"><h3>يُنفذ لاحقًا على جهاز السيرفر</h3><ul class="checklist">
+        <li>تركيب SSD وتثبيت Ubuntu.</li><li>تأكيد IP وsubnet وinterface.</li><li>تثبيت Docker.</li><li>إنشاء secrets داخل Ubuntu.</li><li>تشغيل deploy.</li><li>إنشاء Admin حقيقي.</li><li>إعداد DNS أو hosts.</li><li>تثبيت شهادة Caddy على العملاء.</li><li>تطبيق firewall بالقيم الحقيقية.</li><li>اختبار restart بعد reboot.</li><li>نسخة إلى USB/NAS.</li><li>نجاح restore-test.</li><li>موافقة المشرف على بدء بيانات حقيقية.</li>
+      </ul></div>
+    </div>
+    <div class="big-rule"><div class="symbol">✓</div><div><h3>متى تقول: انتهيت؟</h3><p>عندما يفتح مستخدم معتمد Axora من جهاز مكتب آخر، تظهر الشهادة بلا تحذير، يسجّل الدخول، ينشئ طلب اختبار، تنجح النسخة والاسترجاع المؤقت، ويعمل كل شيء بعد إعادة تشغيل السيرفر.</p></div></div>
+    <div class="danger"><strong>قبل ذلك لا تدخل بيانات Production</strong><p>استخدم بيانات Demo فقط حتى يوافق المشرف وتنجح اختبارات الشبكة والنسخ والاسترجاع.</p></div>
+    <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 19</span></div>
+  </section>
+
+  <section class="page cover">
+    <div class="topline"></div><div class="hero">
+      <div><img class="cover-logo" src="../../public/brand/axora-logo.svg" alt="Axora" /><div style="margin-top:20mm"><span class="eyebrow">انتهى الدليل</span><h1 style="font-size:34pt">أنت لا تحتاج أن تحفظ الأوامر</h1><p class="lead">افتح الصفحة المناسبة، انسخ الأمر، اقرأ ما سيحدث، ثم نفّذه. عندما تكون القيمة خاصة بالشبكة، اسأل بدل أن تخمّن.</p></div></div>
+      <div class="cover-card"><h2 style="font-size:20pt">أول ثلاثة أوامر لاحقًا</h2><pre class="command">cd /srv/axora
+bash scripts/server/preflight.sh
+bash scripts/server/deploy.sh</pre><p class="mini">لكن لا تشغّل deploy قبل تثبيت Docker وضبط .env وإنشاء secrets كما شرح الدليل.</p></div>
+      <div class="cover-date"><span>المجلد: <strong>axora-app</strong></span><span>العنوان المقترح: <strong>https://axora.internal</strong></span></div>
+    </div>
+  </section>
+</body>
+</html>

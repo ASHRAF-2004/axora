@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env*
+!.env.example
+secrets
+backups
+data/uploads/*
+!data/uploads/README.md
+data/uploads
+reports
+coverage
+tmp
+npm-debug.log*

@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>تقرير جدوى النسخة الأولية التشغيلية (MVP) لمنصة Axora في ماليزيا والتحقق مع ثلاث شركات</title>
+  <style>
+    @page { size: Letter; margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #dfe6ee; color: #10263e; }
+    body { font-family: Tahoma, "Segoe UI", Arial, sans-serif; font-size: 8.55pt; line-height: 1.43; direction: rtl; text-align: right; }
+    a { color: #175bd8; text-decoration: none; }
+    .page {
+      width: 8.5in; height: 11in; margin: 0 auto; background: #fff;
+      overflow: hidden; page-break-after: always; break-after: page;
+    }
+    .content-page { display: grid; grid-template-rows: 0.55in 1fr 0.38in; }
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.18in 0.58in 0.12in; border-bottom: 1px solid #dbe5ef;
+      color: #52677c; font-size: 7.5pt; letter-spacing: 0.05em;
+    }
+    .page-header-title { font-weight: 700; }
+    .page-number { width: 0.27in; height: 0.27in; border-radius: 50%; background: #e9f0ff; color: #185ade; display: grid; place-items: center; font-weight: 800; }
+    .page-body { padding: 0.27in 0.58in 0.2in; overflow: hidden; }
+    .page-footer { margin: 0 0.58in; padding-top: 0.1in; border-top: 1px solid #dbe5ef; display: flex; align-items: flex-start; justify-content: space-between; gap: 0.3in; color: #687a8d; font-size: 6.8pt; }
+    .page-footer:empty { display: none; }
+    h1, h2, h3, h4, p { margin-top: 0; }
+    h2 { margin-bottom: 0.12in; font-size: 20pt; line-height: 1.08; letter-spacing: -0.025em; color: #0b233b; }
+    h2::after { content: ""; display: block; width: 0.78in; height: 0.06in; margin-top: 0.12in; background: linear-gradient(90deg,#2868ff,#0fb7a0); border-radius: 4px; }
+    h3 { margin-bottom: 0.07in; font-size: 11pt; line-height: 1.2; color: #0b233b; }
+    h4 { margin-bottom: 0.04in; font-size: 8.4pt; letter-spacing: 0.05em; color: #2b5fd3; }
+    p { margin-bottom: 0.09in; }
+    ul, ol { margin: 0.06in 0 0.11in; padding-right: 0.19in; padding-left: 0; }
+    li { margin-bottom: 0.035in; }
+    .eyebrow { color: #2460de; font-weight: 800; font-size: 7.4pt; letter-spacing: 0.08em; margin-bottom: 0.07in; }
+    .lede { max-width: 7in; font-size: 10.2pt; line-height: 1.48; color: #425970; margin-bottom: 0.18in; }
+    .small { font-size: 7.2pt; line-height: 1.38; }
+    .tiny { font-size: 6.65pt; line-height: 1.32; }
+    .muted { color: #687b8e; }
+    .strong { font-weight: 750; color: #10263e; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.15in; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.13in; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.11in; }
+    .span-2 { grid-column: span 2; }
+    .card { border: 1px solid #dbe5ef; border-radius: 12px; padding: 0.14in 0.16in; background: #fff; }
+    .card.soft { background: #f6f9fc; }
+    .card.blue { background: #edf3ff; border-color: #cbdcff; }
+    .card.teal { background: #eafaf7; border-color: #bfece3; }
+    .card.amber { background: #fff7e8; border-color: #f4d69b; }
+    .card.red { background: #fff0ef; border-color: #f4c8c3; }
+    .card h3 { margin-bottom: 0.06in; }
+    .status { display: inline-block; padding: 0.035in 0.09in; border-radius: 999px; font-size: 6.8pt; font-weight: 800; letter-spacing: 0.03em; }
+    .status.green { background:#dff8ef; color:#087a64; }
+    .status.amber { background:#fff0c9; color:#8a5a00; }
+    .status.red { background:#ffe2df; color:#a43127; }
+    .status.blue { background:#e4edff; color:#175bd8; }
+    .metric { border-right: 4px solid #2868ff; padding: 0.03in 0.12in 0.03in 0; min-height: 0.66in; }
+    .metric.teal-line { border-color: #0fb7a0; }
+    .metric .big { font-size: 20pt; line-height: 1; font-weight: 800; color:#0b233b; letter-spacing:-0.025em; }
+    .metric .label { margin-top: 0.055in; color:#617589; font-size: 6.8pt; font-weight:700; letter-spacing:0.035em; }
+    .callout { border-right: 5px solid #2868ff; padding: 0.12in 0.15in; background: #f1f5ff; border-radius: 10px 0 0 10px; margin: 0.12in 0; }
+    .callout.teal { border-color:#0fb7a0; background:#edfbf8; }
+    .callout.amber { border-color:#f0a22e; background:#fff8ea; }
+    .callout.red { border-color:#db554a; background:#fff2f0; }
+    .callout strong { display:block; margin-bottom:0.035in; font-size:9pt; color:#0b233b; }
+    table { width:100%; border-collapse:collapse; margin-top:0.08in; }
+    th { background:#0e2a46; color:#fff; text-align:right; font-size:7pt; letter-spacing:0.02em; padding:0.075in 0.08in; vertical-align:top; }
+    td { border-bottom:1px solid #dfe7ef; padding:0.072in 0.08in; vertical-align:top; }
+    tr:nth-child(even) td { background:#f7f9fc; }
+    .tight td { padding-top:0.052in; padding-bottom:0.052in; }
+    .no-stripe tr:nth-child(even) td { background:transparent; }
+    .source-note { margin-top:0.1in; font-size:6.7pt; color:#6b7d90; }
+    .source-note a { font-weight:700; }
+    .tag-row { display:flex; flex-wrap:wrap; gap:0.05in; margin-top:0.06in; }
+    .tag { display:inline-block; padding:0.035in 0.075in; border-radius:6px; background:#eef3f8; color:#40566c; font-size:6.8pt; font-weight:700; }
+    .process { display:grid; grid-template-columns:1fr 0.22in 1fr 0.22in 1fr 0.22in 1fr; align-items:stretch; gap:0.04in; margin:0.12in 0; }
+    .process .step { border:1px solid #dbe5ef; background:#f7f9fc; border-radius:10px; padding:0.11in; min-height:0.72in; }
+    .process .step b { display:block; color:#0d2944; margin-bottom:0.04in; }
+    .process .arrow { display:grid; place-items:center; color:#2868ff; font-size:16pt; font-weight:800; }
+    .timeline { display:grid; grid-template-columns:repeat(6,1fr); gap:0.07in; margin-top:0.12in; }
+    .timeline .week { border-top:5px solid #2868ff; padding:0.08in 0.08in 0.1in; background:#f6f9fc; min-height:1.3in; }
+    .timeline .week:nth-child(even) { border-color:#0fb7a0; }
+    .timeline .num { font-size:6.7pt; font-weight:800; color:#2a62d7; letter-spacing:0.04em; }
+    .timeline b { display:block; margin:0.045in 0; font-size:8.2pt; color:#0b233b; }
+    .checklist { list-style:none; padding-right:0; margin-top:0.05in; }
+    .checklist li { position:relative; padding-right:0.18in; margin-bottom:0.05in; }
+    .checklist li::before { content:""; position:absolute; right:0; top:0.04in; width:0.085in; height:0.085in; border:1.5px solid #2b66e2; border-radius:2px; background:#fff; }
+    .score { display:grid; grid-template-columns:0.7fr 1.6fr 0.7fr 0.7fr 0.8fr; border:1px solid #dbe5ef; border-radius:10px; overflow:hidden; margin-top:0.1in; }
+    .score div { padding:0.065in 0.075in; border-left:1px solid #dbe5ef; border-bottom:1px solid #dbe5ef; }
+    .score div:nth-child(5n) { border-left:0; }
+    .score .head { background:#0e2a46; color:#fff; font-weight:750; letter-spacing:0.02em; font-size:6.6pt; }
+    .screenshot-frame { height:3.2in; overflow:hidden; border:1px solid #cfdceb; border-radius:14px; box-shadow:0 8px 24px rgba(14,42,70,.12); background:#eef3f7; }
+    .screenshot-frame img { width:100%; display:block; transform:translateY(0); }
+    .ribbon { display:inline-flex; gap:0.07in; align-items:center; padding:0.055in 0.1in; background:#0e2a46; color:#fff; border-radius:7px; font-size:7pt; font-weight:750; }
+    .ribbon i { width:0.08in; height:0.08in; background:#12c4a8; border-radius:50%; display:inline-block; }
+    .ref-list { counter-reset:refs; list-style:none; padding:0; margin:0.08in 0 0; }
+    .ref-list li { counter-increment:refs; position:relative; padding-right:0.34in; margin-bottom:0.105in; }
+    .ref-list li::before { content:"[" counter(refs) "]"; position:absolute; right:0; color:#1d5fde; font-weight:800; }
+    .ref-list a { display:block; margin-top:0.025in; font-size:6.7pt; word-break:break-all; color:#466c9e; direction:ltr; text-align:left; }
+    .ref-list.continue { counter-reset:refs 10; }
+    .cover { position:relative; display:grid; grid-template-rows:1fr auto; background:#081e33; color:#fff; }
+    .cover::before { content:""; position:absolute; width:5.4in; height:5.4in; border-radius:50%; right:-1.6in; top:-1.7in; background:radial-gradient(circle at 35% 45%,rgba(45,107,255,.82),rgba(17,189,164,.34) 47%,rgba(8,30,51,0) 70%); }
+    .cover::after { content:""; position:absolute; left:-0.7in; bottom:1.2in; width:3.2in; height:3.2in; border:1px solid rgba(255,255,255,.12); border-radius:50%; box-shadow:0 0 0 .42in rgba(255,255,255,.035),0 0 0 .84in rgba(255,255,255,.025); }
+    .cover-main { position:relative; z-index:2; padding:0.65in 0.65in 0.35in; }
+    .cover-logo { width:1.78in; filter:brightness(0) invert(1); margin-bottom:0.8in; }
+    .cover-kicker { color:#54dfcb; font-size:8.2pt; font-weight:800; letter-spacing:.12em; margin-bottom:.14in; }
+    .cover h1 { max-width:6.6in; margin-bottom:.2in; font-size:35pt; line-height:1.02; letter-spacing:-.035em; color:#fff; }
+    .cover-sub { max-width:6.1in; font-size:13pt; line-height:1.38; color:#cddbea; }
+    .cover-note { margin-top:.36in; display:inline-block; padding:.09in .14in; border:1px solid rgba(255,255,255,.2); border-radius:8px; color:#dce8f3; font-size:8pt; }
+    .cover-bottom { position:relative; z-index:2; display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:.16in; padding:.3in .65in .55in; background:rgba(3,15,28,.42); border-top:1px solid rgba(255,255,255,.12); }
+    .cover-stat { border-right:3px solid #2c6bff; padding-right:.12in; }
+    .cover-stat:nth-child(2) { border-color:#0fc1a7; }
+    .cover-stat:nth-child(3) { border-color:#f2ad3f; }
+    .cover-stat .big { font-size:18pt; font-weight:800; }
+    .cover-stat .label { margin-top:.04in; color:#aebfd0; font-size:6.7pt; letter-spacing:.04em; }
+    .cover-date { align-self:end; text-align:left; color:#c8d6e4; font-size:7.4pt; line-height:1.55; }
+    .decision-line { display:grid; grid-template-columns:1.15fr 1fr 1fr 1.4fr; gap:.09in; margin:.14in 0 .18in; }
+    .decision-line .item { border-top:4px solid #2868ff; padding:.1in .11in; background:#f6f9fc; }
+    .decision-line .item:nth-child(2) { border-color:#0fb7a0; }
+    .decision-line .item:nth-child(3) { border-color:#efaa38; }
+    .decision-line .item:nth-child(4) { border-color:#7a5ae0; }
+    .decision-line b { display:block; margin-bottom:.035in; font-size:8.5pt; }
+    .two-paths { display:grid; grid-template-columns:1fr .13in 1fr; align-items:stretch; gap:.08in; }
+    .two-paths .divider { background:linear-gradient(#2868ff,#0fb7a0); border-radius:6px; }
+    .legend { display:flex; gap:.12in; flex-wrap:wrap; margin-top:.08in; }
+    .legend span { font-size:6.8pt; color:#607486; }
+    .legend i { display:inline-block; width:.075in; height:.075in; margin-left:.035in; border-radius:2px; vertical-align:-1px; }
+
+    /* Arabic edition: embedded local fonts, RTL typography and bidi safeguards. */
+    @font-face {
+      font-family:"Noto Sans Arabic";
+      src:url("./fonts/NotoSansArabic-Regular.ttf") format("truetype");
+      font-weight:400;
+    }
+    @font-face {
+      font-family:"Noto Sans Arabic";
+      src:url("./fonts/NotoSansArabic-Bold.ttf") format("truetype");
+      font-weight:700 900;
+    }
+    @font-face {
+      font-family:"Noto Kufi Arabic";
+      src:url("./fonts/NotoKufiArabic-Regular.ttf") format("truetype");
+      font-weight:400;
+    }
+    @font-face {
+      font-family:"Noto Kufi Arabic";
+      src:url("./fonts/NotoKufiArabic-Bold.ttf") format("truetype");
+      font-weight:700 900;
+    }
+    html[dir="rtl"], html[dir="rtl"] body, html[dir="rtl"] .page { direction:rtl; }
+    html[dir="rtl"] body {
+      font-family:"Noto Sans Arabic",Tahoma,Arial,sans-serif;
+      font-size:8.35pt;
+      line-height:1.52;
+      text-align:right;
+    }
+    html[dir="rtl"] h1,
+    html[dir="rtl"] h2,
+    html[dir="rtl"] h3,
+    html[dir="rtl"] h4 {
+      font-family:"Noto Kufi Arabic","Noto Sans Arabic",Tahoma,sans-serif;
+      letter-spacing:0;
+      text-transform:none;
+    }
+    html[dir="rtl"] h2 { font-size:18.4pt; line-height:1.32; }
+    html[dir="rtl"] h3 { font-size:10pt; line-height:1.4; }
+    html[dir="rtl"] h4 { line-height:1.4; }
+    html[dir="rtl"] p { margin-bottom:.08in; }
+    html[dir="rtl"] li { margin-bottom:.03in; }
+    html[dir="rtl"] .lede { font-size:9.7pt; line-height:1.56; }
+    html[dir="rtl"] .small { line-height:1.5; }
+    html[dir="rtl"] .tiny { line-height:1.45; }
+    html[dir="rtl"] .page-header,
+    html[dir="rtl"] .page-footer {
+      direction:rtl;
+      text-align:start;
+      letter-spacing:0;
+      text-transform:none;
+      line-height:1.42;
+    }
+    html[dir="rtl"] .page-number,
+    html[dir="rtl"] .metric .big,
+    html[dir="rtl"] sup {
+      direction:ltr;
+      unicode-bidi:isolate;
+      font-variant-numeric:tabular-nums;
+    }
+    html[dir="rtl"] .eyebrow,
+    html[dir="rtl"] .status,
+    html[dir="rtl"] .metric .label,
+    html[dir="rtl"] .cover-kicker,
+    html[dir="rtl"] .cover-stat .label,
+    html[dir="rtl"] .timeline .num,
+    html[dir="rtl"] .score .head {
+      letter-spacing:0;
+      text-transform:none;
+    }
+    html[dir="rtl"] h2::after {
+      margin-right:0;
+      margin-left:auto;
+      background:linear-gradient(270deg,#2868ff,#0fb7a0);
+    }
+    html[dir="rtl"] table { direction:rtl; }
+    html[dir="rtl"] th,
+    html[dir="rtl"] td {
+      text-align:start;
+      line-height:1.45;
+      letter-spacing:0;
+      text-transform:none;
+      overflow-wrap:anywhere;
+    }
+    html[dir="rtl"] tr { break-inside:avoid; }
+    html[dir="rtl"] .score { direction:rtl; font-size:6.75pt; line-height:1.36; }
+    html[dir="rtl"] .score div { min-width:0; overflow-wrap:anywhere; }
+    html[dir="rtl"] .process,
+    html[dir="rtl"] .timeline,
+    html[dir="rtl"] .decision-line { direction:rtl; }
+    html[dir="rtl"] .process .arrow { direction:ltr; }
+    html[dir="rtl"] .timeline { grid-template-columns:repeat(3,1fr); gap:.08in; }
+    html[dir="rtl"] .timeline .week { min-height:1.03in; }
+    html[dir="rtl"] .cover-main { text-align:right; }
+    html[dir="rtl"] .cover-logo { display:block; margin-right:0; margin-left:auto; }
+    html[dir="rtl"] .cover h1 {
+      max-width:6.45in;
+      margin-right:0;
+      margin-left:auto;
+      font-size:30.5pt;
+      line-height:1.24;
+      letter-spacing:0;
+    }
+    html[dir="rtl"] .cover-sub {
+      margin-right:0;
+      margin-left:auto;
+      font-size:12.2pt;
+      line-height:1.58;
+    }
+    html[dir="rtl"] .cover-note { line-height:1.48; }
+    html[dir="rtl"] .cover::before { right:auto; left:-1.6in; }
+    html[dir="rtl"] .cover::after { left:auto; right:-.7in; }
+    html[dir="rtl"] .cover-date { text-align:end; line-height:1.65; }
+    html[dir="rtl"] .screenshot-frame { direction:ltr; }
+    html[dir="rtl"] .screenshot-frame img {
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      object-position:top center;
+      transform:none;
+    }
+    html[dir="rtl"] .ref-list a {
+      direction:ltr;
+      unicode-bidi:plaintext;
+      text-align:left;
+      font-family:"Segoe UI",Arial,sans-serif;
+      font-size:6.15pt;
+      line-height:1.25;
+    }
+    html[dir="rtl"] .ref-list li { margin-bottom:.075in; }
+    .latin,.token,.num {
+      direction:ltr;
+      unicode-bidi:isolate;
+      font-family:"Segoe UI",Arial,sans-serif;
+      font-variant-numeric:tabular-nums;
+    }
+    .token { white-space:nowrap; }
+    @media print { html,body{background:#fff;} .page{margin:0;} }
+  </style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="page cover">
+  <div class="cover-main">
+    <img class="cover-logo" src="../../public/brand/axora-logo.svg" alt="Axora">
+    <div class="cover-kicker">تقرير داخلي للجدوى والتحقق</div>
+    <h1>تقرير جدوى النسخة الأولية التشغيلية (MVP) لمنصة Axora في ماليزيا والتحقق مع ثلاث شركات</h1>
+    <p class="cover-sub">خطة عملية لاختبار ما إذا كان سير عمل للمشتريات مستوحى وظيفيًا من نموذج Lawazem يحل مشكلة فعلية لدى الشركات الماليزية باستخدام نظام Axora التشغيلي.</p>
+    <div class="cover-note">نسخة أولية تشغيلية فعلية (MVP) - الدفع عند الاستلام (COD) كقيد أمان مؤقت - ثلاث شركات معتمدة للمشاركة</div>
+  </div>
+  <div class="cover-bottom">
+    <div class="cover-stat"><div class="big">3</div><div class="label">شركات معتمدة للمشاركة</div></div>
+    <div class="cover-stat"><div class="big">6 أسابيع</div><div class="label">التحقق الحي الموصى به</div></div>
+    <div class="cover-stat"><div class="big"><bdi dir="ltr" class="token">30+</bdi></div><div class="label">دورات شراء مكتملة مستهدفة</div></div>
+    <div class="cover-date">أُعد لمراجعة المشرف<br>22 يوليو 2026<br>وثيقة عمل سرية</div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">جدوى MVP لمنصة Axora في ماليزيا</div><div class="page-number">2</div></header>
+  <main class="page-body">
+    <div class="eyebrow">النتيجة التنفيذية</div>
+    <h2>الفكرة ممكنة. أما الطلب المحدد فما زال يحتاج إلى القياس.</h2>
+    <p class="lede">Axora نسخة أولية تشغيلية فعلية (MVP)، وليست نموذجًا أوليًا بصريًا. يستطيع البرنامج بالفعل دعم عملية مشتريات منضبطة. والمهمة التالية هي إثبات أن ثلاث شركات حقيقية تستخدمه بصورة متكررة لأنه يوفر الوقت ويقلل العمل اليدوي.</p>
+    <div class="decision-line">
+      <div class="item"><span class="status green">نعم</span><b>الجدوى التقنية</b><span class="small">يوجد نظام يعمل بالفعل.</span></div>
+      <div class="item"><span class="status green">نعم</span><b>جدوى التجربة</b><span class="small">لدى ثلاث شركات إذن للاختبار.</span></div>
+      <div class="item"><span class="status amber">مشروط</span><b>الجاهزية التشغيلية</b><span class="small">يجب أن تجتاز ضوابط الدفع عند الاستلام والوصول والامتثال بوابات القبول.</span></div>
+      <div class="item"><span class="status red">غير مثبت</span><b>الطلب على مستوى ماليزيا</b><span class="small">لا يمكن لثلاث دراسات حالة تمثيل السوق بأكمله.</span></div>
+    </div>
+    <div class="grid-2">
+      <div class="card teal">
+        <h3>ما الذي يمكن للتجربة إثباته؟</h3>
+        <ul>
+          <li>ما إذا كان المستخدمون يفهمون سير العمل ويكملونه.</li>
+          <li>ما إذا أصبحت الطلبات والموافقات وعروض الأسعار والتسليمات وسجلات الدفع عند الاستلام أسهل.</li>
+          <li>ما إذا انخفضت الرسائل اليدوية وإدخالات جداول البيانات وملاحقة الحالات.</li>
+          <li>ما إذا كان المشغّل يستطيع تقديم خدمة موثوقة ومتوافقة.</li>
+          <li>ما إذا كانت الشركات تطلب الاستمرار بعد الاختبار.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <h3>ما الذي لا يمكن للتجربة إثباته؟</h3>
+        <ul>
+          <li>حجم السوق الماليزي.</li>
+          <li>أن كل قطاع يواجه المشكلة نفسها.</li>
+          <li>وجود شبكة لوجستية أو شبكة موردين وطنية.</li>
+          <li>ربحية الائتمان أو التخزين أو السوق العام.</li>
+          <li>الاستعداد للدفع على المدى الطويل إذا كانت التجربة نفسها مجانية.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>التوصية</strong>
+      نفّذ تجربة B2B بدعوات فقط لمدة ستة أسابيع وبالدفع عند الاستلام حصراً. استخدم معاملات حقيقية ولكن محددة السقف. قارن العملية الأساسية لكل شركة باستخدام Axora. لا تستمر إلا إذا أظهرت شركتان على الأقل استخداماً متكرراً وتحسناً قابلاً للقياس، واجتازت جميع بوابات الدفع عند الاستلام والخصوصية والأمن.
+    </div>
+  </main>
+  <footer class="page-footer"><span>تقرير قرار، وليس استشارة قانونية أو ضريبية.</span><span>تم التحقق من الأدلة في 22 يوليو 2026</span></footer>
+</section>
+
+<!-- 3 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">قواعد النطاق والأدلة</div><div class="page-number">3</div></header>
+  <main class="page-body">
+    <div class="eyebrow">كيفية قراءة هذا التقرير</div>
+    <h2>أربعة مستويات من الأدلة تحافظ على نزاهة القرار</h2>
+    <p class="lede">يفصل التقرير بين ما هو معلوم وما لا يزال بحاجة إلى التعلم. وهذا يمنع الخلط بين وجود نظام عامل وبين ثبوت ملاءمة المنتج للسوق.</p>
+    <div class="grid-4">
+      <div class="card blue"><h4>مؤكد</h4><h3>حقائق عامة</h3><p>مصادر ماليزية رسمية، وصفحات المنافسين الحالية، ووثائق Lawazem العامة.</p></div>
+      <div class="card teal"><h4>تم فحصه</h4><h3>بناء Axora</h3><p>وظائف الطلبات والتوريد والموافقات والتسليمات والمالية والمستندات والمستخدمين والتقارير والتدقيق.</p></div>
+      <div class="card amber"><h4>نطاق التجربة المعتمد</h4><h3>الدفع عند الاستلام فقط</h3><p>ستستخدم النسخة التشغيلية الحية الدفع عند الاستلام حصراً كقيد أمان مؤقت. وأي قدرة على الدفع الإلكتروني خارج نطاق التجربة المعتمد ولا تُعد دليلاً على الجاهزية للإطلاق أو تعريفًا للرؤية النهائية.</p></div>
+      <div class="card soft"><h4>يحتاج إلى تحقق</h4><h3>أدلة التجربة</h3><p>التبني الفعلي، وتوفير الوقت، وتقليل الأخطاء، والرضا، والاستمرار، والاستعداد للدفع.</p></div>
+    </div>
+    <div class="grid-2" style="margin-top:.17in">
+      <div class="card">
+        <h3>سؤال القرار</h3>
+        <p class="strong">هل لدى الشركات الثلاث مشكلة متكررة في تنسيق المشتريات تحلها Axora بصورة أفضل من طريقتها الحالية؟</p>
+        <p class="small muted">هذا السؤال أدق من السؤال عما إذا كانوا «يحبون التطبيق» أو يرون أن الفكرة العامة جيدة.</p>
+      </div>
+      <div class="card">
+        <h3>وحدة الدليل</h3>
+        <p class="strong">دورة شراء مكتملة تتضمن الطوابع الزمنية والمستخدمين وعروض الأسعار والموافقة وأدلة التسليم وإيصال الدفع عند الاستلام والنتيجة.</p>
+        <p class="small muted">تدعم الآراء التحليل، لكن السلوك الحقيقي هو الدليل الأساسي.</p>
+      </div>
+    </div>
+    <div class="callout amber">
+      <strong>المصطلحات المستخدمة في التقرير</strong>
+      تعني <b>النسخة الأولية التشغيلية الفعلية (MVP)</b> نظامًا حقيقيًا مقصودًا للتشغيل الفعلي ويُستخدم في ظروف منضبطة. وتعني <b>منصة السوق العامة</b> التسجيل المفتوح للمشترين والبائعين، ومعالجة المدفوعات بين أطراف متعددة، والكتالوج الكبير، والوصول العام، والتنفيذ واسع النطاق. تختبر Axora الأولى بالدفع عند الاستلام فقط؛ ولا تدّعي الثانية بعد. وCOD هنا حد أمان للمرحلة، وليس وصفًا نهائيًا لنطاق المنتج.
+    </div>
+    <div class="grid-3">
+      <div class="metric"><div class="big">3</div><div class="label">شركات لدراسة الحالة</div></div>
+      <div class="metric teal-line"><div class="big">30+</div><div class="label">هدف الدورات المكتملة</div></div>
+      <div class="metric"><div class="big">2/3</div><div class="label">الحد الأدنى للإشارة الإيجابية من الشركات</div></div>
+    </div>
+  </main>
+  <footer class="page-footer"><span>استخدم النتائج على مستوى الشركات، لا الادعاءات الوطنية.</span><span>Axora | سري</span></footer>
+</section>
+
+<!-- 4 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">المعيار الوظيفي</div><div class="page-number">4</div></header>
+  <main class="page-body">
+    <div class="eyebrow">ما الذي تثبته Lawazem؟</div>
+    <h2>الفكرة القيّمة هي ضبط المشتريات، لا مجرد كتالوج إلكتروني</h2>
+    <p class="lede">تقدم Lawazem نفسها علناً كسوق سعودي للمشتريات التشغيلية بين الشركات (B2B). ويجمع عرض القيمة لديها بين الشراء والحوكمة والتنفيذ والتمويل.<sup><a href="#ref1">[1]</a></sup></p>
+    <div class="grid-3">
+      <div class="card blue"><h3>الضبط قبل الشراء</h3><ul><li>مستخدمو الشركة والأدوار</li><li>الموافقات المتسلسلة</li><li>الفروع ومراكز التكلفة</li><li>الكتالوجات المخصصة</li><li>العقود والميزانيات</li></ul></div>
+      <div class="card teal"><h3>تنفيذ الشراء</h3><ul><li>كتالوج منتجات كبير</li><li>طلب عرض سعر (RFQ) خارج الكتالوج</li><li>الطلبات المجدولة</li><li>شبكة شركاء من الموردين</li><li>خيارات دفع وائتمان تجارية</li></ul></div>
+      <div class="card amber"><h3>بعد الطلب</h3><ul><li>التسليم والمرتجعات</li><li>الفواتير الموحدة</li><li>تحليلات الإنفاق</li><li>أدوات المخزون</li><li>التكامل مع ERP/API</li></ul></div>
+    </div>
+    <div class="process">
+      <div class="step"><b>الطلب</b>يختار الموظف الأصناف أو يقدم RFQ.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>الحوكمة</b>تضبط الأدوار ومراكز التكلفة والموافقات الإنفاق.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>التنفيذ</b>يشحن المستودع أو شريك السوق.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>الإغلاق</b>تُسجل الفاتورة والمرتجع وحالة الدفع والتحليلات.</div>
+    </div>
+    <div class="grid-2">
+      <div class="card soft">
+        <h3>مؤشرات تشغيلية عامة مؤكدة</h3>
+        <ul>
+          <li>يوصف مخزون Express بأنه منفذ من المستودع؛ أما طلبات سوق الشركاء فينفذها الموردون.<sup><a href="#ref3">[3]</a></sup></li>
+          <li>تعلن الخطط علناً عن الأدوار والموافقات والتحليلات والعقود وRFQ ومواقع المخزون والتكامل مع ERP.<sup><a href="#ref2">[2]</a></sup></li>
+          <li>الشروط التجارية للمورد واكتتاب الائتمان واقتصاديات الوحدة الحقيقية غير معلنة.</li>
+        </ul>
+      </div>
+      <div class="card soft">
+        <h3>الدرس المستفاد لـ Axora</h3>
+        <p>لا تحاول إعادة إنتاج التخزين أو التسليم الوطني أو ضم الموردين بصورة مفتوحة أو الائتمان أو التكامل مع ERP أثناء التحقق من الطلب.</p>
+        <p class="strong">اختبر نتيجة الحوكمة أولاً: عملية شراء واحدة منضبطة ومرئية.</p>
+      </div>
+    </div>
+  </main>
+  <footer class="page-footer"><span>تعتمد حقائق Lawazem على الصفحات العامة فقط.</span><span>المصادر <bdi dir="ltr" class="token">[1]-[3]</bdi></span></footer>
+</section>
+
+<!-- 5 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">حدود MVP</div><div class="page-number">5</div></header>
+  <main class="page-body">
+    <div class="eyebrow">استلهم النتيجة، ولا تنسخ الشركة</div>
+    <h2>يمكن استخدام الاستلهام الوظيفي؛ أما النسخ الحرفي فيجب تجنبه</h2>
+    <p class="lede">توضح MyIPO الماليزية أن حقوق النشر لا تحمي الفكرة أو الإجراء أو طريقة التشغيل، لكن الشفرة الأصلية والكتابة والرسومات وغيرها من الأعمال الإبداعية قد تكون محمية.<sup><a href="#ref18">[18]</a></sup></p>
+    <div class="two-paths">
+      <div class="card teal">
+        <span class="status green">استخدمه معياراً</span>
+        <h3 style="margin-top:.08in">وظائف المشتريات الشائعة</h3>
+        <ul>
+          <li>الطلبات والموافقات متعددة الخطوات</li>
+          <li>جمع عروض الأسعار ومقارنتها</li>
+          <li>سجلات الموردين والمنتجات</li>
+          <li>تتبع التسليم والفاتورة وحالة الدفع</li>
+          <li>الأدوار وسجل التدقيق وتقارير الإنفاق</li>
+          <li>ضوابط الشركة والفروع</li>
+        </ul>
+      </div>
+      <div class="divider"></div>
+      <div class="card red">
+        <span class="status red">لا تنسخ</span>
+        <h3 style="margin-top:.08in">مواد محمية أو محفوفة بالمخاطر</h3>
+        <ul>
+          <li>اسم Lawazem أو شعارها أو علامة تسبب اللبس</li>
+          <li>صياغة الموقع ومقالات المساعدة</li>
+          <li>الشفرة المصدرية أو محتويات قاعدة البيانات</li>
+          <li>الصور وبيانات الكتالوج وقوائم الموردين</li>
+          <li>تصميم الشاشة المميز أو الادعاءات التسويقية</li>
+          <li>أي ادعاء بوجود شراكة أو تأييد</li>
+        </ul>
+      </div>
+    </div>
+    <table class="tight">
+      <thead><tr><th>ابنِ الآن لـ MVP الخاص بالشركات الثلاث</th><th>أجّل إلى أن يثبت الطلب</th></tr></thead>
+      <tbody>
+        <tr><td>مستخدمون وشركات وفروع وصلاحيات منضبطة</td><td>تسجيل عام للمشترين والموردين</td></tr>
+        <tr><td>سير عمل الطلب وعرض السعر والموافقة والطلبية</td><td>كتالوج مفتوح يضم آلاف وحدات SKU</td></tr>
+        <tr><td>أدلة التسليم والاستثناء والفاتورة وإيصال الدفع عند الاستلام</td><td>التخزين ووعود التسليم الوطني</td></tr>
+        <tr><td>المستندات والطوابع الزمنية والتدقيق والتقارير الأساسية</td><td>ائتمان العميل أو أي طريقة دفع غير الدفع عند الاستلام</td></tr>
+        <tr><td>مسار منضبط لتحصيل الدفع عند الاستلام ومطابقته</td><td>تحصيل أموال السوق ودفعها إلى البائعين</td></tr>
+        <tr><td>التحقق اليدوي من الموردين والشركات</td><td>التحقق الآلي من الأعمال (KYB)، والتكامل مع ERP، والتطبيقات الأصلية</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <strong>صياغة موقع Axora في التجربة</strong>
+      «نظام عامل لعمليات المشتريات يجعل شراء الشركات المتكرر أسهل في الطلب والموافقة والتوريد والاستلام والتوثيق والتدقيق». هذه صياغة دقيقة وقابلة للاختبار. أما «Lawazem ماليزيا» أو «سوق وطني» فقول سابق لأوانه.
+    </div>
+  </main>
+  <footer class="page-footer"><span>يجب الاحتفاظ بعلامة Axora وشفرتها ومحتواها وواجهتها الأصلية.</span><span>المصدر [18]</span></footer>
+</section>
+
+<!-- 6 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">فرصة ماليزيا</div><div class="page-number">6</div></header>
+  <main class="page-body">
+    <div class="eyebrow">إشارات الطلب والواقع التنافسي</div>
+    <h2>ماليزيا جاهزة رقمياً، لكن Axora تدخل فئة موجودة بالفعل</h2>
+    <div class="grid-4">
+      <div class="metric"><div class="big">96.1%</div><div class="label">حصة المنشآت المتناهية الصغر والصغيرة والمتوسطة، 2024</div></div>
+      <div class="metric teal-line"><div class="big">1.09m</div><div class="label">منشآت متناهية الصغر وصغيرة ومتوسطة، 2024</div></div>
+      <div class="metric"><div class="big">39.5%</div><div class="label">حصتها من الناتج المحلي الإجمالي، 2024</div></div>
+      <div class="metric teal-line"><div class="big">RM879.6b</div><div class="label">دخل التجارة الإلكترونية B2B المُبلغ عنه، 2024</div></div>
+    </div>
+    <p class="source-note">أرقام المنشآت وحصتها من الناتج المحلي الإجمالي: SME Corp وDOSM.<sup><a href="#ref6">[6]</a></sup><sup><a href="#ref7">[7]</a></sup> التجارة الإلكترونية B2B مقياس وطني واسع، وليست حجم سوق مشتريات المكاتب.<sup><a href="#ref8">[8]</a></sup></p>
+    <table>
+      <thead><tr><th>البديل الحالي</th><th>التموضع العام</th><th>ما الذي يعنيه ذلك لـ Axora؟</th></tr></thead>
+      <tbody>
+        <tr><td><b>Lapasar</b></td><td>سوق بالإضافة إلى الموافقات والميزانيات والتحليلات والفوترة الموحدة وشبكة الموردين والمستودعات والتسليم.</td><td>دليل مباشر قوي على وجود المشكلة؛ ومنافس راسخ قوي أيضاً.<sup><a href="#ref4">[4]</a></sup></td></tr>
+        <tr><td><b>Borong</b></td><td>مشتريات مؤسسية وسوق ومصفوفات موافقة ودفع بفاتورة واحدة وتمويل تجاري.</td><td>الوصول إلى الموردين والتمويل مجالان تنافسيان بالفعل.<sup><a href="#ref5">[5]</a></sup></td></tr>
+        <tr><td><b>Becon B2B</b></td><td>لوازم مكتبية وكتالوجات مخصصة وموافقات المدير لعدة مواقع.</td><td>حتى المشترون الذين يركزون على المكاتب لديهم خيارات محلية.</td></tr>
+        <tr><td><b>Excel وWhatsApp والبريد الإلكتروني</b></td><td>مألوفة ومرنة ومنخفضة التكلفة النقدية.</td><td>المنافس الحقيقي في التجربة هو العادة اليدوية الحالية.</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:.13in">
+      <div class="card teal"><h3>إشارة إيجابية</h3><p>يبين المنافسون المحليون أن المؤسسات الماليزية تهتم بسير عمل المشتريات والكتالوج والتنفيذ وضبط الإنفاق.</p></div>
+      <div class="card amber"><h3>قيد مهم</h3><p>لا تثبت قيم التجارة الإلكترونية الوطنية ولا حجم المنافسين أن لدى Axora شريحة مستهدفة متمايزة ومربحة.</p></div>
+    </div>
+    <div class="callout">
+      <strong>ملف الهدف الأول الموصى به</strong>
+      شركات خاصة لديها مشتريات غير مباشرة متكررة، وقسمان أو فرعان على الأقل، وعدة معتمدين، وعملية حالية تعتمد على الرسائل وجداول البيانات. تجنب الشركات الراضية بالفعل عن وحدة مشتريات ناضجة في نظام ERP.
+    </div>
+  </main>
+  <footer class="page-footer"><span>أرقام المنافسين مُعلنة من الشركات ما لم يُذكر خلاف ذلك.</span><span>المصادر <bdi dir="ltr" class="token">[4]-[8]</bdi></span></footer>
+</section>
+
+<!-- 7 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">فرضية المشكلة</div><div class="page-number">7</div></header>
+  <main class="page-body">
+    <div class="eyebrow">ما الذي يجب أن يغيّره MVP؟</div>
+    <h2>الاختبار هو ما إذا كان نظام واحد يستبدل عمل التنسيق</h2>
+    <p class="lede">لن تتبنى فرق المشتريات Axora لأنها تحتوي على صفحات وأزرار. بل ستتبناها إذا أصبحت العملية أسهل بوضوح من الرسائل والملفات والمتابعة المتكررة.</p>
+    <div class="grid-2">
+      <div class="card red">
+        <h3>النمط اليدوي الحالي المطلوب بحثه</h3>
+        <div class="tag-row"><span class="tag">طلب عبر WhatsApp</span><span class="tag">عرض سعر بالبريد</span><span class="tag">حالة في Excel</span><span class="tag">موافقة شفهية</span><span class="tag">مجلد فواتير منفصل</span></div>
+        <ul>
+          <li>لا يعرف مقدم الطلب الحالة الحالية.</li>
+          <li>تطلب المشتريات مراراً عروضاً قابلة للمقارنة من الموردين.</li>
+          <li>يتلقى المعتمدون معلومات غير مكتملة.</li>
+          <li>سجلات التسليم والفاتورة وإيصال الدفع عند الاستلام منفصلة.</li>
+          <li>لا تستطيع الإدارة رؤية زمن الدورة أو الإنفاق أو الاختناقات.</li>
+        </ul>
+      </div>
+      <div class="card teal">
+        <h3>نتيجة Axora المطلوب التحقق منها</h3>
+        <div class="tag-row"><span class="tag">معرف طلب واحد</span><span class="tag">عروض منظمة</span><span class="tag">موافقة مرئية</span><span class="tag">دليل تسليم</span><span class="tag">سجل تدقيق</span></div>
+        <ul>
+          <li>يرى الجميع الحالة المسموح بها والإجراء التالي.</li>
+          <li>تستخدم عروض الأسعار الصنف والكمية والمواصفة نفسها.</li>
+          <li>للموافقة طابع زمني وصاحب قرار.</li>
+          <li>يبقى التسليم الجزئي وحالة الدفع عند الاستلام مرتبطين بالطلب.</li>
+          <li>تظهر التقارير أين يتأخر العمل والمال.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="process">
+      <div class="step"><b>المشكلة</b>يقضي الفريق وقتاً في تنسيق المشتريات الروتينية.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>التدخل</b>نفّذ العمل المؤهل نفسه عبر Axora.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>الدليل</b>قس الوقت ونقاط التلامس والأخطاء والاستخدام المتكرر.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>القرار</b>استمر أو حسّن أو توقف استناداً إلى الحدود.</div>
+    </div>
+    <div class="card blue">
+      <h3>أربعة أسئلة ينبغي أن يتوقع المشرف إجابة التجربة عنها</h3>
+      <ol>
+        <li><b>المشكلة:</b> هل تنسيق المشتريات مؤلم ومتكرر ومهم بما يكفي؟</li>
+        <li><b>الاستخدام:</b> هل يكمل المستخدمون عملاً حقيقياً في Axora من دون تذكير دائم؟</li>
+        <li><b>القيمة:</b> هل تقلل Axora الوقت أو نقاط التلامس اليدوية أو المعلومات الناقصة أو الأخطاء؟</li>
+        <li><b>الالتزام:</b> هل ستستمر الشركة وتخصص ميزانية أو مالكاً بعد التجربة؟</li>
+      </ol>
+    </div>
+    <div class="callout amber"><strong>تجنب النتيجة الزائفة</strong>الرضا عن التدريب ونجاح العرض التوضيحي ليسا دليلاً على الطلب. اشترط معاملات حقيقية متكررة وقارنها بخط أساس مقاس.</div>
+  </main>
+  <footer class="page-footer"><span>الدليل الأساسي هو السلوك مع النتيجة المقاسة.</span><span>Axora | سري</span></footer>
+</section>
+
+<!-- 8 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">النظام العامل حاليًا</div><div class="page-number">8</div></header>
+  <main class="page-body">
+    <div class="eyebrow">Axora اليوم</div>
+    <h2>أساس سير العمل موجود بالفعل</h2>
+    <div class="screenshot-frame"><img src="../screenshots/dashboard.png" alt="لوحة معلومات Axora ببيانات تجريبية آمنة"></div>
+    <p class="source-note">واجهة Axora الحالية باستخدام بيانات تجريبية آمنة. قُصّت لقطة الشاشة قبل تفاصيل معاملات الشركة.</p>
+    <div class="grid-3">
+      <div class="card soft"><h3>المشتريات</h3><p>طلبات متعددة الأصناف، ومنتجات، وموردون، وعروض أسعار، واختيار المورد، وانتقالات حالة منضبطة.</p></div>
+      <div class="card soft"><h3>العمليات</h3><p>شركات، وفروع، وتسليمات جزئية، ومرفقات، وملاحظات استثناء، وسجل قابل للبحث.</p></div>
+      <div class="card soft"><h3>الرقابة</h3><p>موافقات، وأدوار، وفواتير، وسجلات دفع عند الاستلام، وتقارير، ومسار تدقيق، وحزمة نشر ونسخ احتياطي.</p></div>
+    </div>
+    <div class="callout teal">
+      <strong>حالة تجربة الدفع عند الاستلام</strong>
+      تستخدم النسخة الأولية التشغيلية المعتمدة الدفع عند الاستلام فقط. يجوز لـ Axora تسجيل أن المبلغ مستحق أو تم تحصيله أو أنه محل نزاع، لكنها لا تجمع النقد أو تنقله أو تحتفظ به أو تودعه أو تعيده. قبل الاستخدام الحقيقي، وثّق البائع أو مندوب التسليم المفوض، ومصدر الإيصال، وموقّع إثبات التسليم، وتسليم النقد، ومسؤولية الإيداع، وإجراء معالجة الفروقات.
+    </div>
+    <div class="callout amber">
+      <strong>كون النظام يعمل لا يعني تلقائيًا أنه جاهز للخدمة الذاتية الخارجية</strong>
+      إذا كان موظفون من الشركات الثلاث سيسجلون الدخول، يصبح عزل بيانات وصلاحيات كل شركة واختبار الوصول إلزاميين. وإذا كان موظفو Axora سيشغلون سير العمل كخدمة مُدارة، فيمكن اختبار نموذج الرقابة الداخلي الحالي بتعرّض أقل.
+    </div>
+  </main>
+  <footer class="page-footer"><span>فُحص البناء المحلي؛ وتبقى الجاهزية للتشغيل الفعلي خاضعة لدليل التجربة.</span><span>Axora | نسخة تشغيلية فعلية</span></footer>
+</section>
+
+<!-- 9 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">نموذج تشغيل التجربة</div><div class="page-number">9</div></header>
+  <main class="page-body">
+    <div class="eyebrow">اختر مسار التعلم الأكثر أمانًا</div>
+    <h2>ابدأ بخدمة مُدارة؛ ثم أضف الخدمة الذاتية فقط بعد اجتياز عزل الوصول</h2>
+    <div class="two-paths">
+      <div class="card teal">
+        <span class="status green">موصى به أولًا</span>
+        <h3 style="margin-top:.08in">تجربة مشتريات مُدارة</h3>
+        <p>يرسل مستخدمو الشركة الاحتياجات المعتمدة عبر قناة متفق عليها. ويتولى فريق Axora التوريد ويسجل العملية كاملة في Axora.</p>
+        <ul><li>أسرع طريقة لاختبار قيمة سير العمل</li><li>حسابات خارجية أقل</li><li>تحقق يدوي من الشركة والمورد</li><li>تعرّض منضبط للبيانات</li><li>يثبت نجاح العمليات قبل الاستثمار في البوابة</li></ul>
+      </div>
+      <div class="divider"></div>
+      <div class="card blue">
+        <span class="status amber">بعد بوابة الأمان</span>
+        <h3 style="margin-top:.08in">تجربة خدمة ذاتية للشركة</h3>
+        <p>يسجل مقدمو الطلبات والموافقون الدخول وينفذون الإجراءات المسندة إليهم بأنفسهم.</p>
+        <ul><li>دليل أقوى على سهولة الاستخدام والتبني</li><li>يتطلب عزل بيانات وصلاحيات الشركات</li><li>يتطلب دورة حياة للحساب وMFA</li><li>يتطلب اختبار الأدوار لكل شركة</li><li>يحتاج إلى جاهزية للدعم والحوادث</li></ul>
+      </div>
+    </div>
+    <div class="process">
+      <div class="step"><b>الشركة</b>مقدم الطلب، والموافق، والمالية، والمستلم.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>Axora</b>سير العمل، والمستندات، والطوابع الزمنية، والتقارير.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>المورد</b>عرض السعر، والتنفيذ، والفاتورة، والإرجاع.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>الدفع عند الاستلام</b>يحصّل البائع أو مندوب التسليم المفوض النقد ويصدر إيصالًا.</div>
+    </div>
+    <table class="tight">
+      <thead><tr><th>الدور</th><th>الحد الأدنى من المسؤولية</th><th>قاعدة الفصل</th></tr></thead>
+      <tbody>
+        <tr><td>راعي الشركة</td><td>يعتمد النطاق والمستخدمين وسقف الإنفاق والقرار النهائي.</td><td>لا يمكنه تغيير الدليل بعد المراجعة.</td></tr>
+        <tr><td>مقدم الطلب</td><td>ينشئ احتياجًا مكتملًا يتضمن الكمية والتاريخ.</td><td>لا يمكنه اعتماد طلبه إذا تجاوز الحد المتفق عليه.</td></tr>
+        <tr><td>مسؤول المشتريات/المشغل</td><td>يجمع عروض أسعار قابلة للمقارنة ويسجل الاختيار.</td><td>لا يمكنه تأكيد تحصيل الدفع عند الاستلام منفردًا.</td></tr>
+        <tr><td>الموافق/المالية</td><td>يعتمد الإنفاق ويفحص الفاتورة والإيصال وأدلة الدفع عند الاستلام.</td><td>لا يمكنه تعديل عروض الموردين بصمت.</td></tr>
+        <tr><td>المستلم</td><td>يؤكد الكمية والحالة واستثناءات التسليم.</td><td>يجب ألا يعلّم البضائع غير المسلّمة على أنها مستلمة.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><strong>قاعدة النطاق</strong>يجب أن تعرف كل شركة ما إذا كانت Axora تعمل كبرنامج أم كوكيل مشتريات مُدار. يبقى البائع مسؤولًا عن البضائع وتحصيل الدفع عند الاستلام وإصدار الإيصال. ولا يجوز لـ Axora تحصيل النقد أو العمل كموزع في هذه التجربة.</div>
+  </main>
+  <footer class="page-footer"><span>التوصية: تجربة مُدارة، ثم خدمة ذاتية منضبطة.</span><span>Axora | سري</span></footer>
+</section>
+
+<!-- 10 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">تجربة حقيقية لمدة ستة أسابيع</div><div class="page-number">10</div></header>
+  <main class="page-body">
+    <div class="eyebrow">الجدول الزمني للتحقق</div>
+    <h2>نفّذ تجربة قصيرة قابلة للقياس بأعمال حقيقية</h2>
+    <p class="lede">ستة أسابيع مدة كافية لملاحظة السلوك المتكرر. وإذا كان لدى أي شركة أقل من عشر عمليات شراء مؤهلة، فمدد تجربة تلك الشركة حتى تبلغ الحد الأدنى لحجم الدليل.</p>
+    <div class="timeline">
+      <div class="week"><span class="num">الأسبوع 0</span><b>التحضير</b><span class="small">العقود، والوصول، وإجراء الدفع عند الاستلام، والنسخ الاحتياطي، وبيانات خط الأساس.</span></div>
+      <div class="week"><span class="num">الأسبوع 1</span><b>التهيئة</b><span class="small">تدريب الأدوار وإكمال معاملتين موجّهتين لكل شركة.</span></div>
+      <div class="week"><span class="num">الأسبوع 2</span><b>الاستخدام</b><span class="small">معالجة المشتريات المؤهلة. سجّل كل العمل اليدوي خارج Axora.</span></div>
+      <div class="week"><span class="num">الأسبوع 3</span><b>اختبار الضغط</b><span class="small">اختبر رفض التسليم، وفروقات النقد، والإلغاء، والصنف المفقود.</span></div>
+      <div class="week"><span class="num">الأسبوعان <bdi dir="ltr" class="token">4-5</bdi></span><b>التكرار</b><span class="small">قلّل التذكيرات. قِس الاستخدام الطوعي والدورات المتكررة.</span></div>
+      <div class="week"><span class="num">الأسبوع 6</span><b>القرار</b><span class="small">قارن بخط الأساس، وقابل المستخدمين، وطبّق بوابات الاستمرار/التوقف.</span></div>
+    </div>
+    <div class="grid-2" style="margin-top:.17in">
+      <div class="card blue">
+        <h3>الحد الأدنى لنطاق المعاملات</h3>
+        <ul>
+          <li>10 دورات شراء مؤهلة ومكتملة على الأقل لكل شركة.</li>
+          <li>مقدما طلب اثنان وموافق واحد على الأقل لكل شركة حيثما كان ذلك عمليًا.</li>
+          <li>مقارنة حقيقية واحدة لعروض الأسعار على الأقل لكل شركة.</li>
+          <li>استثناء تسليم واحد على الأقل على امتداد التجربة.</li>
+          <li>اختبار واحد على الأقل لتسليم مرفوض/ملغى أو لفرق نقدي منضبط.</li>
+        </ul>
+      </div>
+      <div class="card teal">
+        <h3>الحدود المنضبطة</h3>
+        <ul>
+          <li>مستخدمون مدعوون فقط ومدرجون في قائمة السماح.</li>
+          <li>مشتريات B2B للقطاع الخاص فقط.</li>
+          <li>فئات وموردون منخفضو المخاطر ومعتمدون.</li>
+          <li>سقوف إنفاق لكل طلب ولكل شركة.</li>
+          <li>لا تجمع Axora نقد الدفع عند الاستلام ولا تحتفظ به؛ ولا ائتمان أو طريقة دفع أخرى.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout amber"><strong>لا تغيّر الهدف أثناء التجربة</strong>أصلح العيوب الحرجة فورًا، لكن سجّل طلبات التحسين بدلًا من إعادة بناء المنتج كل يوم. فثبات النطاق ضروري لإجراء مقارنة عادلة قبل/بعد.</div>
+  </main>
+  <footer class="page-footer"><span>حجم الدليل الموصى به: <bdi dir="ltr" class="token">30+</bdi> دورة شراء مكتملة.</span><span>Axora | خطة التجربة</span></footer>
+</section>
+
+<!-- 11 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">تهيئة الشركات</div><div class="page-number">11</div></header>
+  <main class="page-body">
+    <div class="eyebrow">كرّر ذلك للشركات A وB وC</div>
+    <h2>اضبط الشركة قبل قياسها</h2>
+    <div class="grid-2">
+      <div class="card soft">
+        <h3>ورقة حقائق الشركة</h3>
+        <table class="tight no-stripe">
+          <tbody>
+            <tr><td>الاسم القانوني / رقم SSM</td><td>________________</td></tr>
+            <tr><td>القطاع / المواقع</td><td>________________</td></tr>
+            <tr><td>الطلبات شهريًا</td><td>________________</td></tr>
+            <tr><td>الأدوات الحالية</td><td>________________</td></tr>
+            <tr><td>عدد الموافقين</td><td>________________</td></tr>
+            <tr><td>الفئات المؤهلة</td><td>________________</td></tr>
+            <tr><td>سقف الطلب</td><td>RM ____________</td></tr>
+            <tr><td>مالك التجربة في الشركة</td><td>________________</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card blue">
+        <h3>قائمة التحقق قبل التجربة</h3>
+        <ul class="checklist">
+          <li>توقيع الإذن الكتابي واتفاقية التجربة.</li>
+          <li>التحقق من الهوية القانونية والممثل المفوض.</li>
+          <li>اعتماد المستخدمين والأدوار والوصول إلى الفروع وحدود الموافقة.</li>
+          <li>قبول إشعار الخصوصية وشروط معالجة البيانات.</li>
+          <li>ضبط الموردين والمنتجات المعتمدة.</li>
+          <li>تأكيد المحصّل والإيصال وتسليم النقد ومسار معالجة الفروقات.</li>
+          <li>جمع معاملات خط الأساس.</li>
+          <li>جدولة التدريب وجهة اتصال الدعم.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top:.15in">
+      <div class="card teal"><h3>تدريب مقدم الطلب</h3><p>تاريخ الاحتياج، ومواصفات الصنف، والكمية، والفرع، والاستعجال، والملف الداعم.</p></div>
+      <div class="card teal"><h3>تدريب الموافق</h3><p>افحص الاحتياج والسعر والمورد والسياسة والسبب. لا تعتمد من رسالة خارج النظام.</p></div>
+      <div class="card teal"><h3>تدريب المستلم</h3><p>سجّل الكمية المسلّمة فعليًا والتاريخ والحالة والدليل. استخدم التسليم الجزئي عند الحاجة.</p></div>
+    </div>
+    <table class="tight">
+      <thead><tr><th>اختبار الوصول</th><th>النتيجة المتوقعة</th></tr></thead>
+      <tbody>
+        <tr><td>مستخدم من الشركة A يفتح عنوان URL أو معرّف سجل للشركة B</td><td>يُرفض الوصول ويُسجل الحدث.</td></tr>
+        <tr><td>يحاول مقدم الطلب تنفيذ إجراء إداري أو مالي</td><td>يُخفى الإجراء أو يُرفض من جهة الخادم.</td></tr>
+        <tr><td>يحاول مستخدم معطل تسجيل الدخول</td><td>يُرفض الدخول وتُبطل الجلسة.</td></tr>
+        <tr><td>تتم مشاركة عنوان URL لمرفق من دون صلاحية</td><td>يُرفض التنزيل.</td></tr>
+        <tr><td>يغيّر الموافق مُدخل الشركة أو الفرع</td><td>لا تُقبل إلا قيم الشركة/الفرع المسموح بها.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout red"><strong>عامل مانع</strong>لا تُصدر حسابات خارجية حتى تجتاز اختبارات العزل هذه. يجب أن تكون فحوص الصلاحيات من جهة الخادم؛ فإخفاء زر لا يكفي.</div>
+  </main>
+  <footer class="page-footer"><span>لا تزال الشركات الثلاث المعتمدة للمشاركة تحتاج إلى صلاحيات وحدود بيانات منفصلة.</span><span>Axora | خطة التجربة</span></footer>
+</section>
+
+<!-- 12 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">تصميم القياس</div><div class="page-number">12</div></header>
+  <main class="page-body">
+    <div class="eyebrow">خط الأساس قبل Axora</div>
+    <h2>قِس العملية نفسها قبل التجربة وأثناءها</h2>
+    <p class="lede">اختر لكل شركة آخر 10 دورات شراء متشابهة، أو راقب أسبوعين من الطريقة الحالية. استخدم الفئة ودرجة التعقيد نفسيهما حيثما أمكن.</p>
+    <table>
+      <thead><tr><th>المقياس</th><th>مصدر خط الأساس</th><th>مصدر Axora</th><th>طريقة الحساب</th></tr></thead>
+      <tbody>
+        <tr><td>الوقت من الطلب إلى الموافقة</td><td>الطوابع الزمنية للرسائل/البريد الإلكتروني</td><td>طوابع التدقيق الزمنية</td><td>وقت الموافقة ناقص وقت الإنشاء</td></tr>
+        <tr><td>الوقت من الطلب إلى إصدار أمر الشراء</td><td>تواريخ الطلب وPO/الطلبية</td><td>سجل الحالة</td><td>وقت إصدار الطلبية ناقص وقت الإنشاء</td></tr>
+        <tr><td>نقاط التلامس اليدوية</td><td>الرسائل والمكالمات وعدد مرات إعادة الإدخال</td><td>سجل الأعمال خارج النظام</td><td>العدد لكل طلب</td></tr>
+        <tr><td>وقت مقارنة عروض الأسعار</td><td>تقدير الموظف مع الطوابع الزمنية</td><td>طوابع التوريد الزمنية</td><td>الدقائق لكل RFQ</td></tr>
+        <tr><td>حالات متابعة الحالة</td><td>رسائل/مكالمات المتابعة</td><td>سجل الأعمال خارج النظام</td><td>العدد لكل طلب</td></tr>
+        <tr><td>السجلات الناقصة</td><td>عرض سعر/فاتورة/POD مفقود</td><td>تقرير المستندات المطلوبة</td><td>الدورات غير المكتملة / الإجمالي</td></tr>
+        <tr><td>مطابقة الدفع عند الاستلام</td><td>فحص إثبات التسليم والفاتورة والإيصال</td><td>مطابقة الطلب والإيصال وسجل النقد</td><td>دورات COD المطابقة / دورات COD المدفوعة</td></tr>
+        <tr><td>تكرار الاستخدام</td><td>لا ينطبق</td><td>المستخدمون/الدورات الفريدة أسبوعيًا</td><td>الأسابيع والدورات النشطة</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:.13in">
+      <div class="card blue"><h3>يُلتقط تلقائيًا</h3><p>معرّف الطلب، والشركة، والمستخدم، والطوابع الزمنية، وتغييرات الحالة، وعرض السعر، والمورد المختار، والتسليم، والفاتورة، وحالة الدفع عند الاستلام، ورقم الإيصال، وحدث التدقيق.</p></div>
+      <div class="card amber"><h3>يُلتقط يدويًا</h3><p>المكالمات، ومتابعات WhatsApp/البريد الإلكتروني، وإعادة العمل، والالتباس، والمساعدة التدريبية، وتعليقات المستخدمين، والعمل المنجز خارج Axora وسببه.</p></div>
+    </div>
+    <div class="callout"><strong>استخدم الوسيط، وليس المتوسطات وحدها</strong>يمكن لطلب عاجل واحد أن يشوه المتوسط. اعرض على مستوى الشركة وسيط الوقت والنطاق وعدد الدورات المكتملة. وأظهر العدد الخام بجوار كل نسبة مئوية.</div>
+    <div class="callout teal"><strong>قاعدة الخصوصية</strong>استخدم رموز المشاركين في مجموعة بيانات البحث. قد يحتفظ النظام التشغيلي بأسماء المستخدمين، لكن يجب ألا تكشف بطاقة أداء المشرف معلومات شخصية غير ضرورية.</div>
+  </main>
+  <footer class="page-footer"><span>قارن معاملات متماثلة واحتفظ بالمقام.</span><span>Axora | القياس</span></footer>
+</section>
+
+<!-- 13 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">بطاقة قياس النجاح</div><div class="page-number">13</div></header>
+  <main class="page-body">
+    <div class="eyebrow">حدود قرار متفق عليها مسبقًا</div>
+    <h2>عرّف النجاح قبل رؤية النتائج</h2>
+    <div class="score">
+      <div class="head">المجال</div><div class="head">المقياس</div><div class="head">الهدف</div><div class="head">مستوى التوقف</div><div class="head">المصدر</div>
+      <div>التبني</div><div>الطلبات المؤهلة التي عولجت في Axora</div><div><bdi dir="ltr" class="token">&ge; 70%</bdi></div><div><bdi dir="ltr" class="token">&lt; 40%</bdi></div><div>سجل الطلبات</div>
+      <div>التكرار</div><div>الشركات التي أكملت دورتين منفصلتين (2) على الأقل</div><div><bdi dir="ltr" class="token">3 / 3</bdi></div><div><bdi dir="ltr" class="token">&lt; 2 / 3</bdi></div><div>سجل التدقيق</div>
+      <div>السرعة</div><div>وسيط الوقت من الطلب إلى الموافقة أو الطلبية</div><div>تحسن <bdi dir="ltr" class="token">&ge; 30%</bdi></div><div>لا تغيير</div><div>الطوابع الزمنية</div>
+      <div>الجهد</div><div>الرسائل والمكالمات والإدخال المكرر يدويًا</div><div>انخفاض <bdi dir="ltr" class="token">&ge; 30%</bdi></div><div>ارتفاع</div><div>سجل نقاط التلامس</div>
+      <div>السجلات</div><div>الدورات المكتملة مع الدليل المطلوب</div><div><bdi dir="ltr" class="token">&ge; 90%</bdi></div><div><bdi dir="ltr" class="token">&lt; 75%</bdi></div><div>تقرير المستندات</div>
+      <div>ضوابط COD</div><div>طلبات الدفع عند الاستلام المطابقة بصورة صحيحة</div><div>100%</div><div>أي فرق نقدي غير مفسر</div><div>الإيصال/إثبات التسليم/سجل النقد</div>
+      <div>الموثوقية</div><div>الدورات المكتملة بلا عيب حرج</div><div><bdi dir="ltr" class="token">&ge; 95%</bdi></div><div><bdi dir="ltr" class="token">&lt; 85%</bdi></div><div>سجل الحوادث</div>
+      <div>قيمة المستخدم</div><div>المستخدمون النشطون الذين يرون Axora أسهل من الطريقة الحالية</div><div><bdi dir="ltr" class="token">&ge; 70%</bdi></div><div><bdi dir="ltr" class="token">&lt; 50%</bdi></div><div>الاستبيان النهائي</div>
+      <div>الالتزام</div><div>الشركات التي تطلب الاستمرار أو توقع نية الخطوة التالية</div><div><bdi dir="ltr" class="token">&ge; 2 / 3</bdi></div><div><bdi dir="ltr" class="token">&lt; 2 / 3</bdi></div><div>قرار مكتوب</div>
+    </div>
+    <div class="grid-3" style="margin-top:.14in">
+      <div class="card teal"><span class="status green">استمرار</span><h3 style="margin-top:.07in">توسع بحذر</h3><p>تُظهر شركتان على الأقل استخدامًا متكررًا وفائدة قابلة للقياس ورغبة في الاستمرار؛ ولا يوجد فشل رقابي حرج.</p></div>
+      <div class="card amber"><span class="status amber">تحسين</span><h3 style="margin-top:.07in">نفّذ دورة إضافية</h3><p>يرى المستخدمون قيمة، لكن سير العمل أو الوصول أو ضوابط الدفع عند الاستلام أو العمليات تحتاج إلى تصحيح محدد.</p></div>
+      <div class="card red"><span class="status red">توقف أو غيّر المسار</span><h3 style="margin-top:.07in">لا تتوسع</h3><p>الاستخدام مفروض، أو الفائدة غير قابلة للقياس، أو مخاطر التعامل بالنقد/الأمان لا تزال بلا حل.</p></div>
+    </div>
+    <div class="callout amber"><strong>تفسير الحدود</strong>يمكن أن تجتاز الشركة بإظهار تحسن في السرعة بنسبة 30% أو انخفاض في الجهد اليدوي بنسبة 30%، لكنها يجب أن تثبت أيضًا تكرار الاستخدام واكتمال السجلات. لا تُخفِ النتائج الضعيفة داخل متوسط مجمع.</div>
+  </main>
+  <footer class="page-footer"><span>ينبغي أن يعتمد المشرف الحدود قبل الأسبوع 1.</span><span>Axora | بطاقة القياس</span></footer>
+</section>
+
+<!-- 14 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">دليل المقابلات</div><div class="page-number">14</div></header>
+  <main class="page-body">
+    <div class="eyebrow">اسأل عن السلوك الحقيقي</div>
+    <h2>قابل المستخدمين قبل التجربة وأثناءها وبعدها</h2>
+    <div class="grid-3">
+      <div class="card blue">
+        <h4>قبل</h4><h3>افهم العملية الحالية</h3>
+        <ol>
+          <li>حدّثني عن آخر عملية شراء من الطلب حتى التسليم وإيصال الدفع عند الاستلام.</li>
+          <li>من شارك فيها، وماذا فعل كل شخص؟</li>
+          <li>ما الرسائل والجداول والملفات التي استُخدمت؟</li>
+          <li>أين انتظرت أو احتاجت إلى متابعة؟</li>
+          <li>ما الخطأ أو المستند المفقود الذي يحدث غالبًا؟</li>
+        </ol>
+      </div>
+      <div class="card teal">
+        <h4>أثناء</h4><h3>راقب الاحتكاك</h3>
+        <ol>
+          <li>ما الذي أكملته من دون مساعدة؟</li>
+          <li>أي إجراء كان غير واضح أو أبطأ؟</li>
+          <li>ما العمل الذي استمر خارج Axora؟</li>
+          <li>أي إشعار أو حالة احتجت إليها؟</li>
+          <li>هل ستستخدم Axora إذا لم يذكّرك مالك التجربة؟</li>
+        </ol>
+      </div>
+      <div class="card amber">
+        <h4>بعد</h4><h3>اختبر الالتزام</h3>
+        <ol>
+          <li>أي مهمة أصبحت أسهل؟ أعط مثالًا واحدًا.</li>
+          <li>أي مهمة لم تتحسن؟</li>
+          <li>ماذا سيحدث إذا توقفت Axora غدًا؟</li>
+          <li>من ينبغي أن يمتلكها ويدفع ثمنها داخليًا؟</li>
+          <li>هل ستستمر شركتك ثلاثة أشهر إضافية؟</li>
+        </ol>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:.16in">
+      <div class="card soft"><h3>الأشخاص المطلوبون في كل شركة</h3><ul><li>مقدم طلب واحد</li><li>مستخدم واحد من المشتريات/الإدارة</li><li>موافق أو مدير واحد</li><li>مستخدم واحد من المالية أو الاستلام</li></ul><p class="small muted">استهدف <bdi dir="ltr" class="token">3-5</bdi> مشاركين لكل شركة، بحسب سير العمل الحقيقي.</p></div>
+      <div class="card soft"><h3>الدليل الذي يجب الاحتفاظ به</h3><ul><li>رمز دور المشارك، لا تفاصيل شخصية غير ضرورية</li><li>التاريخ وأسبوع التجربة</li><li>ملاحظات واقعية قصيرة ومثال دقيق واحد</li><li>التقييم: أسهل، أو كما هو، أو أصعب</li><li>قرار الاستمرار وشروطه</li></ul></div>
+    </div>
+    <div class="callout red"><strong>أسئلة يجب تجنبها</strong>«هل تعجبك Axora؟»، و«هل ستستخدم نظامًا حديثًا؟»، و«هل الأتمتة جيدة؟» تدعو إلى إجابات مجاملة. اسأل عن آخر معاملة حقيقية، والسلوك الملحوظ، والتزام محدد بالاستمرار.</div>
+    <div class="callout"><strong>قاعدة الاستعداد للدفع</strong>تختبر التجربة المجانية الاستخدام، لا التسعير. وإذا لم تُفرض رسوم، فاطلب بيان استمرار موقعًا يتضمن نطاق سعر مقبولًا أو قرارًا بتمديد مدفوع.</div>
+  </main>
+  <footer class="page-footer"><span>السلوك السابق والالتزام الحقيقي أقوى من المجاملات.</span><span>Axora | دليل البحث</span></footer>
+</section>
+
+<!-- 15 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">سيناريوهات المعاملات</div><div class="page-number">15</div></header>
+  <main class="page-body">
+    <div class="eyebrow">اختبر أكثر من المسار المثالي</div>
+    <h2>يجب أن يتعامل كل نظام حقيقي مع الاستثناءات بأمان</h2>
+    <table class="tight">
+      <thead><tr><th>#</th><th>السيناريو</th><th>الدليل المتوقع</th><th>شرط الاجتياز</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>طلب قياسي متعدد الأصناف</td><td>الأصناف، والكميات، والفرع، وتاريخ الاحتياج</td><td>إجماليات ومعرّف طلب صحيحان</td></tr>
+        <tr><td>2</td><td>عرضا أسعار متكافئان من موردين</td><td>المواصفات وأساس السعر نفسيهما</td><td>تسجيل سبب الاختيار</td></tr>
+        <tr><td>3</td><td>رفض الموافقة وإعادة التقديم</td><td>السبب، والمحرر، والطوابع الزمنية</td><td>لا استبدال صامت</td></tr>
+        <tr><td>4</td><td>طلب عاجل</td><td>سبب الاستعجال والاستثناء المعتمد</td><td>بقاء السياسة ظاهرة</td></tr>
+        <tr><td>5</td><td>تسليم جزئي</td><td>الكمية المسلّمة والرصيد</td><td>لا تسليم زائد ولا إغلاق زائف</td></tr>
+        <tr><td>6</td><td>صنف تالف أو خاطئ</td><td>صورة/مستند، وشكوى، ونتيجة</td><td>وضوح مالك الإرجاع/الإشعار الدائن</td></tr>
+        <tr><td>7</td><td>نجاح تحصيل الدفع عند الاستلام</td><td>إثبات التسليم، ورقم الإيصال، والمبلغ، والمحصّل</td><td>طلب واحد وإيصال وقيد نقدي متطابقان</td></tr>
+        <tr><td>8</td><td>رفض التسليم أو عدم توفر النقد</td><td>حالة المحاولة، والسبب، وملاحظة المحصّل</td><td>لا حالة مدفوع أو مغلق زائفة</td></tr>
+        <tr><td>9</td><td>الإلغاء أو الإرجاع بعد الدفع عند الاستلام</td><td>السبب، والموافقة، ومسار الإشعار الدائن</td><td>اتساق حالة الفاتورة والدفع عند الاستلام</td></tr>
+        <tr><td>10</td><td>وصول غير مصرح به إلى سجل</td><td>حدث الرفض وسجل الأمان</td><td>عدم كشف أي بيانات</td></tr>
+        <tr><td>11</td><td>تحديث مكرر لحالة COD أو تحديث المتصفح</td><td>إرسال مكرر للحالة</td><td>تسجيل واقعة تحصيل واحدة فقط</td></tr>
+        <tr><td>12</td><td>تمرين النسخ الاحتياطي والاستعادة</td><td>تقرير اختبار مؤرخ زمنيًا</td><td>استعادة السجلات والمرفقات</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:.13in">
+      <div class="card teal"><h3>القبول التشغيلي</h3><p>تُغلق 95% على الأقل من دورات التجربة المكتملة من دون عيب حرج. ولكل استثناء مالك مسمى ونتيجة نهائية.</p></div>
+      <div class="card red"><h3>شرط التوقف الفوري</h3><p>خسارة نقد غير مفسرة، أو كشف بيانات بين الشركات، أو غياب إيصال COD/إثبات التسليم، أو سجلات غير قابلة للاستعادة، أو مشكلة أمنية حرجة بلا حل.</p></div>
+    </div>
+    <div class="callout amber"><strong>استخدم طلبات اختبار أولًا</strong>تدرّب على رفض التسليم، وتكرار تحديث COD، والفرق النقدي، والإرجاع/الإشعار الدائن من دون نقد حقيقي. لا تستخدم الدفع عند الاستلام الحقيقي إلا بعد نجاح الإجراء نفسه واعتماد المشرف لسقف التعامل بالنقد.</div>
+  </main>
+  <footer class="page-footer"><span>تكشف الاستثناءات الجاهزية التشغيلية أفضل من العرض التوضيحي.</span><span>Axora | اختبارات القبول</span></footer>
+</section>
+
+<!-- 16 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">ضوابط الدفع عند الاستلام</div><div class="page-number">16</div></header>
+  <main class="page-body">
+    <div class="eyebrow">ينقل COD تركيز الرقابة إلى التعامل بالنقد</div>
+    <h2>وثّق كل عملية تسليم للنقد</h2>
+    <p class="lede">في هذه التجربة، يدفع المشتري نقدًا فقط إلى البائع أو مندوب التسليم المفوض بعد قبول التسليم. تسجل Axora الأدلة لكنها لا تجمع النقد أو تنقله أو تحتفظ به أو تودعه أو تعيده. وتظل واجبات الإفصاح والإيصال وe-Invoice منطبقة.<sup><a href="#ref10">[10]</a></sup><sup><a href="#ref14">[14]</a></sup><sup><a href="#ref16">[16]</a></sup><sup><a href="#ref17">[17]</a></sup></p>
+    <table>
+      <thead><tr><th>واقعة COD</th><th>قاعدة التجربة</th><th>الدليل المطلوب</th></tr></thead>
+      <tbody>
+        <tr><td>يعرض البائع الطلب</td><td><span class="status green">تحقق أولًا</span></td><td>معرّف الطلب، والفاتورة/e-Invoice، ومبلغ COD الدقيق.</td></tr>
+        <tr><td>يقبل المشتري التسليم</td><td><span class="status green">تحصيل مرة واحدة</span></td><td>إثبات تسليم موقّع، وإيصال مرقّم، والمبلغ والوقت وهوية المحصّل.</td></tr>
+        <tr><td>يُرفض التسليم أو يكون ناقصًا أو تالفًا</td><td><span class="status amber">لا تحصّل</span></td><td>سجل استثناء وفاتورة مصححة أو إشعار دائن.</td></tr>
+        <tr><td>يسلّم المحصّل النقد إلى البائع</td><td><span class="status amber">رقابة مزدوجة</span></td><td>سجل عدّ وتسليم موقّع؛ ولا تحوز Axora النقد مطلقًا.</td></tr>
+        <tr><td>يغلق البائع يوم العمل</td><td><span class="status green">مطابقة</span></td><td>تطابق الطلب والفاتورة وإثبات التسليم والإيصال وسجل النقد/الإيداع.</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:.13in">
+      <div class="card blue">
+        <h3>مسؤوليات COD المكتوبة</h3>
+        <ul class="checklist"><li>البائع القانوني</li><li>مُحصّل النقد المفوض</li><li>السعر والضريبة بدقة</li><li>مصدر الإيصال/e-Invoice</li><li>مسؤول تسليم النقد</li><li>مسؤول الفروقات والإرجاع</li></ul>
+      </div>
+      <div class="card teal">
+        <h3>ضوابط COD التقنية</h3>
+        <ul class="checklist"><li>لا حالة مدفوع قبل التأكيد</li><li>رقم إيصال فريد</li><li>فصل دور المحصّل عن المستلم</li><li>سجل تصحيح غير قابل للمحو</li><li>التحقق من المبلغ والطلب</li><li>مطابقة COD يوميًا</li></ul>
+      </div>
+    </div>
+    <div class="callout red"><strong>بوابة COD الحقيقي</strong>لا نقد حقيقي حتى يعتمد المشرف إجراء COD، ويسمّي كل محصّل ومسؤول عن تسليم النقد، ويشاهد اختبارًا ناجحًا للتسليم والإيصال والرفض والفرق النقدي والمطابقة في نهاية اليوم. ولا تتعامل Axora مع النقد.</div>
+  </main>
+  <footer class="page-footer"><span>COD عملية تشغيلية منضبطة، وليس ميزة دفع إلكتروني.</span><span>المصادر [10]، [14]، [16]، [17]</span></footer>
+</section>
+
+<!-- 17 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">الجاهزية القانونية والتعاقدية</div><div class="page-number">17</div></header>
+  <main class="page-body">
+    <div class="eyebrow">قبل أول معاملة حقيقية</div>
+    <h2>حتى التجربة نشاط تجاري حقيقي</h2>
+    <div class="grid-2">
+      <div class="card blue">
+        <h3>حدّد المشغل</h3>
+        <ul>
+          <li>الكيان القانوني الماليزي، ورقم SSM، والعنوان</li>
+          <li>حسابات الشركة المعتمدة ونقاط التعامل بنقد COD</li>
+          <li>بريد الدعم، والهاتف، ومالك الشكاوى</li>
+          <li>دور Axora: مزوّد برمجيات، أو وكيل، أو موزع، أو مشغّل منصة سوق إلكتروني</li>
+        </ul>
+        <p class="small">وفق بيانات SSM المنشورة<sup><a href="#ref9">[9]</a></sup>، إذا لزم تأسيس <bdi dir="ltr" class="token">Sdn. Bhd.</bdi> جديدة، فتحتاج الشركة الخاصة إلى مدير واحد على الأقل يقيم عادةً في ماليزيا، ويجب أن تعيّن أمين شركة خلال 30 يومًا؛ ورسوم التأسيس المنشورة وقت إعداد التقرير هي <bdi dir="ltr" class="token">RM 1,000</bdi>.</p>
+      </div>
+      <div class="card teal">
+        <h3>وقّع الحد الأدنى من المستندات</h3>
+        <ul>
+          <li>اتفاقية تجربة للشركات الثلاث</li>
+          <li>شروط المشتري والبائع/المنصة</li>
+          <li>إشعار الخصوصية واتفاقية معالجة البيانات</li>
+          <li>إجراءات الإرجاع والإلغاء والشكاوى والنزاعات</li>
+          <li>سياسة السرية والملكية الفكرية والمنتجات المقيدة</li>
+        </ul>
+      </div>
+    </div>
+    <table class="tight">
+      <thead><tr><th>السؤال التعاقدي</th><th>يجب الإجابة عنه</th></tr></thead>
+      <tbody>
+        <tr><td>من يورد البضائع؟</td><td>بائع مسمى أو Axora بصفتها موزعًا؛ لا مجال للغموض.</td></tr>
+        <tr><td>من يستلم نقد COD؟</td><td>البائع أو مندوب التسليم المسمى بموجب إجراء COD المعتمد؛ ولا تستلم Axora أي نقد.</td></tr>
+        <tr><td>من يصدر الفاتورة/e-Invoice؟</td><td>البائع أو Axora أو تدفق المنصة بحسب تأكيد مستشار الضرائب.</td></tr>
+        <tr><td>من يتولى التسليم والعيوب؟</td><td>SLA مسمى، ومالك للشكاوى والإرجاع والإشعار الدائن.</td></tr>
+        <tr><td>متى يُقبل الطلب؟</td><td>نقطة واضحة بعد الموافقة وتأكيد المورد؛ ولا يُحصّل COD إلا عند قبول التسليم.</td></tr>
+        <tr><td>ما الدليل الذي يُحتفظ به؟</td><td>نسخة الشروط، والقبول، والطلب، والموافقة، والتغييرات، والإلغاء.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <strong>خط أساس شفافية التجارة الإلكترونية</strong>
+      تفرض لوائح حماية المستهلك (معاملات التجارة الإلكترونية) لعام 2024 إفصاحات المورّد، وآلية تصحيح الأخطاء، وتأكيد استلام الطلب، وقناة للشكاوى، واحتفاظ مشغّل منصة السوق بالسجلات لمدة ثلاث سنوات في المعاملات التي يشملها نطاقها.<sup><a href="#ref10">[10]</a></sup> قد لا تنطبق بعض سبل الانتصاف المخصصة للمستهلك على مشتريات الشركات لأغراض تجارية، لكن ذلك لا يثبت إعفاء تجربة B2B؛ لذلك تطبّق Axora هذه الضوابط إلى أن يؤكد محامٍ ماليزي نطاق التطبيق. ويعترف قانون التجارة الإلكترونية لعام 2006 بالعقود الإلكترونية.<sup><a href="#ref11">[11]</a></sup>
+    </div>
+    <div class="callout amber"><strong>تأكيدات مهنية مطلوبة</strong>احصل قبل التفعيل على مشورة ماليزية بشأن مسؤولية COD والتعامل بالنقد، ومسؤولية e-Invoice/SST، والصياغة النهائية لعقد السوق/PDPA.</div>
+  </main>
+  <footer class="page-footer"><span>هذا تخطيط امتثال عام فقط؛ احصل على مشورة مهنية ماليزية.</span><span>المصادر <bdi dir="ltr" class="token">[9]-[11]</bdi></span></footer>
+</section>
+
+<!-- 18 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">الخصوصية والأمان والاستضافة</div><div class="page-number">18</div></header>
+  <main class="page-body">
+    <div class="eyebrow">تجربة مغلقة، بيانات حقيقية</div>
+    <h2>لا تزال ثلاث شركات تنشئ واجبات تتعلق بـ PDPA والأمان</h2>
+    <p class="lede">ينطبق قانون PDPA الماليزي على البيانات الشخصية المعالجة في المعاملات التجارية، بما فيها بيانات جهات اتصال العمل، وسجلات الدخول، والموافقات، وسلوك المعاملات عندما ترتبط بشخص محدد أو قابل للتحديد.<sup><a href="#ref12">[12]</a></sup></p>
+    <div class="grid-3">
+      <div class="card blue"><h3>حوكمة البيانات</h3><ul><li>إشعار خصوصية بالإنجليزية و<bdi dir="ltr" class="token">Bahasa Malaysia</bdi></li><li>قائمة الغرض والحد الأدنى من البيانات</li><li>جدول الاحتفاظ/الحذف</li><li>إجراء طلب الوصول/التصحيح</li><li>سجل المعالجين وعمليات النقل</li></ul></div>
+      <div class="card teal"><h3>أمان التطبيق</h3><ul><li>عزل بيانات وصلاحيات الشركات</li><li>أقل صلاحية وMFA للمشرفين</li><li>تجزئة كلمات المرور بطريقة آمنة وجلسات محمية</li><li>TLS وتنزيلات محمية</li><li>سجلات، وحدود معدل، وفحوص رفع الملفات</li></ul></div>
+      <div class="card amber"><h3>المرونة التشغيلية</h3><ul><li>نسخ احتياطية مشفرة يوميًا</li><li>نسخة منفصلة/خارج الموقع</li><li>اختبار استعادة قبل التجربة</li><li>عملية للتحديثات والثغرات</li><li>مالك للحوادث وشجرة اتصالات</li></ul></div>
+    </div>
+    <table class="tight">
+      <thead><tr><th>موضوع PDPA</th><th>تفسيره في التجربة</th></tr></thead>
+      <tbody>
+        <tr><td>DPO</td><td>يُطلب DPO عند تجاوز 20,000 صاحب بيانات، أو تجاوز 10,000 صاحب بيانات فيما يتعلق ببيانات شخصية حساسة أو مالية، أو عند إجراء مراقبة منتظمة ومنهجية. وجود ثلاث شركات وحده لا يفعّل الحدين العدديين، لكنه لا يحسم شرط المراقبة؛ لذلك عيّن مسؤول خصوصية واطلب تأكيدًا قانونيًا بشأن DPO.<sup><a href="#ref13">[13]</a></sup></td></tr>
+        <tr><td>خرق البيانات</td><td>حافظ على إجراء للحوادث والإشعار. توجب الإرشادات إخطار المفوض بالخرق المؤهل خلال 72 ساعة من العلم به، وإخطار أصحاب البيانات المتأثرين خلال سبعة أيام بعد الإخطار الأول للمفوض عندما ينطبق معيار الضرر الجسيم.<sup><a href="#ref13">[13]</a></sup></td></tr>
+        <tr><td>المعالجون</td><td>وثّق مقدمي الاستضافة، والبريد الإلكتروني، والنسخ الاحتياطي، والتحليلات، ومسؤولياتهم الأمنية.</td></tr>
+        <tr><td>البيانات العابرة للحدود</td><td>ارسم خريطة لكل خدمة خارجية وموقع نسخ احتياطي، ولا تفعّل نقل البيانات عبر الحدود قبل توثيق الشرط القانوني المناسب بموجب PDPA.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout red"><strong>حدود الخادم</strong>لا تكشف كمبيوتر المكتب مباشرة عبر إعادة توجيه منافذ الموجه. وللوصول الخارجي من الشركات، استخدم بنية آمنة معتمدة من الشركة تتضمن HTTPS مراقبًا، وإدارة منضبطة، ونسخًا احتياطية، وطاقة/إنترنت موثوقين، وخطة استجابة للحوادث. خزّن الحد الأدنى فقط من أدلة COD اللازمة للتجربة.</div>
+  </main>
+  <footer class="page-footer"><span>الاستضافة الذاتية لا تلغي التزامات PDPA أو الأمان.</span><span>المصادر [12]، [13]</span></footer>
+</section>
+
+<!-- 19 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">الضرائب والفواتير والسجلات</div><div class="page-number">19</div></header>
+  <main class="page-body">
+    <div class="eyebrow">احسم دور المعاملة أولًا</div>
+    <h2>تعتمد e-Invoice وSST على ما تفعله Axora قانونيًا</h2>
+    <table>
+      <thead><tr><th>دور Axora</th><th>التدفق التجاري</th><th>سؤال الضريبة/الفاتورة</th></tr></thead>
+      <tbody>
+        <tr><td>مقدم برنامج</td><td>يتعاقد المشتري مع البائع؛ ويسلّم البائع البضائع ويحصّل COD. وتتقاضى Axora رسم برنامج.</td><td>التدفق المقترح هو أن تصدر Axora فاتورة رسم البرمجيات أو الخدمة، وأن يصدر البائع فاتورة البضائع وإيصال COD؛ ويجب أن يؤكد وكيل ضرائب ماليزي معاملة المنصة.</td></tr>
+        <tr><td>وكيل مُفصح عنه</td><td>تنسق Axora نيابة عن مشترٍ أو بائع.</td><td>يجب توثيق الوكالة والعمولة والمعاملة الضريبية المحتملة بوصف Axora منصة تجارة إلكترونية.</td></tr>
+        <tr><td>موزع/تاجر</td><td>تشتري Axora البضائع أو تعيد بيعها أو تحصّل COD باسمها.</td><td>خارج نطاق التجربة المعتمد؛ ويتطلب مراجعة منفصلة للعقد والضريبة وحيازة النقد ورأس المال العامل.</td></tr>
+        <tr><td>مشغل سوق</td><td>يتعامل عدة بائعين عبر Axora.</td><td>قد تنطبق قواعد الفاتورة الإلكترونية للمنصة، والفاتورة الإلكترونية ذاتية الإصدار (Self-billed e-Invoice)، والاحتفاظ بسجلات البائعين.</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:.14in">
+      <div class="card blue">
+        <h3>إجراءات e-Invoice</h3>
+        <ul class="checklist"><li>تأكيد المشغل وحالة تنفيذ كل شركة.</li><li>جمع الاسم القانوني، ورقم SSM، وTIN، والعنوان، وحالة SST.</li><li>تعريف تدفق الفاتورة، وإيصال COD، والإشعار الدائن، والإلغاء.</li><li>تخزين معرّف تحقق MyInvois حيثما ينطبق.</li><li>استخدام الإدخال اليدوي في MyInvois لتجربة صغيرة جدًا إذا وافق مستشار الضرائب.</li></ul>
+      </div>
+      <div class="card teal">
+        <h3>إجراءات SST</h3>
+        <ul class="checklist"><li>تصنيف رسوم البرمجيات، وخدمات إدارة المشتريات، والعمولات، والخدمات اللوجستية كلًّا على حدة.</li><li>تأكيد حد التسجيل والمعدل مع محاسب.</li><li>عدم تطبيق SST الخاص بالبائع من دون التحقق من حالته.</li><li>فصل قيمة المنتج، ورسم المنصة، والتسليم، والضريبة في التقارير.</li><li>مطابقة سجلات Axora والفاتورة وإيصال COD وسجلات نقد البائع.</li></ul>
+      </div>
+    </div>
+    <div class="callout amber">
+      <strong>التوقيت الحالي مفصل ويعتمد على الوقائع الخاصة</strong>
+      تتضمن مواد e-Invoice الحالية لدى LHDN حدود التنفيذ والإعفاءات والتواريخ التيسيرية التي تعتمد على حجم المبيعات والملكية وسنة بدء النشاط.<sup><a href="#ref14">[14]</a></sup> لا تعتمد على تاريخ رئيس واحد. احصل من وكيل ضرائب ماليزي على خريطة مكتوبة للتجربة. ويذكر MySST معدلًا عامًا لضريبة الخدمات قدره 8% مع فئات مختارة، منها الخدمات اللوجستية، بمعدل 6%، وذلك بحسب التصنيف والحد.<sup><a href="#ref15">[15]</a></sup>
+    </div>
+    <div class="callout red"><strong>عامل مانع للإطلاق</strong>لا ينفذ طلب COD حقيقي حتى يُحدد البائع، ومُحصّل النقد المفوض، ومصدر الفاتورة/الإيصال، ومسؤولية e-Invoice، ومعاملة SST، ومسار الإرجاع/الإشعار الدائن، ويؤكد وكيل ضرائب ماليزي هذا التوزيع كتابيًا.</div>
+  </main>
+  <footer class="page-footer"><span>تتبع المسؤولية الضريبية التدفق القانوني والتجاري.</span><span>المصادر [14]، [15]</span></footer>
+</section>
+
+<!-- 20 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">الموردون والمنتجات والتسليم</div><div class="page-number">20</div></header>
+  <main class="page-body">
+    <div class="eyebrow">أبقِ التجربة بسيطة تشغيليًا</div>
+    <h2>استخدم موردين متحققًا منهم وفئات منخفضة المخاطر</h2>
+    <div class="grid-3">
+      <div class="card teal"><h3>ابدأ بـ</h3><ul><li>القرطاسية العادية</li><li>الورق والملفات</li><li>لوازم مكتبية بسيطة غير كهربائية</li><li>مستهلكات التنظيف العامة</li><li>مواد مؤن جافة بلا ادعاءات خاصة</li></ul></div>
+      <div class="card amber"><h3>راجع أولًا</h3><ul><li>أصالة أحبار الطابعات</li><li>تركيب الأثاث وضمانه</li><li>ملحقات تقنية المعلومات</li><li>PPE ومنتجات السلامة</li><li>الأغذية وادعاءات الحلال</li></ul></div>
+      <div class="card red"><h3>استبعد من التجربة</h3><ul><li>الأدوية والأجهزة الطبية</li><li>المواد الكيميائية الخطرة</li><li>السلع الكهربائية أو اللاسلكية المنظمة</li><li>الكحول والتبغ وأجهزة vape</li><li>السلع الخاضعة للرقابة أو المستوردة المقيدة</li></ul></div>
+    </div>
+    <table class="tight">
+      <thead><tr><th>ضبط المورد</th><th>الحد الأدنى من الدليل</th></tr></thead>
+      <tbody>
+        <tr><td>الهوية والصلاحية</td><td>ملف SSM حالي، وجهة اتصال، وصلاحية الممثل، وتفاصيل حساب بنكي للشركة متحقق منها.</td></tr>
+        <tr><td>الضريبة</td><td>TIN، وحالة SST، وقدرة الفاتورة/e-Invoice حيثما تنطبق.</td></tr>
+        <tr><td>المنتج</td><td>العلامة، والطراز/المواصفات، والوحدة، وأساس السعر، والضمان، والموافقات المطلوبة.</td></tr>
+        <tr><td>عرض السعر</td><td>الصلاحية، ومدة التوريد، وتكلفة التسليم، والضريبة، والبدائل المقبولة.</td></tr>
+        <tr><td>التسليم</td><td>معرّف طلب Axora، والمستلم، والكمية، والتاريخ، ودليل التسليم، ومسار الاستثناء.</td></tr>
+        <tr><td>الأداء</td><td>الاستجابة لعرض السعر، ومعدل تلبية الطلب، والتسليم في الموعد كاملًا، والعيوب، والإرجاعات، وسجل النزاعات.</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-2" style="margin-top:.13in">
+      <div class="card blue"><h3>نموذج تنفيذ التجربة</h3><p>استخدم التسليم المباشر من المورد. لا تستأجر مستودعًا. تتتبع Axora الطلب والدليل والاستثناء، بينما يحدد العقد من يتحمل مسؤولية البضائع.</p></div>
+      <div class="card teal"><h3>مصدران للأصناف الأساسية</h3><p>أعد موردين معتمدين لكل صنف/فئة متكررة حتى لا يوقف فشل واحد التجربة، وتبقى مقارنة عروض الأسعار ذات معنى.</p></div>
+    </div>
+    <div class="callout"><strong>لا تعد بسرعة وطنية بعد</strong>انشر فقط مدد التوريد المثبتة أثناء التجربة. قِس أداء التسليم في الموعد كاملًا قبل الإعلان عن أي وعد بمستوى خدمة.</div>
+  </main>
+  <footer class="page-footer"><span>التحقق اليدوي مناسب لثلاث شركات ومجموعة صغيرة من الموردين.</span><span>Axora | العمليات</span></footer>
+</section>
+
+<!-- 21 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">خارطة طريق المنتج</div><div class="page-number">21</div></header>
+  <main class="page-body">
+    <div class="eyebrow">ابنِ استنادًا إلى الدليل فقط</div>
+    <h2>افصل بوابات التجربة عن خصائص السوق اللاحقة</h2>
+    <table>
+      <thead><tr><th>الأولوية</th><th>القدرة</th><th>السبب</th></tr></thead>
+      <tbody>
+        <tr><td><span class="status red">قبل التشغيل الحقيقي</span></td><td>مسار متحقق لتحصيل COD وإصداره ومطابقته</td><td>يمنع خسارة النقد وغموض المسؤولية.</td></tr>
+        <tr><td><span class="status red">قبل الحسابات</span></td><td>عزل بيانات وصلاحيات الشركات واختبارات الوصول</td><td>يمنع كشف البيانات بين الشركات.</td></tr>
+        <tr><td><span class="status red">قبل البيانات</span></td><td>إشعار الخصوصية، والعقود، واختبار النسخ الاحتياطي والاستعادة</td><td>مطلوب للبيانات التجارية الحقيقية.</td></tr>
+        <tr><td><span class="status amber">التجربة</span></td><td>تصدير بسيط لخط الأساس/KPI وتقرير الاستثناءات</td><td>ينتج دليل قرار من دون إعادة بناء يدوية.</td></tr>
+        <tr><td><span class="status amber">التجربة</span></td><td>إشعارات واضحة وملكية للإجراءات</td><td>يختبر ما إذا كانت متابعة الحالة تنخفض.</td></tr>
+        <tr><td><span class="status blue">بعد قرار الاستمرار</span></td><td>كتالوج خدمة ذاتية للمشتري، وميزانيات، وطلبات متكررة</td><td>يؤتمت سير عمل متكررًا ومثبتًا.</td></tr>
+        <tr><td><span class="status blue">بعد قرار الاستمرار</span></td><td>بوابة المورد، وتتبع شركة الشحن، وMyInvois API</td><td>يقلل العمليات اليدوية بعد وجود الحجم.</td></tr>
+        <tr><td><span class="status blue">لاحقًا</span></td><td>ERP/API، وتحليلات متقدمة، وتطبيق محمول/PWA</td><td>التوسع والتكامل المؤسسيان.</td></tr>
+        <tr><td><span class="status blue">لاحقًا بكثير</span></td><td>مستودع، وائتمان عميل، ومدفوعات غير COD، وسوق مفتوح</td><td>تعقيد رأسمالي وتنظيمي.<sup><a href="#ref19">[19]</a></sup></td></tr>
+      </tbody>
+    </table>
+    <div class="grid-3" style="margin-top:.14in">
+      <div class="card teal"><h3>احتفظ</h3><p>بالطلبات، وعروض الأسعار، والموافقات، والتسليمات، والمالية، والمستندات، والتقارير، والتدقيق.</p></div>
+      <div class="card amber"><h3>عزّز</h3><p>وصول المستأجرين، ودليل COD، والإشعارات، والاستثناءات، والخصوصية، وتحليلات التجربة.</p></div>
+      <div class="card red"><h3>لا تفرط في البناء</h3><p>كتالوج ضخم، أو تطبيق أصلي، أو AI، أو مستودع، أو ائتمان، أو مشتريات حكومية.</p></div>
+    </div>
+    <div class="callout"><strong>قاعدة خارطة الطريق</strong>يجب أن ترتبط كل خاصية بعد التجربة باختناق مقاس، أو متطلب عميل موقع، أو فائدة واضحة للإيراد/العمليات.</div>
+  </main>
+  <footer class="page-footer"><span>النطاق القائم على الدليل يحمي الوقت والميزانية.</span><span>Axora | خارطة الطريق</span></footer>
+</section>
+
+<!-- 22 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">التكلفة والتعلم التجاري</div><div class="page-number">22</div></header>
+  <main class="page-body">
+    <div class="eyebrow">انخفاض تكلفة الترخيص لا يعني انعدام تكلفة التشغيل</div>
+    <h2>يقلل النظام القائم تكلفة البناء؛ لكن المعاملات الحقيقية تظل مكلفة</h2>
+    <table>
+      <thead><tr><th>بند التكلفة</th><th>معالجته الإضافية في التجربة</th><th>المالك</th></tr></thead>
+      <tbody>
+        <tr><td>حزمة برمجيات Axora</td><td>يمكن أن تكون تكلفة ترخيص الحزمة القائمة/مفتوحة المصدر RM0.</td><td>تقنية المعلومات</td></tr>
+        <tr><td>الاستضافة والطاقة والإنترنت والنسخ الاحتياطي وUPS</td><td>استخدم الموارد القائمة المعتمدة فقط إذا اجتازت بوابات الأمان والموثوقية.</td><td>تقنية المعلومات / الشركة</td></tr>
+        <tr><td>تكلفة التعامل مع COD والتسليم</td><td>تتبع تكلفة الإيصالات ووقت المحصّل وتسليم النقد وإيداع البائع لكل طلب.</td><td>المالية / البائع</td></tr>
+        <tr><td>المنتجات والتسليم</td><td>قيمة الشراء الحقيقية تخص معاملة المشتري/البائع؛ لا تعاملها كميزانية برمجيات.</td><td>المشتري / البائع</td></tr>
+        <tr><td>التأكيد القانوني والضريبي وتأكيد الخصوصية</td><td>احصل على عروض أسعار ماليزية محددة النطاق؛ وهي مطلوبة قبل التفعيل الحقيقي.</td><td>المشغل</td></tr>
+        <tr><td>الضبط والتدريب والدعم</td><td>تتبع الساعات الداخلية حتى لو لم تنتقل أموال.</td><td>فريق التجربة</td></tr>
+        <tr><td>العيوب والإرجاعات والطوارئ</td><td>حدد احتياطيًا بسقف وصلاحية للتعامل مع الحوادث.</td><td>المشرف / المالية</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-3" style="margin-top:.14in">
+      <div class="card blue"><h4>المستوى 1</h4><h3>دليل المشكلة</h3><p>تواجه الفرق بصورة متكررة تأخرًا أو متابعة أو إدخالًا مكررًا أو سجلات ناقصة.</p></div>
+      <div class="card teal"><h4>المستوى 2</h4><h3>دليل القيمة</h3><p>تقلل Axora الوقت/الجهد المقاس ويكرر المستخدمون السلوك.</p></div>
+      <div class="card amber"><h4>المستوى 3</h4><h3>الدليل التجاري</h3><p>توقع شركة على تمديد مدفوع، أو التزام بميزانية، أو نطاق سعر مقبول.</p></div>
+    </div>
+    <div class="grid-2" style="margin-top:.13in">
+      <div class="card soft"><h3>إذا كانت التجربة مجانية</h3><p>اذكر بوضوح أن الاستعداد للدفع غير مثبت. اشترط قرار استمرار مكتوبًا وسعرًا مقترحًا/مالكًا للميزانية.</p></div>
+      <div class="card soft"><h3>إذا كانت التجربة مدفوعة</h3><p>استخدم رسم منصة/خدمة واحدًا وشفافًا تعتمده المالية. افصل رسوم المنتج والتسليم والضريبة والمنصة.</p></div>
+    </div>
+    <div class="callout red"><strong>لا تمول ائتمان المشتري في MVP</strong>يمكن أن يستهلك الائتمان نقدًا يفوق بكثير تطوير البرنامج. استخدم COD فقط خلال هذه التجربة؛ فهذا قيد أمان مؤقت وليس الهدف النهائي لـAxora. قيّم أي طريقة دفع بديلة لاحقًا كمشروع مستقل يتطلب اعتمادًا منفصلًا.</div>
+  </main>
+  <footer class="page-footer"><span>تتبع الساعات الداخلية واقتصاديات المعاملة حتى عندما تكون تراخيص البرنامج مجانية.</span><span>Axora | الاختبار التجاري</span></footer>
+</section>
+
+<!-- 23 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">سجل المخاطر</div><div class="page-number">23</div></header>
+  <main class="page-body">
+    <div class="eyebrow">اضبط المخاطر قبل التوسع</div>
+    <h2>أكبر المخاطر تشغيلية ومالية وقانونية</h2>
+    <table class="tight">
+      <thead><tr><th>الخطر</th><th>المستوى</th><th>الضابط</th><th>محفز التوقف</th></tr></thead>
+      <tbody>
+        <tr><td>كشف البيانات بين الشركات</td><td>حرج</td><td>عزل بيانات وصلاحيات الشركات، والاختبارات، وأقل صلاحية</td><td>أي كشف مؤكد</td></tr>
+        <tr><td>خسارة نقد COD أو وجود فرق</td><td>حرج</td><td>إيصال مرقّم، وإثبات تسليم موقّع، وتسليم مزدوج الرقابة، ومطابقة يومية</td><td>أي فرق نقدي غير مفسر أو حيازة Axora للنقد</td></tr>
+        <tr><td>عدم تطابق الضريبة أو الفاتورة</td><td>مرتفع</td><td>خريطة أدوار ومطابقة من وكيل ضرائب</td><td>خطأ فاتورة حقيقية بلا حل</td></tr>
+        <tr><td>تعطل خادم المكتب</td><td>مرتفع</td><td>UPS، ومراقبة، ونسخ احتياطي، واستعادة</td><td>بيانات غير قابلة للاستعادة أو توقف متكرر</td></tr>
+        <tr><td>فشل المورد/سلعة مقلدة</td><td>مرتفع</td><td>KYB، ودليل المنتج، وتعدد المصادر</td><td>منتج غير آمن أو احتيالي</td></tr>
+        <tr><td>ضعف التبني الطوعي</td><td>مرتفع</td><td>مراقبة الاستخدام الحقيقي وتقليل التذكيرات</td><td>أقل من شركتين نشطتين</td></tr>
+        <tr><td>انتقال العمل اليدوي فقط إلى فريق Axora</td><td>مرتفع</td><td>تتبع دقائق المشغل لكل معاملة</td><td>ارتفاع الجهد من دون قيمة للمشتري</td></tr>
+        <tr><td>ضعف اقتصاديات المعاملة</td><td>مرتفع</td><td>تسجيل تكلفة التسليم والتعامل مع COD والدعم والإرجاع</td><td>مساهمة سالبة بلا مسار للحل</td></tr>
+        <tr><td>نسخ أصول Lawazem</td><td>متوسط</td><td>علامة وكود ونصوص وبيانات أصلية</td><td>شكوى ملكية فكرية أو تشابه مربك</td></tr>
+        <tr><td>الإفراط في البناء قبل الدليل</td><td>مرتفع</td><td>نطاق تجربة مجمد وبوابات قرار</td><td>عمل خارطة الطريق بلا حاجة مقاسة</td></tr>
+      </tbody>
+    </table>
+    <div class="grid-3" style="margin-top:.14in">
+      <div class="card red"><h3>توقف فورًا</h3><p>خسارة نقد غير مفسرة، أو كشف بيانات، أو غياب إيصال COD/إثبات التسليم، أو سلع غير آمنة، أو احتيال، أو سجلات غير قابلة للاستعادة.</p></div>
+      <div class="card amber"><h3>أوقف مؤقتًا وصحح</h3><p>خريطة الضريبة أو ضوابط COD أو الوصول أو الدليل التعاقدي غير مكتملة قبل الاستخدام الحقيقي.</p></div>
+      <div class="card teal"><h3>واصل التعلم</h3><p>عيوب استخدام عادية أو فجوات عملية من دون أثر في السلامة أو المال أو البيانات.</p></div>
+    </div>
+    <div class="callout"><strong>قاعدة مالك الخطر</strong>يحتاج كل خطر مرتفع أو حرج إلى شخص مسمى، وتاريخ استحقاق، ودليل إغلاق. وعبارة «متدرب تقنية المعلومات يتحقق» لا تمثل ملكية كافية للقرارات القانونية أو الضريبية أو المالية أو المؤسسية.</div>
+  </main>
+  <footer class="page-footer"><span>صعّد الأمر خارج تقنية المعلومات عندما تكون الصلاحية للإدارة أو المالية أو المستشار القانوني.</span><span>Axora | سجل المخاطر</span></footer>
+</section>
+
+<!-- 24 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">القرار بعد ستة أسابيع</div><div class="page-number">24</div></header>
+  <main class="page-body">
+    <div class="eyebrow">فسّر دليل الشركات الثلاث بصورة صحيحة</div>
+    <h2>اتخذ قرارًا على مستوى الشركة، ثم حدد الاختبار التالي</h2>
+    <div class="grid-3">
+      <div class="card teal">
+        <span class="status green">استمرار</span><h3 style="margin-top:.07in">نسخة تجريبية مغلقة</h3>
+        <ul><li>تُظهر <bdi dir="ltr" class="token">2/3</bdi> من الشركات على الأقل استخدامًا متكررًا وقيمة قابلة للقياس.</li><li>تُطابق طلبات COD المدفوعة بصورة صحيحة.</li><li>لا مشكلة حرجة في الخصوصية/الأمان.</li><li>ترغب شركتان (2) على الأقل في الاستمرار.</li></ul>
+        <p class="strong">التالي: حسّن بوابة عزل بيانات وصلاحيات الشركات واستقطب <bdi dir="ltr" class="token">5-10</bdi> شركات إضافية ملتزمة.</p>
+      </div>
+      <div class="card amber">
+        <span class="status amber">تحسين</span><h3 style="margin-top:.07in">دورة ثانية مركزة</h3>
+        <ul><li>المشكلة حقيقية لكن سير عمل واحدًا يمنع التبني.</li><li>يحتاج المستخدمون إلى دور أو إشعار أو تقرير محدد.</li><li>تنشئ عمليات COD عملًا يدويًا أكثر من اللازم.</li><li>القيمة متفاوتة بين الشركات.</li></ul>
+        <p class="strong">التالي: أصلح فجوة واحدة مدعومة بالدليل وكرر التجربة لمدة <bdi dir="ltr" class="token">2-4</bdi> أسابيع.</p>
+      </div>
+      <div class="card red">
+        <span class="status red">توقف/غيّر المسار</span><h3 style="margin-top:.07in">لا تتوسع</h3>
+        <ul><li>لا يحدث الاستخدام إلا عند فرضه.</li><li>لا تحسن جوهري في الوقت أو الجهد.</li><li>تُفضل الأدوات القائمة.</li><li>مخاطر نقد COD/الأمان/الامتثال غير متناسبة.</li></ul>
+        <p class="strong">التالي: احتفظ بقيمة الأداة الداخلية أو غيّر المشكلة المستهدفة.</p>
+      </div>
+    </div>
+    <table class="tight" style="margin-top:.15in">
+      <thead><tr><th>الاستنتاج المسموح</th><th>الاستنتاج الذي يجب تجنبه</th></tr></thead>
+      <tbody>
+        <tr><td>«خفضت شركتان من أصل ثلاث شركات تجريبية وسيط وقت الموافقة بنسبة X%.»</td><td>«الشركات الماليزية تحتاج إلى Axora.»</td></tr>
+        <tr><td>«اكتملت 38 دورة حقيقية بنسبة اكتمال سجلات <bdi dir="ltr" class="token">Y%</bdi>.»</td><td>«السوق الوطني يساوي <bdi dir="ltr" class="token">RM879.6</bdi> مليار.»</td></tr>
+        <tr><td>«طلبت الشركات الثلاث تجربة إضافية؛ واعتمدت شركتان نطاق ميزانية.»</td><td>«حققت Axora ملاءمة المنتج للسوق.»</td></tr>
+        <tr><td>«سير العمل المُدار قابل للتنفيذ تشغيليًا تحت الضوابط المذكورة.»</td><td>«Axora جاهزة لتصبح سوقًا مفتوحًا.»</td></tr>
+      </tbody>
+    </table>
+    <div class="callout teal"><strong>ما تكفي له ثلاث شركات</strong>إنها تكفي لاكتشاف العيوب الحرجة، وملاحظة قيمة سير العمل الحقيقي، وبناء دراسات حالة، وتقدير جهد المشغل، وتحديد ما إذا كانت نسخة تجريبية مغلقة أكبر مبررة.</div>
+    <div class="callout amber"><strong>ما يأتي بعد نتيجة إيجابية</strong>استخدم <bdi dir="ltr" class="token">10-15</bdi> مقابلة استكشافية إضافية و<bdi dir="ltr" class="token">5-10</bdi> شركات ملتزمة أو دافعة لاختبار قابلية تكرار الشريحة والتسعير قبل المستودعات أو الائتمان أو السوق العام.</div>
+  </main>
+  <footer class="page-footer"><span>تتطلب العينات الصغيرة ادعاءات دقيقة وأعدادًا خامًا ظاهرة.</span><span>Axora | منطق القرار</span></footer>
+</section>
+
+<!-- 25 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">خارطة طريق لتسعين يومًا</div><div class="page-number">25</div></header>
+  <main class="page-body">
+    <div class="eyebrow">من الاعتماد إلى الدليل</div>
+    <h2>مسار منضبط لمدة 90 يومًا</h2>
+    <div class="grid-3">
+      <div class="card blue">
+        <h4>الأيام <bdi dir="ltr" class="token">1-14</bdi></h4><h3>التفويض والتحضير</h3>
+        <ul><li>تسمية المشغل القانوني والملاك</li><li>توقيع شروط الشركة والبيانات</li><li>تأكيد تدفق COD والضريبة</li><li>اجتياز اختبارات الوصول والاستعادة</li><li>جمع 10 دورات خط أساس لكل شركة</li></ul>
+      </div>
+      <div class="card teal">
+        <h4>الأيام <bdi dir="ltr" class="token">15-56</bdi></h4><h3>تنفيذ تجربة ستة أسابيع</h3>
+        <ul><li>تهيئة موجّهة</li><li><bdi dir="ltr" class="token">30+</bdi> دورة حقيقية مكتملة</li><li>اختبارات الاستثناء وCOD</li><li>مراجعة تشغيلية أسبوعية</li><li>عدم توسيع خارطة الطريق أثناء القياس</li></ul>
+      </div>
+      <div class="card amber">
+        <h4>الأيام <bdi dir="ltr" class="token">57-90</bdi></h4><h3>القرار والتنفيذ</h3>
+        <ul><li>بطاقات قياس على مستوى الشركة</li><li>مقابلات المستخدمين النهائية</li><li>قرار الاستمرار/التحسين/التوقف</li><li>إصلاح الفجوات المثبتة فقط</li><li>تخطيط نسخة تجريبية مغلقة إذا اعتُمدت</li></ul>
+      </div>
+    </div>
+    <div class="process">
+      <div class="step"><b>البوابة 1</b>الجاهزية القانونية والضريبية وجاهزية COD والأمان.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>البوابة 2</b>الحد الأدنى من المعاملات والدليل القابل للاستخدام.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>البوابة 3</b>قيمة مقاسة مع إشارة إلى الاستمرار.</div><div class="arrow">&lt;</div>
+      <div class="step"><b>البوابة 4</b>الميزانية والملكية للمرحلة التالية.</div>
+    </div>
+    <table class="tight">
+      <thead><tr><th>تقرير المشرف الأسبوعي</th><th>المحتويات المطلوبة</th></tr></thead>
+      <tbody>
+        <tr><td>الحجم</td><td>أعداد المؤهلة والمنشأة والمعتمدة والمطلوبة والمسلّمة والمدفوعة عبر COD والمغلقة بحسب الشركة.</td></tr>
+        <tr><td>الأداء</td><td>وسيط زمن الدورة، ونقاط التلامس، واكتمال السجلات، والمطابقة، والاستثناءات.</td></tr>
+        <tr><td>المنتج</td><td>أهم ثلاثة عيوب، والمعاملات المتأثرة، والحالة.</td></tr>
+        <tr><td>العمليات</td><td>تأخر الموردين، ومشكلات التسليم، وساعات الدعم، والعمل اليدوي.</td></tr>
+        <tr><td>المخاطر</td><td>حوادث الأمان والخصوصية ونقد COD والضريبة والامتثال أو الحالات الوشيكة.</td></tr>
+        <tr><td>القرار</td><td>توصية الاستمرار أو الإيقاف المؤقت أو التوقف للأسبوع التالي.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout"><strong>الناتج النهائي</strong>ليس ناتج الـ90 يومًا برنامجًا فحسب، بل حزمة دليل: ثلاث دراسات حالة للشركات، ومقاييس خام، وإثبات COD/العمليات، ونتائج المخاطر، والتزام المستخدم، وقرار مبرر للمرحلة التالية.</div>
+  </main>
+  <footer class="page-footer"><span>التسلسل الموصى به: فوّض، ثم قِس، ثم قرر، ثم توسع.</span><span>Axora | خطة 90 يومًا</span></footer>
+</section>
+
+<!-- 26 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">ورقة قرار المشرف</div><div class="page-number">26</div></header>
+  <main class="page-body">
+    <div class="eyebrow">الموافقات المطلوبة</div>
+    <h2>قرارات الإدارة قبل بدء التجربة</h2>
+    <div class="grid-2">
+      <div class="card blue">
+        <h3>الأعمال والملكية</h3>
+        <ul class="checklist"><li>من يشغل Axora قانونيًا؟</li><li>من يملك الكود والعلامة وبيانات التجربة؟</li><li>هل التجربة خدمة مُدارة أم خدمة ذاتية للشركة؟</li><li>ما الشركات الثلاث والفئات وسقوف الإنفاق المعتمدة؟</li><li>ما الحد الأقصى لميزانية النقد ووقت الموظفين؟</li></ul>
+      </div>
+      <div class="card teal">
+        <h3>المالية والمعاملات</h3>
+        <ul class="checklist"><li>من البائع القانوني ومُحصّل COD المفوض؟</li><li>من يصدر الإيصال المرقّم والفاتورة/e-Invoice؟</li><li>من يحوز النقد حتى تسليمه أو إيداعه؟</li><li>من يملك الفروقات النقدية والإرجاعات والنزاعات؟</li><li>هل الائتمان والمدفوعات غير COD محظورة أثناء التجربة؟</li></ul>
+      </div>
+      <div class="card amber">
+        <h3>القانون والخصوصية والأمان</h3>
+        <ul class="checklist"><li>هل اعتُمدت اتفاقيات التجربة/العقود وشروط الخصوصية؟</li><li>هل اجتاز عزل بيانات وصلاحيات الشركات الاختبارات؟</li><li>هل تحقق النسخ الاحتياطي والاستعادة؟</li><li>من قائد الخصوصية والحوادث؟</li><li>هل طريقة الاستضافة معتمدة للوصول الخارجي؟</li></ul>
+      </div>
+      <div class="card soft">
+        <h3>الدليل والقرار</h3>
+        <ul class="checklist"><li>هل اعتُمدت حدود النجاح؟</li><li>من يتلقى التقارير الأسبوعية؟</li><li>من يستطيع إيقاف معاملة حقيقية مؤقتًا؟</li><li>ما الالتزام المكتوب المطلوب بعد تجربة مجانية؟</li><li>من يتخذ قرار الاستمرار/التحسين/التوقف النهائي؟</li></ul>
+      </div>
+    </div>
+    <table class="tight" style="margin-top:.14in">
+      <thead><tr><th>الموافقة</th><th>الاسم</th><th>التاريخ</th><th>القرار / الشروط</th></tr></thead>
+      <tbody>
+        <tr><td>راعي المشروع</td><td></td><td></td><td></td></tr>
+        <tr><td>مالك المالية/الضرائب</td><td></td><td></td><td></td></tr>
+        <tr><td>المالك القانوني/مالك الخصوصية</td><td></td><td></td><td></td></tr>
+        <tr><td>مالك تقنية المعلومات/الأمان</td><td></td><td></td><td></td></tr>
+        <tr><td>مالك عمليات التجربة</td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    <div class="callout teal"><strong>قرار المشرف الموصى به</strong>اعتماد التحضير لتجربة COD منضبطة مع ثلاث شركات، بشرط اعتماد إجراء لتحصيل النقد والإيصال والمطابقة، وخريطة الضريبة/الفاتورة، وعزل وصول الشركات، والعقود/الخصوصية، والنسخ الاحتياطي/الاستعادة. لا تعتمد مدفوعات غير COD أو سوقًا مفتوحًا أو ائتمانًا أو مستودعًا في هذه المرحلة.</div>
+  </main>
+  <footer class="page-footer"><span>الاعتماد المشروط للتجربة يختلف عن اعتماد الإطلاق التجاري العام.</span><span>Axora | ورقة القرار</span></footer>
+</section>
+
+<!-- 27 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">المراجع</div><div class="page-number">27</div></header>
+  <main class="page-body">
+    <div class="eyebrow">مصادر أولية ومباشرة</div>
+    <h2>المصادر <bdi dir="ltr" class="token">1-10</bdi></h2>
+    <p class="lede">تم التحقق من المصادر العامة في 22 يوليو 2026. ادعاءات Lawazem والمنافسين بشأن الحجم معلنة ذاتيًا ما لم يذكر التقرير خلاف ذلك.</p>
+    <ol class="ref-list">
+      <li id="ref1"><b>الموقع الرسمي لـ Lawazem.</b> عرض القيمة العام، والقطاعات، والموافقات، وRFQ، والتسليم، والتحليلات، والفوترة، والائتمان، والتكامل.<a href="https://www.lawazem.com/">https://www.lawazem.com/</a></li>
+      <li id="ref2"><b>خطط Lawazem.</b> مقارنة الخطط والخصائص العامة.<a href="https://www.lawazem.com/plans/">https://www.lawazem.com/plans/</a></li>
+      <li id="ref3"><b>مركز مساعدة Lawazem.</b> إرشادات عامة للمشتري والمورد والموافقة وRFQ وExpress/Marketplace.<a href="https://help.lawazem.com/en">https://help.lawazem.com/en</a></li>
+      <li id="ref4"><b>الموقع الرسمي لـ Lapasar.</b> سوق B2B ماليزي، وسير عمل المشتريات، والتنفيذ، والحجم المعلن من الشركة.<a href="https://lapasar.com/">https://lapasar.com/</a></li>
+      <li id="ref5"><b>الموقع الرسمي لـ Borong.</b> تموضع المشتريات الإلكترونية للمؤسسات، والسوق، والموافقة، والتمويل.<a href="https://www.borong.com/">https://www.borong.com/</a></li>
+      <li id="ref6"><b>SME Corp Malaysia، ملف MSMEs وأهميتها.</b> عدد المنشآت وحصتها في 2024.<a href="https://smecorp.gov.my/index.php/en/policies/2020-02-11-08-01-24/profile-and-importance-to-the-economy">https://smecorp.gov.my/.../profile-and-importance-to-the-economy</a></li>
+      <li id="ref7"><b>دائرة الإحصاءات الماليزية، أداء MSME لعام 2024.</b> المساهمة في GDP والتوظيف.<a href="https://v2.dosm.gov.my/portal-main/release-content/micro-small--medium-enterprises-msmes-performance-2024">https://v2.dosm.gov.my/.../micro-small--medium-enterprises-msmes-performance-2024</a></li>
+      <li id="ref8"><b>دائرة الإحصاءات الماليزية، استخدام المنشآت لتقنية المعلومات والاتصالات والتجارة الإلكترونية 2025.</b> إحصاءات دخل التجارة الإلكترونية وB2B لعام 2024.<a href="https://www.dosm.gov.my/uploads/release-content/file_20260630113826.pdf">https://www.dosm.gov.my/uploads/release-content/file_20260630113826.pdf</a></li>
+      <li id="ref9"><b>هيئة الشركات الماليزية، تأسيس شركة.</b> متطلبات التأسيس والرسوم المدرجة.<a href="https://www.ssm.com.my/Pages/Register_Business_Company_LLP/Company/Starting_Company.aspx">https://www.ssm.com.my/.../Company/Starting_Company.aspx</a></li>
+      <li id="ref10"><b>KPDN، لوائح حماية المستهلك (معاملات التجارة الإلكترونية) لعام 2024.</b> إفصاحات المورد، وواجبات المشغل، والشكاوى، والاحتفاظ بالسجلات.<a href="https://repositori.kpdn.gov.my/bitstream/123456789/5299/1/PERATURAN%20URUSNIAGA%20PERDAGANGAN%20DALAM%20ELEKTRONIK%202024.pdf">https://repositori.kpdn.gov.my/.../PERATURAN URUSNIAGA ... 2024.pdf</a></li>
+    </ol>
+  </main>
+  <footer class="page-footer"><span>عناوين URL للمراجع مضمنة كروابط قابلة للنقر.</span><span>المصادر <bdi dir="ltr" class="token">1-10</bdi></span></footer>
+</section>
+
+<!-- 28 -->
+<section class="page content-page">
+  <header class="page-header"><div class="page-header-title">المراجع والخاتمة</div><div class="page-number">28</div></header>
+  <main class="page-body">
+    <div class="eyebrow">مصادر أولية ومباشرة</div>
+    <h2>المصادر <bdi dir="ltr" class="token">11-19</bdi></h2>
+    <ol class="ref-list continue">
+      <li id="ref11"><b>KPDN، قانون التجارة الإلكترونية لعام 2006.</b> الاعتراف القانوني بالرسائل والعقود الإلكترونية.<a href="https://www.kpdn.gov.my/images/2024/awam/akta/kpdn/Act%20658.pdf">https://www.kpdn.gov.my/images/2024/awam/akta/kpdn/Act%20658.pdf</a></li>
+      <li id="ref12"><b>مفوض حماية البيانات الشخصية، الانطباق وعدم الانطباق.</b> نطاق البيانات الشخصية التجارية.<a href="https://www.pdp.gov.my/ppdpv1/en/akta/application-and-non-application-of-the-act/">https://www.pdp.gov.my/.../application-and-non-application-of-the-act/</a></li>
+      <li id="ref13"><b>مفوض حماية البيانات الشخصية، الأسئلة الشائعة والإرشادات الرسمية.</b> حدود DPO، وواجبات المعالجين، وإرشادات الإخطار بالخروقات.<a href="https://www.pdp.gov.my/ppdpv1/en/faq/">https://www.pdp.gov.my/ppdpv1/en/faq/</a><a href="https://www.pdp.gov.my/ppdpv1/wp-content/uploads/2025/08/GP_DBN_ENG.pdf">https://www.pdp.gov.my/.../GP_DBN_ENG.pdf</a></li>
+      <li id="ref14"><b>LHDN/HASiL، تنفيذ e-Invoice وإرشاداته.</b> الجدول الزمني الحالي، والإعفاءات، وإرشادات المنصة.<a href="https://www.hasil.gov.my/en/e-invoice/implementation-of-e-invoicing-in-malaysia/e-invoice-implementation-timeline">https://www.hasil.gov.my/.../e-invoice-implementation-timeline</a><a href="https://www.hasil.gov.my/en/e-invoice/reference-for-the-implementation-of-e-invoice/guidelines/">https://www.hasil.gov.my/.../e-invoice/guidelines/</a></li>
+      <li id="ref15"><b>الجمارك الملكية الماليزية، الأسئلة الشائعة لضريبة خدمات MySST.</b> المعدلات العامة والمختارة الحالية لضريبة الخدمات.<a href="https://mysst.customs.gov.my/faq-services-tax/">https://mysst.customs.gov.my/faq-services-tax/</a></li>
+      <li id="ref16"><b>HASiL، نظام MyInvois e-POS.</b> سجلات معاملات البائع ودعم إصدار e-Invoice مباشرة للمنشآت المؤهلة.<a href="https://www.hasil.gov.my/en/myinvoisepos/">https://www.hasil.gov.my/en/myinvoisepos/</a></li>
+      <li id="ref17"><b>HASiL، الأسئلة الشائعة العامة لـ e-Invoice.</b> الإرشادات الحالية للفواتير والإيصالات والفواتير الإلكترونية المعتمدة.<a href="https://www.hasil.gov.my/media/0xqitc2t/lhdnm-e-invoice-general-faqs.pdf">https://www.hasil.gov.my/media/0xqitc2t/lhdnm-e-invoice-general-faqs.pdf</a></li>
+      <li id="ref18"><b>MyIPO، أساسيات حقوق النشر والبحث عن العلامات التجارية.</b> الحد الفاصل للفكرة/الطريقة والبحث عن العلامات الماليزية.<a href="https://www.myipo.gov.my/copyright-basic/?lang=en%2F">https://www.myipo.gov.my/copyright-basic/</a><a href="https://www.myipo.gov.my/search-trademark/">https://www.myipo.gov.my/search-trademark/</a></li>
+      <li id="ref19"><b>وزارة المالية الماليزية، إشعار تنفيذ قانون ائتمان المستهلك.</b> انتقال الترخيص ذي الصلة بأي ميزة ائتمان عملاء مستقبلية.<a href="https://mof.gov.my/portal/en/news/press-citations/credit-providers-credit-service-providers-require-licensing-registration-effective-june-1">https://mof.gov.my/.../licensing-registration-effective-june-1</a></li>
+    </ol>
+    <div class="callout teal"><strong>التوصية النهائية في جملة واحدة</strong>اعتمد تجربة منضبطة لمدة ستة أسابيع للنسخة الأولية التشغيلية الفعلية (MVP) من Axora مع ثلاث شركات معتمدة للمشاركة وبالدفع عند الاستلام فقط كقيد أمان، لكن اشترط اجتياز بوابات COD والضريبة والوصول والخصوصية والاستعادة قبل الاستخدام الحقيقي، واتخذ قرار الاستثمار التالي من دليل مقاس على مستوى الشركة؛ ولا تخلط بين قيد MVP الحالي والرؤية النهائية التي قد تشمل طرق دفع أخرى بعد اعتماد مستقل.</div>
+    <div class="ribbon"><i></i> Axora - عمليات مشتريات مرئية وقابلة للقياس</div>
+  </main>
+  <footer class="page-footer"><span>نهاية التقرير</span><span>22 يوليو 2026</span></footer>
+</section>
+
+</body>
+</html>

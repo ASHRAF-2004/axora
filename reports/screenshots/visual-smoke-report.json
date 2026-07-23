@@ -1,0 +1,91 @@
+{
+  "passed": true,
+  "checkedAt": "2026-07-22T09:43:42.009Z",
+  "checks": [
+    {
+      "name": "dashboard",
+      "route": "/dashboard",
+      "heading": "Good afternoon, Ashraf",
+      "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\dashboard.png",
+      "title": "Axora operations",
+      "horizontalOverflow": 0,
+      "mainCount": 1,
+      "emptyImages": 0
+    },
+    {
+      "name": "requests",
+      "route": "/requests",
+      "heading": "Requests",
+      "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\requests.png",
+      "title": "Axora operations",
+      "horizontalOverflow": 0,
+      "mainCount": 1,
+      "emptyImages": 0
+    },
+    {
+      "name": "request-detail",
+      "route": "/requests/order-1",
+      "heading": "ORD-2026-001",
+      "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\request-detail.png",
+      "title": "Axora operations",
+      "horizontalOverflow": 0,
+      "mainCount": 1,
+      "emptyImages": 0
+    },
+    {
+      "name": "sourcing",
+      "route": "/sourcing",
+      "heading": "Sourcing and quotations",
+      "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\sourcing.png",
+      "title": "Axora operations",
+      "horizontalOverflow": 0,
+      "mainCount": 1,
+      "emptyImages": 0
+    },
+    {
+      "name": "deliveries",
+      "route": "/deliveries",
+      "heading": "Deliveries",
+      "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\deliveries.png",
+      "title": "Axora operations",
+      "horizontalOverflow": 0,
+      "mainCount": 1,
+      "emptyImages": 0
+    },
+    {
+      "name": "finance",
+      "route": "/finance",
+      "heading": "Invoices and COD payments",
+      "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\finance.png",
+      "title": "Axora operations",
+      "horizontalOverflow": 0,
+      "mainCount": 1,
+      "emptyImages": 0
+    },
+    {
+      "name": "users",
+      "route": "/users",
+      "heading": "Users and roles",
+      "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\users.png",
+      "title": "Axora operations",
+      "horizontalOverflow": 0,
+      "mainCount": 1,
+      "emptyImages": 0
+    },
+    {
+      "name": "settings",
+      "route": "/settings",
+      "heading": "Readiness and settings",
+      "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\settings.png",
+      "title": "Axora operations",
+      "horizontalOverflow": 0,
+      "mainCount": 1,
+      "emptyImages": 0
+    },
+    {
+      "name": "dashboard-mobile",
+      "route": "/dashboard",
+      "horizontalOverflow": 0
+    }
+  ]
+}
