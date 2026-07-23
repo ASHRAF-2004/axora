@@ -11,6 +11,7 @@ if (!email || !displayName) {
 const passwordFile = process.env.ADMIN_PASSWORD_FILE || "/run/secrets/admin_initial_password";
 const adminPassword = process.env.ADMIN_INITIAL_PASSWORD?.trim()
   || readFileSync(passwordFile, "utf8").trim();
+const forcePasswordReset = process.argv.includes("--reset-password") || process.env.ADMIN_FORCE_PASSWORD_RESET === "true";
 const databasePassword = process.env.DATABASE_URL ? "" : process.env.DB_PASSWORD
   || readFileSync(process.env.DB_PASSWORD_FILE || "/run/secrets/axora_app_password", "utf8").trim();
 if (adminPassword.length < 14) throw new Error("The initial admin password must be at least 14 characters.");
@@ -31,17 +32,17 @@ try {
   const passwordHash = await hash(adminPassword, 12);
   const result = await client.query(
     `INSERT INTO users(email,display_name,password_hash,role_id,is_owner)
-     VALUES ($1,$2,$3,(SELECT id FROM roles WHERE role_key='ADMIN'),true)
+     VALUES ($1,$2,$3,(SELECT id FROM roles WHERE role_key=$4),true)
      ON CONFLICT ((lower(email))) DO UPDATE SET
        display_name=EXCLUDED.display_name,
-       password_hash=EXCLUDED.password_hash,
+       password_hash=CASE WHEN $5 THEN EXCLUDED.password_hash ELSE users.password_hash END,
        role_id=EXCLUDED.role_id,
        active=true,
        is_owner=true
      RETURNING id`,
-    [email.toLowerCase(), displayName, passwordHash],
+    [email.toLowerCase(), displayName, passwordHash, "ADMIN", forcePasswordReset],
   );
-  console.log(`Admin account prepared: ${email} (${result.rows[0].id})`);
+  console.log(`Admin account prepared without changing an existing password: ${email} (${result.rows[0].id})`);
 } finally {
   await client.end();
 }

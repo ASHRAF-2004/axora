@@ -1,18 +1,24 @@
 import { MetricCard } from "@/components/MetricCard";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatCurrency, formatDate } from "@/lib/domain";
+import { requireSession } from "@/lib/auth";
+import { formatCurrency, formatDate, timeOfDayGreeting } from "@/lib/domain";
 import { getDashboardData } from "@/lib/repository";
+import { hasPermission } from "@/lib/permissions";
 import { AlertTriangle, Banknote, CircleDollarSign, ClipboardList, Clock3, PackageCheck, Percent, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 export default async function DashboardPage() {
-  const data = await getDashboardData();
+  const actor = await requireSession();
+  const data = await getDashboardData(actor);
+  const firstName = actor.name.trim().split(/\s+/)[0] || "there";
   const maxStatus = Math.max(...data.byStatus.map((item) => item.value), 1);
   const maxCompany = Math.max(...data.byCompany.map((item) => item.value), 1);
   return (
     <>
-      <PageHeader eyebrow="Pilot overview" title="Good afternoon, Ashraf" description="A quantity-correct view of requests, deliveries and finance. Demo records are isolated from company production data." actionHref="/requests/new" actionLabel="Create request" />
+      <PageHeader eyebrow="Operations overview" title={`${timeOfDayGreeting()}, ${firstName}`} description="A current view of your company requests, deliveries, and financial activity."
+        actionHref={hasPermission(actor.role, "manage_requests") ? "/requests/new" : undefined}
+        actionLabel={hasPermission(actor.role, "manage_requests") ? "Create request" : undefined} />
       <section className="metric-grid" aria-label="Main performance indicators">
         <MetricCard label="Total requests" value={String(data.requestCount)} note={`${data.openRequestCount} still open`} icon={ClipboardList} tone="blue" />
         <MetricCard label="Total sales" value={formatCurrency(data.sales)} note="Quantity × unit selling price" icon={TrendingUp} tone="teal" />
@@ -51,7 +57,7 @@ export default async function DashboardPage() {
             ))}</div>
           </article>
           <article className="panel">
-            <div className="panel-header"><div><h3>Pilot company activity</h3><p>Request volume across the three companies</p></div></div>
+            <div className="panel-header"><div><h3>Company activity</h3><p>Request volume by company</p></div></div>
             <div className="panel-body chart-list">{data.byCompany.map((item) => (
               <div className="chart-row" key={item.label}><span>{item.label}</span><div className="chart-track"><div className="chart-fill" style={{ width: `${(item.value / maxCompany) * 100}%` }} /></div><strong>{item.value}</strong></div>
             ))}</div>
@@ -66,7 +72,7 @@ export default async function DashboardPage() {
             <div className="chart-row" key={item.label}><span>{item.label}</span><div className="chart-track"><div className="chart-fill" style={{ width: `${Math.min(100, item.value * 8)}%` }} /></div><strong>{item.value}</strong></div>
           ))}</div>
         </article>
-        <article className="panel"><div className="panel-header"><div><h3>Data quality rule</h3><p>Why these figures differ from the old dashboard</p></div></div><div className="panel-body"><div className="callout"><strong>Prices are multiplied by quantity.</strong><p>The old Calc_Data totals summed unit prices and could show margin above 100%. Axora now calculates sales and buying cost per request line before aggregation.</p></div></div></article>
+        <article className="panel"><div className="panel-header"><div><h3>Calculation rule</h3><p>How financial totals are calculated</p></div></div><div className="panel-body"><div className="callout"><strong>Prices are multiplied by quantity.</strong><p>Axora calculates sales and buying cost for each request line before combining them into dashboard totals.</p></div></div></article>
       </section>
     </>
   );

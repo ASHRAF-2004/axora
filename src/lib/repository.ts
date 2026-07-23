@@ -231,8 +231,8 @@ export async function getRequest(id: string, providedActor?: SessionUser) {
   return groupRequestRows(result.rows)[0];
 }
 
-export async function getDashboardData(): Promise<DashboardData> {
-  const actor = await requireSession();
+export async function getDashboardData(providedActor?: SessionUser): Promise<DashboardData> {
+  const actor = await actorOrSession(providedActor);
   const [requests, companies, suppliers] = await Promise.all([listRequests(actor), listCompanies(actor), listSuppliers(actor)]);
   const totals = calculateTotals(requests);
   const byStatus = Object.entries(requests.reduce<Record<string, number>>((acc, request) => ({ ...acc, [request.status]: (acc[request.status] ?? 0) + 1 }), {})).map(([label, value]) => ({ label, value }));
@@ -279,8 +279,12 @@ export async function createBranch(input: Omit<Branch, "id" | "code" | "companyN
     store.branches.push({ ...input, id: randomUUID(), code: nextCode("B", store.branches.length), companyName: company?.name ?? "Unknown", status: "Active" });
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO branches (branch_code_id, company_id, name, branch_code, delivery_address, city, contact_name, contact_phone, contact_email, delivery_instructions, notes)
-      VALUES (next_branch_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, [companyId, input.name, input.branchCode, input.deliveryAddress, input.city, input.contactName, input.contactPhone, input.contactEmail, input.deliveryInstructions ?? null, input.notes ?? null]));
+  await withAuditTransaction({ userId: actor.id }, async (client) => {
+    const result = await client.query(`INSERT INTO branches (branch_code_id, company_id, name, branch_code, delivery_address, city, contact_name, contact_phone, contact_email, delivery_instructions, notes)
+      SELECT next_branch_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10 FROM companies WHERE id=$1 AND active=true`,
+    [companyId, input.name, input.branchCode, input.deliveryAddress, input.city, input.contactName, input.contactPhone, input.contactEmail, input.deliveryInstructions ?? null, input.notes ?? null]);
+    if (!result.rowCount) throw new Error("The selected company is not active.");
+  });
 }
 
 export async function createSupplier(input: Omit<Supplier, "id" | "code" | "status"> & { companyId?: string }, actor: SessionUser) {
@@ -291,8 +295,12 @@ export async function createSupplier(input: Omit<Supplier, "id" | "code" | "stat
     store.suppliers.push({ ...input, id: randomUUID(), code: nextCode("S", store.suppliers.length), status: "Active" });
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO suppliers (supplier_code,name,category,contact_name,phone,email,address,coverage_area,payment_terms,lead_time_days,minimum_order_quantity,main_products,notes,company_id)
-      VALUES (next_supplier_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, [input.name, input.category, input.contactName, input.phone, input.email, input.address, input.coverageArea, input.paymentTerms, input.leadTimeDays, input.minimumOrderQuantity, input.mainProducts, input.notes ?? null, companyId]));
+  await withAuditTransaction({ userId: actor.id }, async (client) => {
+    const result = await client.query(`INSERT INTO suppliers (supplier_code,name,category,contact_name,phone,email,address,coverage_area,payment_terms,lead_time_days,minimum_order_quantity,main_products,notes,company_id)
+      SELECT next_supplier_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13 FROM companies WHERE id=$13 AND active=true`,
+    [input.name, input.category, input.contactName, input.phone, input.email, input.address, input.coverageArea, input.paymentTerms, input.leadTimeDays, input.minimumOrderQuantity, input.mainProducts, input.notes ?? null, companyId]);
+    if (!result.rowCount) throw new Error("The selected company is not active.");
+  });
 }
 
 export async function createProduct(input: Omit<Product, "id" | "code" | "status" | "duplicateWarning" | "preferredSupplierName"> & { companyId?: string }, actor: SessionUser) {
@@ -305,12 +313,18 @@ export async function createProduct(input: Omit<Product, "id" | "code" | "status
     return;
   }
   await withAuditTransaction({ userId: actor.id }, async (client) => {
+    const company = await client.query("SELECT 1 FROM companies WHERE id=$1 AND active=true", [companyId]);
+    if (!company.rowCount) throw new Error("The selected company is not active.");
+    if (input.preferredSupplierId) {
+      const supplier = await client.query("SELECT 1 FROM suppliers WHERE id=$1 AND company_id=$2 AND active=true", [input.preferredSupplierId, companyId]);
+      if (!supplier.rowCount) throw new Error("The preferred supplier must be active and belong to the selected company.");
+    }
     const duplicate = await client.query<{ exists: boolean }>("SELECT EXISTS (SELECT 1 FROM products WHERE company_id=$2 AND lower(name)=lower($1)) AS exists", [input.name, companyId]);
     const product = await client.query<{ id: string }>(`INSERT INTO products (product_code,name,category,subcategory,brand,product_size,unit_of_measure,packaging,description,default_buy_price,default_sell_price,minimum_order_quantity,delivery_sla_days,needs_review,company_id)
       VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id::text`, [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit, input.packaging ?? null, input.description ?? null, input.defaultBuyPrice, input.defaultSellPrice, input.minimumOrderQuantity, input.deliverySlaDays, duplicate.rows[0].exists, companyId]);
     if (input.preferredSupplierId) {
       await client.query(`INSERT INTO product_suppliers (product_id,supplier_id,preferred,indicative_buy_price,supplier_moq,lead_time_days)
-        SELECT $1,$2,true,$3,$4,$5 FROM suppliers WHERE id=$2 AND company_id=$6`, [product.rows[0].id, input.preferredSupplierId, input.defaultBuyPrice, input.minimumOrderQuantity, input.deliverySlaDays, companyId]);
+        VALUES ($1,$2,true,$3,$4,$5)`, [product.rows[0].id, input.preferredSupplierId, input.defaultBuyPrice, input.minimumOrderQuantity, input.deliverySlaDays]);
     }
   });
 }
@@ -354,6 +368,8 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
     return request.id;
   }
   return withAuditTransaction({ userId: actor.id }, async (client: PoolClient) => {
+    const company = await client.query("SELECT 1 FROM companies WHERE id=$1 AND active=true", [companyId]);
+    if (!company.rowCount) throw new Error("The selected company is not active.");
     const branchMatch = await client.query("SELECT 1 FROM branches WHERE id=$1 AND company_id=$2 AND active=true", [input.branchId, companyId]);
     if (!branchMatch.rowCount) throw new Error("The selected branch does not belong to the selected company.");
     const selectedProducts = await client.query<{ count: number }>("SELECT count(*)::int AS count FROM products WHERE id = ANY($1::uuid[]) AND company_id=$2 AND active=true AND needs_review=false", [input.lines.map((line) => line.productId), companyId]);
@@ -388,6 +404,33 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
     validateStatusTransition(current.rows[0].status, status, reason);
     const permitted = await client.query(`SELECT 1 FROM request_status_transitions WHERE from_status_id=lookup_id('request_status',$1) AND to_status_id=lookup_id('request_status',$2)`, [current.rows[0].status, status]);
     if (!permitted.rowCount) throw new Error("This workflow transition is not configured in the database.");
+    if (status === "Approved") {
+      const evidence = await client.query("SELECT 1 FROM approvals WHERE request_id=$1 AND status='Approved' LIMIT 1", [id]);
+      if (!evidence.rowCount) throw new Error("Record an approved decision before marking this request as approved.");
+    }
+    if (status === "Supplier Assigned") {
+      const missing = await client.query<{ count: number }>("SELECT count(*)::int AS count FROM request_lines WHERE request_id=$1 AND selected_supplier_id IS NULL", [id]);
+      if (missing.rows[0].count) throw new Error("Select a supplier quotation for every request line first.");
+    }
+    if (status === "Delivered") {
+      const incomplete = await client.query<{ count: number }>(`SELECT count(*)::int AS count FROM request_lines l
+        WHERE l.request_id=$1 AND COALESCE((SELECT sum(d.quantity_received) FROM deliveries d JOIN lookup_values ds ON ds.id=d.status_id
+          WHERE d.request_line_id=l.id AND ds.label NOT IN ('Cancelled','Failed')),0) < l.quantity`, [id]);
+      if (incomplete.rows[0].count) throw new Error("Every request line must be fully received before marking the request delivered.");
+    }
+    if (status === "Invoice Issued") {
+      const invoice = await client.query(`SELECT 1 FROM invoices i JOIN lookup_values s ON s.id=i.status_id
+        WHERE i.request_id=$1 AND i.direction='CUSTOMER' AND s.label='Issued' LIMIT 1`, [id]);
+      if (!invoice.rowCount) throw new Error("Issue a customer invoice before moving to Invoice Issued.");
+    }
+    if (status === "Completed") {
+      const settlement = await client.query<{ invoiceCount: number; unpaidCount: number }>(`SELECT count(*)::int AS "invoiceCount",
+        count(*) FILTER (WHERE outstanding_amount > 0)::int AS "unpaidCount"
+        FROM v_invoice_balances WHERE request_id=$1 AND direction='CUSTOMER' AND status_id<>lookup_id('invoice_status','Cancelled')`, [id]);
+      if (!settlement.rows[0].invoiceCount || settlement.rows[0].unpaidCount) {
+        throw new Error("All active customer invoices must be fully paid before completing the request.");
+      }
+    }
     await client.query(`UPDATE requests SET status_id=lookup_id('request_status',$2), issue_reason=COALESCE(NULLIF($3,''),issue_reason), completed_at=CASE WHEN $2='Completed' THEN now() ELSE completed_at END WHERE id=$1`, [id, status, reason ?? ""]);
   });
 }

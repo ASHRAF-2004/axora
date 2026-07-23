@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { calculateLineAmounts, formatCurrency, formatDate } from "@/lib/domain";
+import { requireSession } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { getRequest } from "@/lib/repository";
 import { allowedNextStatuses } from "@/lib/workflow";
 import { CircleDollarSign, PackageCheck, Route, UserRound } from "lucide-react";
@@ -9,7 +11,8 @@ import { updateStatusAction } from "../actions";
 
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const request = await getRequest(id);
+  const actor = await requireSession();
+  const request = await getRequest(id, actor);
   if (!request) notFound();
   const totals = request.lines.reduce((sum, line) => {
     const current = calculateLineAmounts(line);
@@ -40,17 +43,17 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
               <div className="readiness-item"><UserRound size={19} /><div><strong>{request.requestedBy}</strong><p>{request.department} · {request.requesterContact}</p></div></div>
               <div className="readiness-item"><Route size={19} /><div><strong>{request.branchName}</strong><p>{request.requestType} · {request.urgency} urgency</p></div></div>
               <div className="readiness-item"><PackageCheck size={19} /><div><strong>{request.invoiceNumber || "No customer invoice"}</strong><p>{request.invoiceStatus} · {request.paymentStatus}</p></div></div>
-              <div className="readiness-item"><CircleDollarSign size={19} /><div><strong>{formatCurrency(totals.delivery)} delivery fees</strong><p>Kept separate until finance confirms treatment.</p></div></div>
+              <div className="readiness-item"><CircleDollarSign size={19} /><div><strong>{formatCurrency(totals.delivery)} delivery fees</strong><p>Reported separately from product sales and margin.</p></div></div>
             </div>
           </div></article>
         </div>
         <aside className="panel form-panel">
-          <h2>Move the request</h2><p>Every important status change will be written to the audit history in PostgreSQL mode.</p>
-          {nextStatuses.length ? <form action={updateAction}>
+          <h2>Move the request</h2><p>Every important status change is recorded in the audit history.</p>
+          {nextStatuses.length && hasPermission(actor.role, "manage_requests") ? <form action={updateAction}>
             <label>Allowed next status<select name="status" defaultValue={nextStatuses[0]}>{nextStatuses.map((status) => <option key={status}>{status}</option>)}</select></label>
             <label style={{ marginTop: 13 }}>Reason / note<textarea name="reason" placeholder="Required for hold, cancellation or resuming from hold" /></label>
             <div className="form-actions"><button className="button button-primary" type="submit">Update status</button></div>
-          </form> : <div className="callout"><strong>This workflow is closed.</strong><p>Completed and cancelled requests cannot be moved without a supervisor-approved correction process.</p></div>}
+          </form> : <div className="callout"><strong>{nextStatuses.length ? "Read-only access" : "This workflow is closed."}</strong><p>{nextStatuses.length ? "Your role can view this request but cannot change its status." : "Completed and cancelled requests are read-only."}</p></div>}
           <h3 className="section-title">Timeline</h3>
           <div className="timeline">
             <div className="timeline-item"><div className="timeline-dot" /><div><strong>Request created</strong><p>{formatDate(request.requestDate)}</p></div></div>

@@ -33,7 +33,7 @@ export function Sidebar({ role }: { role: UserRole }) {
       </nav>
       <div className="sidebar-foot">
         <Boxes size={18} />
-        <span>Internal pilot<br /><small>LAN-ready package</small></span>
+        <span>Production workspace<br /><small>Secure company access</small></span>
       </div>
     </aside>
   );

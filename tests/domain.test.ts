@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateLineAmounts, calculateTotals, REQUEST_STATUSES } from "@/lib/domain";
+import { calculateLineAmounts, calculateTotals, REQUEST_STATUSES, timeOfDayGreeting } from "@/lib/domain";
 import type { ProcurementRequest, RequestLine, RequestStatus } from "@/lib/types";
 
 function line(index: number, quantity: number, unitBuyPrice: number, unitSellPrice: number, deliveryCharge: number): RequestLine {
@@ -109,5 +109,13 @@ describe("request workflow vocabulary", () => {
       "Cancelled",
     ]);
     expect(new Set(REQUEST_STATUSES).size).toBe(REQUEST_STATUSES.length);
+  });
+});
+
+describe("localized greeting", () => {
+  it("uses Malaysia time rather than the server's UTC clock", () => {
+    expect(timeOfDayGreeting(new Date("2026-07-23T00:30:00Z"))).toBe("Good morning");
+    expect(timeOfDayGreeting(new Date("2026-07-23T07:00:00Z"))).toBe("Good afternoon");
+    expect(timeOfDayGreeting(new Date("2026-07-23T12:00:00Z"))).toBe("Good evening");
   });
 });

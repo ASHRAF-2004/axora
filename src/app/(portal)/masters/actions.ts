@@ -8,7 +8,8 @@ import { revalidatePath } from "next/cache";
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 
 export async function createCompanyAction(formData: FormData) {
-  const user = await requireRole(["ADMIN", "OPERATIONS"]);
+  const user = await requireRole(["ADMIN"]);
+  if (!user.isOwner) throw new Error("Only the Axora platform owner can create companies.");
   const mainContactName = readFormText(formData, "mainContactName");
   const mainContactEmail = readFormText(formData, "mainContactEmail");
   const mainContactPhone = readFormText(formData, "mainContactPhone");
@@ -55,7 +56,8 @@ export async function createProductAction(formData: FormData) {
 }
 
 export async function setMasterActiveAction(entity: MasterEntity, id: string, active: boolean) {
-  const user = await requireRole(["ADMIN", "OPERATIONS"]);
+  const user = await requireRole(entity === "companies" ? ["ADMIN"] : ["ADMIN", "OPERATIONS"]);
+  if (entity === "companies" && !user.isOwner) throw new Error("Only the Axora platform owner can change company status.");
   await setMasterActive(entity, id, active, user);
   revalidatePath(`/${entity}`); revalidatePath("/dashboard");
 }

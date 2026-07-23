@@ -54,6 +54,17 @@ export function formatDate(value?: string) {
   return new Intl.DateTimeFormat("en-MY", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 }
 
+export function timeOfDayGreeting(date = new Date(), timeZone = "Asia/Kuala_Lumpur") {
+  const hour = Number(new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+  }).format(date));
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 export function statusTone(status: string) {
   const normalized = status.toLowerCase();
   if (["completed", "paid", "delivered", "active", "approved"].some((word) => normalized.includes(word))) return "success";

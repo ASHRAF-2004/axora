@@ -17,23 +17,23 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="login-story">
         <div className="login-brand"><Brand /></div>
         <div>
-          <span className="pilot-chip"><Boxes size={15} /> Internal operations pilot</span>
+          <span className="pilot-chip"><Boxes size={15} /> Multi-company operations</span>
           <h1>One clear place for every request.</h1>
           <p>Track products, suppliers, deliveries, invoices and payments without rebuilding the spreadsheet every day.</p>
           <ul className="feature-list">
             <li><CheckCircle2 /> Stable IDs and duplicate controls</li>
             <li><CheckCircle2 /> Quantity-correct sales and margin totals</li>
-            <li><CheckCircle2 /> LAN-only, self-hosted and subscription-free</li>
+            <li><CheckCircle2 /> Secure, isolated company workspaces</li>
           </ul>
         </div>
-        <small>Axora operations · Prepared for the controlled pilot</small>
+        <small>Axora operations · Secure procurement management</small>
       </section>
       <section className="login-panel">
         <form action={loginAction} className="login-card">
           <div className="login-icon"><LockKeyhole size={24} /></div>
           <p className="eyebrow">Welcome back</p>
           <h2>Sign in to Axora</h2>
-          <p className="muted">Use your named internal account.</p>
+          <p className="muted">Use your assigned company account.</p>
           {error ? <div className="form-alert">The email or password is incorrect.</div> : null}
           <label>Email<input name="email" type="email" defaultValue={demo ? process.env.DEMO_EMAIL : ""} autoComplete="username" required /></label>
           <label>Password<input name="password" type="password" defaultValue={demo ? process.env.DEMO_PASSWORD : ""} autoComplete="current-password" required /></label>

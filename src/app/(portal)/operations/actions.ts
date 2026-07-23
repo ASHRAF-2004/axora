@@ -33,7 +33,7 @@ const approvalSchema = z.object({ requestId: z.string().trim().min(1), approvalT
   status: z.enum(["Pending", "Approved", "Rejected"]), reason: z.string().trim().max(1000).optional().transform((value) => value || undefined) });
 
 export async function recordApprovalAction(formData: FormData) {
-  const user = await requireRole(["ADMIN", "OPERATIONS"]);
+  const user = await requireRole(["ADMIN"]);
   await recordApproval(approvalSchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/approvals"); revalidatePath("/audit");
 }

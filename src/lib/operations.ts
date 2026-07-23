@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getDemoStore } from "./demo-data";
 import { addDemoAudit, getDemoOperations } from "./demo-operations";
@@ -43,8 +43,8 @@ export async function createQuotation(input: NewQuotationInput, actor: Operation
     const result = await client.query(`INSERT INTO quotations
       (request_line_id,supplier_id,quotation_reference,quotation_date,unit_price,delivery_charge,minimum_order_quantity,lead_time_days,valid_until,status_id)
       SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,lookup_id('quotation_status','Received')
-      FROM request_lines l JOIN requests r ON r.id=l.request_id JOIN suppliers s ON s.id=$2
-      WHERE l.id=$1 AND s.company_id=r.company_id${actor.isOwner ? "" : " AND r.company_id=$10"}`,
+      FROM request_lines l JOIN requests r ON r.id=l.request_id JOIN suppliers s ON s.id=$2 JOIN lookup_values rs ON rs.id=r.status_id
+      WHERE l.id=$1 AND s.company_id=r.company_id AND s.active=true AND rs.label='Waiting for Quotation'${actor.isOwner ? "" : " AND r.company_id=$10"}`,
       [input.requestLineId, input.supplierId, input.quotationReference, input.quotationDate, input.unitPrice, input.deliveryCharge,
         input.minimumOrderQuantity ?? null, input.leadTimeDays ?? null, input.validUntil || null, ...(actor.isOwner ? [] : [actor.companyId])]);
     if (!result.rowCount) throw new Error("Request line or supplier not found.");
@@ -67,8 +67,8 @@ export async function selectQuotation(id: string, reason: string, actor: Operati
   await withAuditTransaction({ userId: actor.id, reason }, async (client) => {
     const quotation = await client.query<{ requestLineId: string; supplierId: string; reference: string; unitPrice: number; deliveryCharge: number }>(
       `SELECT q.request_line_id::text AS "requestLineId",q.supplier_id::text AS "supplierId",COALESCE(q.quotation_reference,'') AS reference,q.unit_price::float8 AS "unitPrice",q.delivery_charge::float8 AS "deliveryCharge"
-       FROM quotations q JOIN request_lines l ON l.id=q.request_line_id JOIN requests r ON r.id=l.request_id
-       WHERE q.id=$1${actor.isOwner ? "" : " AND r.company_id=$2"} FOR UPDATE`, actor.isOwner ? [id] : [id, actor.companyId]);
+       FROM quotations q JOIN request_lines l ON l.id=q.request_line_id JOIN requests r ON r.id=l.request_id JOIN lookup_values rs ON rs.id=r.status_id
+       WHERE q.id=$1 AND rs.label='Waiting for Quotation'${actor.isOwner ? "" : " AND r.company_id=$2"} FOR UPDATE`, actor.isOwner ? [id] : [id, actor.companyId]);
     if (!quotation.rows[0]) throw new Error("Quotation not found.");
     const q = quotation.rows[0];
     await client.query("UPDATE quotations SET selected=false,status_id=lookup_id('quotation_status','Rejected') WHERE request_line_id=$1 AND id<>$2", [q.requestLineId, id]);
@@ -102,8 +102,8 @@ export async function recordApproval(input: { requestId: string; approvalType: s
   await withAuditTransaction({ userId: actor.id, reason: input.reason }, async (client) => {
     const result = await client.query(`INSERT INTO approvals
       (request_id,approval_type,status,reviewer_id,reason,decided_at)
-      SELECT $1,$2,$3,$4,$5,CASE WHEN $3='Pending' THEN NULL ELSE now() END FROM requests
-      WHERE id=$1${actor.isOwner ? "" : " AND company_id=$6"}`,
+      SELECT $1,$2,$3,$4,$5,CASE WHEN $3='Pending' THEN NULL ELSE now() END FROM requests r JOIN lookup_values rs ON rs.id=r.status_id
+      WHERE r.id=$1 AND rs.label='Waiting for Approval'${actor.isOwner ? "" : " AND r.company_id=$6"}`,
       [input.requestId, input.approvalType, input.status, actor.id, input.reason ?? null, ...(actor.isOwner ? [] : [actor.companyId])]);
     if (!result.rowCount) throw new Error("Request not found.");
   });
@@ -139,7 +139,8 @@ export async function recordDelivery(input: { requestLineId: string; expectedDat
   }
   await withAuditTransaction({ userId: actor.id, reason: input.issueReason }, async (client) => {
     const line = await client.query<{ quantity: number }>(`SELECT l.quantity::float8 AS quantity FROM request_lines l JOIN requests r ON r.id=l.request_id
-      WHERE l.id=$1${actor.isOwner ? "" : " AND r.company_id=$2"} FOR UPDATE`, actor.isOwner ? [input.requestLineId] : [input.requestLineId, actor.companyId]);
+      JOIN lookup_values rs ON rs.id=r.status_id WHERE l.id=$1 AND rs.label IN ('Ordered','Preparing for Delivery','Out for Delivery')
+      ${actor.isOwner ? "" : "AND r.company_id=$2"} FOR UPDATE`, actor.isOwner ? [input.requestLineId] : [input.requestLineId, actor.companyId]);
     if (!line.rows[0]) throw new Error("Request line not found.");
     const received = await client.query<{ total: number }>("SELECT COALESCE(sum(quantity_received),0)::float8 AS total FROM deliveries WHERE request_line_id=$1", [input.requestLineId]);
     if (received.rows[0].total + input.quantityReceived > line.rows[0].quantity) throw new Error("Received quantity cannot exceed the ordered quantity.");
@@ -175,7 +176,8 @@ export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER";
     return;
   }
   await withAuditTransaction({ userId: actor.id }, async (client) => {
-    const request = await client.query<{ companyId: string }>(`SELECT company_id::text AS "companyId" FROM requests WHERE id=$1${actor.isOwner ? "" : " AND company_id=$2"}`, actor.isOwner ? [input.requestId] : [input.requestId, actor.companyId]);
+    const request = await client.query<{ companyId: string }>(`SELECT r.company_id::text AS "companyId" FROM requests r JOIN lookup_values rs ON rs.id=r.status_id
+      WHERE r.id=$1 AND rs.label NOT IN ('New Request','Cancelled','Completed')${actor.isOwner ? "" : " AND r.company_id=$2"}`, actor.isOwner ? [input.requestId] : [input.requestId, actor.companyId]);
     if (!request.rows[0]) throw new Error("Request not found.");
     if (input.supplierId) {
       const supplier = await client.query("SELECT 1 FROM suppliers WHERE id=$1 AND company_id=$2", [input.supplierId, request.rows[0].companyId]);
@@ -199,7 +201,7 @@ export async function listPayments(): Promise<PaymentRecord[]> {
 }
 
 export async function recordPayment(input: { invoiceId: string; paymentDate: string; amount: number; method: string; reference?: string }, actor: OperationActor) {
-  if (input.method !== COD_PAYMENT_METHOD) throw new Error(`Only ${COD_PAYMENT_METHOD} is supported in the MVP.`);
+  if (input.method !== COD_PAYMENT_METHOD) throw new Error(`Only ${COD_PAYMENT_METHOD} is currently supported.`);
   if (isDemoMode()) {
     const invoice = getDemoOperations().invoices.find((item) => item.id === input.invoiceId);
     if (!invoice) throw new Error("Invoice not found.");
@@ -226,7 +228,7 @@ export async function listAuditRecords(): Promise<AuditRecord[]> {
   if (isDemoMode()) return getDemoOperations().audit;
   const result = await query<AuditRecord>(`SELECT a.id::text,a.entity_type AS "entityType",a.record_id::text AS "recordId",a.action,
     u.display_name AS "actorName",a.reason,a.occurred_at::text AS "occurredAt" FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id
-    ${actor.isOwner ? "" : "WHERE u.company_id=$1"} ORDER BY a.occurred_at DESC LIMIT 500`, actor.isOwner ? [] : [actor.companyId]);
+    ${actor.isOwner ? "" : "WHERE a.company_id=$1"} ORDER BY a.occurred_at DESC LIMIT 500`, actor.isOwner ? [] : [actor.companyId]);
   return result.rows;
 }
 
@@ -261,25 +263,26 @@ export async function saveAttachment(input: { entityType: "request" | "invoice" 
   if (!companyId || (!actor.isOwner && companyId !== actor.companyId)) throw new Error("Linked record not found.");
   const id = randomUUID();
   const relativePath = path.posix.join(input.entityType, `${id}-${safeName}`);
-  const uploadRoot = path.resolve(process.cwd(), "data", "uploads");
-  const destination = path.resolve(uploadRoot, relativePath);
-  if (!destination.startsWith(`${uploadRoot}${path.sep}`)) throw new Error("Invalid upload path.");
-  await mkdir(path.dirname(destination), { recursive: true });
-  await writeFile(destination, Buffer.from(await input.file.arrayBuffer()), { flag: "wx" });
+  const bytes = Buffer.from(await input.file.arrayBuffer());
   await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO attachments
-    (id,entity_type,record_id,file_name,content_type,storage_path,uploaded_by,company_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-    [id, input.entityType, input.recordId, safeName, input.file.type, relativePath, actor.id, companyId]));
+    (id,entity_type,record_id,file_name,content_type,storage_path,uploaded_by,company_id,file_content) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [id, input.entityType, input.recordId, safeName, input.file.type, relativePath, actor.id, companyId, bytes]));
 }
 
 export async function loadAttachmentFile(id: string) {
   const actor = await requireSession();
   if (isDemoMode()) return null;
-  const result = await query<{ fileName: string; contentType: string; storagePath: string }>(`SELECT file_name AS "fileName",content_type AS "contentType",storage_path AS "storagePath"
+  const result = await query<{ fileName: string; contentType: string; storagePath: string; fileContent?: Buffer }>(`SELECT file_name AS "fileName",content_type AS "contentType",storage_path AS "storagePath",file_content AS "fileContent"
     FROM attachments WHERE id=$1${actor.isOwner ? "" : " AND company_id=$2"}`, actor.isOwner ? [id] : [id, actor.companyId]);
   const record = result.rows[0];
   if (!record) return null;
+  if (record.fileContent) return { fileName: record.fileName, contentType: record.contentType, bytes: record.fileContent };
   const uploadRoot = path.resolve(process.cwd(), "data", "uploads");
   const source = path.resolve(uploadRoot, record.storagePath);
   if (!source.startsWith(`${uploadRoot}${path.sep}`)) throw new Error("Invalid stored attachment path.");
-  return { ...record, bytes: await readFile(source) };
+  try {
+    return { fileName: record.fileName, contentType: record.contentType, bytes: await readFile(source) };
+  } catch {
+    return null;
+  }
 }

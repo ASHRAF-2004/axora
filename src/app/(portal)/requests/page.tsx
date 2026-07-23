@@ -1,12 +1,15 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { calculateLineAmounts, formatCurrency, formatDate, REQUEST_STATUSES } from "@/lib/domain";
+import { requireSession } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { listRequests } from "@/lib/repository";
 import { Download, Search } from "lucide-react";
 import Link from "next/link";
 
 export default async function RequestsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
   const filters = await searchParams;
+  const actor = await requireSession();
   const query = (filters.q ?? "").trim().toLowerCase();
   const status = filters.status ?? "all";
   const requests = (await listRequests()).filter((request) => {
@@ -16,7 +19,9 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
   });
   return (
     <>
-      <PageHeader eyebrow="Operations tracker" title="Requests" description="Follow every order group from intake through supplier assignment, delivery, invoice and payment." actionHref="/requests/new" actionLabel="New multi-item request" />
+      <PageHeader eyebrow="Operations tracker" title="Requests" description="Follow every order group from intake through supplier assignment, delivery, invoice and payment."
+        actionHref={hasPermission(actor.role, "manage_requests") ? "/requests/new" : undefined}
+        actionLabel={hasPermission(actor.role, "manage_requests") ? "New multi-item request" : undefined} />
       <form className="toolbar" method="get">
         <div className="toolbar-group"><Search size={18} className="muted" /><input className="search-input" name="q" defaultValue={filters.q} aria-label="Search requests" placeholder="Search request, company or product" /></div>
         <div className="toolbar-group"><select name="status" defaultValue={status} aria-label="Filter by status"><option value="all">All statuses</option><option value="open">Open only</option>{REQUEST_STATUSES.map((item) => <option key={item} value={item}>{item}</option>)}</select><button className="button button-secondary" type="submit">Apply filters</button><a className="button button-secondary" href="/api/export/requests"><Download size={16} />Export CSV</a></div>

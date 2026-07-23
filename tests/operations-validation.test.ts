@@ -70,7 +70,7 @@ describe("operational validation helpers", () => {
       paymentDate: "2026-07-22",
       amount: 1,
       method: "Bank transfer",
-    }, actor)).rejects.toThrow(`Only ${COD_PAYMENT_METHOD} is supported in the MVP.`);
+    }, actor)).rejects.toThrow(`Only ${COD_PAYMENT_METHOD} is currently supported.`);
     expect(getDemoOperations().payments).toHaveLength(paymentCount);
   });
 

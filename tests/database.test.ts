@@ -7,6 +7,7 @@ const migrationUrls = [
   new URL("../database/migrations/002_cod_only_payments.sql", import.meta.url),
   new URL("../database/migrations/003_protect_owner_account.sql", import.meta.url),
   new URL("../database/migrations/004_company_tenant_membership.sql", import.meta.url),
+  new URL("../database/migrations/005_persistent_files_and_tenant_audit.sql", import.meta.url),
 ];
 const demoSeedUrl = new URL("../database/seeds/demo.sql", import.meta.url);
 
@@ -215,5 +216,31 @@ describe("PostgreSQL migration and demonstration seed", () => {
         ('S-TENANT-B', 'Tenant supplier', 'General', 'B', '2', 'b@tenant.test', 'B', 'B',
          'Cash on delivery (COD)', 1, 1, 'General', '10000000-0000-4000-8000-000000000002')
     `)).resolves.not.toThrow();
+  });
+
+  it("stores uploaded file bytes persistently and scopes their audit record", async () => {
+    await db.exec(`
+      INSERT INTO attachments (
+        id, entity_type, record_id, file_name, content_type, storage_path, company_id, file_content
+      ) VALUES (
+        'ffffffff-ffff-4fff-8fff-ffffffffffa1', 'request',
+        '50000000-0000-4000-8000-000000000001', 'evidence.txt', 'text/plain',
+        'request/db-backed-evidence.txt', '10000000-0000-4000-8000-000000000001',
+        decode('41786f7261', 'hex')
+      )
+    `);
+    const attachment = await db.query<{ size: number }>(`
+      SELECT octet_length(file_content)::int AS size
+      FROM attachments WHERE id='ffffffff-ffff-4fff-8fff-ffffffffffa1'
+    `);
+    const audit = await db.query<{ company_id: string }>(`
+      SELECT company_id::text
+      FROM audit_logs
+      WHERE entity_type='attachments' AND record_id='ffffffff-ffff-4fff-8fff-ffffffffffa1'
+      ORDER BY occurred_at DESC LIMIT 1
+    `);
+
+    expect(attachment.rows[0].size).toBe(5);
+    expect(audit.rows[0].company_id).toBe("10000000-0000-4000-8000-000000000001");
   });
 });
