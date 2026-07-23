@@ -3,6 +3,7 @@ import type { PoolClient } from "pg";
 import { calculateTotals } from "./domain";
 import { getDemoStore } from "./demo-data";
 import { isDemoMode, query, withAuditTransaction } from "./db";
+import { requireSession, type SessionUser } from "./auth";
 import type { Branch, Company, DashboardData, ProcurementRequest, Product, RequestStatus, Supplier } from "./types";
 import { validateStatusTransition } from "./workflow";
 
@@ -10,50 +11,74 @@ function nextCode(prefix: string, count: number, digits = 3) {
   return `${prefix}-${String(count + 1).padStart(digits, "0")}`;
 }
 
-export async function listCompanies(): Promise<Company[]> {
-  if (isDemoMode()) return getDemoStore().companies;
+async function actorOrSession(actor?: SessionUser) {
+  return actor ?? requireSession();
+}
+
+function tenantClause(actor: SessionUser, column: string) {
+  return actor.isOwner ? { sql: "", values: [] as unknown[] } : { sql: ` WHERE ${column} = $1`, values: [actor.companyId] };
+}
+
+function requireCompany(actor: SessionUser, requestedCompanyId?: string) {
+  const companyId = actor.isOwner ? requestedCompanyId : actor.companyId;
+  if (!companyId) throw new Error("Select a company.");
+  if (!actor.isOwner && requestedCompanyId && requestedCompanyId !== actor.companyId) throw new Error("You cannot access another company.");
+  return companyId;
+}
+
+export async function listCompanies(providedActor?: SessionUser): Promise<Company[]> {
+  const actor = await actorOrSession(providedActor);
+  if (isDemoMode()) return actor.isOwner ? getDemoStore().companies : getDemoStore().companies.filter((item) => item.id === actor.companyId);
+  const scope = tenantClause(actor, "id");
   const result = await query<Company>(`SELECT id::text, company_code AS code, name, industry,
     main_contact_name AS "mainContactName", main_contact_email AS "mainContactEmail", main_contact_phone AS "mainContactPhone",
     billing_contact_name AS "billingContactName", billing_contact_email AS "billingContactEmail", billing_contact_phone AS "billingContactPhone",
     billing_address AS "billingAddress", payment_terms AS "paymentTerms", billing_cycle AS "billingCycle", notes,
     CASE WHEN active THEN 'Active' ELSE 'Inactive' END AS status
-    FROM companies ORDER BY name`);
+    FROM companies${scope.sql} ORDER BY name`, scope.values);
   return result.rows;
 }
 
-export async function listBranches(): Promise<Branch[]> {
-  if (isDemoMode()) return getDemoStore().branches;
+export async function listBranches(providedActor?: SessionUser): Promise<Branch[]> {
+  const actor = await actorOrSession(providedActor);
+  if (isDemoMode()) return actor.isOwner ? getDemoStore().branches : getDemoStore().branches.filter((item) => item.companyId === actor.companyId);
+  const scope = tenantClause(actor, "b.company_id");
   const result = await query<Branch>(`SELECT b.id::text, b.branch_code_id AS code, b.company_id::text AS "companyId", c.name AS "companyName",
     b.name, b.branch_code AS "branchCode", b.delivery_address AS "deliveryAddress", b.city,
     b.contact_name AS "contactName", b.contact_phone AS "contactPhone", b.contact_email AS "contactEmail",
     b.delivery_instructions AS "deliveryInstructions", b.notes,
     CASE WHEN b.active THEN 'Active' ELSE 'Inactive' END AS status
-    FROM branches b JOIN companies c ON c.id = b.company_id ORDER BY c.name, b.name`);
+    FROM branches b JOIN companies c ON c.id = b.company_id${scope.sql} ORDER BY c.name, b.name`, scope.values);
   return result.rows;
 }
 
-export async function listProducts(): Promise<Product[]> {
+export async function listProducts(providedActor?: SessionUser): Promise<Product[]> {
+  const actor = await actorOrSession(providedActor);
   if (isDemoMode()) return getDemoStore().products;
-  const result = await query<Product>(`SELECT p.id::text, p.product_code AS code, p.name, p.category, p.subcategory, p.brand, p.product_size AS size,
+  const scope = tenantClause(actor, "p.company_id");
+  const result = await query<Product>(`SELECT p.id::text,p.company_id::text AS "companyId",c.name AS "companyName",p.product_code AS code, p.name, p.category, p.subcategory, p.brand, p.product_size AS size,
     p.unit_of_measure AS unit, p.packaging, p.description, p.default_buy_price::float8 AS "defaultBuyPrice",
     p.default_sell_price::float8 AS "defaultSellPrice", p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
     p.delivery_sla_days AS "deliverySlaDays", ps.supplier_id::text AS "preferredSupplierId", s.name AS "preferredSupplierName",
     CASE WHEN p.needs_review THEN 'Needs Review' WHEN p.active THEN 'Active' ELSE 'Inactive' END AS status,
-    EXISTS (SELECT 1 FROM products p2 WHERE lower(p2.name) = lower(p.name) AND p2.id <> p.id) AS "duplicateWarning"
+    EXISTS (SELECT 1 FROM products p2 WHERE p2.company_id=p.company_id AND lower(p2.name) = lower(p.name) AND p2.id <> p.id) AS "duplicateWarning"
     FROM products p
+    LEFT JOIN companies c ON c.id=p.company_id
     LEFT JOIN product_suppliers ps ON ps.product_id = p.id AND ps.preferred = true
     LEFT JOIN suppliers s ON s.id = ps.supplier_id
-    ORDER BY p.name`);
+    ${scope.sql} ORDER BY p.name`, scope.values);
   return result.rows;
 }
 
-export async function listSuppliers(): Promise<Supplier[]> {
+export async function listSuppliers(providedActor?: SessionUser): Promise<Supplier[]> {
+  const actor = await actorOrSession(providedActor);
   if (isDemoMode()) return getDemoStore().suppliers;
-  const result = await query<Supplier>(`SELECT id::text, supplier_code AS code, name, category,
+  const scope = tenantClause(actor, "s.company_id");
+  const result = await query<Supplier>(`SELECT s.id::text,s.company_id::text AS "companyId",c.name AS "companyName",supplier_code AS code,s.name,s.category,
     contact_name AS "contactName", phone, email, address, coverage_area AS "coverageArea", payment_terms AS "paymentTerms",
     lead_time_days AS "leadTimeDays", minimum_order_quantity::float8 AS "minimumOrderQuantity", main_products AS "mainProducts", notes,
     CASE WHEN active THEN 'Active' ELSE 'Inactive' END AS status
-    FROM suppliers ORDER BY name`);
+    FROM suppliers s LEFT JOIN companies c ON c.id=s.company_id${scope.sql} ORDER BY s.name`, scope.values);
   return result.rows;
 }
 
@@ -191,20 +216,24 @@ const requestSelect = `SELECT r.id::text, r.order_code AS "orderCode", r.request
     ) x
   ) i ON true`;
 
-export async function listRequests(): Promise<ProcurementRequest[]> {
-  if (isDemoMode()) return getDemoStore().requests;
-  const result = await query<RequestRow>(`${requestSelect} ORDER BY r.request_date DESC, r.order_code, l.request_line_code`);
+export async function listRequests(providedActor?: SessionUser): Promise<ProcurementRequest[]> {
+  const actor = await actorOrSession(providedActor);
+  if (isDemoMode()) return actor.isOwner ? getDemoStore().requests : getDemoStore().requests.filter((item) => item.companyId === actor.companyId);
+  const scope = tenantClause(actor, "r.company_id");
+  const result = await query<RequestRow>(`${requestSelect}${scope.sql} ORDER BY r.request_date DESC, r.order_code, l.request_line_code`, scope.values);
   return groupRequestRows(result.rows);
 }
 
-export async function getRequest(id: string) {
-  if (isDemoMode()) return getDemoStore().requests.find((request) => request.id === id);
-  const result = await query<RequestRow>(`${requestSelect} WHERE r.id = $1 ORDER BY l.request_line_code`, [id]);
+export async function getRequest(id: string, providedActor?: SessionUser) {
+  const actor = await actorOrSession(providedActor);
+  if (isDemoMode()) return getDemoStore().requests.find((request) => request.id === id && (actor.isOwner || request.companyId === actor.companyId));
+  const result = await query<RequestRow>(`${requestSelect} WHERE r.id = $1${actor.isOwner ? "" : " AND r.company_id = $2"} ORDER BY l.request_line_code`, actor.isOwner ? [id] : [id, actor.companyId]);
   return groupRequestRows(result.rows)[0];
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [requests, companies, suppliers] = await Promise.all([listRequests(), listCompanies(), listSuppliers()]);
+  const actor = await requireSession();
+  const [requests, companies, suppliers] = await Promise.all([listRequests(actor), listCompanies(actor), listSuppliers(actor)]);
   const totals = calculateTotals(requests);
   const byStatus = Object.entries(requests.reduce<Record<string, number>>((acc, request) => ({ ...acc, [request.status]: (acc[request.status] ?? 0) + 1 }), {})).map(([label, value]) => ({ label, value }));
   const byCompany = Object.entries(requests.reduce<Record<string, number>>((acc, request) => ({ ...acc, [request.companyName]: (acc[request.companyName] ?? 0) + 1 }), {})).map(([label, value]) => ({ label, value }));
@@ -227,43 +256,47 @@ export async function getDashboardData(): Promise<DashboardData> {
   };
 }
 
-export async function createCompany(input: Omit<Company, "id" | "code" | "status">, actorId?: string) {
+export async function createCompany(input: Omit<Company, "id" | "code" | "status">, actor: SessionUser) {
+  if (!actor.isOwner) throw new Error("Only the Axora owner can create companies.");
   if (isDemoMode()) {
     const store = getDemoStore();
     if (store.companies.some((company) => company.name.toLowerCase() === input.name.toLowerCase())) throw new Error("A company with this name already exists.");
     store.companies.push({ ...input, id: randomUUID(), code: nextCode("C", store.companies.length), status: "Active" });
     return;
   }
-  await withAuditTransaction({ userId: actorId }, (client) => client.query(`INSERT INTO companies (company_code, name, industry, main_contact_name, main_contact_email, main_contact_phone,
+  await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO companies (company_code, name, industry, main_contact_name, main_contact_email, main_contact_phone,
       billing_contact_name, billing_contact_email, billing_contact_phone, billing_address, payment_terms, billing_cycle, notes)
       VALUES (next_company_code(), $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [input.name, input.industry, input.mainContactName, input.mainContactEmail, input.mainContactPhone, input.billingContactName, input.billingContactEmail, input.billingContactPhone, input.billingAddress, input.paymentTerms, input.billingCycle, input.notes ?? null]));
 }
 
-export async function createBranch(input: Omit<Branch, "id" | "code" | "companyName" | "status">, actorId?: string) {
+export async function createBranch(input: Omit<Branch, "id" | "code" | "companyName" | "status">, actor: SessionUser) {
+  const companyId = requireCompany(actor, input.companyId);
   if (isDemoMode()) {
     const store = getDemoStore();
-    const company = store.companies.find((item) => item.id === input.companyId);
+    const company = store.companies.find((item) => item.id === companyId);
     if (!company) throw new Error("Select a valid company for this branch.");
     if (store.branches.some((branch) => branch.companyId === input.companyId && (branch.name.toLowerCase() === input.name.toLowerCase() || branch.branchCode.toLowerCase() === input.branchCode.toLowerCase()))) throw new Error("This company already has a branch with the same name or code.");
     store.branches.push({ ...input, id: randomUUID(), code: nextCode("B", store.branches.length), companyName: company?.name ?? "Unknown", status: "Active" });
     return;
   }
-  await withAuditTransaction({ userId: actorId }, (client) => client.query(`INSERT INTO branches (branch_code_id, company_id, name, branch_code, delivery_address, city, contact_name, contact_phone, contact_email, delivery_instructions, notes)
-      VALUES (next_branch_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, [input.companyId, input.name, input.branchCode, input.deliveryAddress, input.city, input.contactName, input.contactPhone, input.contactEmail, input.deliveryInstructions ?? null, input.notes ?? null]));
+  await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO branches (branch_code_id, company_id, name, branch_code, delivery_address, city, contact_name, contact_phone, contact_email, delivery_instructions, notes)
+      VALUES (next_branch_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, [companyId, input.name, input.branchCode, input.deliveryAddress, input.city, input.contactName, input.contactPhone, input.contactEmail, input.deliveryInstructions ?? null, input.notes ?? null]));
 }
 
-export async function createSupplier(input: Omit<Supplier, "id" | "code" | "status">, actorId?: string) {
+export async function createSupplier(input: Omit<Supplier, "id" | "code" | "status"> & { companyId?: string }, actor: SessionUser) {
+  const companyId = requireCompany(actor, input.companyId);
   if (isDemoMode()) {
     const store = getDemoStore();
     if (store.suppliers.some((supplier) => supplier.name.toLowerCase() === input.name.toLowerCase())) throw new Error("A supplier with this name already exists.");
     store.suppliers.push({ ...input, id: randomUUID(), code: nextCode("S", store.suppliers.length), status: "Active" });
     return;
   }
-  await withAuditTransaction({ userId: actorId }, (client) => client.query(`INSERT INTO suppliers (supplier_code,name,category,contact_name,phone,email,address,coverage_area,payment_terms,lead_time_days,minimum_order_quantity,main_products,notes)
-      VALUES (next_supplier_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [input.name, input.category, input.contactName, input.phone, input.email, input.address, input.coverageArea, input.paymentTerms, input.leadTimeDays, input.minimumOrderQuantity, input.mainProducts, input.notes ?? null]));
+  await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO suppliers (supplier_code,name,category,contact_name,phone,email,address,coverage_area,payment_terms,lead_time_days,minimum_order_quantity,main_products,notes,company_id)
+      VALUES (next_supplier_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, [input.name, input.category, input.contactName, input.phone, input.email, input.address, input.coverageArea, input.paymentTerms, input.leadTimeDays, input.minimumOrderQuantity, input.mainProducts, input.notes ?? null, companyId]));
 }
 
-export async function createProduct(input: Omit<Product, "id" | "code" | "status" | "duplicateWarning" | "preferredSupplierName">, actorId?: string) {
+export async function createProduct(input: Omit<Product, "id" | "code" | "status" | "duplicateWarning" | "preferredSupplierName"> & { companyId?: string }, actor: SessionUser) {
+  const companyId = requireCompany(actor, input.companyId);
   if (isDemoMode()) {
     const store = getDemoStore();
     const duplicateWarning = store.products.some((product) => product.name.toLowerCase() === input.name.toLowerCase());
@@ -271,13 +304,13 @@ export async function createProduct(input: Omit<Product, "id" | "code" | "status
     store.products.push({ ...input, id: randomUUID(), code: nextCode("AX-NEW", store.products.length), status: duplicateWarning ? "Needs Review" : "Active", duplicateWarning, preferredSupplierName: supplier?.name });
     return;
   }
-  await withAuditTransaction({ userId: actorId }, async (client) => {
-    const duplicate = await client.query<{ exists: boolean }>("SELECT EXISTS (SELECT 1 FROM products WHERE lower(name)=lower($1)) AS exists", [input.name]);
-    const product = await client.query<{ id: string }>(`INSERT INTO products (product_code,name,category,subcategory,brand,product_size,unit_of_measure,packaging,description,default_buy_price,default_sell_price,minimum_order_quantity,delivery_sla_days,needs_review)
-      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id::text`, [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit, input.packaging ?? null, input.description ?? null, input.defaultBuyPrice, input.defaultSellPrice, input.minimumOrderQuantity, input.deliverySlaDays, duplicate.rows[0].exists]);
+  await withAuditTransaction({ userId: actor.id }, async (client) => {
+    const duplicate = await client.query<{ exists: boolean }>("SELECT EXISTS (SELECT 1 FROM products WHERE company_id=$2 AND lower(name)=lower($1)) AS exists", [input.name, companyId]);
+    const product = await client.query<{ id: string }>(`INSERT INTO products (product_code,name,category,subcategory,brand,product_size,unit_of_measure,packaging,description,default_buy_price,default_sell_price,minimum_order_quantity,delivery_sla_days,needs_review,company_id)
+      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id::text`, [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit, input.packaging ?? null, input.description ?? null, input.defaultBuyPrice, input.defaultSellPrice, input.minimumOrderQuantity, input.deliverySlaDays, duplicate.rows[0].exists, companyId]);
     if (input.preferredSupplierId) {
       await client.query(`INSERT INTO product_suppliers (product_id,supplier_id,preferred,indicative_buy_price,supplier_moq,lead_time_days)
-        VALUES ($1,$2,true,$3,$4,$5)`, [product.rows[0].id, input.preferredSupplierId, input.defaultBuyPrice, input.minimumOrderQuantity, input.deliverySlaDays]);
+        SELECT $1,$2,true,$3,$4,$5 FROM suppliers WHERE id=$2 AND company_id=$6`, [product.rows[0].id, input.preferredSupplierId, input.defaultBuyPrice, input.minimumOrderQuantity, input.deliverySlaDays, companyId]);
     }
   });
 }
@@ -295,7 +328,8 @@ export interface NewRequestInput {
   lines: Array<{ productId: string; quantity: number; specification?: string }>;
 }
 
-export async function createRequest(input: NewRequestInput, actorId?: string) {
+export async function createRequest(input: NewRequestInput, actor: SessionUser) {
+  const companyId = requireCompany(actor, input.companyId);
   if (isDemoMode()) {
     const store = getDemoStore();
     const company = store.companies.find((item) => item.id === input.companyId);
@@ -319,26 +353,26 @@ export async function createRequest(input: NewRequestInput, actorId?: string) {
     store.requests.unshift(request);
     return request.id;
   }
-  return withAuditTransaction({ userId: actorId }, async (client: PoolClient) => {
-    const branchMatch = await client.query("SELECT 1 FROM branches WHERE id=$1 AND company_id=$2 AND active=true", [input.branchId, input.companyId]);
+  return withAuditTransaction({ userId: actor.id }, async (client: PoolClient) => {
+    const branchMatch = await client.query("SELECT 1 FROM branches WHERE id=$1 AND company_id=$2 AND active=true", [input.branchId, companyId]);
     if (!branchMatch.rowCount) throw new Error("The selected branch does not belong to the selected company.");
-    const selectedProducts = await client.query<{ count: number }>("SELECT count(*)::int AS count FROM products WHERE id = ANY($1::uuid[]) AND active=true AND needs_review=false", [input.lines.map((line) => line.productId)]);
+    const selectedProducts = await client.query<{ count: number }>("SELECT count(*)::int AS count FROM products WHERE id = ANY($1::uuid[]) AND company_id=$2 AND active=true AND needs_review=false", [input.lines.map((line) => line.productId), companyId]);
     if (selectedProducts.rows[0].count !== new Set(input.lines.map((line) => line.productId)).size) throw new Error("One or more selected products are unavailable or still need review.");
     const requestResult = await client.query<{ id: string }>(`INSERT INTO requests (order_code,request_date,request_type_id,company_id,branch_id,department,requested_by,requester_contact,needed_by_date,urgency_id,status_id,notes,created_by)
       VALUES (next_order_code(),CURRENT_DATE,lookup_id('request_type',$1),$2,$3,$4,$5,$6,$7,lookup_id('urgency',$8),lookup_id('request_status','New Request'),$9,$10) RETURNING id::text`,
-      [input.requestType, input.companyId, input.branchId, input.department, input.requestedBy, input.requesterContact, input.neededByDate, input.urgency, input.notes ?? null, actorId ?? null]);
+      [input.requestType, companyId, input.branchId, input.department, input.requestedBy, input.requesterContact, input.neededByDate, input.urgency, input.notes ?? null, actor.id]);
     const requestId = requestResult.rows[0].id;
     for (const item of input.lines) {
       await client.query(`INSERT INTO request_lines (request_line_code,request_id,product_id,product_name_snapshot,category_snapshot,subcategory_snapshot,specification,quantity,unit_of_measure,selected_supplier_id,supplier_confirmation_status_id,unit_buy_price,unit_sell_price)
         SELECT next_request_line_code(),$1,p.id,p.name,p.category,p.subcategory,$3,$4,p.unit_of_measure,ps.supplier_id,lookup_id('supplier_confirmation','Pending'),p.default_buy_price,p.default_sell_price
-        FROM products p LEFT JOIN product_suppliers ps ON ps.product_id=p.id AND ps.preferred=true WHERE p.id=$2`,
-      [requestId, item.productId, item.specification ?? null, item.quantity]);
+        FROM products p LEFT JOIN product_suppliers ps ON ps.product_id=p.id AND ps.preferred=true WHERE p.id=$2 AND p.company_id=$5`,
+      [requestId, item.productId, item.specification ?? null, item.quantity, companyId]);
     }
     return requestId;
   });
 }
 
-export async function updateRequestStatus(id: string, status: RequestStatus, reason?: string, actorId?: string) {
+export async function updateRequestStatus(id: string, status: RequestStatus, reason: string | undefined, actor: SessionUser) {
   if (isDemoMode()) {
     const request = getDemoStore().requests.find((item) => item.id === id);
     if (!request) throw new Error("Request not found.");
@@ -348,8 +382,8 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
     if (status === "Completed") request.completedDate = new Date().toISOString().slice(0, 10);
     return;
   }
-  await withAuditTransaction({ userId: actorId, reason }, async (client) => {
-    const current = await client.query<{ status: RequestStatus }>(`SELECT lv.label AS status FROM requests r JOIN lookup_values lv ON lv.id=r.status_id WHERE r.id=$1 FOR UPDATE`, [id]);
+  await withAuditTransaction({ userId: actor.id, reason }, async (client) => {
+    const current = await client.query<{ status: RequestStatus }>(`SELECT lv.label AS status FROM requests r JOIN lookup_values lv ON lv.id=r.status_id WHERE r.id=$1${actor.isOwner ? "" : " AND r.company_id=$2"} FOR UPDATE`, actor.isOwner ? [id] : [id, actor.companyId]);
     if (!current.rows[0]) throw new Error("Request not found.");
     validateStatusTransition(current.rows[0].status, status, reason);
     const permitted = await client.query(`SELECT 1 FROM request_status_transitions WHERE from_status_id=lookup_id('request_status',$1) AND to_status_id=lookup_id('request_status',$2)`, [current.rows[0].status, status]);
@@ -360,7 +394,8 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
 
 export type MasterEntity = "companies" | "branches" | "products" | "suppliers";
 
-export async function setMasterActive(entity: MasterEntity, id: string, active: boolean, actorId?: string) {
+export async function setMasterActive(entity: MasterEntity, id: string, active: boolean, actor: SessionUser) {
+  if (entity === "companies" && !actor.isOwner) throw new Error("Only the Axora owner can change company status.");
   if (isDemoMode()) {
     const store = getDemoStore();
     const collection = store[entity];
@@ -371,8 +406,9 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
   }
   const allowedTables: Record<MasterEntity, string> = { companies: "companies", branches: "branches", products: "products", suppliers: "suppliers" };
   const table = allowedTables[entity];
-  await withAuditTransaction({ userId: actorId, reason: active ? "Master record activated" : "Master record deactivated" }, async (client) => {
-    const result = await client.query(`UPDATE ${table} SET active=$2 WHERE id=$1`, [id, active]);
+  await withAuditTransaction({ userId: actor.id, reason: active ? "Master record activated" : "Master record deactivated" }, async (client) => {
+    const companyPredicate = actor.isOwner ? "" : entity === "branches" ? " AND company_id=$3" : entity === "products" || entity === "suppliers" ? " AND company_id=$3" : " AND id=$3";
+    const result = await client.query(`UPDATE ${table} SET active=$2 WHERE id=$1${companyPredicate}`, actor.isOwner ? [id, active] : [id, active, actor.companyId]);
     if (!result.rowCount) throw new Error("Master record not found.");
   });
 }

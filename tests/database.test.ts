@@ -5,6 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 const migrationUrls = [
   new URL("../database/migrations/001_initial.sql", import.meta.url),
   new URL("../database/migrations/002_cod_only_payments.sql", import.meta.url),
+  new URL("../database/migrations/003_protect_owner_account.sql", import.meta.url),
+  new URL("../database/migrations/004_company_tenant_membership.sql", import.meta.url),
 ];
 const demoSeedUrl = new URL("../database/seeds/demo.sql", import.meta.url);
 
@@ -186,5 +188,32 @@ describe("PostgreSQL migration and demonstration seed", () => {
         'INVALID', 'Invalid address'
       )
     `)).rejects.toThrow();
+  });
+
+  it("enforces company membership for every non-owner user", async () => {
+    await expect(db.exec(`
+      INSERT INTO users (email, display_name, password_hash, role_id, is_owner)
+      SELECT 'orphan@example.test', 'Orphan user', 'not-a-real-hash', id, false
+      FROM roles WHERE role_key='VIEWER'
+    `)).rejects.toThrow();
+
+    await expect(db.exec(`
+      INSERT INTO users (email, display_name, password_hash, role_id, company_id, is_owner)
+      SELECT 'tenant@example.test', 'Tenant user', 'not-a-real-hash', r.id,
+             '10000000-0000-4000-8000-000000000001', false
+      FROM roles r WHERE r.role_key='VIEWER'
+    `)).resolves.not.toThrow();
+  });
+
+  it("allows the same supplier name in separate company tenants", async () => {
+    await expect(db.exec(`
+      INSERT INTO suppliers (supplier_code, name, category, contact_name, phone, email, address,
+        coverage_area, payment_terms, lead_time_days, minimum_order_quantity, main_products, company_id)
+      VALUES
+        ('S-TENANT-A', 'Tenant supplier', 'General', 'A', '1', 'a@tenant.test', 'A', 'A',
+         'Cash on delivery (COD)', 1, 1, 'General', '10000000-0000-4000-8000-000000000001'),
+        ('S-TENANT-B', 'Tenant supplier', 'General', 'B', '2', 'b@tenant.test', 'B', 'B',
+         'Cash on delivery (COD)', 1, 1, 'General', '10000000-0000-4000-8000-000000000002')
+    `)).resolves.not.toThrow();
   });
 });

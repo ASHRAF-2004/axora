@@ -19,7 +19,7 @@ export async function createRequestAction(formData: FormData) {
     department: readFormText(formData, "department"), requestedBy: readFormText(formData, "requestedBy"), requesterContact: readFormText(formData, "requesterContact"),
     neededByDate: readFormText(formData, "neededByDate"), urgency: readFormText(formData, "urgency"), notes: readFormText(formData, "notes"), lines,
   });
-  const id = await createRequest(input, user.id);
+  const id = await createRequest(input, user);
   revalidatePath("/dashboard"); revalidatePath("/requests"); redirect(`/requests/${id}`);
 }
 
@@ -27,6 +27,6 @@ export async function updateStatusAction(id: string, formData: FormData) {
   const user = await requireRole(["ADMIN", "OPERATIONS"]);
   const status = String(formData.get("status")) as RequestStatus;
   if (!REQUEST_STATUSES.includes(status)) throw new Error("Invalid request status.");
-  await updateRequestStatus(id, status, readFormText(formData, "reason"), user.id);
+  await updateRequestStatus(id, status, readFormText(formData, "reason"), user);
   revalidatePath(`/requests/${id}`); revalidatePath("/requests"); revalidatePath("/dashboard");
 }

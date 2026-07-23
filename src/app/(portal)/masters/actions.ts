@@ -20,7 +20,7 @@ export async function createCompanyAction(formData: FormData) {
     billingAddress: readFormText(formData, "billingAddress"), paymentTerms: readFormText(formData, "paymentTerms"),
     billingCycle: readFormText(formData, "billingCycle"), notes: readFormText(formData, "notes"),
   });
-  await createCompany(input, user.id);
+  await createCompany(input, user);
   revalidatePath("/companies"); revalidatePath("/dashboard");
 }
 
@@ -29,31 +29,33 @@ export async function createBranchAction(formData: FormData) {
   const input = branchSchema.parse({ companyId: readFormText(formData, "companyId"), name: readFormText(formData, "name"), branchCode: readFormText(formData, "branchCode"),
     deliveryAddress: readFormText(formData, "deliveryAddress"), city: readFormText(formData, "city"), contactName: readFormText(formData, "contactName"),
     contactPhone: readFormText(formData, "contactPhone"), contactEmail: readFormText(formData, "contactEmail"), deliveryInstructions: readFormText(formData, "deliveryInstructions"), notes: readFormText(formData, "notes") });
-  await createBranch(input, user.id);
+  await createBranch(input, user);
   revalidatePath("/branches");
 }
 
 export async function createSupplierAction(formData: FormData) {
   const user = await requireRole(["ADMIN", "OPERATIONS"]);
-  const input = supplierSchema.parse({ name: readFormText(formData, "name"), category: readFormText(formData, "category"), contactName: readFormText(formData, "contactName"), phone: readFormText(formData, "phone"),
+  const input = { ...supplierSchema.parse({ name: readFormText(formData, "name"), category: readFormText(formData, "category"), contactName: readFormText(formData, "contactName"), phone: readFormText(formData, "phone"),
     email: readFormText(formData, "email"), address: readFormText(formData, "address"), coverageArea: readFormText(formData, "coverageArea"), paymentTerms: readFormText(formData, "paymentTerms"),
-    leadTimeDays: number(formData, "leadTimeDays", 1), minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1), mainProducts: readFormText(formData, "mainProducts"), notes: readFormText(formData, "notes") });
-  await createSupplier(input, user.id);
+    leadTimeDays: number(formData, "leadTimeDays", 1), minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1), mainProducts: readFormText(formData, "mainProducts"), notes: readFormText(formData, "notes") }),
+    companyId: readFormText(formData, "companyId") || undefined };
+  await createSupplier(input, user);
   revalidatePath("/suppliers"); revalidatePath("/dashboard");
 }
 
 export async function createProductAction(formData: FormData) {
   const user = await requireRole(["ADMIN", "OPERATIONS"]);
-  const input = productSchema.parse({ name: readFormText(formData, "name"), category: readFormText(formData, "category"), subcategory: readFormText(formData, "subcategory"), brand: readFormText(formData, "brand"),
+  const input = { ...productSchema.parse({ name: readFormText(formData, "name"), category: readFormText(formData, "category"), subcategory: readFormText(formData, "subcategory"), brand: readFormText(formData, "brand"),
     size: readFormText(formData, "size"), unit: readFormText(formData, "unit"), packaging: readFormText(formData, "packaging"), description: readFormText(formData, "description"),
     defaultBuyPrice: number(formData, "defaultBuyPrice"), defaultSellPrice: number(formData, "defaultSellPrice"), minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1),
-    deliverySlaDays: number(formData, "deliverySlaDays", 1), preferredSupplierId: readFormText(formData, "preferredSupplierId") || undefined });
-  await createProduct(input, user.id);
+    deliverySlaDays: number(formData, "deliverySlaDays", 1), preferredSupplierId: readFormText(formData, "preferredSupplierId") || undefined }),
+    companyId: readFormText(formData, "companyId") || undefined };
+  await createProduct(input, user);
   revalidatePath("/products");
 }
 
 export async function setMasterActiveAction(entity: MasterEntity, id: string, active: boolean) {
   const user = await requireRole(["ADMIN", "OPERATIONS"]);
-  await setMasterActive(entity, id, active, user.id);
+  await setMasterActive(entity, id, active, user);
   revalidatePath(`/${entity}`); revalidatePath("/dashboard");
 }

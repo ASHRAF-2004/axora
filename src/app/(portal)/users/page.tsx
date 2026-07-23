@@ -2,16 +2,19 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireRole } from "@/lib/auth";
 import { formatDate } from "@/lib/domain";
+import { listCompanies } from "@/lib/repository";
 import { listUsers } from "@/lib/users";
 import { createUserAction, setUserActiveAction } from "./actions";
 
 export default async function UsersPage() {
   const actor = await requireRole(["ADMIN"]);
-  const users = await listUsers();
+  const [users, companies] = await Promise.all([listUsers(actor), actor.isOwner ? listCompanies(actor) : Promise.resolve([])]);
   const activeAdminCount = users.filter((user) => user.active && user.role === "ADMIN").length;
   return <><PageHeader eyebrow="Access control" title="Users and roles" description="Give each person only the access needed for their job. Never share one administrator password." />
     <section className="detail-grid"><article className="panel form-panel"><h2>Create user</h2><form action={createUserAction}><div className="form-grid">
       <label>Name<input name="displayName" required /></label><label>Email<input name="email" type="email" required /></label>
+      {actor.isOwner ? <label>Company<select name="companyId" required><option value="">Select company</option>{companies.map((company) =>
+        <option key={company.id} value={company.id}>{company.name}</option>)}</select></label> : null}
       <label>Role<select name="role" defaultValue="VIEWER"><option value="ADMIN">Admin / supervisor</option><option value="OPERATIONS">Operations</option><option value="FINANCE">Finance</option><option value="VIEWER">Viewer</option><option value="IT_SUPPORT">IT support</option></select></label>
       <label>Temporary password<input name="password" type="password" minLength={14} required autoComplete="new-password" /></label>
     </div><div className="form-actions"><button className="button button-primary" type="submit">Create account</button></div></form></article>

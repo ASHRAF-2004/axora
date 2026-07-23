@@ -71,6 +71,8 @@ export interface Branch {
 
 export interface Product {
   id: string;
+  companyId?: string;
+  companyName?: string;
   code: string;
   name: string;
   category: string;
@@ -92,6 +94,8 @@ export interface Product {
 
 export interface Supplier {
   id: string;
+  companyId?: string;
+  companyName?: string;
   code: string;
   name: string;
   category: string;
@@ -219,5 +223,6 @@ export interface AttachmentRecord {
 
 export interface UserRecord {
   id: string; email: string; displayName: string; role: UserRole; active: boolean; isOwner: boolean;
+  companyId?: string; companyName?: string;
   lastLoginAt?: string; createdAt: string;
 }
