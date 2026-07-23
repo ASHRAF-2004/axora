@@ -30,9 +30,14 @@ await client.connect();
 try {
   const passwordHash = await hash(adminPassword, 12);
   const result = await client.query(
-    `INSERT INTO users(email,display_name,password_hash,role_id)
-     VALUES ($1,$2,$3,(SELECT id FROM roles WHERE role_key='ADMIN'))
-     ON CONFLICT ((lower(email))) DO UPDATE SET display_name=EXCLUDED.display_name,password_hash=EXCLUDED.password_hash,active=true
+    `INSERT INTO users(email,display_name,password_hash,role_id,is_owner)
+     VALUES ($1,$2,$3,(SELECT id FROM roles WHERE role_key='ADMIN'),true)
+     ON CONFLICT ((lower(email))) DO UPDATE SET
+       display_name=EXCLUDED.display_name,
+       password_hash=EXCLUDED.password_hash,
+       role_id=EXCLUDED.role_id,
+       active=true,
+       is_owner=true
      RETURNING id`,
     [email.toLowerCase(), displayName, passwordHash],
   );

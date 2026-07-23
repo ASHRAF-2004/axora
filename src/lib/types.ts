@@ -218,6 +218,6 @@ export interface AttachmentRecord {
 }
 
 export interface UserRecord {
-  id: string; email: string; displayName: string; role: UserRole; active: boolean;
+  id: string; email: string; displayName: string; role: UserRole; active: boolean; isOwner: boolean;
   lastLoginAt?: string; createdAt: string;
 }
