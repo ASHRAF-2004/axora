@@ -11,7 +11,7 @@ if (!email || !displayName) {
 const passwordFile = process.env.ADMIN_PASSWORD_FILE || "/run/secrets/admin_initial_password";
 const adminPassword = process.env.ADMIN_INITIAL_PASSWORD?.trim()
   || readFileSync(passwordFile, "utf8").trim();
-const databasePassword = process.env.DB_PASSWORD
+const databasePassword = process.env.DATABASE_URL ? "" : process.env.DB_PASSWORD
   || readFileSync(process.env.DB_PASSWORD_FILE || "/run/secrets/axora_app_password", "utf8").trim();
 if (adminPassword.length < 14) throw new Error("The initial admin password must be at least 14 characters.");
 
