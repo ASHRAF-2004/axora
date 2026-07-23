@@ -73,7 +73,8 @@ export async function getSession(): Promise<SessionUser | null> {
       [tokenUser.id],
     );
     const live = current.rows[0];
-    if (!live || live.role !== tokenUser.role || live.companyId !== tokenUser.companyId || live.isOwner !== tokenUser.isOwner) return null;
+    const liveCompanyId = live?.companyId ?? undefined;
+    if (!live || live.role !== tokenUser.role || liveCompanyId !== tokenUser.companyId || live.isOwner !== tokenUser.isOwner) return null;
     return tokenUser;
   } catch {
     return null;
