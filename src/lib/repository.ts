@@ -74,10 +74,10 @@ export async function listSuppliers(providedActor?: SessionUser): Promise<Suppli
   const actor = await actorOrSession(providedActor);
   if (isDemoMode()) return getDemoStore().suppliers;
   const scope = tenantClause(actor, "s.company_id");
-  const result = await query<Supplier>(`SELECT s.id::text,s.company_id::text AS "companyId",c.name AS "companyName",supplier_code AS code,s.name,s.category,
-    contact_name AS "contactName", phone, email, address, coverage_area AS "coverageArea", payment_terms AS "paymentTerms",
-    lead_time_days AS "leadTimeDays", minimum_order_quantity::float8 AS "minimumOrderQuantity", main_products AS "mainProducts", notes,
-    CASE WHEN active THEN 'Active' ELSE 'Inactive' END AS status
+  const result = await query<Supplier>(`SELECT s.id::text,s.company_id::text AS "companyId",c.name AS "companyName",s.supplier_code AS code,s.name,s.category,
+    s.contact_name AS "contactName",s.phone,s.email,s.address,s.coverage_area AS "coverageArea",s.payment_terms AS "paymentTerms",
+    s.lead_time_days AS "leadTimeDays",s.minimum_order_quantity::float8 AS "minimumOrderQuantity",s.main_products AS "mainProducts",s.notes,
+    CASE WHEN s.active THEN 'Active' ELSE 'Inactive' END AS status
     FROM suppliers s LEFT JOIN companies c ON c.id=s.company_id${scope.sql} ORDER BY s.name`, scope.values);
   return result.rows;
 }
