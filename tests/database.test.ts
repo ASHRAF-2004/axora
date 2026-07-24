@@ -8,6 +8,7 @@ const migrationUrls = [
   new URL("../database/migrations/003_protect_owner_account.sql", import.meta.url),
   new URL("../database/migrations/004_company_tenant_membership.sql", import.meta.url),
   new URL("../database/migrations/005_persistent_files_and_tenant_audit.sql", import.meta.url),
+  new URL("../database/migrations/006_multiple_platform_owners.sql", import.meta.url),
 ];
 const demoSeedUrl = new URL("../database/seeds/demo.sql", import.meta.url);
 
@@ -204,6 +205,27 @@ describe("PostgreSQL migration and demonstration seed", () => {
              '10000000-0000-4000-8000-000000000001', false
       FROM roles r WHERE r.role_key='VIEWER'
     `)).resolves.not.toThrow();
+  });
+
+  it("supports multiple protected platform owners", async () => {
+    await expect(db.exec(`
+      INSERT INTO users (email, display_name, password_hash, role_id, is_owner)
+      SELECT 'owner-one@example.test', 'Owner One', 'not-a-real-hash', id, true
+      FROM roles WHERE role_key='ADMIN';
+
+      INSERT INTO users (email, display_name, password_hash, role_id, is_owner)
+      SELECT 'owner-two@example.test', 'Owner Two', 'not-a-real-hash', id, true
+      FROM roles WHERE role_key='ADMIN';
+    `)).resolves.not.toThrow();
+
+    const owners = await db.query<{ count: number }>(`
+      SELECT count(*)::int AS count
+      FROM users
+      WHERE email IN ('owner-one@example.test', 'owner-two@example.test')
+        AND is_owner
+        AND company_id IS NULL
+    `);
+    expect(Number(owners.rows[0].count)).toBe(2);
   });
 
   it("allows the same supplier name in separate company tenants", async () => {
