@@ -11,12 +11,12 @@ import Link from "next/link";
 export default async function DashboardPage() {
   const actor = await requireSession();
   const data = await getDashboardData(actor);
-  const firstName = actor.name.trim().split(/\s+/)[0] || "there";
+  const greetingName = actor.name.trim() || "there";
   const maxStatus = Math.max(...data.byStatus.map((item) => item.value), 1);
   const maxCompany = Math.max(...data.byCompany.map((item) => item.value), 1);
   return (
     <>
-      <PageHeader eyebrow="Operations overview" title={`${timeOfDayGreeting()}, ${firstName}`} description="A current view of your company requests, deliveries, and financial activity."
+      <PageHeader eyebrow="Operations overview" title={`${timeOfDayGreeting()}, ${greetingName}`} description="A current view of your company requests, deliveries, and financial activity."
         actionHref={hasPermission(actor.role, "manage_requests") ? "/requests/new" : undefined}
         actionLabel={hasPermission(actor.role, "manage_requests") ? "Create request" : undefined} />
       <section className="metric-grid" aria-label="Main performance indicators">
