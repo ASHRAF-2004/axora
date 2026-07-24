@@ -35,11 +35,29 @@ space.
 
 ## One-time tunnel enrollment
 
-For testing, create a Tailscale account. Replace the default allow-all policy in
-the Access controls page with the minimum policy below:
+For testing, create a Tailscale account. The simplest setup is:
+
+1. Open Tailscale's **Keys** page.
+2. Under **API access tokens**, generate a temporary token with a one-day
+   expiry.
+3. Run the command below and paste the token when prompted:
+
+```bash
+bash scripts/server/configure-hybrid-tailscale.sh
+```
+
+The token is entered invisibly and is not stored or added to shell history. The
+script backs up the previous tailnet policy, validates and applies Axora's
+restricted policy, creates two separately tagged auth keys, stores them with
+owner-only permissions, starts the Ubuntu endpoint, and revokes the temporary
+API token. If automatic revocation reports a warning, revoke the token manually
+on the Keys page.
+
+The resulting policy is:
 
 ```json
 {
+  "acls": [],
   "tagOwners": {
     "tag:axora-db": ["autogroup:admin"],
     "tag:axora-render": ["autogroup:admin"]
@@ -50,19 +68,34 @@ the Access controls page with the minimum policy below:
       "dst": ["tag:axora-db"],
       "ip": ["tcp:5432"]
     }
+  ],
+  "tests": [
+    {
+      "src": "tag:axora-render",
+      "proto": "tcp",
+      "accept": ["tag:axora-db:5432"],
+      "deny": ["tag:axora-db:22"]
+    },
+    {
+      "src": "tag:axora-db",
+      "proto": "tcp",
+      "deny": ["tag:axora-render:5432"]
+    }
   ]
 }
 ```
 
-Then generate two auth keys in the Tailscale admin console:
+The automated setup generates:
 
 1. A one-time, non-ephemeral key pre-authorized for `tag:axora-db`.
 2. A reusable, ephemeral key pre-authorized for `tag:axora-render`.
 
-Do not paste either key into a shell command or commit it to Git. The Render
-key expires in at most 90 days, so rotate it before expiry during testing.
+Do not paste either generated auth key into a shell command or commit it to
+Git. The Render key expires in at most 90 days, so rotate it before expiry
+during testing.
 
-Store it without showing it on screen:
+If API automation is unavailable, create the two auth keys manually and store
+them without showing them on screen:
 
 ```bash
 bash scripts/server/prepare-hybrid-tunnel.sh

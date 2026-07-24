@@ -1,0 +1,27 @@
+{
+  "acls": [],
+  "tagOwners": {
+    "tag:axora-db": ["autogroup:admin"],
+    "tag:axora-render": ["autogroup:admin"]
+  },
+  "grants": [
+    {
+      "src": ["tag:axora-render"],
+      "dst": ["tag:axora-db"],
+      "ip": ["tcp:5432"]
+    }
+  ],
+  "tests": [
+    {
+      "src": "tag:axora-render",
+      "proto": "tcp",
+      "accept": ["tag:axora-db:5432"],
+      "deny": ["tag:axora-db:22"]
+    },
+    {
+      "src": "tag:axora-db",
+      "proto": "tcp",
+      "deny": ["tag:axora-render:5432"]
+    }
+  ]
+}
