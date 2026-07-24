@@ -1,0 +1,53 @@
+services:
+  migrate:
+    environment:
+      POSTGRES_DB: "${AXORA_HYBRID_DB_NAME:-axora_hybrid}"
+
+  tailscale-db:
+    image: tailscale/tailscale:v1.98.8
+    hostname: axora-db
+    restart: unless-stopped
+    environment:
+      TS_ACCEPT_DNS: "false"
+      TS_AUTHKEY: "file:/run/secrets/tailscale_db_auth_key"
+      TS_AUTH_ONCE: "true"
+      TS_ENABLE_HEALTH_CHECK: "true"
+      TS_EXTRA_ARGS: "--advertise-tags=tag:axora-db"
+      TS_HOSTNAME: axora-db
+      TS_KUBE_SECRET: ""
+      TS_LOCAL_ADDR_PORT: "127.0.0.1:9002"
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+    secrets:
+      - tailscale_db_auth_key
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - ./tailscale/serve-config:/config:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+      - tunnel
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:9002/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  tunnel:
+
+volumes:
+  tailscale_state:
+
+secrets:
+  tailscale_db_auth_key:
+    file: ./secrets/tailscale_db_auth_key

@@ -10,7 +10,7 @@ source /etc/os-release
 [[ "${ID:-}" == "ubuntu" ]] || { echo "This installer is for Ubuntu, not ${ID:-unknown}." >&2; exit 1; }
 
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl
+sudo apt-get install -y ca-certificates curl jq
 sudo install -m 0755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc

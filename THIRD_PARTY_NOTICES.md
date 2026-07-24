@@ -17,3 +17,15 @@ The Axora pilot uses Lucide in two ways:
 
 The Axora mark is used for this internal pilot. The open-source icon portion is
 not presented as an exclusive or registered Axora trademark.
+
+## Tailscale client
+
+The hybrid deployment image includes the Tailscale client and daemon to create
+an authenticated private connection between the Render web service and the
+Ubuntu PostgreSQL server.
+
+- Project: https://github.com/tailscale/tailscale
+- Version: 1.98.8
+- License: BSD 3-Clause
+- Copyright: Copyright (c) 2020 Tailscale Inc & contributors
+- Full license text: `licenses/TAILSCALE-BSD-3-CLAUSE.txt`

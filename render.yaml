@@ -15,11 +15,19 @@ services:
       - key: DEMO_MODE
         value: "false"
       - key: DATABASE_URL
-        fromDatabase:
-          name: axora-db
-          property: connectionString
+        sync: false
       - key: DATABASE_SSL
         value: "false"
+      - key: SKIP_DATABASE_MIGRATIONS
+        value: "true"
+      - key: TAILSCALE_AUTH_KEY
+        sync: false
+      - key: TAILSCALE_DB_HOST
+        value: axora-db
+      - key: TAILSCALE_DB_PORT
+        value: "5432"
+      - key: TAILSCALE_HOSTNAME
+        value: axora-render
       - key: SESSION_SECRET
         generateValue: true
       - key: ADMIN_EMAIL

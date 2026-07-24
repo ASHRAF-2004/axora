@@ -12,7 +12,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   experimental: {
     serverActions: {
-      bodySizeLimit: "2mb",
+      // Keep room for multipart headers around Axora's validated 2 MB file limit.
+      bodySizeLimit: "3mb",
     },
   },
   async headers() {

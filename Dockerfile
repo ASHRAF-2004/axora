@@ -1,9 +1,12 @@
 # syntax=docker/dockerfile:1
 ARG NODE_VERSION=24.13.0-slim
+ARG TAILSCALE_VERSION=v1.98.8
 
 FROM node:${NODE_VERSION} AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+
+FROM tailscale/tailscale:${TAILSCALE_VERSION} AS tailscale
 
 FROM base AS dependencies
 COPY package.json package-lock.json ./
@@ -26,6 +29,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends tar \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 1001 axora \
     && useradd --system --uid 1001 --gid axora --create-home axora
+COPY --from=tailscale /usr/local/bin/tailscale /usr/local/bin/tailscale
+COPY --from=tailscale /usr/local/bin/tailscaled /usr/local/bin/tailscaled
 COPY --from=builder /app/package.json /app/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 COPY --from=builder --chown=axora:axora /app/public ./public

@@ -26,10 +26,30 @@ function buildConnectionString() {
   return `postgresql://${encodeURIComponent(user)}:${password}@${host}:${port}/${encodeURIComponent(name)}`;
 }
 
+function buildSslConfig() {
+  if (process.env.DATABASE_SSL === "false") return false;
+  if (process.env.DATABASE_SSL === "true") {
+    const caFile = process.env.DATABASE_SSL_CA_FILE;
+    return {
+      rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false",
+      ...(caFile ? { ca: fs.readFileSync(caFile, "utf8") } : {}),
+    };
+  }
+  return undefined;
+}
+
 export function getPool() {
   if (isDemoMode()) throw new Error("Database access is disabled in demo mode.");
   if (!global.__axoraPool) {
-    global.__axoraPool = new Pool({ connectionString: buildConnectionString(), max: 10, idleTimeoutMillis: 30_000 });
+    global.__axoraPool = new Pool({
+      connectionString: buildConnectionString(),
+      connectionTimeoutMillis: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS || 10_000),
+      idleTimeoutMillis: 30_000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10_000,
+      max: 10,
+      ssl: buildSslConfig(),
+    });
   }
   return global.__axoraPool;
 }

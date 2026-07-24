@@ -12,7 +12,7 @@ info "Storage"
 df -h "$PROJECT_DIR" || true
 
 info "Required commands"
-for command_name in docker openssl curl tar sha256sum; do
+for command_name in docker jq openssl curl tar sha256sum; do
   if command -v "$command_name" >/dev/null 2>&1; then printf 'OK   %s\n' "$command_name"; else printf 'MISS %s\n' "$command_name"; fi
 done
 
