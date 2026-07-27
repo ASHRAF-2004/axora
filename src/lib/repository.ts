@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
-import { calculateTotals } from "./domain";
+import { calculateTotals, roundMoney } from "./domain";
 import { getDemoStore } from "./demo-data";
+import { getDemoOperations } from "./demo-operations";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { requireSession, type SessionUser } from "./auth";
+import { canAccess } from "./permissions";
 import type { Branch, Company, DashboardData, ProcurementRequest, Product, RequestStatus, Supplier } from "./types";
 import { validateStatusTransition } from "./workflow";
 
@@ -17,6 +19,41 @@ async function actorOrSession(actor?: SessionUser) {
 
 function tenantClause(actor: SessionUser, column: string) {
   return actor.isOwner ? { sql: "", values: [] as unknown[] } : { sql: ` WHERE ${column} = $1`, values: [actor.companyId] };
+}
+
+function tenantAndBranchClause(actor: SessionUser, companyColumn: string, branchColumn: string) {
+  if (actor.isOwner) return { sql: "", values: [] as unknown[] };
+  if (actor.branchId) {
+    return { sql: ` WHERE ${companyColumn} = $1 AND ${branchColumn} = $2`, values: [actor.companyId, actor.branchId] };
+  }
+  return { sql: ` WHERE ${companyColumn} = $1`, values: [actor.companyId] };
+}
+
+function isSelfScopedRequester(actor: Pick<SessionUser, "isOwner" | "role">) {
+  return !actor.isOwner && ["REQUESTER", "OPERATIONS"].includes(actor.role);
+}
+
+function requestVisibilityScope(actor: SessionUser, alias: string, startIndex = 1) {
+  if (actor.isOwner) return { sql: "", values: [] as unknown[] };
+  const conditions = [`${alias}.company_id=$${startIndex}`];
+  const values: unknown[] = [actor.companyId];
+  if (actor.branchId) {
+    values.push(actor.branchId);
+    conditions.push(`${alias}.branch_id=$${startIndex + values.length - 1}`);
+  }
+  if (isSelfScopedRequester(actor)) {
+    values.push(actor.id);
+    conditions.push(`${alias}.created_by=$${startIndex + values.length - 1}`);
+  }
+  return { sql: conditions.join(" AND "), values };
+}
+
+function demoRequestVisibleToActor(request: ProcurementRequest, actor: SessionUser) {
+  return actor.isOwner || (
+    request.companyId === actor.companyId
+    && (!actor.branchId || request.branchId === actor.branchId)
+    && (!isSelfScopedRequester(actor) || request.createdById === actor.id)
+  );
 }
 
 function requireCompany(actor: SessionUser, requestedCompanyId?: string) {
@@ -41,49 +78,75 @@ export async function listCompanies(providedActor?: SessionUser): Promise<Compan
 
 export async function listBranches(providedActor?: SessionUser): Promise<Branch[]> {
   const actor = await actorOrSession(providedActor);
-  if (isDemoMode()) return actor.isOwner ? getDemoStore().branches : getDemoStore().branches.filter((item) => item.companyId === actor.companyId);
-  const scope = tenantClause(actor, "b.company_id");
+  if (!canAccess(actor, "view_branches")) throw new Error("Your account cannot view branch information.");
+  if (isDemoMode()) {
+    return actor.isOwner
+      ? getDemoStore().branches
+      : getDemoStore().branches.filter((item) =>
+          item.companyId === actor.companyId && (!actor.branchId || item.id === actor.branchId),
+        );
+  }
+  const scope = tenantAndBranchClause(actor, "b.company_id", "b.id");
   const result = await query<Branch>(`SELECT b.id::text, b.branch_code_id AS code, b.company_id::text AS "companyId", c.name AS "companyName",
     b.name, b.branch_code AS "branchCode", b.delivery_address AS "deliveryAddress", b.city,
     b.contact_name AS "contactName", b.contact_phone AS "contactPhone", b.contact_email AS "contactEmail",
-    b.delivery_instructions AS "deliveryInstructions", b.notes,
+    b.delivery_instructions AS "deliveryInstructions", b.notes, b.monthly_budget::float8 AS "monthlyBudget",
+    COALESCE(budget.committed_amount,0)::float8 AS "committedAmount",
+    budget.remaining_amount::float8 AS "remainingAmount",
     CASE WHEN b.active THEN 'Active' ELSE 'Inactive' END AS status
-    FROM branches b JOIN companies c ON c.id = b.company_id${scope.sql} ORDER BY c.name, b.name`, scope.values);
+    FROM branches b JOIN companies c ON c.id = b.company_id
+    LEFT JOIN v_branch_budget_usage budget ON budget.branch_id=b.id
+    ${scope.sql} ORDER BY c.name, b.name`, scope.values);
   return result.rows;
 }
 
 export async function listProducts(providedActor?: SessionUser): Promise<Product[]> {
   const actor = await actorOrSession(providedActor);
-  if (isDemoMode()) return getDemoStore().products;
-  const scope = tenantClause(actor, "p.company_id");
+  if (!canAccess(actor, "view_catalog")) throw new Error("Your account cannot view the product catalog.");
+  if (isDemoMode()) {
+    const products = getDemoStore().products.filter((product) =>
+      actor.isOwner || (product.status === "Active" && (!product.companyId || product.companyId === actor.companyId)),
+    );
+    return actor.isOwner ? products : products.map((product) => ({
+      ...product,
+      defaultBuyPrice: 0,
+      preferredSupplierId: undefined,
+      preferredSupplierName: undefined,
+      duplicateWarning: false,
+    }));
+  }
   const result = await query<Product>(`SELECT p.id::text,p.company_id::text AS "companyId",c.name AS "companyName",p.product_code AS code, p.name, p.category, p.subcategory, p.brand, p.product_size AS size,
-    p.unit_of_measure AS unit, p.packaging, p.description, p.default_buy_price::float8 AS "defaultBuyPrice",
+    p.unit_of_measure AS unit, p.packaging, p.description, ${actor.isOwner ? "p.default_buy_price::float8" : "0::float8"} AS "defaultBuyPrice",
     p.default_sell_price::float8 AS "defaultSellPrice", p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
-    p.delivery_sla_days AS "deliverySlaDays", ps.supplier_id::text AS "preferredSupplierId", s.name AS "preferredSupplierName",
+    p.delivery_sla_days AS "deliverySlaDays", ${actor.isOwner ? "ps.supplier_id::text" : "NULL::text"} AS "preferredSupplierId",
+    ${actor.isOwner ? "s.name" : "NULL::text"} AS "preferredSupplierName",
+    (p.image_content IS NOT NULL) AS "hasImage", p.image_alt_text AS "imageAltText",
     CASE WHEN p.needs_review THEN 'Needs Review' WHEN p.active THEN 'Active' ELSE 'Inactive' END AS status,
-    EXISTS (SELECT 1 FROM products p2 WHERE p2.company_id=p.company_id AND lower(p2.name) = lower(p.name) AND p2.id <> p.id) AS "duplicateWarning"
+    ${actor.isOwner ? "p.needs_review" : "false"} AS "duplicateWarning"
     FROM products p
     LEFT JOIN companies c ON c.id=p.company_id
     LEFT JOIN product_suppliers ps ON ps.product_id = p.id AND ps.preferred = true
     LEFT JOIN suppliers s ON s.id = ps.supplier_id
-    ${scope.sql} ORDER BY p.name`, scope.values);
+    ${actor.isOwner ? "" : "WHERE p.active=true AND p.needs_review=false AND (p.company_id IS NULL OR p.company_id=$1)"}
+    ORDER BY p.name`, actor.isOwner ? [] : [actor.companyId]);
   return result.rows;
 }
 
 export async function listSuppliers(providedActor?: SessionUser): Promise<Supplier[]> {
   const actor = await actorOrSession(providedActor);
+  if (!actor.isOwner) return [];
   if (isDemoMode()) return getDemoStore().suppliers;
-  const scope = tenantClause(actor, "s.company_id");
   const result = await query<Supplier>(`SELECT s.id::text,s.company_id::text AS "companyId",c.name AS "companyName",s.supplier_code AS code,s.name,s.category,
     s.contact_name AS "contactName",s.phone,s.email,s.address,s.coverage_area AS "coverageArea",s.payment_terms AS "paymentTerms",
     s.lead_time_days AS "leadTimeDays",s.minimum_order_quantity::float8 AS "minimumOrderQuantity",s.main_products AS "mainProducts",s.notes,
     CASE WHEN s.active THEN 'Active' ELSE 'Inactive' END AS status
-    FROM suppliers s LEFT JOIN companies c ON c.id=s.company_id${scope.sql} ORDER BY s.name`, scope.values);
+    FROM suppliers s LEFT JOIN companies c ON c.id=s.company_id ORDER BY s.name`);
   return result.rows;
 }
 
 interface RequestRow {
   id: string;
+  createdById?: string;
   orderCode: string;
   requestDate: string;
   requestType: ProcurementRequest["requestType"];
@@ -99,6 +162,10 @@ interface RequestRow {
   status: ProcurementRequest["status"];
   notes?: string;
   issueReason?: string;
+  approvalStatus: ProcurementRequest["approvalStatus"];
+  approvalReason?: string;
+  approvedByName?: string;
+  estimatedTotal: number;
   invoiceStatus: ProcurementRequest["invoiceStatus"];
   paymentStatus: ProcurementRequest["paymentStatus"];
   invoiceNumber?: string;
@@ -132,6 +199,7 @@ function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
     if (!requests.has(row.id)) {
       requests.set(row.id, {
         id: row.id,
+        createdById: row.createdById,
         orderCode: row.orderCode,
         requestDate: row.requestDate,
         requestType: row.requestType,
@@ -147,6 +215,10 @@ function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
         status: row.status,
         notes: row.notes,
         issueReason: row.issueReason,
+        approvalStatus: row.approvalStatus,
+        approvalReason: row.approvalReason,
+        approvedByName: row.approvedByName,
+        estimatedTotal: Number(row.estimatedTotal ?? 0),
         invoiceStatus: row.invoiceStatus,
         paymentStatus: row.paymentStatus,
         invoiceNumber: row.invoiceNumber,
@@ -183,10 +255,30 @@ function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
   return [...requests.values()];
 }
 
-const requestSelect = `SELECT r.id::text, r.order_code AS "orderCode", r.request_date::text AS "requestDate",
+function hideAxoraCommercialData(requests: ProcurementRequest[], canViewInvoices: boolean) {
+  return requests.map((request) => ({
+    ...request,
+    invoiceStatus: canViewInvoices ? request.invoiceStatus : undefined,
+    paymentStatus: canViewInvoices ? request.paymentStatus : undefined,
+    invoiceNumber: canViewInvoices ? request.invoiceNumber : undefined,
+    lines: request.lines.map((line) => ({
+      ...line,
+      supplierId: undefined,
+      supplierName: undefined,
+      quotationReference: undefined,
+      supplierConfirmationStatus: undefined,
+      unitBuyPrice: 0,
+      deliveryCharge: 0,
+    })),
+  }));
+}
+
+const requestSelect = `SELECT r.id::text, r.created_by::text AS "createdById", r.order_code AS "orderCode", r.request_date::text AS "requestDate",
   rt.label AS "requestType", r.company_id::text AS "companyId", c.name AS "companyName", r.branch_id::text AS "branchId", b.name AS "branchName",
   r.department, r.requested_by AS "requestedBy", r.requester_contact AS "requesterContact", r.needed_by_date::text AS "neededByDate",
   u.label AS urgency, rs.label AS status, r.notes, r.issue_reason AS "issueReason",
+  COALESCE(approval.status, 'Pending') AS "approvalStatus", approval.reason AS "approvalReason",
+  approval.reviewer_name AS "approvedByName", COALESCE(request_total.estimated_total,0)::float8 AS "estimatedTotal",
   COALESCE(i.invoice_status, 'Not Issued') AS "invoiceStatus", COALESCE(i.payment_status, 'Unpaid') AS "paymentStatus",
   i.invoice_number AS "invoiceNumber", r.completed_at::date::text AS "completedDate",
   l.id::text AS "lineId", l.request_line_code AS "lineCode", l.product_id::text AS "productId", p.product_code AS "productCode",
@@ -201,7 +293,19 @@ const requestSelect = `SELECT r.id::text, r.order_code AS "orderCode", r.request
   JOIN lookup_values rt ON rt.id = r.request_type_id JOIN lookup_values u ON u.id = r.urgency_id JOIN lookup_values rs ON rs.id = r.status_id
   LEFT JOIN request_lines l ON l.request_id = r.id LEFT JOIN products p ON p.id = l.product_id LEFT JOIN suppliers s ON s.id = l.selected_supplier_id
   LEFT JOIN lookup_values sc ON sc.id = l.supplier_confirmation_status_id
-  LEFT JOIN LATERAL (SELECT d1.*,(SELECT COALESCE(sum(d2.quantity_received),0) FROM deliveries d2 WHERE d2.request_line_id=l.id) AS total_received
+  LEFT JOIN LATERAL (
+    SELECT a.status,a.reason,reviewer.display_name AS reviewer_name
+    FROM approvals a LEFT JOIN users reviewer ON reviewer.id=a.reviewer_id
+    WHERE a.request_id=r.id AND a.approval_type='Company approval'
+    ORDER BY a.created_at DESC LIMIT 1
+  ) approval ON true
+  LEFT JOIN LATERAL (
+    SELECT sum(round(total_line.quantity * total_line.unit_sell_price,2)) AS estimated_total
+    FROM request_lines total_line WHERE total_line.request_id=r.id
+  ) request_total ON true
+  LEFT JOIN LATERAL (SELECT d1.*,(SELECT COALESCE(sum(d2.quantity_received),0)
+      FROM deliveries d2 JOIN lookup_values received_status ON received_status.id=d2.status_id
+      WHERE d2.request_line_id=l.id AND received_status.label IN ('Partially Delivered','Delivered')) AS total_received
     FROM deliveries d1 WHERE d1.request_line_id = l.id ORDER BY d1.created_at DESC LIMIT 1) d ON true
   LEFT JOIN lookup_values ds ON ds.id = d.status_id
   LEFT JOIN LATERAL (
@@ -218,28 +322,52 @@ const requestSelect = `SELECT r.id::text, r.order_code AS "orderCode", r.request
 
 export async function listRequests(providedActor?: SessionUser): Promise<ProcurementRequest[]> {
   const actor = await actorOrSession(providedActor);
-  if (isDemoMode()) return actor.isOwner ? getDemoStore().requests : getDemoStore().requests.filter((item) => item.companyId === actor.companyId);
-  const scope = tenantClause(actor, "r.company_id");
-  const result = await query<RequestRow>(`${requestSelect}${scope.sql} ORDER BY r.request_date DESC, r.order_code, l.request_line_code`, scope.values);
-  return groupRequestRows(result.rows);
+  if (!canAccess(actor, "view_requests")) throw new Error("Your account cannot view purchase requests.");
+  if (isDemoMode()) {
+    const requests = actor.isOwner
+      ? getDemoStore().requests
+      : getDemoStore().requests.filter((item) => demoRequestVisibleToActor(item, actor));
+    return actor.isOwner ? requests : hideAxoraCommercialData(requests, canAccess(actor, "view_invoices"));
+  }
+  const scope = requestVisibilityScope(actor, "r");
+  const result = await query<RequestRow>(`${requestSelect}${scope.sql ? ` WHERE ${scope.sql}` : ""} ORDER BY r.request_date DESC, r.order_code, l.request_line_code`, scope.values);
+  const requests = groupRequestRows(result.rows);
+  return actor.isOwner ? requests : hideAxoraCommercialData(requests, canAccess(actor, "view_invoices"));
 }
 
 export async function getRequest(id: string, providedActor?: SessionUser) {
   const actor = await actorOrSession(providedActor);
-  if (isDemoMode()) return getDemoStore().requests.find((request) => request.id === id && (actor.isOwner || request.companyId === actor.companyId));
-  const result = await query<RequestRow>(`${requestSelect} WHERE r.id = $1${actor.isOwner ? "" : " AND r.company_id = $2"} ORDER BY l.request_line_code`, actor.isOwner ? [id] : [id, actor.companyId]);
-  return groupRequestRows(result.rows)[0];
+  if (!canAccess(actor, "view_requests")) throw new Error("Your account cannot view purchase requests.");
+  if (isDemoMode()) {
+    const request = getDemoStore().requests.find((item) =>
+      item.id === id
+      && demoRequestVisibleToActor(item, actor),
+    );
+    if (!request || actor.isOwner) return request;
+    return hideAxoraCommercialData([request], canAccess(actor, "view_invoices"))[0];
+  }
+  const scope = requestVisibilityScope(actor, "r", 2);
+  const result = await query<RequestRow>(
+    `${requestSelect} WHERE r.id=$1${scope.sql ? ` AND ${scope.sql}` : ""} ORDER BY l.request_line_code`,
+    [id, ...scope.values],
+  );
+  const request = groupRequestRows(result.rows)[0];
+  if (!request || actor.isOwner) return request;
+  return hideAxoraCommercialData([request], canAccess(actor, "view_invoices"))[0];
 }
 
 export async function getDashboardData(providedActor?: SessionUser): Promise<DashboardData> {
   const actor = await actorOrSession(providedActor);
+  if (!canAccess(actor, "view_dashboard")) throw new Error("Your account cannot view procurement dashboard data.");
   const [requests, companies, suppliers] = await Promise.all([listRequests(actor), listCompanies(actor), listSuppliers(actor)]);
   const totals = calculateTotals(requests);
   const byStatus = Object.entries(requests.reduce<Record<string, number>>((acc, request) => ({ ...acc, [request.status]: (acc[request.status] ?? 0) + 1 }), {})).map(([label, value]) => ({ label, value }));
   const byCompany = Object.entries(requests.reduce<Record<string, number>>((acc, request) => ({ ...acc, [request.companyName]: (acc[request.companyName] ?? 0) + 1 }), {})).map(([label, value]) => ({ label, value }));
   const topProducts = Object.entries(requests.flatMap((request) => request.lines).reduce<Record<string, number>>((acc, line) => ({ ...acc, [line.productName]: (acc[line.productName] ?? 0) + line.quantity }), {}))
     .map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value).slice(0, 5);
-  const attention = requests.filter((request) => request.urgency === "Urgent" || request.lines.some((line) => ["Delayed", "Partially Delivered", "Failed"].includes(line.deliveryStatus)) || (["Issued", "Disputed"].includes(request.invoiceStatus) && request.paymentStatus !== "Paid")).slice(0, 6);
+  const attention = requests.filter((request) => request.urgency === "Urgent"
+    || request.lines.some((line) => ["Delayed", "Partially Delivered", "Failed"].includes(line.deliveryStatus))
+    || (request.invoiceStatus && ["Issued", "Disputed"].includes(request.invoiceStatus) && request.paymentStatus !== "Paid")).slice(0, 6);
   return {
     ...totals,
     requestCount: requests.length,
@@ -269,14 +397,18 @@ export async function createCompany(input: Omit<Company, "id" | "code" | "status
       VALUES (next_company_code(), $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [input.name, input.industry, input.mainContactName, input.mainContactEmail, input.mainContactPhone, input.billingContactName, input.billingContactEmail, input.billingContactPhone, input.billingAddress, input.paymentTerms, input.billingCycle, input.notes ?? null]));
 }
 
-export async function createBranch(input: Omit<Branch, "id" | "code" | "companyName" | "status">, actor: SessionUser) {
+export async function createBranch(input: Omit<Branch, "id" | "code" | "companyName" | "status" | "monthlyBudget" | "committedAmount" | "remainingAmount">, actor: SessionUser) {
+  if (!actor.isOwner && actor.role !== "ADMIN") {
+    throw new Error("Only a company administrator can create branches.");
+  }
   const companyId = requireCompany(actor, input.companyId);
   if (isDemoMode()) {
     const store = getDemoStore();
     const company = store.companies.find((item) => item.id === companyId);
     if (!company) throw new Error("Select a valid company for this branch.");
     if (store.branches.some((branch) => branch.companyId === input.companyId && (branch.name.toLowerCase() === input.name.toLowerCase() || branch.branchCode.toLowerCase() === input.branchCode.toLowerCase()))) throw new Error("This company already has a branch with the same name or code.");
-    store.branches.push({ ...input, id: randomUUID(), code: nextCode("B", store.branches.length), companyName: company?.name ?? "Unknown", status: "Active" });
+    store.branches.push({ ...input, id: randomUUID(), code: nextCode("B", store.branches.length), companyName: company?.name ?? "Unknown",
+      committedAmount: 0, status: "Active" });
     return;
   }
   await withAuditTransaction({ userId: actor.id }, async (client) => {
@@ -287,45 +419,67 @@ export async function createBranch(input: Omit<Branch, "id" | "code" | "companyN
   });
 }
 
-export async function createSupplier(input: Omit<Supplier, "id" | "code" | "status"> & { companyId?: string }, actor: SessionUser) {
-  const companyId = requireCompany(actor, input.companyId);
+export async function createSupplier(
+  input: Omit<Supplier, "id" | "code" | "status" | "companyId" | "companyName">,
+  actor: SessionUser,
+) {
+  if (!actor.isOwner) throw new Error("Only an Axora platform owner can manage suppliers.");
   if (isDemoMode()) {
     const store = getDemoStore();
     if (store.suppliers.some((supplier) => supplier.name.toLowerCase() === input.name.toLowerCase())) throw new Error("A supplier with this name already exists.");
     store.suppliers.push({ ...input, id: randomUUID(), code: nextCode("S", store.suppliers.length), status: "Active" });
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
-    const result = await client.query(`INSERT INTO suppliers (supplier_code,name,category,contact_name,phone,email,address,coverage_area,payment_terms,lead_time_days,minimum_order_quantity,main_products,notes,company_id)
-      SELECT next_supplier_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13 FROM companies WHERE id=$13 AND active=true`,
-    [input.name, input.category, input.contactName, input.phone, input.email, input.address, input.coverageArea, input.paymentTerms, input.leadTimeDays, input.minimumOrderQuantity, input.mainProducts, input.notes ?? null, companyId]);
-    if (!result.rowCount) throw new Error("The selected company is not active.");
-  });
+  await withAuditTransaction({ userId: actor.id }, (client) => client.query(
+    `INSERT INTO suppliers
+      (supplier_code,name,category,contact_name,phone,email,address,coverage_area,payment_terms,lead_time_days,minimum_order_quantity,main_products,notes,company_id)
+     VALUES (next_supplier_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULL)`,
+    [input.name, input.category, input.contactName, input.phone, input.email, input.address, input.coverageArea,
+      input.paymentTerms, input.leadTimeDays, input.minimumOrderQuantity, input.mainProducts, input.notes ?? null],
+  ));
 }
 
-export async function createProduct(input: Omit<Product, "id" | "code" | "status" | "duplicateWarning" | "preferredSupplierName"> & { companyId?: string }, actor: SessionUser) {
-  const companyId = requireCompany(actor, input.companyId);
+export async function createProduct(
+  input: Omit<Product, "id" | "code" | "status" | "duplicateWarning" | "preferredSupplierName" | "companyId" | "companyName" | "hasImage" | "imageAltText">,
+  actor: SessionUser,
+) {
+  if (!actor.isOwner) throw new Error("Only an Axora platform owner can manage the product catalog.");
   if (isDemoMode()) {
     const store = getDemoStore();
-    const duplicateWarning = store.products.some((product) => product.name.toLowerCase() === input.name.toLowerCase());
-    const supplier = store.suppliers.find((item) => item.id === input.preferredSupplierId);
-    store.products.push({ ...input, id: randomUUID(), code: nextCode("AX-NEW", store.products.length), status: duplicateWarning ? "Needs Review" : "Active", duplicateWarning, preferredSupplierName: supplier?.name });
-    return;
-  }
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
-    const company = await client.query("SELECT 1 FROM companies WHERE id=$1 AND active=true", [companyId]);
-    if (!company.rowCount) throw new Error("The selected company is not active.");
-    if (input.preferredSupplierId) {
-      const supplier = await client.query("SELECT 1 FROM suppliers WHERE id=$1 AND company_id=$2 AND active=true", [input.preferredSupplierId, companyId]);
-      if (!supplier.rowCount) throw new Error("The preferred supplier must be active and belong to the selected company.");
+    if (store.products.some((product) => product.name.trim().toLowerCase() === input.name.trim().toLowerCase())) {
+      throw new Error("A product with this name already exists. Use the existing catalog record.");
     }
-    const duplicate = await client.query<{ exists: boolean }>("SELECT EXISTS (SELECT 1 FROM products WHERE company_id=$2 AND lower(name)=lower($1)) AS exists", [input.name, companyId]);
-    const product = await client.query<{ id: string }>(`INSERT INTO products (product_code,name,category,subcategory,brand,product_size,unit_of_measure,packaging,description,default_buy_price,default_sell_price,minimum_order_quantity,delivery_sla_days,needs_review,company_id)
-      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id::text`, [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit, input.packaging ?? null, input.description ?? null, input.defaultBuyPrice, input.defaultSellPrice, input.minimumOrderQuantity, input.deliverySlaDays, duplicate.rows[0].exists, companyId]);
+    const supplier = store.suppliers.find((item) => item.id === input.preferredSupplierId);
+    const id = randomUUID();
+    store.products.push({ ...input, id, code: nextCode("AX-NEW", store.products.length), hasImage: false,
+      status: "Active", duplicateWarning: false, preferredSupplierName: supplier?.name });
+    return id;
+  }
+  return withAuditTransaction({ userId: actor.id }, async (client) => {
+    if (input.preferredSupplierId) {
+      const supplier = await client.query("SELECT 1 FROM suppliers WHERE id=$1 AND active=true AND company_id IS NULL", [input.preferredSupplierId]);
+      if (!supplier.rowCount) throw new Error("The preferred supplier must be active.");
+    }
+    await client.query("SELECT pg_advisory_xact_lock(hashtext(lower(btrim($1))))", [input.name]);
+    const duplicate = await client.query(
+      "SELECT 1 FROM products WHERE lower(btrim(name))=lower(btrim($1)) LIMIT 1",
+      [input.name],
+    );
+    if (duplicate.rowCount) {
+      throw new Error("A product with this name already exists. Use the existing catalog record.");
+    }
+    const product = await client.query<{ id: string }>(`INSERT INTO products
+      (product_code,name,category,subcategory,brand,product_size,unit_of_measure,packaging,description,
+       default_buy_price,default_sell_price,minimum_order_quantity,delivery_sla_days,needs_review,company_id)
+      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,NULL) RETURNING id::text`,
+    [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit,
+      input.packaging ?? null, input.description ?? null, input.defaultBuyPrice, input.defaultSellPrice,
+      input.minimumOrderQuantity, input.deliverySlaDays]);
     if (input.preferredSupplierId) {
       await client.query(`INSERT INTO product_suppliers (product_id,supplier_id,preferred,indicative_buy_price,supplier_moq,lead_time_days)
         VALUES ($1,$2,true,$3,$4,$5)`, [product.rows[0].id, input.preferredSupplierId, input.defaultBuyPrice, input.minimumOrderQuantity, input.deliverySlaDays]);
     }
+    return product.rows[0].id;
   });
 }
 
@@ -334,8 +488,6 @@ export interface NewRequestInput {
   branchId: string;
   requestType: ProcurementRequest["requestType"];
   department: string;
-  requestedBy: string;
-  requesterContact: string;
   neededByDate: string;
   urgency: ProcurementRequest["urgency"];
   notes?: string;
@@ -343,24 +495,42 @@ export interface NewRequestInput {
 }
 
 export async function createRequest(input: NewRequestInput, actor: SessionUser) {
+  if (!canAccess(actor, "create_requests")) {
+    throw new Error("Only an authorized company user can submit purchase requests.");
+  }
   const companyId = requireCompany(actor, input.companyId);
+  if (actor.branchId && actor.branchId !== input.branchId) {
+    throw new Error("You can submit requests only for your assigned branch.");
+  }
+  if (new Set(input.lines.map((line) => line.productId)).size !== input.lines.length) {
+    throw new Error("Add each catalog product only once per purchase request.");
+  }
   if (isDemoMode()) {
     const store = getDemoStore();
     const company = store.companies.find((item) => item.id === input.companyId);
     const branch = store.branches.find((item) => item.id === input.branchId);
     if (!company || !branch || branch.companyId !== company.id) throw new Error("The selected branch does not belong to the selected company.");
-    if (input.lines.some((item) => !store.products.some((product) => product.id === item.productId && product.status === "Active"))) throw new Error("One or more selected products are unavailable.");
+    if (input.lines.some((item) => !store.products.some((product) =>
+      product.id === item.productId
+      && product.status === "Active"
+      && (!product.companyId || product.companyId === companyId)
+      && item.quantity >= product.minimumOrderQuantity,
+    ))) throw new Error("One or more products are unavailable or below the minimum order quantity.");
     const requestNumber = store.requests.length + 1;
     const request: ProcurementRequest = {
       id: randomUUID(), orderCode: `ORD-2026-${String(requestNumber).padStart(3, "0")}`, requestDate: new Date().toISOString().slice(0, 10),
       requestType: input.requestType, companyId: input.companyId, companyName: company?.name ?? "Unknown", branchId: input.branchId, branchName: branch?.name ?? "Unknown",
-      department: input.department, requestedBy: input.requestedBy, requesterContact: input.requesterContact, neededByDate: input.neededByDate,
-      urgency: input.urgency, status: "New Request", notes: input.notes, invoiceStatus: "Not Issued", paymentStatus: "Unpaid",
+      department: input.department, requestedBy: actor.name, requesterContact: actor.email, neededByDate: input.neededByDate,
+      urgency: input.urgency, status: "New Request", notes: input.notes, approvalStatus: "Pending",
+      estimatedTotal: input.lines.reduce((total, item) => {
+        const product = store.products.find((candidate) => candidate.id === item.productId);
+        return total + roundMoney(item.quantity * (product?.defaultSellPrice ?? 0));
+      }, 0), invoiceStatus: "Not Issued", paymentStatus: "Unpaid", createdById: actor.id,
       lines: input.lines.map((item, index) => {
         const product = store.products.find((candidate) => candidate.id === item.productId)!;
         return { id: randomUUID(), code: `REQ-2026-${String(requestNumber * 10 + index).padStart(5, "0")}`, productId: product.id, productCode: product.code, productName: product.name,
           category: product.category, subcategory: product.subcategory, specification: item.specification, quantity: item.quantity, unit: product.unit,
-          supplierId: product.preferredSupplierId, supplierName: product.preferredSupplierName, supplierConfirmationStatus: "Pending",
+          supplierConfirmationStatus: "Pending",
           unitBuyPrice: product.defaultBuyPrice, unitSellPrice: product.defaultSellPrice, deliveryCharge: 0, deliveryStatus: "Not Scheduled", quantityReceived: 0 };
       }),
     };
@@ -368,46 +538,101 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
     return request.id;
   }
   return withAuditTransaction({ userId: actor.id }, async (client: PoolClient) => {
-    const company = await client.query("SELECT 1 FROM companies WHERE id=$1 AND active=true", [companyId]);
+    const company = await client.query("SELECT 1 FROM companies WHERE id=$1 AND active=true FOR SHARE", [companyId]);
     if (!company.rowCount) throw new Error("The selected company is not active.");
-    const branchMatch = await client.query("SELECT 1 FROM branches WHERE id=$1 AND company_id=$2 AND active=true", [input.branchId, companyId]);
+    const branchMatch = await client.query(
+      "SELECT 1 FROM branches WHERE id=$1 AND company_id=$2 AND active=true FOR SHARE",
+      [input.branchId, companyId],
+    );
     if (!branchMatch.rowCount) throw new Error("The selected branch does not belong to the selected company.");
-    const selectedProducts = await client.query<{ count: number }>("SELECT count(*)::int AS count FROM products WHERE id = ANY($1::uuid[]) AND company_id=$2 AND active=true AND needs_review=false", [input.lines.map((line) => line.productId), companyId]);
-    if (selectedProducts.rows[0].count !== new Set(input.lines.map((line) => line.productId)).size) throw new Error("One or more selected products are unavailable or still need review.");
+    const selectedProducts = await client.query<{ id: string; minimumOrderQuantity: number; name: string }>(
+      `SELECT id::text,name,minimum_order_quantity::float8 AS "minimumOrderQuantity" FROM products
+       WHERE id = ANY($1::uuid[]) AND active=true AND needs_review=false
+         AND (company_id IS NULL OR company_id=$2)
+       FOR SHARE`,
+      [input.lines.map((line) => line.productId), companyId],
+    );
+    if (selectedProducts.rows.length !== input.lines.length) {
+      throw new Error("One or more selected products are unavailable or still need review.");
+    }
+    const selectedById = new Map(selectedProducts.rows.map((product) => [product.id, product]));
+    for (const line of input.lines) {
+      const product = selectedById.get(line.productId);
+      if (!product || line.quantity < product.minimumOrderQuantity) {
+        throw new Error(`Order at least ${product?.minimumOrderQuantity ?? "the catalog minimum"} for ${product?.name ?? "each product"}.`);
+      }
+    }
     const requestResult = await client.query<{ id: string }>(`INSERT INTO requests (order_code,request_date,request_type_id,company_id,branch_id,department,requested_by,requester_contact,needed_by_date,urgency_id,status_id,notes,created_by)
       VALUES (next_order_code(),CURRENT_DATE,lookup_id('request_type',$1),$2,$3,$4,$5,$6,$7,lookup_id('urgency',$8),lookup_id('request_status','New Request'),$9,$10) RETURNING id::text`,
-      [input.requestType, companyId, input.branchId, input.department, input.requestedBy, input.requesterContact, input.neededByDate, input.urgency, input.notes ?? null, actor.id]);
+      [input.requestType, companyId, input.branchId, input.department, actor.name, actor.email, input.neededByDate, input.urgency, input.notes ?? null, actor.id]);
     const requestId = requestResult.rows[0].id;
     for (const item of input.lines) {
-      await client.query(`INSERT INTO request_lines (request_line_code,request_id,product_id,product_name_snapshot,category_snapshot,subcategory_snapshot,specification,quantity,unit_of_measure,selected_supplier_id,supplier_confirmation_status_id,unit_buy_price,unit_sell_price)
-        SELECT next_request_line_code(),$1,p.id,p.name,p.category,p.subcategory,$3,$4,p.unit_of_measure,ps.supplier_id,lookup_id('supplier_confirmation','Pending'),p.default_buy_price,p.default_sell_price
-        FROM products p LEFT JOIN product_suppliers ps ON ps.product_id=p.id AND ps.preferred=true WHERE p.id=$2 AND p.company_id=$5`,
+      const insertedLine = await client.query(`INSERT INTO request_lines
+        (request_line_code,request_id,product_id,product_name_snapshot,category_snapshot,subcategory_snapshot,
+         specification,quantity,unit_of_measure,supplier_confirmation_status_id,unit_buy_price,unit_sell_price)
+        SELECT next_request_line_code(),$1,p.id,p.name,p.category,p.subcategory,$3,$4,p.unit_of_measure,
+          lookup_id('supplier_confirmation','Pending'),p.default_buy_price,p.default_sell_price
+        FROM products p
+        WHERE p.id=$2 AND p.active=true AND p.needs_review=false
+          AND (p.company_id IS NULL OR p.company_id=$5)`,
       [requestId, item.productId, item.specification ?? null, item.quantity, companyId]);
+      if (!insertedLine.rowCount) {
+        throw new Error("A selected product became unavailable. Review the request and try again.");
+      }
     }
     return requestId;
   });
 }
 
 export async function updateRequestStatus(id: string, status: RequestStatus, reason: string | undefined, actor: SessionUser) {
+  if (!actor.isOwner) throw new Error("Only Axora platform owners can manage the fulfillment workflow.");
   if (isDemoMode()) {
     const request = getDemoStore().requests.find((item) => item.id === id);
     if (!request) throw new Error("Request not found.");
     validateStatusTransition(request.status, status, reason);
+    if (request.approvalStatus !== "Approved") {
+      throw new Error("The company must approve this request before Axora starts fulfillment.");
+    }
+    if (status === "Supplier Assigned" && request.lines.some((line) => !line.supplierId)) {
+      throw new Error("Select a supplier quotation for every request line first.");
+    }
+    if (status === "Delivered" && request.lines.some((line) => line.quantityReceived < line.quantity)) {
+      throw new Error("Every request line must be fully received before marking the request delivered.");
+    }
+    if (status === "Invoice Issued" && request.invoiceStatus !== "Issued") {
+      throw new Error("Issue a customer invoice before moving to Invoice Issued.");
+    }
+    if (status === "Completed") {
+      const invoices = getDemoOperations().invoices.filter((invoice) =>
+        invoice.requestId === request.id && invoice.direction === "CUSTOMER" && invoice.status !== "Cancelled");
+      const authorizedTotal = request.lines.reduce((sum, line) => sum + roundMoney(line.quantity * line.unitSellPrice), 0);
+      const invoicedTotal = invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
+      if (!invoices.length || invoices.some((invoice) => invoice.outstandingAmount > 0)) {
+        throw new Error("All active customer invoices must be fully paid before completing the request.");
+      }
+      if (Math.abs(invoicedTotal - authorizedTotal) > 0.001) {
+        throw new Error("Customer invoices must equal the company-approved request total before completion.");
+      }
+    }
     request.status = status;
     request.issueReason = reason || request.issueReason;
     if (status === "Completed") request.completedDate = new Date().toISOString().slice(0, 10);
     return;
   }
   await withAuditTransaction({ userId: actor.id, reason }, async (client) => {
-    const current = await client.query<{ status: RequestStatus }>(`SELECT lv.label AS status FROM requests r JOIN lookup_values lv ON lv.id=r.status_id WHERE r.id=$1${actor.isOwner ? "" : " AND r.company_id=$2"} FOR UPDATE`, actor.isOwner ? [id] : [id, actor.companyId]);
+    const current = await client.query<{ status: RequestStatus }>(
+      "SELECT lv.label AS status FROM requests r JOIN lookup_values lv ON lv.id=r.status_id WHERE r.id=$1 FOR UPDATE",
+      [id],
+    );
     if (!current.rows[0]) throw new Error("Request not found.");
     validateStatusTransition(current.rows[0].status, status, reason);
     const permitted = await client.query(`SELECT 1 FROM request_status_transitions WHERE from_status_id=lookup_id('request_status',$1) AND to_status_id=lookup_id('request_status',$2)`, [current.rows[0].status, status]);
     if (!permitted.rowCount) throw new Error("This workflow transition is not configured in the database.");
-    if (status === "Approved") {
-      const evidence = await client.query("SELECT 1 FROM approvals WHERE request_id=$1 AND status='Approved' LIMIT 1", [id]);
-      if (!evidence.rowCount) throw new Error("Record an approved decision before marking this request as approved.");
-    }
+    const evidence = await client.query(
+      "SELECT 1 FROM approvals WHERE request_id=$1 AND approval_type='Company approval' AND status='Approved' LIMIT 1",
+      [id],
+    );
+    if (!evidence.rowCount) throw new Error("The company must approve this request before Axora starts fulfillment.");
     if (status === "Supplier Assigned") {
       const missing = await client.query<{ count: number }>("SELECT count(*)::int AS count FROM request_lines WHERE request_id=$1 AND selected_supplier_id IS NULL", [id]);
       if (missing.rows[0].count) throw new Error("Select a supplier quotation for every request line first.");
@@ -415,7 +640,7 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
     if (status === "Delivered") {
       const incomplete = await client.query<{ count: number }>(`SELECT count(*)::int AS count FROM request_lines l
         WHERE l.request_id=$1 AND COALESCE((SELECT sum(d.quantity_received) FROM deliveries d JOIN lookup_values ds ON ds.id=d.status_id
-          WHERE d.request_line_id=l.id AND ds.label NOT IN ('Cancelled','Failed')),0) < l.quantity`, [id]);
+          WHERE d.request_line_id=l.id AND ds.label IN ('Partially Delivered','Delivered')),0) < l.quantity`, [id]);
       if (incomplete.rows[0].count) throw new Error("Every request line must be fully received before marking the request delivered.");
     }
     if (status === "Invoice Issued") {
@@ -424,11 +649,20 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
       if (!invoice.rowCount) throw new Error("Issue a customer invoice before moving to Invoice Issued.");
     }
     if (status === "Completed") {
-      const settlement = await client.query<{ invoiceCount: number; unpaidCount: number }>(`SELECT count(*)::int AS "invoiceCount",
-        count(*) FILTER (WHERE outstanding_amount > 0)::int AS "unpaidCount"
-        FROM v_invoice_balances WHERE request_id=$1 AND direction='CUSTOMER' AND status_id<>lookup_id('invoice_status','Cancelled')`, [id]);
+      const settlement = await client.query<{ invoiceCount: number; unpaidCount: number; authorizedTotal: number; invoicedTotal: number }>(
+        `SELECT
+          count(*) FILTER (WHERE balance.direction='CUSTOMER' AND balance.status_id<>lookup_id('invoice_status','Cancelled'))::int AS "invoiceCount",
+          count(*) FILTER (WHERE balance.direction='CUSTOMER' AND balance.status_id<>lookup_id('invoice_status','Cancelled') AND balance.outstanding_amount>0)::int AS "unpaidCount",
+          COALESCE((SELECT sum(round(line.quantity*line.unit_sell_price,2)) FROM request_lines line WHERE line.request_id=$1),0)::float8 AS "authorizedTotal",
+          COALESCE(sum(balance.amount) FILTER (WHERE balance.direction='CUSTOMER' AND balance.status_id<>lookup_id('invoice_status','Cancelled')),0)::float8 AS "invoicedTotal"
+        FROM v_invoice_balances balance WHERE balance.request_id=$1`,
+        [id],
+      );
       if (!settlement.rows[0].invoiceCount || settlement.rows[0].unpaidCount) {
         throw new Error("All active customer invoices must be fully paid before completing the request.");
+      }
+      if (Math.abs(settlement.rows[0].invoicedTotal - settlement.rows[0].authorizedTotal) > 0.001) {
+        throw new Error("Customer invoices must equal the company-approved request total before completion.");
       }
     }
     await client.query(`UPDATE requests SET status_id=lookup_id('request_status',$2), issue_reason=COALESCE(NULLIF($3,''),issue_reason), completed_at=CASE WHEN $2='Completed' THEN now() ELSE completed_at END WHERE id=$1`, [id, status, reason ?? ""]);
@@ -438,11 +672,22 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
 export type MasterEntity = "companies" | "branches" | "products" | "suppliers";
 
 export async function setMasterActive(entity: MasterEntity, id: string, active: boolean, actor: SessionUser) {
-  if (entity === "companies" && !actor.isOwner) throw new Error("Only the Axora owner can change company status.");
+  if (["companies", "products", "suppliers"].includes(entity) && !actor.isOwner) {
+    throw new Error("Only an Axora platform owner can change this record.");
+  }
   if (isDemoMode()) {
     const store = getDemoStore();
-    const collection = store[entity];
-    const record = collection.find((item) => item.id === id);
+    if (entity === "products") {
+      const product = store.products.find((item) => item.id === id);
+      if (!product) throw new Error("Master record not found.");
+      if (active && product.status === "Needs Review") {
+        throw new Error("Reject the duplicate review record or keep it out of the customer catalog.");
+      }
+      product.status = active ? "Active" : "Inactive";
+      if (!active) product.duplicateWarning = false;
+      return;
+    }
+    const record = store[entity].find((item) => item.id === id);
     if (!record) throw new Error("Master record not found.");
     record.status = active ? "Active" : "Inactive";
     return;
@@ -450,8 +695,15 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
   const allowedTables: Record<MasterEntity, string> = { companies: "companies", branches: "branches", products: "products", suppliers: "suppliers" };
   const table = allowedTables[entity];
   await withAuditTransaction({ userId: actor.id, reason: active ? "Master record activated" : "Master record deactivated" }, async (client) => {
-    const companyPredicate = actor.isOwner ? "" : entity === "branches" ? " AND company_id=$3" : entity === "products" || entity === "suppliers" ? " AND company_id=$3" : " AND id=$3";
-    const result = await client.query(`UPDATE ${table} SET active=$2 WHERE id=$1${companyPredicate}`, actor.isOwner ? [id, active] : [id, active, actor.companyId]);
+    const companyPredicate = actor.isOwner ? "" : " AND company_id=$3";
+    if (entity === "products" && active) {
+      const review = await client.query<{ needsReview: boolean }>("SELECT needs_review AS \"needsReview\" FROM products WHERE id=$1", [id]);
+      if (review.rows[0]?.needsReview) {
+        throw new Error("Reject the duplicate review record or keep it out of the customer catalog.");
+      }
+    }
+    const reviewReset = entity === "products" && !active ? ", needs_review=false" : "";
+    const result = await client.query(`UPDATE ${table} SET active=$2${reviewReset} WHERE id=$1${companyPredicate}`, actor.isOwner ? [id, active] : [id, active, actor.companyId]);
     if (!result.rowCount) throw new Error("Master record not found.");
   });
 }

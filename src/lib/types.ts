@@ -1,4 +1,12 @@
-export type UserRole = "ADMIN" | "OPERATIONS" | "FINANCE" | "VIEWER" | "IT_SUPPORT";
+export type UserRole =
+  | "ADMIN"
+  | "BRANCH_ADMIN"
+  | "APPROVER"
+  | "REQUESTER"
+  | "OPERATIONS"
+  | "FINANCE"
+  | "VIEWER"
+  | "IT_SUPPORT";
 export type MasterStatus = "Active" | "Inactive" | "Needs Review";
 
 export type RequestStatus =
@@ -66,6 +74,9 @@ export interface Branch {
   contactEmail: string;
   deliveryInstructions?: string;
   notes?: string;
+  monthlyBudget?: number | null;
+  committedAmount: number;
+  remainingAmount?: number | null;
   status: MasterStatus;
 }
 
@@ -88,6 +99,8 @@ export interface Product {
   deliverySlaDays: number;
   preferredSupplierId?: string;
   preferredSupplierName?: string;
+  hasImage: boolean;
+  imageAltText?: string;
   status: MasterStatus;
   duplicateWarning?: boolean;
 }
@@ -138,6 +151,7 @@ export interface RequestLine {
 
 export interface ProcurementRequest {
   id: string;
+  createdById?: string;
   orderCode: string;
   requestDate: string;
   requestType: "Standard" | "Ad-hoc" | "Recurring";
@@ -153,8 +167,12 @@ export interface ProcurementRequest {
   status: RequestStatus;
   notes?: string;
   issueReason?: string;
-  invoiceStatus: InvoiceStatus;
-  paymentStatus: PaymentStatus;
+  approvalStatus: "Pending" | "Approved" | "Rejected";
+  approvalReason?: string;
+  approvedByName?: string;
+  estimatedTotal: number;
+  invoiceStatus?: InvoiceStatus;
+  paymentStatus?: PaymentStatus;
   invoiceNumber?: string;
   completedDate?: string;
   lines: RequestLine[];
@@ -186,7 +204,8 @@ export interface QuotationRecord {
   id: string; requestLineId: string; requestLineCode: string; orderCode: string; productName: string;
   supplierId: string; supplierName: string; quotationReference: string; quotationDate: string;
   unitPrice: number; deliveryCharge: number; minimumOrderQuantity?: number; leadTimeDays?: number;
-  validUntil?: string; status: string; selected: boolean; selectionReason?: string;
+  validUntil?: string; requestLineQuantity?: number; supplierActive?: boolean;
+  status: string; selected: boolean; selectionReason?: string;
 }
 
 export interface ApprovalRecord {
@@ -203,7 +222,7 @@ export interface DeliveryRecord {
 export interface InvoiceRecord {
   id: string; direction: "CUSTOMER" | "SUPPLIER"; requestId: string; orderCode: string; counterparty: string;
   invoiceNumber: string; invoiceDate: string; dueDate?: string; amount: number; status: InvoiceStatus;
-  paidAmount: number; outstandingAmount: number; paymentStatus: PaymentStatus;
+  paidAmount: number; outstandingAmount: number; paymentStatus: PaymentStatus; requestStatus?: RequestStatus;
 }
 
 export interface PaymentRecord {
@@ -218,11 +237,11 @@ export interface AuditRecord {
 
 export interface AttachmentRecord {
   id: string; entityType: string; recordId: string; fileName: string; contentType: string;
-  createdAt: string; uploadedByName?: string;
+  visibility: "CUSTOMER" | "INTERNAL"; createdAt: string; uploadedByName?: string;
 }
 
 export interface UserRecord {
   id: string; email: string; displayName: string; role: UserRole; active: boolean; isOwner: boolean;
-  companyId?: string; companyName?: string;
+  companyId?: string; companyName?: string; branchId?: string; branchName?: string;
   lastLoginAt?: string; createdAt: string;
 }

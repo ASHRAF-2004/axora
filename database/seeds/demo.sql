@@ -119,9 +119,9 @@ INSERT INTO requests (
   ('50000000-0000-4000-8000-000000000006','ORD-2026-006','2026-07-13',lookup_id('request_type','Standard'),'10000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','IT','Pilot user','013-000-0000','2026-07-28',lookup_id('urgency','High'),lookup_id('request_status','Supplier Assigned'),NULL,NULL,NULL),
   ('50000000-0000-4000-8000-000000000007','ORD-2026-007','2026-07-14',lookup_id('request_type','Ad-hoc'),'10000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','Facilities','Pilot user','013-000-0000','2026-07-29',lookup_id('urgency','Normal'),lookup_id('request_status','Waiting for Quotation'),'Testing a supplier not yet in the approved master.',NULL,NULL),
   ('50000000-0000-4000-8000-000000000008','ORD-2026-008','2026-07-15',lookup_id('request_type','Standard'),'10000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','Administration','Pilot user','013-000-0000','2026-07-21',lookup_id('urgency','Urgent'),lookup_id('request_status','Out for Delivery'),NULL,'Supplier vehicle delay.',NULL),
-  ('50000000-0000-4000-8000-000000000009','ORD-2026-009','2026-07-16',lookup_id('request_type','Standard'),'10000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','Accounts','Pilot user','013-000-0000','2026-07-20',lookup_id('urgency','Normal'),lookup_id('request_status','Completed'),NULL,NULL,'2026-07-20 16:00:00+08'),
+  ('50000000-0000-4000-8000-000000000009','ORD-2026-009','2026-07-16',lookup_id('request_type','Standard'),'10000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','Accounts','Pilot user','013-000-0000','2026-07-20',lookup_id('urgency','Normal'),lookup_id('request_status','Invoice Issued'),NULL,NULL,NULL),
   ('50000000-0000-4000-8000-000000000010','ORD-2026-010','2026-07-17',lookup_id('request_type','Standard'),'10000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','Teaching','Pilot user','013-000-0000','2026-07-31',lookup_id('urgency','Low'),lookup_id('request_status','On Hold'),NULL,'Duplicate product record must be reviewed.',NULL),
-  ('50000000-0000-4000-8000-000000000011','ORD-2026-011','2026-07-18',lookup_id('request_type','Ad-hoc'),'10000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003','Operations','Pilot user','014-000-0000','2026-07-19',lookup_id('urgency','Normal'),lookup_id('request_status','Completed'),NULL,NULL,'2026-07-19 15:00:00+08'),
+  ('50000000-0000-4000-8000-000000000011','ORD-2026-011','2026-07-18',lookup_id('request_type','Ad-hoc'),'10000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003','Operations','Pilot user','014-000-0000','2026-07-19',lookup_id('urgency','Normal'),lookup_id('request_status','Invoice Issued'),NULL,NULL,NULL),
   ('50000000-0000-4000-8000-000000000012','ORD-2026-012','2026-07-19',lookup_id('request_type','Standard'),'10000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003','Administration','Pilot user','014-000-0000','2026-07-22',lookup_id('urgency','High'),lookup_id('request_status','Invoice Issued'),NULL,NULL,NULL),
   ('50000000-0000-4000-8000-000000000013','ORD-2026-013','2026-07-20',lookup_id('request_type','Standard'),'10000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003','Facilities','Pilot user','014-000-0000','2026-07-24',lookup_id('urgency','Normal'),lookup_id('request_status','Preparing for Delivery'),NULL,NULL,NULL),
   ('50000000-0000-4000-8000-000000000014','ORD-2026-014','2026-07-21',lookup_id('request_type','Ad-hoc'),'10000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003','Marketing','Pilot user','014-000-0000','2026-08-02',lookup_id('urgency','Normal'),lookup_id('request_status','Waiting for Quotation'),NULL,NULL,NULL),
@@ -174,11 +174,28 @@ INSERT INTO deliveries (
   ('70000000-0000-4000-8000-000000000013','60000000-0000-4000-8000-000000000014','2026-07-24',NULL,'2026-07-22',lookup_id('delivery_status','Partially Delivered'),4,'Demo receiver',NULL)
 ON CONFLICT DO NOTHING;
 
+INSERT INTO approvals (
+  id, request_id, approval_type, status, reason, decided_at
+) VALUES
+  ('b0000000-0000-4000-8000-000000000002','50000000-0000-4000-8000-000000000002','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000003','50000000-0000-4000-8000-000000000003','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000004','50000000-0000-4000-8000-000000000004','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000006','50000000-0000-4000-8000-000000000006','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000007','50000000-0000-4000-8000-000000000007','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000008','50000000-0000-4000-8000-000000000008','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000009','50000000-0000-4000-8000-000000000009','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000010','50000000-0000-4000-8000-000000000010','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000011','50000000-0000-4000-8000-000000000011','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000012','50000000-0000-4000-8000-000000000012','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000013','50000000-0000-4000-8000-000000000013','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000014','50000000-0000-4000-8000-000000000014','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08'),
+  ('b0000000-0000-4000-8000-000000000015','50000000-0000-4000-8000-000000000015','Company approval','Approved','Sanitized company approval','2026-06-30 10:00:00+08')
+ON CONFLICT DO NOTHING;
+
 INSERT INTO invoices (
   id, direction, request_id, company_id, supplier_id, invoice_number,
   invoice_date, due_date, amount, status_id, notes
 ) VALUES
-  ('80000000-0000-4000-8000-000000000008','CUSTOMER','50000000-0000-4000-8000-000000000008','10000000-0000-4000-8000-000000000002',NULL,'CINV-DEMO-008','2026-07-21','2026-08-20',360,lookup_id('invoice_status','Issued'),'Sanitized delayed-delivery example.'),
   ('80000000-0000-4000-8000-000000000009','CUSTOMER','50000000-0000-4000-8000-000000000009','10000000-0000-4000-8000-000000000002',NULL,'CINV-DEMO-009','2026-07-20','2026-08-19',100,lookup_id('invoice_status','Issued'),NULL),
   ('80000000-0000-4000-8000-000000000011','CUSTOMER','50000000-0000-4000-8000-000000000011','10000000-0000-4000-8000-000000000003',NULL,'CINV-DEMO-011','2026-07-19','2026-08-18',40,lookup_id('invoice_status','Issued'),NULL),
   ('80000000-0000-4000-8000-000000000012','CUSTOMER','50000000-0000-4000-8000-000000000012','10000000-0000-4000-8000-000000000003',NULL,'CINV-DEMO-012','2026-07-22','2026-08-21',81,lookup_id('invoice_status','Issued'),NULL),
@@ -186,7 +203,6 @@ INSERT INTO invoices (
 ON CONFLICT DO NOTHING;
 
 INSERT INTO invoice_allocations (invoice_id, request_line_id, allocated_amount) VALUES
-  ('80000000-0000-4000-8000-000000000008','60000000-0000-4000-8000-000000000009',360),
   ('80000000-0000-4000-8000-000000000009','60000000-0000-4000-8000-000000000010',100),
   ('80000000-0000-4000-8000-000000000011','60000000-0000-4000-8000-000000000012',40),
   ('80000000-0000-4000-8000-000000000012','60000000-0000-4000-8000-000000000013',81),
@@ -199,5 +215,17 @@ INSERT INTO payments (
   ('90000000-0000-4000-8000-000000000009','80000000-0000-4000-8000-000000000009','2026-07-20',100,'Cash on delivery (COD)','PAY-DEMO-009','Sanitized COD payment example.'),
   ('90000000-0000-4000-8000-000000000011','80000000-0000-4000-8000-000000000011','2026-07-19',40,'Cash on delivery (COD)','PAY-DEMO-011','Sanitized COD payment example.')
 ON CONFLICT DO NOTHING;
+
+UPDATE requests
+SET status_id=lookup_id('request_status','Completed'),
+    completed_at=CASE id
+      WHEN '50000000-0000-4000-8000-000000000009'::uuid THEN '2026-07-20 16:00:00+08'::timestamptz
+      WHEN '50000000-0000-4000-8000-000000000011'::uuid THEN '2026-07-19 15:00:00+08'::timestamptz
+      ELSE completed_at
+    END
+WHERE id IN (
+  '50000000-0000-4000-8000-000000000009',
+  '50000000-0000-4000-8000-000000000011'
+);
 
 COMMIT;

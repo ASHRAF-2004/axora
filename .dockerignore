@@ -11,4 +11,8 @@ data/uploads
 reports
 coverage
 tmp
+output
+.playwright-cli
+assets
+scripts/manuals/__pycache__
 npm-debug.log*

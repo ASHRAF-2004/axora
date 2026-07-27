@@ -35,10 +35,11 @@ Use this sequence for every COD transaction:
    authorized.
 2. Schedule the delivery and identify the buyer's receiver and the seller's
    authorized cash collector.
-3. At delivery, the buyer checks the item, accepted quantity, condition, and
-   delivery evidence before any cash is collected.
-4. The seller or its authorized delivery representative collects only the
-   amount due for the quantity actually accepted.
+3. At delivery, the buyer checks every item, the full accepted quantity,
+   condition, and delivery evidence before any cash is collected.
+4. After the complete approved request is delivered and its customer invoice
+   is issued, the seller or its authorized delivery representative collects
+   only the invoiced amount due.
 5. The seller or its authorized delivery representative issues a numbered
    receipt to the payer.
 6. An authorized Axora Finance user records the payment evidence using the exact method name
@@ -57,9 +58,11 @@ received and checked.
 
 ### Partial delivery
 
-Collect only the amount approved for the quantity actually received. Record the
-accepted quantity and delivery evidence. The remaining balance stays unpaid
-until the remaining goods are delivered or the authorized order is adjusted.
+Do not collect cash or create an invoice/payment record for a partial delivery
+in this first MVP. Record the accepted quantity and delivery evidence, then wait
+until the full approved request is delivered. Handling partial COD would require
+line-level invoice allocation and approved amount adjustments, which this MVP
+deliberately does not automate.
 
 ### Failed, rejected, or cancelled delivery
 

@@ -9,5 +9,5 @@ export async function loginAction(formData: FormData) {
   const user = await authenticate(email, password);
   if (!user) redirect("/login?error=1");
   await setSession(user);
-  redirect("/dashboard");
+  redirect(!user.isOwner && user.role === "IT_SUPPORT" ? "/settings" : "/dashboard");
 }

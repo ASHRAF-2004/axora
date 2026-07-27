@@ -3,6 +3,11 @@
 /.next/
 /out/
 /coverage/
+/output/
+/tmp/
+/.playwright-cli/
+/assets/
+/scripts/manuals/__pycache__/
 *.tsbuildinfo
 
 # local secrets and runtime data

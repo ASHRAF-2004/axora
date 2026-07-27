@@ -52,7 +52,8 @@ function buildDemoOperations(): DemoOperationsStore {
       const paidAmount = request.paymentStatus === "Paid" ? amount : request.paymentStatus === "Partial" ? amount / 2 : 0;
       const invoice: InvoiceRecord = { id: `invoice-${request.id}`, direction: "CUSTOMER", requestId: request.id, orderCode: request.orderCode,
         counterparty: request.companyName, invoiceNumber: request.invoiceNumber, invoiceDate: request.requestDate, dueDate: request.neededByDate,
-        amount, status: request.invoiceStatus, paidAmount, outstandingAmount: Math.max(amount - paidAmount, 0), paymentStatus: request.paymentStatus };
+        amount, status: request.invoiceStatus ?? "Issued", paidAmount, outstandingAmount: Math.max(amount - paidAmount, 0),
+        paymentStatus: request.paymentStatus ?? "Unpaid", requestStatus: request.status };
       invoices.push(invoice);
       if (paidAmount) payments.push({ id: randomUUID(), invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber,
         paymentDate: request.completedDate ?? request.requestDate, amount: paidAmount, method: COD_PAYMENT_METHOD, reference: "DEMO-PAYMENT" });

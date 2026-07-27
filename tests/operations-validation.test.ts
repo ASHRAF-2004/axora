@@ -5,13 +5,27 @@ import { COD_PAYMENT_METHOD } from "@/lib/types";
 import { companySchema, supplierSchema } from "@/lib/validation";
 import {
   createInvoice,
+  createQuotation,
   recordApproval,
   recordDelivery,
   recordPayment,
+  saveAttachment,
   selectQuotation,
 } from "@/lib/operations";
+import { createProduct, createRequest, getRequest, listRequests, setMasterActive } from "@/lib/repository";
 
-const actor = { id: "demo-admin", name: "Demo administrator" };
+const actor = { id: "demo-owner", email: "owner@axora.local", name: "Axora owner", role: "ADMIN" as const, isOwner: true };
+const companyActor = {
+  id: "company-admin",
+  name: "Company administrator",
+  role: "ADMIN" as const,
+  companyId: "co-youruni",
+  isOwner: false,
+};
+const requesterActor = {
+  ...companyActor,
+  email: "company-admin@youruni.example",
+};
 
 describe("operational validation helpers", () => {
   it("requires a reason before a quotation can be selected", async () => {
@@ -48,6 +62,34 @@ describe("operational validation helpers", () => {
     }, actor)).rejects.toThrow("Received quantity cannot exceed the ordered quantity.");
   });
 
+  it("keeps delivery status, quantity, and receiver evidence consistent", async () => {
+    const line = getDemoStore().requests[0].lines[0];
+    await expect(recordDelivery({
+      requestLineId: line.id,
+      status: "Scheduled",
+      quantityReceived: 1,
+    }, actor)).rejects.toThrow("Only a partial or full delivery");
+    await expect(recordDelivery({
+      requestLineId: line.id,
+      status: "Partially Delivered",
+      quantityReceived: 1,
+    }, actor)).rejects.toThrow("requires the actual date and receiver");
+    await expect(recordDelivery({
+      requestLineId: line.id,
+      status: "Delivered",
+      quantityReceived: line.quantity - 1,
+      actualDate: "2026-07-22",
+      receivedBy: "Demo receiver",
+    }, actor)).rejects.toThrow("Use Partially Delivered");
+    await expect(recordDelivery({
+      requestLineId: line.id,
+      status: "Partially Delivered",
+      quantityReceived: line.quantity,
+      actualDate: "2026-07-22",
+      receivedBy: "Demo receiver",
+    }, actor)).rejects.toThrow("Use Delivered");
+  });
+
   it("does not allow payment above the outstanding invoice amount", async () => {
     const invoice = getDemoOperations().invoices.find((item) => item.outstandingAmount > 0);
     expect(invoice).toBeDefined();
@@ -57,6 +99,7 @@ describe("operational validation helpers", () => {
       paymentDate: "2026-07-22",
       amount: invoice!.outstandingAmount + 1,
       method: COD_PAYMENT_METHOD,
+      reference: "RECEIPT-OVERPAY-TEST",
     }, actor)).rejects.toThrow("Payment cannot exceed the outstanding invoice amount.");
   });
 
@@ -72,6 +115,17 @@ describe("operational validation helpers", () => {
       method: "Bank transfer",
     }, actor)).rejects.toThrow(`Only ${COD_PAYMENT_METHOD} is currently supported.`);
     expect(getDemoOperations().payments).toHaveLength(paymentCount);
+  });
+
+  it("requires a numbered receipt reference for COD evidence", async () => {
+    const invoice = getDemoOperations().invoices.find((item) => item.outstandingAmount > 0);
+    expect(invoice).toBeDefined();
+    await expect(recordPayment({
+      invoiceId: invoice!.id,
+      paymentDate: "2026-07-22",
+      amount: 1,
+      method: COD_PAYMENT_METHOD,
+    }, actor)).rejects.toThrow("numbered receipt");
   });
 
   it("uses only the canonical COD method in demo payment records", () => {
@@ -95,5 +149,304 @@ describe("operational validation helpers", () => {
       amount: 10,
       status: "Issued",
     }, actor)).rejects.toThrow("Select the supplier for a supplier invoice.");
+  });
+
+  it("blocks invoices before delivery and above the company-approved total", async () => {
+    const request = getDemoStore().requests.find((item) => !item.invoiceNumber && item.lines.every((line) => line.quantityReceived === 0));
+    expect(request).toBeDefined();
+    await expect(createInvoice({
+      direction: "CUSTOMER",
+      requestId: request!.id,
+      invoiceNumber: "CINV-TOO-EARLY",
+      invoiceDate: "2026-07-22",
+      amount: 1,
+      status: "Issued",
+    }, actor)).rejects.toThrow("fully delivered");
+
+    const originalStatus = request!.status;
+    const originalApproval = request!.approvalStatus;
+    const originalReceived = request!.lines.map((line) => line.quantityReceived);
+    request!.status = "Delivered";
+    request!.approvalStatus = "Approved";
+    request!.lines.forEach((line) => { line.quantityReceived = line.quantity; });
+    const approvedTotal = request!.lines.reduce((sum, line) => sum + line.quantity * line.unitSellPrice, 0);
+    try {
+      await expect(createInvoice({
+        direction: "CUSTOMER",
+        requestId: request!.id,
+        invoiceNumber: "CINV-OVER-APPROVAL",
+        invoiceDate: "2026-07-22",
+        amount: approvedTotal + 0.01,
+        status: "Issued",
+      }, actor)).rejects.toThrow("cannot exceed the total approved");
+    } finally {
+      request!.status = originalStatus;
+      request!.approvalStatus = originalApproval;
+      request!.lines.forEach((line, index) => { line.quantityReceived = originalReceived[index]; });
+    }
+  });
+
+  it("rejects a supplier invoice for a vendor not sourced on the request", async () => {
+    const store = getDemoStore();
+    const request = store.requests.find((item) => !item.invoiceNumber && item.lines.every((line) => line.supplierId));
+    expect(request).toBeDefined();
+    const sourcedIds = new Set(request!.lines.flatMap((line) => line.supplierId ? [line.supplierId] : []));
+    const wrongSupplier = store.suppliers.find((supplier) => !sourcedIds.has(supplier.id));
+    expect(wrongSupplier).toBeDefined();
+    const originalStatus = request!.status;
+    const originalApproval = request!.approvalStatus;
+    const originalReceived = request!.lines.map((line) => line.quantityReceived);
+    request!.status = "Delivered";
+    request!.approvalStatus = "Approved";
+    request!.lines.forEach((line) => { line.quantityReceived = line.quantity; });
+    try {
+      await expect(createInvoice({
+        direction: "SUPPLIER",
+        requestId: request!.id,
+        supplierId: wrongSupplier!.id,
+        invoiceNumber: "SINV-WRONG-SUPPLIER",
+        invoiceDate: "2026-07-22",
+        amount: 1,
+        status: "Issued",
+      }, actor)).rejects.toThrow("selected on this request");
+    } finally {
+      request!.status = originalStatus;
+      request!.approvalStatus = originalApproval;
+      request!.lines.forEach((line, index) => { line.quantityReceived = originalReceived[index]; });
+    }
+  });
+
+  it("rejects invalid quotation dates, expired offers, and excessive supplier MOQ", async () => {
+    const store = getDemoStore();
+    const ops = getDemoOperations();
+    const request = store.requests.find((item) => item.status === "Waiting for Quotation" && item.approvalStatus === "Approved");
+    expect(request).toBeDefined();
+    await expect(createQuotation({
+      requestLineId: request!.lines[0].id,
+      supplierId: store.suppliers[0].id,
+      quotationReference: "Q-DATE",
+      quotationDate: "2026-07-22",
+      validUntil: "2026-07-21",
+      unitPrice: 1,
+      deliveryCharge: 0,
+    }, actor)).rejects.toThrow("cannot end before");
+
+    const quotation = {
+      id: "quote-expired-test",
+      requestLineId: request!.lines[0].id,
+      requestLineCode: request!.lines[0].code,
+      orderCode: request!.orderCode,
+      productName: request!.lines[0].productName,
+      supplierId: store.suppliers[0].id,
+      supplierName: store.suppliers[0].name,
+      quotationReference: "Q-EXPIRED",
+      quotationDate: "2026-01-01",
+      validUntil: "2026-01-02",
+      unitPrice: 1,
+      deliveryCharge: 0,
+      status: "Received",
+      selected: false,
+    };
+    ops.quotations.push(quotation);
+    try {
+      await expect(selectQuotation(quotation.id, "Lowest valid offer", actor)).rejects.toThrow("expired");
+      quotation.validUntil = "2099-01-01";
+      Object.assign(quotation, { minimumOrderQuantity: request!.lines[0].quantity + 1 });
+      await expect(selectQuotation(quotation.id, "Lowest valid offer", actor)).rejects.toThrow("minimum order quantity");
+    } finally {
+      ops.quotations.splice(ops.quotations.indexOf(quotation), 1);
+    }
+  });
+
+  it("rejects new duplicate products and lets owners retire a legacy review row", async () => {
+    const store = getDemoStore();
+    const existing = store.products[0];
+    const count = store.products.length;
+    await expect(createProduct({
+      name: existing.name,
+      category: existing.category,
+      subcategory: existing.subcategory,
+      brand: existing.brand,
+      size: existing.size,
+      unit: existing.unit,
+      packaging: existing.packaging,
+      description: existing.description,
+      defaultBuyPrice: existing.defaultBuyPrice,
+      defaultSellPrice: existing.defaultSellPrice,
+      minimumOrderQuantity: existing.minimumOrderQuantity,
+      deliverySlaDays: existing.deliverySlaDays,
+      preferredSupplierId: existing.preferredSupplierId,
+    }, actor)).rejects.toThrow("already exists");
+    expect(store.products).toHaveLength(count);
+
+    const review = store.products.find((product) => product.status === "Needs Review");
+    expect(review).toBeDefined();
+    await setMasterActive("products", review!.id, false, actor);
+    expect(review).toMatchObject({ status: "Inactive", duplicateWarning: false });
+    review!.status = "Needs Review";
+    review!.duplicateWarning = true;
+  });
+
+  it("keeps Axora sourcing, delivery, invoice, and payment mutations owner-only", async () => {
+    const request = getDemoStore().requests[0];
+    const line = request.lines[0];
+    const invoice = getDemoOperations().invoices[0];
+
+    await expect(createQuotation({
+      requestLineId: line.id,
+      supplierId: "missing-supplier",
+      quotationReference: "Q-BLOCKED",
+      quotationDate: "2026-07-22",
+      unitPrice: 1,
+      deliveryCharge: 0,
+    }, companyActor)).rejects.toThrow("Only Axora platform owners can manage supplier quotations.");
+    await expect(selectQuotation("missing-quotation", "Best offer", companyActor))
+      .rejects.toThrow("Only Axora platform owners can select supplier quotations.");
+    await expect(recordDelivery({
+      requestLineId: line.id,
+      status: "Scheduled",
+      quantityReceived: 0,
+    }, companyActor)).rejects.toThrow("Only Axora platform owners can record delivery updates.");
+    await expect(createInvoice({
+      direction: "CUSTOMER",
+      requestId: request.id,
+      invoiceNumber: "CINV-BLOCKED",
+      invoiceDate: "2026-07-22",
+      amount: 10,
+      status: "Issued",
+    }, companyActor)).rejects.toThrow("Only Axora platform owners can create invoices.");
+    await expect(recordPayment({
+      invoiceId: invoice.id,
+      paymentDate: "2026-07-22",
+      amount: 1,
+      method: COD_PAYMENT_METHOD,
+    }, companyActor)).rejects.toThrow("Only Axora platform owners can record payments.");
+  });
+
+  it("blocks quotation work until the company approval exists", async () => {
+    const store = getDemoStore();
+    const ops = getDemoOperations();
+    const quotation = ops.quotations[0];
+    const request = store.requests.find((item) =>
+      item.lines.some((line) => line.id === quotation?.requestLineId),
+    ) ?? store.requests.find((item) => item.status === "Waiting for Quotation");
+    expect(request).toBeDefined();
+
+    const originalStatus = request!.status;
+    const originalApproval = request!.approvalStatus;
+    request!.status = "Waiting for Quotation";
+    request!.approvalStatus = "Pending";
+    try {
+      const quotationCount = ops.quotations.length;
+      await expect(createQuotation({
+        requestLineId: request!.lines[0].id,
+        supplierId: store.suppliers[0].id,
+        quotationReference: "Q-PENDING",
+        quotationDate: "2026-07-22",
+        unitPrice: 1,
+        deliveryCharge: 0,
+      }, actor)).rejects.toThrow("The company must approve this request");
+      expect(ops.quotations).toHaveLength(quotationCount);
+
+      if (quotation) {
+        const originalSelected = quotation.selected;
+        await expect(selectQuotation(quotation.id, "Attempted early selection", actor))
+          .rejects.toThrow("The company must approve this request");
+        expect(quotation.selected).toBe(originalSelected);
+      }
+    } finally {
+      request!.status = originalStatus;
+      request!.approvalStatus = originalApproval;
+    }
+  });
+
+  it("enforces catalog minimum quantity and one line per product on the server", async () => {
+    const store = getDemoStore();
+    const product = store.products.find((item) => item.status === "Active" && item.minimumOrderQuantity > 1);
+    const branch = store.branches.find((item) => item.companyId === requesterActor.companyId);
+    expect(product).toBeDefined();
+    expect(branch).toBeDefined();
+
+    const baseRequest = {
+      companyId: requesterActor.companyId,
+      branchId: branch!.id,
+      requestType: "Standard" as const,
+      department: "Administration",
+      neededByDate: "2026-08-15",
+      urgency: "Normal" as const,
+    };
+    await expect(createRequest({
+      ...baseRequest,
+      lines: [{ productId: product!.id, quantity: product!.minimumOrderQuantity - 1 }],
+    }, requesterActor)).rejects.toThrow("below the minimum order quantity");
+
+    await expect(createRequest({
+      ...baseRequest,
+      lines: [
+        { productId: product!.id, quantity: product!.minimumOrderQuantity },
+        { productId: product!.id, quantity: product!.minimumOrderQuantity },
+      ],
+    }, requesterActor)).rejects.toThrow("Add each catalog product only once");
+  });
+
+  it("keeps requester records self-scoped and redacts billing from non-finance roles", async () => {
+    const store = getDemoStore();
+    const ops = getDemoOperations();
+    const branch = store.branches.find((item) => item.companyId === "co-youruni")!;
+    const product = store.products.find((item) => item.status === "Active")!;
+    const requester = {
+      id: "requester-self-scope",
+      email: "self@youruni.example",
+      name: "Self-scoped requester",
+      role: "REQUESTER" as const,
+      companyId: branch.companyId,
+      branchId: branch.id,
+      isOwner: false,
+    };
+    const colleague = {
+      ...requester,
+      id: "requester-colleague",
+      email: "colleague@youruni.example",
+      name: "Requester colleague",
+    };
+    const requestId = await createRequest({
+      companyId: branch.companyId,
+      branchId: branch.id,
+      requestType: "Standard",
+      department: "Administration",
+      neededByDate: "2026-08-15",
+      urgency: "Normal",
+      lines: [{ productId: product.id, quantity: product.minimumOrderQuantity }],
+    }, requester);
+    try {
+      expect((await listRequests(requester)).some((request) => request.id === requestId)).toBe(true);
+      expect((await listRequests(colleague)).some((request) => request.id === requestId)).toBe(false);
+      await expect(getRequest(requestId, colleague)).resolves.toBeUndefined();
+
+      const attachmentCount = ops.attachments.length;
+      await expect(saveAttachment({
+        entityType: "request",
+        recordId: requestId,
+        file: new File(["private"], "request.txt", { type: "text/plain" }),
+      }, colleague)).rejects.toThrow("Linked record not found");
+      expect(ops.attachments).toHaveLength(attachmentCount);
+
+      const approver = { ...requester, id: "approver-view", role: "APPROVER" as const };
+      const billedRequest = store.requests.find((request) => request.invoiceNumber);
+      expect(billedRequest).toBeDefined();
+      const approverView = await getRequest(billedRequest!.id, { ...approver, companyId: billedRequest!.companyId, branchId: billedRequest!.branchId });
+      expect(approverView).toMatchObject({ invoiceNumber: undefined, invoiceStatus: undefined, paymentStatus: undefined });
+      const adminView = await getRequest(billedRequest!.id, {
+        ...approver,
+        id: "company-admin-view",
+        role: "ADMIN",
+        companyId: billedRequest!.companyId,
+        branchId: undefined,
+      });
+      expect(adminView?.invoiceNumber).toBe(billedRequest!.invoiceNumber);
+    } finally {
+      const index = store.requests.findIndex((request) => request.id === requestId);
+      if (index >= 0) store.requests.splice(index, 1);
+    }
   });
 });

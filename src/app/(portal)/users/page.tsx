@@ -1,31 +1,74 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { requireRole } from "@/lib/auth";
+import { UserCreateForm } from "@/components/UserCreateForm";
+import { requirePagePermission } from "@/lib/auth";
 import { formatDate } from "@/lib/domain";
-import { listCompanies } from "@/lib/repository";
+import { listBranches, listCompanies } from "@/lib/repository";
+import type { UserRole } from "@/lib/types";
 import { listUsers } from "@/lib/users";
-import { createUserAction, setUserActiveAction } from "./actions";
+import { setUserActiveAction } from "./actions";
+
+const roleLabels: Record<UserRole, string> = {
+  ADMIN: "Company administrator",
+  BRANCH_ADMIN: "Branch administrator",
+  APPROVER: "Branch approver (HR / manager / CEO)",
+  REQUESTER: "Purchase requester",
+  OPERATIONS: "Legacy operations",
+  FINANCE: "Finance viewer",
+  VIEWER: "Read-only auditor",
+  IT_SUPPORT: "Technical support",
+};
 
 export default async function UsersPage() {
-  const actor = await requireRole(["ADMIN"]);
-  const [users, companies] = await Promise.all([listUsers(actor), actor.isOwner ? listCompanies(actor) : Promise.resolve([])]);
+  const actor = await requirePagePermission("manage_users");
+  const [users, companies, branches] = await Promise.all([listUsers(actor), actor.isOwner ? listCompanies(actor) : Promise.resolve([]), listBranches(actor)]);
   const activeAdminCounts = users.reduce<Record<string, number>>((counts, user) => {
     if (user.active && user.role === "ADMIN" && user.companyId) counts[user.companyId] = (counts[user.companyId] ?? 0) + 1;
     return counts;
   }, {});
-  return <><PageHeader eyebrow="Access control" title="Users and roles" description="Give each person only the access needed for their job. Never share one administrator password." />
-    <section className="detail-grid"><article className="panel form-panel"><h2>Create user</h2><form action={createUserAction}><div className="form-grid">
-      <label>Name<input name="displayName" required /></label><label>Email<input name="email" type="email" required /></label>
-      {actor.isOwner ? <label>Company<select name="companyId" required><option value="">Select company</option>{companies.filter((company) => company.status === "Active").map((company) =>
-        <option key={company.id} value={company.id}>{company.name}</option>)}</select></label> : null}
-      <label>Role<select name="role" defaultValue="VIEWER"><option value="ADMIN">Administrator</option><option value="OPERATIONS">Operations</option><option value="FINANCE">Finance</option><option value="VIEWER">Viewer</option><option value="IT_SUPPORT">IT support</option></select></label>
-      <label>Initial password<input name="password" type="password" minLength={14} required autoComplete="new-password" /></label>
-    </div><div className="form-actions"><button className="button button-primary" type="submit">Create account</button></div></form></article>
-      <aside className="panel"><div className="panel-header"><div><h2>Role rule</h2><p>Start with the smallest permission</p></div></div><div className="panel-body"><div className="callout"><strong>Viewer is the safest default.</strong><p>Operations may change requests and sourcing. Finance may manage invoices and payments. Only Admin creates users.</p></div></div></aside>
-    </section><section className="panel" style={{ marginTop: 17 }}><div className="data-table-wrap"><table className="data-table"><thead><tr><th>User</th>{actor.isOwner ? <th>Company</th> : null}<th>Role</th><th>Status</th><th>Last login</th><th>Action</th></tr></thead><tbody>{users.map((user) => {
+  const availableRoles: UserRole[] = actor.role === "BRANCH_ADMIN"
+    ? ["REQUESTER", "APPROVER"]
+    : actor.isOwner
+      ? ["ADMIN", "BRANCH_ADMIN", "APPROVER", "REQUESTER", "FINANCE", "VIEWER", "IT_SUPPORT"]
+      : ["ADMIN", "BRANCH_ADMIN", "APPROVER", "REQUESTER", "FINANCE", "VIEWER"];
+
+  return <><PageHeader eyebrow="People & access" title="Create named accounts"
+    description="Role controls what a person can do. Branch assignment controls where they can do it. Never share an administrator account." />
+    <section className="detail-grid">
+      <article className="panel form-panel"><h2>Create account</h2>
+        <UserCreateForm
+          actorBranchId={actor.branchId}
+          actorCompanyId={actor.companyId}
+          actorIsOwner={actor.isOwner}
+          branches={branches}
+          companies={companies}
+          roleOptions={availableRoles.map((role) => ({ value: role, label: roleLabels[role] }))}
+        />
+      </article>
+      <aside className="panel"><div className="panel-header"><div><h2>Choose the smallest role</h2><p>Clear responsibility prevents mistakes</p></div></div>
+        <div className="panel-body"><div className="callout"><strong>Requester</strong><p>Creates purchase requests for one branch.</p></div>
+          <div className="callout"><strong>Approver</strong><p>Assign this to the branch&apos;s authorised HR lead, manager, CEO, or another person who may approve requests against its budget.</p></div>
+          <div className="callout"><strong>Branch administrator</strong><p>Manages requesters and approvers for one branch.</p></div>
+          <div className="callout"><strong>Company administrator</strong><p>Manages every branch, budget and company user.</p></div></div>
+      </aside>
+    </section>
+
+    <section className="panel" style={{ marginTop: 17 }}><div className="data-table-wrap"><table className="data-table"><thead><tr>
+      <th>User</th>{actor.isOwner ? <th>Company</th> : null}<th>Role</th><th>Access scope</th><th>Status</th><th>Last login</th><th>Action</th>
+    </tr></thead><tbody>{users.map((user) => {
       const protectedLabel = user.isOwner ? "Owner protected" : user.id === actor.id ? "Current session"
-        : user.active && user.role === "ADMIN" && Boolean(user.companyId) && activeAdminCounts[user.companyId!] <= 1 ? "Last admin" : "";
-      return <tr key={user.id}><td><strong>{user.displayName}</strong>{user.isOwner ? " · Owner" : ""}<br /><span className="subtle">{user.email}</span></td>{actor.isOwner ? <td>{user.companyName || "Axora platform"}</td> : null}<td>{user.role.replace("_", " ")}</td><td><StatusBadge>{user.active ? "Active" : "Inactive"}</StatusBadge></td><td>{formatDate(user.lastLoginAt)}</td><td>{protectedLabel ? <span className="subtle">{protectedLabel}</span> : <form action={setUserActiveAction.bind(null, user.id, !user.active)}><button className="button button-secondary" type="submit">{user.active ? "Deactivate" : "Activate"}</button></form>}</td></tr>;
+        : user.active && user.role === "ADMIN" && Boolean(user.companyId) && activeAdminCounts[user.companyId!] <= 1 ? "Last company admin" : "";
+      return <tr key={user.id}>
+        <td><strong>{user.displayName}</strong>{user.isOwner ? " · Platform owner" : ""}<br /><span className="subtle">{user.email}</span></td>
+        {actor.isOwner ? <td>{user.companyName || "Axora platform"}</td> : null}
+        <td>{user.isOwner ? "Platform owner" : roleLabels[user.role]}</td>
+        <td>{user.isOwner ? "All companies" : user.branchName ?? "Entire company"}</td>
+        <td><StatusBadge>{user.active ? "Active" : "Inactive"}</StatusBadge></td>
+        <td>{formatDate(user.lastLoginAt)}</td>
+        <td>{protectedLabel ? <span className="subtle">{protectedLabel}</span> : <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
+          <button className="button button-secondary" type="submit">{user.active ? "Deactivate" : "Reactivate"}</button>
+        </form>}</td>
+      </tr>;
     })}</tbody></table></div></section>
   </>;
 }
