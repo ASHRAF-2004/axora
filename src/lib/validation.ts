@@ -29,13 +29,13 @@ export const supplierSchema = z.object({
 
 export const productSchema = z.object({
   name: required("Product name"), category: required("Category"), subcategory: required("Subcategory"), brand: optional(100), size: optional(100),
-  unit: required("Unit", 50), packaging: optional(100), description: optional(1000), defaultBuyPrice: money, defaultSellPrice: money,
+  unit: required("Unit", 50), packaging: optional(100), description: optional(1000), defaultBuyPrice: money, defaultSellPrice: positive,
   minimumOrderQuantity: positive, deliverySlaDays: wholeDays, preferredSupplierId: z.string().trim().max(100).optional().transform((value) => value || undefined),
 });
 
 export const requestSchema = z.object({
   companyId: required("Company"), branchId: required("Branch"), requestType: z.enum(["Standard", "Ad-hoc", "Recurring"]),
-  department: required("Department"), requestedBy: required("Requested by"), requesterContact: required("Requester contact", 100),
+  department: required("Department"),
   neededByDate: z.iso.date(), urgency: z.enum(["Low", "Normal", "High", "Urgent"]), notes: optional(1000),
   lines: z.array(z.object({ productId: required("Product"), quantity: positive, specification: optional(500) })).min(1),
 });

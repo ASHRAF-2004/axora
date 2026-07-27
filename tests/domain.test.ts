@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateLineAmounts, calculateTotals, REQUEST_STATUSES, timeOfDayGreeting } from "@/lib/domain";
+import { calculateLineAmounts, calculateTotals, REQUEST_STATUSES, roundMoney, timeOfDayGreeting } from "@/lib/domain";
 import type { ProcurementRequest, RequestLine, RequestStatus } from "@/lib/types";
 
 function line(index: number, quantity: number, unitBuyPrice: number, unitSellPrice: number, deliveryCharge: number): RequestLine {
@@ -34,6 +34,8 @@ function request(id: string, lines: RequestLine[], status: RequestStatus = "Comp
     neededByDate: "2026-07-23",
     urgency: "Normal",
     status,
+    approvalStatus: "Approved",
+    estimatedTotal: lines.reduce((total, item) => total + item.quantity * item.unitSellPrice, 0),
     invoiceStatus: "Not Issued",
     paymentStatus: "Unpaid",
     lines,
@@ -41,6 +43,12 @@ function request(id: string, lines: RequestLine[], status: RequestStatus = "Comp
 }
 
 describe("financial calculations", () => {
+  it("rounds each monetary line to cents like PostgreSQL numeric", () => {
+    expect(roundMoney(1.005)).toBe(1.01);
+    expect(roundMoney(-1.005)).toBe(-1.01);
+    expect(calculateLineAmounts(line(1, 0.5, 0.01, 0.01, 0)).sales).toBe(0.01);
+  });
+
   it("calculates one line using quantity rather than unit price alone", () => {
     const amount = calculateLineAmounts(line(1, 10, 10, 14, 5));
 

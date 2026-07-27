@@ -17,10 +17,14 @@ export const REQUEST_STATUSES: RequestStatus[] = [
   "Cancelled",
 ];
 
+export function roundMoney(value: number) {
+  return Math.sign(value) * Math.round((Math.abs(value) + Number.EPSILON) * 100) / 100;
+}
+
 export function calculateLineAmounts(line: Pick<RequestLine, "quantity" | "unitBuyPrice" | "unitSellPrice" | "deliveryCharge">) {
-  const buyingCost = line.quantity * line.unitBuyPrice;
-  const sales = line.quantity * line.unitSellPrice;
-  const grossProfit = sales - buyingCost;
+  const buyingCost = roundMoney(line.quantity * line.unitBuyPrice);
+  const sales = roundMoney(line.quantity * line.unitSellPrice);
+  const grossProfit = roundMoney(line.quantity * (line.unitSellPrice - line.unitBuyPrice));
   const grossMarginPercent = sales === 0 ? 0 : (grossProfit / sales) * 100;
   return { buyingCost, sales, grossProfit, grossMarginPercent, deliveryCharges: line.deliveryCharge };
 }

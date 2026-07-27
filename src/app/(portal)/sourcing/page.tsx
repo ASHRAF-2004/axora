@@ -1,20 +1,29 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { requireSession } from "@/lib/auth";
+import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/domain";
-import { hasPermission } from "@/lib/permissions";
 import { listQuotations } from "@/lib/operations";
 import { listRequests, listSuppliers } from "@/lib/repository";
 import { CheckCircle2, Scale } from "lucide-react";
 import { createQuotationAction, selectQuotationAction } from "../operations/actions";
 
 export default async function SourcingPage() {
-  const actor = await requireSession();
-  const canManage = hasPermission(actor.role, "manage_sourcing");
+  const actor = await requirePagePermission("manage_sourcing");
+  const canManage = true;
   const [requests, suppliers, quotations] = await Promise.all([listRequests(), listSuppliers(), listQuotations()]);
-  const lines = requests.filter((request) => request.status === "Waiting for Quotation")
+  const lines = requests.filter((request) =>
+    request.status === "Waiting for Quotation" && request.approvalStatus === "Approved")
     .flatMap((request) => request.lines.map((line) => ({ ...line, orderCode: request.orderCode, companyName: request.companyName })));
   const sourceableLineIds = new Set(lines.map((line) => line.id));
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+  const unavailableReason = (quotation: (typeof quotations)[number]) => {
+    if (quotation.supplierActive === false) return "Supplier inactive";
+    if (quotation.minimumOrderQuantity && quotation.requestLineQuantity && quotation.minimumOrderQuantity > quotation.requestLineQuantity) {
+      return `MOQ ${quotation.minimumOrderQuantity} exceeds request`;
+    }
+    if (quotation.validUntil && quotation.validUntil < today) return "Quotation expired";
+    return "";
+  };
   return <><PageHeader eyebrow="Supplier control" title="Sourcing and quotations" description="Capture comparable supplier offers, then select one with a written reason. The selected price becomes the request line buying price." />
     {canManage ? <section className="detail-grid"><article className="panel form-panel"><h2>Add a quotation</h2><p>Use the supplier&apos;s real written quotation. Do not guess a reference or price.</p>
       <form action={createQuotationAction}><div className="form-grid">
@@ -30,7 +39,10 @@ export default async function SourcingPage() {
       <div className="readiness-item"><CheckCircle2 /><div><strong>Write the reason</strong><p>The audit trail must explain why an offer was chosen.</p></div></div>
     </div></aside></section> : null}
     <section className="panel" style={{ marginTop: 17 }}><div className="panel-header"><div><h2>Quotation register</h2><p>{quotations.length} recorded offer{quotations.length === 1 ? "" : "s"}</p></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>Request / product</th><th>Supplier</th><th>Reference</th><th>Unit price</th><th>Fee / lead</th><th>Status</th><th>Decision</th></tr></thead><tbody>
-      {quotations.map((item) => <tr key={item.id}><td><strong>{item.orderCode}</strong><br /><span className="subtle">{item.requestLineCode} · {item.productName}</span></td><td>{item.supplierName}</td><td>{item.quotationReference}<br /><span className="subtle">{formatDate(item.quotationDate)}</span></td><td><strong>{formatCurrency(item.unitPrice)}</strong></td><td>{formatCurrency(item.deliveryCharge)}<br /><span className="subtle">{item.leadTimeDays ?? "—"} days</span></td><td><StatusBadge>{item.selected ? "Selected" : item.status}</StatusBadge></td><td>{item.selected || !canManage || !sourceableLineIds.has(item.requestLineId) ? <span className="subtle">{item.selectionReason || (item.selected ? "Chosen offer" : "Read only")}</span> : <form action={selectQuotationAction.bind(null, item.id)}><input name="reason" required placeholder="Why this offer?" aria-label={`Selection reason for ${item.quotationReference}`} /><button className="button button-secondary" type="submit">Select</button></form>}</td></tr>)}
+      {quotations.map((item) => {
+        const unavailable = unavailableReason(item);
+        return <tr key={item.id}><td><strong>{item.orderCode}</strong><br /><span className="subtle">{item.requestLineCode} · {item.productName}</span></td><td>{item.supplierName}</td><td>{item.quotationReference}<br /><span className="subtle">{formatDate(item.quotationDate)}{item.validUntil ? ` · valid to ${formatDate(item.validUntil)}` : ""}</span></td><td><strong>{formatCurrency(item.unitPrice)}</strong><br /><span className="subtle">MOQ {item.minimumOrderQuantity ?? "—"}</span></td><td>{formatCurrency(item.deliveryCharge)}<br /><span className="subtle">{item.leadTimeDays ?? "—"} days</span></td><td><StatusBadge>{item.selected ? "Selected" : unavailable || item.status}</StatusBadge></td><td>{item.selected || unavailable || !canManage || !sourceableLineIds.has(item.requestLineId) ? <span className="subtle">{item.selectionReason || unavailable || (item.selected ? "Chosen offer" : "Read only")}</span> : <form action={selectQuotationAction.bind(null, item.id)}><input name="reason" required placeholder="Why this offer?" aria-label={`Selection reason for ${item.quotationReference}`} /><button className="button button-secondary" type="submit">Select</button></form>}</td></tr>;
+      })}
     </tbody></table></div></section>
   </>;
 }

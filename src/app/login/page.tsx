@@ -9,7 +9,8 @@ import { loginAction } from "./actions";
 export const metadata: Metadata = { title: "Sign in" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  if (await getSession()) redirect("/dashboard");
+  const user = await getSession();
+  if (user) redirect(!user.isOwner && user.role === "IT_SUPPORT" ? "/settings" : "/dashboard");
   const { error } = await searchParams;
   const demo = isDemoMode();
   return (
@@ -19,10 +20,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div>
           <span className="pilot-chip"><Boxes size={15} /> Multi-company operations</span>
           <h1>One clear place for every request.</h1>
-          <p>Track products, suppliers, deliveries, invoices and payments without rebuilding the spreadsheet every day.</p>
+          <p>Request catalog items, approve branch spending, and follow Axora fulfilment from delivery through customer invoice.</p>
           <ul className="feature-list">
-            <li><CheckCircle2 /> Stable IDs and duplicate controls</li>
-            <li><CheckCircle2 /> Quantity-correct sales and margin totals</li>
+            <li><CheckCircle2 /> Clear requester and approver roles</li>
+            <li><CheckCircle2 /> Monthly budgets for every branch</li>
             <li><CheckCircle2 /> Secure, isolated company workspaces</li>
           </ul>
         </div>

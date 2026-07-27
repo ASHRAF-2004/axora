@@ -1,4 +1,5 @@
 import { COD_PAYMENT_METHOD } from "./types";
+import { roundMoney } from "./domain";
 import type { Branch, Company, ProcurementRequest, Product, Supplier } from "./types";
 
 export interface DemoStore {
@@ -16,9 +17,9 @@ const companies: Company[] = [
 ];
 
 const branches: Branch[] = [
-  { id: "br-youruni-main", code: "B-001", companyId: "co-youruni", companyName: "YourUni", name: "YourUni main campus", branchCode: "YU-MAIN", deliveryAddress: "Kuala Lumpur", city: "Kuala Lumpur", contactName: "Campus reception", contactPhone: "012-000-1100", contactEmail: "reception@youruni.example", deliveryInstructions: "Call reception before delivery.", status: "Active" },
-  { id: "br-excel-hq", code: "B-002", companyId: "co-excel", companyName: "Excel Language Centre", name: "Excel HQ", branchCode: "EX-HQ", deliveryAddress: "Petaling Jaya", city: "Petaling Jaya", contactName: "HQ reception", contactPhone: "013-000-2200", contactEmail: "reception@excel.example", status: "Active" },
-  { id: "br-unibax-centre", code: "B-003", companyId: "co-unibax", companyName: "Unibax", name: "Unibax centre", branchCode: "UB-CEN", deliveryAddress: "Shah Alam", city: "Shah Alam", contactName: "Centre reception", contactPhone: "014-000-3300", contactEmail: "reception@unibax.example", status: "Active" },
+  { id: "br-youruni-main", code: "B-001", companyId: "co-youruni", companyName: "YourUni", name: "YourUni main campus", branchCode: "YU-MAIN", deliveryAddress: "Kuala Lumpur", city: "Kuala Lumpur", contactName: "Campus reception", contactPhone: "012-000-1100", contactEmail: "reception@youruni.example", deliveryInstructions: "Call reception before delivery.", monthlyBudget: 5000, committedAmount: 1540, remainingAmount: 3460, status: "Active" },
+  { id: "br-excel-hq", code: "B-002", companyId: "co-excel", companyName: "Excel Language Centre", name: "Excel HQ", branchCode: "EX-HQ", deliveryAddress: "Petaling Jaya", city: "Petaling Jaya", contactName: "HQ reception", contactPhone: "013-000-2200", contactEmail: "reception@excel.example", monthlyBudget: 4000, committedAmount: 830, remainingAmount: 3170, status: "Active" },
+  { id: "br-unibax-centre", code: "B-003", companyId: "co-unibax", companyName: "Unibax", name: "Unibax centre", branchCode: "UB-CEN", deliveryAddress: "Shah Alam", city: "Shah Alam", contactName: "Centre reception", contactPhone: "014-000-3300", contactEmail: "reception@unibax.example", monthlyBudget: 3500, committedAmount: 620, remainingAmount: 2880, status: "Active" },
 ];
 
 const suppliers: Supplier[] = [
@@ -90,6 +91,8 @@ const products: Product[] = productDefinitions.map(([code, name, category, subca
   deliverySlaDays,
   preferredSupplierId: `su-${supplierIndex}`,
   preferredSupplierName: suppliers[supplierIndex - 1]?.name,
+  hasImage: false,
+  imageAltText: `${name} product image`,
   status: index === 24 ? "Needs Review" : "Active",
   duplicateWarning: index === 24,
 }));
@@ -118,7 +121,7 @@ function line(index: number, productIndex: number, quantity: number, options: Pa
   };
 }
 
-const scenarios: Array<Omit<ProcurementRequest, "id" | "orderCode" | "requestDate" | "lines"> & { products: Array<[number, number, Partial<ProcurementRequest["lines"][number]>?]> }> = [
+const scenarios: Array<Omit<ProcurementRequest, "id" | "orderCode" | "requestDate" | "lines" | "approvalStatus" | "estimatedTotal"> & { products: Array<[number, number, Partial<ProcurementRequest["lines"][number]>?]> }> = [
   { requestType: "Standard", companyId: "co-youruni", companyName: "YourUni", branchId: "br-youruni-main", branchName: "YourUni main campus", department: "Administration", requestedBy: "Pilot user", requesterContact: "012-000-0000", neededByDate: "2026-07-25", urgency: "Normal", status: "New Request", invoiceStatus: "Not Issued", paymentStatus: "Unpaid", products: [[3, 10]] },
   { requestType: "Standard", companyId: "co-youruni", companyName: "YourUni", branchId: "br-youruni-main", branchName: "YourUni main campus", department: "Student services", requestedBy: "Pilot user", requesterContact: "012-000-0000", neededByDate: "2026-07-26", urgency: "Normal", status: "Under Verification", invoiceStatus: "Not Issued", paymentStatus: "Unpaid", products: [[5, 5], [2, 5]] },
   { requestType: "Ad-hoc", companyId: "co-youruni", companyName: "YourUni", branchId: "br-youruni-main", branchName: "YourUni main campus", department: "Events", requestedBy: "Pilot user", requesterContact: "012-000-0000", neededByDate: "2026-07-23", urgency: "Urgent", status: "Waiting for Quotation", invoiceStatus: "Not Issued", paymentStatus: "Unpaid", products: [[17, 2]] },
@@ -126,7 +129,7 @@ const scenarios: Array<Omit<ProcurementRequest, "id" | "orderCode" | "requestDat
   { requestType: "Standard", companyId: "co-youruni", companyName: "YourUni", branchId: "br-youruni-main", branchName: "YourUni main campus", department: "Finance", requestedBy: "Pilot user", requesterContact: "012-000-0000", neededByDate: "2026-07-27", urgency: "Normal", status: "Cancelled", invoiceStatus: "Cancelled", paymentStatus: "Void", issueReason: "Duplicate request submitted during test.", products: [[21, 2]] },
   { requestType: "Standard", companyId: "co-excel", companyName: "Excel Language Centre", branchId: "br-excel-hq", branchName: "Excel HQ", department: "IT", requestedBy: "Pilot user", requesterContact: "013-000-0000", neededByDate: "2026-07-28", urgency: "High", status: "Supplier Assigned", invoiceStatus: "Not Issued", paymentStatus: "Unpaid", products: [[19, 4]] },
   { requestType: "Ad-hoc", companyId: "co-excel", companyName: "Excel Language Centre", branchId: "br-excel-hq", branchName: "Excel HQ", department: "Facilities", requestedBy: "Pilot user", requesterContact: "013-000-0000", neededByDate: "2026-07-29", urgency: "Normal", status: "Waiting for Quotation", invoiceStatus: "Not Issued", paymentStatus: "Unpaid", notes: "Testing a supplier not yet in the approved master.", products: [[14, 3, { supplierId: undefined, supplierName: "New supplier test", supplierConfirmationStatus: "Quotation Requested" }]] },
-  { requestType: "Standard", companyId: "co-excel", companyName: "Excel Language Centre", branchId: "br-excel-hq", branchName: "Excel HQ", department: "Administration", requestedBy: "Pilot user", requesterContact: "013-000-0000", neededByDate: "2026-07-21", urgency: "Urgent", status: "Out for Delivery", invoiceStatus: "Issued", paymentStatus: "Unpaid", issueReason: "Supplier vehicle delay.", products: [[0, 6, { deliveryStatus: "Delayed", expectedDeliveryDate: "2026-07-21" }]] },
+  { requestType: "Standard", companyId: "co-excel", companyName: "Excel Language Centre", branchId: "br-excel-hq", branchName: "Excel HQ", department: "Administration", requestedBy: "Pilot user", requesterContact: "013-000-0000", neededByDate: "2026-07-21", urgency: "Urgent", status: "Out for Delivery", invoiceStatus: "Not Issued", paymentStatus: "Unpaid", issueReason: "Supplier vehicle delay.", products: [[0, 6, { deliveryStatus: "Delayed", expectedDeliveryDate: "2026-07-21" }]] },
   { requestType: "Standard", companyId: "co-excel", companyName: "Excel Language Centre", branchId: "br-excel-hq", branchName: "Excel HQ", department: "Accounts", requestedBy: "Pilot user", requesterContact: "013-000-0000", neededByDate: "2026-07-20", urgency: "Normal", status: "Completed", invoiceStatus: "Issued", paymentStatus: "Paid", invoiceNumber: "CINV-DEMO-009", completedDate: "2026-07-20", products: [[9, 10, { deliveryStatus: "Delivered", quantityReceived: 10, actualDeliveryDate: "2026-07-20" }]] },
   { requestType: "Standard", companyId: "co-excel", companyName: "Excel Language Centre", branchId: "br-excel-hq", branchName: "Excel HQ", department: "Teaching", requestedBy: "Pilot user", requesterContact: "013-000-0000", neededByDate: "2026-07-31", urgency: "Low", status: "On Hold", invoiceStatus: "Not Issued", paymentStatus: "Unpaid", issueReason: "Duplicate product record must be reviewed.", products: [[24, 3]] },
   { requestType: "Ad-hoc", companyId: "co-unibax", companyName: "Unibax", branchId: "br-unibax-centre", branchName: "Unibax centre", department: "Operations", requestedBy: "Pilot user", requesterContact: "014-000-0000", neededByDate: "2026-07-19", urgency: "Normal", status: "Completed", invoiceStatus: "Issued", paymentStatus: "Paid", invoiceNumber: "CINV-DEMO-011", completedDate: "2026-07-19", products: [[4, 1, { deliveryStatus: "Delivered", quantityReceived: 1, actualDeliveryDate: "2026-07-19" }]] },
@@ -139,12 +142,18 @@ const scenarios: Array<Omit<ProcurementRequest, "id" | "orderCode" | "requestDat
 const requests: ProcurementRequest[] = scenarios.map((scenario, requestIndex) => {
   const { products: requestedProducts, ...request } = scenario;
   let lineIndex = requestIndex * 3 + 1;
+  const lines = requestedProducts.map(([productIndex, quantity, options]) => line(lineIndex++, productIndex, quantity, options));
+  const isRejected = request.status === "Cancelled";
+  const isAwaitingApproval = request.status === "New Request";
   return {
     ...request,
     id: `order-${requestIndex + 1}`,
     orderCode: `ORD-2026-${String(requestIndex + 1).padStart(3, "0")}`,
     requestDate: `2026-07-${String(Math.min(22, 8 + requestIndex)).padStart(2, "0")}`,
-    lines: requestedProducts.map(([productIndex, quantity, options]) => line(lineIndex++, productIndex, quantity, options)),
+    approvalStatus: isRejected ? "Rejected" : isAwaitingApproval ? "Pending" : "Approved",
+    approvalReason: isRejected ? request.issueReason : undefined,
+    estimatedTotal: lines.reduce((total, item) => total + roundMoney(item.quantity * item.unitSellPrice), 0),
+    lines,
   };
 });
 

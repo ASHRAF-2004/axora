@@ -1,12 +1,12 @@
 import { PageHeader } from "@/components/PageHeader";
-import { requireRole } from "@/lib/auth";
+import { requirePagePermission } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
 import { listCompanies } from "@/lib/repository";
 import { COD_PAYMENT_METHOD } from "@/lib/types";
 import { Building2, Clock3, Coins, Database, FileCheck2, KeyRound, ShieldCheck, UserRoundCog } from "lucide-react";
 
 export default async function SettingsPage() {
-  const actor = await requireRole(["ADMIN", "IT_SUPPORT"]);
+  const actor = await requirePagePermission("manage_settings");
   const companies = await listCompanies(actor);
   const workspace = actor.isOwner ? "All approved companies" : companies[0]?.name ?? "Assigned company";
 
@@ -18,7 +18,7 @@ export default async function SettingsPage() {
       <div className="readiness-item"><Database /><div><strong>Payment method</strong><p>{COD_PAYMENT_METHOD}</p></div></div>
     </div></article><article className="panel"><div className="panel-header"><div><h2>Access and data protection</h2><p>Security rules currently enforced</p></div></div><div className="panel-body readiness-list">
       <div className="readiness-item"><ShieldCheck /><div><strong>Company isolation</strong><p>Users can access records only for their assigned company. The platform owner can administer all companies.</p></div></div>
-      <div className="readiness-item"><UserRoundCog /><div><strong>Role-based permissions</strong><p>Administrators manage users; Operations and Finance roles receive only the actions needed for their work.</p></div></div>
+      <div className="readiness-item"><UserRoundCog /><div><strong>Role and branch permissions</strong><p>Requesters submit, authorised approvers decide, branch administrators manage one location, and company administrators manage the whole customer workspace.</p></div></div>
       <div className="readiness-item"><KeyRound /><div><strong>Protected accounts</strong><p>The owner, current signed-in user, and each company&apos;s last administrator cannot be deactivated accidentally.</p></div></div>
       <div className="readiness-item"><FileCheck2 /><div><strong>Document limits</strong><p>Uploads are restricted by company, file type, and a maximum size of 2 MB.</p></div></div>
     </div></article></section>

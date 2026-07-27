@@ -9,6 +9,10 @@ const migrationUrls = [
   new URL("../database/migrations/004_company_tenant_membership.sql", import.meta.url),
   new URL("../database/migrations/005_persistent_files_and_tenant_audit.sql", import.meta.url),
   new URL("../database/migrations/006_multiple_platform_owners.sql", import.meta.url),
+  new URL("../database/migrations/007_customer_procurement_workflow.sql", import.meta.url),
+  new URL("../database/migrations/008_attachment_visibility.sql", import.meta.url),
+  new URL("../database/migrations/009_workflow_safety_and_local_budget.sql", import.meta.url),
+  new URL("../database/migrations/010_finance_and_delivery_integrity.sql", import.meta.url),
 ];
 const demoSeedUrl = new URL("../database/seeds/demo.sql", import.meta.url);
 
@@ -77,7 +81,7 @@ describe("PostgreSQL migration and demonstration seed", () => {
       count(db, "deliveries"),
       count(db, "invoices"),
       count(db, "payments"),
-    ])).resolves.toEqual([3, 3, 10, 25, 25, 15, 17, 5, 5, 2]);
+    ])).resolves.toEqual([3, 3, 10, 25, 25, 15, 17, 5, 4, 2]);
   });
 
   it("keeps every seeded branch and request attached to the correct company", async () => {
@@ -114,9 +118,30 @@ describe("PostgreSQL migration and demonstration seed", () => {
     );
 
     expect(find("New Request", "Under Verification")?.reason_required).toBe(false);
+    expect(find("Under Verification", "Waiting for Approval")).toBeUndefined();
+    expect(find("Waiting for Quotation", "Waiting for Approval")).toBeUndefined();
+    expect(find("Waiting for Quotation", "Supplier Assigned")?.reason_required).toBe(false);
+    expect(find("Waiting for Approval", "Approved")?.reason_required).toBe(false);
     expect(find("New Request", "Cancelled")?.reason_required).toBe(true);
-    expect(find("New Request", "On Hold")?.reason_required).toBe(true);
+    expect(find("New Request", "On Hold")).toBeUndefined();
+    expect(find("Under Verification", "On Hold")?.reason_required).toBe(true);
+    expect(find("Waiting for Quotation", "On Hold")).toBeUndefined();
     expect(find("New Request", "Completed")).toBeUndefined();
+  });
+
+  it("commits branch budget in the month of approval, not the request month", async () => {
+    const request = await db.query<{ id: string; branch_id: string }>(
+      "SELECT id::text,branch_id::text FROM requests WHERE order_code='ORD-2026-001'",
+    );
+    await db.query("UPDATE requests SET request_date=CURRENT_DATE - interval '2 months' WHERE id=$1", [request.rows[0].id]);
+    await db.query(`INSERT INTO approvals(request_id,approval_type,status,reason,decided_at)
+      VALUES ($1,'Company approval','Approved','Budget test',now())`, [request.rows[0].id]);
+
+    const usage = await db.query<{ committed_amount: number }>(
+      "SELECT committed_amount::float8 FROM v_branch_budget_usage WHERE branch_id=$1",
+      [request.rows[0].branch_id],
+    );
+    expect(Number(usage.rows[0].committed_amount)).toBe(140);
   });
 
   it("calculates seeded order and invoice balances in database views", async () => {
@@ -177,6 +202,96 @@ describe("PostgreSQL migration and demonstration seed", () => {
     await expect(db.exec(`
       UPDATE suppliers SET payment_terms = 'Bank transfer'
       WHERE id = '30000000-0000-4000-8000-000000000001'
+    `)).rejects.toThrow();
+  });
+
+  it("enforces delivery evidence and final quantity semantics in the database", async () => {
+    await expect(db.exec(`
+      INSERT INTO deliveries (request_line_id,status_id,quantity_received)
+      VALUES (
+        '60000000-0000-4000-8000-000000000001',
+        lookup_id('delivery_status','Scheduled'),
+        1
+      )
+    `)).rejects.toThrow();
+    await expect(db.exec(`
+      INSERT INTO deliveries (request_line_id,status_id,quantity_received,actual_date,received_by)
+      VALUES (
+        '60000000-0000-4000-8000-000000000001',
+        lookup_id('delivery_status','Delivered'),
+        5,
+        CURRENT_DATE,
+        'Test receiver'
+      )
+    `)).rejects.toThrow();
+    await expect(db.exec(`
+      INSERT INTO deliveries (request_line_id,status_id,quantity_received,actual_date,received_by)
+      VALUES (
+        '60000000-0000-4000-8000-000000000001',
+        lookup_id('delivery_status','Partially Delivered'),
+        10,
+        CURRENT_DATE,
+        'Test receiver'
+      )
+    `)).rejects.toThrow();
+  });
+
+  it("enforces delivery, supplier, and approved-total invoice controls in the database", async () => {
+    await expect(db.exec(`
+      INSERT INTO invoices (
+        direction,request_id,company_id,invoice_number,invoice_date,amount,status_id
+      ) VALUES (
+        'CUSTOMER',
+        '50000000-0000-4000-8000-000000000008',
+        '10000000-0000-4000-8000-000000000002',
+        'CINV-EARLY-TEST',
+        CURRENT_DATE,
+        1,
+        lookup_id('invoice_status','Issued')
+      )
+    `)).rejects.toThrow();
+    await expect(db.exec(`
+      INSERT INTO invoices (
+        direction,request_id,company_id,invoice_number,invoice_date,amount,status_id
+      ) VALUES (
+        'CUSTOMER',
+        '50000000-0000-4000-8000-000000000012',
+        '10000000-0000-4000-8000-000000000003',
+        'CINV-OVER-TEST',
+        CURRENT_DATE,
+        0.01,
+        lookup_id('invoice_status','Issued')
+      )
+    `)).rejects.toThrow();
+    await expect(db.exec(`
+      INSERT INTO invoices (
+        direction,request_id,supplier_id,invoice_number,invoice_date,amount,status_id
+      ) VALUES (
+        'SUPPLIER',
+        '50000000-0000-4000-8000-000000000012',
+        '30000000-0000-4000-8000-000000000001',
+        'SINV-WRONG-SUPPLIER-TEST',
+        CURRENT_DATE,
+        1,
+        lookup_id('invoice_status','Issued')
+      )
+    `)).rejects.toThrow();
+  });
+
+  it("requires a numbered receipt reference and positive catalog prices", async () => {
+    await expect(db.exec(`
+      INSERT INTO payments (invoice_id,payment_date,amount,method,reference)
+      VALUES (
+        '80000000-0000-4000-8000-000000000012',
+        CURRENT_DATE,
+        1,
+        'Cash on delivery (COD)',
+        NULL
+      )
+    `)).rejects.toThrow();
+    await expect(db.exec(`
+      UPDATE products SET default_sell_price=0
+      WHERE id='40000000-0000-4000-8000-000000000001'
     `)).rejects.toThrow();
   });
 
