@@ -40,7 +40,7 @@ SELECT
   COALESCE(NULLIF(p.image_alt_text,''), p.name),
   1,
   1,
-  encode(digest(p.image_content, 'sha256'), 'hex'),
+  'legacy-' || md5(p.image_content),
   0,
   true,
   true
