@@ -14,6 +14,7 @@ SELECT format('GRANT CONNECT ON DATABASE %I TO axora_app', current_database())
 GRANT USAGE ON SCHEMA public TO axora_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO axora_app;
 REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM axora_app;
+GRANT DELETE ON TABLE public.products, public.product_suppliers, public.product_images TO axora_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO axora_app;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO axora_app;
 
