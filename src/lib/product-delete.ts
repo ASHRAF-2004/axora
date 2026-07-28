@@ -2,6 +2,10 @@ import type { SessionUser } from "./auth";
 import { getDemoStore } from "./demo-data";
 import { isDemoMode, withAuditTransaction } from "./db";
 
+export function canPermanentlyDeleteProduct(usageCount: number) {
+  return usageCount === 0;
+}
+
 export async function deleteProduct(productId: string, actor: SessionUser) {
   if (!actor.isOwner) {
     throw new Error("Only an Axora platform owner can permanently delete products.");
@@ -12,10 +16,11 @@ export async function deleteProduct(productId: string, actor: SessionUser) {
     const productIndex = store.products.findIndex((product) => product.id === productId);
     if (productIndex < 0) throw new Error("Product not found.");
 
-    const usedInRequests = store.requests.some((request) =>
-      request.lines.some((line) => line.productId === productId),
+    const usageCount = store.requests.reduce(
+      (count, request) => count + request.lines.filter((line) => line.productId === productId).length,
+      0,
     );
-    if (usedInRequests) {
+    if (!canPermanentlyDeleteProduct(usageCount)) {
       throw new Error("This product is used in purchase history and cannot be permanently deleted. Deactivate it instead.");
     }
 
@@ -38,7 +43,7 @@ export async function deleteProduct(productId: string, actor: SessionUser) {
         [productId],
       );
       const usageCount = Number(usageResult.rows[0]?.count ?? 0);
-      if (usageCount > 0) {
+      if (!canPermanentlyDeleteProduct(usageCount)) {
         throw new Error(
           `“${product.name}” is used in ${usageCount} purchase request line${usageCount === 1 ? "" : "s"} and cannot be permanently deleted. Deactivate it instead.`,
         );
