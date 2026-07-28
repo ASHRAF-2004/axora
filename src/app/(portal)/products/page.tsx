@@ -60,7 +60,8 @@ export default async function ProductsPage() {
           <label>Packaging<input name="packaging" /></label>
           <label>Axora buying cost (RM)<input name="defaultBuyPrice" type="number" min="0" step="0.01" required /></label>
           <label>Customer selling price (RM)<input name="defaultSellPrice" type="number" min="0.01" step="0.01" required /></label>
-          <label>Minimum quantity<input name="minimumOrderQuantity" type="number" min="0.01" step="0.01" defaultValue="1" /></label>
+          <label>Minimum order quantity (MOQ)<input name="minimumOrderQuantity" type="number" min="1" step="1" defaultValue="1" required />
+            <small>Smallest whole number of units a customer can request.</small></label>
           <label>Delivery SLA (days)<input name="deliverySlaDays" type="number" min="0" defaultValue="1" /></label>
           <label className="field-full">Preferred supplier<select name="preferredSupplierId" defaultValue=""><option value="">Not assigned</option>
             {suppliers.filter((supplier) => supplier.status === "Active").map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.code} · {supplier.name}</option>)}
