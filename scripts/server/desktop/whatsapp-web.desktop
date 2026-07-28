@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=WhatsApp
+Comment=Open WhatsApp Web in Brave
+Exec=/home/ashraf/.local/bin/whatsapp-brave
+Icon=/home/ashraf/.local/share/icons/hicolor/512x512/apps/axora-whatsapp.png
+Terminal=false
+StartupNotify=true
+Categories=Network;InstantMessaging;Chat;
+Keywords=WhatsApp;Chat;Messages;
