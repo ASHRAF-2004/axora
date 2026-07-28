@@ -6,6 +6,7 @@ const optional = (max = 500) => z.string().trim().max(max).optional().transform(
 const email = z.string().trim().max(254).refine((value) => value === "" || z.email().safeParse(value).success, "Enter a valid email address.");
 const money = z.coerce.number().finite().min(0).max(100_000_000);
 const positive = z.coerce.number().finite().positive().max(100_000_000);
+const wholeQuantity = z.coerce.number().finite().int().min(1).max(100_000_000);
 const wholeDays = z.coerce.number().int().min(0).max(3650);
 
 export const companySchema = z.object({
@@ -30,14 +31,14 @@ export const supplierSchema = z.object({
 export const productSchema = z.object({
   name: required("Product name"), category: required("Category"), subcategory: required("Subcategory"), brand: optional(100), size: optional(100),
   unit: required("Unit", 50), packaging: optional(100), description: optional(1000), defaultBuyPrice: money, defaultSellPrice: positive,
-  minimumOrderQuantity: positive, deliverySlaDays: wholeDays, preferredSupplierId: z.string().trim().max(100).optional().transform((value) => value || undefined),
+  minimumOrderQuantity: wholeQuantity, deliverySlaDays: wholeDays, preferredSupplierId: z.string().trim().max(100).optional().transform((value) => value || undefined),
 });
 
 export const requestSchema = z.object({
   companyId: required("Company"), branchId: required("Branch"), requestType: z.enum(["Standard", "Ad-hoc", "Recurring"]),
   department: required("Department"),
   neededByDate: z.iso.date(), urgency: z.enum(["Low", "Normal", "High", "Urgent"]), notes: optional(1000),
-  lines: z.array(z.object({ productId: required("Product"), quantity: positive, specification: optional(500) })).min(1),
+  lines: z.array(z.object({ productId: required("Product"), quantity: wholeQuantity, specification: optional(500) })).min(1),
 });
 
 export function readFormText(data: FormData, key: string) {
