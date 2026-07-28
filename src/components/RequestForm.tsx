@@ -14,6 +14,10 @@ interface SelectedLine {
   specification: string;
 }
 
+function minimumWholeQuantity(product: Product) {
+  return Math.max(Math.ceil(product.minimumOrderQuantity), 1);
+}
+
 export function RequestForm({
   actor,
   companies,
@@ -34,7 +38,7 @@ export function RequestForm({
   );
   const initialProduct = activeProducts.find((item) => item.id === initialProductId);
   const [selected, setSelected] = useState<SelectedLine[]>(
-    initialProduct ? [{ productId: initialProduct.id, quantity: Math.max(initialProduct.minimumOrderQuantity, 1), specification: "" }] : [],
+    initialProduct ? [{ productId: initialProduct.id, quantity: minimumWholeQuantity(initialProduct), specification: "" }] : [],
   );
   const [query, setQuery] = useState("");
   const [branchId, setBranchId] = useState(actor.branchId ?? "");
@@ -59,7 +63,7 @@ export function RequestForm({
       ? current.filter((item) => item.productId !== product.id)
       : [...current, {
         productId: product.id,
-        quantity: Math.max(product.minimumOrderQuantity, 1),
+        quantity: minimumWholeQuantity(product),
         specification: "",
       }]);
   }
@@ -129,7 +133,7 @@ export function RequestForm({
                 {line ? (
                   <div className="form-grid" style={{ marginTop: 12 }}>
                     <input name="productId" type="hidden" value={product.id} />
-                    <label>Quantity<input name="quantity" type="number" min={product.minimumOrderQuantity} step="0.01"
+                    <label>Quantity<input name="quantity" type="number" min={minimumWholeQuantity(product)} step="1"
                       value={line.quantity} required onChange={(event) => updateLine(product.id, { quantity: Number(event.target.value) })} /></label>
                     <label>Specification<input name="specification" value={line.specification}
                       onChange={(event) => updateLine(product.id, { specification: event.target.value })}
