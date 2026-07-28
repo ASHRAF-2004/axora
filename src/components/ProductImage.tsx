@@ -18,6 +18,11 @@ type Artwork = {
 
 type GalleryImage = ProductImageSummary & { legacy?: boolean };
 
+type LoadedGallery = {
+  productId: string;
+  images: ProductImageSummary[];
+};
+
 function artworkFor(category: string): Artwork {
   const normalized = category.toLowerCase();
 
@@ -87,12 +92,10 @@ export function ProductImage({
     sortOrder: 0,
     legacy: true,
   }] : [], [product.hasImage, product.imageAltText, product.name]);
-  const [images, setImages] = useState<GalleryImage[]>(fallbackImages);
+  const [loadedGallery, setLoadedGallery] = useState<LoadedGallery | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
-    setImages(fallbackImages);
-    setActiveIndex(0);
     if (!product.hasImage) return;
 
     const controller = new AbortController();
@@ -103,13 +106,18 @@ export function ProductImage({
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Gallery unavailable")))
       .then((payload: { images?: ProductImageSummary[] }) => {
         if (payload.images?.length) {
-          setImages(payload.images);
+          setLoadedGallery({ productId: product.id, images: payload.images });
           setActiveIndex(0);
         }
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [fallbackImages, product.hasImage, product.id]);
+  }, [product.hasImage, product.id]);
+
+  const images: GalleryImage[] = loadedGallery?.productId === product.id && loadedGallery.images.length
+    ? loadedGallery.images
+    : fallbackImages;
+  const boundedIndex = images.length ? activeIndex % images.length : 0;
 
   useEffect(() => {
     if (!showControls || images.length < 2) return;
@@ -119,7 +127,7 @@ export function ProductImage({
     return () => window.clearInterval(timer);
   }, [images.length, showControls]);
 
-  const current = images[activeIndex] ?? images[0];
+  const current = images[boundedIndex] ?? images[0];
   const imageSource = current?.legacy
     ? `/api/products/${encodeURIComponent(product.id)}/image`
     : current
@@ -262,7 +270,7 @@ export function ProductImage({
                   setActiveIndex(index);
                 }}
                 style={{
-                  background: index === activeIndex ? foreground : "rgba(255,255,255,.9)",
+                  background: index === boundedIndex ? foreground : "rgba(255,255,255,.9)",
                   border: "1px solid rgba(15,23,42,.25)",
                   borderRadius: 999,
                   height: 8,
