@@ -80,6 +80,13 @@ export interface Branch {
   status: MasterStatus;
 }
 
+export interface ProductImageSummary {
+  id: string;
+  altText: string;
+  isPrimary: boolean;
+  sortOrder: number;
+}
+
 export interface Product {
   id: string;
   companyId?: string;
@@ -101,6 +108,7 @@ export interface Product {
   preferredSupplierName?: string;
   hasImage: boolean;
   imageAltText?: string;
+  images?: ProductImageSummary[];
   status: MasterStatus;
   duplicateWarning?: boolean;
 }

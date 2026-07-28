@@ -1,8 +1,11 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element */
 
-import type { Product } from "@/lib/types";
-import { Coffee, FileText, Package, Printer, Sparkles, type LucideIcon } from "lucide-react";
-import type { CSSProperties } from "react";
+import type { Product, ProductImageSummary } from "@/lib/types";
+import { ChevronLeft, ChevronRight, Coffee, FileText, Package, Printer, Sparkles, type LucideIcon } from "lucide-react";
+import type { CSSProperties, MouseEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ProductImageProduct = Pick<Product, "category" | "code" | "hasImage" | "id" | "imageAltText" | "name">;
 
@@ -11,6 +14,13 @@ type Artwork = {
   background: string;
   foreground: string;
   Icon: LucideIcon;
+};
+
+type GalleryImage = ProductImageSummary & { legacy?: boolean };
+
+type LoadedGallery = {
+  productId: string;
+  images: ProductImageSummary[];
 };
 
 function artworkFor(category: string): Artwork {
@@ -60,14 +70,70 @@ function artworkFor(category: string): Artwork {
   };
 }
 
+function stopCardNavigation(event: MouseEvent<HTMLButtonElement>) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
 export function ProductImage({
   product,
+  showControls = true,
   style,
 }: {
   product: ProductImageProduct;
+  showControls?: boolean;
   style?: CSSProperties;
 }) {
   const { accent, background, foreground, Icon } = artworkFor(product.category);
+  const fallbackImages = useMemo<GalleryImage[]>(() => product.hasImage ? [{
+    id: "legacy-primary",
+    altText: product.imageAltText || product.name,
+    isPrimary: true,
+    sortOrder: 0,
+    legacy: true,
+  }] : [], [product.hasImage, product.imageAltText, product.name]);
+  const [loadedGallery, setLoadedGallery] = useState<LoadedGallery | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    if (!product.hasImage) return;
+
+    const controller = new AbortController();
+    fetch(`/api/products/${encodeURIComponent(product.id)}/images`, {
+      credentials: "same-origin",
+      signal: controller.signal,
+    })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Gallery unavailable")))
+      .then((payload: { images?: ProductImageSummary[] }) => {
+        if (payload.images?.length) {
+          setLoadedGallery({ productId: product.id, images: payload.images });
+          setActiveIndex(0);
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [product.hasImage, product.id]);
+
+  const images: GalleryImage[] = loadedGallery?.productId === product.id && loadedGallery.images.length
+    ? loadedGallery.images
+    : fallbackImages;
+  const boundedIndex = images.length ? activeIndex % images.length : 0;
+
+  useEffect(() => {
+    if (!showControls || images.length < 2) return;
+    const timer = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % images.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [images.length, showControls]);
+
+  const current = images[boundedIndex] ?? images[0];
+  const imageSource = current?.legacy
+    ? `/api/products/${encodeURIComponent(product.id)}/image`
+    : current
+      ? `/api/products/${encodeURIComponent(product.id)}/images/${encodeURIComponent(current.id)}`
+      : "";
+  const controlsVisible = showControls && images.length > 1;
 
   return (
     <div
@@ -83,11 +149,12 @@ export function ProductImage({
         ...style,
       }}
     >
-      {product.hasImage ? (
+      {current ? (
         <img
-          alt={product.imageAltText || product.name}
+          alt={current.altText || product.name}
+          key={current.id}
           loading="lazy"
-          src={`/api/products/${encodeURIComponent(product.id)}/image`}
+          src={imageSource}
           style={{
             background: "white",
             height: "100%",
@@ -127,6 +194,95 @@ export function ProductImage({
           </div>
         </div>
       )}
+
+      {controlsVisible ? (
+        <>
+          <button
+            aria-label={`Previous image for ${product.name}`}
+            onClick={(event) => {
+              stopCardNavigation(event);
+              setActiveIndex((currentIndex) => (currentIndex - 1 + images.length) % images.length);
+            }}
+            style={{
+              alignItems: "center",
+              background: "rgba(255,255,255,.9)",
+              border: "1px solid rgba(148,163,184,.5)",
+              borderRadius: 999,
+              display: "flex",
+              height: 32,
+              justifyContent: "center",
+              left: 10,
+              padding: 0,
+              position: "absolute",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 32,
+              zIndex: 2,
+            }}
+            type="button"
+          >
+            <ChevronLeft aria-hidden="true" size={17} />
+          </button>
+          <button
+            aria-label={`Next image for ${product.name}`}
+            onClick={(event) => {
+              stopCardNavigation(event);
+              setActiveIndex((currentIndex) => (currentIndex + 1) % images.length);
+            }}
+            style={{
+              alignItems: "center",
+              background: "rgba(255,255,255,.9)",
+              border: "1px solid rgba(148,163,184,.5)",
+              borderRadius: 999,
+              display: "flex",
+              height: 32,
+              justifyContent: "center",
+              padding: 0,
+              position: "absolute",
+              right: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 32,
+              zIndex: 2,
+            }}
+            type="button"
+          >
+            <ChevronRight aria-hidden="true" size={17} />
+          </button>
+          <div
+            aria-label={`${images.length} product images`}
+            style={{
+              bottom: 12,
+              display: "flex",
+              gap: 5,
+              left: "50%",
+              position: "absolute",
+              transform: "translateX(-50%)",
+              zIndex: 2,
+            }}
+          >
+            {images.map((image, index) => (
+              <button
+                aria-label={`Show image ${index + 1} of ${images.length}`}
+                key={image.id}
+                onClick={(event) => {
+                  stopCardNavigation(event);
+                  setActiveIndex(index);
+                }}
+                style={{
+                  background: index === boundedIndex ? foreground : "rgba(255,255,255,.9)",
+                  border: "1px solid rgba(15,23,42,.25)",
+                  borderRadius: 999,
+                  height: 8,
+                  padding: 0,
+                  width: 8,
+                }}
+                type="button"
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
 
       <span
         className="status-badge"

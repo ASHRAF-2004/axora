@@ -117,8 +117,17 @@ export function ProductCatalog({
 
       {visibleProducts.length ? (
         <div className="metric-grid">
-          {visibleProducts.map((product) => {
-            const card = <>
+          {visibleProducts.map((product) => (
+            <article
+              className="panel"
+              key={product.id}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 470,
+                transition: "transform .18s ease, box-shadow .18s ease",
+              }}
+            >
               <ProductImage product={product} />
 
               <div className="panel-body" style={{ display: "flex", flex: 1, flexDirection: "column" }}>
@@ -184,32 +193,22 @@ export function ProductCatalog({
                     </div>
                     <span className="subtle">per {product.unit.toLowerCase()}</span>
                   </div>
-                  <span className={canRequest ? "button button-primary" : "button button-secondary"} style={{ padding: "0 13px" }}>
-                    {canRequest ? <><span>Request</span><ArrowRight aria-hidden="true" size={16} /></> : "View only"}
-                  </span>
+                  {canRequest ? (
+                    <Link
+                      aria-label={`Request ${product.name}`}
+                      className="button button-primary"
+                      href={`/requests/new?product=${encodeURIComponent(product.id)}`}
+                      style={{ padding: "0 13px" }}
+                    >
+                      <span>Request</span><ArrowRight aria-hidden="true" size={16} />
+                    </Link>
+                  ) : (
+                    <span className="button button-secondary" style={{ padding: "0 13px" }}>View only</span>
+                  )}
                 </div>
               </div>
-            </>;
-            const style = {
-              display: "flex",
-              flexDirection: "column" as const,
-              minHeight: 470,
-              transition: "transform .18s ease, box-shadow .18s ease",
-            };
-            return canRequest ? (
-              <Link
-                aria-label={`Request ${product.name}`}
-                className="panel"
-                href={`/requests/new?product=${encodeURIComponent(product.id)}`}
-                key={product.id}
-                style={style}
-              >
-                {card}
-              </Link>
-            ) : (
-              <article className="panel" key={product.id} style={style}>{card}</article>
-            );
-          })}
+            </article>
+          ))}
         </div>
       ) : (
         <div className="panel empty-state">
