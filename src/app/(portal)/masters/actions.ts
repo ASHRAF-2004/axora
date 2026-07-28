@@ -2,6 +2,7 @@
 
 import { requirePermission } from "@/lib/auth";
 import { updateProduct } from "@/lib/product-admin";
+import { deleteProduct } from "@/lib/product-delete";
 import {
   deactivateProductImage,
   prepareProductImages,
@@ -99,6 +100,12 @@ export async function updateProductAction(productId: string, formData: FormData)
   const user = await requirePermission("manage_catalog");
   await updateProduct(productId, productInput(formData), user);
   revalidateProduct(productId);
+}
+
+export async function deleteProductAction(productId: string) {
+  const user = await requirePermission("manage_catalog");
+  await deleteProduct(productId, user);
+  revalidateProduct();
 }
 
 export async function addProductImagesAction(productId: string, formData: FormData) {

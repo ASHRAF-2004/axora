@@ -1,3 +1,4 @@
+import { DeleteProductButton } from "@/components/DeleteProductButton";
 import { PageHeader } from "@/components/PageHeader";
 import { ProductCatalog } from "@/components/ProductCatalog";
 import { ProductImage } from "@/components/ProductImage";
@@ -37,11 +38,12 @@ export default async function ProductsPage() {
           <td>{product.preferredSupplierName || "Not assigned"}</td>
           <td>{formatCurrency(product.defaultBuyPrice)}<br /><span className="subtle">Customer {formatCurrency(product.defaultSellPrice)}</span></td>
           <td><StatusBadge>{product.status}</StatusBadge></td>
-          <td style={{ minWidth: 135 }}>
+          <td style={{ minWidth: 165 }}>
             <Link className="button button-secondary" href={`/products/${product.id}/edit`}>Edit product</Link>
             <form action={setMasterActiveAction.bind(null, "products", product.id, product.status === "Inactive")} style={{ marginTop: 8 }}>
               <button className="button button-secondary" type="submit">{product.status === "Active" ? "Deactivate" : product.status === "Needs Review" ? "Reject duplicate" : "Activate"}</button>
             </form>
+            <DeleteProductButton productId={product.id} productName={product.name} />
           </td>
         </tr>)}</tbody></table></div>
       </article>
