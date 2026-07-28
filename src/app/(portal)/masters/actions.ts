@@ -1,12 +1,48 @@
 "use server";
 
-import { createBranch, createCompany, createProduct, createSupplier, setMasterActive, type MasterEntity } from "@/lib/repository";
 import { requirePermission } from "@/lib/auth";
-import { normalizeProductImage, saveProductImage } from "@/lib/product-images";
+import { updateProduct } from "@/lib/product-admin";
+import {
+  deactivateProductImage,
+  prepareProductImages,
+  savePreparedProductImages,
+  saveProductImages,
+  setPrimaryProductImage,
+  updateProductImageAltText,
+} from "@/lib/product-images";
+import { createBranch, createCompany, createProduct, createSupplier, setMasterActive, type MasterEntity } from "@/lib/repository";
 import { branchSchema, companySchema, productSchema, readFormText, supplierSchema } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
+
+function productInput(formData: FormData) {
+  return productSchema.parse({
+    name: readFormText(formData, "name"),
+    category: readFormText(formData, "category"),
+    subcategory: readFormText(formData, "subcategory"),
+    brand: readFormText(formData, "brand"),
+    size: readFormText(formData, "size"),
+    unit: readFormText(formData, "unit"),
+    packaging: readFormText(formData, "packaging"),
+    description: readFormText(formData, "description"),
+    defaultBuyPrice: number(formData, "defaultBuyPrice"),
+    defaultSellPrice: number(formData, "defaultSellPrice"),
+    minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1),
+    deliverySlaDays: number(formData, "deliverySlaDays", 1),
+    preferredSupplierId: readFormText(formData, "preferredSupplierId") || undefined,
+  });
+}
+
+function files(formData: FormData, key: string) {
+  return formData.getAll(key).filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+function revalidateProduct(productId?: string) {
+  revalidatePath("/products");
+  revalidatePath("/requests/new");
+  if (productId) revalidatePath(`/products/${productId}/edit`);
+}
 
 export async function createCompanyAction(formData: FormData) {
   const user = await requirePermission("manage_companies");
@@ -46,18 +82,49 @@ export async function createSupplierAction(formData: FormData) {
 
 export async function createProductAction(formData: FormData) {
   const user = await requirePermission("manage_catalog");
-  const image = formData.get("image");
-  if (image instanceof File && image.size > 0) await normalizeProductImage(image);
-  const input = { ...productSchema.parse({ name: readFormText(formData, "name"), category: readFormText(formData, "category"), subcategory: readFormText(formData, "subcategory"), brand: readFormText(formData, "brand"),
-    size: readFormText(formData, "size"), unit: readFormText(formData, "unit"), packaging: readFormText(formData, "packaging"), description: readFormText(formData, "description"),
-    defaultBuyPrice: number(formData, "defaultBuyPrice"), defaultSellPrice: number(formData, "defaultSellPrice"), minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1),
-    deliverySlaDays: number(formData, "deliverySlaDays", 1), preferredSupplierId: readFormText(formData, "preferredSupplierId") || undefined }),
-  };
-  const productId = await createProduct(input, user);
-  if (image instanceof File && image.size > 0) {
-    await saveProductImage({ productId, file: image, altText: readFormText(formData, "imageAltText") }, user);
+  const selectedFiles = [...files(formData, "images"), ...files(formData, "image")];
+  const preparedImages = await prepareProductImages(selectedFiles);
+  const productId = await createProduct(productInput(formData), user);
+  if (preparedImages.length) {
+    await savePreparedProductImages({
+      productId,
+      images: preparedImages,
+      altText: readFormText(formData, "imageAltText"),
+    }, user);
   }
-  revalidatePath("/products");
+  revalidateProduct(productId);
+}
+
+export async function updateProductAction(productId: string, formData: FormData) {
+  const user = await requirePermission("manage_catalog");
+  await updateProduct(productId, productInput(formData), user);
+  revalidateProduct(productId);
+}
+
+export async function addProductImagesAction(productId: string, formData: FormData) {
+  const user = await requirePermission("manage_catalog");
+  const selectedFiles = files(formData, "images");
+  if (!selectedFiles.length) throw new Error("Choose at least one product image.");
+  await saveProductImages({ productId, files: selectedFiles, altText: readFormText(formData, "imageAltText") }, user);
+  revalidateProduct(productId);
+}
+
+export async function setPrimaryProductImageAction(productId: string, imageId: string) {
+  const user = await requirePermission("manage_catalog");
+  await setPrimaryProductImage(productId, imageId, user);
+  revalidateProduct(productId);
+}
+
+export async function updateProductImageAltTextAction(productId: string, imageId: string, formData: FormData) {
+  const user = await requirePermission("manage_catalog");
+  await updateProductImageAltText(productId, imageId, readFormText(formData, "altText"), user);
+  revalidateProduct(productId);
+}
+
+export async function removeProductImageAction(productId: string, imageId: string) {
+  const user = await requirePermission("manage_catalog");
+  await deactivateProductImage(productId, imageId, user);
+  revalidateProduct(productId);
 }
 
 export async function setMasterActiveAction(entity: MasterEntity, id: string, active: boolean) {
@@ -75,8 +142,8 @@ export async function setMasterActiveAction(entity: MasterEntity, id: string, ac
 
 export async function replaceProductImageAction(productId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
-  const image = formData.get("image");
-  if (!(image instanceof File) || !image.size) throw new Error("Choose a product image.");
-  await saveProductImage({ productId, file: image, altText: readFormText(formData, "imageAltText") }, user);
-  revalidatePath("/products");
+  const image = files(formData, "image")[0];
+  if (!image) throw new Error("Choose a product image.");
+  await saveProductImages({ productId, files: [image], altText: readFormText(formData, "imageAltText") }, user);
+  revalidateProduct(productId);
 }
