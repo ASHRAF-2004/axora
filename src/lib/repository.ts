@@ -70,7 +70,8 @@ export async function listCompanies(providedActor?: SessionUser): Promise<Compan
   const result = await query<Company>(`SELECT id::text, company_code AS code, name, industry,
     main_contact_name AS "mainContactName", main_contact_email AS "mainContactEmail", main_contact_phone AS "mainContactPhone",
     billing_contact_name AS "billingContactName", billing_contact_email AS "billingContactEmail", billing_contact_phone AS "billingContactPhone",
-    billing_address AS "billingAddress", payment_terms AS "paymentTerms", billing_cycle AS "billingCycle", notes,
+    billing_address AS "billingAddress", payment_terms AS "paymentTerms", billing_cycle AS "billingCycle",
+    tax_rate::float8 AS "taxRate", estimated_delivery_fee::float8 AS "estimatedDeliveryFee", notes,
     CASE WHEN active THEN 'Active' ELSE 'Inactive' END AS status
     FROM companies${scope.sql} ORDER BY name`, scope.values);
   return result.rows;
@@ -165,6 +166,10 @@ interface RequestRow {
   approvalStatus: ProcurementRequest["approvalStatus"];
   approvalReason?: string;
   approvedByName?: string;
+  subtotal: number;
+  estimatedDeliveryFee: number;
+  taxRate: number;
+  taxAmount: number;
   estimatedTotal: number;
   invoiceStatus: ProcurementRequest["invoiceStatus"];
   paymentStatus: ProcurementRequest["paymentStatus"];
@@ -218,6 +223,10 @@ function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
         approvalStatus: row.approvalStatus,
         approvalReason: row.approvalReason,
         approvedByName: row.approvedByName,
+        subtotal: Number(row.subtotal ?? 0),
+        estimatedDeliveryFee: Number(row.estimatedDeliveryFee ?? 0),
+        taxRate: Number(row.taxRate ?? 0),
+        taxAmount: Number(row.taxAmount ?? 0),
         estimatedTotal: Number(row.estimatedTotal ?? 0),
         invoiceStatus: row.invoiceStatus,
         paymentStatus: row.paymentStatus,
@@ -278,7 +287,16 @@ const requestSelect = `SELECT r.id::text, r.created_by::text AS "createdById", r
   r.department, r.requested_by AS "requestedBy", r.requester_contact AS "requesterContact", r.needed_by_date::text AS "neededByDate",
   u.label AS urgency, rs.label AS status, r.notes, r.issue_reason AS "issueReason",
   COALESCE(approval.status, 'Pending') AS "approvalStatus", approval.reason AS "approvalReason",
-  approval.reviewer_name AS "approvedByName", COALESCE(request_total.estimated_total,0)::float8 AS "estimatedTotal",
+  approval.reviewer_name AS "approvedByName",
+  COALESCE(request_total.subtotal,0)::float8 AS subtotal,
+  r.estimated_delivery_fee::float8 AS "estimatedDeliveryFee",
+  r.tax_rate::float8 AS "taxRate",
+  r.tax_amount::float8 AS "taxAmount",
+  (
+    COALESCE(request_total.subtotal,0)
+    + r.estimated_delivery_fee
+    + r.tax_amount
+  )::float8 AS "estimatedTotal",
   COALESCE(i.invoice_status, 'Not Issued') AS "invoiceStatus", COALESCE(i.payment_status, 'Unpaid') AS "paymentStatus",
   i.invoice_number AS "invoiceNumber", r.completed_at::date::text AS "completedDate",
   l.id::text AS "lineId", l.request_line_code AS "lineCode", l.product_id::text AS "productId", p.product_code AS "productCode",
@@ -300,8 +318,11 @@ const requestSelect = `SELECT r.id::text, r.created_by::text AS "createdById", r
     ORDER BY a.created_at DESC LIMIT 1
   ) approval ON true
   LEFT JOIN LATERAL (
-    SELECT sum(round(total_line.quantity * total_line.unit_sell_price,2)) AS estimated_total
-    FROM request_lines total_line WHERE total_line.request_id=r.id
+    SELECT sum(
+      round(total_line.quantity * total_line.unit_sell_price,2)
+    ) AS subtotal
+    FROM request_lines total_line
+    WHERE total_line.request_id=r.id
   ) request_total ON true
   LEFT JOIN LATERAL (SELECT d1.*,(SELECT COALESCE(sum(d2.quantity_received),0)
       FROM deliveries d2 JOIN lookup_values received_status ON received_status.id=d2.status_id
@@ -384,17 +405,104 @@ export async function getDashboardData(providedActor?: SessionUser): Promise<Das
   };
 }
 
-export async function createCompany(input: Omit<Company, "id" | "code" | "status">, actor: SessionUser) {
+export async function createCompany(
+  input: Omit<
+    Company,
+    "id" | "code" | "status" | "taxRate" | "estimatedDeliveryFee"
+  >,
+  actor: SessionUser,
+) {
   if (!actor.isOwner) throw new Error("Only the Axora owner can create companies.");
   if (isDemoMode()) {
     const store = getDemoStore();
     if (store.companies.some((company) => company.name.toLowerCase() === input.name.toLowerCase())) throw new Error("A company with this name already exists.");
-    store.companies.push({ ...input, id: randomUUID(), code: nextCode("C", store.companies.length), status: "Active" });
+    store.companies.push({
+      ...input,
+      id: randomUUID(),
+      code: nextCode("C", store.companies.length),
+      taxRate: 0,
+      estimatedDeliveryFee: 0,
+      status: "Active",
+    });
     return;
   }
   await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO companies (company_code, name, industry, main_contact_name, main_contact_email, main_contact_phone,
       billing_contact_name, billing_contact_email, billing_contact_phone, billing_address, payment_terms, billing_cycle, notes)
       VALUES (next_company_code(), $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [input.name, input.industry, input.mainContactName, input.mainContactEmail, input.mainContactPhone, input.billingContactName, input.billingContactEmail, input.billingContactPhone, input.billingAddress, input.paymentTerms, input.billingCycle, input.notes ?? null]));
+}
+
+export async function updateCompanyPricingConfiguration(
+  companyId: string,
+  input: {
+    taxRate: number;
+    estimatedDeliveryFee: number;
+  },
+  actor: SessionUser,
+) {
+  if (!canAccess(actor, "manage_settings")) {
+    throw new Error(
+      "Your account cannot manage company pricing settings.",
+    );
+  }
+
+  const resolvedCompanyId = requireCompany(actor, companyId);
+
+  if (
+    !Number.isFinite(input.taxRate) ||
+    input.taxRate < 0 ||
+    input.taxRate > 100
+  ) {
+    throw new Error("Enter a tax/SST rate from 0% to 100%.");
+  }
+
+  if (
+    !Number.isFinite(input.estimatedDeliveryFee) ||
+    input.estimatedDeliveryFee < 0
+  ) {
+    throw new Error(
+      "Estimated delivery fee cannot be negative.",
+    );
+  }
+
+  if (isDemoMode()) {
+    const company = getDemoStore().companies.find(
+      (item) => item.id === resolvedCompanyId,
+    );
+
+    if (!company) throw new Error("Company not found.");
+
+    company.taxRate = roundMoney(input.taxRate);
+    company.estimatedDeliveryFee = roundMoney(
+      input.estimatedDeliveryFee,
+    );
+    return;
+  }
+
+  await withAuditTransaction(
+    { userId: actor.id },
+    async (client) => {
+      const result = await client.query(
+        `UPDATE companies
+         SET
+           tax_rate=$2,
+           estimated_delivery_fee=$3,
+           updated_at=now()
+         WHERE id=$1
+           AND active=true`,
+        [
+          resolvedCompanyId,
+          roundMoney(input.taxRate),
+          roundMoney(input.estimatedDeliveryFee),
+        ],
+      );
+
+      if (!result.rowCount) {
+        throw new Error(
+          "The selected company is unavailable or inactive.",
+        );
+      }
+    },
+  );
 }
 
 export async function createBranch(input: Omit<Branch, "id" | "code" | "companyName" | "status" | "monthlyBudget" | "committedAmount" | "remainingAmount">, actor: SessionUser) {
@@ -516,16 +624,41 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
       && (!product.companyId || product.companyId === companyId)
       && item.quantity >= product.minimumOrderQuantity,
     ))) throw new Error("One or more products are unavailable or below the minimum order quantity.");
+    const subtotal = input.lines.reduce((total, item) => {
+      const product = store.products.find(
+        (candidate) => candidate.id === item.productId,
+      );
+
+      return total + roundMoney(
+        item.quantity * (product?.defaultSellPrice ?? 0),
+      );
+    }, 0);
+
+    const estimatedDeliveryFee =
+      company.estimatedDeliveryFee ?? 0;
+    const taxRate = company.taxRate ?? 0;
+    const taxAmount = roundMoney(subtotal * (taxRate / 100));
+    const estimatedTotal = roundMoney(
+      subtotal + estimatedDeliveryFee + taxAmount,
+    );
+
     const requestNumber = store.requests.length + 1;
     const request: ProcurementRequest = {
       id: randomUUID(), orderCode: `ORD-2026-${String(requestNumber).padStart(3, "0")}`, requestDate: new Date().toISOString().slice(0, 10),
       requestType: input.requestType, companyId: input.companyId, companyName: company?.name ?? "Unknown", branchId: input.branchId, branchName: branch?.name ?? "Unknown",
       department: input.department, requestedBy: actor.name, requesterContact: actor.email, neededByDate: input.neededByDate,
-      urgency: input.urgency, status: "New Request", notes: input.notes, approvalStatus: "Pending",
-      estimatedTotal: input.lines.reduce((total, item) => {
-        const product = store.products.find((candidate) => candidate.id === item.productId);
-        return total + roundMoney(item.quantity * (product?.defaultSellPrice ?? 0));
-      }, 0), invoiceStatus: "Not Issued", paymentStatus: "Unpaid", createdById: actor.id,
+      urgency: input.urgency,
+      status: "New Request",
+      notes: input.notes,
+      approvalStatus: "Pending",
+      subtotal,
+      estimatedDeliveryFee,
+      taxRate,
+      taxAmount,
+      estimatedTotal,
+      invoiceStatus: "Not Issued",
+      paymentStatus: "Unpaid",
+      createdById: actor.id,
       lines: input.lines.map((item, index) => {
         const product = store.products.find((candidate) => candidate.id === item.productId)!;
         return { id: randomUUID(), code: `REQ-2026-${String(requestNumber * 10 + index).padStart(5, "0")}`, productId: product.id, productCode: product.code, productName: product.name,
@@ -538,8 +671,22 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
     return request.id;
   }
   return withAuditTransaction({ userId: actor.id }, async (client: PoolClient) => {
-    const company = await client.query("SELECT 1 FROM companies WHERE id=$1 AND active=true FOR SHARE", [companyId]);
-    if (!company.rowCount) throw new Error("The selected company is not active.");
+    const company = await client.query<{
+      taxRate: number;
+      estimatedDeliveryFee: number;
+    }>(
+      `SELECT
+        tax_rate::float8 AS "taxRate",
+        estimated_delivery_fee::float8 AS "estimatedDeliveryFee"
+       FROM companies
+       WHERE id=$1 AND active=true
+       FOR SHARE`,
+      [companyId],
+    );
+
+    if (!company.rowCount) {
+      throw new Error("The selected company is not active.");
+    }
     const branchMatch = await client.query(
       "SELECT 1 FROM branches WHERE id=$1 AND company_id=$2 AND active=true FOR SHARE",
       [input.branchId, companyId],
@@ -562,9 +709,49 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
         throw new Error(`Order at least ${product?.minimumOrderQuantity ?? "the catalog minimum"} for ${product?.name ?? "each product"}.`);
       }
     }
-    const requestResult = await client.query<{ id: string }>(`INSERT INTO requests (order_code,request_date,request_type_id,company_id,branch_id,department,requested_by,requester_contact,needed_by_date,urgency_id,status_id,notes,created_by)
-      VALUES (next_order_code(),CURRENT_DATE,lookup_id('request_type',$1),$2,$3,$4,$5,$6,$7,lookup_id('urgency',$8),lookup_id('request_status','New Request'),$9,$10) RETURNING id::text`,
-      [input.requestType, companyId, input.branchId, input.department, actor.name, actor.email, input.neededByDate, input.urgency, input.notes ?? null, actor.id]);
+    const requestResult = await client.query<{ id: string }>(
+      `INSERT INTO requests (
+        order_code,
+        request_date,
+        request_type_id,
+        company_id,
+        branch_id,
+        department,
+        requested_by,
+        requester_contact,
+        needed_by_date,
+        urgency_id,
+        status_id,
+        notes,
+        created_by,
+        estimated_delivery_fee,
+        tax_rate
+      )
+      VALUES (
+        next_order_code(),
+        CURRENT_DATE,
+        lookup_id('request_type',$1),
+        $2,$3,$4,$5,$6,$7,
+        lookup_id('urgency',$8),
+        lookup_id('request_status','New Request'),
+        $9,$10,$11,$12
+      )
+      RETURNING id::text`,
+      [
+        input.requestType,
+        companyId,
+        input.branchId,
+        input.department,
+        actor.name,
+        actor.email,
+        input.neededByDate,
+        input.urgency,
+        input.notes ?? null,
+        actor.id,
+        company.rows[0].estimatedDeliveryFee,
+        company.rows[0].taxRate,
+      ],
+    );
     const requestId = requestResult.rows[0].id;
     for (const item of input.lines) {
       const insertedLine = await client.query(`INSERT INTO request_lines
@@ -580,6 +767,23 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
         throw new Error("A selected product became unavailable. Review the request and try again.");
       }
     }
+
+    await client.query(
+      `UPDATE requests request
+       SET tax_amount = round(
+         COALESCE((
+           SELECT sum(
+             round(line.quantity * line.unit_sell_price, 2)
+           )
+           FROM request_lines line
+           WHERE line.request_id=request.id
+         ),0) * (request.tax_rate / 100),
+         2
+       )
+       WHERE request.id=$1`,
+      [requestId],
+    );
+
     return requestId;
   });
 }
@@ -605,7 +809,7 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
     if (status === "Completed") {
       const invoices = getDemoOperations().invoices.filter((invoice) =>
         invoice.requestId === request.id && invoice.direction === "CUSTOMER" && invoice.status !== "Cancelled");
-      const authorizedTotal = request.lines.reduce((sum, line) => sum + roundMoney(line.quantity * line.unitSellPrice), 0);
+      const authorizedTotal = request.estimatedTotal;
       const invoicedTotal = invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
       if (!invoices.length || invoices.some((invoice) => invoice.outstandingAmount > 0)) {
         throw new Error("All active customer invoices must be fully paid before completing the request.");
@@ -651,11 +855,38 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
     if (status === "Completed") {
       const settlement = await client.query<{ invoiceCount: number; unpaidCount: number; authorizedTotal: number; invoicedTotal: number }>(
         `SELECT
-          count(*) FILTER (WHERE balance.direction='CUSTOMER' AND balance.status_id<>lookup_id('invoice_status','Cancelled'))::int AS "invoiceCount",
-          count(*) FILTER (WHERE balance.direction='CUSTOMER' AND balance.status_id<>lookup_id('invoice_status','Cancelled') AND balance.outstanding_amount>0)::int AS "unpaidCount",
-          COALESCE((SELECT sum(round(line.quantity*line.unit_sell_price,2)) FROM request_lines line WHERE line.request_id=$1),0)::float8 AS "authorizedTotal",
-          COALESCE(sum(balance.amount) FILTER (WHERE balance.direction='CUSTOMER' AND balance.status_id<>lookup_id('invoice_status','Cancelled')),0)::float8 AS "invoicedTotal"
-        FROM v_invoice_balances balance WHERE balance.request_id=$1`,
+          count(*) FILTER (
+            WHERE balance.direction='CUSTOMER'
+              AND balance.status_id<>lookup_id('invoice_status','Cancelled')
+          )::int AS "invoiceCount",
+          count(*) FILTER (
+            WHERE balance.direction='CUSTOMER'
+              AND balance.status_id<>lookup_id('invoice_status','Cancelled')
+              AND balance.outstanding_amount>0
+          )::int AS "unpaidCount",
+          (
+            COALESCE((
+              SELECT sum(
+                round(line.quantity * line.unit_sell_price, 2)
+              )
+              FROM request_lines line
+              WHERE line.request_id=request.id
+            ),0)
+            + request.estimated_delivery_fee
+            + request.tax_amount
+          )::float8 AS "authorizedTotal",
+          COALESCE(sum(balance.amount) FILTER (
+            WHERE balance.direction='CUSTOMER'
+              AND balance.status_id<>lookup_id('invoice_status','Cancelled')
+          ),0)::float8 AS "invoicedTotal"
+        FROM requests request
+        LEFT JOIN v_invoice_balances balance
+          ON balance.request_id=request.id
+        WHERE request.id=$1
+        GROUP BY
+          request.id,
+          request.estimated_delivery_fee,
+          request.tax_amount`,
         [id],
       );
       if (!settlement.rows[0].invoiceCount || settlement.rows[0].unpaidCount) {

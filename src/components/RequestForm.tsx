@@ -1,8 +1,13 @@
 "use client";
 
 import { createRequestAction } from "@/app/(portal)/requests/actions";
-import { CatalogPicker } from "@/components/CatalogPicker";
 import { useUxFeedback } from "@/components/UxFeedbackProvider";
+import {
+  minimumCartQuantity,
+  readRequestCart,
+  writeRequestCart,
+  type RequestCartItem,
+} from "@/lib/request-cart";
 import type { SessionUser } from "@/lib/auth";
 import type { CatalogSearchResult } from "@/lib/catalog";
 import { formatCurrency, roundMoney } from "@/lib/domain";
@@ -14,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -98,6 +104,7 @@ export function RequestForm({
         ]
       : [],
   );
+  const [cartHydrated, setCartHydrated] = useState(false);
   const [branchId, setBranchId] = useState(actor.branchId ?? "");
   const [department, setDepartment] = useState("");
   const [neededByDate, setNeededByDate] = useState(today);
@@ -118,7 +125,7 @@ export function RequestForm({
     (item) => item.id === branchId,
   );
 
-  const estimatedTotal = selected.reduce((total, line) => {
+  const subtotal = selected.reduce((total, line) => {
     const product = productById.get(line.productId);
 
     return (
@@ -128,6 +135,104 @@ export function RequestForm({
       )
     );
   }, 0);
+
+  const estimatedDeliveryFee =
+    company?.estimatedDeliveryFee ?? 0;
+  const taxRate = company?.taxRate ?? 0;
+  const taxAmount = roundMoney(subtotal * (taxRate / 100));
+  const estimatedTotal = roundMoney(
+    subtotal + estimatedDeliveryFee + taxAmount,
+  );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const cart = readRequestCart();
+
+    const products: Product[] = cart.map((item) => ({
+      ...item.product,
+      defaultBuyPrice: 0,
+      status: "Active" as const,
+      duplicateWarning: false,
+    }));
+
+    if (
+      initialProduct &&
+      !products.some((product) => product.id === initialProduct.id)
+    ) {
+      products.push(initialProduct);
+    }
+
+    const lines: SelectedLine[] = cart.map((item) => ({
+      productId: item.product.id,
+      quantity: Math.max(
+        Math.ceil(item.quantity),
+        minimumCartQuantity(item.product),
+      ),
+      specification: item.specification,
+    }));
+
+    if (
+      initialProduct &&
+      !lines.some((line) => line.productId === initialProduct.id)
+    ) {
+      lines.push({
+        productId: initialProduct.id,
+        quantity: minimumWholeQuantity(initialProduct),
+        specification: "",
+      });
+    }
+
+    setKnownProducts((current) => {
+      const merged = new Map(
+        current.map((product) => [product.id, product]),
+      );
+
+      for (const product of products) {
+        merged.set(product.id, product);
+      }
+
+      return [...merged.values()];
+    });
+
+      setSelected(lines);
+      setCartHydrated(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [initialProduct]);
+
+  useEffect(() => {
+    if (!cartHydrated) return;
+
+    const items = selected
+      .map<RequestCartItem | null>((line) => {
+        const product = productById.get(line.productId);
+        if (!product) return null;
+
+        return {
+          product: {
+            id: product.id,
+            code: product.code,
+            name: product.name,
+            category: product.category,
+            subcategory: product.subcategory,
+            brand: product.brand,
+            size: product.size,
+            unit: product.unit,
+            defaultSellPrice: product.defaultSellPrice,
+            minimumOrderQuantity: product.minimumOrderQuantity,
+            deliverySlaDays: product.deliverySlaDays,
+            hasImage: product.hasImage,
+            imageAltText: product.imageAltText,
+          },
+          quantity: line.quantity,
+          specification: line.specification,
+        };
+      })
+      .filter((item): item is RequestCartItem => item !== null);
+
+    writeRequestCart(items);
+  }, [cartHydrated, productById, selected]);
 
   function clearError(field: RequestField) {
     setErrors((current) => {
@@ -541,20 +646,19 @@ export function RequestForm({
         </div>
       ) : null}
 
-      <div className="panel-header" style={{ marginTop: 24 }}>
+      <div className="request-cart-review-heading">
         <div>
-          <h2>Choose products</h2>
+          <span>Review request</span>
+          <h2>Items from your Shop cart</h2>
           <p>
-            Search, filter, and browse the Axora catalog like an online store.
+            Adjust quantities or specifications before submitting.
           </p>
         </div>
-      </div>
 
-      <CatalogPicker
-        initialCatalog={initialCatalog}
-        selectedProductIds={selected.map((line) => line.productId)}
-        onToggleProduct={toggleProduct}
-      />
+        <a className="button button-secondary" href="/products">
+          Continue shopping
+        </a>
+      </div>
 
       {errors.products ? (
         <div
@@ -682,9 +786,37 @@ export function RequestForm({
               })}
             </div>
 
-            <div className="request-cart-total">
-              <span>Estimated request total</span>
-              <strong>{formatCurrency(estimatedTotal)}</strong>
+            <div className="request-payment-summary">
+              <div>
+                <span>Subtotal</span>
+                <strong>{formatCurrency(subtotal)}</strong>
+              </div>
+
+              <div>
+                <span>Estimated delivery fee</span>
+                <strong>
+                  {formatCurrency(estimatedDeliveryFee)}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Tax / SST
+                  {taxRate > 0 ? ` (${taxRate}%)` : ""}
+                </span>
+                <strong>{formatCurrency(taxAmount)}</strong>
+              </div>
+
+              <div className="request-payment-total">
+                <span>Estimated total</span>
+                <strong>{formatCurrency(estimatedTotal)}</strong>
+              </div>
+
+              <p>
+                Delivery is estimated until sourcing confirms the
+                supplier quotation. Tax/SST follows the company
+                pricing configuration.
+              </p>
             </div>
           </div>
         </div>
@@ -706,7 +838,7 @@ export function RequestForm({
           className="button button-primary"
           type="submit"
         >
-          Submit for company approval ·{" "}
+          Submit purchase request ·{" "}
           {formatCurrency(estimatedTotal)}
         </button>
       </div>

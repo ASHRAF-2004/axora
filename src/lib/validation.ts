@@ -16,6 +16,16 @@ export const companySchema = z.object({
   paymentTerms: z.literal(COD_PAYMENT_METHOD), billingCycle: required("Billing cycle", 100), notes: optional(1000),
 });
 
+export const companyPricingSchema = z.object({
+  companyId: required("Company"),
+  taxRate: z.coerce
+    .number()
+    .finite()
+    .min(0, "Tax/SST rate cannot be negative.")
+    .max(100, "Tax/SST rate cannot exceed 100%."),
+  estimatedDeliveryFee: money,
+});
+
 export const branchSchema = z.object({
   companyId: required("Company"), name: required("Branch name"), branchCode: required("Branch code", 50), deliveryAddress: required("Delivery address", 500),
   city: required("City"), contactName: required("Contact name"), contactPhone: required("Contact phone", 50), contactEmail: email,

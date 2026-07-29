@@ -5,17 +5,25 @@ import type {
   CatalogSort,
   ShopCategorySummary,
 } from "@/lib/catalog";
-import { formatCurrency } from "@/lib/domain";
+import { formatCurrency, roundMoney } from "@/lib/domain";
+import {
+  addProductToRequestCart,
+  readRequestCart,
+  REQUEST_CART_EVENT,
+  type RequestCartItem,
+} from "@/lib/request-cart";
 import type { Product } from "@/lib/types";
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
   ChevronRight,
   Grid3X3,
   LoaderCircle,
   PackageSearch,
   Search,
   ShoppingBag,
+  ShoppingCart,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +34,7 @@ import {
   useState,
 } from "react";
 import { ProductImage } from "./ProductImage";
+import { useUxFeedback } from "./UxFeedbackProvider";
 
 function deliveryLabel(days: number) {
   if (days === 0) return "Same day";
@@ -62,6 +71,9 @@ export function ShopCategoryHub({
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [cartItems, setCartItems] =
+    useState<RequestCartItem[]>([]);
+  const { notify } = useUxFeedback();
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -70,6 +82,21 @@ export function ShopCategoryHub({
 
     return () => window.clearTimeout(timer);
   }, [searchText]);
+
+  useEffect(() => {
+    function syncCart() {
+      setCartItems(readRequestCart());
+    }
+
+    syncCart();
+    window.addEventListener("storage", syncCart);
+    window.addEventListener(REQUEST_CART_EVENT, syncCart);
+
+    return () => {
+      window.removeEventListener("storage", syncCart);
+      window.removeEventListener(REQUEST_CART_EVENT, syncCart);
+    };
+  }, []);
 
   const showingProducts = Boolean(
     query || selectedSubcategory || viewAllCategory,
@@ -248,6 +275,37 @@ export function ShopCategoryHub({
     viewAllCategory,
   ]);
 
+  const cartProductIds = useMemo(
+    () => new Set(cartItems.map((item) => item.product.id)),
+    [cartItems],
+  );
+
+  const cartQuantity = cartItems.reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
+
+  const cartSubtotal = cartItems.reduce(
+    (total, item) =>
+      total +
+      roundMoney(
+        item.quantity * item.product.defaultSellPrice,
+      ),
+    0,
+  );
+
+  function addToCart(product: Product) {
+    const result = addProductToRequestCart(product);
+    setCartItems(result.items);
+
+    notify(
+      result.added
+        ? `${product.name} added to the request cart.`
+        : `${product.name} is already in the request cart.`,
+      result.added ? "success" : "info",
+    );
+  }
+
   return (
     <section className="shop-hub" aria-label="Axora shop">
       <div className="shop-search-hero">
@@ -292,6 +350,51 @@ export function ShopCategoryHub({
           ) : null}
         </div>
       </div>
+
+      {canRequest ? (
+        <aside
+          className={
+            cartItems.length
+              ? "shop-cart-bar has-items"
+              : "shop-cart-bar"
+          }
+          aria-label="Purchase request cart"
+        >
+          <div className="shop-cart-bar-icon">
+            <ShoppingCart size={21} aria-hidden="true" />
+            {cartItems.length ? (
+              <span>{cartItems.length}</span>
+            ) : null}
+          </div>
+
+          <div className="shop-cart-bar-copy">
+            <strong>
+              {cartItems.length
+                ? `${cartItems.length} ${
+                    cartItems.length === 1 ? "item" : "items"
+                  } in your request cart`
+                : "Your request cart is empty"}
+            </strong>
+            <span>
+              {cartItems.length
+                ? `${cartQuantity} units · ${formatCurrency(
+                    cartSubtotal,
+                  )} subtotal`
+                : "Add products, then review quantities before submitting."}
+            </span>
+          </div>
+
+          <Link
+            href="/requests/new?cart=1"
+            className="button button-primary"
+            aria-disabled={!cartItems.length}
+            tabIndex={cartItems.length ? undefined : -1}
+          >
+            Review request
+            <ArrowRight size={16} aria-hidden="true" />
+          </Link>
+        </aside>
+      ) : null}
 
       {selectedCategory ? (
         <nav className="shop-breadcrumb" aria-label="Shop breadcrumb">
@@ -592,15 +695,29 @@ export function ShopCategoryHub({
                   </div>
 
                   {canRequest ? (
-                    <Link
-                      href={`/requests/new?product=${encodeURIComponent(
-                        product.id,
-                      )}`}
-                      className="button button-primary"
+                    <button
+                      type="button"
+                      className={
+                        cartProductIds.has(product.id)
+                          ? "button button-secondary"
+                          : "button button-primary"
+                      }
+                      data-ux-silent="true"
+                      disabled={cartProductIds.has(product.id)}
+                      onClick={() => addToCart(product)}
                     >
-                      <ShoppingBag size={16} />
-                      Add to request
-                    </Link>
+                      {cartProductIds.has(product.id) ? (
+                        <>
+                          <Check size={16} />
+                          Added to cart
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingBag size={16} />
+                          Add to cart
+                        </>
+                      )}
+                    </button>
                   ) : (
                     <span className="button button-secondary">
                       View only
