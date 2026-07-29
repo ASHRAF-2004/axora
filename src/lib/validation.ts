@@ -37,7 +37,11 @@ export const productSchema = z.object({
 export const requestSchema = z.object({
   companyId: required("Company"), branchId: required("Branch"), requestType: z.enum(["Standard", "Ad-hoc", "Recurring"]),
   department: required("Department"),
-  neededByDate: z.iso.date(), urgency: z.enum(["Low", "Normal", "High", "Urgent"]), notes: optional(1000),
+  neededByDate: z.iso.date().refine(
+    (value) => value >= new Date().toISOString().slice(0, 10),
+    "Choose today or a future date. Past dates are not allowed.",
+  ),
+  urgency: z.enum(["Low", "Normal", "High", "Urgent"]), notes: optional(1000),
   lines: z.array(z.object({ productId: required("Product"), quantity: wholeQuantity, specification: optional(500) })).min(1),
 });
 

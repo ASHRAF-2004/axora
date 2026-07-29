@@ -504,3 +504,171 @@ html[data-ux-navigating="true"] .ux-navigation-progress {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Purchase request validation UX */
+.request-error-summary {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #991b1b;
+  background: linear-gradient(135deg, #fff1f2, #fff7f7);
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--red-600);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, .08);
+}
+
+.request-error-summary > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--red-600);
+}
+
+.request-error-summary strong {
+  display: block;
+  color: #991b1b;
+  font-size: 13px;
+}
+
+.request-error-summary p {
+  margin: 4px 0 8px;
+  color: #b91c1c;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.request-error-summary ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.request-input-error,
+.request-input-error:focus {
+  border-color: var(--red-600) !important;
+  background: #fff7f7 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .1) !important;
+}
+
+.request-field-error-message,
+.request-section-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #b91c1c;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.request-field-error-message svg,
+.request-section-error svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.request-section-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--red-100);
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+}
+
+.request-product-error {
+  padding: 8px;
+  border: 2px solid rgba(220, 38, 38, .55);
+  border-radius: 16px;
+  background: rgba(254, 226, 226, .22);
+}
+
+.request-date-control {
+  position: relative;
+}
+
+.request-date-control > svg {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  top: 50%;
+  color: var(--blue-600);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.request-date-control input {
+  padding-left: 40px;
+  padding-right: 12px;
+  cursor: pointer;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, .7), white);
+}
+
+.request-date-control input::-webkit-calendar-picker-indicator {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  opacity: .72;
+}
+
+.request-date-control input:hover {
+  border-color: #93c5fd;
+}
+
+.request-date-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.request-date-shortcuts button {
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--blue-600);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  transition: .16s ease;
+}
+
+.request-date-shortcuts button:hover {
+  color: white;
+  background: var(--blue-600);
+  border-color: var(--blue-600);
+  transform: translateY(-1px);
+}
+
+.request-submit-actions {
+  margin-top: 22px;
+  padding-top: 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid var(--slate-200);
+}
+
+.request-submit-actions > span {
+  max-width: 520px;
+  color: var(--slate-500);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .request-submit-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .request-submit-actions .button {
+    width: 100%;
+  }
+}
