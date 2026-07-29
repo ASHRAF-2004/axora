@@ -1,11 +1,45 @@
 import { PageHeader } from "@/components/PageHeader";
 import { RequestForm } from "@/components/RequestForm";
 import { requirePagePermission } from "@/lib/auth";
-import { listBranches, listCompanies, listProducts } from "@/lib/repository";
+import {
+  getCatalogProductById,
+  searchCatalogProducts,
+} from "@/lib/catalog";
+import { listBranches, listCompanies } from "@/lib/repository";
 
-export default async function NewRequestPage({ searchParams }: { searchParams: Promise<{ product?: string }> }) {
+export default async function NewRequestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ product?: string }>;
+}) {
   const actor = await requirePagePermission("create_requests");
-  const [companies, branches, products] = await Promise.all([listCompanies(), listBranches(), listProducts()]);
-  return <><PageHeader eyebrow="Company procurement" title="Create purchase request" description="Choose catalog items and submit them to your branch approver. Your identity and company are recorded automatically." />
-    <RequestForm actor={actor} companies={companies} branches={branches} products={products} initialProductId={(await searchParams).product} /></>;
+  const params = await searchParams;
+
+  const [companies, branches, initialCatalog, initialProduct] =
+    await Promise.all([
+      listCompanies(actor),
+      listBranches(actor),
+      searchCatalogProducts({ page: 1, limit: 24 }, actor),
+      params.product
+        ? getCatalogProductById(params.product, actor)
+        : Promise.resolve(undefined),
+    ]);
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Company procurement"
+        title="Create purchase request"
+        description="Search the catalog, add products to your request cart, and submit them for company approval."
+      />
+
+      <RequestForm
+        actor={actor}
+        companies={companies}
+        branches={branches}
+        initialCatalog={initialCatalog}
+        initialProduct={initialProduct}
+      />
+    </>
+  );
 }
