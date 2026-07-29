@@ -3,13 +3,11 @@
 import { createRequestAction } from "@/app/(portal)/requests/actions";
 import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import {
-  minimumCartQuantity,
   readRequestCart,
   writeRequestCart,
   type RequestCartItem,
 } from "@/lib/request-cart";
 import type { SessionUser } from "@/lib/auth";
-import type { CatalogSearchResult } from "@/lib/catalog";
 import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { Branch, Company, Product } from "@/lib/types";
 import {
@@ -57,13 +55,11 @@ export function RequestForm({
   actor,
   companies,
   branches,
-  initialCatalog,
   initialProduct,
 }: {
   actor: SessionUser;
   companies: Company[];
   branches: Branch[];
-  initialCatalog: CatalogSearchResult;
   initialProduct?: Product;
 }) {
   const company =
@@ -72,18 +68,9 @@ export function RequestForm({
   const today = localDateValue();
   const { notify } = useUxFeedback();
 
-  const [knownProducts, setKnownProducts] = useState<Product[]>(() => {
-    const products = [...initialCatalog.products];
-
-    if (
-      initialProduct &&
-      !products.some((product) => product.id === initialProduct.id)
-    ) {
-      products.push(initialProduct);
-    }
-
-    return products;
-  });
+  const [knownProducts, setKnownProducts] = useState<Product[]>(
+    initialProduct ? [initialProduct] : [],
+  );
 
   const productById = useMemo(
     () =>
@@ -145,61 +132,123 @@ export function RequestForm({
   );
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    const controller = new AbortController();
+
+    const timer = window.setTimeout(async () => {
       const cart = readRequestCart();
-
-    const products: Product[] = cart.map((item) => ({
-      ...item.product,
-      defaultBuyPrice: 0,
-      status: "Active" as const,
-      duplicateWarning: false,
-    }));
-
-    if (
-      initialProduct &&
-      !products.some((product) => product.id === initialProduct.id)
-    ) {
-      products.push(initialProduct);
-    }
-
-    const lines: SelectedLine[] = cart.map((item) => ({
-      productId: item.product.id,
-      quantity: Math.max(
-        Math.ceil(item.quantity),
-        minimumCartQuantity(item.product),
-      ),
-      specification: item.specification,
-    }));
-
-    if (
-      initialProduct &&
-      !lines.some((line) => line.productId === initialProduct.id)
-    ) {
-      lines.push({
-        productId: initialProduct.id,
-        quantity: minimumWholeQuantity(initialProduct),
-        specification: "",
-      });
-    }
-
-    setKnownProducts((current) => {
-      const merged = new Map(
-        current.map((product) => [product.id, product]),
+      const cartById = new Map(
+        cart.map((item) => [item.product.id, item]),
       );
 
-      for (const product of products) {
-        merged.set(product.id, product);
+      const productIds = [
+        ...new Set([
+          ...cart.map((item) => item.product.id),
+          ...(initialProduct ? [initialProduct.id] : []),
+        ]),
+      ];
+
+      if (!productIds.length) {
+        setKnownProducts([]);
+        setSelected([]);
+        setCartHydrated(true);
+        return;
       }
 
-      return [...merged.values()];
-    });
+      try {
+        const response = await fetch("/api/catalog/cart", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ productIds }),
+          signal: controller.signal,
+        });
 
-      setSelected(lines);
-      setCartHydrated(true);
+        const payload = await response.json() as {
+          products?: Product[];
+          error?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(
+            payload.error ?? "Unable to refresh the request cart.",
+          );
+        }
+
+        const products = Array.isArray(payload.products)
+          ? payload.products
+          : [];
+
+        const authoritativeById = new Map(
+          products.map((product) => [product.id, product]),
+        );
+
+        const lines = productIds.flatMap((productId) => {
+          const product = authoritativeById.get(productId);
+          if (!product) return [];
+
+          const saved = cartById.get(productId);
+
+          return [{
+            productId,
+            quantity: Math.max(
+              Math.ceil(
+                saved?.quantity ??
+                  minimumWholeQuantity(product),
+              ),
+              minimumWholeQuantity(product),
+            ),
+            specification: saved?.specification ?? "",
+          }];
+        });
+
+        setKnownProducts(products);
+        setSelected(lines);
+        setCartHydrated(true);
+
+        const removedCount = productIds.length - products.length;
+
+        if (removedCount > 0) {
+          notify(
+            `${removedCount} unavailable cart item${
+              removedCount === 1 ? " was" : "s were"
+            } removed.`,
+            "error",
+          );
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+
+        const fallbackProducts = initialProduct
+          ? [initialProduct]
+          : [];
+
+        setKnownProducts(fallbackProducts);
+        setSelected(
+          initialProduct
+            ? [{
+                productId: initialProduct.id,
+                quantity: minimumWholeQuantity(initialProduct),
+                specification: "",
+              }]
+            : [],
+        );
+        setCartHydrated(true);
+
+        notify(
+          error instanceof Error
+            ? error.message
+            : "Unable to refresh the request cart.",
+          "error",
+        );
+      }
     }, 0);
 
-    return () => window.clearTimeout(timer);
-  }, [initialProduct]);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [initialProduct, notify]);
 
   useEffect(() => {
     if (!cartHydrated) return;

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { RequestPricingSummary } from "@/components/RequestPricingSummary";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { calculateLineAmounts, formatCurrency, formatDate } from "@/lib/domain";
@@ -57,6 +58,15 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           <div className="summary-box"><span>Gross margin</span><strong>{formatCurrency(totals.grossProfit)} · {margin.toFixed(1)}%</strong></div>
         </> : null}
       </section>
+
+      <RequestPricingSummary
+        subtotal={request.subtotal ?? totals.sales}
+        estimatedDeliveryFee={request.estimatedDeliveryFee ?? 0}
+        taxRate={request.taxRate ?? 0}
+        taxAmount={request.taxAmount ?? 0}
+        estimatedTotal={request.estimatedTotal}
+        totalLabel={actor.isOwner ? "Customer total" : "Estimated total"}
+      />
 
       <section className="detail-grid">
         <div className="panel-stack">
