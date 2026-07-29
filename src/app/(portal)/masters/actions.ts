@@ -14,6 +14,7 @@ import {
 import { createBranch, createCompany, createProduct, createSupplier, setMasterActive, type MasterEntity } from "@/lib/repository";
 import { branchSchema, companySchema, productSchema, readFormText, supplierSchema } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 
@@ -60,6 +61,7 @@ export async function createCompanyAction(formData: FormData) {
   });
   await createCompany(input, user);
   revalidatePath("/companies"); revalidatePath("/dashboard");
+  redirect("/companies?notice=company-created");
 }
 
 export async function createBranchAction(formData: FormData) {
@@ -69,6 +71,8 @@ export async function createBranchAction(formData: FormData) {
     contactPhone: readFormText(formData, "contactPhone"), contactEmail: readFormText(formData, "contactEmail"), deliveryInstructions: readFormText(formData, "deliveryInstructions"), notes: readFormText(formData, "notes") });
   await createBranch(input, user);
   revalidatePath("/branches");
+  revalidatePath("/dashboard");
+  redirect("/branches?notice=branch-created");
 }
 
 export async function createSupplierAction(formData: FormData) {
@@ -79,6 +83,7 @@ export async function createSupplierAction(formData: FormData) {
   };
   await createSupplier(input, user);
   revalidatePath("/suppliers"); revalidatePath("/dashboard");
+  redirect("/suppliers?notice=supplier-created");
 }
 
 export async function createProductAction(formData: FormData) {
@@ -94,12 +99,14 @@ export async function createProductAction(formData: FormData) {
     }, user);
   }
   revalidateProduct(productId);
+  redirect(`/products/${productId}/edit?notice=product-created`);
 }
 
 export async function updateProductAction(productId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
   await updateProduct(productId, productInput(formData), user);
   revalidateProduct(productId);
+  redirect("/products?notice=product-updated");
 }
 
 export async function deleteProductAction(productId: string) {

@@ -3,6 +3,7 @@
 import { requirePermission } from "@/lib/auth";
 import { setBranchMonthlyBudget } from "@/lib/budgets";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 const budgetSchema = z.object({
@@ -23,4 +24,5 @@ export async function setBranchBudgetAction(formData: FormData) {
   revalidatePath("/branches");
   revalidatePath("/dashboard");
   revalidatePath("/approvals");
+  redirect("/branches?notice=budget-updated");
 }

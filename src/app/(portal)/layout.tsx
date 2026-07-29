@@ -1,4 +1,5 @@
 import { logoutAction } from "@/app/actions";
+import { NavigationNotice } from "@/components/NavigationNotice";
 import { Sidebar } from "@/components/Sidebar";
 import { requireSession } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
@@ -19,6 +20,7 @@ export default async function PortalLayout({ children }: { children: React.React
   const user = await requireSession();
   return (
     <div className="portal-shell">
+      <NavigationNotice />
       <Sidebar user={user} />
       <div className="portal-main">
         <header className="topbar">
