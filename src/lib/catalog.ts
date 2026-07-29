@@ -607,3 +607,282 @@ export async function getCatalogProductById(
 
   return result.rows[0];
 }
+
+export interface ShopSubcategorySummary {
+  name: string;
+  count: number;
+  sampleProduct: Product;
+}
+
+export interface ShopCategorySummary {
+  name: string;
+  count: number;
+  sampleProduct: Product;
+  subcategories: ShopSubcategorySummary[];
+}
+
+function shopSafeProduct(product: Product): Product {
+  return {
+    ...product,
+    defaultBuyPrice: 0,
+    preferredSupplierId: undefined,
+    preferredSupplierName: undefined,
+    duplicateWarning: false,
+  };
+}
+
+export async function listShopDepartments(
+  providedActor?: SessionUser,
+): Promise<ShopCategorySummary[]> {
+  const actor = providedActor ?? await requireSession();
+
+  if (!canAccess(actor, "view_catalog")) {
+    throw new Error(
+      "Your account cannot view the product catalog.",
+    );
+  }
+
+  if (isDemoMode()) {
+    const visibleProducts = getDemoStore().products.filter(
+      (product) =>
+        product.status === "Active" &&
+        !product.duplicateWarning &&
+        (
+          actor.isOwner ||
+          !product.companyId ||
+          product.companyId === actor.companyId
+        ),
+    );
+
+    const categories = new Map<
+      string,
+      Map<string, Product[]>
+    >();
+
+    for (const product of visibleProducts) {
+      const subcategories =
+        categories.get(product.category) ??
+        new Map<string, Product[]>();
+
+      const products =
+        subcategories.get(product.subcategory) ?? [];
+
+      products.push(product);
+      subcategories.set(product.subcategory, products);
+      categories.set(product.category, subcategories);
+    }
+
+    return [...categories.entries()]
+      .map(([categoryName, subcategoryMap]) => {
+        const subcategories = [...subcategoryMap.entries()]
+          .map(([subcategoryName, products]) => {
+            const sample =
+              [...products].sort(
+                (left, right) =>
+                  Number(right.hasImage) -
+                    Number(left.hasImage) ||
+                  left.name.localeCompare(right.name),
+              )[0];
+
+            return {
+              name: subcategoryName,
+              count: products.length,
+              sampleProduct: shopSafeProduct(sample),
+            };
+          })
+          .sort((left, right) =>
+            left.name.localeCompare(right.name),
+          );
+
+        const sampleProduct =
+          [...subcategories]
+            .sort(
+              (left, right) =>
+                Number(right.sampleProduct.hasImage) -
+                  Number(left.sampleProduct.hasImage) ||
+                right.count - left.count,
+            )[0]?.sampleProduct;
+
+        return {
+          name: categoryName,
+          count: subcategories.reduce(
+            (total, subcategory) =>
+              total + subcategory.count,
+            0,
+          ),
+          sampleProduct,
+          subcategories,
+        };
+      })
+      .filter(
+        (
+          category,
+        ): category is ShopCategorySummary =>
+          Boolean(category.sampleProduct),
+      )
+      .sort((left, right) =>
+        left.name.localeCompare(right.name),
+      );
+  }
+
+  interface ShopDepartmentRow {
+    category: string;
+    subcategory: string;
+    categoryCount: number;
+    subcategoryCount: number;
+    id: string;
+    companyId?: string;
+    companyName?: string;
+    code: string;
+    name: string;
+    brand?: string;
+    size?: string;
+    unit: string;
+    packaging?: string;
+    description?: string;
+    defaultSellPrice: number;
+    minimumOrderQuantity: number;
+    deliverySlaDays: number;
+    hasImage: boolean;
+    imageAltText?: string;
+  }
+
+  const values: unknown[] = [];
+  const conditions = [
+    "p.active=true",
+    "p.needs_review=false",
+  ];
+
+  if (!actor.isOwner) {
+    values.push(actor.companyId);
+    conditions.push(
+      "(p.company_id IS NULL OR p.company_id=$1)",
+    );
+  }
+
+  const result = await query<ShopDepartmentRow>(
+    `WITH ranked_products AS (
+      SELECT
+        p.id,
+        p.company_id,
+        c.name AS company_name,
+        p.product_code,
+        p.name,
+        p.category,
+        p.subcategory,
+        p.brand,
+        p.product_size,
+        p.unit_of_measure,
+        p.packaging,
+        p.description,
+        p.default_sell_price,
+        p.minimum_order_quantity,
+        p.delivery_sla_days,
+        p.image_content,
+        p.image_alt_text,
+        COUNT(*) OVER (
+          PARTITION BY p.category
+        )::int AS category_count,
+        COUNT(*) OVER (
+          PARTITION BY p.category, p.subcategory
+        )::int AS subcategory_count,
+        ROW_NUMBER() OVER (
+          PARTITION BY p.category, p.subcategory
+          ORDER BY
+            (p.image_content IS NOT NULL) DESC,
+            p.name
+        ) AS sample_rank
+      FROM products p
+      LEFT JOIN companies c ON c.id=p.company_id
+      WHERE ${conditions.join(" AND ")}
+    )
+    SELECT
+      id::text,
+      company_id::text AS "companyId",
+      company_name AS "companyName",
+      product_code AS code,
+      name,
+      category,
+      subcategory,
+      brand,
+      product_size AS size,
+      unit_of_measure AS unit,
+      packaging,
+      description,
+      default_sell_price::float8 AS "defaultSellPrice",
+      minimum_order_quantity::float8
+        AS "minimumOrderQuantity",
+      delivery_sla_days AS "deliverySlaDays",
+      (image_content IS NOT NULL) AS "hasImage",
+      image_alt_text AS "imageAltText",
+      category_count AS "categoryCount",
+      subcategory_count AS "subcategoryCount"
+    FROM ranked_products
+    WHERE sample_rank=1
+    ORDER BY category, subcategory`,
+    values,
+  );
+
+  const categories = new Map<string, ShopCategorySummary>();
+
+  for (const row of result.rows) {
+    const sampleProduct: Product = {
+      id: row.id,
+      companyId: row.companyId,
+      companyName: row.companyName,
+      code: row.code,
+      name: row.name,
+      category: row.category,
+      subcategory: row.subcategory,
+      brand: row.brand,
+      size: row.size,
+      unit: row.unit,
+      packaging: row.packaging,
+      description: row.description,
+      defaultBuyPrice: 0,
+      defaultSellPrice: Number(row.defaultSellPrice),
+      minimumOrderQuantity: Number(
+        row.minimumOrderQuantity,
+      ),
+      deliverySlaDays: row.deliverySlaDays,
+      hasImage: row.hasImage,
+      imageAltText: row.imageAltText,
+      status: "Active",
+      duplicateWarning: false,
+    };
+
+    const existing = categories.get(row.category);
+
+    if (existing) {
+      existing.subcategories.push({
+        name: row.subcategory,
+        count: Number(row.subcategoryCount),
+        sampleProduct,
+      });
+
+      if (
+        !existing.sampleProduct.hasImage &&
+        sampleProduct.hasImage
+      ) {
+        existing.sampleProduct = sampleProduct;
+      }
+
+      continue;
+    }
+
+    categories.set(row.category, {
+      name: row.category,
+      count: Number(row.categoryCount),
+      sampleProduct,
+      subcategories: [
+        {
+          name: row.subcategory,
+          count: Number(row.subcategoryCount),
+          sampleProduct,
+        },
+      ],
+    });
+  }
+
+  return [...categories.values()];
+}

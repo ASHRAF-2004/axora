@@ -1,6 +1,6 @@
 import { DeleteProductButton } from "@/components/DeleteProductButton";
 import { PageHeader } from "@/components/PageHeader";
-import { ProductCatalog } from "@/components/ProductCatalog";
+import { ShopCategoryHub } from "@/components/ShopCategoryHub";
 import { ProductImage } from "@/components/ProductImage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
@@ -8,20 +8,36 @@ import { formatCurrency } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "@/lib/product-options";
 import { listProducts, listSuppliers } from "@/lib/repository";
+import { listShopDepartments } from "@/lib/catalog";
 import Link from "next/link";
 import { createProductAction, setMasterActiveAction } from "../masters/actions";
 
 export default async function ProductsPage() {
   const actor = await requirePagePermission("view_catalog");
-  const products = await listProducts(actor);
 
   if (!actor.isOwner) {
-    return <><PageHeader eyebrow="Axora catalog" title="Find what your branch needs"
-      description="Search approved products, review the image gallery and ordering details, then add an item to a purchase request." />
-      <ProductCatalog products={products} canRequest={canAccess(actor, "create_requests")} /></>;
+    const departments = await listShopDepartments(actor);
+
+    return (
+      <>
+        <PageHeader
+          eyebrow="Axora Shop"
+          title="Shop for your branch"
+          description="Browse visual departments and subcategories, then add approved products to a purchase request."
+        />
+
+        <ShopCategoryHub
+          departments={departments}
+          canRequest={canAccess(actor, "create_requests")}
+        />
+      </>
+    );
   }
 
-  const suppliers = await listSuppliers(actor);
+  const [products, suppliers] = await Promise.all([
+    listProducts(actor),
+    listSuppliers(actor),
+  ]);
   return <><PageHeader eyebrow="Platform owner · Global catalog" title="Products"
     description="Create products once for every customer. Edit product details and manage an image gallery from each catalog record." />
 

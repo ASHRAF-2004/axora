@@ -34,7 +34,7 @@ interface NavigationItem {
 
 const navigation: NavigationItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
-  { href: "/products", label: "Catalog", icon: Store, permission: "view_catalog" },
+  { href: "/products", label: "Shop", icon: Store, permission: "view_catalog" },
   { href: "/requests", label: "Purchase requests", icon: ClipboardList, permission: "view_requests" },
   { href: "/approvals", label: "Approvals", icon: ClipboardCheck, permission: "view_approvals" },
   { href: "/sourcing", label: "Sourcing", icon: Scale, ownerOnly: true },
