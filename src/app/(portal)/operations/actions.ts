@@ -29,13 +29,96 @@ export async function selectQuotationAction(id: string, formData: FormData) {
   revalidatePath("/sourcing"); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
 
-const approvalSchema = z.object({ requestId: z.string().trim().min(1),
-  status: z.enum(["Approved", "Rejected"]), reason: z.string().trim().max(1000).optional().transform((value) => value || undefined) });
+const approvalSchema = z.object({
+  requestId: z.string().trim().min(1),
+  status: z.enum(["Approved", "Rejected"]),
+  reason: z.string().trim().max(1000).optional().transform((value) => value || undefined),
+}).superRefine((value, context) => {
+  if (value.status === "Rejected" && !value.reason) {
+    context.addIssue({
+      code: "custom",
+      path: ["reason"],
+      message: "Enter a reason before rejecting this purchase request.",
+    });
+  }
+});
 
-export async function recordApprovalAction(formData: FormData) {
-  const user = await requirePermission("approve_requests");
-  await recordApproval({ ...approvalSchema.parse(Object.fromEntries(formData)), approvalType: "Company approval" }, user);
-  revalidatePath("/approvals"); revalidatePath("/audit");
+export type ApprovalActionState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  field?: "reason" | "form";
+  submissionId: number;
+};
+
+const publicApprovalErrors = new Set([
+  "A rejection reason is required.",
+  "Choose Approve or Reject.",
+  "Only an assigned company approver can decide this request.",
+  "Request not found.",
+  "This branch is inactive and cannot approve new spending.",
+  "This request is not pending approval for your branch.",
+  "You cannot approve your own purchase request.",
+  "This purchase request already has a final company decision.",
+  "This request exceeds the branch's available monthly budget.",
+]);
+
+export async function recordApprovalAction(
+  _previousState: ApprovalActionState,
+  formData: FormData,
+): Promise<ApprovalActionState> {
+  const submissionId = Date.now();
+
+  try {
+    const input = approvalSchema.parse(Object.fromEntries(formData));
+    const user = await requirePermission("approve_requests");
+
+    await recordApproval(
+      { ...input, approvalType: "Company approval" },
+      user,
+    );
+
+    revalidatePath("/approvals");
+    revalidatePath("/requests");
+    revalidatePath("/dashboard");
+    revalidatePath("/audit");
+
+    return {
+      status: "success",
+      message:
+        input.status === "Approved"
+          ? "Purchase request approved."
+          : "Purchase request rejected.",
+      submissionId,
+    };
+  } catch (error) {
+    console.error("Approval decision failed", error);
+
+    if (error instanceof z.ZodError) {
+      const issue = error.issues[0];
+
+      return {
+        status: "error",
+        message:
+          issue?.message ??
+          "Check the approval information and try again.",
+        field: issue?.path[0] === "reason" ? "reason" : "form",
+        submissionId,
+      };
+    }
+
+    const message =
+      error instanceof Error && publicApprovalErrors.has(error.message)
+        ? error.message
+        : "The decision could not be saved. Please try again. If the problem continues, contact an administrator.";
+
+    return {
+      status: "error",
+      message,
+      field:
+        message.toLowerCase().includes("reason") ? "reason" : "form",
+      submissionId,
+    };
+  }
 }
 
 const deliverySchema = z.object({ requestLineId: z.string().trim().min(1), expectedDate: optionalDate, revisedDate: optionalDate, actualDate: optionalDate,
