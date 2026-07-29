@@ -1,8 +1,13 @@
 import { ApprovalDecisionForm } from "@/components/ApprovalDecisionForm";
 import { PageHeader } from "@/components/PageHeader";
+import { RequestPricingSummary } from "@/components/RequestPricingSummary";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
-import { formatCurrency, formatDate } from "@/lib/domain";
+import {
+  calculateLineAmounts,
+  formatCurrency,
+  formatDate,
+} from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
 import { listApprovals } from "@/lib/operations";
 import { listBranches, listRequests } from "@/lib/repository";
@@ -25,6 +30,12 @@ export default async function ApprovalsPage() {
       {pending.length ? <div className="detail-grid">{pending.map((request) => {
         const branch = branches.find((item) => item.id === request.branchId);
         const projected = branch?.remainingAmount == null ? undefined : branch.remainingAmount - request.estimatedTotal;
+        const requestSubtotal = request.subtotal ?? request.lines.reduce(
+          (total, line) =>
+            total + calculateLineAmounts(line).sales,
+          0,
+        );
+
         return <article className="panel" key={request.id}>
           <div className="panel-header"><div><h2>{request.orderCode}</h2><p>{request.requestedBy} · {request.branchName}</p></div><StatusBadge>Pending</StatusBadge></div>
           <div className="panel-body">
@@ -34,6 +45,16 @@ export default async function ApprovalsPage() {
               <div className="summary-box"><span>Available now</span><strong>{branch?.remainingAmount == null ? "No limit" : formatCurrency(branch.remainingAmount)}</strong></div>
               <div className="summary-box"><span>After approval</span><strong>{projected === undefined ? "No limit" : formatCurrency(Math.max(projected, 0))}</strong></div>
             </div>
+
+            <RequestPricingSummary
+              subtotal={requestSubtotal}
+              estimatedDeliveryFee={request.estimatedDeliveryFee ?? 0}
+              taxRate={request.taxRate ?? 0}
+              taxAmount={request.taxAmount ?? 0}
+              estimatedTotal={request.estimatedTotal}
+              totalLabel="Amount committed on approval"
+            />
+
             <p><strong>Needed by:</strong> {formatDate(request.neededByDate)} · <strong>Priority:</strong> {request.urgency}</p>
             <ul>{request.lines.map((line) => <li key={line.id}>{line.productName} · {line.quantity} {line.unit}</li>)}</ul>
             {projected !== undefined && projected < 0 ? <div className="callout"><strong>Over budget</strong><p>Approval is blocked until the company administrator increases the branch budget or the request changes.</p></div> : null}

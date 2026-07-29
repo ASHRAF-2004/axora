@@ -608,6 +608,121 @@ export async function getCatalogProductById(
   return result.rows[0];
 }
 
+export async function getCatalogProductsByIds(
+  productIds: string[],
+  providedActor?: SessionUser,
+): Promise<Product[]> {
+  const actor = providedActor ?? await requireSession();
+
+  if (!canAccess(actor, "view_catalog")) {
+    throw new Error(
+      "Your account cannot view the product catalog.",
+    );
+  }
+
+  const ids = [
+    ...new Set(
+      productIds
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 100);
+
+  if (!ids.length) return [];
+
+  if (isDemoMode()) {
+    const visibleProducts: Product[] = getDemoStore().products
+      .filter(
+        (product) =>
+          product.status === "Active" &&
+          !product.duplicateWarning &&
+          (
+            actor.isOwner ||
+            !product.companyId ||
+            product.companyId === actor.companyId
+          ),
+      )
+      .map((product): Product => ({
+        ...product,
+        defaultBuyPrice: 0,
+        preferredSupplierId: undefined,
+        preferredSupplierName: undefined,
+        duplicateWarning: false,
+      }));
+
+    const visible = new Map<string, Product>(
+      visibleProducts.map((product) => [
+        product.id,
+        product,
+      ]),
+    );
+
+    return ids.flatMap((id) => {
+      const product = visible.get(id);
+      return product ? [product] : [];
+    });
+  }
+
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const validIds = ids.filter((id) => uuidPattern.test(id));
+
+  if (!validIds.length) return [];
+  if (!actor.isOwner && !actor.companyId) return [];
+
+  const values: unknown[] = [validIds];
+  const conditions = [
+    "p.id = ANY($1::uuid[])",
+    "p.active=true",
+    "p.needs_review=false",
+  ];
+
+  if (!actor.isOwner) {
+    values.push(actor.companyId);
+    conditions.push(
+      "(p.company_id IS NULL OR p.company_id=$2)",
+    );
+  }
+
+  const result = await query<Product>(
+    `SELECT
+      p.id::text,
+      p.company_id::text AS "companyId",
+      c.name AS "companyName",
+      p.product_code AS code,
+      p.name,
+      p.category,
+      p.subcategory,
+      p.brand,
+      p.product_size AS size,
+      p.unit_of_measure AS unit,
+      p.packaging,
+      p.description,
+      0::float8 AS "defaultBuyPrice",
+      p.default_sell_price::float8 AS "defaultSellPrice",
+      p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
+      p.delivery_sla_days AS "deliverySlaDays",
+      NULL::text AS "preferredSupplierId",
+      NULL::text AS "preferredSupplierName",
+      (p.image_content IS NOT NULL) AS "hasImage",
+      p.image_alt_text AS "imageAltText",
+      'Active'::text AS status,
+      false AS "duplicateWarning"
+    FROM products p
+    LEFT JOIN companies c ON c.id=p.company_id
+    WHERE ${conditions.join(" AND ")}`,
+    values,
+  );
+
+  const byId = new Map(
+    result.rows.map((product) => [product.id, product]),
+  );
+
+  return ids
+    .map((id) => byId.get(id))
+    .filter((product): product is Product => Boolean(product));
+}
+
 export interface ShopSubcategorySummary {
   name: string;
   count: number;
