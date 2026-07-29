@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { createUser, setUserActive } from "@/lib/users";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 const userSchema = z.object({ email: z.email(), displayName: z.string().trim().min(2).max(200),
@@ -17,6 +18,7 @@ export async function createUserAction(formData: FormData) {
     companyId: readFormText(formData, "companyId") || undefined, branchId: readFormText(formData, "branchId") || undefined });
   await createUser(input, actor);
   revalidatePath("/users");
+  redirect("/users?notice=user-created");
 }
 
 export async function setUserActiveAction(id: string, active: boolean) {
