@@ -1,15 +1,15 @@
 "use client";
 
 import { createRequestAction } from "@/app/(portal)/requests/actions";
+import { CatalogPicker } from "@/components/CatalogPicker";
 import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import type { SessionUser } from "@/lib/auth";
+import type { CatalogSearchResult } from "@/lib/catalog";
 import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { Branch, Company, Product } from "@/lib/types";
 import {
   AlertCircle,
   CalendarDays,
-  Check,
-  Search,
   ShoppingCart,
   Trash2,
 } from "lucide-react";
@@ -19,7 +19,6 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { ProductImage } from "./ProductImage";
 
 interface SelectedLine {
   productId: string;
@@ -52,29 +51,41 @@ export function RequestForm({
   actor,
   companies,
   branches,
-  products,
-  initialProductId,
+  initialCatalog,
+  initialProduct,
 }: {
   actor: SessionUser;
   companies: Company[];
   branches: Branch[];
-  products: Product[];
-  initialProductId?: string;
+  initialCatalog: CatalogSearchResult;
+  initialProduct?: Product;
 }) {
   const company =
     companies.find((item) => item.id === actor.companyId) ?? companies[0];
 
-  const activeProducts = useMemo(
-    () => products.filter((item) => item.status === "Active"),
-    [products],
-  );
-
-  const initialProduct = activeProducts.find(
-    (item) => item.id === initialProductId,
-  );
-
   const today = localDateValue();
   const { notify } = useUxFeedback();
+
+  const [knownProducts, setKnownProducts] = useState<Product[]>(() => {
+    const products = [...initialCatalog.products];
+
+    if (
+      initialProduct &&
+      !products.some((product) => product.id === initialProduct.id)
+    ) {
+      products.push(initialProduct);
+    }
+
+    return products;
+  });
+
+  const productById = useMemo(
+    () =>
+      new Map(
+        knownProducts.map((product) => [product.id, product]),
+      ),
+    [knownProducts],
+  );
 
   const [selected, setSelected] = useState<SelectedLine[]>(
     initialProduct
@@ -87,8 +98,6 @@ export function RequestForm({
         ]
       : [],
   );
-
-  const [query, setQuery] = useState("");
   const [branchId, setBranchId] = useState(actor.branchId ?? "");
   const [department, setDepartment] = useState("");
   const [neededByDate, setNeededByDate] = useState(today);
@@ -105,28 +114,12 @@ export function RequestForm({
       item.status === "Active" && item.companyId === company?.id,
   );
 
-  const visibleProducts = activeProducts.filter((product) => {
-    const term = query.trim().toLowerCase();
-
-    if (!term) return true;
-
-    return [
-      product.name,
-      product.code,
-      product.category,
-      product.subcategory,
-      product.brand,
-    ].some((value) => value?.toLowerCase().includes(term));
-  });
-
   const selectedBranch = availableBranches.find(
     (item) => item.id === branchId,
   );
 
   const estimatedTotal = selected.reduce((total, line) => {
-    const product = activeProducts.find(
-      (item) => item.id === line.productId,
-    );
+    const product = productById.get(line.productId);
 
     return (
       total +
@@ -148,6 +141,12 @@ export function RequestForm({
 
   function toggleProduct(product: Product) {
     clearError("products");
+
+    setKnownProducts((current) =>
+      current.some((item) => item.id === product.id)
+        ? current
+        : [...current, product],
+    );
 
     setSelected((current) => {
       const alreadySelected = current.some(
@@ -250,9 +249,7 @@ export function RequestForm({
     }
 
     const invalidQuantity = selected.find((line) => {
-      const product = activeProducts.find(
-        (item) => item.id === line.productId,
-      );
+      const product = productById.get(line.productId);
 
       if (!product) return true;
 
@@ -548,138 +545,16 @@ export function RequestForm({
         <div>
           <h2>Choose products</h2>
           <p>
-            Search the Axora catalog, then add one or more items.
+            Search, filter, and browse the Axora catalog like an online store.
           </p>
         </div>
-
-        <div className="toolbar-group">
-          <Search aria-hidden="true" size={17} />
-
-          <input
-            aria-label="Search catalog"
-            className="search-input"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search product or category"
-          />
-        </div>
       </div>
 
-      <div
-        ref={productsRef}
-        tabIndex={-1}
-        className={
-          errors.products
-            ? "metric-grid request-product-error"
-            : "metric-grid"
-        }
-        aria-describedby={
-          errors.products ? "products-error" : undefined
-        }
-      >
-        {visibleProducts.map((product) => {
-          const line = selected.find(
-            (item) => item.productId === product.id,
-          );
-
-          return (
-            <article
-              className="panel"
-              key={product.id}
-              style={{ overflow: "hidden" }}
-            >
-              <ProductImage product={product} />
-
-              <div className="panel-body">
-                <h3 style={{ marginBottom: 4 }}>
-                  {product.name}
-                </h3>
-
-                <p className="subtle">
-                  {product.code} ·{" "}
-                  {formatCurrency(product.defaultSellPrice)} /{" "}
-                  {product.unit}
-                </p>
-
-                <button
-                  className={
-                    line
-                      ? "button button-primary"
-                      : "button button-secondary"
-                  }
-                  type="button"
-                  data-ux-silent="true"
-                  onClick={() => toggleProduct(product)}
-                  style={{
-                    width: "100%",
-                    justifyContent: "center",
-                  }}
-                >
-                  {line ? (
-                    <>
-                      <Check size={16} /> Added
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart size={16} /> Add to request
-                    </>
-                  )}
-                </button>
-
-                {line ? (
-                  <div
-                    className="form-grid"
-                    style={{ marginTop: 12 }}
-                  >
-                    <input
-                      name="productId"
-                      type="hidden"
-                      value={product.id}
-                    />
-
-                    <label>
-                      Quantity
-                      <input
-                        name="quantity"
-                        type="number"
-                        min={minimumWholeQuantity(product)}
-                        step="1"
-                        value={line.quantity}
-                        className={
-                          errors.quantity
-                            ? "request-input-error"
-                            : undefined
-                        }
-                        aria-invalid={Boolean(errors.quantity)}
-                        onChange={(event) =>
-                          updateLine(product.id, {
-                            quantity: Number(event.target.value),
-                          })
-                        }
-                      />
-                    </label>
-
-                    <label>
-                      Specification
-                      <input
-                        name="specification"
-                        value={line.specification}
-                        onChange={(event) =>
-                          updateLine(product.id, {
-                            specification: event.target.value,
-                          })
-                        }
-                        placeholder="Optional size / detail"
-                      />
-                    </label>
-                  </div>
-                ) : null}
-              </div>
-            </article>
-          );
-        })}
-      </div>
+      <CatalogPicker
+        initialCatalog={initialCatalog}
+        selectedProductIds={selected.map((line) => line.productId)}
+        onToggleProduct={toggleProduct}
+      />
 
       {errors.products ? (
         <div
@@ -700,65 +575,124 @@ export function RequestForm({
       ) : null}
 
       {selected.length ? (
-        <div className="panel" style={{ marginTop: 20 }}>
+        <div className="panel request-cart-panel">
           <div className="panel-body">
-            <h2>Request summary</h2>
+            <div className="request-cart-heading">
+              <div>
+                <span>Purchase request cart</span>
+                <h2>Selected items</h2>
+              </div>
 
-            {selected.map((line) => {
-              const product = activeProducts.find(
-                (item) => item.id === line.productId,
-              );
+              <strong>
+                {selected.length}{" "}
+                {selected.length === 1 ? "item" : "items"}
+              </strong>
+            </div>
 
-              if (!product) return null;
+            <div className="request-cart-lines">
+              {selected.map((line) => {
+                const product = productById.get(line.productId);
 
-              return (
-                <div
-                  key={line.productId}
-                  className="toolbar"
-                  style={{
-                    borderBottom:
-                      "1px solid var(--slate-100)",
-                  }}
-                >
-                  <span>
-                    <strong>{product.name}</strong>
-                    <br />
-                    <small>
-                      {line.quantity} ×{" "}
-                      {formatCurrency(product.defaultSellPrice)}
-                    </small>
-                  </span>
+                if (!product) return null;
 
-                  <span>
-                    <strong>
-                      {formatCurrency(
-                        roundMoney(
-                          line.quantity *
-                            product.defaultSellPrice,
-                        ),
-                      )}
-                    </strong>
+                return (
+                  <article
+                    key={line.productId}
+                    className="request-cart-line"
+                  >
+                    <div className="request-cart-product">
+                      <strong>{product.name}</strong>
+                      <span>
+                        {product.code} · {product.category}
+                      </span>
+                      <small>
+                        {formatCurrency(product.defaultSellPrice)} per{" "}
+                        {product.unit}
+                      </small>
+                    </div>
 
-                    <button
-                      type="button"
-                      className="icon-button"
-                      data-ux-silent="true"
-                      aria-label={`Remove ${product.name}`}
-                      onClick={() => toggleProduct(product)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </span>
-                </div>
-              );
-            })}
+                    <input
+                      name="productId"
+                      type="hidden"
+                      value={product.id}
+                    />
+
+                    <label className="request-cart-quantity">
+                      Quantity
+                      <input
+                        name="quantity"
+                        type="number"
+                        min={minimumWholeQuantity(product)}
+                        step="1"
+                        value={line.quantity}
+                        className={
+                          errors.quantity
+                            ? "request-input-error"
+                            : undefined
+                        }
+                        aria-invalid={Boolean(errors.quantity)}
+                        onChange={(event) =>
+                          updateLine(product.id, {
+                            quantity: Number(event.target.value),
+                          })
+                        }
+                      />
+                      <small>
+                        Minimum {minimumWholeQuantity(product)}
+                      </small>
+                    </label>
+
+                    <label className="request-cart-specification">
+                      Specification
+                      <input
+                        name="specification"
+                        value={line.specification}
+                        onChange={(event) =>
+                          updateLine(product.id, {
+                            specification: event.target.value,
+                          })
+                        }
+                        placeholder="Optional size, colour, or detail"
+                      />
+                    </label>
+
+                    <div className="request-cart-line-total">
+                      <span>Line total</span>
+                      <strong>
+                        {formatCurrency(
+                          roundMoney(
+                            line.quantity *
+                              product.defaultSellPrice,
+                          ),
+                        )}
+                      </strong>
+
+                      <button
+                        type="button"
+                        className="icon-button"
+                        data-ux-silent="true"
+                        aria-label={`Remove ${product.name}`}
+                        onClick={() => toggleProduct(product)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="request-cart-total">
+              <span>Estimated request total</span>
+              <strong>{formatCurrency(estimatedTotal)}</strong>
+            </div>
           </div>
         </div>
       ) : (
         <div className="empty-state">
           <ShoppingCart size={30} />
-          <strong>No products selected</strong>
-          <p>Add at least one catalog item.</p>
+          <strong>Your request cart is empty</strong>
+          <p>Browse the catalog and add at least one product.</p>
         </div>
       )}
 
