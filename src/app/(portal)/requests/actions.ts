@@ -20,7 +20,9 @@ export async function createRequestAction(formData: FormData) {
     urgency: readFormText(formData, "urgency"), notes: readFormText(formData, "notes"), lines,
   });
   const id = await createRequest(input, user);
-  revalidatePath("/dashboard"); revalidatePath("/requests"); redirect(`/requests/${id}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/requests");
+  redirect(`/requests/${id}?notice=request-submitted`);
 }
 
 export async function updateStatusAction(id: string, formData: FormData) {

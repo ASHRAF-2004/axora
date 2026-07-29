@@ -56,6 +56,8 @@ export interface Company {
   billingAddress: string;
   paymentTerms: PaymentMethod;
   billingCycle: string;
+  taxRate: number;
+  estimatedDeliveryFee: number;
   notes?: string;
   status: MasterStatus;
 }
@@ -178,6 +180,10 @@ export interface ProcurementRequest {
   approvalStatus: "Pending" | "Approved" | "Rejected";
   approvalReason?: string;
   approvedByName?: string;
+  subtotal?: number;
+  estimatedDeliveryFee?: number;
+  taxRate?: number;
+  taxAmount?: number;
   estimatedTotal: number;
   invoiceStatus?: InvoiceStatus;
   paymentStatus?: PaymentStatus;
