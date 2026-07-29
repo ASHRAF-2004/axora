@@ -1,3 +1,4 @@
+import { ApprovalDecisionForm } from "@/components/ApprovalDecisionForm";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
@@ -5,7 +6,6 @@ import { formatCurrency, formatDate } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
 import { listApprovals } from "@/lib/operations";
 import { listBranches, listRequests } from "@/lib/repository";
-import { recordApprovalAction } from "../operations/actions";
 
 export default async function ApprovalsPage() {
   const actor = await requirePagePermission("view_approvals");
@@ -38,15 +38,10 @@ export default async function ApprovalsPage() {
             <ul>{request.lines.map((line) => <li key={line.id}>{line.productName} · {line.quantity} {line.unit}</li>)}</ul>
             {projected !== undefined && projected < 0 ? <div className="callout"><strong>Over budget</strong><p>Approval is blocked until the company administrator increases the branch budget or the request changes.</p></div> : null}
 
-            <form action={recordApprovalAction} className="form-panel" style={{ padding: 0 }}>
-              <input name="requestId" type="hidden" value={request.id} />
-              <label>Approval note<textarea name="reason" placeholder="Reason or conditions for this decision" /></label>
-              <div className="form-actions">
-                <button className="button button-primary" name="status" value="Approved" type="submit" disabled={projected !== undefined && projected < 0}>Approve request</button>
-                <button className="button button-secondary" name="status" value="Rejected" type="submit">Reject request</button>
-              </div>
-              <small>A rejection requires a reason. Approval commits this amount to the branch&apos;s current monthly budget.</small>
-            </form>
+            <ApprovalDecisionForm
+              requestId={request.id}
+              approvalDisabled={projected !== undefined && projected < 0}
+            />
           </div>
         </article>;
       })}</div> : <div className="panel empty-state"><strong>No requests are waiting for your approval.</strong><p>New requests for your access scope will appear here.</p></div>}
