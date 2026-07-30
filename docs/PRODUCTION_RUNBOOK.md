@@ -88,8 +88,9 @@ This host uses `sudo-rs`, which keeps a separate authentication timestamp for
 each terminal. `timestamp_timeout` extends the ticket only inside the terminal
 that authenticated; opening a new terminal still requires a password. Keep a
 multi-step maintenance operation in one terminal instead of weakening sudo
-authentication globally. `env_reset` controls inherited environment variables
-and does not change timestamp behavior.
+authentication globally, and let the command sequence finish before closing
+that terminal. `env_reset` controls inherited environment variables and does
+not change timestamp behavior.
 
 ## One-time installation
 
