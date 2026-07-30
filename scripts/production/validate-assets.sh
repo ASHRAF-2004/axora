@@ -8,7 +8,7 @@ REPOSITORY_DIR="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"
 
-for command in bash cmp docker git jq mktemp node; do
+for command in bash cmp docker git grep jq mktemp node; do
   command -v "$command" >/dev/null 2>&1 \
     || { printf 'Required command not found: %s\n' "$command" >&2; exit 1; }
 done
@@ -35,6 +35,12 @@ cmp --silent "$REPOSITORY_DIR/package.json" "$release_export_dir/package.json" \
   || die "Isolated Git release export changed package.json."
 [[ ! -e "$release_export_dir/.axora-deployment-control" ]] \
   || die "Isolated Git release export leaked its control directory."
+grep -Fqx 'RestrictSUIDSGID=yes' \
+  "$REPOSITORY_DIR/deploy/systemd/axora-deploy.service" \
+  || die "Deployment service must retain SUID/SGID creation restrictions."
+grep -Fq 'materialize_git_tree "$AXORA_REPOSITORY_DIR"' \
+  "$SCRIPT_DIR/deploy.sh" \
+  || die "Deployment must use the systemd-compatible isolated Git export."
 
 secrets_dir="$validation_dir/secrets"
 uploads_dir="$validation_dir/uploads"
