@@ -82,6 +82,15 @@ docker compose \
 It must preserve `axora_postgres_data`, the host-owned upload and secret
 directories, and `tailscale-db`.
 
+### Sudo sessions on this Ubuntu host
+
+This host uses `sudo-rs`, which keeps a separate authentication timestamp for
+each terminal. `timestamp_timeout` extends the ticket only inside the terminal
+that authenticated; opening a new terminal still requires a password. Keep a
+multi-step maintenance operation in one terminal instead of weakening sudo
+authentication globally. `env_reset` controls inherited environment variables
+and does not change timestamp behavior.
+
 ## One-time installation
 
 Perform this from the reviewed migration branch before public traffic changes:
