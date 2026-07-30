@@ -102,6 +102,7 @@ jq --exit-status \
     and .services.cloudflared.read_only == true
     and (.services.app.cap_drop | index("ALL")) != null
     and (.services.caddy.cap_drop | index("ALL")) != null
+    and .services.caddy.cap_add == ["NET_BIND_SERVICE"]
     and (.services.cloudflared.cap_drop | index("ALL")) != null
     and (.services.app.volumes[0].source == $uploads)
     and (.secrets.postgres_admin_password.file == ($secrets + "/postgres_admin_password"))

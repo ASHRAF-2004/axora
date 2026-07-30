@@ -312,6 +312,30 @@ if [[ ! -d "$old_release" ]]; then
 fi
 valid_image_reference "$old_image" || old_image=""
 
+if [[ "$deployment_mode" == "bootstrap" ]]; then
+  legacy_path_containers=()
+  for service in app caddy; do
+    mapfile -t service_containers < <(
+      docker ps \
+        --all \
+        --filter "label=com.docker.compose.project=$AXORA_COMPOSE_PROJECT" \
+        --filter "label=com.docker.compose.service=$service" \
+        --format '{{.ID}}'
+    )
+    (( "${#service_containers[@]}" <= 1 )) \
+      || die "Expected at most one legacy $service container."
+    if (( "${#service_containers[@]}" == 1 )); then
+      legacy_path_containers+=("${service_containers[0]}")
+    fi
+  done
+  if (( "${#legacy_path_containers[@]}" > 0 )); then
+    log "Removing only legacy app-path containers before the one-time network-topology migration."
+    # Containers are ephemeral and no -v flag is used. PostgreSQL,
+    # tailscale-db, named volumes, secrets, and persistent uploads are untouched.
+    docker rm --force "${legacy_path_containers[@]}" >/dev/null
+  fi
+fi
+
 services=(app caddy)
 if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
   services+=(cloudflared)
