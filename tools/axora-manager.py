@@ -60,6 +60,29 @@ class Manager(Gtk.Window):
         actions.pack_start(self.rollback, False, False, 0)
         actions.pack_end(refresh, False, False, 0)
 
+        tools = Gtk.Box(spacing=10)
+        content.pack_start(tools, False, False, 0)
+        tools.pack_start(Gtk.Label(label="Events", xalign=0), False, False, 0)
+        self.event_filter = Gtk.ComboBoxText()
+        for item in ["All events", "Deploy", "Deploy started", "Deploy ended", "Image pull failed", "Failed"]:
+            self.event_filter.append_text(item)
+        self.event_filter.set_active(0)
+        self.event_filter.connect("changed", self.refresh)
+        tools.pack_start(self.event_filter, False, False, 0)
+        tools.pack_start(Gtk.Label(label="Rollback version", xalign=0), False, False, 12)
+        self.releases = Gtk.ComboBoxText()
+        self.releases.set_hexpand(True)
+        tools.pack_start(self.releases, True, True, 0)
+        rollback_version = self._button("Rollback selected", "danger", self.rollback_selected)
+        tools.pack_end(rollback_version, False, False, 0)
+
+        links = Gtk.Box(spacing=8)
+        content.pack_start(links, False, False, 0)
+        settings = self._button("Settings & environment", "quiet", self.settings_clicked)
+        users = self._button("Open Axora user management", "quiet", self.users_clicked)
+        links.pack_start(settings, False, False, 0)
+        links.pack_start(users, False, False, 0)
+
         frame = Gtk.Frame(label="Activity")
         content.pack_start(frame, True, True, 0)
         scroll = Gtk.ScrolledWindow()
@@ -173,6 +196,23 @@ class Manager(Gtk.Window):
         if response == Gtk.ResponseType.OK:
             self.run_action("Rollback", self.command(["/usr/local/libexec/axora-production/rollback.sh"], True))
 
+    def rollback_selected(self, _button):
+        target = self.releases.get_active_text()
+        if not target or len(target) != 40:
+            self.write("Select a complete release SHA before rolling back.")
+            return
+        self.run_action("Rollback", self.command(["/usr/local/libexec/axora-production/rollback.sh", target], True))
+
+    def settings_clicked(self, _button):
+        dialog = Gtk.MessageDialog(self, Gtk.DialogFlags.MODAL, Gtk.MessageType.INFO, Gtk.ButtonsType.OK,
+                                    "Production settings are protected")
+        dialog.format_secondary_text("Configuration: /etc/axora-production/deploy.env\nRuntime environment: /etc/axora-production/runtime.env\nSecret values are intentionally never displayed. Only safe metadata and masked values should be reviewed.")
+        dialog.run()
+        dialog.destroy()
+
+    def users_clicked(self, _button):
+        subprocess.Popen(["xdg-open", "https://axora.management/admin/users"])
+
     def refresh(self, *_args):
         def get(cmd):
             try:
@@ -185,13 +225,24 @@ class Manager(Gtk.Window):
         site = get(["curl", "-fsS", "--max-time", "5", f"{PUBLIC_URL}/api/health/ready"])
         sha = get(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"])
         journal = get(["journalctl", "-u", "axora-deploy.service", "-n", "8", "--no-pager", "-o", "cat"])
+        images = get(["docker", "images", "axora-app", "--format", "{{.Tag}}"])
         self.sha.set_text(sha or "—")
         self.service.set_text(service)
         self.public.set_text("READY" if '"status":"ready"' in site else "CHECK")
         self.status_pill.set_text("Online" if '"status":"ready"' in site else "Needs attention")
+        self.releases.remove_all()
+        for tag in sorted({line.strip() for line in images.splitlines() if len(line.strip()) == 40}, reverse=True):
+            self.releases.append_text(tag)
+        if self.releases.get_model() and self.releases.get_model().iter_n_children(None):
+            self.releases.set_active(0)
         if journal and journal != self._last_journal:
             self._last_journal = journal
-            self.write(journal)
+            selected = self.event_filter.get_active_text() or "All events"
+            lines = journal.splitlines()
+            if selected != "All events":
+                needle = selected.lower().replace(" ", "")
+                lines = [line for line in lines if needle in line.lower().replace(" ", "") or (selected == "Deploy" and "deploy" in line.lower())]
+            self.write("\n".join(lines) if lines else "No events match the selected filter.")
         return True
 
 
