@@ -1,0 +1,13 @@
+[Unit]
+Description=Schedule recurring Axora production health verification
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+AccuracySec=15s
+Persistent=true
+Unit=axora-health.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,17 @@
+# Default review owner.
+* @ASHRAF-2004
+
+# Changes that can affect production, identity, data, or deployment.
+/.github/ @ASHRAF-2004
+/.dockerignore @ASHRAF-2004
+/.env*.example @ASHRAF-2004
+/Dockerfile @ASHRAF-2004
+/compose*.yaml @ASHRAF-2004
+/caddy/ @ASHRAF-2004
+/database/ @ASHRAF-2004
+/deploy/ @ASHRAF-2004
+/render.yaml @ASHRAF-2004
+/scripts/production/ @ASHRAF-2004
+/scripts/server/ @ASHRAF-2004
+/server-tools/ @ASHRAF-2004
+/tailscale/ @ASHRAF-2004

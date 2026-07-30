@@ -1,0 +1,53 @@
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	encode zstd gzip
+
+	request_body {
+		# Axora validates files at 2 MB and Next.js allows 3 MB for multipart
+		# overhead. Reject unexpectedly large requests before they reach Node.
+		max_size 4MB
+	}
+
+	@unexpected_host not host {$AXORA_HOST}
+	respond @unexpected_host 421
+
+	# Cloudflare can send an edge HTTP request through the encrypted Tunnel.
+	# Redirect only that explicit signal; direct local health checks stay HTTP.
+	@edge_http {
+		host {$AXORA_HOST}
+		header X-Forwarded-Proto http
+	}
+	redir @edge_http https://{$AXORA_HOST}{uri} 308
+
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Strict-Transport-Security "max-age=15552000"
+		X-Permitted-Cross-Domain-Policies "none"
+		X-Robots-Tag "noindex, nofollow"
+	}
+
+	reverse_proxy app:3000 {
+		# This listener is private to the local Tunnel path, whose public side is
+		# always HTTPS. Preserve that fact for application redirects and cookies.
+		header_up X-Forwarded-Proto "https"
+
+		health_uri /api/health/ready
+		health_interval 10s
+		health_timeout 3s
+		lb_try_duration 5s
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

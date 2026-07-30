@@ -1,26 +1,43 @@
 # Axora operations
 
-Axora is a free, self-hosted internal procurement and operations pilot. It
+Axora is a self-hosted, multi-company procurement and operations application. It
 replaces fragile workbook calculations with quantity-correct requests,
 quotations, approvals, deliveries, invoices, payments, documents, audit
 history, and role-based access.
 
 ![Axora operations logo](public/brand/axora-logo.svg)
 
+## Production migration
+
+The controlled migration from Render to the local Ubuntu server is documented
+here:
+
+- [Production architecture](docs/PRODUCTION_ARCHITECTURE.md)
+- [Migration plan, risks, and rollback](docs/MIGRATION_PLAN.md)
+- [Production runbook](docs/PRODUCTION_RUNBOOK.md)
+- [Disaster recovery](docs/DISASTER_RECOVERY.md)
+
+These documents are preparation assets, not evidence of a completed cutover.
+Render must remain available until the public domain, restart recovery,
+automatic deployment, backups, and rollback have all been verified and Ashraf
+explicitly approves decommissioning.
+
 ## What is ready now
 
 - Next.js application with 22 routes and responsive pages.
-- Sanitized local demonstration mode with 15 order scenarios.
+- Optional sanitized demonstration data for isolated local development only.
 - PostgreSQL 18 schema, guarded workflow transitions, financial views, audit
   triggers, relationship constraints, and optional demonstration seed.
-- Docker Compose package with private application/database networks and Caddy
-  local HTTPS on the approved office LAN.
-- Secret generation, migration, health, backup, verification, restore-test,
-  guarded production restore, certificate export, firewall, and daily backup
-  scripts.
+- Docker Compose production override with private database/application/edge
+  networks, loopback diagnostics, Caddy, and a dedicated Cloudflare Tunnel.
+- Exact-commit deployment, migration locking, health, verified backup,
+  rollback, and systemd scheduling assets for the Ubuntu server.
 - Automated lint, TypeScript, database, seed, formula, and workflow checks.
 
 ## Try it on this Windows PC
+
+This section is for an isolated development environment. Production always
+runs with `DEMO_MODE=false` and the PostgreSQL production data.
 
 Open PowerShell in this folder and run:
 
@@ -31,28 +48,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1
 Then open <http://localhost:3000>. The local sign-in values are stored only in
 `.env.local`. Stopping the development server resets demonstration changes.
 
-## Later on the approved Ubuntu server
+## Ubuntu production server
 
-Do not perform these steps until the SSD, fixed office LAN address, and
-supervisor-approved server location are ready.
-
-```bash
-cd /srv/axora
-bash scripts/server/preflight.sh
-bash scripts/server/install-docker-ubuntu.sh
-# sign out and in once
-cp .env.server.example .env
-nano .env
-bash scripts/server/prepare-secrets.sh
-bash scripts/server/deploy.sh
-bash scripts/server/create-admin.sh admin@company.com "Administrator name"
-bash scripts/server/export-caddy-root.sh
-bash scripts/server/status.sh
-```
-
-The illustrated PDF beside this package explains each command, client DNS and
-certificate setup, backups, recovery, and the manual checks that cannot be done
-on this Windows PC.
+The Ubuntu server, Docker services, PostgreSQL volume, and hybrid data are
+already present at `/srv/axora`. Do not use the older LAN-only setup commands
+for the Render migration. Follow the staged
+[production runbook](docs/PRODUCTION_RUNBOOK.md); it keeps Render available
+until the local application, apex Tunnel, automatic deployment, backup,
+restart, and rollback gates have been proved.
 
 ## MVP payment rule
 
@@ -76,10 +79,11 @@ still check the delivery evidence, amount, and receipt. Follow
 ```bash
 npm ci
 npm run verify
+scripts/production/validate-assets.sh
 ```
 
-Docker/Caddy runtime verification must be completed on the Ubuntu server because
-Docker is not installed on this preparation PC.
+Docker, Compose, Caddy, migration, and Tunnel validation is performed on the
+Ubuntu server as described in the production runbook.
 
 ## Important safeguards
 
@@ -93,5 +97,5 @@ Docker is not installed on this preparation PC.
   evidence and numbered receipt for every payment, and reconcile them daily.
 - A backup on the same SSD is not sufficient; copy verified backup folders to a
   separate USB drive or NAS.
-- The open-source Lucide-based mark is suitable for this internal pilot but is
-  not an exclusive registered trademark. See `THIRD_PARTY_NOTICES.md`.
+- The open-source Lucide-based mark is not an exclusive registered trademark.
+  See `THIRD_PARTY_NOTICES.md`.

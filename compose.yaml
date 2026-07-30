@@ -2,7 +2,7 @@ name: axora
 
 services:
   db:
-    image: postgres:18.4-alpine3.24
+    image: postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     restart: unless-stopped
     # Secret files are owned by the Ubuntu deployment user (UID/GID 1000).
     # Add that group so PostgreSQL can read them without making secrets world-readable.
@@ -35,7 +35,7 @@ services:
         max-file: "5"
 
   migrate:
-    image: postgres:18.4-alpine3.24
+    image: postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     restart: "no"
     group_add:
       - "1000"
@@ -104,7 +104,7 @@ services:
         max-file: "5"
 
   caddy:
-    image: caddy:2.11.4-alpine
+    image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     restart: unless-stopped
     environment:
       AXORA_HOST: "${AXORA_HOST:?Set AXORA_HOST in .env}"

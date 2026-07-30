@@ -1,6 +1,6 @@
-# syntax=docker/dockerfile:1
-ARG NODE_VERSION=24.13.0-slim
-ARG TAILSCALE_VERSION=v1.98.8
+# syntax=docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+ARG NODE_VERSION=24.13.0-slim@sha256:4660b1ca8b28d6d1906fd644abe34b2ed81d15434d26d845ef0aced307cf4b6f
+ARG TAILSCALE_VERSION=v1.98.8@sha256:d54b2e6a9c09f0e5ec52e82b9ad4af3d446b54a7c08075e92f11c39dd410105f
 
 FROM node:${NODE_VERSION} AS base
 WORKDIR /app
@@ -19,11 +19,14 @@ COPY . .
 RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 FROM node:${NODE_VERSION} AS runner
+ARG AXORA_REVISION
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
     PORT=3000
+LABEL org.opencontainers.image.revision="${AXORA_REVISION}" \
+      org.opencontainers.image.source="https://github.com/ASHRAF-2004/axora"
 
 RUN apt-get update && apt-get install -y --no-install-recommends tar \
     && rm -rf /var/lib/apt/lists/* \
