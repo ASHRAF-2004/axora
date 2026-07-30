@@ -109,6 +109,11 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # The official Caddy binary carries cap_net_bind_service. Keep only that
+    # capability in the bounding set so exec succeeds under no-new-privileges;
+    # the production listener itself remains unprivileged on port 8080.
+    cap_add:
+      - NET_BIND_SERVICE
     networks:
       - frontend
       - edge
