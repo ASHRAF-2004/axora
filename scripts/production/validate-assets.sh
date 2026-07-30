@@ -25,10 +25,17 @@ cleanup() {
 trap cleanup EXIT
 
 release_export_dir="$validation_dir/release-export"
+release_bare_repository="$validation_dir/repository.git"
 mkdir "$release_export_dir"
 validation_sha="$(git -C "$REPOSITORY_DIR" rev-parse --verify HEAD)"
+git init --quiet --bare --initial-branch=main "$release_bare_repository"
+git --git-dir="$release_bare_repository" fetch \
+  --quiet \
+  --no-tags \
+  "$REPOSITORY_DIR" \
+  "$validation_sha"
 materialize_git_tree \
-  "$REPOSITORY_DIR/.git" \
+  "$release_bare_repository" \
   "$validation_sha" \
   "$release_export_dir"
 cmp --silent "$REPOSITORY_DIR/package.json" "$release_export_dir/package.json" \

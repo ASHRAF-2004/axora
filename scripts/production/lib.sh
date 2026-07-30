@@ -174,6 +174,7 @@ materialize_git_tree() {
     GIT_CONFIG_NOSYSTEM=1
     GIT_CONFIG_GLOBAL=/dev/null
     GIT_INDEX_FILE="$index_file"
+    GIT_WORK_TREE="$destination"
     git
     --git-dir="$repository_dir"
     -c core.autocrlf=false
@@ -186,8 +187,7 @@ materialize_git_tree() {
     || die "Isolated release index does not match the trusted commit tree."
   "${isolated_git[@]}" checkout-index \
     --all \
-    --ignore-skip-worktree-bits \
-    --prefix="$destination/"
+    --ignore-skip-worktree-bits
   rm -- "$index_file"
   rmdir -- "$control_dir"
 }
