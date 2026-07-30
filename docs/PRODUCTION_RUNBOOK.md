@@ -324,7 +324,7 @@ During an approved window:
 | Local live works, ready fails | App/db logs, `pg_isready`, selected database name | PostgreSQL or credentials |
 | Images/attachments missing | Confirm `axora_hybrid`, byte records, and persistent uploads mount | Wrong database or persistence |
 | Deployment timer runs but no release | Deployment journal, exact remote SHA, lock/state file | Git/governance/quality gate |
-| `tar` reports `Function not implemented` during release extraction | The installed controller is obsolete on systemd 259; keep the current release serving, merge the reviewed native-Git export fix, rerun the privileged installer from that exact commit, then test through `axora-deploy.service` | `RestrictSUIDSGID` blocks `openat2`; do not disable the sandbox or bypass systemd |
+| `tar` reports `Function not implemented` during release extraction | The installed controller is obsolete on systemd 259; keep the current release serving, merge the reviewed native-Git export fix, rerun the privileged installer from that exact commit, then test through `axora-deploy.service` | GNU tar and `RestrictSUIDSGID` are incompatible here; the deploy unit uses native Git export and omits only that rule so it can drop to `axora-build` |
 | Deployment fails before migration | Fix candidate; current release remains active | Source/build/test |
 | Deployment fails after migration | Keep current compatible app, inspect migration/ready logs, do not restore blindly | Schema/app compatibility |
 | Disk pressure | `df -h`, Docker/backup/release inventory | LVM capacity or retention |

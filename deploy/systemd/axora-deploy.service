@@ -32,7 +32,6 @@ ReadOnlyPaths=/etc/axora-production
 ReadWritePaths=/var/lib/axora-production /var/log/axora-production /var/cache/axora-production /run/docker.sock
 LockPersonality=yes
 RestrictRealtime=yes
-RestrictSUIDSGID=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 SystemCallArchitectures=native
 
