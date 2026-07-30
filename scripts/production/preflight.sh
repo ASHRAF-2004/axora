@@ -16,7 +16,9 @@ case "${1:-}" in
   *) die "Usage: $0 [--local-only|--for-automation]" ;;
 esac
 
-for command in bash curl docker flock git jq node npm realpath runuser sha256sum stat tar; do
+for command in \
+  awk bash curl docker env find flock git grep jq mkdir node npm realpath rm \
+  rmdir runuser sha256sum sort stat tar tr wc; do
   require_command "$command"
 done
 
@@ -56,8 +58,23 @@ fi
 [[ -d "$AXORA_BUILD_HOME" && ! -L "$AXORA_BUILD_HOME" ]] \
   || die "Build staging root is missing or is a symlink."
 id "$AXORA_BUILD_USER" >/dev/null 2>&1 || die "Unprivileged build user is missing: $AXORA_BUILD_USER"
+build_primary_gid="$(id -g "$AXORA_BUILD_USER")"
+build_group_count="$(id -G "$AXORA_BUILD_USER" | tr ' ' '\n' | LC_ALL=C sort -u | wc -l)"
+[[ "$build_group_count" -eq 1 ]] \
+  || die "$AXORA_BUILD_USER must not belong to supplementary groups."
+[[ "$(id -G "$AXORA_BUILD_USER")" == "$build_primary_gid" ]] \
+  || die "$AXORA_BUILD_USER has an unexpected primary group."
 [[ "$(stat -c '%U:%G' "$AXORA_BUILD_HOME")" == "$AXORA_BUILD_USER:$AXORA_BUILD_USER" ]] \
   || die "$AXORA_BUILD_HOME must be owned by the unprivileged build user."
+controller_home="$AXORA_STATE_ROOT/controller-home"
+for controller_path in "$controller_home" "$controller_home/docker" "$controller_home/buildx"; do
+  [[ -d "$controller_path" && ! -L "$controller_path" ]] \
+    || die "Controller directory is missing or unsafe: $controller_path"
+  [[ "$(stat -c '%u:%g' "$controller_path")" == "0:0" ]] \
+    || die "Controller directory must be owned by root:root: $controller_path"
+  [[ "$(stat -c '%a' "$controller_path")" == "700" ]] \
+    || die "Controller directory must have mode 0700: $controller_path"
+done
 [[ "$(stat -c '%u:%g' "$AXORA_SECRETS_DIR")" == "0:1000" ]] \
   || die "$AXORA_SECRETS_DIR must be owned by root:GID-1000."
 [[ "$(stat -c '%u:%g' "$AXORA_UPLOADS_DIR")" == "0:1000" ]] \

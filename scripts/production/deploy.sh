@@ -43,6 +43,12 @@ fi
 
 install -d -m 0700 "$AXORA_STATE_ROOT" "$AXORA_RELEASES_ROOT" "$AXORA_BACKUPS_ROOT"
 install -d -m 0750 "$AXORA_LOG_ROOT"
+controller_home="$AXORA_STATE_ROOT/controller-home"
+install -d -o root -g root -m 0700 \
+  "$controller_home" "$controller_home/docker" "$controller_home/buildx"
+export HOME="$controller_home"
+export DOCKER_CONFIG="$controller_home/docker"
+export BUILDX_CONFIG="$controller_home/buildx"
 exec 9>"$AXORA_DEPLOY_LOCK"
 flock --exclusive --nonblock 9 || die "Another Axora deployment, rollback, or backup is already running."
 export AXORA_DEPLOY_LOCK_HELD=true
@@ -145,14 +151,12 @@ GIT_SSH_COMMAND="$(github_ssh_command)" \
 fetched_sha="$(git --git-dir="$AXORA_REPOSITORY_DIR" rev-parse --verify 'refs/remotes/origin/main^{commit}')"
 [[ "$fetched_sha" == "$target_sha" ]] || die "Fetched commit does not match GitHub main."
 git --git-dir="$AXORA_REPOSITORY_DIR" cat-file -e "$target_sha^{commit}"
-git --git-dir="$AXORA_REPOSITORY_DIR" fsck --full --no-dangling >/dev/null
+git --git-dir="$AXORA_REPOSITORY_DIR" fsck --strict --full --no-dangling >/dev/null
 
 release="$(release_path_for_sha "$target_sha")"
 if [[ ! -d "$release" ]]; then
   temporary_release="$(mktemp -d "$AXORA_BUILD_HOME/.release-${target_sha}.XXXXXX")"
-  git --git-dir="$AXORA_REPOSITORY_DIR" archive --format=tar "$target_sha" \
-    | tar --extract --directory "$temporary_release" --no-same-owner --no-same-permissions
-  printf '%s\n' "$target_sha" > "$temporary_release/.axora-commit"
+  materialize_git_tree "$AXORA_REPOSITORY_DIR" "$target_sha" "$temporary_release"
 
   for required_file in .dockerignore package.json package-lock.json Dockerfile compose.yaml compose.hybrid.yaml compose.production.yaml; do
     [[ -f "$temporary_release/$required_file" ]] || die "Release is missing required file: $required_file"
@@ -165,22 +169,37 @@ if [[ ! -d "$release" ]]; then
   done
   chown -R "$AXORA_BUILD_USER:$AXORA_BUILD_USER" "$temporary_release"
 
-  log "Installing locked dependencies and running lint, type checks, tests, and production build as $AXORA_BUILD_USER."
-  runuser -u "$AXORA_BUILD_USER" -- env \
+  log "Installing locked dependencies and running lint, type checks, tests, and production build in a disposable workspace as $AXORA_BUILD_USER."
+  runuser -u "$AXORA_BUILD_USER" -- env -i \
+    HOME="$AXORA_BUILD_HOME" \
+    USER="$AXORA_BUILD_USER" \
+    LOGNAME="$AXORA_BUILD_USER" \
+    PATH=/usr/local/bin:/usr/bin:/bin \
+    CI=true \
+    NEXT_TELEMETRY_DISABLED=1 \
     npm_config_cache="$AXORA_BUILD_HOME/npm" \
     XDG_CACHE_HOME="$AXORA_BUILD_HOME/xdg" \
     npm_config_audit=false \
     npm_config_fund=false \
     npm ci --prefix "$temporary_release"
-  runuser -u "$AXORA_BUILD_USER" -- env \
+  runuser -u "$AXORA_BUILD_USER" -- env -i \
+    HOME="$AXORA_BUILD_HOME" \
+    USER="$AXORA_BUILD_USER" \
+    LOGNAME="$AXORA_BUILD_USER" \
+    PATH=/usr/local/bin:/usr/bin:/bin \
+    CI=true \
+    NEXT_TELEMETRY_DISABLED=1 \
     npm_config_cache="$AXORA_BUILD_HOME/npm" \
     XDG_CACHE_HOME="$AXORA_BUILD_HOME/xdg" \
     npm run --prefix "$temporary_release" verify
 
-  # Generated dependency/build trees were validated above but are not part of
-  # the immutable source archive and are excluded from the Docker build context.
-  rm -rf -- "$temporary_release/node_modules" "$temporary_release/.next"
-  chown -R root:root "$temporary_release"
+  # npm lifecycle and verification code can modify its workspace. Discard it,
+  # then export the trusted commit again so the sealed Docker context is the
+  # exact Git tree that passed all checks.
+  rm -rf -- "$temporary_release"
+  temporary_release="$(mktemp -d "$AXORA_BUILD_HOME/.release-${target_sha}.XXXXXX")"
+  materialize_git_tree "$AXORA_REPOSITORY_DIR" "$target_sha" "$temporary_release"
+  printf '%s\n' "$target_sha" > "$temporary_release/.axora-commit"
   chmod -R go-w "$temporary_release"
   mv -- "$temporary_release" "$release"
   temporary_release=""

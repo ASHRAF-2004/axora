@@ -5,8 +5,10 @@ umask 077
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_DIR="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
 
-for command in bash docker jq mktemp node; do
+for command in bash cmp docker git jq mktemp node; do
   command -v "$command" >/dev/null 2>&1 \
     || { printf 'Required command not found: %s\n' "$command" >&2; exit 1; }
 done
@@ -21,6 +23,18 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+release_export_dir="$validation_dir/release-export"
+mkdir "$release_export_dir"
+validation_sha="$(git -C "$REPOSITORY_DIR" rev-parse --verify HEAD)"
+materialize_git_tree \
+  "$REPOSITORY_DIR/.git" \
+  "$validation_sha" \
+  "$release_export_dir"
+cmp --silent "$REPOSITORY_DIR/package.json" "$release_export_dir/package.json" \
+  || die "Isolated Git release export changed package.json."
+[[ ! -e "$release_export_dir/.axora-deployment-control" ]] \
+  || die "Isolated Git release export leaked its control directory."
 
 secrets_dir="$validation_dir/secrets"
 uploads_dir="$validation_dir/uploads"

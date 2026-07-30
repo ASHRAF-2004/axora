@@ -129,6 +129,69 @@ valid_sha() {
   [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]]
 }
 
+materialize_git_tree() {
+  local repository_dir="$1"
+  local sha="$2"
+  local destination="$3"
+  local control_dir="$destination/.axora-deployment-control"
+  local index_file="$control_dir/index"
+  local expected_tree
+  local indexed_tree
+  local invalid_entry
+  local attributes_path
+  local -a isolated_git
+
+  [[ -d "$repository_dir" && ! -L "$repository_dir" ]] \
+    || die "Git repository is missing or unsafe: $repository_dir"
+  valid_sha "$sha" || die "Invalid release SHA: $sha"
+  [[ -d "$destination" && ! -L "$destination" ]] \
+    || die "Release staging directory is missing or unsafe: $destination"
+  if find "$destination" -mindepth 1 -print -quit | grep -q .; then
+    die "Release staging directory must be empty: $destination"
+  fi
+
+  invalid_entry="$(
+    git --git-dir="$repository_dir" ls-tree -r "$sha^{tree}" \
+      | LC_ALL=C awk \
+        '$1 != "100644" && $1 != "100755" && !found { print; found = 1 }'
+  )"
+  [[ -z "$invalid_entry" ]] \
+    || die "Release tree contains an unsupported symlink, submodule, or special mode: $invalid_entry"
+  attributes_path="$(
+    git --git-dir="$repository_dir" ls-tree -r --name-only "$sha^{tree}" \
+      | LC_ALL=C awk -F/ '$NF == ".gitattributes" && !found { print; found = 1 }'
+  )"
+  [[ -z "$attributes_path" ]] \
+    || die "Release tree uses unsupported checkout attributes: $attributes_path"
+  if git --git-dir="$repository_dir" cat-file -e \
+    "$sha:.axora-deployment-control" 2>/dev/null; then
+    die "Release tree uses the reserved .axora-deployment-control path."
+  fi
+
+  mkdir -m 0700 "$control_dir"
+  isolated_git=(
+    env
+    GIT_CONFIG_NOSYSTEM=1
+    GIT_CONFIG_GLOBAL=/dev/null
+    GIT_INDEX_FILE="$index_file"
+    git
+    --git-dir="$repository_dir"
+    -c core.autocrlf=false
+    -c core.sparseCheckout=false
+  )
+  "${isolated_git[@]}" read-tree --no-sparse-checkout "$sha^{tree}"
+  expected_tree="$("${isolated_git[@]}" rev-parse "$sha^{tree}")"
+  indexed_tree="$("${isolated_git[@]}" write-tree)"
+  [[ "$indexed_tree" == "$expected_tree" ]] \
+    || die "Isolated release index does not match the trusted commit tree."
+  "${isolated_git[@]}" checkout-index \
+    --all \
+    --ignore-skip-worktree-bits \
+    --prefix="$destination/"
+  rm -- "$index_file"
+  rmdir -- "$control_dir"
+}
+
 valid_database_name() {
   [[ "${1:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
 }
