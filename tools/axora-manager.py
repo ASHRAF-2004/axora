@@ -2,6 +2,7 @@
 """Small local GTK manager for the Axora production deployment."""
 import subprocess
 import threading
+import shlex
 from pathlib import Path
 
 import gi
@@ -115,12 +116,23 @@ class Manager(Gtk.Window):
         self.log.scroll_to_iter(buf.get_end_iter(), 0, False, 0, 0)
 
     def command(self, args, privileged=False):
-        # Reuse the user's sudo timestamp. Authenticate once after login with
-        # `sudo -v`; sudo's timestamp is normally cleared at the next reboot.
-        return (["sudo", "-n"] + list(args) if privileged else list(args))
+        return (["sudo"] + list(args) if privileged else list(args))
 
     def run_action(self, label, args):
         if self._busy:
+            return
+        if args and args[0] == "sudo":
+            command = " ".join(shlex.quote(part) for part in args)
+            terminal_script = f"{command}; code=$?; echo; echo 'Finished with exit code' $code; read -r -p 'Press Enter to close...'"
+            try:
+                subprocess.Popen([
+                    "xfce4-terminal", "--title", f"Axora {label}",
+                    "--command", f"bash -lc {shlex.quote(terminal_script)}",
+                ])
+                self.write(f"{label} opened in a terminal. Enter your password there if requested.")
+                GLib.timeout_add_seconds(8, self.refresh)
+            except Exception as exc:
+                self.write(f"Unable to open terminal: {exc}")
             return
         self._busy = True
         self.deploy.set_sensitive(False)
