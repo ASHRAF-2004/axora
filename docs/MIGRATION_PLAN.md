@@ -129,7 +129,9 @@ Render remains running.
 - Confirm Docker, PostgreSQL, Axora, `cloudflared`, health monitoring, and the
   deployment poller recover automatically.
 - Merge a harmless reviewed change to protected `main`; confirm one serialized
-  deployment of that exact SHA.
+  deployment of that exact SHA. The fresh-SHA export, build, and swap must be
+  initiated by the installed `axora-deploy.service` under its production
+  sandbox on this Ubuntu release; an interactive script run is not sufficient.
 - Trigger or simulate a failing candidate; confirm it does not replace the
   working release.
 - Roll back to the previous application release and then redeploy the approved

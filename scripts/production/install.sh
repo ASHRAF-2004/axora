@@ -8,6 +8,7 @@ REPOSITORY_DIR="$(cd -- "$SOURCE_DIR/../.." && pwd)"
 LIBEXEC_DIR="/usr/local/libexec/axora-production"
 CONFIG_DIR="/etc/axora-production"
 STATE_DIR="/var/lib/axora-production"
+CONTROLLER_HOME="$STATE_DIR/controller-home"
 LOG_DIR="/var/log/axora-production"
 BUILD_HOME="/var/cache/axora-production"
 SYSTEMD_DIR="/etc/systemd/system"
@@ -35,7 +36,7 @@ for required_command in cmp cp find getent sha256sum sort stat useradd xargs; do
 done
 [[ -d /srv/axora && ! -L /srv/axora ]] || fail "/srv/axora must be an existing regular directory."
 getent group "$RUNTIME_GID" >/dev/null || fail "Required runtime GID $RUNTIME_GID does not exist."
-for protected_path in "$CONFIG_DIR" "$STATE_DIR" "$LOG_DIR" "$BUILD_HOME" "$SECRETS_DIR" "$UPLOADS_DIR"; do
+for protected_path in "$CONFIG_DIR" "$STATE_DIR" "$CONTROLLER_HOME" "$LOG_DIR" "$BUILD_HOME" "$SECRETS_DIR" "$UPLOADS_DIR"; do
   [[ ! -L "$protected_path" ]] || fail "Refusing symlinked production path: $protected_path"
 done
 
@@ -61,6 +62,8 @@ fi
 
 install -d -o root -g root -m 0750 "$LIBEXEC_DIR" "$STATE_DIR" "$STATE_DIR/releases" "$STATE_DIR/backups" "$LOG_DIR"
 install -d -o root -g root -m 0700 "$CONFIG_DIR"
+install -d -o root -g root -m 0700 \
+  "$CONTROLLER_HOME" "$CONTROLLER_HOME/docker" "$CONTROLLER_HOME/buildx"
 install -d -o root -g "$RUNTIME_GID" -m 0710 "$SECRETS_DIR"
 install -d -o root -g "$RUNTIME_GID" -m 0770 "$UPLOADS_DIR"
 install -d -o root -g root -m 0700 "$MIGRATION_BACKUP_DIR"
