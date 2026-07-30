@@ -115,7 +115,9 @@ class Manager(Gtk.Window):
         self.log.scroll_to_iter(buf.get_end_iter(), 0, False, 0, 0)
 
     def command(self, args, privileged=False):
-        return ([("pkexec",) + tuple(args)] if privileged else list(args))
+        # Reuse the user's sudo timestamp. Authenticate once after login with
+        # `sudo -v`; sudo's timestamp is normally cleared at the next reboot.
+        return (["sudo", "-n"] + list(args) if privileged else list(args))
 
     def run_action(self, label, args):
         if self._busy:
@@ -129,6 +131,8 @@ class Manager(Gtk.Window):
             try:
                 p = subprocess.run(args, cwd=ROOT, text=True, capture_output=True, timeout=7200)
                 output = (p.stdout + p.stderr).strip() or ("Completed successfully." if p.returncode == 0 else "No output.")
+                if p.returncode != 0 and "password is required" in output.lower():
+                    output += "\nAuthenticate once in a terminal with: sudo -v"
                 GLib.idle_add(self.write, output)
                 GLib.idle_add(self.write, f"{label}: {'completed' if p.returncode == 0 else 'failed'}")
             except Exception as exc:
