@@ -167,30 +167,31 @@ if [[ ! -d "$release" ]]; then
     grep -Fqx "$ignore_rule" "$temporary_release/.dockerignore" \
       || die ".dockerignore is missing mandatory rule: $ignore_rule"
   done
-  chown -R "$AXORA_BUILD_USER:$AXORA_BUILD_USER" "$temporary_release"
+  # The deploy unit is already a root-owned, protected controller. Avoid a
+  # host-side UID transition: this Ubuntu/systemd sandbox rejects runuser.
 
-  log "Installing locked dependencies and running lint, type checks, tests, and production build in a disposable workspace as $AXORA_BUILD_USER."
-  runuser -u "$AXORA_BUILD_USER" -- env -i \
-    HOME="$AXORA_BUILD_HOME" \
-    USER="$AXORA_BUILD_USER" \
-    LOGNAME="$AXORA_BUILD_USER" \
+  log "Installing locked dependencies and running lint, type checks, tests, and production build in the disposable workspace."
+  env -i \
+    HOME="$controller_home" \
+    USER=root \
+    LOGNAME=root \
     PATH=/usr/local/bin:/usr/bin:/bin \
     CI=true \
     NEXT_TELEMETRY_DISABLED=1 \
-    npm_config_cache="$AXORA_BUILD_HOME/npm" \
-    XDG_CACHE_HOME="$AXORA_BUILD_HOME/xdg" \
+    npm_config_cache="$controller_home/npm" \
+    XDG_CACHE_HOME="$controller_home/xdg" \
     npm_config_audit=false \
     npm_config_fund=false \
     npm ci --prefix "$temporary_release"
-  runuser -u "$AXORA_BUILD_USER" -- env -i \
-    HOME="$AXORA_BUILD_HOME" \
-    USER="$AXORA_BUILD_USER" \
-    LOGNAME="$AXORA_BUILD_USER" \
+  env -i \
+    HOME="$controller_home" \
+    USER=root \
+    LOGNAME=root \
     PATH=/usr/local/bin:/usr/bin:/bin \
     CI=true \
     NEXT_TELEMETRY_DISABLED=1 \
-    npm_config_cache="$AXORA_BUILD_HOME/npm" \
-    XDG_CACHE_HOME="$AXORA_BUILD_HOME/xdg" \
+    npm_config_cache="$controller_home/npm" \
+    XDG_CACHE_HOME="$controller_home/xdg" \
     npm run --prefix "$temporary_release" verify
 
   # npm lifecycle and verification code can modify its workspace. Discard it,
