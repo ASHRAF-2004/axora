@@ -42,9 +42,10 @@ cmp --silent "$REPOSITORY_DIR/package.json" "$release_export_dir/package.json" \
   || die "Isolated Git release export changed package.json."
 [[ ! -e "$release_export_dir/.axora-deployment-control" ]] \
   || die "Isolated Git release export leaked its control directory."
-grep -Fqx 'RestrictSUIDSGID=yes' \
-  "$REPOSITORY_DIR/deploy/systemd/axora-deploy.service" \
-  || die "Deployment service must retain SUID/SGID creation restrictions."
+if grep -Fqx 'RestrictSUIDSGID=yes' \
+  "$REPOSITORY_DIR/deploy/systemd/axora-deploy.service"; then
+  die "Deployment service cannot combine RestrictSUIDSGID with its runuser build step on systemd 259."
+fi
 grep -Fq 'materialize_git_tree "$AXORA_REPOSITORY_DIR"' \
   "$SCRIPT_DIR/deploy.sh" \
   || die "Deployment must use the systemd-compatible isolated Git export."
