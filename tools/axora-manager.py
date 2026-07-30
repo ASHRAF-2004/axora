@@ -21,6 +21,7 @@ class Manager(Gtk.Window):
         self.set_position(Gtk.WindowPosition.CENTER)
         self.connect("destroy", Gtk.main_quit)
         self._busy = False
+        self._last_journal = ""
         self._css()
 
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -178,13 +179,19 @@ class Manager(Gtk.Window):
                 return subprocess.run(cmd, text=True, capture_output=True, timeout=8).stdout.strip()
             except Exception:
                 return "unavailable"
-        service = get(["systemctl", "is-active", "axora-deploy.timer"])
+        deploy_service = get(["systemctl", "is-active", "axora-deploy.service"])
+        timer = get(["systemctl", "is-active", "axora-deploy.timer"])
+        service = "RUNNING" if deploy_service in ("active", "activating") else timer
         site = get(["curl", "-fsS", "--max-time", "5", f"{PUBLIC_URL}/api/health/ready"])
         sha = get(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"])
+        journal = get(["journalctl", "-u", "axora-deploy.service", "-n", "8", "--no-pager", "-o", "cat"])
         self.sha.set_text(sha or "—")
         self.service.set_text(service)
         self.public.set_text("READY" if '"status":"ready"' in site else "CHECK")
         self.status_pill.set_text("Online" if '"status":"ready"' in site else "Needs attention")
+        if journal and journal != self._last_journal:
+            self._last_journal = journal
+            self.write(journal)
         return True
 
 
