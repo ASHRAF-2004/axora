@@ -1,18 +1,41 @@
+# Version-control and local editor metadata
+.git
+.github
+.idea
+.vscode
+
+# Secrets and environment files must never enter a Docker build context
+.env
+.env.*
+secrets
+**/secrets
+*.pem
+*.key
+*.crt
+
+# Production data, backups, exports, and generated credentials
+backups
+data/uploads
+output
+tmp
+coverage
+reports
+assets
+*.log
+
+# Local dependency/build caches
 node_modules
 .next
-.git
-.env*
-!.env.example
-secrets
-backups
-data/uploads/*
-!data/uploads/README.md
-data/uploads
-reports
-coverage
-tmp
-output
+out
 .playwright-cli
-assets
 scripts/manuals/__pycache__
-npm-debug.log*
+*.tsbuildinfo
+
+# Host-only deployment and proxy configuration
+deploy
+docs
+caddy
+compose*.yaml
+render.yaml
+tailscale
+scripts

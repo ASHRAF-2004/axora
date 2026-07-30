@@ -1,0 +1,185 @@
+services:
+  db:
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${AXORA_HYBRID_DB_NAME:-axora_hybrid}"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U postgres -d ${AXORA_HYBRID_DB_NAME:-axora_hybrid}",
+        ]
+    cpus: "2.50"
+    mem_limit: 4g
+    pids_limit: 256
+    stop_grace_period: 60s
+
+  migrate:
+    restart: "no"
+    environment:
+      POSTGRES_DB: "${AXORA_HYBRID_DB_NAME:-axora_hybrid}"
+    cpus: "2.00"
+    mem_limit: 1g
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+
+  tailscale-db:
+    cpus: "1.00"
+    mem_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+
+  app:
+    image: "${AXORA_IMAGE:?Set AXORA_IMAGE to an immutable Axora image reference}"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /app/.next/cache:rw,noexec,nosuid,size=128m,uid=1001,gid=1001
+    environment:
+      DB_NAME: "${AXORA_HYBRID_DB_NAME:-axora_hybrid}"
+      APP_BASE_URL: "https://${AXORA_HOST:-axora.management}"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+    cpus: "4.00"
+    mem_limit: 4g
+    pids_limit: 256
+    stop_grace_period: 45s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes: !override
+      - type: bind
+        source: "${AXORA_UPLOADS_DIR:?Set AXORA_UPLOADS_DIR to the persistent uploads directory}"
+        target: /app/data/uploads
+        bind:
+          create_host_path: false
+
+  caddy:
+    restart: unless-stopped
+    environment:
+      AXORA_HOST: "${AXORA_HOST:-axora.management}"
+    ports: !override
+      - target: 8080
+        published: "${AXORA_ORIGIN_PORT:-8080}"
+        host_ip: "${AXORA_ORIGIN_BIND:-127.0.0.1}"
+        protocol: tcp
+    expose:
+      - "8080"
+    volumes: !override
+      - type: bind
+        source: ./caddy/Caddyfile.production
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind:
+          create_host_path: false
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --spider --timeout=3 --header='Host: ${AXORA_HOST:-axora.management}' http://127.0.0.1:8080/api/health/ready",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    cpus: "1.00"
+    mem_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - frontend
+      - edge
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.7.3@sha256:e39ee8da81ad5e05d77f38d2f51c60ca51bf2a8450ac3abab50c17fdb91d91bf
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --metrics
+      - 0.0.0.0:2000
+      - --loglevel
+      - info
+      - --output
+      - json
+      - run
+      - --token-file
+      - /run/secrets/cloudflare_tunnel_token
+    group_add:
+      - "1000"
+    secrets:
+      - cloudflare_tunnel_token
+    depends_on:
+      caddy:
+        condition: service_healthy
+    networks:
+      - edge
+    expose:
+      - "2000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "cloudflared",
+          "tunnel",
+          "--metrics",
+          "127.0.0.1:2000",
+          "ready",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    read_only: true
+    cpus: "1.00"
+    mem_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+secrets:
+  postgres_admin_password:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/postgres_admin_password"
+  axora_app_password:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_app_password"
+  session_secret:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/session_secret"
+  tailscale_db_auth_key:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/tailscale_db_auth_key"
+  cloudflare_tunnel_token:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/cloudflare_tunnel_token"
+
+networks:
+  frontend:
+    internal: true
+  edge:

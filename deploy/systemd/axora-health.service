@@ -1,0 +1,30 @@
+[Unit]
+Description=Axora local and external production health verification
+Wants=network-online.target
+After=network-online.target docker.service
+ConditionPathExists=/etc/axora-production/deploy.env
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=AXORA_CONFIG_FILE=/etc/axora-production/deploy.env
+ExecStart=/usr/local/libexec/axora-production/health-check.sh --all
+TimeoutStartSec=1min
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+ReadOnlyPaths=/etc/axora-production
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native

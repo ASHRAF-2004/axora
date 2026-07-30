@@ -1,0 +1,38 @@
+[Unit]
+Description=Axora verified production database and file backup
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+ConditionPathExists=/etc/axora-production/deploy.env
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=AXORA_CONFIG_FILE=/etc/axora-production/deploy.env
+ExecStart=/usr/local/libexec/axora-production/backup.sh
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+ReadOnlyPaths=/etc/axora-production
+ReadWritePaths=/var/lib/axora-production /run/docker.sock -/mnt -/media
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
