@@ -23,7 +23,8 @@ export type Permission =
   | "view_reports"
   | "view_audit"
   | "manage_users"
-  | "manage_settings";
+  | "manage_settings"
+  | "manage_interactions";
 
 export interface AccessSubject {
   role: UserRole;
@@ -52,6 +53,7 @@ const ownerPermissions = new Set<Permission>([
   "view_audit",
   "manage_users",
   "manage_settings",
+  "manage_interactions",
 ]);
 
 const companyPermissions: Record<UserRole, Permission[]> = {
@@ -73,6 +75,7 @@ const companyPermissions: Record<UserRole, Permission[]> = {
     "view_audit",
     "manage_users",
     "manage_settings",
+    "manage_interactions",
   ],
   BRANCH_ADMIN: [
     "view_dashboard",

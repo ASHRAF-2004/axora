@@ -1,4 +1,5 @@
 import {
+  Bot,
   Boxes,
   Building2,
   ChartNoAxesCombined,
@@ -48,6 +49,7 @@ const navigation: NavigationItem[] = [
   { href: "/audit", label: "Audit", icon: FileClock, permission: "view_audit" },
   { href: "/users", label: "People & access", icon: UserRoundCog, permission: "manage_users" },
   { href: "/settings", label: "Settings", icon: Settings2, permission: "manage_settings" },
+  { href: "/settings/interactions", label: "Interactive experience", icon: Bot, permission: "manage_interactions" },
   { href: "/help", label: "Help", icon: CircleHelp },
 ];
 
