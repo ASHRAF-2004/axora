@@ -16,6 +16,23 @@ import { assertInteractionPublishable } from "./validation";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+const SAFE_STORAGE_PATH_SEGMENT = /^[a-z0-9][a-z0-9._-]*$/i;
+
+function isSafeRelativeStoragePath(value: string) {
+  return value.split("/").every((segment) =>
+    segment !== "."
+    && segment !== ".."
+    && SAFE_STORAGE_PATH_SEGMENT.test(segment));
+}
+
+function isHttpSourceUrl(value: string) {
+  try {
+    const protocol = new URL(value).protocol;
+    return protocol === "https:" || protocol === "http:";
+  } catch {
+    return false;
+  }
+}
 
 const interactionAssetInputSchema = z.object({
   assetKey: z.string().trim().regex(/^[a-z0-9][a-z0-9._-]{0,79}$/),
@@ -31,10 +48,11 @@ const interactionAssetInputSchema = z.object({
   ]),
   storagePath: z.string().trim().min(1).max(500)
     .refine((value) => !/^https?:\/\//i.test(value), "Interaction assets must use persistent local storage, not a hotlink.")
-    .refine((value) => !/(^|\/)\.\.(\/|$)/.test(value) && !value.startsWith("//"), "Interaction asset storage path is unsafe."),
+    .refine(isSafeRelativeStoragePath, "Interaction asset storage path must be a safe relative path."),
   byteSize: z.number().int().min(1).max(5 * 1024 * 1024),
   sha256: z.string().regex(SHA256_PATTERN),
-  sourceUrl: z.string().trim().min(1).max(1000),
+  sourceUrl: z.string().trim().min(1).max(1000)
+    .refine(isHttpSourceUrl, "Interaction asset source URL must use HTTP or HTTPS."),
   licenseName: z.string().trim().min(1).max(200),
   licenseReference: z.string().trim().min(1).max(2000),
   commercialUseApproved: z.literal(true),

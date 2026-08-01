@@ -275,6 +275,35 @@ describe("interaction repository authorization and validation", () => {
     expect(database.withAuditTransaction).not.toHaveBeenCalled();
   });
 
+  it("rejects unsafe asset locations and non-web source URLs before touching the database", async () => {
+    const licensedAsset = {
+      assetKey: "licensed",
+      displayName: "Licensed asset",
+      assetType: "SVG" as const,
+      contentType: "image/svg+xml" as const,
+      storagePath: "interactions/licensed.svg",
+      byteSize: 100,
+      sha256: "a".repeat(64),
+      sourceUrl: "https://assets.example.test/source",
+      licenseName: "Commercial license",
+      licenseReference: "Verified commercial-use grant",
+      commercialUseApproved: true as const,
+      attributionRequired: false,
+    };
+
+    await expect(registerCompanyInteractionAsset(companyA, {
+      ...licensedAsset,
+      storagePath: "/etc/axora-production/runtime.env",
+    }, companyAdmin)).rejects.toThrow(/safe relative path/i);
+
+    await expect(registerCompanyInteractionAsset(companyA, {
+      ...licensedAsset,
+      sourceUrl: "file:///srv/axora/LICENSE",
+    }, companyAdmin)).rejects.toThrow(/HTTP or HTTPS/i);
+
+    expect(database.withAuditTransaction).not.toHaveBeenCalled();
+  });
+
   it("accepts only schema-validated publication values", () => {
     const executable = {
       ...disabledConfig,
