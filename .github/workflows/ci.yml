@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   application:
-    name: Lint, typecheck, test, build, and browser checks
+    name: Lint, typecheck, test, and build
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
