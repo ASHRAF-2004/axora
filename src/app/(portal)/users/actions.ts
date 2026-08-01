@@ -1,7 +1,7 @@
 "use server";
 
 import { requirePermission } from "@/lib/auth";
-import { createUser, setUserActive } from "@/lib/users";
+import { createUser, deleteUser, setUserActive } from "@/lib/users";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -24,5 +24,11 @@ export async function createUserAction(formData: FormData) {
 export async function setUserActiveAction(id: string, active: boolean) {
   const actor = await requirePermission("manage_users");
   await setUserActive(id, active, actor);
+  revalidatePath("/users");
+}
+
+export async function deleteUserAction(id: string) {
+  const actor = await requirePermission("manage_users");
+  await deleteUser(id, actor);
   revalidatePath("/users");
 }

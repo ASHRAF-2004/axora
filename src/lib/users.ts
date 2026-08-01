@@ -114,3 +114,51 @@ export async function setUserActive(id: string, active: boolean, actor: SessionU
     await client.query("UPDATE users SET active=$2 WHERE id=$1", [id, active]);
   });
 }
+
+export async function deleteUser(id: string, actor: SessionUser) {
+  if (id === actor.id) throw new Error("You cannot delete your own signed-in account.");
+  if (isDemoMode()) {
+    const users = demoUsers();
+    const target = users.find((item) => item.id === id);
+    if (!target) throw new Error("User not found.");
+    if (target.isOwner) throw new Error("The Axora owner account cannot be deleted.");
+    const index = users.findIndex((item) => item.id === id);
+    users.splice(index, 1);
+    return;
+  }
+  await withAuditTransaction({ userId: actor.id, reason: "User deleted" }, async (client) => {
+    const targetResult = await client.query<{ isOwner: boolean; role: UserRole; companyId?: string; active: boolean }>(
+      `SELECT u.active,u.is_owner AS "isOwner",r.role_key AS role,u.company_id::text AS "companyId"
+       FROM users u JOIN roles r ON r.id=u.role_id
+       WHERE u.id=$1 AND ($2::boolean OR (u.company_id=$3::uuid AND ($4::uuid IS NULL OR u.branch_id=$4 OR u.id=$5::uuid)))
+       FOR UPDATE`,
+      [id, actor.isOwner, actor.companyId ?? null, actor.branchId ?? null, actor.id],
+    );
+    const target = targetResult.rows[0];
+    if (!target) throw new Error("User not found.");
+
+    if (actor.role === "BRANCH_ADMIN" && !["REQUESTER", "APPROVER"].includes(target.role)) {
+      throw new Error("A branch administrator can delete only requesters and branch approvers.");
+    }
+    if (target.isOwner) throw new Error("The Axora owner account cannot be deleted.");
+    if (target.role === "ADMIN" && target.companyId) {
+      const activeAdmins = await client.query<{ count: string }>(
+        `SELECT count(*)::text AS count FROM users u
+         JOIN roles r ON r.id=u.role_id WHERE u.active=true AND r.role_key='ADMIN'
+         AND u.company_id=$1::uuid`,
+        [target.companyId],
+      );
+      if (Number(activeAdmins.rows[0]?.count ?? 0) <= 1) {
+        throw new Error("The last active administrator cannot be deleted.");
+      }
+    }
+
+    await client.query("UPDATE requests SET created_by=NULL WHERE created_by=$1", [id]);
+    await client.query("UPDATE approvals SET reviewer_id=NULL WHERE reviewer_id=$1", [id]);
+    await client.query("UPDATE payments SET recorded_by=NULL WHERE recorded_by=$1", [id]);
+    await client.query("UPDATE attachments SET uploaded_by=NULL WHERE uploaded_by=$1", [id]);
+    await client.query("UPDATE audit_logs SET actor_id=NULL WHERE actor_id=$1", [id]);
+    await client.query("UPDATE product_images SET created_by=NULL WHERE created_by=$1", [id]);
+    await client.query("DELETE FROM users WHERE id=$1", [id]);
+  });
+}
