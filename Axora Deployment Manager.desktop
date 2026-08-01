@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Axora Deployment Manager
+Comment=Manage the local Axora production deployment
+Exec=python3 /srv/axora/tools/axora-manager.py
+Icon=/srv/axora/public/brand/axora-mark.svg
+Terminal=false
+Categories=Development;System;
+StartupNotify=true

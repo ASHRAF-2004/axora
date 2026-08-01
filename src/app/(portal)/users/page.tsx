@@ -6,7 +6,7 @@ import { formatDate } from "@/lib/domain";
 import { listBranches, listCompanies } from "@/lib/repository";
 import type { UserRole } from "@/lib/types";
 import { listUsers } from "@/lib/users";
-import { setUserActiveAction } from "./actions";
+import { deleteUserAction, setUserActiveAction } from "./actions";
 
 const roleLabels: Record<UserRole, string> = {
   ADMIN: "Company administrator",
@@ -65,9 +65,14 @@ export default async function UsersPage() {
         <td>{user.isOwner ? "All companies" : user.branchName ?? "Entire company"}</td>
         <td><StatusBadge>{user.active ? "Active" : "Inactive"}</StatusBadge></td>
         <td>{formatDate(user.lastLoginAt)}</td>
-        <td>{protectedLabel ? <span className="subtle">{protectedLabel}</span> : <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
-          <button className="button button-secondary" type="submit">{user.active ? "Deactivate" : "Reactivate"}</button>
-        </form>}</td>
+        <td>{protectedLabel ? <span className="subtle">{protectedLabel}</span> : <div className="action-row">
+          <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
+            <button className="button button-secondary" type="submit">{user.active ? "Deactivate" : "Reactivate"}</button>
+          </form>
+          <form action={deleteUserAction.bind(null, user.id)}>
+            <button className="button button-danger" type="submit">Delete</button>
+          </form>
+        </div>}</td>
       </tr>;
     })}</tbody></table></div></section>
   </>;
