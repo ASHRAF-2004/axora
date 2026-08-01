@@ -33,6 +33,10 @@ explicitly approves decommissioning.
 - Exact-commit deployment, migration locking, health, verified backup,
   rollback, and systemd scheduling assets for the Ubuntu server.
 - Automated lint, TypeScript, database, seed, formula, and workflow checks.
+- A trusted interactive-experience foundation with validated AI
+  recommendations, owner preview/override controls, an accessible mascot
+  runtime, publication revisions, and browser-level safety checks. See
+  [Trusted interactive experiences](docs/TRUSTED_INTERACTIONS.md).
 
 ## Try it on this Windows PC
 

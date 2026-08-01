@@ -4,7 +4,7 @@ import type { UserRole } from "@/lib/types";
 
 describe("customer role permissions", () => {
   const expected: Record<UserRole, Permission[]> = {
-    ADMIN: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_branches", "manage_branch_budget", "create_requests", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings"],
+    ADMIN: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_branches", "manage_branch_budget", "create_requests", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_interactions"],
     BRANCH_ADMIN: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "create_requests", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "manage_users"],
     APPROVER: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "create_requests", "view_approvals", "approve_requests", "view_documents", "manage_documents", "view_reports"],
     REQUESTER: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "create_requests", "view_documents", "manage_documents"],
@@ -38,6 +38,7 @@ describe("customer role permissions", () => {
     "view_audit",
     "manage_users",
     "manage_settings",
+    "manage_interactions",
   ];
 
   for (const [role, allowed] of Object.entries(expected) as Array<[UserRole, Permission[]]>) {
@@ -60,5 +61,12 @@ describe("customer role permissions", () => {
 
   it("does not expose company-wide audit history to a branch-scoped account", () => {
     expect(canAccess({ role: "VIEWER", isOwner: false, branchId: "branch-1" }, "view_audit")).toBe(false);
+  });
+
+  it("limits interaction management to platform owners and company administrators", () => {
+    expect(canAccess({ role: "ADMIN", isOwner: true }, "manage_interactions")).toBe(true);
+    expect(canAccess({ role: "ADMIN", isOwner: false }, "manage_interactions")).toBe(true);
+    expect(canAccess({ role: "IT_SUPPORT", isOwner: false }, "manage_interactions")).toBe(false);
+    expect(canAccess({ role: "BRANCH_ADMIN", isOwner: false, branchId: "branch-1" }, "manage_interactions")).toBe(false);
   });
 });

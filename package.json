@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "qa:visual": "node scripts/qa/visual-smoke.mjs",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
@@ -31,6 +33,7 @@
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.4",
     "lucide-react": "^1.25.0",
+    "motion": "^12.43.0",
     "next": "^16.2.11",
     "pg": "^8.22.0",
     "pg-cloudflare": "^1.4.0",
@@ -41,6 +44,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^26.1.1",
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.17",

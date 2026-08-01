@@ -1,20 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
-const migrationUrls = [
-  new URL("../database/migrations/001_initial.sql", import.meta.url),
-  new URL("../database/migrations/002_cod_only_payments.sql", import.meta.url),
-  new URL("../database/migrations/003_protect_owner_account.sql", import.meta.url),
-  new URL("../database/migrations/004_company_tenant_membership.sql", import.meta.url),
-  new URL("../database/migrations/005_persistent_files_and_tenant_audit.sql", import.meta.url),
-  new URL("../database/migrations/006_multiple_platform_owners.sql", import.meta.url),
-  new URL("../database/migrations/007_customer_procurement_workflow.sql", import.meta.url),
-  new URL("../database/migrations/008_attachment_visibility.sql", import.meta.url),
-  new URL("../database/migrations/009_workflow_safety_and_local_budget.sql", import.meta.url),
-  new URL("../database/migrations/010_finance_and_delivery_integrity.sql", import.meta.url),
-];
-const demoSeedUrl = new URL("../database/seeds/demo.sql", import.meta.url);
+import { applyDemoSeed, applyMigrations } from "./helpers/pglite";
 
 async function count(db: PGlite, table: string) {
   const result = await db.query<{ count: number }>(`SELECT count(*)::int AS count FROM ${table}`);
@@ -23,17 +9,12 @@ async function count(db: PGlite, table: string) {
 
 describe("PostgreSQL migration and demonstration seed", () => {
   let db: PGlite;
-  let migrationSql: string[];
   let demoSeedSql: string;
 
   beforeAll(async () => {
-    [migrationSql, demoSeedSql] = await Promise.all([
-      Promise.all(migrationUrls.map((url) => readFile(url, "utf8"))),
-      readFile(demoSeedUrl, "utf8"),
-    ]);
     db = new PGlite();
-    for (const sql of migrationSql) await db.exec(sql);
-    await db.exec(demoSeedSql);
+    await applyMigrations(db);
+    demoSeedSql = await applyDemoSeed(db);
   }, 30_000);
 
   afterAll(async () => {

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">Axora Buddy</title>
+  <desc id="description">A friendly original robot mascot created for Axora.</desc>
+  <defs>
+    <linearGradient id="body" x1="91" y1="90" x2="235" y2="253" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7183FF"/>
+      <stop offset="1" stop-color="#4B45D6"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="99" y1="110" x2="221" y2="185" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#15233D"/>
+      <stop offset="1" stop-color="#253B60"/>
+    </linearGradient>
+    <filter id="shadow" x="47" y="55" width="226" height="231" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#19213D" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <ellipse cx="160" cy="269" rx="82" ry="13" fill="#1A2441" fill-opacity="0.13"/>
+  <g filter="url(#shadow)">
+    <path d="M160 78V57" stroke="#4B45D6" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="160" cy="48" r="12" fill="#FFB84D" stroke="#FFF4DE" stroke-width="5"/>
+    <rect x="75" y="77" width="170" height="132" rx="48" fill="url(#body)"/>
+    <rect x="91" y="97" width="138" height="91" rx="34" fill="url(#screen)"/>
+    <path d="M68 125C49 128 42 148 48 166C52 178 61 184 74 184" stroke="#5969EA" stroke-width="15" stroke-linecap="round"/>
+    <path d="M252 125C271 128 278 148 272 166C268 178 259 184 246 184" stroke="#5969EA" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="126" cy="140" r="12" fill="#8EF3D2"/>
+    <circle cx="194" cy="140" r="12" fill="#8EF3D2"/>
+    <circle cx="130" cy="136" r="4" fill="white"/>
+    <circle cx="198" cy="136" r="4" fill="white"/>
+    <path d="M139 162C151 172 169 172 181 162" stroke="#8EF3D2" stroke-width="7" stroke-linecap="round"/>
+    <path d="M111 207H209V239C209 255.016 196.016 268 180 268H140C123.984 268 111 255.016 111 239V207Z" fill="url(#body)"/>
+    <rect x="131" y="215" width="58" height="24" rx="12" fill="#DDE3FF" fill-opacity="0.92"/>
+    <circle cx="160" cy="227" r="6" fill="#4B45D6"/>
+    <path d="M132 263L119 274" stroke="#3E3AB7" stroke-width="16" stroke-linecap="round"/>
+    <path d="M188 263L201 274" stroke="#3E3AB7" stroke-width="16" stroke-linecap="round"/>
+  </g>
+</svg>
