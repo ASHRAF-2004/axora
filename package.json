@@ -5,7 +5,7 @@
   "description": "Axora internal procurement and pilot operations application",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && test -f .next/standalone/node_modules/pg-cloudflare/dist/index.js && test -f .next/standalone/node_modules/pg-cloudflare/esm/index.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

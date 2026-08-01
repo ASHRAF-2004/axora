@@ -9,6 +9,16 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // `pg-cloudflare` exposes a different implementation when OpenNext bundles
+  // for workerd. Next's Node.js file tracer otherwise copies only
+  // `dist/empty.js`, leaving the Cloudflare build without `dist/index.js`.
+  serverExternalPackages: ["pg-cloudflare"],
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/pg-cloudflare/dist/**/*",
+      "./node_modules/pg-cloudflare/esm/**/*",
+    ],
+  },
   poweredByHeader: false,
   experimental: {
     serverActions: {
