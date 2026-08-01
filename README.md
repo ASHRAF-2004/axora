@@ -61,6 +61,14 @@ for the Render migration. Follow the staged
 until the local application, apex Tunnel, automatic deployment, backup,
 restart, and rollback gates have been proved.
 
+## Automatic deployment flow
+
+![Illustrated Axora automatic deployment flow](docs/assets/axora-automatic-deployment-flow-illustrated.gif)
+
+Protected `main` changes pass GitHub verification before the Ubuntu deployment
+manager backs up production, deploys the exact approved commit, runs migrations
+and health checks, and keeps rollback available.
+
 ## MVP payment rule
 
 The approved MVP has one payment method only: **cash on delivery (COD)**. This
