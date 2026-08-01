@@ -28,8 +28,7 @@ ENV NODE_ENV=production \
 LABEL org.opencontainers.image.revision="${AXORA_REVISION}" \
       org.opencontainers.image.source="https://github.com/ASHRAF-2004/axora"
 
-RUN apt-get update && apt-get install -y --no-install-recommends tar \
-    && rm -rf /var/lib/apt/lists/* \
+RUN command -v tar >/dev/null \
     && groupadd --system --gid 1001 axora \
     && useradd --system --uid 1001 --gid axora --create-home axora
 COPY --from=tailscale /usr/local/bin/tailscale /usr/local/bin/tailscale
