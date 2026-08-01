@@ -1,29 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
-const migrationUrls = [
-  "001_initial.sql",
-  "002_cod_only_payments.sql",
-  "003_protect_owner_account.sql",
-  "004_company_tenant_membership.sql",
-  "005_persistent_files_and_tenant_audit.sql",
-  "006_multiple_platform_owners.sql",
-  "007_customer_procurement_workflow.sql",
-  "008_attachment_visibility.sql",
-  "009_workflow_safety_and_local_budget.sql",
-  "010_finance_and_delivery_integrity.sql",
-  "011_product_editing_and_gallery.sql",
-  "012_request_cart_pricing.sql",
-].map(
-  (filename) =>
-    new URL(`../database/migrations/${filename}`, import.meta.url),
-);
-
-const demoSeedUrl = new URL(
-  "../database/seeds/demo.sql",
-  import.meta.url,
-);
+import { applyDemoSeed, applyMigrations } from "./helpers/pglite";
 
 describe("request cart pricing migration", () => {
   let db: PGlite;
@@ -31,11 +8,8 @@ describe("request cart pricing migration", () => {
   beforeAll(async () => {
     db = new PGlite();
 
-    for (const url of migrationUrls) {
-      await db.exec(await readFile(url, "utf8"));
-    }
-
-    await db.exec(await readFile(demoSeedUrl, "utf8"));
+    await applyMigrations(db);
+    await applyDemoSeed(db);
   }, 30_000);
 
   afterAll(async () => {
