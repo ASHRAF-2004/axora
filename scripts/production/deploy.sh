@@ -190,7 +190,7 @@ if [[ ! -d "$release" ]]; then
     npm_config_audit=false \
     npm_config_fund=false \
     npm ci --prefix "$temporary_release"
-  env -i \
+  if env -i \
     HOME="$controller_home" \
     USER=root \
     LOGNAME=root \
@@ -199,7 +199,22 @@ if [[ ! -d "$release" ]]; then
     NEXT_TELEMETRY_DISABLED=1 \
     npm_config_cache="$controller_home/npm" \
     XDG_CACHE_HOME="$controller_home/xdg" \
-    npm run --prefix "$temporary_release" manuals:build
+    command -v uv >/dev/null 2>&1; then
+    env -i \
+      HOME="$controller_home" \
+      USER=root \
+      LOGNAME=root \
+      PATH=/usr/local/bin:/usr/bin:/bin \
+      CI=true \
+      NEXT_TELEMETRY_DISABLED=1 \
+      npm_config_cache="$controller_home/npm" \
+      XDG_CACHE_HOME="$controller_home/xdg" \
+      npm run --prefix "$temporary_release" manuals:build
+  else
+    log "uv is unavailable in deployment controller; using checked-in manuals as publication input."
+    mkdir -p "$temporary_release/output/pdf"
+    cp "$temporary_release/public/manuals"/*.pdf "$temporary_release/output/pdf"/
+  fi
   env -i \
     HOME="$controller_home" \
     USER=root \
