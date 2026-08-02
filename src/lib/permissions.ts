@@ -1,4 +1,11 @@
-import type { UserRole } from "./types";
+import {
+  CANONICAL_USER_ROLES,
+  LEGACY_USER_ROLES,
+  isUserRole,
+  type AccountKind,
+  type RoleScopeType,
+  type UserRole,
+} from "./types";
 
 export type Permission =
   | "view_dashboard"
@@ -24,15 +31,27 @@ export type Permission =
   | "view_audit"
   | "manage_users"
   | "manage_settings"
-  | "manage_interactions";
+  | "manage_commercial_pricing"
+  | "view_system_diagnostics"
+  | "view_supplier_portal"
+  | "respond_to_rfqs"
+  | "view_delivery_portal"
+  | "update_assigned_deliveries"
+  | "view_receiving"
+  | "confirm_receipts"
+  | "review_three_way_matches";
 
 export interface AccessSubject {
-  role: UserRole;
+  role: UserRole | string;
   isOwner: boolean;
+  accountKind?: AccountKind;
+  scopeType?: RoleScopeType;
+  companyId?: string;
   branchId?: string;
+  supplierId?: string;
 }
 
-const ownerPermissions = new Set<Permission>([
+const platformOwnerPermissions: readonly Permission[] = [
   "view_dashboard",
   "view_catalog",
   "view_requests",
@@ -42,7 +61,6 @@ const ownerPermissions = new Set<Permission>([
   "manage_catalog",
   "manage_suppliers",
   "manage_branches",
-  "view_approvals",
   "manage_sourcing",
   "manage_deliveries",
   "view_invoices",
@@ -53,70 +71,198 @@ const ownerPermissions = new Set<Permission>([
   "view_audit",
   "manage_users",
   "manage_settings",
-  "manage_interactions",
-]);
+  "manage_commercial_pricing",
+  "view_system_diagnostics",
+  "view_receiving",
+  "review_three_way_matches",
+];
 
-const companyPermissions: Record<UserRole, Permission[]> = {
-  ADMIN: [
-    "view_dashboard",
-    "view_catalog",
-    "view_requests",
-    "view_deliveries",
-    "view_branches",
-    "manage_branches",
-    "manage_branch_budget",
-    "create_requests",
-    "view_approvals",
-    "approve_requests",
-    "view_invoices",
-    "view_documents",
-    "manage_documents",
-    "view_reports",
-    "view_audit",
-    "manage_users",
-    "manage_settings",
-    "manage_interactions",
-  ],
+const legacyCompanyAdminPermissions: readonly Permission[] = [
+  "view_dashboard",
+  "view_catalog",
+  "view_requests",
+  "view_deliveries",
+  "view_branches",
+  "manage_branches",
+  "manage_branch_budget",
+  "create_requests",
+  "view_approvals",
+  "approve_requests",
+  "view_invoices",
+  "view_documents",
+  "manage_documents",
+  "view_reports",
+  "view_audit",
+  "manage_users",
+  "manage_settings",
+];
+
+const companyAdminPermissions: readonly Permission[] = [
+  "view_dashboard",
+  "view_catalog",
+  "view_requests",
+  "view_deliveries",
+  "view_branches",
+  "manage_branches",
+  "manage_branch_budget",
+  "view_approvals",
+  "approve_requests",
+  "view_invoices",
+  "view_documents",
+  "manage_documents",
+  "view_reports",
+  "view_audit",
+  "manage_users",
+  "manage_settings",
+];
+
+// Legacy capabilities remain byte-for-byte compatible while active canonical
+// assignments use the smaller role-specific sets below.
+const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
+  ADMIN: legacyCompanyAdminPermissions,
   BRANCH_ADMIN: [
-    "view_dashboard",
-    "view_catalog",
-    "view_requests",
-    "view_deliveries",
-    "view_branches",
-    "create_requests",
-    "view_approvals",
-    "approve_requests",
-    "view_invoices",
-    "view_documents",
-    "manage_documents",
-    "view_reports",
-    "manage_users",
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "create_requests", "view_approvals", "approve_requests",
+    "view_invoices", "view_documents", "manage_documents", "view_reports", "manage_users",
   ],
   APPROVER: [
-    "view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches",
-    "create_requests", "view_approvals", "approve_requests", "view_documents", "manage_documents", "view_reports",
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "create_requests", "view_approvals", "approve_requests",
+    "view_documents", "manage_documents", "view_reports",
   ],
   REQUESTER: [
-    "view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches",
-    "create_requests", "view_documents", "manage_documents",
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "create_requests", "view_documents", "manage_documents",
   ],
   OPERATIONS: [
-    "view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches",
-    "create_requests", "view_documents", "manage_documents",
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "create_requests", "view_documents", "manage_documents",
   ],
   FINANCE: [
-    "view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches",
-    "view_invoices", "view_documents", "manage_documents", "view_reports",
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "view_invoices", "view_documents", "manage_documents", "view_reports",
   ],
   VIEWER: [
-    "view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches",
-    "view_invoices", "view_documents", "view_reports", "view_audit",
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "view_invoices", "view_documents", "view_reports", "view_audit",
   ],
-  IT_SUPPORT: ["manage_settings"],
+  IT_SUPPORT: ["view_system_diagnostics"],
+
+  PLATFORM_OWNER: platformOwnerPermissions,
+  PLATFORM_OPERATIONS: [
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "manage_catalog", "manage_suppliers",
+    "manage_sourcing", "manage_deliveries", "view_documents",
+    "manage_documents", "view_reports", "view_receiving",
+  ],
+  COMPANY_ADMIN: companyAdminPermissions,
+  BRANCH_APPROVER: [
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "view_approvals", "approve_requests", "view_documents", "view_reports",
+  ],
+  COMPANY_APPROVER: [
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "view_approvals", "approve_requests", "view_documents", "view_reports",
+  ],
+  FINANCE_REVIEWER: [
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "view_invoices", "manage_finance", "view_documents",
+    "view_reports", "review_three_way_matches",
+  ],
+  AUDITOR: [
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "view_invoices", "view_documents", "view_reports", "view_audit",
+  ],
+  TECHNICAL_SUPPORT: ["view_system_diagnostics"],
+  SUPPLIER_USER: ["view_supplier_portal", "respond_to_rfqs"],
+  DELIVERY_DRIVER: ["view_delivery_portal", "update_assigned_deliveries"],
+  RECEIVING_USER: ["view_receiving", "confirm_receipts"],
 };
 
+function hasNormalizedScope(subject: AccessSubject) {
+  return subject.accountKind !== undefined || subject.scopeType !== undefined;
+}
+
+function validCompanyScope(subject: AccessSubject, allowed: readonly RoleScopeType[]) {
+  return subject.accountKind === "COMPANY"
+    && subject.companyId !== undefined
+    && subject.scopeType !== undefined
+    && allowed.includes(subject.scopeType)
+    && (subject.scopeType === "BRANCH" ? Boolean(subject.branchId) : !subject.branchId)
+    && subject.supplierId === undefined;
+}
+
+function canonicalSubjectIsValid(subject: AccessSubject) {
+  switch (subject.role) {
+    case "PLATFORM_OWNER":
+      return subject.isOwner
+        && subject.accountKind === "PLATFORM"
+        && subject.scopeType === "PLATFORM"
+        && !subject.companyId && !subject.branchId && !subject.supplierId;
+    case "PLATFORM_OPERATIONS":
+    case "TECHNICAL_SUPPORT":
+      return !subject.isOwner
+        && subject.accountKind === "PLATFORM"
+        && subject.scopeType === "PLATFORM"
+        && !subject.companyId && !subject.branchId && !subject.supplierId;
+    case "COMPANY_ADMIN":
+    case "COMPANY_APPROVER":
+      return !subject.isOwner && validCompanyScope(subject, ["COMPANY"]);
+    case "BRANCH_ADMIN":
+    case "REQUESTER":
+    case "BRANCH_APPROVER":
+      return !subject.isOwner && validCompanyScope(subject, ["BRANCH"]);
+    case "FINANCE_REVIEWER":
+    case "AUDITOR":
+    case "RECEIVING_USER":
+      return !subject.isOwner && validCompanyScope(subject, ["COMPANY", "BRANCH"]);
+    case "SUPPLIER_USER":
+      return !subject.isOwner
+        && subject.accountKind === "SUPPLIER"
+        && subject.scopeType === "SUPPLIER"
+        && Boolean(subject.supplierId)
+        && !subject.companyId && !subject.branchId;
+    case "DELIVERY_DRIVER":
+      return !subject.isOwner
+        && subject.accountKind === "DELIVERY"
+        && subject.scopeType === "DELIVERY"
+        && !subject.companyId && !subject.branchId && !subject.supplierId;
+    default:
+      return true;
+  }
+}
+
+function legacySubjectIsValid(subject: AccessSubject) {
+  if (!hasNormalizedScope(subject)) return true;
+  if (subject.role === "ADMIN" && subject.isOwner) {
+    return subject.accountKind === "PLATFORM" && subject.scopeType === "PLATFORM"
+      && !subject.companyId && !subject.branchId && !subject.supplierId;
+  }
+  if (subject.role === "IT_SUPPORT") {
+    return !subject.isOwner && subject.accountKind === "PLATFORM"
+      && subject.scopeType === "PLATFORM"
+      && !subject.companyId && !subject.branchId && !subject.supplierId;
+  }
+  return !subject.isOwner && validCompanyScope(subject, ["COMPANY", "BRANCH"]);
+}
+
 export function canAccess(subject: AccessSubject, permission: Permission) {
-  if (subject.isOwner) return ownerPermissions.has(permission);
-  if (permission === "view_audit" && subject.branchId) return false;
-  return companyPermissions[subject.role].includes(permission);
+  if (!isUserRole(subject.role)) return false;
+  const isCanonicalRole = (CANONICAL_USER_ROLES as readonly string[])
+    .includes(subject.role);
+  const isLegacyRole = (LEGACY_USER_ROLES as readonly string[])
+    .includes(subject.role);
+  const useCanonicalScope = isCanonicalRole
+    && (!isLegacyRole || hasNormalizedScope(subject));
+  if (useCanonicalScope ? !canonicalSubjectIsValid(subject) : !legacySubjectIsValid(subject)) {
+    return false;
+  }
+  if (subject.isOwner) {
+    if (subject.role !== "ADMIN" && subject.role !== "PLATFORM_OWNER") return false;
+    return platformOwnerPermissions.includes(permission);
+  }
+  if (permission === "view_audit" && subject.scopeType === "BRANCH") return false;
+  // Legacy callers only carry branchId. Preserve the old audit restriction.
+  if (permission === "view_audit" && !subject.scopeType && subject.branchId) return false;
+  return Boolean(rolePermissions[subject.role]?.includes(permission));
 }

@@ -108,7 +108,7 @@ application releases never replace privileged orchestration code.
 ## Render and Tailscale during migration
 
 Render remains available as the pre-cutover application and emergency reference
-until Ashraf explicitly approves decommissioning. After the apex cutover,
+until an authorized Axora platform owner explicitly approves decommissioning. After the apex cutover,
 Render is not in the request path:
 
 ```text

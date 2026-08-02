@@ -106,10 +106,6 @@ else
   node server-tools/migrate.mjs
 fi
 
-if [ -n "${ADMIN_INITIAL_PASSWORD:-}" ]; then
-  node server-tools/create-admin.mjs "${ADMIN_EMAIL:-admin@axora.local}" "${ADMIN_DISPLAY_NAME:-Ashraf}"
-fi
-
 if [ -n "$tailscaled_pid" ]; then
   node server.js &
   app_pid=$!

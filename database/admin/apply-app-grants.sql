@@ -30,3 +30,50 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO axora_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT EXECUTE ON FUNCTIONS TO axora_app;
+
+-- Broad grants keep ordinary application tables and routines deployable, but
+-- migrations 026-032 deliberately expose sensitive state only through narrow
+-- SECURITY DEFINER capabilities. Re-apply those boundaries here because this
+-- script runs after migrations during hybrid imports and baseline resets.
+REVOKE ALL ON TABLE
+  public.workflow_email_outbox,
+  public.request_line_receipt_baselines,
+  public.request_line_receipt_baseline_sources,
+  public.email_provider_events,
+  public.email_recipient_suppressions,
+  public.email_provider_delivery_lifecycle
+FROM axora_app;
+
+REVOKE ALL ON FUNCTION
+  public.axora_workflow_email_available_at(text,timestamptz),
+  public.axora_workflow_notification_recipient_is_valid(uuid,uuid,uuid),
+  public.axora_workflow_email_recipient_is_valid(uuid,uuid,uuid),
+  public.protect_workflow_email_outbox(),
+  public.audit_workflow_email_outbox(),
+  public.axora_effective_received_quantity_internal(uuid),
+  public.validate_receipt_line(),
+  public.validate_delivery_job_line(),
+  public.validate_request_received_transition(),
+  public.validate_new_invoice_workflow(),
+  public.prevent_invoice_overpayment(),
+  public.axora_email_recipient_fingerprint(text),
+  public.protect_email_provider_event(),
+  public.axora_authorized_support_actor(),
+  public.axora_support_system_summary(),
+  public.axora_record_support_audit(text,uuid,boolean,integer,text),
+  public.audit_user_session_revocation()
+FROM axora_app;
+
+GRANT EXECUTE ON FUNCTION
+  public.axora_workflow_notification_preference(uuid,uuid,uuid,text),
+  public.axora_enqueue_workflow_email(uuid,uuid,uuid,text,text,text,text,text),
+  public.axora_claim_workflow_email(integer,integer),
+  public.axora_complete_workflow_email(uuid,uuid,text,text,text,integer,integer),
+  public.axora_received_quantity(uuid),
+  public.axora_email_recipient_is_suppressed(text),
+  public.axora_record_cloudflare_email_event(
+    uuid,text,text,text,text,boolean,timestamptz,integer
+  ),
+  public.axora_support_system_summary(),
+  public.axora_record_support_audit(text,uuid,boolean,integer,text)
+TO axora_app;

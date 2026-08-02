@@ -35,8 +35,7 @@ create_secret() {
 create_secret postgres_admin_password 32
 create_secret axora_app_password 32
 create_secret session_secret 48
-create_secret admin_initial_password 12
 
-printf '\nInitial administrator password (use it once, then delete the file):\n'
-printf '  %s\n' "$(cat secrets/admin_initial_password)"
-printf '\nNext: copy .env.server.example to .env and set the real LAN IP.\n'
+printf '\nCore service secrets are ready. No user password was generated.\n'
+printf 'Next: copy .env.server.example to .env and set the real LAN IP.\n'
+printf 'Bootstrap the first owner only through the one-time invitation command documented in scripts/bootstrap/README.md.\n'

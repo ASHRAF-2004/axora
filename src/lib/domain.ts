@@ -1,4 +1,5 @@
 import type { FinancialTotals, ProcurementRequest, RequestLine, RequestStatus } from "./types";
+import type { SupportedLocale } from "./i18n";
 
 export const REQUEST_STATUSES: RequestStatus[] = [
   "New Request",
@@ -49,31 +50,76 @@ export function calculateTotals(requests: ProcurementRequest[]): FinancialTotals
   return totals;
 }
 
-export function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR", maximumFractionDigits: 2 }).format(value);
+const regionalLocale: Record<SupportedLocale, string> = {
+  en: "en-MY",
+  ar: "ar-MY",
+  ms: "ms-MY",
+};
+
+const greetings: Record<SupportedLocale, [morning: string, afternoon: string, evening: string]> = {
+  en: ["Good morning", "Good afternoon", "Good evening"],
+  ar: ["صباح الخير", "مساء الخير", "مساء الخير"],
+  ms: ["Selamat pagi", "Selamat tengah hari", "Selamat petang"],
+};
+
+export function formatCurrency(value: number, locale: SupportedLocale = "en") {
+  return new Intl.NumberFormat(regionalLocale[locale], {
+    style: "currency",
+    currency: "MYR",
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
-export function formatDate(value?: string) {
+export function formatDate(
+  value?: string,
+  locale: SupportedLocale = "en",
+  timeZone = "Asia/Kuala_Lumpur",
+) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en-MY", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+  return new Intl.DateTimeFormat(regionalLocale[locale], {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone,
+  }).format(new Date(value));
 }
 
-export function timeOfDayGreeting(date = new Date(), timeZone = "Asia/Kuala_Lumpur") {
+export function formatDateTime(
+  value?: string,
+  locale: SupportedLocale = "en",
+  timeZone = "Asia/Kuala_Lumpur",
+) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat(regionalLocale[locale], {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone,
+  }).format(new Date(value));
+}
+
+export function timeOfDayGreeting(
+  date = new Date(),
+  timeZone = "Asia/Kuala_Lumpur",
+  locale: SupportedLocale = "en",
+) {
   const hour = Number(new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     hourCycle: "h23",
     timeZone,
   }).format(date));
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return greetings[locale][0];
+  if (hour < 18) return greetings[locale][1];
+  return greetings[locale][2];
 }
 
 export function statusTone(status: string) {
   const normalized = status.toLowerCase();
-  if (["completed", "paid", "delivered", "active", "approved"].some((word) => normalized.includes(word))) return "success";
+  if (["completed", "paid", "delivered", "active", "approved", "sent"].some((word) => normalized.includes(word))) return "success";
   if (["cancelled", "failed", "disputed", "overdue"].some((word) => normalized.includes(word))) return "danger";
-  if (["urgent", "delayed", "hold", "partial"].some((word) => normalized.includes(word))) return "warning";
-  if (["waiting", "pending", "new", "draft", "issued"].some((word) => normalized.includes(word))) return "info";
+  if (["urgent", "delayed", "hold", "partial", "expired", "disabled"].some((word) => normalized.includes(word))) return "warning";
+  if (["waiting", "awaiting", "pending", "new", "draft", "issued"].some((word) => normalized.includes(word))) return "info";
   return "neutral";
 }

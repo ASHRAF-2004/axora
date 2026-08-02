@@ -163,16 +163,49 @@ INSERT INTO quotations (
   ('a0000000-0000-4000-8000-000000000014','60000000-0000-4000-8000-000000000015','30000000-0000-4000-8000-000000000006','QT-DEMO-014','2026-07-21',4,5,2,1,'2026-08-20',lookup_id('quotation_status','Received'),false,NULL)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO deliveries (
-  id, request_line_id, expected_date, revised_date, actual_date, status_id,
-  quantity_received, received_by, issue_reason
-) VALUES
-  ('70000000-0000-4000-8000-000000000008','60000000-0000-4000-8000-000000000009','2026-07-21','2026-07-23',NULL,lookup_id('delivery_status','Delayed'),0,NULL,'Supplier vehicle delay.'),
-  ('70000000-0000-4000-8000-000000000009','60000000-0000-4000-8000-000000000010','2026-07-20',NULL,'2026-07-20',lookup_id('delivery_status','Delivered'),10,'Demo receiver',NULL),
-  ('70000000-0000-4000-8000-000000000011','60000000-0000-4000-8000-000000000012','2026-07-19',NULL,'2026-07-19',lookup_id('delivery_status','Delivered'),1,'Demo receiver',NULL),
-  ('70000000-0000-4000-8000-000000000012','60000000-0000-4000-8000-000000000013','2026-07-22',NULL,'2026-07-22',lookup_id('delivery_status','Delivered'),3,'Demo receiver',NULL),
-  ('70000000-0000-4000-8000-000000000013','60000000-0000-4000-8000-000000000014','2026-07-24',NULL,'2026-07-22',lookup_id('delivery_status','Partially Delivered'),4,'Demo receiver',NULL)
-ON CONFLICT DO NOTHING;
+-- Before migration 027 these are ordinary sanitized legacy fixtures, allowing
+-- the migration test to prove its baseline upgrade.  On a fresh post-027 demo
+-- database, legacy acceptance is intentionally unavailable: keep five
+-- logistics-history rows for the training UI and insert the equivalent
+-- immutable sanitized baseline snapshots directly.  Production reset never
+-- loads this optional demonstration seed.
+DO $$
+BEGIN
+  IF to_regclass('public.request_line_receipt_baselines') IS NULL THEN
+    INSERT INTO deliveries (
+      id,request_line_id,expected_date,revised_date,actual_date,status_id,
+      quantity_received,received_by,issue_reason
+    ) VALUES
+      ('70000000-0000-4000-8000-000000000008','60000000-0000-4000-8000-000000000009','2026-07-21','2026-07-23',NULL,lookup_id('delivery_status','Delayed'),0,NULL,'Supplier vehicle delay.'),
+      ('70000000-0000-4000-8000-000000000009','60000000-0000-4000-8000-000000000010','2026-07-20',NULL,'2026-07-20',lookup_id('delivery_status','Delivered'),10,'Demo receiver',NULL),
+      ('70000000-0000-4000-8000-000000000011','60000000-0000-4000-8000-000000000012','2026-07-19',NULL,'2026-07-19',lookup_id('delivery_status','Delivered'),1,'Demo receiver',NULL),
+      ('70000000-0000-4000-8000-000000000012','60000000-0000-4000-8000-000000000013','2026-07-22',NULL,'2026-07-22',lookup_id('delivery_status','Delivered'),3,'Demo receiver',NULL),
+      ('70000000-0000-4000-8000-000000000013','60000000-0000-4000-8000-000000000014','2026-07-24',NULL,'2026-07-22',lookup_id('delivery_status','Partially Delivered'),4,'Demo receiver',NULL)
+    ON CONFLICT DO NOTHING;
+  ELSE
+    INSERT INTO deliveries (
+      id,request_line_id,expected_date,revised_date,actual_date,status_id,
+      quantity_received,received_by,issue_reason
+    ) VALUES
+      ('70000000-0000-4000-8000-000000000008','60000000-0000-4000-8000-000000000009','2026-07-21','2026-07-23',NULL,lookup_id('delivery_status','Delayed'),0,NULL,'Supplier vehicle delay.'),
+      ('70000000-0000-4000-8000-000000000009','60000000-0000-4000-8000-000000000010','2026-07-20',NULL,NULL,lookup_id('delivery_status','Scheduled'),0,NULL,NULL),
+      ('70000000-0000-4000-8000-000000000011','60000000-0000-4000-8000-000000000012','2026-07-19',NULL,NULL,lookup_id('delivery_status','Scheduled'),0,NULL,NULL),
+      ('70000000-0000-4000-8000-000000000012','60000000-0000-4000-8000-000000000013','2026-07-22',NULL,NULL,lookup_id('delivery_status','Scheduled'),0,NULL,NULL),
+      ('70000000-0000-4000-8000-000000000013','60000000-0000-4000-8000-000000000014','2026-07-24',NULL,NULL,lookup_id('delivery_status','Scheduled'),0,NULL,NULL)
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO request_line_receipt_baselines(
+      request_line_id,company_id,branch_id,ordered_quantity_snapshot,
+      legacy_accepted_quantity_snapshot,
+      independent_accepted_quantity_snapshot,baseline_accepted_quantity
+    ) VALUES
+      ('60000000-0000-4000-8000-000000000010','10000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002',10,10,0,10),
+      ('60000000-0000-4000-8000-000000000012','10000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003',1,1,0,1),
+      ('60000000-0000-4000-8000-000000000013','10000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003',3,3,0,3),
+      ('60000000-0000-4000-8000-000000000014','10000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003',8,4,0,4)
+    ON CONFLICT(request_line_id) DO NOTHING;
+  END IF;
+END $$;
 
 INSERT INTO approvals (
   id, request_id, approval_type, status, reason, decided_at

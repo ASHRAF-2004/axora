@@ -1,0 +1,222 @@
+.overviewGrid,
+.securityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.overviewGrid {
+  margin-bottom: 18px;
+}
+
+.securityGrid {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  align-items: start;
+}
+
+.card {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 30px);
+  color: var(--slate-700);
+  background: var(--tenant-surface, #fff);
+  border: 1px solid var(--tenant-border, var(--slate-200));
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(11, 45, 82, .06);
+}
+
+.summaryCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+}
+
+.summaryIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: var(--tenant-primary, #0b2d52);
+  background: var(--tenant-muted, #edf3f7);
+  border-radius: 13px;
+}
+
+.summaryCard span,
+.sessionMeta,
+.helper {
+  color: var(--slate-500);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.summaryCard strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--navy-900);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.cardHeader {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cardHeader svg {
+  flex: none;
+  color: var(--tenant-primary, #0b2d52);
+}
+
+.cardHeader h2 {
+  margin: 0;
+  color: var(--navy-900);
+  font-size: 18px;
+}
+
+.cardHeader p {
+  margin: 5px 0 0;
+  color: var(--slate-500);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.form label {
+  min-width: 0;
+  color: var(--slate-700);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.form input {
+  width: 100%;
+}
+
+.formActions,
+.sessionActions,
+.verificationActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sessionList {
+  display: grid;
+  gap: 11px;
+}
+
+.sessionRow {
+  min-width: 0;
+  padding: 15px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  background: var(--tenant-muted, #f3f7fa);
+  border: 1px solid var(--tenant-border, var(--slate-200));
+  border-radius: 14px;
+}
+
+.sessionTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sessionTitle strong {
+  min-width: 0;
+  color: var(--navy-900);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  padding: 3px 7px;
+  color: #136544;
+  background: #e7f8ef;
+  border: 1px solid #bcebd2;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.sessionMeta {
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.sessionActions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--slate-100);
+}
+
+.verification {
+  margin-top: 16px;
+}
+
+.sessionsCard {
+  grid-column: 1 / -1;
+}
+
+.verificationStatus {
+  padding: 15px;
+  display: grid;
+  gap: 4px;
+  background: var(--tenant-muted, #f3f7fa);
+  border-radius: 14px;
+}
+
+.verificationStatus strong {
+  color: var(--navy-900);
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .overviewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .securityGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sessionsCard {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .card {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+
+  .sessionRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sessionRow form,
+  .sessionRow button,
+  .formActions form,
+  .formActions button,
+  .verificationActions form,
+  .verificationActions button {
+    width: 100%;
+  }
+}

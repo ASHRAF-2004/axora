@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
-import { requirePagePermission } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
+import { canAccess } from "@/lib/permissions";
 import { listCompanies } from "@/lib/repository";
 import { COD_PAYMENT_METHOD } from "@/lib/types";
 import {
@@ -16,29 +17,38 @@ import {
   UserRoundCog,
 } from "lucide-react";
 import { updateCompanyPricingAction } from "./actions";
+import { operationalMessage, type OperationalMessageKey } from "@/lib/operational-i18n";
 
-export default async function SettingsPage() {
-  const actor = await requirePagePermission("manage_settings");
-  const companies = await listCompanies(actor);
-  const workspace = actor.isOwner ? "All approved companies" : companies[0]?.name ?? "Assigned company";
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+  const actor = await requireSession();
+  const { notice } = await searchParams;
+  const locale = actor.preferredLocale ?? "en";
+  const m = (key: OperationalMessageKey) => operationalMessage(locale, key);
+  const mayManageCommercialSettings = canAccess(actor, "manage_commercial_pricing");
+  const mayViewDiagnostics = canAccess(actor, "view_system_diagnostics");
+  const companies = mayManageCommercialSettings ? await listCompanies(actor) : [];
+  const workspace = actor.accountKind === "PLATFORM" || actor.isOwner
+    ? m("settings.platform")
+    : companies[0]?.name ?? m("settings.assigned");
 
-  return <><PageHeader eyebrow="System control" title="Settings and security" description="Review the configuration that controls your Axora workspace." />
-    <section className="dashboard-grid"><article className="panel"><div className="panel-header"><div><h2>Workspace configuration</h2><p>Current operating defaults</p></div></div><div className="panel-body readiness-list">
-      <div className="readiness-item"><Building2 /><div><strong>Workspace</strong><p>{workspace}</p></div></div>
-      <div className="readiness-item"><Clock3 /><div><strong>Time zone</strong><p>Malaysia time · Asia/Kuala_Lumpur (UTC+8)</p></div></div>
-      <div className="readiness-item"><Coins /><div><strong>Currency</strong><p>Malaysian ringgit (MYR)</p></div></div>
-      <div className="readiness-item"><Database /><div><strong>Payment method</strong><p>{COD_PAYMENT_METHOD}</p></div></div>
-    </div></article><article className="panel"><div className="panel-header"><div><h2>Access and data protection</h2><p>Security rules currently enforced</p></div></div><div className="panel-body readiness-list">
-      <div className="readiness-item"><ShieldCheck /><div><strong>Company isolation</strong><p>Users can access records only for their assigned company. The platform owner can administer all companies.</p></div></div>
-      <div className="readiness-item"><UserRoundCog /><div><strong>Role and branch permissions</strong><p>Requesters submit, authorised approvers decide, branch administrators manage one location, and company administrators manage the whole customer workspace.</p></div></div>
-      <div className="readiness-item"><KeyRound /><div><strong>Protected accounts</strong><p>The owner, current signed-in user, and each company&apos;s last administrator cannot be deactivated accidentally.</p></div></div>
-      <div className="readiness-item"><FileCheck2 /><div><strong>Document limits</strong><p>Uploads are restricted by company, file type, and a maximum size of 2 MB.</p></div></div>
+  return <><PageHeader eyebrow={m("settings.eyebrow")} title={m("settings.title")} description={m("settings.description")} />
+    {notice === "pricing-updated" ? <div className="callout" role="status">{m("settings.updated")}</div> : null}
+    <section className="dashboard-grid"><article className="panel"><div className="panel-header"><div><h2>{m("settings.workspaceConfig")}</h2><p>{m("settings.defaults")}</p></div></div><div className="panel-body readiness-list">
+      <div className="readiness-item"><Building2 /><div><strong>{m("settings.workspace")}</strong><p>{workspace}</p></div></div>
+      <div className="readiness-item"><Clock3 /><div><strong>{m("settings.timezone")}</strong><p>{actor.timezone ?? "Asia/Kuala_Lumpur"}</p></div></div>
+      <div className="readiness-item"><Coins /><div><strong>{m("settings.currency")}</strong><p>{m("settings.currencyValue")}</p></div></div>
+      <div className="readiness-item"><Database /><div><strong>{m("settings.payment")}</strong><p>{COD_PAYMENT_METHOD}</p></div></div>
+    </div></article><article className="panel"><div className="panel-header"><div><h2>{m("settings.protection")}</h2><p>{m("settings.protectionIntro")}</p></div></div><div className="panel-body readiness-list">
+      <div className="readiness-item"><ShieldCheck /><div><strong>{m("settings.isolation")}</strong><p>{m("settings.isolationBody")}</p></div></div>
+      <div className="readiness-item"><UserRoundCog /><div><strong>{m("settings.permissions")}</strong><p>{m("settings.permissionsBody")}</p></div></div>
+      <div className="readiness-item"><KeyRound /><div><strong>{m("settings.accounts")}</strong><p>{m("settings.accountsBody")}</p></div></div>
+      <div className="readiness-item"><FileCheck2 /><div><strong>{m("settings.documents")}</strong><p>{m("settings.documentsBody")}</p></div></div>
     </div></article></section>
-    <section className="panel" style={{ marginTop: 17 }}>
+    {mayManageCommercialSettings ? <section className="panel" style={{ marginTop: 17 }}>
       <div className="panel-header">
         <div>
-          <h3>Request pricing configuration</h3>
-          <p>Configure the estimated charges shown before company approval.</p>
+          <h3>{m("settings.pricing")}</h3>
+          <p>{m("settings.pricingIntro")}</p>
         </div>
       </div>
 
@@ -59,13 +69,13 @@ export default async function SettingsPage() {
 
                 <div>
                   <strong>{company.name}</strong>
-                  <p>{company.code} · Charges are snapshotted when a request is submitted.</p>
+                  <p>{company.code} · {m("settings.snapshot")}</p>
                 </div>
 
                 <label>
                   <span>
                     <Percent size={16} />
-                    Tax / SST rate
+                    {m("settings.tax")}
                   </span>
                   <input
                     name="taxRate"
@@ -76,13 +86,13 @@ export default async function SettingsPage() {
                     defaultValue={company.taxRate}
                     required
                   />
-                  <small>Use 0 when tax or SST does not apply.</small>
+                  <small>{m("settings.taxHelp")}</small>
                 </label>
 
                 <label>
                   <span>
                     <Truck size={16} />
-                    Estimated delivery fee (RM)
+                    {m("settings.fee")}
                   </span>
                   <input
                     name="estimatedDeliveryFee"
@@ -92,27 +102,27 @@ export default async function SettingsPage() {
                     defaultValue={company.estimatedDeliveryFee}
                     required
                   />
-                  <small>The final delivery charge is confirmed during sourcing.</small>
+                  <small>{m("settings.feeHelp")}</small>
                 </label>
 
                 <button
                   className="button button-primary"
                   type="submit"
                 >
-                  Save pricing settings
+                  {m("settings.savePricing")}
                 </button>
               </form>
             ))}
           </div>
         ) : (
           <div className="callout">
-            <strong>No company is available.</strong>
-            <p>Create or activate a company before configuring request pricing.</p>
+            <strong>{m("settings.noCompany")}</strong>
+            <p>{m("settings.noCompanyBody")}</p>
           </div>
         )}
       </div>
-    </section>
+    </section> : null}
 
-    <section className="panel" style={{ marginTop: 17 }}><div className="panel-header"><div><h3>Current execution mode</h3><p>Environment used by this installation</p></div></div><div className="panel-body"><div className="callout"><strong>{isDemoMode() ? "Local sample mode" : "Axora production mode"}</strong><p>{isDemoMode() ? "Sample records are stored in memory and reset when the local server restarts." : "Records are stored in PostgreSQL. Changes are persistent and company access controls are active."}</p></div></div></section>
+    {(mayViewDiagnostics || actor.isOwner) ? <section className="panel" data-tour="system-health" style={{ marginTop: 17 }}><div className="panel-header"><div><h3>{m("settings.mode")}</h3><p>{m("settings.modeIntro")}</p></div></div><div className="panel-body"><div className="callout"><strong>{m(isDemoMode() ? "settings.local" : "settings.production")}</strong><p>{m(isDemoMode() ? "settings.localBody" : "settings.productionBody")}</p></div></div></section> : null}
   </>;
 }

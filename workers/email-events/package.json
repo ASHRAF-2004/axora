@@ -1,0 +1,19 @@
+{
+  "name": "@axora/email-events-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "types": "wrangler types --env-file .dev.vars.example --strict-vars=false",
+    "types:check": "wrangler types --env-file .dev.vars.example --strict-vars=false --check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "deploy:dry-run": "wrangler deploy --dry-run --outdir dist"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.20.1",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10",
+    "wrangler": "4.118.0"
+  }
+}

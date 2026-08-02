@@ -16,7 +16,7 @@ const requestInput = {
   branchId: "branch-1",
   requestType: "Standard" as const,
   department: "Administration",
-  neededByDate: "2026-08-01",
+  neededByDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   urgency: "Normal" as const,
 };
 

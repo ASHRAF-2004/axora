@@ -7,7 +7,7 @@ source "$SCRIPT_DIR/lib.sh"
 
 require_root
 load_config
-for command in docker flock; do
+for command in docker flock grep; do
   require_command "$command"
 done
 
@@ -61,6 +61,9 @@ fi
 log "Performing app-only rollback to ${target_sha}; database migrations are intentionally not reversed."
 export AXORA_IMAGE="$target_image"
 services=(app caddy)
+if release_has_email_sender "$target_release"; then
+  services=(app email-sender caddy)
+fi
 if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
   services+=(cloudflared)
 fi
@@ -70,11 +73,22 @@ if ! compose_release "$target_release" up -d --no-deps --no-build --wait \
   || { bool_is_true "$AXORA_REQUIRE_EXTERNAL" && ! "$SCRIPT_DIR/health-check.sh" --external; }; then
   warn "Rollback target failed; restoring the application version that was running before this command."
   export AXORA_IMAGE="$current_image"
-  compose_release "$current_release" up -d --no-deps --no-build --wait \
-    --wait-timeout "$AXORA_DEPLOY_TIMEOUT_SECONDS" "${services[@]}" || true
+  restore_services=(app caddy)
+  if release_has_email_sender "$current_release"; then
+    restore_services=(app email-sender caddy)
+  fi
+  if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
+    restore_services+=(cloudflared)
+  fi
+  if compose_release "$current_release" up -d --no-deps --no-build --wait \
+    --wait-timeout "$AXORA_DEPLOY_TIMEOUT_SECONDS" "${restore_services[@]}"; then
+    remove_email_sender_if_release_lacks_it "$current_release"
+  fi
   "$SCRIPT_DIR/health-check.sh" --local || true
   die "Rollback did not pass its health gates; the original app image was requested again."
 fi
+
+remove_email_sender_if_release_lacks_it "$target_release"
 
 atomic_write "$AXORA_PREVIOUS_SHA_FILE" "${current_sha:-legacy}"
 atomic_write "$AXORA_PREVIOUS_IMAGE_FILE" "$current_image"

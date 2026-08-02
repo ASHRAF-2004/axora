@@ -40,6 +40,7 @@ RUN mkdir -p .next data/uploads && chown -R axora:axora .next data
 COPY --from=builder --chown=axora:axora /app/.next/standalone ./
 COPY --from=builder --chown=axora:axora /app/.next/static ./.next/static
 COPY --from=builder --chown=axora:axora /app/server-tools ./server-tools
+COPY --from=builder --chown=axora:axora /app/email-templates ./email-templates
 COPY --from=builder --chown=axora:axora /app/database/migrations ./database/migrations
 COPY --from=builder --chown=axora:axora /app/THIRD_PARTY_NOTICES.md ./THIRD_PARTY_NOTICES.md
 COPY --from=builder --chown=axora:axora /app/licenses ./licenses

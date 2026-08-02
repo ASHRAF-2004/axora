@@ -9,6 +9,8 @@ import {
 } from "@/lib/request-cart";
 import type { SessionUser } from "@/lib/auth";
 import { formatCurrency, roundMoney } from "@/lib/domain";
+import type { SupportedLocale } from "@/lib/i18n";
+import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import type { Branch, Company, Product } from "@/lib/types";
 import {
   AlertCircle,
@@ -23,6 +25,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import Link from "next/link";
 
 interface SelectedLine {
   productId: string;
@@ -56,17 +59,20 @@ export function RequestForm({
   companies,
   branches,
   initialProduct,
+  locale = "en",
 }: {
   actor: SessionUser;
   companies: Company[];
   branches: Branch[];
   initialProduct?: Product;
+  locale?: SupportedLocale;
 }) {
   const company =
     companies.find((item) => item.id === actor.companyId) ?? companies[0];
 
   const today = localDateValue();
   const { notify } = useUxFeedback();
+  const copy = corePortalMessages(locale).requestForm;
 
   const [knownProducts, setKnownProducts] = useState<Product[]>(
     initialProduct ? [initialProduct] : [],
@@ -381,25 +387,25 @@ export function RequestForm({
 
     if (!branchId) {
       nextErrors.branch =
-        "Select the branch that will receive these items.";
+        locale === "ar" ? "اختر الفرع الذي سيستلم هذه البنود." : locale === "ms" ? "Pilih cawangan yang akan menerima item ini." : "Select the branch that will receive these items.";
     }
 
     if (!department.trim()) {
       nextErrors.department =
-        "Enter the department that needs these items.";
+        locale === "ar" ? "أدخل القسم الذي يحتاج إلى هذه البنود." : locale === "ms" ? "Masukkan jabatan yang memerlukan item ini." : "Enter the department that needs these items.";
     }
 
     if (!neededByDate) {
       nextErrors.neededByDate =
-        "Choose when the items are needed.";
+        locale === "ar" ? "اختر تاريخ الحاجة إلى البنود." : locale === "ms" ? "Pilih tarikh item diperlukan." : "Choose when the items are needed.";
     } else if (neededByDate < today) {
       nextErrors.neededByDate =
-        "Choose today or a future date. Past dates are not allowed.";
+        locale === "ar" ? "اختر اليوم أو تاريخاً لاحقاً؛ التواريخ السابقة غير مسموحة." : locale === "ms" ? "Pilih hari ini atau tarikh akan datang; tarikh lampau tidak dibenarkan." : "Choose today or a future date. Past dates are not allowed.";
     }
 
     if (!selected.length) {
       nextErrors.products =
-        "Add at least one product before submitting the request.";
+        locale === "ar" ? "أضف منتجاً واحداً على الأقل قبل إرسال الطلب." : locale === "ms" ? "Tambah sekurang-kurangnya satu produk sebelum menghantar permintaan." : "Add at least one product before submitting the request.";
     }
 
     const invalidQuantity = selected.find((line) => {
@@ -415,7 +421,7 @@ export function RequestForm({
 
     if (invalidQuantity) {
       nextErrors.quantity =
-        "Enter a valid whole-number quantity that meets the product minimum.";
+        locale === "ar" ? "أدخل كمية صحيحة تساوي الحد الأدنى للمنتج أو تتجاوزه." : locale === "ms" ? "Masukkan kuantiti nombor bulat yang memenuhi minimum produk." : "Enter a valid whole-number quantity that meets the product minimum.";
     }
 
     const firstError = Object.entries(nextErrors)[0] as
@@ -441,7 +447,7 @@ export function RequestForm({
       style={{ position: "static" }}
       noValidate
       onSubmit={handleSubmit}
-      data-feedback-label="Submitting purchase request…"
+      data-feedback-label={copy.submitting}
     >
       <input
         name="companyId"
@@ -451,27 +457,27 @@ export function RequestForm({
 
       <div
         className="request-summary"
-        style={{ marginBottom: 20 }}
+        style={{ marginBlockEnd: 20 }}
       >
         <div className="summary-box">
-          <span>Company</span>
-          <strong>{company?.name ?? "Assigned company"}</strong>
+          <span>{copy.company}</span>
+          <strong>{company?.name ?? copy.assignedCompany}</strong>
         </div>
 
         <div className="summary-box">
-          <span>Requester</span>
+          <span>{copy.requester}</span>
           <strong>{actor.name}</strong>
           <small>{actor.email}</small>
         </div>
 
         <div className="summary-box">
-          <span>Selected items</span>
+          <span>{copy.selectedItems}</span>
           <strong>{selected.length}</strong>
         </div>
 
         <div className="summary-box">
-          <span>Estimated total</span>
-          <strong>{formatCurrency(estimatedTotal)}</strong>
+          <span>{copy.estimatedTotal}</span>
+          <strong>{formatCurrency(estimatedTotal, locale)}</strong>
         </div>
       </div>
 
@@ -484,11 +490,8 @@ export function RequestForm({
           <AlertCircle size={21} aria-hidden="true" />
 
           <div>
-            <strong>Complete the highlighted fields</strong>
-            <p>
-              Review the messages below, correct the information,
-              then submit again.
-            </p>
+            <strong>{copy.errorTitle}</strong>
+            <p>{copy.errorBody}</p>
 
             <ul>
               {Object.values(errors).map((message) => (
@@ -501,7 +504,7 @@ export function RequestForm({
 
       <div className="form-grid">
         <label>
-          Branch
+          {copy.branch}
           <select
             ref={branchRef}
             name="branchId"
@@ -519,7 +522,7 @@ export function RequestForm({
             }}
           >
             <option value="" disabled>
-              Select branch
+              {copy.selectBranch}
             </option>
 
             {availableBranches.map((item) => (
@@ -539,27 +542,27 @@ export function RequestForm({
             </span>
           ) : (
             <span className="form-hint">
-              The selected branch determines budget and approval.
+              {copy.branchHint}
             </span>
           )}
         </label>
 
         <label>
-          Request type
+          {copy.requestType}
           <select name="requestType" defaultValue="Standard">
-            <option>Standard</option>
-            <option>Ad-hoc</option>
-            <option>Recurring</option>
+            <option value="Standard">{copy.standard}</option>
+            <option value="Ad-hoc">{copy.adHoc}</option>
+            <option value="Recurring">{copy.recurring}</option>
           </select>
         </label>
 
         <label>
-          Department
+          {copy.department}
           <input
             ref={departmentRef}
             name="department"
             value={department}
-            placeholder="Administration"
+            placeholder={copy.departmentPlaceholder}
             className={
               errors.department
                 ? "request-input-error"
@@ -589,7 +592,7 @@ export function RequestForm({
         </label>
 
         <label>
-          Needed by
+          {copy.neededBy}
           <div className="request-date-control">
             <CalendarDays size={18} aria-hidden="true" />
 
@@ -619,14 +622,14 @@ export function RequestForm({
 
           <div
             className="request-date-shortcuts"
-            aria-label="Quick date choices"
+            aria-label={copy.quickDates}
           >
             <button
               type="button"
               data-ux-silent="true"
               onClick={() => chooseDate(0)}
             >
-              Today
+              {copy.today}
             </button>
 
             <button
@@ -634,7 +637,7 @@ export function RequestForm({
               data-ux-silent="true"
               onClick={() => chooseDate(7)}
             >
-              In 7 days
+              {copy.sevenDays}
             </button>
 
             <button
@@ -642,7 +645,7 @@ export function RequestForm({
               data-ux-silent="true"
               onClick={() => chooseDate(30)}
             >
-              In 30 days
+              {copy.thirtyDays}
             </button>
           </div>
 
@@ -656,57 +659,54 @@ export function RequestForm({
             </span>
           ) : (
             <span className="form-hint" id="needed-date-hint">
-              Past dates cannot be selected.
+              {copy.pastDate}
             </span>
           )}
         </label>
 
         <label>
-          Priority
+          {copy.priority}
           <select name="urgency" defaultValue="Normal">
-            <option>Low</option>
-            <option>Normal</option>
-            <option>High</option>
-            <option>Urgent</option>
+            <option value="Low">{localizedStatus("Low", locale)}</option>
+            <option value="Normal">{localizedStatus("Normal", locale)}</option>
+            <option value="High">{localizedStatus("High", locale)}</option>
+            <option value="Urgent">{localizedStatus("Urgent", locale)}</option>
           </select>
         </label>
 
         <label className="field-full">
-          Business justification / notes
+          {copy.notes}
           <textarea
             name="notes"
-            placeholder="Explain why these items are needed"
+            placeholder={copy.notesPlaceholder}
           />
         </label>
       </div>
 
       {selectedBranch ? (
-        <div className="callout" style={{ marginTop: 16 }}>
-          <strong>{selectedBranch.name} budget</strong>
+        <div className="callout" style={{ marginBlockStart: 16 }}>
+          <strong>{copy.branchBudget(selectedBranch.name)}</strong>
           <p>
             {selectedBranch.monthlyBudget == null
-              ? "No monthly limit is configured. The branch approver will still review this request."
-              : `${formatCurrency(
-                  selectedBranch.remainingAmount ?? 0,
-                )} available from ${formatCurrency(
-                  selectedBranch.monthlyBudget,
-                )} this month. Approval commits the request amount.`}
+              ? copy.noMonthlyLimit
+              : copy.availableBudget(
+                  formatCurrency(selectedBranch.remainingAmount ?? 0, locale),
+                  formatCurrency(selectedBranch.monthlyBudget, locale),
+                )}
           </p>
         </div>
       ) : null}
 
       <div className="request-cart-review-heading">
         <div>
-          <span>Review request</span>
-          <h2>Items from your Shop cart</h2>
-          <p>
-            Adjust quantities or specifications before submitting.
-          </p>
+          <span>{copy.review}</span>
+          <h2>{copy.cartItems}</h2>
+          <p>{copy.adjust}</p>
         </div>
 
-        <a className="button button-secondary" href="/products">
-          Continue shopping
-        </a>
+        <Link className="button button-secondary" href="/products">
+          {copy.continueShopping}
+        </Link>
       </div>
 
       {errors.products ? (
@@ -732,13 +732,13 @@ export function RequestForm({
           <div className="panel-body">
             <div className="request-cart-heading">
               <div>
-                <span>Purchase request cart</span>
-                <h2>Selected items</h2>
+                <span>{copy.cart}</span>
+                <h2>{copy.selectedItems}</h2>
               </div>
 
               <strong>
                 {selected.length}{" "}
-                {selected.length === 1 ? "item" : "items"}
+                {selected.length === 1 ? copy.item : copy.items}
               </strong>
             </div>
 
@@ -759,7 +759,7 @@ export function RequestForm({
                         {product.code} · {product.category}
                       </span>
                       <small>
-                        {formatCurrency(product.defaultSellPrice)} per{" "}
+                        {formatCurrency(product.defaultSellPrice, locale)} {copy.per}{" "}
                         {product.unit}
                       </small>
                     </div>
@@ -771,7 +771,7 @@ export function RequestForm({
                     />
 
                     <label className="request-cart-quantity">
-                      Quantity
+                      {copy.quantity}
                       <input
                         name="quantity"
                         type="number"
@@ -791,12 +791,12 @@ export function RequestForm({
                         }
                       />
                       <small>
-                        Minimum {minimumWholeQuantity(product)}
+                        {copy.minimum} {minimumWholeQuantity(product)}
                       </small>
                     </label>
 
                     <label className="request-cart-specification">
-                      Specification
+                      {copy.specification}
                       <input
                         name="specification"
                         value={line.specification}
@@ -805,18 +805,18 @@ export function RequestForm({
                             specification: event.target.value,
                           })
                         }
-                        placeholder="Optional size, colour, or detail"
+                        placeholder={copy.specificationPlaceholder}
                       />
                     </label>
 
                     <div className="request-cart-line-total">
-                      <span>Line total</span>
+                      <span>{copy.lineTotal}</span>
                       <strong>
                         {formatCurrency(
                           roundMoney(
                             line.quantity *
                               product.defaultSellPrice,
-                          ),
+                          ), locale,
                         )}
                       </strong>
 
@@ -824,7 +824,7 @@ export function RequestForm({
                         type="button"
                         className="icon-button"
                         data-ux-silent="true"
-                        aria-label={`Remove ${product.name}`}
+                        aria-label={copy.remove(product.name)}
                         onClick={() => toggleProduct(product)}
                       >
                         <Trash2 size={16} />
@@ -837,58 +837,53 @@ export function RequestForm({
 
             <div className="request-payment-summary">
               <div>
-                <span>Subtotal</span>
-                <strong>{formatCurrency(subtotal)}</strong>
+                <span>{corePortalMessages(locale).pricing.subtotal}</span>
+                <strong>{formatCurrency(subtotal, locale)}</strong>
               </div>
 
               <div>
-                <span>Estimated delivery fee</span>
+                <span>{corePortalMessages(locale).pricing.delivery}</span>
                 <strong>
-                  {formatCurrency(estimatedDeliveryFee)}
+                  {formatCurrency(estimatedDeliveryFee, locale)}
                 </strong>
               </div>
 
               <div>
                 <span>
-                  Tax / SST
+                  {corePortalMessages(locale).pricing.tax}
                   {taxRate > 0 ? ` (${taxRate}%)` : ""}
                 </span>
-                <strong>{formatCurrency(taxAmount)}</strong>
+                <strong>{formatCurrency(taxAmount, locale)}</strong>
               </div>
 
               <div className="request-payment-total">
-                <span>Estimated total</span>
-                <strong>{formatCurrency(estimatedTotal)}</strong>
+                <span>{copy.estimatedTotal}</span>
+                <strong>{formatCurrency(estimatedTotal, locale)}</strong>
               </div>
 
-              <p>
-                Delivery is estimated until sourcing confirms the
-                supplier quotation. Tax/SST follows the company
-                pricing configuration.
-              </p>
+              <p>{corePortalMessages(locale).pricing.note}</p>
             </div>
           </div>
         </div>
       ) : (
         <div className="empty-state">
           <ShoppingCart size={30} />
-          <strong>Your request cart is empty</strong>
-          <p>Browse the catalog and add at least one product.</p>
+          <strong>{copy.empty}</strong>
+          <p>{copy.emptyBody}</p>
         </div>
       )}
 
       <div className="form-actions request-submit-actions">
         <span>
-          Submit when the request details are complete. Axora will
-          explain anything that still needs attention.
+          {copy.submitHelp}
         </span>
 
         <button
           className="button button-primary"
           type="submit"
         >
-          Submit purchase request ·{" "}
-          {formatCurrency(estimatedTotal)}
+          {copy.submit} ·{" "}
+          {formatCurrency(estimatedTotal, locale)}
         </button>
       </div>
     </form>

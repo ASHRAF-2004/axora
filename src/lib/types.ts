@@ -1,12 +1,62 @@
-export type UserRole =
-  | "ADMIN"
-  | "BRANCH_ADMIN"
-  | "APPROVER"
-  | "REQUESTER"
-  | "OPERATIONS"
-  | "FINANCE"
-  | "VIEWER"
-  | "IT_SUPPORT";
+export const LEGACY_USER_ROLES = [
+  "ADMIN",
+  "BRANCH_ADMIN",
+  "APPROVER",
+  "REQUESTER",
+  "OPERATIONS",
+  "FINANCE",
+  "VIEWER",
+  "IT_SUPPORT",
+] as const;
+
+export const CANONICAL_USER_ROLES = [
+  "PLATFORM_OWNER",
+  "PLATFORM_OPERATIONS",
+  "COMPANY_ADMIN",
+  "BRANCH_ADMIN",
+  "BRANCH_APPROVER",
+  "COMPANY_APPROVER",
+  "REQUESTER",
+  "FINANCE_REVIEWER",
+  "AUDITOR",
+  "TECHNICAL_SUPPORT",
+  "SUPPLIER_USER",
+  "DELIVERY_DRIVER",
+  "RECEIVING_USER",
+] as const;
+
+export type LegacyUserRole = (typeof LEGACY_USER_ROLES)[number];
+export type CanonicalRoleKey = (typeof CANONICAL_USER_ROLES)[number];
+export type CanonicalUserRole = CanonicalRoleKey;
+export type KnownUserRole = LegacyUserRole | CanonicalUserRole;
+
+// Keep string-keyed legacy label maps source-compatible while deployments move
+// from the old role set to normalized assignments. Security boundaries must use
+// isUserRole(), which intentionally rejects every value outside KnownUserRole.
+export type UserRole = LegacyUserRole | (string & {});
+
+export const ACCOUNT_KINDS = ["PLATFORM", "COMPANY", "SUPPLIER", "DELIVERY"] as const;
+export type AccountKind = (typeof ACCOUNT_KINDS)[number];
+
+export const ROLE_SCOPE_TYPES = ["PLATFORM", "COMPANY", "BRANCH", "SUPPLIER", "DELIVERY"] as const;
+export type RoleScopeType = (typeof ROLE_SCOPE_TYPES)[number];
+
+const knownUserRoles = new Set<string>([
+  ...LEGACY_USER_ROLES,
+  ...CANONICAL_USER_ROLES,
+]);
+
+export function isUserRole(value: unknown): value is KnownUserRole {
+  return typeof value === "string" && knownUserRoles.has(value);
+}
+
+export function isAccountKind(value: unknown): value is AccountKind {
+  return typeof value === "string" && (ACCOUNT_KINDS as readonly string[]).includes(value);
+}
+
+export function isRoleScopeType(value: unknown): value is RoleScopeType {
+  return typeof value === "string" && (ROLE_SCOPE_TYPES as readonly string[]).includes(value);
+}
 export type MasterStatus = "Active" | "Inactive" | "Needs Review";
 
 export type RequestStatus =
@@ -47,6 +97,8 @@ export interface Company {
   code: string;
   name: string;
   industry: string;
+  companyInformation?: string;
+  websiteUrl?: string;
   mainContactName: string;
   mainContactEmail: string;
   mainContactPhone: string;
@@ -257,5 +309,12 @@ export interface AttachmentRecord {
 export interface UserRecord {
   id: string; email: string; displayName: string; role: UserRole; active: boolean; isOwner: boolean;
   companyId?: string; companyName?: string; branchId?: string; branchName?: string;
+  supplierId?: string; supplierName?: string; jobTitle?: string;
+  accountKind?: AccountKind; scopeType?: RoleScopeType; accountStatus?: "INVITED" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+  accountSetupCompletedAt?: string;
+  accountSetupDeliveryStatus?: "PENDING" | "SENDING" | "SENT" | "FAILED" | "DISABLED" | "UNCERTAIN" | "CANCELLED";
+  accountSetupExpiresAt?: string;
+  accountSetupSentAt?: string;
+  accountSetupDeliveryAttemptedAt?: string;
   lastLoginAt?: string; createdAt: string;
 }

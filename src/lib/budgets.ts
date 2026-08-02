@@ -1,13 +1,14 @@
 import { getDemoStore } from "./demo-data";
 import { isDemoMode, withAuditTransaction } from "./db";
 import type { SessionUser } from "./auth";
+import { canAccess } from "./permissions";
 
 export async function setBranchMonthlyBudget(
   branchId: string,
   monthlyBudget: number | null,
   actor: SessionUser,
 ) {
-  if (actor.isOwner || actor.role !== "ADMIN" || !actor.companyId) {
+  if (!canAccess(actor, "manage_branch_budget") || !actor.companyId) {
     throw new Error("Only the company administrator can set branch budgets.");
   }
   if (monthlyBudget !== null && (!Number.isFinite(monthlyBudget) || monthlyBudget < 0)) {

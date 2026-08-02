@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireRecentStepUp } from "@/lib/auth";
 import { updateCompanyPricingConfiguration } from "@/lib/repository";
 import {
   companyPricingSchema,
@@ -17,7 +17,8 @@ function numberValue(formData: FormData, key: string) {
 export async function updateCompanyPricingAction(
   formData: FormData,
 ) {
-  const actor = await requirePermission("manage_settings");
+  const actor = await requirePermission("manage_commercial_pricing");
+  await requireRecentStepUp(actor, "/settings");
 
   const input = companyPricingSchema.parse({
     companyId: readFormText(formData, "companyId"),

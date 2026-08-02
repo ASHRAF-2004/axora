@@ -1,0 +1,2 @@
+# Used only for local type generation and tests. Never put a real secret here.
+AXORA_EMAIL_EVENTS_WEBHOOK_SECRET=local-placeholder-not-a-production-secret-1234567890

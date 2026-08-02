@@ -80,12 +80,19 @@ automatic_revert() {
   warn "A post-swap gate failed; restoring the previously running application image."
   export AXORA_IMAGE="$old_image"
   local -a services=(app caddy)
+  if release_has_email_sender "$old_release"; then
+    services=(app email-sender caddy)
+  fi
   if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
     services+=(cloudflared)
   fi
   if compose_release "$old_release" up -d --no-deps --no-build --wait \
     --wait-timeout "$AXORA_DEPLOY_TIMEOUT_SECONDS" "${services[@]}"; then
-    "$SCRIPT_DIR/health-check.sh" --local || warn "The automatic app-only rollback also failed its local health gate."
+    if "$SCRIPT_DIR/health-check.sh" --local; then
+      remove_email_sender_if_release_lacks_it "$old_release"
+    else
+      warn "The automatic app-only rollback also failed its local health gate."
+    fi
   else
     warn "The automatic app-only rollback could not restart the prior application."
   fi
@@ -270,9 +277,12 @@ docker run \
   --env DB_USER=axora_app \
   --env DB_PASSWORD_FILE=/run/secrets/axora_app_password \
   --env SESSION_SECRET_FILE=/run/secrets/session_secret \
+  --env AXORA_EMAIL_DELIVERY_ENABLED=false \
+  --env AXORA_EMAIL_SERVICE_AUTH_KEY_FILE=/run/secrets/axora_email_service_auth_key \
   --env "APP_BASE_URL=$AXORA_PUBLIC_URL" \
   --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_app_password,target=/run/secrets/axora_app_password,readonly" \
   --mount "type=bind,source=$AXORA_SECRETS_DIR/session_secret,target=/run/secrets/session_secret,readonly" \
+  --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_email_service_auth_key,target=/run/secrets/axora_email_service_auth_key,readonly" \
   "$AXORA_IMAGE" >/dev/null
 
 candidate_ready=false
@@ -356,7 +366,7 @@ if [[ "$deployment_mode" == "bootstrap" ]]; then
   fi
 fi
 
-services=(app caddy)
+services=(app email-sender caddy)
 if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
   services+=(cloudflared)
 fi

@@ -118,6 +118,13 @@ services:
       - frontend
       - edge
 
+  email-sender:
+    image: "${AXORA_IMAGE:?Set AXORA_IMAGE to an immutable Axora image reference}"
+    cpus: "1.00"
+    mem_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 20s
+
   cloudflared:
     image: cloudflare/cloudflared:2026.7.3@sha256:e39ee8da81ad5e05d77f38d2f51c60ca51bf2a8450ac3abab50c17fdb91d91bf
     restart: unless-stopped
@@ -183,8 +190,18 @@ secrets:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/tailscale_db_auth_key"
   cloudflare_tunnel_token:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/cloudflare_tunnel_token"
+  cloudflare_email_api_token:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/cloudflare_email_api_token"
+  axora_email_service_auth_key:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_email_service_auth_key"
+  axora_email_events_webhook_secret:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_email_events_webhook_secret"
+  turnstile_secret:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/turnstile_secret"
 
 networks:
   frontend:
+    internal: true
+  mail:
     internal: true
   edge:

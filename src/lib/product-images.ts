@@ -5,6 +5,7 @@ import type { SessionUser } from "./auth";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { getDemoStore } from "./demo-data";
 import type { ProductImageSummary } from "./types";
+import { canAccess } from "./permissions";
 
 export const MAX_PRODUCT_IMAGES = 8;
 export const MAX_PRODUCT_IMAGE_INPUT_BYTES = 5 * 1024 * 1024;
@@ -65,8 +66,12 @@ function validateProductId(productId: string) {
   validateUuid(productId, "Product not found.");
 }
 
-function requireOwner(actor: SessionUser) {
-  if (!actor.isOwner) throw new Error("Only an Axora platform owner can manage product images.");
+function canManageCatalog(actor: SessionUser) {
+  return canAccess(actor, "manage_catalog");
+}
+
+function requireCatalogManager(actor: SessionUser) {
+  if (!canManageCatalog(actor)) throw new Error("Your account cannot manage product images.");
 }
 
 function normalizeAltText(value?: string) {
@@ -195,7 +200,7 @@ export async function savePreparedProductImages(
   input: { productId: string; images: NormalizedProductImage[]; altText?: string },
   actor: SessionUser,
 ): Promise<ProductImageSummary[]> {
-  requireOwner(actor);
+  requireCatalogManager(actor);
   validateProductId(input.productId);
   if (!input.images.length) return [];
   const requestedAltText = normalizeAltText(input.altText);
@@ -290,7 +295,7 @@ export async function listProductImages(productId: string, actor: SessionUser): 
   validateProductId(productId);
   if (isDemoMode()) {
     const product = getDemoStore().products.find((item) => item.id === productId);
-    if (!product || (!actor.isOwner && product.status !== "Active")) return [];
+    if (!product || (!canManageCatalog(actor) && product.status !== "Active")) return [];
     return (demoProductImages().get(productId) ?? [])
       .filter((image) => image.active)
       .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.sortOrder - b.sortOrder)
@@ -303,13 +308,13 @@ export async function listProductImages(productId: string, actor: SessionUser): 
      WHERE pi.product_id=$1 AND pi.active=true
        AND ($2::boolean OR (p.active=true AND p.needs_review=false AND (p.company_id IS NULL OR p.company_id=$3::uuid)))
      ORDER BY pi.is_primary DESC, pi.sort_order, pi.created_at`,
-    [productId, actor.isOwner, actor.companyId ?? null],
+    [productId, canManageCatalog(actor), actor.companyId ?? null],
   );
   return result.rows;
 }
 
 export async function setPrimaryProductImage(productId: string, imageId: string, actor: SessionUser) {
-  requireOwner(actor);
+  requireCatalogManager(actor);
   validateProductId(productId);
   validateUuid(imageId, "Product image not found.");
   if (isDemoMode()) {
@@ -331,7 +336,7 @@ export async function setPrimaryProductImage(productId: string, imageId: string,
 }
 
 export async function updateProductImageAltText(productId: string, imageId: string, altText: string, actor: SessionUser) {
-  requireOwner(actor);
+  requireCatalogManager(actor);
   validateProductId(productId);
   validateUuid(imageId, "Product image not found.");
   const normalized = normalizeAltText(altText);
@@ -356,7 +361,7 @@ export async function updateProductImageAltText(productId: string, imageId: stri
 }
 
 export async function deactivateProductImage(productId: string, imageId: string, actor: SessionUser) {
-  requireOwner(actor);
+  requireCatalogManager(actor);
   validateProductId(productId);
   validateUuid(imageId, "Product image not found.");
   if (isDemoMode()) {
@@ -404,7 +409,7 @@ export async function loadProductImage(productId: string, actor: SessionUser, im
     const image = imageId
       ? images.find((item) => item.id === imageId)
       : images.sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.sortOrder - b.sortOrder)[0];
-    if (!product || !image || (!actor.isOwner && product.status !== "Active")) return null;
+    if (!product || !image || (!canManageCatalog(actor) && product.status !== "Active")) return null;
     return image;
   }
 
@@ -418,7 +423,7 @@ export async function loadProductImage(productId: string, actor: SessionUser, im
        AND ($2::boolean OR (p.active=true AND p.needs_review=false AND (p.company_id IS NULL OR p.company_id=$3::uuid)))
      ORDER BY pi.is_primary DESC, pi.sort_order, pi.created_at
      LIMIT 1`,
-    [productId, actor.isOwner, actor.companyId ?? null, imageId ?? null],
+    [productId, canManageCatalog(actor), actor.companyId ?? null, imageId ?? null],
   );
   const image = result.rows[0];
   if (image && servedTypes.has(image.contentType) && image.content.length) return image;
@@ -431,7 +436,7 @@ export async function loadProductImage(productId: string, actor: SessionUser, im
      FROM products p
      WHERE p.id=$1 AND p.image_content IS NOT NULL
        AND ($2::boolean OR (p.active=true AND p.needs_review=false AND (p.company_id IS NULL OR p.company_id=$3::uuid)))`,
-    [productId, actor.isOwner, actor.companyId ?? null],
+    [productId, canManageCatalog(actor), actor.companyId ?? null],
   );
   const fallback = legacy.rows[0];
   if (!fallback || !servedTypes.has(fallback.contentType) || !fallback.content.length) return null;

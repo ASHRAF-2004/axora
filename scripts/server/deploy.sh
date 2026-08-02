@@ -21,4 +21,4 @@ compose up -d --wait
 compose ps
 
 info "Axora is ready at https://${AXORA_HOST}"
-printf 'Next: bash scripts/server/create-admin.sh you@company.com "Your name"\n'
+printf 'If this is a new empty baseline, follow scripts/bootstrap/README.md to invite the first platform owner.\n'

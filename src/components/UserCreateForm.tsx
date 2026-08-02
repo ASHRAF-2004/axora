@@ -1,15 +1,43 @@
 "use client";
 
 import { createUserAction } from "@/app/(portal)/users/actions";
-import type { Branch, Company, UserRole } from "@/lib/types";
+import type {
+  AccountKind,
+  Branch,
+  Company,
+  RoleScopeType,
+  Supplier,
+  UserRole,
+} from "@/lib/types";
 import { useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { LOCALE_NAMES, SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n";
+import { userFormMessages } from "@/lib/user-form-i18n";
 
-const requiredBranchRoles = new Set<UserRole>(["REQUESTER", "APPROVER", "BRANCH_ADMIN"]);
-const optionalBranchRoles = new Set<UserRole>(["FINANCE", "VIEWER"]);
-
-interface RoleOption {
+export interface UserRoleOption {
   label: string;
   value: UserRole;
+  description: string;
+  category: "Axora" | "Company" | "Supplier" | "Delivery";
+  accountKind: AccountKind;
+  allowedScopes: readonly RoleScopeType[];
+}
+
+function CreateAccountButton({ disabled, locale }: { disabled: boolean; locale: SupportedLocale }) {
+  const { pending } = useFormStatus();
+  const copy = userFormMessages(locale);
+
+  return (
+    <button
+      className="button button-primary"
+      type="submit"
+      disabled={disabled || pending}
+      aria-busy={pending}
+      data-feedback-label={copy.creating}
+    >
+      {pending ? copy.sending : copy.create}
+    </button>
+  );
 }
 
 export function UserCreateForm({
@@ -19,122 +47,171 @@ export function UserCreateForm({
   branches,
   companies,
   roleOptions,
+  suppliers,
+  defaultLocale,
 }: {
   actorBranchId?: string;
   actorCompanyId?: string;
   actorIsOwner: boolean;
   branches: Branch[];
   companies: Company[];
-  roleOptions: RoleOption[];
+  roleOptions: UserRoleOption[];
+  suppliers: Supplier[];
+  defaultLocale: SupportedLocale;
 }) {
-  const initialCompanyId = actorCompanyId ?? companies.find((company) => company.status === "Active")?.id ?? "";
-  const initialRole = actorIsOwner && roleOptions.some((option) => option.value === "ADMIN")
-    ? "ADMIN"
-    : roleOptions.some((option) => option.value === "REQUESTER")
-      ? "REQUESTER"
-      : roleOptions[0]?.value ?? "REQUESTER";
+  const preferredRole = roleOptions.find((option) => option.value === "COMPANY_ADMIN")
+    ?? roleOptions.find((option) => option.value === "REQUESTER")
+    ?? roleOptions[0];
+  const [role, setRole] = useState<UserRole>(preferredRole?.value ?? "REQUESTER");
+  const selectedRole = roleOptions.find((option) => option.value === role) ?? preferredRole;
+  const initialCompanyId = actorCompanyId
+    ?? companies.find((company) => company.status === "Active")?.id
+    ?? "";
   const [companyId, setCompanyId] = useState(initialCompanyId);
-  const [role, setRole] = useState<UserRole>(initialRole);
+  const [supplierId, setSupplierId] = useState(
+    suppliers.find((supplier) => supplier.status === "Active")?.id ?? "",
+  );
   const availableBranches = useMemo(
     () => branches.filter((branch) => branch.status === "Active" && branch.companyId === companyId),
     [branches, companyId],
   );
-  const firstBranchId = actorBranchId ?? availableBranches[0]?.id ?? "";
-  const [branchId, setBranchId] = useState(requiredBranchRoles.has(initialRole) ? firstBranchId : "");
-  const requiresBranch = requiredBranchRoles.has(role);
-  const allowsBranch = requiresBranch || optionalBranchRoles.has(role);
-  const selectedBranchId = allowsBranch && availableBranches.some((branch) => branch.id === branchId)
+  const [branchId, setBranchId] = useState(actorBranchId ?? "");
+  const copy = userFormMessages(defaultLocale);
+  const localizedSelectedRole = selectedRole ? copy.roles[selectedRole.value] : undefined;
+
+  const isCompanyAccount = selectedRole?.accountKind === "COMPANY";
+  const isSupplierAccount = selectedRole?.accountKind === "SUPPLIER";
+  const allowsBranch = Boolean(selectedRole?.allowedScopes.includes("BRANCH"));
+  const requiresBranch = allowsBranch
+    && !selectedRole?.allowedScopes.includes("COMPANY");
+  const firstBranchId = actorBranchId
+    ?? availableBranches[0]?.id
+    ?? "";
+  const selectedBranchId = allowsBranch
+    && availableBranches.some((branch) => branch.id === branchId)
     ? branchId
-    : requiresBranch
-      ? firstBranchId
-      : "";
+    : requiresBranch ? firstBranchId : "";
 
   function changeCompany(nextCompanyId: string) {
     const nextBranches = branches.filter(
       (branch) => branch.status === "Active" && branch.companyId === nextCompanyId,
     );
     setCompanyId(nextCompanyId);
-    setBranchId(requiredBranchRoles.has(role) ? nextBranches[0]?.id ?? "" : "");
+    setBranchId(requiresBranch ? nextBranches[0]?.id ?? "" : "");
   }
 
   function changeRole(nextRole: UserRole) {
+    const nextDefinition = roleOptions.find((option) => option.value === nextRole);
     setRole(nextRole);
-    if (requiredBranchRoles.has(nextRole)) {
+    if (!nextDefinition?.allowedScopes.includes("BRANCH")) {
+      setBranchId("");
+    } else if (!nextDefinition.allowedScopes.includes("COMPANY")) {
       setBranchId((current) => availableBranches.some((branch) => branch.id === current)
         ? current
         : firstBranchId);
-    } else if (!optionalBranchRoles.has(nextRole)) {
-      setBranchId("");
     }
   }
+
+  const missingRequiredScope = (isCompanyAccount && !companyId)
+    || (requiresBranch && !selectedBranchId)
+    || (isSupplierAccount && !supplierId);
 
   return (
     <form action={createUserAction}>
       <div className="form-grid">
-        <label>Full name<input name="displayName" required autoComplete="name" /></label>
-        <label>Work email<input name="email" type="email" required autoComplete="username" /></label>
-        {actorIsOwner ? (
-          <label>Company
-            <select
-              name="companyId"
-              required
-              value={companyId}
-              onChange={(event) => changeCompany(event.target.value)}
-            >
-              <option value="" disabled>Select company</option>
-              {companies.filter((company) => company.status === "Active").map((company) => (
-                <option key={company.id} value={company.id}>{company.name}</option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <label>Role
+        <label>{copy.fullName}<input name="displayName" required autoComplete="name" /></label>
+        <label>{copy.workEmail}<input name="email" type="email" required autoComplete="username" /></label>
+        <label>{copy.jobTitle} <span className="subtle">({copy.optional})</span>
+          <input name="jobTitle" maxLength={160} autoComplete="organization-title" />
+        </label>
+        <label>{copy.invitationLanguage}
+          <select name="preferredLocale" defaultValue={defaultLocale}>
+            {SUPPORTED_LOCALES.map((locale) => (
+              <option key={locale} value={locale}>{LOCALE_NAMES[locale].native}</option>
+            ))}
+          </select>
+          <small>{copy.languageHelp}</small>
+        </label>
+        <label>{copy.role}
           <select
             name="role"
             value={role}
             onChange={(event) => changeRole(event.target.value as UserRole)}
           >
             {roleOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        <label>Assigned branch
-          <select
-            name="branchId"
-            disabled={!allowsBranch}
-            required={requiresBranch}
-            value={selectedBranchId}
-            onChange={(event) => setBranchId(event.target.value)}
-          >
-            {requiresBranch ? <option value="" disabled>Select branch</option> : <option value="">Company-wide</option>}
-            {availableBranches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {actorIsOwner ? `${branch.companyName} · ` : ""}{branch.name}
+              <option key={option.value} value={option.value}>
+                {copy.categories[option.category] ?? option.category} · {copy.roles[option.value]?.label ?? option.label}
               </option>
             ))}
           </select>
-          <small>
-            {requiresBranch
-              ? "This role works in one branch."
-              : allowsBranch
-                ? "Choose a branch or keep company-wide access."
-                : "This role is company-wide."}
-          </small>
+          <small>{localizedSelectedRole?.description ?? selectedRole?.description}</small>
         </label>
-        <label>Initial password
-          <input name="password" type="password" minLength={14} required autoComplete="new-password" />
-          <small>At least 14 characters. Use a memorable passphrase and share it privately.</small>
-        </label>
+
+        {isCompanyAccount && actorIsOwner ? (
+          <label>{copy.customerCompany}
+            <select
+              name="companyId"
+              required
+              value={companyId}
+              onChange={(event) => changeCompany(event.target.value)}
+            >
+              <option value="" disabled>{copy.selectCompany}</option>
+              {companies.filter((company) => company.status === "Active").map((company) => (
+                <option key={company.id} value={company.id}>{company.name}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {isCompanyAccount && !actorIsOwner && actorCompanyId ? (
+          <input type="hidden" name="companyId" value={actorCompanyId} />
+        ) : null}
+
+        {isCompanyAccount && allowsBranch ? (
+          <label>{copy.assignedBranch}
+            <select
+              name="branchId"
+              required={requiresBranch}
+              value={selectedBranchId}
+              onChange={(event) => setBranchId(event.target.value)}
+            >
+              {requiresBranch
+                ? <option value="" disabled>{copy.selectBranch}</option>
+                : <option value="">{copy.companyWide}</option>}
+              {availableBranches.map((branch) => (
+                <option key={branch.id} value={branch.id}>
+                  {actorIsOwner ? `${branch.companyName} · ` : ""}{branch.name}
+                </option>
+              ))}
+            </select>
+            <small>{requiresBranch
+              ? copy.branchLimited
+              : copy.branchOptional}</small>
+          </label>
+        ) : null}
+
+        {isSupplierAccount ? (
+          <label>{copy.supplier}
+            <select
+              name="supplierId"
+              required
+              value={supplierId}
+              onChange={(event) => setSupplierId(event.target.value)}
+            >
+              <option value="" disabled>{copy.selectSupplier}</option>
+              {suppliers.filter((supplier) => supplier.status === "Active").map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        <div className="callout field-full" role="note">
+          <strong>{copy.secureSetup}</strong>
+          <p>{copy.secureSetupBody}</p>
+        </div>
       </div>
       <div className="form-actions">
-        <button
-          className="button button-primary"
-          type="submit"
-          disabled={!companyId || (requiresBranch && !selectedBranchId)}
-        >
-          Create account
-        </button>
+        <CreateAccountButton disabled={!selectedRole || missingRequiredScope} locale={defaultLocale} />
       </div>
     </form>
   );

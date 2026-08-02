@@ -1,10 +1,10 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
 
 const projectDir = path.resolve(import.meta.dirname, "../..");
 const outputDir = path.join(projectDir, "reports", "screenshots");
-const edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const baseUrl = process.env.AXORA_QA_URL || "http://127.0.0.1:3010";
 
 function parseEnvironment(text) {
@@ -12,11 +12,32 @@ function parseEnvironment(text) {
     .map((line) => { const index = line.indexOf("="); return [line.slice(0, index), line.slice(index + 1)]; }));
 }
 
-const environment = parseEnvironment(await readFile(path.join(projectDir, ".env.local"), "utf8"));
-if (!environment.DEMO_EMAIL || !environment.DEMO_PASSWORD) throw new Error("DEMO_EMAIL and DEMO_PASSWORD are required in .env.local.");
+const envCandidates = [".env.local", ".env"];
+let environment = process.env.DEMO_EMAIL && process.env.DEMO_PASSWORD
+  ? {
+      DEMO_EMAIL: process.env.DEMO_EMAIL,
+      DEMO_PASSWORD: process.env.DEMO_PASSWORD,
+    }
+  : null;
+
+if (!environment) {
+  for (const envFile of envCandidates) {
+    const envPath = path.join(projectDir, envFile);
+    try {
+      await access(envPath, fsConstants.R_OK);
+      environment = parseEnvironment(await readFile(envPath, "utf8"));
+      break;
+    } catch {
+      continue;
+    }
+  }
+}
+
+if (!environment) environment = {};
+if (!environment.DEMO_EMAIL || !environment.DEMO_PASSWORD) throw new Error("DEMO_EMAIL and DEMO_PASSWORD are required in .env, .env.local, or environment variables.");
 await mkdir(outputDir, { recursive: true });
 
-const browser = await chromium.launch({ executablePath: edgePath, headless: true });
+const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, colorScheme: "light" });
 const page = await context.newPage();
 const errors = [];
@@ -26,7 +47,10 @@ page.on("console", (message) => { if (message.type() === "error") errors.push(`c
 const checks = [];
 async function inspect(name, route, heading) {
   await page.goto(`${baseUrl}${route}`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: heading, exact: true }).waitFor({ state: "visible" });
+  const title = typeof heading === "string"
+    ? page.getByRole("heading", { name: heading, exact: true })
+    : page.getByRole("heading", { name: heading });
+  await title.waitFor({ state: "visible" });
   await page.waitForTimeout(250);
   const layout = await page.evaluate(() => ({
     title: document.title,
@@ -51,7 +75,7 @@ try {
   await page.getByLabel("Password").fill(environment.DEMO_PASSWORD);
   await Promise.all([page.waitForURL("**/dashboard"), page.getByRole("button", { name: "Sign in" }).click()]);
 
-  await inspect("dashboard", "/dashboard", "Good afternoon, Ashraf");
+  await inspect("dashboard", "/dashboard", /^(Good morning|Good afternoon|Good evening),\s+\S/u);
   await inspect("requests", "/requests", "Requests");
   const requestLink = page.locator('.data-table a[href^="/requests/"]').first();
   const requestHref = await requestLink.getAttribute("href");
@@ -67,7 +91,7 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "Good afternoon, Ashraf", exact: true }).waitFor();
+  await page.getByRole("heading", { name: /^(Good morning|Good afternoon|Good evening),\s+\S/u }).waitFor();
   const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (mobileOverflow > 2) throw new Error(`Mobile dashboard has ${mobileOverflow}px horizontal overflow.`);
   await page.screenshot({ path: path.join(outputDir, "dashboard-mobile.png"), fullPage: false });

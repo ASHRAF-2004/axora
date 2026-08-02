@@ -178,18 +178,6 @@ export function UxFeedbackProvider({ children }: { children: ReactNode }) {
         }, 8000);
       }
 
-      const button = target.closest("button");
-      if (
-        button instanceof HTMLButtonElement &&
-        button.type === "button" &&
-        button.dataset.uxSilent !== "true" &&
-        button.classList.contains("button")
-      ) {
-        notify(
-          button.dataset.feedbackLabel ?? "Action received",
-          "info",
-        );
-      }
     };
 
     document.addEventListener("submit", handleSubmit);
@@ -199,7 +187,7 @@ export function UxFeedbackProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("submit", handleSubmit);
       document.removeEventListener("click", handleClick);
     };
-  }, [notify, showLoading]);
+  }, [showLoading]);
 
   useEffect(() => {
     return () => clearTimer();

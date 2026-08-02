@@ -17,8 +17,8 @@ case "${1:-}" in
 esac
 
 for command in \
-  awk bash curl docker env find flock git grep jq mkdir node npm realpath rm \
-  rmdir runuser sha256sum sort stat tar tr wc; do
+  awk bash curl cut df docker env find flock git grep id jq mkdir node npm realpath rm \
+  rmdir runuser sed sha256sum sort stat tar tr wc; do
   require_command "$command"
 done
 
@@ -93,6 +93,131 @@ grep -Fqx "AXORA_SECRETS_DIR=$AXORA_SECRETS_DIR" "$AXORA_RUNTIME_ENV_FILE" \
   || die "$AXORA_RUNTIME_ENV_FILE must set the canonical AXORA_SECRETS_DIR."
 grep -Fqx "AXORA_UPLOADS_DIR=$AXORA_UPLOADS_DIR" "$AXORA_RUNTIME_ENV_FILE" \
   || die "$AXORA_RUNTIME_ENV_FILE must set the canonical AXORA_UPLOADS_DIR."
+
+email_delivery_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_DELIVERY_ENABLED)"
+email_events_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_EVENTS_ENABLED)"
+cloudflare_account_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" CLOUDFLARE_ACCOUNT_ID)"
+cloudflare_zone_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" CLOUDFLARE_ZONE_ID)"
+email_from_address="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_FROM_ADDRESS)"
+email_from_name="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_FROM_NAME)"
+email_reply_to="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_REPLY_TO)"
+email_provider="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_PROVIDER)"
+account_setup_ttl="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" ACCOUNT_SETUP_TTL_HOURS)"
+turnstile_site_key="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" TURNSTILE_SITE_KEY)"
+turnstile_hostnames="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" TURNSTILE_HOSTNAMES)"
+turnstile_expected_hostname="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_TURNSTILE_EXPECTED_HOSTNAME)"
+
+[[ "$email_delivery_enabled" == "true" || "$email_delivery_enabled" == "false" ]] \
+  || die "AXORA_EMAIL_DELIVERY_ENABLED must be exactly true or false."
+[[ "$email_events_enabled" == "true" || "$email_events_enabled" == "false" ]] \
+  || die "AXORA_EMAIL_EVENTS_ENABLED must be exactly true or false."
+if [[ "$email_delivery_enabled" == "true" && "$email_events_enabled" != "true" ]]; then
+  die "Email delivery requires the Email Sending event consumer and suppression endpoint."
+fi
+if [[ "$email_events_enabled" == "true" && "$email_delivery_enabled" != "true" ]]; then
+  die "Email provider events cannot be enabled while email delivery is disabled."
+fi
+if [[ -n "$cloudflare_account_id" && ! "$cloudflare_account_id" =~ ^[A-Fa-f0-9]{32}$ ]]; then
+  die "CLOUDFLARE_ACCOUNT_ID must be empty or a 32-character Cloudflare identifier."
+fi
+if [[ -n "$cloudflare_zone_id" && ! "$cloudflare_zone_id" =~ ^[A-Fa-f0-9]{32}$ ]]; then
+  die "CLOUDFLARE_ZONE_ID must be empty or a 32-character Cloudflare identifier."
+fi
+[[ "$email_from_address" =~ ^[^[:space:]@]+@([A-Za-z0-9-]+\.)*axora\.management$ ]] \
+  || die "AXORA_EMAIL_FROM_ADDRESS must use axora.management or one of its subdomains."
+[[ -n "$email_from_name" && "${#email_from_name}" -le 100 && ! "$email_from_name" =~ [[:cntrl:]] ]] \
+  || die "AXORA_EMAIL_FROM_NAME must be a non-empty, single-line value of at most 100 characters."
+[[ "$email_reply_to" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] \
+  || die "AXORA_EMAIL_REPLY_TO must be a valid email address."
+[[ "$email_provider" == "cloudflare-email-service" ]] \
+  || die "AXORA_EMAIL_PROVIDER must be cloudflare-email-service."
+if [[ ! "$account_setup_ttl" =~ ^[0-9]+$ ]] \
+  || (( account_setup_ttl < 1 || account_setup_ttl > 168 )); then
+  die "ACCOUNT_SETUP_TTL_HOURS must be a whole number from 1 to 168."
+fi
+
+[[ "$turnstile_expected_hostname" == "axora.management" ]] \
+  || die "AXORA_TURNSTILE_EXPECTED_HOSTNAME must be exactly axora.management."
+[[ ",$turnstile_hostnames," == *,axora.management,* ]] \
+  || die "TURNSTILE_HOSTNAMES must include axora.management."
+if [[ -n "$turnstile_site_key" && ! "$turnstile_site_key" =~ ^[A-Za-z0-9_-]{10,200}$ ]]; then
+  die "TURNSTILE_SITE_KEY is malformed."
+fi
+
+turnstile_secret_path="$AXORA_SECRETS_DIR/turnstile_secret"
+[[ -f "$turnstile_secret_path" && ! -L "$turnstile_secret_path" ]] \
+  || die "Turnstile secret placeholder is missing or unsafe."
+turnstile_secret_mode="$(stat -c '%a' "$turnstile_secret_path")"
+[[ "$(stat -c '%u:%g' "$turnstile_secret_path")" == "0:1000" ]] \
+  || die "Turnstile secret must be owned by root:GID-1000."
+(( (8#$turnstile_secret_mode & 8#027) == 0 )) \
+  || die "Turnstile secret permissions are too broad."
+if [[ -n "$turnstile_site_key" ]]; then
+  [[ -s "$turnstile_secret_path" ]] \
+    || die "Contact verification is configured but the dedicated Turnstile secret is empty."
+  node -e '
+    const fs=require("node:fs");
+    const value=fs.readFileSync(process.argv[1],"utf8").trim();
+    if(value.length<10 || value.length>2048 || /[\s\x00-\x1f\x7f]/.test(value)) process.exit(1);
+  ' "$turnstile_secret_path" \
+    || die "The dedicated Turnstile secret is malformed."
+fi
+
+email_token_path="$AXORA_SECRETS_DIR/cloudflare_email_api_token"
+[[ -f "$email_token_path" && ! -L "$email_token_path" ]] \
+  || die "Cloudflare email token placeholder is missing or unsafe."
+email_token_mode="$(stat -c '%a' "$email_token_path")"
+[[ "$(stat -c '%u:%g' "$email_token_path")" == "0:1000" ]] \
+  || die "Cloudflare email token must be owned by root:GID-1000."
+(( (8#$email_token_mode & 8#027) == 0 )) \
+  || die "Cloudflare email token permissions are too broad."
+if [[ "$email_delivery_enabled" == "true" ]]; then
+  [[ -n "$cloudflare_account_id" ]] \
+    || die "Email delivery requires CLOUDFLARE_ACCOUNT_ID."
+  [[ -n "$cloudflare_zone_id" ]] \
+    || die "Email delivery requires CLOUDFLARE_ZONE_ID."
+  [[ -s "$email_token_path" ]] \
+    || die "Email delivery is enabled but its dedicated Cloudflare API token is empty."
+  if [[ "$check_mode" != "local" ]]; then
+    "$SCRIPT_DIR/check-email-service.mjs" \
+      --runtime-file "$AXORA_RUNTIME_ENV_FILE" \
+      --token-file "$email_token_path"
+  fi
+fi
+
+email_service_key_path="$AXORA_SECRETS_DIR/axora_email_service_auth_key"
+[[ -f "$email_service_key_path" && ! -L "$email_service_key_path" ]] \
+  || die "The private account email service key is missing or unsafe."
+email_service_key_mode="$(stat -c '%a' "$email_service_key_path")"
+[[ "$(stat -c '%u:%g' "$email_service_key_path")" == "0:1000" ]] \
+  || die "The private account email service key must be owned by root:GID-1000."
+(( (8#$email_service_key_mode & 8#027) == 0 )) \
+  || die "The private account email service key permissions are too broad."
+node -e '
+  const fs=require("node:fs");
+  const value=fs.readFileSync(process.argv[1],"utf8").trim();
+  if(value.length<32 || value.length>4096 || /[\s\x00-\x1f\x7f]/.test(value)) process.exit(1);
+' "$email_service_key_path" \
+  || die "The private account email service key is malformed."
+
+email_events_key_path="$AXORA_SECRETS_DIR/axora_email_events_webhook_secret"
+[[ -f "$email_events_key_path" && ! -L "$email_events_key_path" ]] \
+  || die "The Email Sending event webhook secret placeholder is missing or unsafe."
+email_events_key_mode="$(stat -c '%a' "$email_events_key_path")"
+[[ "$(stat -c '%u:%g' "$email_events_key_path")" == "0:1000" ]] \
+  || die "The Email Sending event webhook secret must be owned by root:GID-1000."
+(( (8#$email_events_key_mode & 8#027) == 0 )) \
+  || die "The Email Sending event webhook secret permissions are too broad."
+if [[ "$email_events_enabled" == "true" ]]; then
+  [[ -s "$email_events_key_path" ]] \
+    || die "Email provider events are enabled but their webhook secret is empty."
+  node -e '
+    const fs=require("node:fs");
+    const value=fs.readFileSync(process.argv[1],"utf8").trim();
+    if(!/^[A-Za-z0-9_-]{43,4096}$/.test(value)) process.exit(1);
+  ' "$email_events_key_path" \
+    || die "The Email Sending event webhook secret is malformed."
+fi
 
 for secret in $AXORA_REQUIRED_SECRETS; do
   [[ "$secret" =~ ^[A-Za-z0-9_-]+$ ]] || die "Unsafe secret filename in AXORA_REQUIRED_SECRETS."

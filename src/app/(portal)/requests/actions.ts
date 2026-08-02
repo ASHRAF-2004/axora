@@ -28,7 +28,7 @@ export async function createRequestAction(formData: FormData) {
 export async function updateStatusAction(id: string, formData: FormData) {
   const user = await requirePermission("manage_sourcing");
   const status = String(formData.get("status")) as RequestStatus;
-  if (!REQUEST_STATUSES.includes(status)) throw new Error("Invalid request status.");
+  if (!REQUEST_STATUSES.includes(status)) redirect(`/requests/${id}?notice=request-status-invalid`);
   await updateRequestStatus(id, status, readFormText(formData, "reason"), user);
   revalidatePath(`/requests/${id}`); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
