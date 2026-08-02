@@ -246,11 +246,47 @@ jq --exit-status \
   ' \
   "$compose_json" >/dev/null
 
-docker run --rm \
-  --env AXORA_HOST=axora.management \
-  --volume "$REPOSITORY_DIR/caddy/Caddyfile.production:/etc/caddy/Caddyfile:ro" \
-  --entrypoint caddy \
-  "caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648" \
-  validate --config /etc/caddy/Caddyfile >/dev/null
+caddy_image="$(jq -r '.services.caddy.image' "$compose_json")"
+if [[ -z "$caddy_image" || "$caddy_image" == "null" ]]; then
+  die "Could not determine caddy image from compose output."
+fi
+
+validate_caddy() {
+  local image="$1"
+  local caddyfile="$2"
+  local attempts="${3:-4}"
+  local attempt=1
+
+  while (( attempt <= attempts )); do
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+      if ! docker pull "$image"; then
+        echo "Attempt $attempt/$attempts to pull $image failed. Retrying..." >&2
+        if (( attempt == attempts )); then
+          return 1
+        fi
+      fi
+    fi
+
+    if docker run --rm \
+      --env AXORA_HOST=axora.management \
+      --volume "$caddyfile:/etc/caddy/Caddyfile:ro" \
+      --entrypoint caddy \
+      "$image" \
+      validate --config /etc/caddy/Caddyfile >/dev/null; then
+      return 0
+    fi
+
+    if (( attempt == attempts )); then
+      return 1
+    fi
+
+    sleep $(( attempt * 2 ))
+    attempt=$(( attempt + 1 ))
+  done
+}
+
+if ! validate_caddy "$caddy_image" "$REPOSITORY_DIR/caddy/Caddyfile.production"; then
+  die "Caddyfile validation failed after retrying with image $caddy_image."
+fi
 
 printf 'Production deployment assets are valid.\n'
