@@ -3,7 +3,7 @@
 import { ChevronRight, LogIn, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useState } from "react";
 
 interface PublicMobileMenuProps {
   navigation: Array<{ href: string; label: string }>;
@@ -23,18 +23,21 @@ export function PublicMobileMenu({
   loginLabel,
 }: PublicMobileMenuProps) {
   const pathname = usePathname();
-  const detailsRef = useRef<HTMLDetailsElement>(null);
-
-  useEffect(() => {
-    detailsRef.current?.removeAttribute("open");
-  }, [pathname]);
+  const [isOpen, setIsOpen] = useState(false);
 
   function closeMenu() {
-    detailsRef.current?.removeAttribute("open");
+    setIsOpen(false);
   }
 
   return (
-    <details ref={detailsRef} className="public-mobile-menu">
+    <details
+      key={pathname}
+      className="public-mobile-menu"
+      open={isOpen}
+      onToggle={(event) => {
+        setIsOpen(event.currentTarget.open);
+      }}
+    >
       <summary aria-label={menuLabel}><Menu size={22} aria-hidden="true" /></summary>
       <nav aria-label={navigationLabel}>
         {navigation.map((item) => (

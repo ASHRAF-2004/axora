@@ -96,12 +96,12 @@ test("mobile navigation closes after a localized client-side route change", asyn
   await page.goto("/ms");
 
   await page.getByLabel("Buka menu").click();
-  const menu = page.locator(".public-mobile-menu");
-  await expect(menu).toHaveAttribute("open", "");
-  await page.getByRole("navigation", { name: "Navigasi mudah alih" }).getByRole("link", { name: "Hubungi Kami" }).click();
+  const menuNavigation = page.getByRole("navigation", { name: "Navigasi mudah alih" });
+  await expect(menuNavigation).toBeVisible();
+  await menuNavigation.getByRole("link", { name: "Hubungi Kami" }).click();
 
   await expect(page).toHaveURL(/\/ms\/contact$/);
-  await expect(menu).not.toHaveAttribute("open", "");
+  await expect(menuNavigation).toBeHidden();
   await expect(page.getByRole("heading", { level: 1, name: "Beritahu kami tentang aliran perolehan anda." })).toBeVisible();
 });
 
