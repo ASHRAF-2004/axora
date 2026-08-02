@@ -123,4 +123,4 @@ Legend:
 - `npm run test:e2e`
   - Result: **66 passed, 2 skipped**.
 - Latest authoritative CI run for this turn:
-  - GitHub Actions run `30756253565` (PR #30) - all jobs successful.
+  - GitHub Actions run `30756606226` (PR #30) - all jobs successful.
