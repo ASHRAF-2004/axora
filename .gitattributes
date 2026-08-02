@@ -1,4 +1,0 @@
-*.pdf binary
-# Wrangler owns this generated runtime declaration and currently emits a few
-# harmless trailing spaces. Preserve its byte-for-byte `types:check` output.
-workers/email-events/worker-configuration.d.ts whitespace=-blank-at-eol
