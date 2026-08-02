@@ -64,8 +64,8 @@ summary { min-height: 44px; }
 .metric-orange .metric-icon { color: var(--orange-600); background: var(--orange-100); }
 .metric-navy .metric-icon { color: var(--navy-900); background: var(--slate-200); }
 .metric-label { font-size: 12px; color: var(--slate-500); font-weight: 750; text-transform: uppercase; letter-spacing: .07em; }
-.metric-value { margin: 5px 0 5px; color: var(--navy-900); font-size: 28px; font-weight: 850; letter-spacing: -.04em; }
-.metric-note { color: var(--slate-500); font-size: 12px; line-height: 1.4; }
+.metric-value { display: block; margin: 5px 0 5px; color: var(--navy-900); font-size: 28px; font-weight: 850; letter-spacing: -.04em; }
+.metric-note { display: block; color: var(--slate-500); font-size: 12px; line-height: 1.4; }
 
 .dashboard-grid { margin-top: 17px; display: grid; grid-template-columns: 1.25fr .9fr; gap: 17px; }
 .panel { border: 1px solid var(--slate-200); border-radius: var(--radius); background: white; box-shadow: 0 8px 30px rgba(15,23,42,.035); overflow: hidden; }
