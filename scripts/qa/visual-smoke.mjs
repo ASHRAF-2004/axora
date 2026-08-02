@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright-core";
 
@@ -11,8 +12,29 @@ function parseEnvironment(text) {
     .map((line) => { const index = line.indexOf("="); return [line.slice(0, index), line.slice(index + 1)]; }));
 }
 
-const environment = parseEnvironment(await readFile(path.join(projectDir, ".env.local"), "utf8"));
-if (!environment.DEMO_EMAIL || !environment.DEMO_PASSWORD) throw new Error("DEMO_EMAIL and DEMO_PASSWORD are required in .env.local.");
+const envCandidates = [".env.local", ".env"];
+let environment = process.env.DEMO_EMAIL && process.env.DEMO_PASSWORD
+  ? {
+      DEMO_EMAIL: process.env.DEMO_EMAIL,
+      DEMO_PASSWORD: process.env.DEMO_PASSWORD,
+    }
+  : null;
+
+if (!environment) {
+  for (const envFile of envCandidates) {
+    const envPath = path.join(projectDir, envFile);
+    try {
+      await access(envPath, fsConstants.R_OK);
+      environment = parseEnvironment(await readFile(envPath, "utf8"));
+      break;
+    } catch {
+      continue;
+    }
+  }
+}
+
+if (!environment) environment = {};
+if (!environment.DEMO_EMAIL || !environment.DEMO_PASSWORD) throw new Error("DEMO_EMAIL and DEMO_PASSWORD are required in .env, .env.local, or environment variables.");
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
