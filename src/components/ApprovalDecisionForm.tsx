@@ -6,6 +6,8 @@ import {
 } from "@/app/(portal)/operations/actions";
 import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import { useRouter } from "next/navigation";
+import { corePortalMessages } from "@/lib/core-portal-i18n";
+import type { SupportedLocale } from "@/lib/i18n";
 import {
   useActionState,
   useEffect,
@@ -22,10 +24,13 @@ const initialState: ApprovalActionState = {
 export function ApprovalDecisionForm({
   requestId,
   approvalDisabled = false,
+  locale = "en",
 }: {
   requestId: string;
   approvalDisabled?: boolean;
+  locale?: SupportedLocale;
 }) {
+  const copy = corePortalMessages(locale).approvals;
   const router = useRouter();
   const { notify } = useUxFeedback();
   const formRef = useRef<HTMLFormElement>(null);
@@ -70,7 +75,7 @@ export function ApprovalDecisionForm({
     ) {
       event.preventDefault();
       notify(
-        "Enter a reason before rejecting this purchase request.",
+        copy.rejectionReason,
         "error",
       );
       reasonRef.current?.focus();
@@ -92,11 +97,11 @@ export function ApprovalDecisionForm({
       <input name="requestId" type="hidden" value={requestId} />
 
       <label>
-        Approval note
+        {copy.approvalNote}
         <textarea
           ref={reasonRef}
           name="reason"
-          placeholder="Reason or conditions for this decision"
+          placeholder={copy.notePlaceholder}
           aria-invalid={reasonError}
           aria-describedby={
             reasonError ? `approval-error-${requestId}` : undefined
@@ -121,9 +126,9 @@ export function ApprovalDecisionForm({
           value="Approved"
           type="submit"
           disabled={pending || approvalDisabled}
-          data-feedback-label="Approving purchase request…"
+          data-feedback-label={copy.approving}
         >
-          {pending ? "Processing…" : "Approve request"}
+          {pending ? copy.processing : copy.approve}
         </button>
 
         <button
@@ -132,15 +137,14 @@ export function ApprovalDecisionForm({
           value="Rejected"
           type="submit"
           disabled={pending}
-          data-feedback-label="Rejecting purchase request…"
+          data-feedback-label={copy.rejecting}
         >
-          {pending ? "Processing…" : "Reject request"}
+          {pending ? copy.processing : copy.reject}
         </button>
       </div>
 
       <small>
-        A rejection requires a reason. Approval commits this amount to
-        the branch&apos;s current monthly budget.
+        {copy.decisionHelp}
       </small>
     </form>
   );

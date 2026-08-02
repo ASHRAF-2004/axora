@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateLineAmounts, calculateTotals, REQUEST_STATUSES, roundMoney, timeOfDayGreeting } from "@/lib/domain";
+import { calculateLineAmounts, calculateTotals, formatCurrency, formatDate, formatDateTime, REQUEST_STATUSES, roundMoney, timeOfDayGreeting } from "@/lib/domain";
 import type { ProcurementRequest, RequestLine, RequestStatus } from "@/lib/types";
 
 function line(index: number, quantity: number, unitBuyPrice: number, unitSellPrice: number, deliveryCharge: number): RequestLine {
@@ -125,5 +125,24 @@ describe("localized greeting", () => {
     expect(timeOfDayGreeting(new Date("2026-07-23T00:30:00Z"))).toBe("Good morning");
     expect(timeOfDayGreeting(new Date("2026-07-23T07:00:00Z"))).toBe("Good afternoon");
     expect(timeOfDayGreeting(new Date("2026-07-23T12:00:00Z"))).toBe("Good evening");
+  });
+
+  it("localizes greetings while retaining Malaysia time", () => {
+    const afternoon = new Date("2026-07-23T07:00:00Z");
+    expect(timeOfDayGreeting(afternoon, "Asia/Kuala_Lumpur", "ar")).toBe("مساء الخير");
+    expect(timeOfDayGreeting(afternoon, "Asia/Kuala_Lumpur", "ms")).toBe("Selamat tengah hari");
+  });
+
+  it("formats dates and MYR values using the selected regional locale", () => {
+    expect(formatDate("2026-08-02", "ms")).toContain("2026");
+    expect(formatDate("2026-08-02", "ar")).toContain("أغسطس");
+    expect(formatCurrency(1250.5, "ms")).toContain("1,250.50");
+    expect(formatCurrency(1250.5, "ar")).toContain("MYR");
+  });
+
+  it("formats timestamps in the user's saved timezone", () => {
+    const instant = "2026-08-02T16:30:00.000Z";
+    expect(formatDateTime(instant, "en", "Asia/Kuala_Lumpur")).toContain("03 Aug 2026");
+    expect(formatDateTime(instant, "en", "UTC")).toContain("02 Aug 2026");
   });
 });

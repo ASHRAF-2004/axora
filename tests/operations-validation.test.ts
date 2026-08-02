@@ -42,6 +42,40 @@ describe("operational validation helpers", () => {
     }, actor)).rejects.toThrow("A rejection reason is required.");
   });
 
+  it("blocks self-approval in the local/demo data path as well as production", async () => {
+    const request = getDemoStore().requests[0];
+    const originalCreator = request.createdById;
+    request.createdById = companyActor.id;
+    try {
+      await expect(recordApproval({
+        requestId: request.id,
+        approvalType: "Company approval",
+        status: "Approved",
+      }, companyActor)).rejects.toThrow("You cannot approve your own purchase request.");
+    } finally {
+      request.createdById = originalCreator;
+    }
+  });
+
+  it("blocks cross-company and cross-branch approval in the local/demo data path", async () => {
+    const request = getDemoStore().requests.find((item) => item.companyId !== companyActor.companyId);
+    expect(request).toBeDefined();
+    await expect(recordApproval({
+      requestId: request!.id,
+      approvalType: "Company approval",
+      status: "Approved",
+    }, companyActor)).rejects.toThrow("not pending approval for your branch");
+
+    const inCompanyRequest = getDemoStore().requests.find((item) => item.companyId === companyActor.companyId);
+    expect(inCompanyRequest).toBeDefined();
+    await expect(recordApproval({
+      requestId: inCompanyRequest!.id,
+      approvalType: "Company approval",
+      status: "Approved",
+    }, { ...companyActor, branchId: "another-branch" }))
+      .rejects.toThrow("not pending approval for your branch");
+  });
+
   it("requires an issue reason for delayed delivery", async () => {
     const line = getDemoStore().requests[0].lines[0];
     await expect(recordDelivery({
@@ -51,7 +85,7 @@ describe("operational validation helpers", () => {
     }, actor)).rejects.toThrow("An issue reason is required for this delivery status.");
   });
 
-  it("does not allow cumulative delivery above ordered quantity", async () => {
+  it("routes every accepted quantity through independent customer receiving", async () => {
     const line = getDemoStore().requests[0].lines[0];
     await expect(recordDelivery({
       requestLineId: line.id,
@@ -59,35 +93,35 @@ describe("operational validation helpers", () => {
       quantityReceived: line.quantity + 1,
       actualDate: "2026-07-22",
       receivedBy: "Demo receiver",
-    }, actor)).rejects.toThrow("Received quantity cannot exceed the ordered quantity.");
+    }, actor)).rejects.toThrow("confirmed independently in the receiving portal");
   });
 
-  it("keeps delivery status, quantity, and receiver evidence consistent", async () => {
+  it("keeps legacy logistics statuses separate from receipt evidence", async () => {
     const line = getDemoStore().requests[0].lines[0];
     await expect(recordDelivery({
       requestLineId: line.id,
       status: "Scheduled",
       quantityReceived: 1,
-    }, actor)).rejects.toThrow("Only a partial or full delivery");
+    }, actor)).rejects.toThrow("cannot record customer receipt evidence");
     await expect(recordDelivery({
       requestLineId: line.id,
       status: "Partially Delivered",
       quantityReceived: 1,
-    }, actor)).rejects.toThrow("requires the actual date and receiver");
+    }, actor)).rejects.toThrow("confirmed independently in the receiving portal");
     await expect(recordDelivery({
       requestLineId: line.id,
       status: "Delivered",
       quantityReceived: line.quantity - 1,
       actualDate: "2026-07-22",
       receivedBy: "Demo receiver",
-    }, actor)).rejects.toThrow("Use Partially Delivered");
+    }, actor)).rejects.toThrow("confirmed independently in the receiving portal");
     await expect(recordDelivery({
       requestLineId: line.id,
-      status: "Partially Delivered",
-      quantityReceived: line.quantity,
+      status: "Out for Delivery",
+      quantityReceived: 0,
       actualDate: "2026-07-22",
       receivedBy: "Demo receiver",
-    }, actor)).rejects.toThrow("Use Delivered");
+    }, actor)).rejects.toThrow("cannot record customer receipt evidence");
   });
 
   it("does not allow payment above the outstanding invoice amount", async () => {
@@ -287,7 +321,7 @@ describe("operational validation helpers", () => {
     review!.duplicateWarning = true;
   });
 
-  it("keeps Axora sourcing, delivery, invoice, and payment mutations owner-only", async () => {
+  it("keeps Axora sourcing, delivery, invoice, and payment mutations out of company roles", async () => {
     const request = getDemoStore().requests[0];
     const line = request.lines[0];
     const invoice = getDemoOperations().invoices[0];
@@ -299,14 +333,14 @@ describe("operational validation helpers", () => {
       quotationDate: "2026-07-22",
       unitPrice: 1,
       deliveryCharge: 0,
-    }, companyActor)).rejects.toThrow("Only Axora platform owners can manage supplier quotations.");
+    }, companyActor)).rejects.toThrow("Only authorized Axora operations users can manage supplier quotations.");
     await expect(selectQuotation("missing-quotation", "Best offer", companyActor))
-      .rejects.toThrow("Only Axora platform owners can select supplier quotations.");
+      .rejects.toThrow("Only authorized Axora operations users can select supplier quotations.");
     await expect(recordDelivery({
       requestLineId: line.id,
       status: "Scheduled",
       quantityReceived: 0,
-    }, companyActor)).rejects.toThrow("Only Axora platform owners can record delivery updates.");
+    }, companyActor)).rejects.toThrow("Only authorized Axora operations users can record delivery updates.");
     await expect(createInvoice({
       direction: "CUSTOMER",
       requestId: request.id,
@@ -314,13 +348,13 @@ describe("operational validation helpers", () => {
       invoiceDate: "2026-07-22",
       amount: 10,
       status: "Issued",
-    }, companyActor)).rejects.toThrow("Only Axora platform owners can create invoices.");
+    }, companyActor)).rejects.toThrow("Only authorized Axora finance users can create invoices.");
     await expect(recordPayment({
       invoiceId: invoice.id,
       paymentDate: "2026-07-22",
       amount: 1,
       method: COD_PAYMENT_METHOD,
-    }, companyActor)).rejects.toThrow("Only Axora platform owners can record payments.");
+    }, companyActor)).rejects.toThrow("Only authorized Axora finance users can record payments.");
   });
 
   it("blocks quotation work until the company approval exists", async () => {

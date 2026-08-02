@@ -6,6 +6,8 @@ import type { Product, ProductImageSummary } from "@/lib/types";
 import { ChevronLeft, ChevronRight, Coffee, FileText, Package, Printer, Sparkles, type LucideIcon } from "lucide-react";
 import type { CSSProperties, MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { corePortalMessages } from "@/lib/core-portal-i18n";
+import type { SupportedLocale } from "@/lib/i18n";
 
 type ProductImageProduct = Pick<Product, "category" | "code" | "hasImage" | "id" | "imageAltText" | "name">;
 
@@ -79,11 +81,14 @@ export function ProductImage({
   product,
   showControls = true,
   style,
+  locale = "en",
 }: {
   product: ProductImageProduct;
   showControls?: boolean;
   style?: CSSProperties;
+  locale?: SupportedLocale;
 }) {
+  const copy = corePortalMessages(locale).products;
   const { accent, background, foreground, Icon } = artworkFor(product.category);
   const fallbackImages = useMemo<GalleryImage[]>(() => product.hasImage ? [{
     id: "legacy-primary",
@@ -198,7 +203,7 @@ export function ProductImage({
       {controlsVisible ? (
         <>
           <button
-            aria-label={`Previous image for ${product.name}`}
+            aria-label={copy.previousImage(product.name)}
             onClick={(event) => {
               stopCardNavigation(event);
               setActiveIndex((currentIndex) => (currentIndex - 1 + images.length) % images.length);
@@ -211,7 +216,7 @@ export function ProductImage({
               display: "flex",
               height: 32,
               justifyContent: "center",
-              left: 10,
+              insetInlineStart: 10,
               padding: 0,
               position: "absolute",
               top: "50%",
@@ -224,7 +229,7 @@ export function ProductImage({
             <ChevronLeft aria-hidden="true" size={17} />
           </button>
           <button
-            aria-label={`Next image for ${product.name}`}
+            aria-label={copy.nextImage(product.name)}
             onClick={(event) => {
               stopCardNavigation(event);
               setActiveIndex((currentIndex) => (currentIndex + 1) % images.length);
@@ -239,7 +244,7 @@ export function ProductImage({
               justifyContent: "center",
               padding: 0,
               position: "absolute",
-              right: 10,
+              insetInlineEnd: 10,
               top: "50%",
               transform: "translateY(-50%)",
               width: 32,
@@ -250,12 +255,12 @@ export function ProductImage({
             <ChevronRight aria-hidden="true" size={17} />
           </button>
           <div
-            aria-label={`${images.length} product images`}
+            aria-label={copy.imageCount(images.length)}
             style={{
-              bottom: 12,
+              insetBlockEnd: 12,
               display: "flex",
               gap: 5,
-              left: "50%",
+              insetInlineStart: "50%",
               position: "absolute",
               transform: "translateX(-50%)",
               zIndex: 2,
@@ -263,7 +268,7 @@ export function ProductImage({
           >
             {images.map((image, index) => (
               <button
-                aria-label={`Show image ${index + 1} of ${images.length}`}
+                aria-label={copy.showImage(index + 1, images.length)}
                 key={image.id}
                 onClick={(event) => {
                   stopCardNavigation(event);
@@ -288,9 +293,9 @@ export function ProductImage({
         className="status-badge"
         style={{
           background: "rgba(255,255,255,.84)",
-          bottom: 13,
+          insetBlockEnd: 13,
           color: foreground,
-          left: 13,
+          insetInlineStart: 13,
           position: "absolute",
         }}
       >
@@ -306,7 +311,7 @@ export function ProductImage({
           letterSpacing: ".08em",
           opacity: 0.78,
           position: "absolute",
-          right: 14,
+          insetInlineEnd: 14,
           textTransform: "uppercase",
           top: 13,
         }}

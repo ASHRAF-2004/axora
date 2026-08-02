@@ -1,6 +1,7 @@
 "use server";
 
 import { requirePermission } from "@/lib/auth";
+import { createCompanyWithBrand, regenerateCompanyBrand } from "@/lib/tenant-branding";
 import { updateProduct } from "@/lib/product-admin";
 import { deleteProduct } from "@/lib/product-delete";
 import {
@@ -11,7 +12,7 @@ import {
   setPrimaryProductImage,
   updateProductImageAltText,
 } from "@/lib/product-images";
-import { createBranch, createCompany, createProduct, createSupplier, setMasterActive, type MasterEntity } from "@/lib/repository";
+import { createBranch, createProduct, createSupplier, setMasterActive, type MasterEntity } from "@/lib/repository";
 import { branchSchema, companySchema, productSchema, readFormText, supplierSchema } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -48,20 +49,40 @@ function revalidateProduct(productId?: string) {
 
 export async function createCompanyAction(formData: FormData) {
   const user = await requirePermission("manage_companies");
+  const logo = formData.get("logo");
+  if (!(logo instanceof File) || logo.size < 1) redirect("/companies?notice=company-logo-required");
   const mainContactName = readFormText(formData, "mainContactName");
   const mainContactEmail = readFormText(formData, "mainContactEmail");
   const mainContactPhone = readFormText(formData, "mainContactPhone");
   const input = companySchema.parse({
-    name: readFormText(formData, "name"), industry: readFormText(formData, "industry"), mainContactName,
+    name: readFormText(formData, "name"), industry: readFormText(formData, "industry"),
+    companyInformation: readFormText(formData, "companyInformation"),
+    websiteUrl: readFormText(formData, "websiteUrl"), mainContactName,
     mainContactEmail, mainContactPhone, billingContactName: readFormText(formData, "billingContactName") || mainContactName,
     billingContactEmail: readFormText(formData, "billingContactEmail") || mainContactEmail,
     billingContactPhone: readFormText(formData, "billingContactPhone") || mainContactPhone,
     billingAddress: readFormText(formData, "billingAddress"), paymentTerms: readFormText(formData, "paymentTerms"),
     billingCycle: readFormText(formData, "billingCycle"), notes: readFormText(formData, "notes"),
   });
-  await createCompany(input, user);
+  await createCompanyWithBrand(input, logo, user);
   revalidatePath("/companies"); revalidatePath("/dashboard");
   redirect("/companies?notice=company-created");
+}
+
+export async function regenerateCompanyBrandAction(companyId: string, formData: FormData) {
+  const user = await requirePermission("manage_companies");
+  const logo = formData.get("logo");
+  if (!(logo instanceof File) || logo.size < 1) redirect("/companies?notice=company-logo-required");
+  await regenerateCompanyBrand(
+    companyId,
+    Buffer.from(await logo.arrayBuffer()),
+    logo.name,
+    logo.type || undefined,
+    user,
+  );
+  revalidatePath("/companies");
+  revalidatePath("/dashboard");
+  redirect("/companies?notice=company-brand-regenerated");
 }
 
 export async function createBranchAction(formData: FormData) {
@@ -118,7 +139,7 @@ export async function deleteProductAction(productId: string) {
 export async function addProductImagesAction(productId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
   const selectedFiles = files(formData, "images");
-  if (!selectedFiles.length) throw new Error("Choose at least one product image.");
+  if (!selectedFiles.length) redirect(`/products/${productId}/edit?notice=product-image-required`);
   await saveProductImages({ productId, files: selectedFiles, altText: readFormText(formData, "imageAltText") }, user);
   revalidateProduct(productId);
 }
@@ -157,7 +178,7 @@ export async function setMasterActiveAction(entity: MasterEntity, id: string, ac
 export async function replaceProductImageAction(productId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
   const image = files(formData, "image")[0];
-  if (!image) throw new Error("Choose a product image.");
+  if (!image) redirect(`/products/${productId}/edit?notice=product-image-required`);
   await saveProductImages({ productId, files: [image], altText: readFormText(formData, "imageAltText") }, user);
   revalidateProduct(productId);
 }

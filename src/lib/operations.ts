@@ -5,12 +5,18 @@ import { getDemoStore } from "./demo-data";
 import { addDemoAudit, getDemoOperations } from "./demo-operations";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { requirePermission } from "./auth";
+import type { SessionUser } from "./auth";
 import { canAccess, type Permission } from "./permissions";
 import { COD_PAYMENT_METHOD } from "./types";
 import { roundMoney } from "./domain";
 import type { ApprovalRecord, AttachmentRecord, AuditRecord, DeliveryRecord, DeliveryStatus, InvoiceRecord, InvoiceStatus, PaymentRecord, QuotationRecord, UserRole } from "./types";
-
-const RECEIPT_DELIVERY_STATUSES: DeliveryStatus[] = ["Partially Delivered", "Delivered"];
+import { appendWorkflowEvent, notifyWorkflowAudience, notifyWorkflowUsers } from "./workflow-repository";
+import { uploadedContentMatchesMime } from "./file-content";
+import {
+  auditRecordMatchesFilters,
+  normalizeAuditRecordFilters,
+  type AuditRecordFilters,
+} from "./audit-filters";
 
 interface OperationActor {
   id: string;
@@ -18,6 +24,9 @@ interface OperationActor {
   role?: UserRole;
   companyId?: string;
   branchId?: string;
+  supplierId?: string;
+  accountKind?: SessionUser["accountKind"];
+  scopeType?: SessionUser["scopeType"];
   isOwner?: boolean;
 }
 
@@ -27,9 +36,25 @@ function operationActorCanAccess(actor: OperationActor, permission: Permission) 
     && canAccess({
       role: actor.role,
       isOwner: Boolean(actor.isOwner),
+      accountKind: actor.accountKind,
+      scopeType: actor.scopeType,
+      companyId: actor.companyId,
       branchId: actor.branchId,
+      supplierId: actor.supplierId,
     }, permission),
   );
+}
+
+function isPlatformOperationsActor(actor: OperationActor) {
+  return (Boolean(actor.isOwner) && ["ADMIN", "PLATFORM_OWNER"].includes(actor.role ?? ""))
+    || (actor.accountKind === "PLATFORM"
+    && actor.scopeType === "PLATFORM"
+    && ["PLATFORM_OWNER", "PLATFORM_OPERATIONS"].includes(actor.role ?? ""));
+}
+
+function isPlatformScopedActor(actor: OperationActor) {
+  return isPlatformOperationsActor(actor)
+    || (actor.accountKind === "PLATFORM" && actor.scopeType === "PLATFORM");
 }
 
 function isSelfScopedRequester(actor: OperationActor) {
@@ -42,7 +67,7 @@ function operationRequestScope(
   branchColumn: string,
   createdByColumn: string,
 ) {
-  if (actor.isOwner) return { where: "", values: [] as unknown[] };
+  if (actor.isOwner || isPlatformOperationsActor(actor)) return { where: "", values: [] as unknown[] };
   const values: unknown[] = [actor.companyId];
   const conditions = [`${companyColumn}=$1`];
   if (actor.branchId) {
@@ -57,7 +82,7 @@ function operationRequestScope(
 }
 
 function demoRequestVisibleToActor(request: ReturnType<typeof getDemoStore>["requests"][number], actor: OperationActor) {
-  return actor.isOwner || (
+  return isPlatformOperationsActor(actor) || (
     request.companyId === actor.companyId
     && (!actor.branchId || request.branchId === actor.branchId)
     && (!isSelfScopedRequester(actor) || request.createdById === actor.id)
@@ -79,10 +104,167 @@ export async function listQuotations(): Promise<QuotationRecord[]> {
   return result.rows;
 }
 
+export interface SupplierRfqActivityRecord {
+  id: string;
+  reference: string;
+  requestLineId: string;
+  requestLineCode: string;
+  orderCode: string;
+  productName: string;
+  supplierName: string;
+  status: string;
+  respondBy?: string;
+  issuedAt: string;
+  responseCount: number;
+}
+
+export async function listSupplierRfqs(actor: OperationActor): Promise<SupplierRfqActivityRecord[]> {
+  if (!operationActorCanAccess(actor, "manage_sourcing")) {
+    throw new Error("Only authorized Axora operations users can view supplier quotation requests.");
+  }
+  if (isDemoMode()) return [];
+  return withAuditTransaction({ userId: actor.id, reason: "Viewed supplier RFQ activity" }, async (client) => {
+    const result = await client.query<SupplierRfqActivityRecord>(`
+      SELECT rfq.id::text,rfq.rfq_reference AS reference,
+        rfq.request_line_id::text AS "requestLineId",line.request_line_code AS "requestLineCode",
+        request.order_code AS "orderCode",line.product_name_snapshot AS "productName",
+        supplier.name AS "supplierName",rfq.status,rfq.respond_by::text AS "respondBy",
+        rfq.issued_at::text AS "issuedAt",count(response.id)::int AS "responseCount"
+      FROM supplier_rfqs rfq
+      JOIN request_lines line ON line.id=rfq.request_line_id
+      JOIN requests request ON request.id=line.request_id AND request.company_id=rfq.company_id
+      JOIN suppliers supplier ON supplier.id=rfq.supplier_id
+      LEFT JOIN supplier_quotation_responses response ON response.rfq_id=rfq.id
+      GROUP BY rfq.id,line.request_line_code,request.order_code,line.product_name_snapshot,supplier.name
+      ORDER BY rfq.issued_at DESC
+    `);
+    return result.rows;
+  });
+}
+
+export interface NewSupplierRfqInput {
+  requestLineId: string;
+  supplierId: string;
+  reference: string;
+  respondBy: string;
+  specification?: string;
+  idempotencyKey: string;
+}
+
+export async function issueSupplierRfq(input: NewSupplierRfqInput, actor: OperationActor) {
+  if (!operationActorCanAccess(actor, "manage_sourcing") || !isPlatformOperationsActor(actor)) {
+    throw new Error("Only authorized Axora operations users can issue supplier quotation requests.");
+  }
+  const reference = input.reference.trim();
+  const specification = input.specification?.trim();
+  const respondBy = new Date(input.respondBy);
+  if (reference.length < 3 || reference.length > 80) throw new Error("RFQ reference is invalid.");
+  if (specification && specification.length > 2_000) throw new Error("RFQ specification is too long.");
+  if (Number.isNaN(respondBy.getTime()) || respondBy.getTime() <= Date.now()) {
+    throw new Error("RFQ response deadline must be in the future.");
+  }
+  if (input.idempotencyKey.length < 8 || input.idempotencyKey.length > 200
+    || /[\u0000-\u001f\u007f]/.test(input.idempotencyKey)) {
+    throw new Error("RFQ submission identifier is invalid.");
+  }
+  if (isDemoMode()) throw new Error("Supplier RFQs require the production database.");
+  return withAuditTransaction({ userId: actor.id, reason: `Issued supplier RFQ ${reference}` }, async (client) => {
+    const context = await client.query<{
+      requestId: string;
+      companyId: string;
+      branchId: string;
+      requestLineId: string;
+      supplierId: string;
+    }>(`
+      SELECT request.id::text AS "requestId",request.company_id::text AS "companyId",
+        request.branch_id::text AS "branchId",line.id::text AS "requestLineId",
+        supplier.id::text AS "supplierId"
+      FROM request_lines line
+      JOIN requests request ON request.id=line.request_id
+      JOIN lookup_values request_status ON request_status.id=request.status_id
+      JOIN suppliers supplier ON supplier.id=$2
+      WHERE line.id=$1 AND request_status.label='Waiting for Quotation'
+        AND line.selected_supplier_id IS NULL
+        AND supplier.active=true AND supplier.company_id IS NULL
+        AND EXISTS (
+          SELECT 1 FROM approvals approval
+          WHERE approval.request_id=request.id AND approval.approval_type='Company approval'
+            AND approval.status='Approved'
+        )
+      FOR UPDATE OF line,request,supplier
+    `, [input.requestLineId, input.supplierId]);
+    const eligible = context.rows[0];
+    if (!eligible) throw new Error("Select an approved request line and active Axora supplier.");
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+      [`supplier-rfq:${eligible.companyId}:${eligible.requestLineId}:${eligible.supplierId}`],
+    );
+    const nextRound = await client.query<{ value: number }>(`
+      SELECT (COALESCE(max(round_number),0)+1)::int AS value
+      FROM supplier_rfqs WHERE request_line_id=$1 AND supplier_id=$2
+    `, [eligible.requestLineId, eligible.supplierId]);
+    const inserted = await client.query<{ id: string }>(`
+      INSERT INTO supplier_rfqs(
+        company_id,request_line_id,supplier_id,round_number,rfq_reference,status,
+        respond_by,requirements,issued_by,idempotency_key
+      ) VALUES ($1,$2,$3,$4,$5,'ISSUED',$6,$7::jsonb,$8,$9)
+      ON CONFLICT(company_id,idempotency_key) DO NOTHING
+      RETURNING id::text
+    `, [eligible.companyId,eligible.requestLineId,eligible.supplierId,nextRound.rows[0]?.value ?? 1,
+      reference,respondBy.toISOString(),JSON.stringify(specification ? { specification } : {}),actor.id,input.idempotencyKey]);
+    let rfqId = inserted.rows[0]?.id;
+    if (!rfqId) {
+      const existing = await client.query<{ id: string; requestLineId: string; supplierId: string }>(`
+        SELECT id::text,request_line_id::text AS "requestLineId",supplier_id::text AS "supplierId"
+        FROM supplier_rfqs WHERE company_id=$1 AND idempotency_key=$2
+      `, [eligible.companyId, input.idempotencyKey]);
+      if (!existing.rows[0]
+        || existing.rows[0].requestLineId !== eligible.requestLineId
+        || existing.rows[0].supplierId !== eligible.supplierId) {
+        throw new Error("That RFQ submission identifier was already used for different data.");
+      }
+      rfqId = existing.rows[0].id;
+    }
+    const event = await appendWorkflowEvent(client, {
+      companyId: eligible.companyId,
+      branchId: eligible.branchId,
+      requestId: eligible.requestId,
+      aggregateType: "supplier-rfq",
+      aggregateId: rfqId,
+      eventKey: "quotation.requested",
+      stableKey: input.idempotencyKey,
+      actor: actor as SessionUser,
+      newState: "Quotation requested",
+      source: "WEB",
+      metadata: { requestLineId: eligible.requestLineId },
+    });
+    await notifyWorkflowAudience(client, event, {
+      actorUserId: actor.id,
+      audiences: ["REQUEST_CREATOR"],
+      message: { key: "quotation_requested" },
+      routePath: `/requests/${eligible.requestId}`,
+    });
+    const supplierUsers = await client.query<{ id: string }>(`
+      SELECT DISTINCT account.id::text AS id
+      FROM supplier_memberships membership
+      JOIN users account ON account.id=membership.user_id
+      WHERE membership.supplier_id=$1 AND membership.status='ACTIVE'
+        AND account.active AND account.account_status='ACTIVE' AND account.account_kind='SUPPLIER'
+    `, [eligible.supplierId]);
+    await notifyWorkflowUsers(client, event, {
+      recipientUserIds: supplierUsers.rows.map((row) => row.id),
+      message: { key: "supplier_rfq_issued", reference },
+      routePath: `/supplier#rfq-${rfqId}`,
+      priority: "HIGH",
+    });
+    return rfqId;
+  });
+}
+
 export interface NewQuotationInput { requestLineId: string; supplierId: string; quotationReference: string; quotationDate: string; unitPrice: number; deliveryCharge: number; minimumOrderQuantity?: number; leadTimeDays?: number; validUntil?: string; }
 
 export async function createQuotation(input: NewQuotationInput, actor: OperationActor) {
-  if (!actor.isOwner) throw new Error("Only Axora platform owners can manage supplier quotations.");
+  if (!operationActorCanAccess(actor, "manage_sourcing")) throw new Error("Only authorized Axora operations users can manage supplier quotations.");
   if (input.validUntil && input.validUntil < input.quotationDate) {
     throw new Error("Quotation validity cannot end before the quotation date.");
   }
@@ -102,7 +284,7 @@ export async function createQuotation(input: NewQuotationInput, actor: Operation
     return;
   }
   await withAuditTransaction({ userId: actor.id }, async (client) => {
-    const result = await client.query(`INSERT INTO quotations
+    const result = await client.query<{ id: string }>(`INSERT INTO quotations
       (request_line_id,supplier_id,quotation_reference,quotation_date,unit_price,delivery_charge,minimum_order_quantity,lead_time_days,valid_until,status_id)
       SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,lookup_id('quotation_status','Received')
       FROM request_lines l JOIN requests r ON r.id=l.request_id JOIN suppliers s ON s.id=$2 JOIN lookup_values rs ON rs.id=r.status_id
@@ -110,15 +292,42 @@ export async function createQuotation(input: NewQuotationInput, actor: Operation
         AND EXISTS (
           SELECT 1 FROM approvals a
           WHERE a.request_id=r.id AND a.approval_type='Company approval' AND a.status='Approved'
-        )`,
+        ) RETURNING id::text`,
       [input.requestLineId, input.supplierId, input.quotationReference, input.quotationDate, input.unitPrice, input.deliveryCharge,
         input.minimumOrderQuantity ?? null, input.leadTimeDays ?? null, input.validUntil || null]);
     if (!result.rowCount) throw new Error("Request line or supplier not found.");
+    const context = await client.query<{ requestId: string; companyId: string; branchId: string }>(`
+      SELECT request.id::text AS "requestId",request.company_id::text AS "companyId",
+        request.branch_id::text AS "branchId"
+      FROM request_lines line JOIN requests request ON request.id=line.request_id
+      WHERE line.id=$1
+    `, [input.requestLineId]);
+    const linked = context.rows[0];
+    if (!linked) throw new Error("Request line or supplier not found.");
+    const event = await appendWorkflowEvent(client, {
+      companyId: linked.companyId,
+      branchId: linked.branchId,
+      requestId: linked.requestId,
+      aggregateType: "request",
+      aggregateId: linked.requestId,
+      eventKey: "quotation.received",
+      stableKey: result.rows[0].id,
+      actor: actor as SessionUser,
+      newState: "Quotation received",
+      source: "WEB",
+      metadata: { requestLineId: input.requestLineId },
+    });
+    await notifyWorkflowAudience(client, event, {
+      actorUserId: actor.id,
+      audiences: ["REQUEST_CREATOR"],
+      message: { key: "quotation_received" },
+      routePath: `/requests/${linked.requestId}`,
+    });
   });
 }
 
 export async function selectQuotation(id: string, reason: string, actor: OperationActor) {
-  if (!actor.isOwner) throw new Error("Only Axora platform owners can select supplier quotations.");
+  if (!operationActorCanAccess(actor, "manage_sourcing")) throw new Error("Only authorized Axora operations users can select supplier quotations.");
   if (!reason.trim()) throw new Error("Explain why this quotation was selected.");
   if (isDemoMode()) {
     const ops = getDemoOperations();
@@ -160,12 +369,16 @@ export async function selectQuotation(id: string, reason: string, actor: Operati
       minimumOrderQuantity?: number;
       validUntil?: string;
       supplierActive: boolean;
+      requestId: string;
+      companyId: string;
+      branchId: string;
     }>(
       `SELECT q.request_line_id::text AS "requestLineId",q.supplier_id::text AS "supplierId",
          COALESCE(q.quotation_reference,'') AS reference,q.unit_price::float8 AS "unitPrice",
          q.delivery_charge::float8 AS "deliveryCharge",l.quantity::float8 AS "lineQuantity",
          q.minimum_order_quantity::float8 AS "minimumOrderQuantity",q.valid_until::text AS "validUntil",
-         s.active AS "supplierActive"
+         s.active AS "supplierActive",r.id::text AS "requestId",
+         r.company_id::text AS "companyId",r.branch_id::text AS "branchId"
        FROM quotations q
        JOIN request_lines l ON l.id=q.request_line_id
        JOIN requests r ON r.id=l.request_id
@@ -201,6 +414,66 @@ export async function selectQuotation(id: string, reason: string, actor: Operati
           SELECT 1 FROM request_lines pending
           WHERE pending.request_id=r.id AND pending.selected_supplier_id IS NULL
         )`, [q.requestLineId]);
+    const selectedRfq = await client.query<{ id: string }>(`
+      SELECT id::text FROM supplier_rfqs
+      WHERE request_line_id=$1 AND supplier_id=$2
+      ORDER BY round_number DESC,issued_at DESC LIMIT 1
+    `, [q.requestLineId, q.supplierId]);
+    await client.query(`
+      UPDATE supplier_rfqs
+      SET status='CLOSED',closed_at=now()
+      WHERE request_line_id=$1 AND status NOT IN ('WITHDRAWN','EXPIRED','CLOSED')
+    `, [q.requestLineId]);
+    const event = await appendWorkflowEvent(client, {
+      companyId: q.companyId,
+      branchId: q.branchId,
+      requestId: q.requestId,
+      aggregateType: "request",
+      aggregateId: q.requestId,
+      eventKey: "supplier.selected",
+      stableKey: id,
+      actor: actor as SessionUser,
+      newState: "Supplier selected",
+      reason,
+      source: "WEB",
+      // Supplier identity and internal pricing deliberately stay out of the
+      // tenant-visible workflow metadata.
+      metadata: { requestLineId: q.requestLineId },
+    });
+    await notifyWorkflowAudience(client, event, {
+      actorUserId: actor.id,
+      audiences: ["REQUEST_CREATOR"],
+      message: { key: "supplier_selected" },
+      routePath: `/requests/${q.requestId}`,
+    });
+    const selectedSupplierUsers = await client.query<{ id: string }>(`
+      SELECT DISTINCT account.id::text AS id
+      FROM supplier_memberships membership
+      JOIN users account ON account.id=membership.user_id
+      WHERE membership.supplier_id=$1 AND membership.status='ACTIVE'
+        AND account.active AND account.account_status='ACTIVE' AND account.account_kind='SUPPLIER'
+    `, [q.supplierId]);
+    if (selectedRfq.rows[0]) {
+      const supplierEvent = await appendWorkflowEvent(client, {
+        companyId: q.companyId,
+        branchId: q.branchId,
+        requestId: q.requestId,
+        aggregateType: "supplier-rfq",
+        aggregateId: selectedRfq.rows[0].id,
+        eventKey: "supplier.order_selected",
+        stableKey: id,
+        actor: actor as SessionUser,
+        newState: "Supplier order selected",
+        source: "WEB",
+        metadata: { requestLineId: q.requestLineId },
+      });
+      await notifyWorkflowUsers(client, supplierEvent, {
+        recipientUserIds: selectedSupplierUsers.rows.map((row) => row.id),
+        message: { key: "supplier_order_selected" },
+        routePath: `/supplier#rfq-${selectedRfq.rows[0].id}`,
+        priority: "HIGH",
+      });
+    }
   });
 }
 
@@ -210,20 +483,27 @@ export async function listApprovals(): Promise<ApprovalRecord[]> {
   const result = await query<ApprovalRecord>(`SELECT a.id::text,a.request_id::text AS "requestId",r.order_code AS "orderCode",c.name AS "companyName",
     a.approval_type AS "approvalType",a.status,u.display_name AS "reviewerName",a.reason,a.decided_at::text AS "decidedAt",a.created_at::text AS "createdAt"
     FROM approvals a JOIN requests r ON r.id=a.request_id JOIN companies c ON c.id=r.company_id LEFT JOIN users u ON u.id=a.reviewer_id
-    ${actor.isOwner ? "" : actor.branchId ? "WHERE r.company_id=$1 AND r.branch_id=$2" : "WHERE r.company_id=$1"}
-    ORDER BY a.created_at DESC`, actor.isOwner ? [] : actor.branchId ? [actor.companyId, actor.branchId] : [actor.companyId]);
+    ${isPlatformOperationsActor(actor) ? "" : actor.branchId ? "WHERE r.company_id=$1 AND r.branch_id=$2" : "WHERE r.company_id=$1"}
+    ORDER BY a.created_at DESC`, isPlatformOperationsActor(actor) ? [] : actor.branchId ? [actor.companyId, actor.branchId] : [actor.companyId]);
   return result.rows;
 }
 
 export async function recordApproval(input: { requestId: string; approvalType: string; status: ApprovalRecord["status"]; reason?: string }, actor: OperationActor) {
   if (input.status === "Rejected" && !input.reason?.trim()) throw new Error("A rejection reason is required.");
   if (input.status === "Pending") throw new Error("Choose Approve or Reject.");
-  if (actor.isOwner || !actor.companyId || !["ADMIN", "BRANCH_ADMIN", "APPROVER"].includes(actor.role ?? "")) {
+  if (actor.isOwner || !actor.companyId || !operationActorCanAccess(actor, "approve_requests")) {
     throw new Error("Only an assigned company approver can decide this request.");
   }
   if (isDemoMode()) {
     const request = getDemoStore().requests.find((item) => item.id === input.requestId);
     if (!request) throw new Error("Request not found.");
+    if (request.companyId !== actor.companyId
+      || (actor.branchId && request.branchId !== actor.branchId)) {
+      throw new Error("This request is not pending approval for your branch.");
+    }
+    if (request.createdById === actor.id) {
+      throw new Error("You cannot approve your own purchase request.");
+    }
     const branch = getDemoStore().branches.find((item) => item.id === request.branchId);
     if (!branch || branch.status !== "Active") throw new Error("This branch is inactive and cannot approve new spending.");
     getDemoOperations().approvals.unshift({ id: randomUUID(), requestId: request.id, orderCode: request.orderCode, companyName: request.companyName,
@@ -242,10 +522,12 @@ export async function recordApproval(input: { requestId: string; approvalType: s
   await withAuditTransaction({ userId: actor.id, reason: input.reason }, async (client) => {
     const request = await client.query<{
       createdBy?: string;
+      companyId: string;
       branchId: string;
       monthlyBudget?: number;
       estimatedTotal: number;
-    }>(`SELECT r.created_by::text AS "createdBy",r.branch_id::text AS "branchId",
+    }>(`SELECT r.created_by::text AS "createdBy",r.company_id::text AS "companyId",
+        r.branch_id::text AS "branchId",
         b.monthly_budget::float8 AS "monthlyBudget",
         COALESCE((SELECT sum(round(l.quantity*l.unit_sell_price,2)) FROM request_lines l WHERE l.request_id=r.id),0)::float8 AS "estimatedTotal"
       FROM requests r
@@ -286,13 +568,38 @@ export async function recordApproval(input: { requestId: string; approvalType: s
         SET status_id=lookup_id('request_status','Cancelled'),issue_reason=$2
         WHERE id=$1`, [input.requestId, input.reason]);
     }
+    const event = await appendWorkflowEvent(client, {
+      companyId: current.companyId,
+      branchId: current.branchId,
+      requestId: input.requestId,
+      aggregateType: "request",
+      aggregateId: input.requestId,
+      eventKey: input.status === "Approved" ? "request.approved" : "request.rejected",
+      stableKey: `${input.status}:${actor.id}`,
+      actor: actor as SessionUser,
+      previousState: "Pending approval",
+      newState: input.status,
+      reason: input.reason,
+      source: "WEB",
+    });
+    await notifyWorkflowAudience(client, event, {
+      actorUserId: actor.id,
+      audiences: input.status === "Approved"
+        ? ["REQUEST_CREATOR", "PLATFORM_OPERATIONS"]
+        : ["REQUEST_CREATOR"],
+      message: input.status === "Approved"
+        ? { key: "request_approved" }
+        : { key: "request_rejected" },
+      routePath: `/requests/${input.requestId}`,
+      priority: input.status === "Rejected" ? "HIGH" : "NORMAL",
+    });
   });
 }
 
 export async function listDeliveries(): Promise<DeliveryRecord[]> {
   const actor = await requirePermission("view_deliveries");
   if (isDemoMode()) {
-    if (actor.isOwner) return getDemoOperations().deliveries;
+    if (isPlatformOperationsActor(actor)) return getDemoOperations().deliveries;
     return getDemoOperations().deliveries.filter((delivery) => {
       const request = getDemoStore().requests.find((item) => item.lines.some((line) => line.id === delivery.requestLineId));
       return Boolean(request && demoRequestVisibleToActor(request, actor));
@@ -309,79 +616,78 @@ export async function listDeliveries(): Promise<DeliveryRecord[]> {
 }
 
 export async function recordDelivery(input: { requestLineId: string; expectedDate?: string; revisedDate?: string; actualDate?: string; status: DeliveryStatus; quantityReceived: number; receivedBy?: string; issueReason?: string }, actor: OperationActor) {
-  if (!actor.isOwner) throw new Error("Only Axora platform owners can record delivery updates.");
-  if (!Number.isFinite(input.quantityReceived) || input.quantityReceived < 0) throw new Error("Enter a valid received quantity.");
-  const isReceipt = RECEIPT_DELIVERY_STATUSES.includes(input.status);
-  if (isReceipt && input.quantityReceived <= 0) throw new Error("A partial or full delivery must record a received quantity greater than zero.");
-  if (isReceipt && (!input.actualDate || !input.receivedBy?.trim())) {
-    throw new Error("A partial or full delivery requires the actual date and receiver's name.");
+  if (!operationActorCanAccess(actor, "manage_deliveries")) throw new Error("Only authorized Axora operations users can record delivery updates.");
+  if (["Partially Delivered", "Delivered"].includes(input.status)) {
+    throw new Error("Customer receipt must be confirmed independently in the receiving portal.");
   }
-  if (!isReceipt && input.quantityReceived !== 0) {
-    throw new Error("Only a partial or full delivery can add to the received quantity.");
+  if (!Number.isFinite(input.quantityReceived) || input.quantityReceived !== 0
+    || input.actualDate || input.receivedBy?.trim()) {
+    throw new Error("Logistics status updates cannot record customer receipt evidence.");
   }
   if (["Delayed", "Failed", "Cancelled"].includes(input.status) && !input.issueReason?.trim()) throw new Error("An issue reason is required for this delivery status.");
   if (isDemoMode()) {
     const request = getDemoStore().requests.find((item) => item.lines.some((line) => line.id === input.requestLineId));
     const line = request?.lines.find((item) => item.id === input.requestLineId);
     if (!request || !line) throw new Error("Request line not found.");
-    const alreadyReceived = getDemoOperations().deliveries
-      .filter((item) => item.requestLineId === line.id && RECEIPT_DELIVERY_STATUSES.includes(item.status))
-      .reduce((sum, item) => sum + item.quantityReceived, 0);
-    if (alreadyReceived >= line.quantity - 0.0001) {
-      throw new Error("This request line is already fully delivered and cannot receive another delivery update.");
-    }
-    const receivedAfterUpdate = alreadyReceived + input.quantityReceived;
-    if (receivedAfterUpdate > line.quantity) throw new Error("Received quantity cannot exceed the ordered quantity.");
-    if (input.status === "Delivered" && Math.abs(receivedAfterUpdate - line.quantity) > 0.0001) {
-      throw new Error("Use Partially Delivered until the full ordered quantity is accepted.");
-    }
-    if (input.status === "Partially Delivered" && receivedAfterUpdate >= line.quantity - 0.0001) {
-      throw new Error("Use Delivered when this receipt completes the ordered quantity.");
-    }
     getDemoOperations().deliveries.unshift({ id: randomUUID(), requestLineId: line.id, requestLineCode: line.code, orderCode: request.orderCode,
       companyName: request.companyName, productName: line.productName, expectedDate: input.expectedDate, revisedDate: input.revisedDate,
-      actualDate: input.actualDate, status: input.status, quantityReceived: input.quantityReceived, receivedBy: input.receivedBy,
+      status: input.status, quantityReceived: 0,
       issueReason: input.issueReason, createdAt: new Date().toISOString() });
-    line.deliveryStatus = input.status; line.quantityReceived = alreadyReceived + input.quantityReceived; line.expectedDeliveryDate = input.revisedDate || input.expectedDate; line.actualDeliveryDate = input.actualDate;
+    line.deliveryStatus = input.status;
+    line.expectedDeliveryDate = input.revisedDate || input.expectedDate;
     addDemoAudit("deliveries", line.id, "INSERT", actor.name, input.issueReason);
     return;
   }
   await withAuditTransaction({ userId: actor.id, reason: input.issueReason }, async (client) => {
-    const line = await client.query<{ quantity: number }>(`SELECT l.quantity::float8 AS quantity FROM request_lines l JOIN requests r ON r.id=l.request_id
+    const line = await client.query<{ requestId: string; companyId: string; branchId: string }>(`SELECT
+      r.id::text AS "requestId",r.company_id::text AS "companyId",r.branch_id::text AS "branchId"
+      FROM request_lines l JOIN requests r ON r.id=l.request_id
       JOIN lookup_values rs ON rs.id=r.status_id WHERE l.id=$1 AND rs.label IN ('Ordered','Preparing for Delivery','Out for Delivery')
       FOR UPDATE`, [input.requestLineId]);
     if (!line.rows[0]) throw new Error("Request line not found.");
-    const received = await client.query<{ total: number }>(`SELECT COALESCE(sum(d.quantity_received),0)::float8 AS total
-      FROM deliveries d JOIN lookup_values ds ON ds.id=d.status_id
-      WHERE d.request_line_id=$1 AND ds.label IN ('Partially Delivered','Delivered')`, [input.requestLineId]);
-    if (received.rows[0].total >= line.rows[0].quantity - 0.0001) {
-      throw new Error("This request line is already fully delivered and cannot receive another delivery update.");
-    }
-    const receivedAfterUpdate = received.rows[0].total + input.quantityReceived;
-    if (receivedAfterUpdate > line.rows[0].quantity) throw new Error("Received quantity cannot exceed the ordered quantity.");
-    if (input.status === "Delivered" && Math.abs(receivedAfterUpdate - line.rows[0].quantity) > 0.0001) {
-      throw new Error("Use Partially Delivered until the full ordered quantity is accepted.");
-    }
-    if (input.status === "Partially Delivered" && receivedAfterUpdate >= line.rows[0].quantity - 0.0001) {
-      throw new Error("Use Delivered when this receipt completes the ordered quantity.");
-    }
-    await client.query(`INSERT INTO deliveries (request_line_id,expected_date,revised_date,actual_date,status_id,quantity_received,received_by,issue_reason)
-      VALUES ($1,$2,$3,$4,lookup_id('delivery_status',$5),$6,$7,$8)`, [input.requestLineId, input.expectedDate || null, input.revisedDate || null,
-        input.actualDate || null, input.status, input.quantityReceived, input.receivedBy || null, input.issueReason || null]);
+    const inserted = await client.query<{ id: string }>(`INSERT INTO deliveries (request_line_id,expected_date,revised_date,actual_date,status_id,quantity_received,received_by,issue_reason)
+      VALUES ($1,$2,$3,NULL,lookup_id('delivery_status',$4),0,NULL,$5) RETURNING id::text`, [input.requestLineId, input.expectedDate || null, input.revisedDate || null,
+        input.status, input.issueReason || null]);
+    const eventKey = input.status === "Scheduled" ? "delivery.scheduled"
+      : input.status === "Out for Delivery" ? "delivery.out_for_delivery"
+        : input.status === "Delayed" ? "delivery.delayed"
+          : input.status === "Failed" ? "delivery.failed"
+            : "delivery.status_changed";
+    const event = await appendWorkflowEvent(client, {
+      companyId: line.rows[0].companyId,
+      branchId: line.rows[0].branchId,
+      requestId: line.rows[0].requestId,
+      aggregateType: "request",
+      aggregateId: line.rows[0].requestId,
+      eventKey,
+      stableKey: inserted.rows[0].id,
+      actor: actor as SessionUser,
+      newState: input.status,
+      reason: input.issueReason,
+      source: "WEB",
+      metadata: { requestLineId: input.requestLineId },
+    });
+    await notifyWorkflowAudience(client, event, {
+      actorUserId: actor.id,
+      audiences: ["REQUEST_CREATOR"],
+      message: { key: "delivery_status_updated", status: input.status },
+      routePath: `/requests/${line.rows[0].requestId}`,
+      priority: ["Delayed", "Failed"].includes(input.status) ? "HIGH" : "NORMAL",
+    });
   });
 }
 
 export async function listInvoices(): Promise<InvoiceRecord[]> {
   const actor = await requirePermission("view_invoices");
-  if (isDemoMode()) return actor.isOwner
+  if (isDemoMode()) return isPlatformOperationsActor(actor)
     ? getDemoOperations().invoices
     : getDemoOperations().invoices.filter((invoice) => invoice.direction === "CUSTOMER");
-  const visibilityClause = actor.isOwner
+  const visibilityClause = isPlatformOperationsActor(actor)
     ? ""
     : actor.branchId
       ? "WHERE r.company_id=$1 AND r.branch_id=$2 AND b.direction='CUSTOMER'"
       : "WHERE r.company_id=$1 AND b.direction='CUSTOMER'";
-  const visibilityParams = actor.isOwner ? [] : actor.branchId ? [actor.companyId, actor.branchId] : [actor.companyId];
+  const visibilityParams = isPlatformOperationsActor(actor) ? [] : actor.branchId ? [actor.companyId, actor.branchId] : [actor.companyId];
   const result = await query<InvoiceRecord>(`SELECT b.id::text,b.direction,b.request_id::text AS "requestId",r.order_code AS "orderCode",
     CASE WHEN b.direction='CUSTOMER' THEN c.name ELSE s.name END AS counterparty,b.invoice_number AS "invoiceNumber",b.invoice_date::text AS "invoiceDate",
     b.due_date::text AS "dueDate",b.amount::float8,b.status::text,b.paid_amount::float8 AS "paidAmount",b.outstanding_amount::float8 AS "outstandingAmount",
@@ -395,7 +701,10 @@ export async function listInvoices(): Promise<InvoiceRecord[]> {
 }
 
 export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER"; requestId: string; supplierId?: string; invoiceNumber: string; invoiceDate: string; dueDate?: string; amount: number; status: InvoiceStatus }, actor: OperationActor) {
-  if (!actor.isOwner) throw new Error("Only Axora platform owners can create invoices.");
+  if (!operationActorCanAccess(actor, "manage_finance")) throw new Error("Only authorized Axora finance users can create invoices.");
+  if (input.direction === "SUPPLIER" && !isPlatformScopedActor(actor)) {
+    throw new Error("Supplier invoices are private Axora finance records.");
+  }
   if (input.direction === "SUPPLIER" && !input.supplierId) throw new Error("Select the supplier for a supplier invoice.");
   if (input.status !== "Issued") throw new Error("New invoices must be issued records.");
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter a positive invoice amount.");
@@ -434,8 +743,8 @@ export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER";
     return;
   }
   await withAuditTransaction({ userId: actor.id }, async (client) => {
-    const request = await client.query<{ companyId: string; status: string }>(
-      `SELECT r.company_id::text AS "companyId",rs.label AS status
+    const request = await client.query<{ companyId: string; branchId: string; status: string }>(
+      `SELECT r.company_id::text AS "companyId",r.branch_id::text AS "branchId",rs.label AS status
        FROM requests r JOIN lookup_values rs ON rs.id=r.status_id
        WHERE r.id=$1
          AND rs.label IN ('Delivered','Invoice Issued')
@@ -446,13 +755,7 @@ export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER";
          AND NOT EXISTS (
            SELECT 1 FROM request_lines line
            WHERE line.request_id=r.id
-             AND COALESCE((
-               SELECT sum(delivery.quantity_received)
-               FROM deliveries delivery
-               JOIN lookup_values delivery_status ON delivery_status.id=delivery.status_id
-               WHERE delivery.request_line_id=line.id
-                 AND delivery_status.label IN ('Partially Delivered','Delivered')
-             ),0) < line.quantity
+             AND axora_received_quantity(line.id)<line.quantity
          )
        FOR UPDATE OF r`,
       [input.requestId],
@@ -483,8 +786,8 @@ export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER";
         throw new Error("Customer invoices cannot exceed the total approved by the company.");
       }
     }
-    await client.query(`INSERT INTO invoices (direction,request_id,company_id,supplier_id,invoice_number,invoice_date,due_date,amount,status_id)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,lookup_id('invoice_status',$9))`, [input.direction, input.requestId,
+    const inserted = await client.query<{ id: string }>(`INSERT INTO invoices (direction,request_id,company_id,supplier_id,invoice_number,invoice_date,due_date,amount,status_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,lookup_id('invoice_status',$9)) RETURNING id::text`, [input.direction, input.requestId,
         input.direction === "CUSTOMER" ? request.rows[0].companyId : null, input.direction === "SUPPLIER" ? input.supplierId : null,
         input.invoiceNumber, input.invoiceDate, input.dueDate || null, input.amount, input.status]);
     if (input.direction === "CUSTOMER" && request.rows[0].status === "Delivered") {
@@ -493,24 +796,44 @@ export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER";
         [input.requestId],
       );
     }
+    if (input.direction === "CUSTOMER") {
+      const event = await appendWorkflowEvent(client, {
+        companyId: request.rows[0].companyId,
+        branchId: request.rows[0].branchId,
+        requestId: input.requestId,
+        aggregateType: "request",
+        aggregateId: input.requestId,
+        eventKey: "invoice.issued",
+        stableKey: inserted.rows[0].id,
+        actor: actor as SessionUser,
+        newState: "Invoice issued",
+        source: "WEB",
+      });
+      await notifyWorkflowAudience(client, event, {
+        actorUserId: actor.id,
+        audiences: ["REQUEST_CREATOR", "COMPANY_FINANCE"],
+        message: { key: "invoice_issued" },
+        routePath: "/finance",
+      });
+    }
   });
 }
 
 export async function listPayments(): Promise<PaymentRecord[]> {
   const actor = await requirePermission("view_invoices");
   if (isDemoMode()) {
-    if (actor.isOwner) return getDemoOperations().payments;
+    if (isPlatformOperationsActor(actor)) return getDemoOperations().payments;
     const customerInvoiceIds = new Set(getDemoOperations().invoices
       .filter((invoice) => invoice.direction === "CUSTOMER")
       .map((invoice) => invoice.id));
     return getDemoOperations().payments.filter((payment) => customerInvoiceIds.has(payment.invoiceId));
   }
-  const visibilityClause = actor.isOwner
+  const visibilityClause = isPlatformOperationsActor(actor)
     ? ""
     : actor.branchId
       ? "WHERE r.company_id=$1 AND r.branch_id=$2 AND i.direction='CUSTOMER'"
       : "WHERE r.company_id=$1 AND i.direction='CUSTOMER'";
-  const visibilityParams = actor.isOwner ? [] : actor.branchId ? [actor.companyId, actor.branchId] : [actor.companyId];
+  const visibilityParams = isPlatformOperationsActor(actor) ? [] : actor.branchId ? [actor.companyId, actor.branchId] : [actor.companyId];
   const result = await query<PaymentRecord>(`SELECT p.id::text,p.invoice_id::text AS "invoiceId",i.invoice_number AS "invoiceNumber",p.payment_date::text AS "paymentDate",
     p.amount::float8,p.method,p.reference,u.display_name AS "recordedByName" FROM payments p JOIN invoices i ON i.id=p.invoice_id
     JOIN requests r ON r.id=i.request_id LEFT JOIN users u ON u.id=p.recorded_by
@@ -519,7 +842,7 @@ export async function listPayments(): Promise<PaymentRecord[]> {
 }
 
 export async function recordPayment(input: { invoiceId: string; paymentDate: string; amount: number; method: string; reference?: string }, actor: OperationActor) {
-  if (!actor.isOwner) throw new Error("Only Axora platform owners can record payments.");
+  if (!operationActorCanAccess(actor, "manage_finance")) throw new Error("Only authorized Axora finance users can record payments.");
   if (input.method !== COD_PAYMENT_METHOD) throw new Error(`Only ${COD_PAYMENT_METHOD} is currently supported.`);
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter a positive payment amount.");
   const reference = input.reference?.trim();
@@ -527,6 +850,9 @@ export async function recordPayment(input: { invoiceId: string; paymentDate: str
   if (isDemoMode()) {
     const invoice = getDemoOperations().invoices.find((item) => item.id === input.invoiceId);
     if (!invoice) throw new Error("Invoice not found.");
+    if (invoice.direction === "SUPPLIER" && !isPlatformScopedActor(actor)) {
+      throw new Error("Supplier payments are private Axora finance records.");
+    }
     const request = getDemoStore().requests.find((item) => item.id === invoice.requestId);
     if (invoice.status !== "Issued"
         || !request
@@ -542,8 +868,10 @@ export async function recordPayment(input: { invoiceId: string; paymentDate: str
     return;
   }
   await withAuditTransaction({ userId: actor.id }, async (client) => {
-    const invoice = await client.query<{ amount: number }>(
-      `SELECT i.amount::float8 AS amount
+    const invoice = await client.query<{ amount: number; direction: "CUSTOMER" | "SUPPLIER"; requestId: string; companyId: string; branchId: string }>(
+      `SELECT i.amount::float8 AS amount,i.direction,
+         r.id::text AS "requestId",r.company_id::text AS "companyId",
+         r.branch_id::text AS "branchId"
        FROM invoices i
        JOIN requests r ON r.id=i.request_id
        JOIN lookup_values invoice_status ON invoice_status.id=i.status_id
@@ -554,33 +882,52 @@ export async function recordPayment(input: { invoiceId: string; paymentDate: str
          AND NOT EXISTS (
            SELECT 1 FROM request_lines line
            WHERE line.request_id=r.id
-             AND COALESCE((
-               SELECT sum(delivery.quantity_received)
-               FROM deliveries delivery
-               JOIN lookup_values delivery_status ON delivery_status.id=delivery.status_id
-               WHERE delivery.request_line_id=line.id
-                 AND delivery_status.label IN ('Partially Delivered','Delivered')
-             ),0) < line.quantity
+             AND axora_received_quantity(line.id)<line.quantity
          )
        FOR UPDATE`,
       [input.invoiceId],
     );
     if (!invoice.rows[0]) throw new Error("Record COD only against an issued invoice after delivery.");
+    if (invoice.rows[0].direction === "SUPPLIER" && !isPlatformScopedActor(actor)) {
+      throw new Error("Supplier payments are private Axora finance records.");
+    }
     const paid = await client.query<{ total: number }>("SELECT COALESCE(sum(amount),0)::float8 AS total FROM payments WHERE invoice_id=$1", [input.invoiceId]);
     if (input.amount > invoice.rows[0].amount - paid.rows[0].total) throw new Error("Payment cannot exceed the outstanding invoice amount.");
-    await client.query("INSERT INTO payments (invoice_id,payment_date,amount,method,reference,recorded_by) VALUES ($1,$2,$3,$4,$5,$6)",
+    const inserted = await client.query<{ id: string }>("INSERT INTO payments (invoice_id,payment_date,amount,method,reference,recorded_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id::text",
       [input.invoiceId, input.paymentDate, input.amount, COD_PAYMENT_METHOD, reference, actor.id]);
+    if (invoice.rows[0].direction === "CUSTOMER") {
+      const event = await appendWorkflowEvent(client, {
+        companyId: invoice.rows[0].companyId,
+        branchId: invoice.rows[0].branchId,
+        requestId: invoice.rows[0].requestId,
+        aggregateType: "request",
+        aggregateId: invoice.rows[0].requestId,
+        eventKey: "payment.status_changed",
+        stableKey: inserted.rows[0].id,
+        actor: actor as SessionUser,
+        newState: "COD payment recorded",
+        source: "WEB",
+      });
+      await notifyWorkflowAudience(client, event, {
+        actorUserId: actor.id,
+        audiences: ["REQUEST_CREATOR", "COMPANY_FINANCE"],
+        message: { key: "payment_status_changed" },
+        routePath: "/finance",
+      });
+    }
   });
 }
 
-export async function listAuditRecords(): Promise<AuditRecord[]> {
+export async function listAuditRecords(rawFilters: AuditRecordFilters = {}): Promise<AuditRecord[]> {
   const actor = await requirePermission("view_audit");
+  const filters = normalizeAuditRecordFilters(rawFilters);
   if (isDemoMode()) {
-    return actor.isOwner
+    const visible = isPlatformScopedActor(actor)
       ? getDemoOperations().audit
       : getDemoOperations().audit.filter((item) => item.entityType !== "quotations");
+    return visible.filter((item) => auditRecordMatchesFilters(item, filters));
   }
-  const customerAuditScope = actor.isOwner ? "" : ` AND (
+  const customerAuditScope = isPlatformScopedActor(actor) ? "" : ` AND (
       a.entity_type IN ('companies','users','branches','requests','request_lines','approvals','deliveries')
       OR (a.entity_type='invoices' AND EXISTS (
         SELECT 1 FROM invoices visible_invoice
@@ -601,75 +948,91 @@ export async function listAuditRecords(): Promise<AuditRecord[]> {
         WHERE visible_attachment.id=a.record_id AND visible_attachment.visibility='CUSTOMER'
       ))
     )`;
-  const branchScope = actor.branchId ? ` AND (
-      (a.entity_type='branches' AND a.record_id=$2)
+  const values: unknown[] = [];
+  const bind = (value: unknown) => {
+    values.push(value);
+    return `$${values.length}`;
+  };
+  const companyParameter = isPlatformScopedActor(actor) ? undefined : bind(actor.companyId);
+  const branchParameter = !isPlatformScopedActor(actor) && actor.branchId
+    ? bind(actor.branchId)
+    : undefined;
+  const branchScope = branchParameter ? ` AND (
+      (a.entity_type='branches' AND a.record_id=${branchParameter})
       OR (a.entity_type='users' AND EXISTS (
-        SELECT 1 FROM users scoped_user WHERE scoped_user.id=a.record_id AND scoped_user.branch_id=$2
+        SELECT 1 FROM users scoped_user WHERE scoped_user.id=a.record_id AND scoped_user.branch_id=${branchParameter}
       ))
       OR (a.entity_type='requests' AND EXISTS (
-        SELECT 1 FROM requests scoped_request WHERE scoped_request.id=a.record_id AND scoped_request.branch_id=$2
+        SELECT 1 FROM requests scoped_request WHERE scoped_request.id=a.record_id AND scoped_request.branch_id=${branchParameter}
       ))
       OR (a.entity_type='request_lines' AND EXISTS (
         SELECT 1 FROM request_lines scoped_line JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-        WHERE scoped_line.id=a.record_id AND scoped_request.branch_id=$2
+        WHERE scoped_line.id=a.record_id AND scoped_request.branch_id=${branchParameter}
       ))
       OR (a.entity_type='quotations' AND EXISTS (
         SELECT 1 FROM quotations scoped_quote
         JOIN request_lines scoped_line ON scoped_line.id=scoped_quote.request_line_id
         JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-        WHERE scoped_quote.id=a.record_id AND scoped_request.branch_id=$2
+        WHERE scoped_quote.id=a.record_id AND scoped_request.branch_id=${branchParameter}
       ))
       OR (a.entity_type='approvals' AND EXISTS (
         SELECT 1 FROM approvals scoped_approval JOIN requests scoped_request ON scoped_request.id=scoped_approval.request_id
-        WHERE scoped_approval.id=a.record_id AND scoped_request.branch_id=$2
+        WHERE scoped_approval.id=a.record_id AND scoped_request.branch_id=${branchParameter}
       ))
       OR (a.entity_type='deliveries' AND EXISTS (
         SELECT 1 FROM deliveries scoped_delivery
         JOIN request_lines scoped_line ON scoped_line.id=scoped_delivery.request_line_id
         JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-        WHERE scoped_delivery.id=a.record_id AND scoped_request.branch_id=$2
+        WHERE scoped_delivery.id=a.record_id AND scoped_request.branch_id=${branchParameter}
       ))
       OR (a.entity_type='invoices' AND EXISTS (
         SELECT 1 FROM invoices scoped_invoice JOIN requests scoped_request ON scoped_request.id=scoped_invoice.request_id
-        WHERE scoped_invoice.id=a.record_id AND scoped_request.branch_id=$2
+        WHERE scoped_invoice.id=a.record_id AND scoped_request.branch_id=${branchParameter}
       ))
       OR (a.entity_type='invoice_allocations' AND EXISTS (
         SELECT 1 FROM invoice_allocations scoped_allocation
         JOIN request_lines scoped_line ON scoped_line.id=scoped_allocation.request_line_id
         JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-        WHERE scoped_allocation.id=a.record_id AND scoped_request.branch_id=$2
+        WHERE scoped_allocation.id=a.record_id AND scoped_request.branch_id=${branchParameter}
       ))
       OR (a.entity_type='payments' AND EXISTS (
         SELECT 1 FROM payments scoped_payment
         JOIN invoices scoped_invoice ON scoped_invoice.id=scoped_payment.invoice_id
         JOIN requests scoped_request ON scoped_request.id=scoped_invoice.request_id
-        WHERE scoped_payment.id=a.record_id AND scoped_request.branch_id=$2
+        WHERE scoped_payment.id=a.record_id AND scoped_request.branch_id=${branchParameter}
       ))
       OR (a.entity_type='attachments' AND EXISTS (
         SELECT 1 FROM attachments scoped_attachment
         WHERE scoped_attachment.id=a.record_id AND (
           (scoped_attachment.entity_type='request' AND EXISTS (
             SELECT 1 FROM requests scoped_request
-            WHERE scoped_request.id=scoped_attachment.record_id AND scoped_request.branch_id=$2
+            WHERE scoped_request.id=scoped_attachment.record_id AND scoped_request.branch_id=${branchParameter}
           ))
           OR (scoped_attachment.entity_type='invoice' AND EXISTS (
             SELECT 1 FROM invoices scoped_invoice JOIN requests scoped_request ON scoped_request.id=scoped_invoice.request_id
-            WHERE scoped_invoice.id=scoped_attachment.record_id AND scoped_request.branch_id=$2
+            WHERE scoped_invoice.id=scoped_attachment.record_id AND scoped_request.branch_id=${branchParameter}
           ))
           OR (scoped_attachment.entity_type='delivery' AND EXISTS (
             SELECT 1 FROM deliveries scoped_delivery
             JOIN request_lines scoped_line ON scoped_line.id=scoped_delivery.request_line_id
             JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-            WHERE scoped_delivery.id=scoped_attachment.record_id AND scoped_request.branch_id=$2
+            WHERE scoped_delivery.id=scoped_attachment.record_id AND scoped_request.branch_id=${branchParameter}
           ))
         )
       ))
     )` : "";
-  const visibilityClause = actor.isOwner ? "" : `WHERE a.company_id=$1${customerAuditScope}${branchScope}`;
-  const visibilityParams = actor.isOwner ? [] : actor.branchId ? [actor.companyId, actor.branchId] : [actor.companyId];
+  const predicates: string[] = [];
+  if (companyParameter) predicates.push(`(a.company_id=${companyParameter}${customerAuditScope}${branchScope})`);
+  if (filters.entityType) predicates.push(`a.entity_type=${bind(filters.entityType)}`);
+  if (filters.action) predicates.push(`upper(a.action)=${bind(filters.action)}`);
+  if (filters.actor) predicates.push(`strpos(lower(COALESCE(u.display_name,'')),lower(${bind(filters.actor)}))>0`);
+  if (filters.recordId) predicates.push(`a.record_id=${bind(filters.recordId)}::uuid`);
+  if (filters.from) predicates.push(`a.occurred_at>=${bind(filters.from)}::date`);
+  if (filters.to) predicates.push(`a.occurred_at<(${bind(filters.to)}::date + interval '1 day')`);
+  const whereClause = predicates.length ? `WHERE ${predicates.join(" AND ")}` : "";
   const result = await query<AuditRecord>(`SELECT a.id::text,a.entity_type AS "entityType",a.record_id::text AS "recordId",a.action,
     u.display_name AS "actorName",a.reason,a.occurred_at::text AS "occurredAt" FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id
-    ${visibilityClause} ORDER BY a.occurred_at DESC LIMIT 500`, visibilityParams);
+    ${whereClause} ORDER BY a.occurred_at DESC LIMIT 500`, values);
   return result.rows;
 }
 
@@ -715,7 +1078,7 @@ export async function listAttachments(): Promise<AttachmentRecord[]> {
         ? canAccess(actor, "view_deliveries")
         : entityType === "request" && canAccess(actor, "view_requests");
   if (isDemoMode()) {
-    if (actor.isOwner) return getDemoOperations().attachments;
+    if (isPlatformOperationsActor(actor)) return getDemoOperations().attachments;
     return getDemoOperations().attachments.filter((attachment) => {
       const request = getDemoRequestForLinkedRecord(attachment.entityType, attachment.recordId);
       return Boolean(
@@ -727,21 +1090,21 @@ export async function listAttachments(): Promise<AttachmentRecord[]> {
       );
     });
   }
-  const visibilityParams: unknown[] = actor.isOwner ? [] : [actor.companyId];
+  const visibilityParams: unknown[] = isPlatformOperationsActor(actor) ? [] : [actor.companyId];
   let linkedScope = "";
-  if (!actor.isOwner && actor.branchId) {
+  if (!isPlatformOperationsActor(actor) && actor.branchId) {
     visibilityParams.push(actor.branchId);
     linkedScope += attachmentLinkedRequestScope(`scoped_request.branch_id=$${visibilityParams.length}`);
   }
-  if (!actor.isOwner && isSelfScopedRequester(actor)) {
+  if (!isPlatformOperationsActor(actor) && isSelfScopedRequester(actor)) {
     visibilityParams.push(actor.id);
     linkedScope += attachmentLinkedRequestScope(`scoped_request.created_by=$${visibilityParams.length}`);
   }
-  const visibilityClause = actor.isOwner ? "" : `WHERE a.company_id=$1 AND a.visibility='CUSTOMER'${linkedScope}`;
+  const visibilityClause = isPlatformOperationsActor(actor) ? "" : `WHERE a.company_id=$1 AND a.visibility='CUSTOMER'${linkedScope}`;
   const result = await query<AttachmentRecord>(`SELECT a.id::text,a.entity_type AS "entityType",a.record_id::text AS "recordId",a.file_name AS "fileName",
     a.content_type AS "contentType",a.visibility,a.created_at::text AS "createdAt",u.display_name AS "uploadedByName" FROM attachments a
     LEFT JOIN users u ON u.id=a.uploaded_by ${visibilityClause} ORDER BY a.created_at DESC`, visibilityParams);
-  return actor.isOwner ? result.rows : result.rows.filter((attachment) => canViewAttachmentType(attachment.entityType));
+  return isPlatformOperationsActor(actor) ? result.rows : result.rows.filter((attachment) => canViewAttachmentType(attachment.entityType));
 }
 
 const allowedUploadTypes = new Set(["application/pdf", "image/png", "image/jpeg", "text/plain", "text/csv"]);
@@ -762,6 +1125,10 @@ export async function saveAttachment(input: {
   }
   if (!input.file.size || input.file.size > 2 * 1024 * 1024) throw new Error("Choose a file between 1 byte and 2 MB.");
   if (!allowedUploadTypes.has(input.file.type)) throw new Error("Only PDF, PNG, JPG, TXT, and CSV files are allowed.");
+  const bytes = Buffer.from(await input.file.arrayBuffer());
+  if (bytes.length !== input.file.size || !uploadedContentMatchesMime(input.file.type, bytes)) {
+    throw new Error("The file content does not match its declared type.");
+  }
   const safeName = input.file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
   if (isDemoMode()) {
     const request = getDemoRequestForLinkedRecord(input.entityType, input.recordId);
@@ -771,12 +1138,12 @@ export async function saveAttachment(input: {
     const linkedInvoice = input.entityType === "invoice"
       ? getDemoOperations().invoices.find((item) => item.id === input.recordId)
       : undefined;
-    if (!actor.isOwner && linkedInvoice?.direction === "SUPPLIER") {
+    if (!isPlatformOperationsActor(actor) && linkedInvoice?.direction === "SUPPLIER") {
       throw new Error("Supplier invoice documents are internal to Axora.");
     }
     const visibility = linkedInvoice?.direction === "SUPPLIER"
       ? "INTERNAL"
-      : actor.isOwner ? input.visibility ?? "INTERNAL" : "CUSTOMER";
+      : isPlatformOperationsActor(actor) ? input.visibility ?? "INTERNAL" : "CUSTOMER";
     getDemoOperations().attachments.unshift({ id: randomUUID(), entityType: input.entityType, recordId: input.recordId, fileName: safeName,
       contentType: input.file.type, visibility, createdAt: new Date().toISOString(), uploadedByName: actor.name });
     addDemoAudit("attachments", input.recordId, "INSERT", actor.name, safeName);
@@ -792,20 +1159,19 @@ export async function saveAttachment(input: {
           FROM deliveries d JOIN request_lines l ON l.id=d.request_line_id JOIN requests r ON r.id=l.request_id WHERE d.id=$1`;
   const companyResult = await query<{ companyId: string; branchId: string; createdById?: string; invoiceDirection?: string }>(companyLookup, [input.recordId]);
   const linked = companyResult.rows[0];
-  if (!linked || (!actor.isOwner && (
+  if (!linked || (!isPlatformOperationsActor(actor) && (
     linked.companyId !== actor.companyId
     || (actor.branchId && linked.branchId !== actor.branchId)
     || (isSelfScopedRequester(actor) && linked.createdById !== actor.id)
   ))) throw new Error("Linked record not found.");
-  if (!actor.isOwner && linked.invoiceDirection === "SUPPLIER") {
+  if (!isPlatformOperationsActor(actor) && linked.invoiceDirection === "SUPPLIER") {
     throw new Error("Supplier invoice documents are internal to Axora.");
   }
   const id = randomUUID();
   const relativePath = path.posix.join(input.entityType, `${id}-${safeName}`);
-  const bytes = Buffer.from(await input.file.arrayBuffer());
   const visibility = linked.invoiceDirection === "SUPPLIER"
     ? "INTERNAL"
-    : actor.isOwner ? input.visibility ?? "INTERNAL" : "CUSTOMER";
+    : isPlatformOperationsActor(actor) ? input.visibility ?? "INTERNAL" : "CUSTOMER";
   await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO attachments
     (id,entity_type,record_id,file_name,content_type,storage_path,uploaded_by,company_id,file_content,visibility)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
@@ -821,20 +1187,20 @@ export async function loadAttachmentFile(id: string) {
     canAccess(actor, "view_deliveries") ? "delivery" : undefined,
   ].filter((value): value is string => Boolean(value));
   if (!allowedEntityTypes.length) return null;
-  const entityTypeScope = actor.isOwner
+  const entityTypeScope = isPlatformOperationsActor(actor)
     ? ""
     : ` AND a.entity_type IN (${allowedEntityTypes.map((value) => `'${value}'`).join(",")})`;
-  const visibilityParams: unknown[] = actor.isOwner ? [id] : [id, actor.companyId];
+  const visibilityParams: unknown[] = isPlatformOperationsActor(actor) ? [id] : [id, actor.companyId];
   let linkedScope = "";
-  if (!actor.isOwner && actor.branchId) {
+  if (!isPlatformOperationsActor(actor) && actor.branchId) {
     visibilityParams.push(actor.branchId);
     linkedScope += attachmentLinkedRequestScope(`scoped_request.branch_id=$${visibilityParams.length}`);
   }
-  if (!actor.isOwner && isSelfScopedRequester(actor)) {
+  if (!isPlatformOperationsActor(actor) && isSelfScopedRequester(actor)) {
     visibilityParams.push(actor.id);
     linkedScope += attachmentLinkedRequestScope(`scoped_request.created_by=$${visibilityParams.length}`);
   }
-  const visibilityClause = actor.isOwner ? "" : ` AND a.company_id=$2 AND a.visibility='CUSTOMER'${linkedScope}`;
+  const visibilityClause = isPlatformOperationsActor(actor) ? "" : ` AND a.company_id=$2 AND a.visibility='CUSTOMER'${linkedScope}`;
   const result = await query<{ fileName: string; contentType: string; storagePath: string; fileContent?: Buffer }>(`SELECT file_name AS "fileName",content_type AS "contentType",storage_path AS "storagePath",file_content AS "fileContent"
     FROM attachments a WHERE a.id=$1${entityTypeScope}${visibilityClause}`, visibilityParams);
   const record = result.rows[0];

@@ -3,6 +3,7 @@ import { RequestForm } from "@/components/RequestForm";
 import { requirePagePermission } from "@/lib/auth";
 import { getCatalogProductById } from "@/lib/catalog";
 import { listBranches, listCompanies } from "@/lib/repository";
+import { corePortalMessages } from "@/lib/core-portal-i18n";
 
 export default async function NewRequestPage({
   searchParams,
@@ -10,6 +11,8 @@ export default async function NewRequestPage({
   searchParams: Promise<{ product?: string }>;
 }) {
   const actor = await requirePagePermission("create_requests");
+  const locale = actor.preferredLocale ?? "en";
+  const copy = corePortalMessages(locale).requests;
   const params = await searchParams;
 
   const [companies, branches, initialProduct] =
@@ -24,9 +27,9 @@ export default async function NewRequestPage({
   return (
     <>
       <PageHeader
-        eyebrow="Company procurement"
-        title="Create purchase request"
-        description="Review the products in your Shop cart, confirm quantities, and submit the request for company approval."
+        eyebrow={copy.newEyebrow}
+        title={copy.newTitle}
+        description={copy.newDescription}
       />
 
       <RequestForm
@@ -34,6 +37,7 @@ export default async function NewRequestPage({
         companies={companies}
         branches={branches}
         initialProduct={initialProduct}
+        locale={locale}
       />
     </>
   );

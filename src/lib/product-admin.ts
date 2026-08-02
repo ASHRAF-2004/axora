@@ -2,6 +2,7 @@ import type { SessionUser } from "./auth";
 import { isDemoMode, withAuditTransaction } from "./db";
 import { getDemoStore } from "./demo-data";
 import type { Product } from "./types";
+import { canAccess } from "./permissions";
 
 export type ProductInput = Omit<
   Product,
@@ -18,7 +19,7 @@ export type ProductInput = Omit<
 >;
 
 export async function updateProduct(productId: string, input: ProductInput, actor: SessionUser) {
-  if (!actor.isOwner) throw new Error("Only an Axora platform owner can manage the product catalog.");
+  if (!canAccess(actor, "manage_catalog")) throw new Error("Your account cannot manage the product catalog.");
 
   if (isDemoMode()) {
     const store = getDemoStore();

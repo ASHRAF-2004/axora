@@ -6,6 +6,9 @@ import type {
   ShopCategorySummary,
 } from "@/lib/catalog";
 import { formatCurrency, roundMoney } from "@/lib/domain";
+import type { SupportedLocale } from "@/lib/i18n";
+import { corePortalMessages } from "@/lib/core-portal-i18n";
+import { shopMessages } from "@/lib/shop-i18n";
 import {
   addProductToRequestCart,
   readRequestCart,
@@ -36,11 +39,6 @@ import {
 import { ProductImage } from "./ProductImage";
 import { useUxFeedback } from "./UxFeedbackProvider";
 
-function deliveryLabel(days: number) {
-  if (days === 0) return "Same day";
-  return `${days} day${days === 1 ? "" : "s"}`;
-}
-
 function minimumQuantity(product: Product) {
   return Math.max(Math.ceil(product.minimumOrderQuantity), 1);
 }
@@ -48,10 +46,14 @@ function minimumQuantity(product: Product) {
 export function ShopCategoryHub({
   departments,
   canRequest,
+  locale = "en",
 }: {
   departments: ShopCategorySummary[];
   canRequest: boolean;
+  locale?: SupportedLocale;
 }) {
+  const productCopy = corePortalMessages(locale).products;
+  const shopCopy = shopMessages(locale);
   const [selectedCategory, setSelectedCategory] =
     useState<ShopCategorySummary | null>(null);
 
@@ -147,7 +149,7 @@ export function ShopCategoryHub({
         throw new Error(
           "error" in payload && payload.error
             ? payload.error
-            : "Unable to load shop products.",
+            : shopCopy.loadError,
         );
       }
 
@@ -167,7 +169,7 @@ export function ShopCategoryHub({
         return [...merged.values()];
       });
     },
-    [buildParams],
+    [buildParams, shopCopy.loadError],
   );
 
   useEffect(() => {
@@ -191,7 +193,7 @@ export function ShopCategoryHub({
           setError(
             loadError instanceof Error
               ? loadError.message
-              : "Unable to load shop products.",
+              : shopCopy.loadError,
           );
         })
         .finally(() => {
@@ -205,7 +207,7 @@ export function ShopCategoryHub({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [loadProducts, showingProducts]);
+  }, [loadProducts, shopCopy.loadError, showingProducts]);
 
   function openCategory(category: ShopCategorySummary) {
     setSelectedCategory(category);
@@ -250,7 +252,7 @@ export function ShopCategoryHub({
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Unable to load more products.",
+          : shopCopy.loadMoreError,
       );
     } finally {
       setLoadingMore(false);
@@ -260,18 +262,19 @@ export function ShopCategoryHub({
   const pageTitle = useMemo(() => {
     if (query) {
       return selectedCategory
-        ? `Search in ${selectedCategory.name}`
-        : "Search results";
+        ? shopCopy.searchIn(selectedCategory.name)
+        : shopCopy.searchResults;
     }
 
     if (selectedSubcategory) return selectedSubcategory;
-    if (viewAllCategory) return `All ${selectedCategory?.name ?? ""}`;
+    if (viewAllCategory) return shopCopy.allIn(selectedCategory?.name ?? "");
 
     return "";
   }, [
     query,
     selectedCategory,
     selectedSubcategory,
+    shopCopy,
     viewAllCategory,
   ]);
 
@@ -300,22 +303,19 @@ export function ShopCategoryHub({
 
     notify(
       result.added
-        ? `${product.name} added to the request cart.`
-        : `${product.name} is already in the request cart.`,
+        ? shopCopy.addedNotice(product.name)
+        : shopCopy.duplicateNotice(product.name),
       result.added ? "success" : "info",
     );
   }
 
   return (
-    <section className="shop-hub" aria-label="Axora shop">
+    <section className="shop-hub" aria-label={shopCopy.aria}>
       <div className="shop-search-hero">
         <div className="shop-search-copy">
-          <span>Axora Shop</span>
-          <h2>What does your branch need today?</h2>
-          <p>
-            Search directly or browse departments and
-            subcategories visually.
-          </p>
+          <span>{productCopy.shopEyebrow}</span>
+          <h2>{shopCopy.heading}</h2>
+          <p>{shopCopy.intro}</p>
         </div>
 
         <div className="shop-search-box">
@@ -329,16 +329,16 @@ export function ShopCategoryHub({
             }
             placeholder={
               selectedCategory
-                ? `Search inside ${selectedCategory.name}`
-                : "Search products, codes, brands, or categories"
+                ? shopCopy.searchInside(selectedCategory.name)
+                : shopCopy.searchPlaceholder
             }
-            aria-label="Search the Axora shop"
+            aria-label={shopCopy.searchAria}
           />
 
           {searchText ? (
             <button
               type="button"
-              aria-label="Clear shop search"
+              aria-label={shopCopy.clearSearch}
               data-ux-silent="true"
               onClick={() => {
                 setSearchText("");
@@ -358,7 +358,7 @@ export function ShopCategoryHub({
               ? "shop-cart-bar has-items"
               : "shop-cart-bar"
           }
-          aria-label="Purchase request cart"
+          aria-label={shopCopy.cartAria}
         >
           <div className="shop-cart-bar-icon">
             <ShoppingCart size={21} aria-hidden="true" />
@@ -370,17 +370,13 @@ export function ShopCategoryHub({
           <div className="shop-cart-bar-copy">
             <strong>
               {cartItems.length
-                ? `${cartItems.length} ${
-                    cartItems.length === 1 ? "item" : "items"
-                  } in your request cart`
-                : "Your request cart is empty"}
+                ? shopCopy.cartItems(cartItems.length)
+                : shopCopy.emptyCart}
             </strong>
             <span>
               {cartItems.length
-                ? `${cartQuantity} units · ${formatCurrency(
-                    cartSubtotal,
-                  )} subtotal`
-                : "Add products, then review quantities before submitting."}
+                ? shopCopy.cartSummary(cartQuantity, formatCurrency(cartSubtotal, locale))
+                : shopCopy.emptyCartBody}
             </span>
           </div>
 
@@ -390,20 +386,20 @@ export function ShopCategoryHub({
             aria-disabled={!cartItems.length}
             tabIndex={cartItems.length ? undefined : -1}
           >
-            Review request
-            <ArrowRight size={16} aria-hidden="true" />
+            {shopCopy.review}
+            <ArrowRight className="directional-icon" size={16} aria-hidden="true" />
           </Link>
         </aside>
       ) : null}
 
       {selectedCategory ? (
-        <nav className="shop-breadcrumb" aria-label="Shop breadcrumb">
+        <nav className="shop-breadcrumb" aria-label={shopCopy.breadcrumb}>
           <button
             type="button"
             data-ux-silent="true"
             onClick={returnToDepartments}
           >
-            Shop
+            {shopCopy.shop}
           </button>
 
           <ChevronRight size={14} aria-hidden="true" />
@@ -434,18 +430,16 @@ export function ShopCategoryHub({
         <>
           <div className="shop-section-heading">
             <div>
-              <span>Browse departments</span>
-              <h2>Shop by category</h2>
-              <p>
-                Choose a department to view its subcategories.
-              </p>
+              <span>{shopCopy.browse}</span>
+              <h2>{shopCopy.byCategory}</h2>
+              <p>{shopCopy.chooseDepartment}</p>
             </div>
 
             <strong>
               {departments.length}{" "}
               {departments.length === 1
-                ? "department"
-                : "departments"}
+                ? shopCopy.department
+                : shopCopy.departments}
             </strong>
           </div>
 
@@ -462,13 +456,14 @@ export function ShopCategoryHub({
                   <ProductImage
                     product={department.sampleProduct}
                     showControls={false}
+                    locale={locale}
                   />
 
                   <span className="shop-department-count">
                     {department.count}{" "}
                     {department.count === 1
-                      ? "product"
-                      : "products"}
+                      ? shopCopy.product
+                      : shopCopy.products}
                   </span>
                 </div>
 
@@ -486,8 +481,8 @@ export function ShopCategoryHub({
                   </div>
 
                   <div className="shop-department-action">
-                    Browse department
-                    <ArrowRight size={17} aria-hidden="true" />
+                    {shopCopy.browseDepartment}
+                    <ArrowRight className="directional-icon" size={17} aria-hidden="true" />
                   </div>
                 </div>
               </button>
@@ -507,17 +502,14 @@ export function ShopCategoryHub({
               data-ux-silent="true"
               onClick={returnToDepartments}
             >
-              <ArrowLeft size={17} />
-              All departments
+              <ArrowLeft className="directional-icon" size={17} />
+              {shopCopy.allDepartments}
             </button>
 
             <div>
-              <span>Department</span>
+              <span>{shopCopy.departmentLabel}</span>
               <h2>{selectedCategory.name}</h2>
-              <p>
-                Choose a subcategory or view every product in
-                this department.
-              </p>
+              <p>{shopCopy.chooseOrView}</p>
             </div>
 
             <button
@@ -530,14 +522,14 @@ export function ShopCategoryHub({
               }}
             >
               <Grid3X3 size={17} />
-              View all {selectedCategory.count} products
+              {shopCopy.viewAll(selectedCategory.count)}
             </button>
           </div>
 
           <div className="shop-section-heading">
             <div>
               <span>{selectedCategory.name}</span>
-              <h2>Choose a subcategory</h2>
+              <h2>{shopCopy.chooseSubcategory}</h2>
             </div>
           </div>
 
@@ -557,6 +549,7 @@ export function ShopCategoryHub({
                     <ProductImage
                       product={subcategory.sampleProduct}
                       showControls={false}
+                      locale={locale}
                     />
                   </div>
 
@@ -565,12 +558,12 @@ export function ShopCategoryHub({
                     <span>
                       {subcategory.count}{" "}
                       {subcategory.count === 1
-                        ? "product"
-                        : "products"}
+                        ? shopCopy.product
+                        : shopCopy.products}
                     </span>
                   </div>
 
-                  <ChevronRight size={19} aria-hidden="true" />
+                  <ChevronRight className="directional-icon" size={19} aria-hidden="true" />
                 </button>
               ),
             )}
@@ -596,21 +589,21 @@ export function ShopCategoryHub({
                   setViewAllCategory(false);
                 }}
               >
-                <ArrowLeft size={16} />
-                Back
+                <ArrowLeft className="directional-icon" size={16} />
+                {shopCopy.back}
               </button>
 
               <h2>{pageTitle}</h2>
 
               <span aria-live="polite">
                 {catalog
-                  ? `${catalog.total.toLocaleString()} products found`
-                  : "Loading products"}
+                  ? shopCopy.found(catalog.total)
+                  : shopCopy.loadingProducts}
               </span>
             </div>
 
             <label>
-              Sort by
+              {shopCopy.sortBy}
               <select
                 value={sort}
                 onChange={(event) =>
@@ -619,18 +612,18 @@ export function ShopCategoryHub({
                   )
                 }
               >
-                <option value="relevance">Recommended</option>
-                <option value="name-asc">Name: A–Z</option>
+                <option value="relevance">{shopCopy.recommended}</option>
+                <option value="name-asc">{shopCopy.nameAsc}</option>
                 <option value="price-asc">
-                  Price: low to high
+                  {shopCopy.priceAsc}
                 </option>
                 <option value="price-desc">
-                  Price: high to low
+                  {shopCopy.priceDesc}
                 </option>
                 <option value="delivery-asc">
-                  Fastest delivery
+                  {shopCopy.fastest}
                 </option>
-                <option value="moq-asc">Lowest MOQ</option>
+                <option value="moq-asc">{shopCopy.lowestMoq}</option>
               </select>
             </label>
           </div>
@@ -655,7 +648,7 @@ export function ShopCategoryHub({
                 className="shop-product-card"
               >
                 <div className="shop-product-image">
-                  <ProductImage product={product} />
+                  <ProductImage product={product} locale={locale} />
                 </div>
 
                 <div className="shop-product-content">
@@ -676,11 +669,11 @@ export function ShopCategoryHub({
 
                   <div className="shop-product-price">
                     <strong>
-                      {formatCurrency(
-                        product.defaultSellPrice,
-                      )}
+                        {formatCurrency(
+                          product.defaultSellPrice, locale,
+                        )}
                     </strong>
-                    <span>per {product.unit}</span>
+                    <span>{shopCopy.per} {product.unit}</span>
                   </div>
 
                   <div className="shop-product-facts">
@@ -688,9 +681,7 @@ export function ShopCategoryHub({
                       MOQ {minimumQuantity(product)}
                     </span>
                     <span>
-                      {deliveryLabel(
-                        product.deliverySlaDays,
-                      )}
+                      {product.deliverySlaDays === 0 ? shopCopy.sameDay : shopCopy.days(product.deliverySlaDays)}
                     </span>
                   </div>
 
@@ -709,18 +700,18 @@ export function ShopCategoryHub({
                       {cartProductIds.has(product.id) ? (
                         <>
                           <Check size={16} />
-                          Added to cart
+                          {shopCopy.added}
                         </>
                       ) : (
                         <>
                           <ShoppingBag size={16} />
-                          Add to cart
+                          {shopCopy.add}
                         </>
                       )}
                     </button>
                   ) : (
                     <span className="button button-secondary">
-                      View only
+                      {shopCopy.viewOnly}
                     </span>
                   )}
                 </div>
@@ -731,11 +722,8 @@ export function ShopCategoryHub({
           {!loading && !products.length ? (
             <div className="shop-empty-state">
               <PackageSearch size={40} />
-              <strong>No matching products</strong>
-              <p>
-                Try another search or return to the
-                subcategories.
-              </p>
+              <strong>{shopCopy.noMatch}</strong>
+              <p>{shopCopy.noMatchBody}</p>
             </div>
           ) : null}
 
@@ -743,8 +731,7 @@ export function ShopCategoryHub({
           catalog.page < catalog.totalPages ? (
             <div className="shop-load-more">
               <span>
-                Showing {products.length.toLocaleString()} of{" "}
-                {catalog.total.toLocaleString()}
+                {shopCopy.showing(products.length, catalog.total)}
               </span>
 
               <button
@@ -760,10 +747,10 @@ export function ShopCategoryHub({
                       className="catalog-spinner"
                       size={17}
                     />
-                    Loading…
+                    {shopCopy.loading}
                   </>
                 ) : (
-                  "Load more products"
+                  shopCopy.loadMore
                 )}
               </button>
             </div>
