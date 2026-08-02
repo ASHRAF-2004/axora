@@ -31,8 +31,8 @@ Date: 2026-08-03
   - `next build` pass (78 route compile and static checks)
 - `npm run test:e2e`
   - **66** passed, **2** skipped
-- Latest completed CI run: `30761148085` (all checks successful)
-- Current PR #30 status: open/review-ready; latest CI run `30761534326` is in progress.
+- Latest completed CI run: `30761726103` (all checks successful)
+- PR #30 status: open/review-ready.
 - PR checks previously include browser journey verification, dependency audit, and build checks for worker/runtime artifacts.
 - Security and migration coverage: unit/integration tests for invitation lifecycle, invitation email rendering, onboarding, onboarding-gate allowlist, portal authorization, permissions, event timeline, supplier/driver workflows, notifications, reset scripts, and migration chains.
 - Screenshots are available under `docs/refactor/screenshots/`.
