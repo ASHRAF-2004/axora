@@ -2,77 +2,150 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserCreateForm } from "@/components/UserCreateForm";
 import { requirePagePermission } from "@/lib/auth";
-import { formatDate } from "@/lib/domain";
-import { listBranches, listCompanies } from "@/lib/repository";
-import type { UserRole } from "@/lib/types";
+import { formatDateTime } from "@/lib/domain";
+import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
+import type { SupportedLocale } from "@/lib/i18n";
+import { localizedAccountRole } from "@/lib/user-form-i18n";
+import { creatableAccountRoles, accountRoleLabel } from "@/lib/role-catalog";
+import { listBranches, listCompanies, listSuppliers } from "@/lib/repository";
 import { listUsers } from "@/lib/users";
-import { deleteUserAction, setUserActiveAction } from "./actions";
+import {
+  resendAccountSetupInvitationAction,
+  setUserActiveAction,
+} from "./actions";
 
-const roleLabels: Record<UserRole, string> = {
-  ADMIN: "Company administrator",
-  BRANCH_ADMIN: "Branch administrator",
-  APPROVER: "Branch approver (HR / manager / CEO)",
-  REQUESTER: "Purchase requester",
-  OPERATIONS: "Legacy operations",
-  FINANCE: "Finance viewer",
-  VIEWER: "Read-only auditor",
-  IT_SUPPORT: "Technical support",
-};
+function invitationStatus(user: Awaited<ReturnType<typeof listUsers>>[number]) {
+  if (!user.active) return "Inactive";
+  if (user.accountSetupCompletedAt) return "Active";
+  if (user.accountSetupExpiresAt && new Date(user.accountSetupExpiresAt).getTime() <= Date.now()) {
+    return "Invite expired";
+  }
+  if (user.accountSetupDeliveryStatus === "SENT") return "Invite sent";
+  if (user.accountSetupDeliveryStatus === "SENDING") return "Sending email";
+  if (user.accountSetupDeliveryStatus === "DISABLED") return "Delivery disabled";
+  if (user.accountSetupDeliveryStatus === "FAILED") return "Email failed";
+  if (user.accountSetupDeliveryStatus === "UNCERTAIN") return "Delivery unconfirmed";
+  if (user.accountSetupDeliveryStatus === "CANCELLED") return "Invite replaced";
+  if (user.accountSetupDeliveryStatus === "PENDING") return "Awaiting email";
+  return "Pending setup";
+}
+
+function invitationTimeline(user: Awaited<ReturnType<typeof listUsers>>[number], locale: SupportedLocale, timeZone: string, copy: ReturnType<typeof corePortalMessages>["users"]) {
+  if (user.accountSetupCompletedAt) return formatDateTime(user.lastLoginAt, locale, timeZone);
+  if (user.accountSetupDeliveryStatus === "SENT" && user.accountSetupSentAt) {
+    return copy.sentExpires(formatDateTime(user.accountSetupSentAt, locale, timeZone), formatDateTime(user.accountSetupExpiresAt, locale, timeZone));
+  }
+  if (user.accountSetupDeliveryStatus === "FAILED" && user.accountSetupDeliveryAttemptedAt) {
+    return copy.failedAt(formatDateTime(user.accountSetupDeliveryAttemptedAt, locale, timeZone));
+  }
+  if (user.accountSetupDeliveryStatus === "UNCERTAIN") {
+    return copy.deliveryUnknown;
+  }
+  if (user.accountSetupDeliveryStatus === "DISABLED") return copy.deliveryNotConfigured;
+  if (user.accountSetupExpiresAt) return copy.expiresAt(formatDateTime(user.accountSetupExpiresAt, locale, timeZone));
+  return copy.neverSignedIn;
+}
 
 export default async function UsersPage() {
   const actor = await requirePagePermission("manage_users");
-  const [users, companies, branches] = await Promise.all([listUsers(actor), actor.isOwner ? listCompanies(actor) : Promise.resolve([]), listBranches(actor)]);
+  const locale = actor.preferredLocale ?? "en";
+  const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
+  const copy = corePortalMessages(locale).users;
+  const common = corePortalMessages(locale).common;
+  const [users, companies, branches, suppliers] = await Promise.all([
+    listUsers(actor),
+    actor.isOwner ? listCompanies(actor) : Promise.resolve([]),
+    listBranches(actor),
+    actor.isOwner ? listSuppliers(actor) : Promise.resolve([]),
+  ]);
   const activeAdminCounts = users.reduce<Record<string, number>>((counts, user) => {
-    if (user.active && user.role === "ADMIN" && user.companyId) counts[user.companyId] = (counts[user.companyId] ?? 0) + 1;
+    if (user.active && user.accountSetupCompletedAt
+      && ["ADMIN", "COMPANY_ADMIN"].includes(user.role) && user.companyId) {
+      counts[user.companyId] = (counts[user.companyId] ?? 0) + 1;
+    }
     return counts;
   }, {});
-  const availableRoles: UserRole[] = actor.role === "BRANCH_ADMIN"
-    ? ["REQUESTER", "APPROVER"]
-    : actor.isOwner
-      ? ["ADMIN", "BRANCH_ADMIN", "APPROVER", "REQUESTER", "FINANCE", "VIEWER", "IT_SUPPORT"]
-      : ["ADMIN", "BRANCH_ADMIN", "APPROVER", "REQUESTER", "FINANCE", "VIEWER"];
+  const activePlatformOwners = users.filter((user) => user.active
+    && Boolean(user.accountSetupCompletedAt)
+    && (user.isOwner || user.role === "PLATFORM_OWNER")).length;
+  const availableRoles = creatableAccountRoles(actor);
 
-  return <><PageHeader eyebrow="People & access" title="Create named accounts"
-    description="Role controls what a person can do. Branch assignment controls where they can do it. Never share an administrator account." />
+  return <><PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
     <section className="detail-grid">
-      <article className="panel form-panel"><h2>Create account</h2>
+      <article className="panel form-panel"><h2>{copy.create}</h2>
         <UserCreateForm
           actorBranchId={actor.branchId}
           actorCompanyId={actor.companyId}
           actorIsOwner={actor.isOwner}
+          defaultLocale={actor.preferredLocale ?? "en"}
           branches={branches}
           companies={companies}
-          roleOptions={availableRoles.map((role) => ({ value: role, label: roleLabels[role] }))}
+          suppliers={suppliers}
+          roleOptions={availableRoles.map((role) => ({
+            value: role.key,
+            label: role.label,
+            description: role.description,
+            category: role.category,
+            accountKind: role.accountKind,
+            allowedScopes: role.allowedScopes,
+          }))}
         />
       </article>
-      <aside className="panel"><div className="panel-header"><div><h2>Choose the smallest role</h2><p>Clear responsibility prevents mistakes</p></div></div>
-        <div className="panel-body"><div className="callout"><strong>Requester</strong><p>Creates purchase requests for one branch.</p></div>
-          <div className="callout"><strong>Approver</strong><p>Assign this to the branch&apos;s authorised HR lead, manager, CEO, or another person who may approve requests against its budget.</p></div>
-          <div className="callout"><strong>Branch administrator</strong><p>Manages requesters and approvers for one branch.</p></div>
-          <div className="callout"><strong>Company administrator</strong><p>Manages every branch, budget and company user.</p></div></div>
+      <aside className="panel"><div className="panel-header"><div><h2>{copy.smallestRole}</h2><p>{copy.smallestRoleBody}</p></div></div>
+        <div className="panel-body"><div className="callout"><strong>{copy.requesterRole}</strong><p>{copy.requesterBody}</p></div>
+          <div className="callout"><strong>{copy.approverRole}</strong><p>{copy.approverBody}</p></div>
+          <div className="callout"><strong>{copy.branchAdminRole}</strong><p>{copy.branchAdminBody}</p></div>
+          <div className="callout"><strong>{copy.companyAdminRole}</strong><p>{copy.companyAdminBody}</p></div></div>
       </aside>
     </section>
 
-    <section className="panel" style={{ marginTop: 17 }}><div className="data-table-wrap"><table className="data-table"><thead><tr>
-      <th>User</th>{actor.isOwner ? <th>Company</th> : null}<th>Role</th><th>Access scope</th><th>Status</th><th>Last login</th><th>Action</th>
+    <section className="panel" style={{ marginBlockStart: 17 }}><div className="data-table-wrap"><table className="data-table"><thead><tr>
+      <th>{copy.user}</th>{actor.isOwner ? <th>{copy.organization}</th> : null}<th>{copy.role}</th><th>{copy.scope}</th><th>{common.status}</th><th>{copy.lastLogin}</th><th>{copy.action}</th>
     </tr></thead><tbody>{users.map((user) => {
-      const protectedLabel = user.isOwner ? "Owner protected" : user.id === actor.id ? "Current session"
-        : user.active && user.role === "ADMIN" && Boolean(user.companyId) && activeAdminCounts[user.companyId!] <= 1 ? "Last company admin" : "";
+      const isPlatformOwner = user.isOwner || user.role === "PLATFORM_OWNER";
+      const isCompanyAdmin = ["ADMIN", "COMPANY_ADMIN"].includes(user.role);
+      const protectedLabel = user.id === actor.id ? copy.currentSession
+        : user.active && Boolean(user.accountSetupCompletedAt)
+          && isPlatformOwner && activePlatformOwners <= 1 ? copy.lastOwner
+          : user.active && Boolean(user.accountSetupCompletedAt) && isCompanyAdmin
+            && Boolean(user.companyId) && activeAdminCounts[user.companyId!] <= 1
+            ? copy.lastAdmin : "";
+      const setupPending = user.active && !user.accountSetupCompletedAt;
+      const actorCanManage = (actor.isOwner && actor.accountKind !== "COMPANY")
+        || ((actor.role === "ADMIN" || actor.role === "COMPANY_ADMIN")
+          && (user.accountKind ?? "COMPANY") === "COMPANY"
+          && actor.companyId === user.companyId)
+        || (actor.role === "BRANCH_ADMIN"
+          && (user.accountKind ?? "COMPANY") === "COMPANY"
+          && actor.companyId === user.companyId
+          && actor.branchId === user.branchId
+          && ["BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER"].includes(user.role));
+      const canResend = setupPending && actorCanManage;
+      const organization = user.companyName ?? user.supplierName
+        ?? (user.accountKind === "DELIVERY" ? copy.deliveryNetwork : copy.platform);
+      const scope = user.scopeType === "PLATFORM" ? copy.platformWide
+        : user.scopeType === "DELIVERY" ? copy.assignedDeliveries
+          : user.supplierName ?? user.branchName ?? user.companyName ?? copy.companyWide;
       return <tr key={user.id}>
-        <td><strong>{user.displayName}</strong>{user.isOwner ? " · Platform owner" : ""}<br /><span className="subtle">{user.email}</span></td>
-        {actor.isOwner ? <td>{user.companyName || "Axora platform"}</td> : null}
-        <td>{user.isOwner ? "Platform owner" : roleLabels[user.role]}</td>
-        <td>{user.isOwner ? "All companies" : user.branchName ?? "Entire company"}</td>
-        <td><StatusBadge>{user.active ? "Active" : "Inactive"}</StatusBadge></td>
-        <td>{formatDate(user.lastLoginAt)}</td>
-        <td>{protectedLabel ? <span className="subtle">{protectedLabel}</span> : <div className="action-row">
+        <td><strong>{user.displayName}</strong>{user.jobTitle ? ` · ${user.jobTitle}` : ""}<br /><span className="subtle">{user.email}</span></td>
+        {actor.isOwner ? <td>{organization}</td> : null}
+        <td>{localizedAccountRole(user.role, locale)?.label ?? accountRoleLabel(user.role)}</td>
+        <td>{scope}</td>
+        <td><StatusBadge status={invitationStatus(user)}>{localizedStatus(invitationStatus(user), locale)}</StatusBadge></td>
+        <td>{setupPending ? <span className="subtle">{invitationTimeline(user, locale, timeZone, copy)}</span> : formatDateTime(user.lastLoginAt, locale, timeZone)}</td>
+        <td>{protectedLabel ? <span className="subtle">{protectedLabel}</span> : actorCanManage ? <div className="action-row">
+          {canResend ? <form action={resendAccountSetupInvitationAction.bind(null, user.id)}>
+            <button
+              className="button button-secondary"
+              type="submit"
+              data-feedback-label={copy.resending}
+              aria-label={`Resend account setup link to ${user.displayName}`}
+            >{copy.resend}</button>
+          </form> : null}
           <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
-            <button className="button button-secondary" type="submit">{user.active ? "Deactivate" : "Reactivate"}</button>
+            <button className="button button-secondary" type="submit">{user.active ? copy.deactivate : copy.reactivate}</button>
           </form>
-          <form action={deleteUserAction.bind(null, user.id)}>
-            <button className="button button-danger" type="submit">Delete</button>
-          </form>
-        </div>}</td>
+        </div> : <span className="subtle">{copy.outsideScope}</span>}</td>
       </tr>;
     })}</tbody></table></div></section>
   </>;

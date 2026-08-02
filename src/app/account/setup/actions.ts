@@ -1,0 +1,86 @@
+"use server";
+
+import {
+  AccountSetupTokenError,
+  consumeAccountSetupToken,
+  inspectAccountSetupToken,
+} from "@/lib/account-setup";
+import { PasswordPolicyError } from "@/lib/password-policy";
+import type { SupportedLocale } from "@/lib/i18n";
+import type { PasswordResetErrorCode } from "@/lib/account-lifecycle-i18n";
+import { redirect } from "next/navigation";
+
+export type AccountSetupInspectionState =
+  | {
+    status: "valid";
+    recipientName: string;
+    recipientEmail: string;
+    companyName: string;
+    expiresAt: string;
+    locale: SupportedLocale;
+  }
+  | { status: "invalid" | "unavailable" };
+
+export interface AccountSetupCompletionState {
+  status: "idle" | "error" | "invalid";
+  code?: PasswordResetErrorCode;
+}
+
+/** Called from the client after the fragment has been removed from the URI. */
+export async function inspectAccountSetupTokenAction(
+  rawToken: string,
+): Promise<AccountSetupInspectionState> {
+  try {
+    const invitation = await inspectAccountSetupToken(rawToken);
+    return invitation.valid
+      ? {
+        status: "valid",
+        recipientName: invitation.recipientName,
+        recipientEmail: invitation.recipientEmail,
+        companyName: invitation.companyName,
+        expiresAt: invitation.expiresAt,
+        locale: invitation.locale,
+      }
+      : { status: "invalid" };
+  } catch {
+    return { status: "unavailable" };
+  }
+}
+
+export async function completeAccountSetupAction(
+  rawToken: string,
+  _previousState: AccountSetupCompletionState,
+  formData: FormData,
+): Promise<AccountSetupCompletionState> {
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("confirmPassword") ?? "");
+  if (password !== confirmation) {
+    return {
+      status: "error",
+      code: "password_mismatch",
+    };
+  }
+
+  try {
+    await consumeAccountSetupToken(rawToken, password);
+  } catch (error) {
+    if (error instanceof AccountSetupTokenError) {
+      return {
+        status: "invalid",
+        code: "invalid_link",
+      };
+    }
+    if (error instanceof PasswordPolicyError) {
+      return {
+        status: "error",
+        code: "password_policy",
+      };
+    }
+    return {
+      status: "error",
+      code: "save_failed",
+    };
+  }
+
+  redirect("/login?setup=complete");
+}

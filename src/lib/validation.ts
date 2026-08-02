@@ -10,7 +10,10 @@ const wholeQuantity = z.coerce.number().finite().int().min(1).max(100_000_000);
 const wholeDays = z.coerce.number().int().min(0).max(3650);
 
 export const companySchema = z.object({
-  name: required("Company name"), industry: required("Industry"), mainContactName: required("Main contact"),
+  name: required("Company name"), industry: required("Industry"),
+  companyInformation: required("Company information", 3000),
+  websiteUrl: z.union([z.url({ protocol: /^https$/ }).max(500), z.literal("")]).transform((value) => value || undefined),
+  mainContactName: required("Main contact"),
   mainContactEmail: email, mainContactPhone: required("Main contact phone", 50), billingContactName: required("Billing contact"),
   billingContactEmail: email, billingContactPhone: required("Billing contact phone", 50), billingAddress: required("Billing address", 500),
   paymentTerms: z.literal(COD_PAYMENT_METHOD), billingCycle: required("Billing cycle", 100), notes: optional(1000),

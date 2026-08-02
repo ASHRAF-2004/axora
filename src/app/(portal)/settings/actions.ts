@@ -17,7 +17,7 @@ function numberValue(formData: FormData, key: string) {
 export async function updateCompanyPricingAction(
   formData: FormData,
 ) {
-  const actor = await requirePermission("manage_settings");
+  const actor = await requirePermission("manage_commercial_pricing");
 
   const input = companyPricingSchema.parse({
     companyId: readFormText(formData, "companyId"),
