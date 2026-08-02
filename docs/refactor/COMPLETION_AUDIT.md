@@ -104,7 +104,7 @@ Legend:
   - Result: **no failures**.
 - `npm run build`
   - Result: successful full route build.
-- GitHub CI run `30760357583` (PR #30): all jobs successful.
+- GitHub CI run `30760624071` (PR #30): all jobs successful.
 - `npm run manuals:verify`
   - Result: exact four manuals rebuilt and deterministic validation succeeded.
 - Production readiness config check note:
@@ -123,4 +123,4 @@ Legend:
 - `npm run test:e2e`
   - Result: **66 passed, 2 skipped**.
 - Latest authoritative CI run for this turn:
-- GitHub Actions run `30760357583` (PR #30) - all jobs successful.
+- GitHub Actions run `30760624071` (PR #30) - all jobs successful.
