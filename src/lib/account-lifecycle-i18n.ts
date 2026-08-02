@@ -94,6 +94,13 @@ interface AccountLifecycleMessages {
     title: string;
     description: string;
     overviewLabel: string;
+    reauthorize: string;
+    reauthorizeBody: string;
+    reauthorizeHelp: string;
+    reauthorizeError: string;
+    reauthorizeSuccess: string;
+    reauthorizeButton: string;
+    reauthorizing: string;
     emailStatus: string;
     verified: string;
     verificationRequired: string;
@@ -190,6 +197,11 @@ const en: AccountLifecycleMessages = {
   },
   account: {
     eyebrow: "Personal settings", title: "Account & security", description: "Manage your password, email verification, notifications, and active Axora sessions.",
+    reauthorize: "Re-authorize this action", reauthorizeBody: "For security, this operation needs one additional confirmation with your current password.",
+    reauthorizeHelp: "Use the same password you use for this account. Passwords are never shown or stored after this check.",
+    reauthorizeError: "The password check failed. Try again.",
+    reauthorizeSuccess: "Your identity is confirmed. This action is unlocked for a short time.",
+    reauthorizeButton: "Confirm and continue", reauthorizing: "Verifying identity…",
     overviewLabel: "Account security overview", emailStatus: "Email status", verified: "Verified", verificationRequired: "Verification required",
     activeSessions: "Active sessions", unreadNotifications: "Unread notifications", changePassword: "Change password",
     changePasswordBody: "Your current password is required. Saving ends every prior session and safely renews this browser.",
@@ -215,6 +227,7 @@ const en: AccountLifecycleMessages = {
       "session-failed": { kind: "error", message: "Axora could not update the selected sessions." },
       "verification-sent": { kind: "success", message: "If verification is still required, a fresh private link has been queued." },
       "verification-failed": { kind: "error", message: "Axora could not queue a verification message right now." },
+      "reauth-success": { kind: "success", message: "Security re-authorization completed." },
     },
   },
 };
@@ -273,6 +286,11 @@ const ms: AccountLifecycleMessages = {
   },
   account: {
     eyebrow: "Tetapan peribadi", title: "Akaun & keselamatan", description: "Urus kata laluan, pengesahan e-mel, pemberitahuan dan sesi Axora aktif anda.",
+    reauthorize: "Sahkan semula tindakan ini", reauthorizeBody: "Untuk keselamatan, operasi ini memerlukan pengesahan dengan kata laluan semasa anda.",
+    reauthorizeHelp: "Gunakan kata laluan yang sama seperti log masuk akaun ini. Kata laluan tidak dipaparkan atau disimpan selepas semakan ini.",
+    reauthorizeError: "Semakan kata laluan gagal. Cuba sekali lagi.",
+    reauthorizeSuccess: "Pengesahan keselamatan berjaya. Akses tindakan ini dibuka buat sementara waktu.",
+    reauthorizeButton: "Sahkan dan teruskan", reauthorizing: "Mengesahkan identiti…",
     overviewLabel: "Ringkasan keselamatan akaun", emailStatus: "Status e-mel", verified: "Disahkan", verificationRequired: "Pengesahan diperlukan",
     activeSessions: "Sesi aktif", unreadNotifications: "Pemberitahuan belum dibaca", changePassword: "Tukar kata laluan",
     changePasswordBody: "Kata laluan semasa diperlukan. Penyimpanan menamatkan semua sesi terdahulu dan memperbaharui pelayar ini dengan selamat.",
@@ -298,6 +316,7 @@ const ms: AccountLifecycleMessages = {
       "session-failed": { kind: "error", message: "Axora tidak dapat mengemas kini sesi yang dipilih." },
       "verification-sent": { kind: "success", message: "Jika pengesahan masih diperlukan, pautan peribadi baharu telah dimasukkan dalam baris gilir." },
       "verification-failed": { kind: "error", message: "Axora tidak dapat memasukkan mesej pengesahan dalam baris gilir sekarang." },
+      "reauth-success": { kind: "success", message: "Pengesahan semula keselamatan selesai." },
     },
   },
 };
@@ -356,6 +375,11 @@ const ar: AccountLifecycleMessages = {
   },
   account: {
     eyebrow: "الإعدادات الشخصية", title: "الحساب والأمان", description: "أدر كلمة المرور والتحقق من البريد والإشعارات وجلسات Axora النشطة.",
+    reauthorize: "إعادة المصادقة على هذا الإجراء", reauthorizeBody: "لأسباب أمنية، يحتاج هذا الإجراء إلى تأكيد إضافي باستخدام كلمة المرور الحالية.",
+    reauthorizeHelp: "استخدم نفس كلمة المرور الخاصة بحسابك. لا يتم عرض كلمات المرور أو تخزينها بعد هذا التحقق.",
+    reauthorizeError: "فشل التحقق من كلمة المرور. حاول مرة أخرى.",
+    reauthorizeSuccess: "تم التحقق من هويتك. تم فتح هذا الإجراء لفترة قصيرة.",
+    reauthorizeButton: "تأكيد ومتابعة", reauthorizing: "جارٍ التحقق من الهوية…",
     overviewLabel: "نظرة عامة على أمان الحساب", emailStatus: "حالة البريد", verified: "مؤكد", verificationRequired: "التحقق مطلوب",
     activeSessions: "الجلسات النشطة", unreadNotifications: "إشعارات غير مقروءة", changePassword: "تغيير كلمة المرور",
     changePasswordBody: "كلمة المرور الحالية مطلوبة. يؤدي الحفظ إلى إنهاء كل الجلسات السابقة وتجديد هذا المتصفح بأمان.",
@@ -381,6 +405,7 @@ const ar: AccountLifecycleMessages = {
       "session-failed": { kind: "error", message: "تعذر على Axora تحديث الجلسات المحددة." },
       "verification-sent": { kind: "success", message: "إذا كان التحقق لا يزال مطلوبًا، فقد وُضع رابط خاص جديد في قائمة الإرسال." },
       "verification-failed": { kind: "error", message: "تعذر على Axora إدراج رسالة تحقق للإرسال الآن." },
+      "reauth-success": { kind: "success", message: "اكتملت إعادة التوثيق الأمنية." },
     },
   },
 };

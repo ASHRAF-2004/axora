@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireRecentStepUp } from "@/lib/auth";
 import { createInvoice, createQuotation, issueSupplierRfq, recordApproval, recordDelivery, recordPayment, saveAttachment, selectQuotation } from "@/lib/operations";
 import { COD_PAYMENT_METHOD } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
@@ -31,6 +31,7 @@ const supplierRfqSchema = z.object({
 
 export async function issueSupplierRfqAction(formData: FormData) {
   const user = await requirePermission("manage_sourcing");
+  await requireRecentStepUp(user, "/sourcing");
   const input = supplierRfqSchema.parse(Object.fromEntries(formData));
   const respondBy = new Date(input.respondBy);
   if (Number.isNaN(respondBy.getTime())) throw new Error("RFQ response deadline is invalid.");
@@ -43,6 +44,7 @@ export async function issueSupplierRfqAction(formData: FormData) {
 
 export async function createQuotationAction(formData: FormData) {
   const user = await requirePermission("manage_sourcing");
+  await requireRecentStepUp(user, "/sourcing");
   const input = quotationSchema.parse(Object.fromEntries(formData));
   await createQuotation(input, user);
   revalidatePath("/sourcing"); revalidatePath("/requests");
@@ -50,6 +52,7 @@ export async function createQuotationAction(formData: FormData) {
 
 export async function selectQuotationAction(id: string, formData: FormData) {
   const user = await requirePermission("manage_sourcing");
+  await requireRecentStepUp(user, "/sourcing");
   await selectQuotation(id, readFormText(formData, "reason"), user);
   revalidatePath("/sourcing"); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
@@ -84,6 +87,7 @@ export async function recordApprovalAction(
 
   try {
     const user = await requirePermission("approve_requests");
+    await requireRecentStepUp(user, "/approvals");
     locale = user.preferredLocale ?? locale;
     const input = approvalSchema.parse(Object.fromEntries(formData));
 
@@ -143,6 +147,7 @@ const deliverySchema = z.object({ requestLineId: z.string().trim().min(1), expec
 
 export async function recordDeliveryAction(formData: FormData) {
   const user = await requirePermission("manage_deliveries");
+  await requireRecentStepUp(user, "/deliveries");
   await recordDelivery(deliverySchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/deliveries"); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
@@ -153,6 +158,7 @@ const invoiceSchema = z.object({ direction: z.enum(["CUSTOMER", "SUPPLIER"]), re
 
 export async function createInvoiceAction(formData: FormData) {
   const user = await requirePermission("manage_finance");
+  await requireRecentStepUp(user, "/finance");
   await createInvoice(invoiceSchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/finance"); revalidatePath("/dashboard"); revalidatePath("/reports");
 }
@@ -162,12 +168,14 @@ const paymentSchema = z.object({ invoiceId: z.string().trim().min(1), paymentDat
 
 export async function recordPaymentAction(formData: FormData) {
   const user = await requirePermission("manage_finance");
+  await requireRecentStepUp(user, "/finance");
   await recordPayment(paymentSchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/finance"); revalidatePath("/dashboard");
 }
 
 export async function evaluateCustomerMatchAction(formData: FormData) {
   const user = await requirePermission("review_three_way_matches");
+  await requireRecentStepUp(user, "/finance");
   try {
     await evaluateCustomerMatch(user, {
       requestLineId: readFormText(formData, "requestLineId"),
@@ -185,6 +193,7 @@ export async function evaluateCustomerMatchAction(formData: FormData) {
 
 export async function overrideCustomerMatchAction(formData: FormData) {
   const user = await requirePermission("review_three_way_matches");
+  await requireRecentStepUp(user, "/finance");
   try {
     await overrideCustomerMatch(
       user,
@@ -200,6 +209,7 @@ export async function overrideCustomerMatchAction(formData: FormData) {
 
 export async function uploadAttachmentAction(formData: FormData) {
   const user = await requirePermission("manage_documents");
+  await requireRecentStepUp(user, "/documents");
   const entityType = z.enum(["request", "invoice", "delivery"]).parse(readFormText(formData, "entityType"));
   const recordId = z.string().trim().min(1).parse(readFormText(formData, "recordId"));
   const visibility = z.enum(["CUSTOMER", "INTERNAL"]).parse(readFormText(formData, "visibility") || "CUSTOMER");

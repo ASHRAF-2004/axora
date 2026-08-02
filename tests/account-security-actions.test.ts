@@ -6,10 +6,13 @@ const mocks = vi.hoisted(() => {
     PasswordPolicyError,
     requireSession: vi.fn(),
     setSession: vi.fn(),
+    authenticate: vi.fn(),
     changeOwnPassword: vi.fn(),
     revokeOtherSession: vi.fn(),
     revokeAllOtherSessions: vi.fn(),
     requestEmailVerification: vi.fn(),
+    clearStepUpSessionCookie: vi.fn(),
+    setStepUpAfterPassword: vi.fn(),
     headers: vi.fn(async () => new Headers({ "cf-connecting-ip": "203.0.113.55" })),
     revalidatePath: vi.fn(),
     redirect: vi.fn((url: string) => {
@@ -26,6 +29,9 @@ vi.mock("@/lib/account-security", () => ({
 vi.mock("@/lib/auth", () => ({
   requireAccountLifecycleSession: mocks.requireSession,
   setSession: mocks.setSession,
+  authenticate: mocks.authenticate,
+  clearStepUpSessionCookie: mocks.clearStepUpSessionCookie,
+  setStepUpAfterPassword: mocks.setStepUpAfterPassword,
 }));
 vi.mock("@/lib/password-policy", () => ({
   PasswordPolicyError: mocks.PasswordPolicyError,
@@ -39,6 +45,7 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
 import {
   changePasswordAction,
+  reauthenticateSensitiveAction,
   resendEmailVerificationAction,
   revokeAllOtherSessionsAction,
   revokeSessionAction,
@@ -123,5 +130,44 @@ describe("account security server actions", () => {
       "ar",
       "203.0.113.55",
     );
+  });
+
+  it("requires a sensitive-password value before minting step-up state", async () => {
+    const form = new FormData();
+    form.set("currentPassword", "");
+    form.set("next", "/users");
+    await expect(reauthenticateSensitiveAction(form))
+      .rejects.toThrow("REDIRECT:/account?reauth=1&reauth=invalid&next=%2Fusers");
+    expect(mocks.authenticate).not.toHaveBeenCalled();
+    expect(mocks.clearStepUpSessionCookie).toHaveBeenCalledTimes(1);
+    expect(mocks.setStepUpAfterPassword).not.toHaveBeenCalled();
+  });
+
+  it("clears prior step-up state when the sensitive-password check fails", async () => {
+    mocks.authenticate.mockResolvedValue(null);
+    const form = new FormData();
+    form.set("currentPassword", "wrong password");
+    form.set("next", "/finance?tab=review");
+    await expect(reauthenticateSensitiveAction(form))
+      .rejects.toThrow("REDIRECT:/account?reauth=1&reauth=invalid&next=%2Ffinance%3Ftab%3Dreview");
+    expect(mocks.authenticate).toHaveBeenCalledWith(
+      actor.email,
+      "wrong password",
+      { networkIdentifier: "203.0.113.55" },
+    );
+    expect(mocks.clearStepUpSessionCookie).toHaveBeenCalledTimes(1);
+    expect(mocks.setStepUpAfterPassword).not.toHaveBeenCalled();
+  });
+
+  it("creates a short-lived re-authorization token after successful password check", async () => {
+    mocks.authenticate.mockResolvedValue(actor);
+    const form = new FormData();
+    form.set("currentPassword", "current memorable password");
+    form.set("next", "/finance");
+    await expect(reauthenticateSensitiveAction(form))
+      .rejects.toThrow("REDIRECT:/finance?reauth=ok");
+    expect(mocks.setStepUpAfterPassword).toHaveBeenCalledWith(actor, "/finance");
+    expect(mocks.clearStepUpSessionCookie).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/account");
   });
 });

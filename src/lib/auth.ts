@@ -23,8 +23,26 @@ import { isSupportedLocale, type SupportedLocale } from "./i18n";
 import { hasCompletedRequiredProfile } from "./onboarding-policy";
 
 const COOKIE_NAME = "axora_session";
+const STEP_UP_COOKIE_NAME = "axora_stepup";
 const SESSION_HOURS = 8;
 const SESSION_SECONDS = SESSION_HOURS * 60 * 60;
+const STEP_UP_SECONDS = 15 * 60;
+
+type StepUpSessionPurpose = "sensitive-admin-action";
+
+interface StepUpClaim {
+  actorId: string;
+  sessionTokenHash: string;
+  role: UserRole;
+  accountKind: AccountKind;
+  scopeType: RoleScopeType;
+  companyId?: string;
+  branchId?: string;
+  supplierId?: string;
+  roleAssignmentId?: string;
+  authVersion: number;
+  purpose: StepUpSessionPurpose;
+}
 
 export interface SessionUser {
   id: string;
@@ -102,6 +120,79 @@ interface LoginAccountRow {
   passwordHash: string;
   authVersion: number;
   lockedUntil?: string;
+}
+
+function safePathReturn(rawNext?: string) {
+  if (!rawNext || rawNext.includes("\u0000")) return "/account";
+  const candidate = String(rawNext).trim();
+  if (!candidate) return "/account";
+  const trimmed = candidate.slice(0, 2048);
+  try {
+    const parsed = new URL(trimmed, "https://axora.management");
+    if (parsed.origin !== "https://axora.management" || !parsed.pathname.startsWith("/")) return "/account";
+    if (parsed.pathname.startsWith("//")) return "/account";
+    const safe = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    return safe.length <= 2048 ? safe : "/account";
+  } catch {
+    return "/account";
+  }
+}
+
+async function encodeStepUpCookie(
+  actor: SessionUser,
+  sessionTokenHash: string,
+  purpose: StepUpSessionPurpose,
+) {
+  const secret = secretKey();
+  return new SignJWT({
+    actorId: actor.id,
+    sessionTokenHash,
+    role: actor.role,
+    accountKind: actor.accountKind,
+    scopeType: actor.scopeType,
+    companyId: actor.companyId,
+    branchId: actor.branchId,
+    supplierId: actor.supplierId,
+    roleAssignmentId: actor.roleAssignmentId,
+    authVersion: actor.authVersion ?? 1,
+    purpose,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject("stepup")
+    .setIssuedAt()
+    .setExpirationTime(`${STEP_UP_SECONDS}s`)
+    .sign(secret);
+}
+
+async function stepUpState() {
+  const store = await cookies();
+  const stepToken = store.get(STEP_UP_COOKIE_NAME)?.value;
+  if (!stepToken) return null;
+  try {
+    const { payload } = await jwtVerify(stepToken, secretKey(), {
+      algorithms: ["HS256"],
+      subject: "stepup",
+    });
+    const claims = payload as unknown as StepUpClaim & {
+      purpose: StepUpSessionPurpose;
+      iat?: number;
+    };
+    if (claims.purpose !== "sensitive-admin-action") return null;
+    if (!isUserRole(claims.role) || !isAccountKind(claims.accountKind)
+      || !isRoleScopeType(claims.scopeType)
+      || typeof claims.sessionTokenHash !== "string"
+      || typeof claims.actorId !== "string"
+      || claims.actorId.length < 10
+      || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(claims.actorId)
+      || typeof claims.authVersion !== "number"
+      || claims.authVersion < 1
+    ) {
+      return null;
+    }
+    return claims;
+  } catch {
+    return null;
+  }
 }
 
 const AUTHENTICATION_DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=1$m9vEaBMebZQ51/24iNTNzQ$uZKeQkj7f+HkjFqHIj8er6tsu1anDuLYQ3T+/ZAKcDQ";
@@ -747,6 +838,58 @@ async function readLiveSession(): Promise<LiveIdentity | null> {
   }
 }
 
+async function currentSessionTokenHash() {
+  const token = (await cookies()).get(COOKIE_NAME)?.value;
+  if (!token) throw new Error("The current session is unavailable.");
+  return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+async function persistStepUpSession(user: SessionUser, nextPath?: string) {
+  const store = await cookies();
+  const sessionHash = await currentSessionTokenHash();
+  const token = await encodeStepUpCookie(user, sessionHash, "sensitive-admin-action");
+  store.set(STEP_UP_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/",
+    maxAge: STEP_UP_SECONDS,
+  });
+  return nextPath ? safePathReturn(nextPath) : "/account";
+}
+
+function stepUpClaimsMatch(user: SessionUser, claims: StepUpClaim) {
+  return claims.actorId === user.id
+    && claims.role === user.role
+    && claims.accountKind === user.accountKind
+    && claims.scopeType === user.scopeType
+    && Number(claims.authVersion) === Number(user.authVersion)
+    && ((claims.companyId ?? "") === (user.companyId ?? ""))
+    && ((claims.branchId ?? "") === (user.branchId ?? ""))
+    && ((claims.supplierId ?? "") === (user.supplierId ?? ""))
+    && ((claims.roleAssignmentId ?? "") === (user.roleAssignmentId ?? ""));
+}
+
+export async function requireRecentStepUp(actor: AuthenticatedSessionUser | SessionUser, next?: string) {
+  if (isDemoMode()) return;
+  const claims = await stepUpState();
+  if (!claims) redirect(`/account?reauth=1&next=${encodeURIComponent(safePathReturn(next))}`);
+  const sessionHash = await currentSessionTokenHash();
+  if (claims.sessionTokenHash !== sessionHash
+    || !stepUpClaimsMatch(actor, claims)) {
+    redirect(`/account?reauth=1&next=${encodeURIComponent(safePathReturn(next))}`);
+  }
+}
+
+export async function clearStepUpSessionCookie() {
+  const store = await cookies();
+  store.delete(STEP_UP_COOKIE_NAME);
+}
+
+export async function setStepUpAfterPassword(actor: SessionUser, next?: string) {
+  return persistStepUpSession(actor, next);
+}
+
 /**
  * Returns only a fully onboarded live session. Authenticated API routes use
  * this fail-closed accessor so an activated but incomplete account cannot
@@ -820,5 +963,6 @@ export async function clearSession() {
     }
   } finally {
     store.delete(COOKIE_NAME);
+    store.delete(STEP_UP_COOKIE_NAME);
   }
 }

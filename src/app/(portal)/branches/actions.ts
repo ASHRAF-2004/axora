@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireRecentStepUp } from "@/lib/auth";
 import { setBranchMonthlyBudget } from "@/lib/budgets";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -16,6 +16,7 @@ const budgetSchema = z.object({
 
 export async function setBranchBudgetAction(formData: FormData) {
   const actor = await requirePermission("manage_branch_budget");
+  await requireRecentStepUp(actor, "/branches");
   const input = budgetSchema.parse({
     branchId: String(formData.get("branchId") ?? ""),
     monthlyBudget: formData.get("monthlyBudget") ?? "",

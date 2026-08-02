@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     }
   },
   requirePermission: vi.fn(),
+  requireRecentStepUp: vi.fn(),
   createInvitedUser: vi.fn(),
   resendInvitation: vi.fn(),
   recordDelivery: vi.fn(),
@@ -25,6 +26,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({
   requirePermission: mocks.requirePermission,
+  requireRecentStepUp: mocks.requireRecentStepUp,
 }));
 
 vi.mock("@/lib/account-setup", () => ({
@@ -89,6 +91,7 @@ describe("account invitation actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requirePermission.mockResolvedValue(actor);
+    mocks.requireRecentStepUp.mockResolvedValue(undefined);
     mocks.createInvitedUser.mockResolvedValue(invitation);
     mocks.resendInvitation.mockResolvedValue(invitation);
     mocks.recordDelivery.mockResolvedValue(true);

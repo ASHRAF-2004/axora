@@ -5,7 +5,13 @@ import {
   revokeAllOtherSessions,
   revokeOtherSession,
 } from "@/lib/account-security";
-import { requireAccountLifecycleSession, setSession } from "@/lib/auth";
+import {
+  authenticate,
+  clearStepUpSessionCookie,
+  requireAccountLifecycleSession,
+  setSession,
+  setStepUpAfterPassword,
+} from "@/lib/auth";
 import { PasswordPolicyError } from "@/lib/password-policy";
 import { requestEmailVerification } from "@/lib/security-notifications";
 import { revalidatePath } from "next/cache";
@@ -19,6 +25,55 @@ function requestNetworkIdentifier(requestHeaders: Headers) {
   return candidate.length <= 128 && !/[\u0000-\u001F\u007F]/.test(candidate)
     ? candidate
     : "network-unavailable";
+}
+
+function sanitizeNextPath(rawNext: string | null | undefined) {
+  const safeNext = String(rawNext ?? "").trim();
+  if (!safeNext || safeNext.includes("\u0000")) return "/account";
+  try {
+    const parsed = new URL(safeNext, "https://axora.management");
+    if (parsed.origin !== "https://axora.management" || !parsed.pathname.startsWith("/")) {
+      return "/account";
+    }
+    const safe = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    return safe.length <= 2048 ? safe : "/account";
+  } catch {
+    return "/account";
+  }
+}
+
+function withReauthSuccess(rawNext: string) {
+  const next = sanitizeNextPath(rawNext);
+  try {
+    const parsed = new URL(next, "https://axora.management");
+    parsed.searchParams.set("reauth", "ok");
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return "/account?reauth=ok";
+  }
+}
+
+export async function reauthenticateSensitiveAction(formData: FormData) {
+  const actor = await requireAccountLifecycleSession();
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const next = sanitizeNextPath(formData.get("next") as string | null);
+  const requestHeaders = await headers();
+  if (!currentPassword) {
+    await clearStepUpSessionCookie();
+    redirect(`/account?reauth=1&reauth=invalid&next=${encodeURIComponent(next)}`);
+  }
+
+  const verified = await authenticate(actor.email, currentPassword, {
+    networkIdentifier: requestNetworkIdentifier(requestHeaders),
+  });
+  if (!verified || verified.id !== actor.id) {
+    await clearStepUpSessionCookie();
+    redirect(`/account?reauth=1&reauth=invalid&next=${encodeURIComponent(next)}`);
+  }
+
+  await setStepUpAfterPassword(actor, next);
+  revalidatePath("/account");
+  redirect(withReauthSuccess(next));
 }
 
 export async function changePasswordAction(formData: FormData) {

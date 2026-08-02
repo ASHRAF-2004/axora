@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireRecentStepUp } from "@/lib/auth";
 import { createCompanyWithBrand, regenerateCompanyBrand } from "@/lib/tenant-branding";
 import { updateProduct } from "@/lib/product-admin";
 import { deleteProduct } from "@/lib/product-delete";
@@ -49,6 +49,7 @@ function revalidateProduct(productId?: string) {
 
 export async function createCompanyAction(formData: FormData) {
   const user = await requirePermission("manage_companies");
+  await requireRecentStepUp(user, "/companies");
   const logo = formData.get("logo");
   if (!(logo instanceof File) || logo.size < 1) redirect("/companies?notice=company-logo-required");
   const mainContactName = readFormText(formData, "mainContactName");
@@ -71,6 +72,7 @@ export async function createCompanyAction(formData: FormData) {
 
 export async function regenerateCompanyBrandAction(companyId: string, formData: FormData) {
   const user = await requirePermission("manage_companies");
+  await requireRecentStepUp(user, "/companies");
   const logo = formData.get("logo");
   if (!(logo instanceof File) || logo.size < 1) redirect("/companies?notice=company-logo-required");
   await regenerateCompanyBrand(
@@ -87,6 +89,7 @@ export async function regenerateCompanyBrandAction(companyId: string, formData: 
 
 export async function createBranchAction(formData: FormData) {
   const user = await requirePermission("manage_branches");
+  await requireRecentStepUp(user, "/branches");
   const input = branchSchema.parse({ companyId: readFormText(formData, "companyId"), name: readFormText(formData, "name"), branchCode: readFormText(formData, "branchCode"),
     deliveryAddress: readFormText(formData, "deliveryAddress"), city: readFormText(formData, "city"), contactName: readFormText(formData, "contactName"),
     contactPhone: readFormText(formData, "contactPhone"), contactEmail: readFormText(formData, "contactEmail"), deliveryInstructions: readFormText(formData, "deliveryInstructions"), notes: readFormText(formData, "notes") });
@@ -98,6 +101,7 @@ export async function createBranchAction(formData: FormData) {
 
 export async function createSupplierAction(formData: FormData) {
   const user = await requirePermission("manage_suppliers");
+  await requireRecentStepUp(user, "/suppliers");
   const input = { ...supplierSchema.parse({ name: readFormText(formData, "name"), category: readFormText(formData, "category"), contactName: readFormText(formData, "contactName"), phone: readFormText(formData, "phone"),
     email: readFormText(formData, "email"), address: readFormText(formData, "address"), coverageArea: readFormText(formData, "coverageArea"), paymentTerms: readFormText(formData, "paymentTerms"),
     leadTimeDays: number(formData, "leadTimeDays", 1), minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1), mainProducts: readFormText(formData, "mainProducts"), notes: readFormText(formData, "notes") }),
@@ -109,6 +113,7 @@ export async function createSupplierAction(formData: FormData) {
 
 export async function createProductAction(formData: FormData) {
   const user = await requirePermission("manage_catalog");
+  await requireRecentStepUp(user, "/products");
   const selectedFiles = [...files(formData, "images"), ...files(formData, "image")];
   const preparedImages = await prepareProductImages(selectedFiles);
   const productId = await createProduct(productInput(formData), user);
@@ -125,6 +130,7 @@ export async function createProductAction(formData: FormData) {
 
 export async function updateProductAction(productId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
+  await requireRecentStepUp(user, `/products/${productId}/edit`);
   await updateProduct(productId, productInput(formData), user);
   revalidateProduct(productId);
   redirect("/products?notice=product-updated");
@@ -132,12 +138,14 @@ export async function updateProductAction(productId: string, formData: FormData)
 
 export async function deleteProductAction(productId: string) {
   const user = await requirePermission("manage_catalog");
+  await requireRecentStepUp(user, "/products");
   await deleteProduct(productId, user);
   revalidateProduct();
 }
 
 export async function addProductImagesAction(productId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
+  await requireRecentStepUp(user, `/products/${productId}/edit`);
   const selectedFiles = files(formData, "images");
   if (!selectedFiles.length) redirect(`/products/${productId}/edit?notice=product-image-required`);
   await saveProductImages({ productId, files: selectedFiles, altText: readFormText(formData, "imageAltText") }, user);
@@ -146,18 +154,21 @@ export async function addProductImagesAction(productId: string, formData: FormDa
 
 export async function setPrimaryProductImageAction(productId: string, imageId: string) {
   const user = await requirePermission("manage_catalog");
+  await requireRecentStepUp(user, `/products/${productId}/edit`);
   await setPrimaryProductImage(productId, imageId, user);
   revalidateProduct(productId);
 }
 
 export async function updateProductImageAltTextAction(productId: string, imageId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
+  await requireRecentStepUp(user, `/products/${productId}/edit`);
   await updateProductImageAltText(productId, imageId, readFormText(formData, "altText"), user);
   revalidateProduct(productId);
 }
 
 export async function removeProductImageAction(productId: string, imageId: string) {
   const user = await requirePermission("manage_catalog");
+  await requireRecentStepUp(user, `/products/${productId}/edit`);
   await deactivateProductImage(productId, imageId, user);
   revalidateProduct(productId);
 }
@@ -171,12 +182,14 @@ export async function setMasterActiveAction(entity: MasterEntity, id: string, ac
         ? "manage_catalog"
         : "manage_suppliers";
   const user = await requirePermission(permission);
+  await requireRecentStepUp(user, `/${entity}`);
   await setMasterActive(entity, id, active, user);
   revalidatePath(`/${entity}`); revalidatePath("/dashboard");
 }
 
 export async function replaceProductImageAction(productId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
+  await requireRecentStepUp(user, `/products/${productId}/edit`);
   const image = files(formData, "image")[0];
   if (!image) redirect(`/products/${productId}/edit?notice=product-image-required`);
   await saveProductImages({ productId, files: [image], altText: readFormText(formData, "imageAltText") }, user);

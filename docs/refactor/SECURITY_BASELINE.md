@@ -138,14 +138,17 @@ target controls until an approved release is deployed and verified.
 
 ## Open security risks
 
-### SEC-01 — High — owner MFA is not implemented
+### SEC-01 — High — phishing-resistant step-up is partially implemented
 
-Password-only authentication still creates a platform-owner session. Before a
-broad production rollout, add a reviewed phishing-resistant second factor or
-approved identity provider, recovery flow, enrollment audit, and step-up for
-owner/credential administration. Until then, keep the owner roster minimal,
-use password-manager-generated unique credentials, review sessions/audit, and
-apply approved edge restrictions without weakening normal authentication.
+Password-only authentication can still create a platform-owner session, and
+phishing-resistant second-factor controls are still not implemented. Sensitive
+administrative operations now require explicit short-lived current-password step-up
+before execution. Before a broad production rollout, add a reviewed phishing-resistant
+second factor, owner enrollment audit, and recovery flow (or approve an equivalent
+risk treatment) before reducing controls further.
+Until then, keep the owner roster minimal, use password-manager-generated unique
+credentials, review sessions/audit, and apply approved edge restrictions without
+weakening normal authentication.
 
 ### SEC-02 — High — off-machine recovery is not proved
 

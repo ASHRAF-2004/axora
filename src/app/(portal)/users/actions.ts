@@ -9,7 +9,7 @@ import {
   resendAccountSetupInvitation,
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireRecentStepUp } from "@/lib/auth";
 import { setUserActive } from "@/lib/users";
 import { isUserRole, type UserRole } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
@@ -74,6 +74,7 @@ function invitationQuotaNotice(error: AccountSetupInvitationQuotaError) {
 
 export async function createUserAction(formData: FormData) {
   const actor = await requirePermission("manage_users");
+  await requireRecentStepUp(actor, "/users");
   const input = userSchema.parse({ email: readFormText(formData, "email"), displayName: readFormText(formData, "displayName"),
     role: readFormText(formData, "role"),
     companyId: readFormText(formData, "companyId") || undefined,
@@ -97,6 +98,7 @@ export async function createUserAction(formData: FormData) {
 
 export async function resendAccountSetupInvitationAction(userId: string) {
   const actor = await requirePermission("manage_users");
+  await requireRecentStepUp(actor, "/users");
   const safeUserId = z.uuid().parse(userId);
   let invitation: AccountSetupInvitationResult;
   try {
@@ -117,6 +119,7 @@ export async function resendAccountSetupInvitationAction(userId: string) {
 
 export async function setUserActiveAction(id: string, active: boolean) {
   const actor = await requirePermission("manage_users");
+  await requireRecentStepUp(actor, "/users");
   await setUserActive(z.uuid().parse(id), z.boolean().parse(active), actor);
   revalidatePath("/users");
 }

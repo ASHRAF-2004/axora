@@ -2,12 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`); }),
-  requirePermission: vi.fn(), updateRequestStatus: vi.fn(), recordApproval: vi.fn(),
+  requirePermission: vi.fn(),
+  requireRecentStepUp: vi.fn(),
+  updateRequestStatus: vi.fn(),
+  recordApproval: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/lib/auth", () => ({ requirePermission: mocks.requirePermission }));
+vi.mock("@/lib/auth", () => ({
+  requirePermission: mocks.requirePermission,
+  requireRecentStepUp: mocks.requireRecentStepUp,
+}));
 vi.mock("@/lib/locale-server", () => ({ requestLocaleDecision: vi.fn(async () => ({ locale: "en", explicit: true })) }));
 vi.mock("@/lib/repository", () => ({ createBranch: vi.fn(), createProduct: vi.fn(), createSupplier: vi.fn(), setMasterActive: vi.fn(), createCompany: vi.fn(), createRequest: vi.fn(), updateRequestStatus: mocks.updateRequestStatus }));
 vi.mock("@/lib/tenant-branding", () => ({ createCompanyWithBrand: vi.fn(), regenerateCompanyBrand: vi.fn() }));
@@ -29,6 +35,7 @@ describe("localized portal action feedback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requirePermission.mockResolvedValue(actor);
+    mocks.requireRecentStepUp.mockResolvedValue(undefined);
     mocks.recordApproval.mockResolvedValue(undefined);
   });
 
