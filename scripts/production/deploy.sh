@@ -199,6 +199,16 @@ if [[ ! -d "$release" ]]; then
     NEXT_TELEMETRY_DISABLED=1 \
     npm_config_cache="$controller_home/npm" \
     XDG_CACHE_HOME="$controller_home/xdg" \
+    npm run --prefix "$temporary_release" manuals:build
+  env -i \
+    HOME="$controller_home" \
+    USER=root \
+    LOGNAME=root \
+    PATH=/usr/local/bin:/usr/bin:/bin \
+    CI=true \
+    NEXT_TELEMETRY_DISABLED=1 \
+    npm_config_cache="$controller_home/npm" \
+    XDG_CACHE_HOME="$controller_home/xdg" \
     npm run --prefix "$temporary_release" verify
 
   # npm lifecycle and verification code can modify its workspace. Discard it,
