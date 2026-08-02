@@ -80,12 +80,37 @@ export default async function SupportPage({
     {notice === "session-action-denied" ? <div className="callout callout-warning" role="alert">{messages.denied}</div> : null}
 
     <section className="metric-grid" data-tour="system-health">
-      <article className="metric-card metric-teal"><span className="metric-icon"><Database aria-hidden="true" /></span><p>{messages.database}</p><strong>{messages.databaseBody}</strong><small>{messages.checked}: {checkedAt}</small></article>
-      <article className="metric-card metric-blue"><span className="metric-icon"><ShieldCheck aria-hidden="true" /></span><p>{messages.migration}</p><strong>{summary.latestMigration}</strong></article>
-      <article className="metric-card metric-blue"><span className="metric-icon"><UsersRound aria-hidden="true" /></span><p>{messages.sessions}</p><strong>{new Intl.NumberFormat(locale).format(summary.activeSessions)}</strong></article>
-      <article className="metric-card metric-orange"><span className="metric-icon"><BellRing aria-hidden="true" /></span><p>{messages.invitations}</p><strong>{new Intl.NumberFormat(locale).format(summary.pendingInvitations)}</strong></article>
-      <article className="metric-card metric-orange"><span className="metric-icon"><MailWarning aria-hidden="true" /></span><p>{messages.email}</p><strong>{new Intl.NumberFormat(locale).format(summary.emailExceptions)}</strong></article>
-      <article className="metric-card metric-orange"><span className="metric-icon"><Activity aria-hidden="true" /></span><p>{messages.workflow}</p><strong>{new Intl.NumberFormat(locale).format(summary.workflowExceptions)}</strong></article>
+      <article className="metric-card metric-teal">
+        <span className="metric-icon"><Database aria-hidden="true" /></span>
+        <p className="metric-label">{messages.database}</p>
+        <strong className="metric-value">{messages.databaseBody}</strong>
+        <small className="metric-note">{messages.checked}: {checkedAt}</small>
+      </article>
+      <article className="metric-card metric-blue">
+        <span className="metric-icon"><ShieldCheck aria-hidden="true" /></span>
+        <p className="metric-label">{messages.migration}</p>
+        <strong className="metric-value">{summary.latestMigration}</strong>
+      </article>
+      <article className="metric-card metric-blue">
+        <span className="metric-icon"><UsersRound aria-hidden="true" /></span>
+        <p className="metric-label">{messages.sessions}</p>
+        <strong className="metric-value">{new Intl.NumberFormat(locale).format(summary.activeSessions)}</strong>
+      </article>
+      <article className="metric-card metric-orange">
+        <span className="metric-icon"><BellRing aria-hidden="true" /></span>
+        <p className="metric-label">{messages.invitations}</p>
+        <strong className="metric-value">{new Intl.NumberFormat(locale).format(summary.pendingInvitations)}</strong>
+      </article>
+      <article className="metric-card metric-orange">
+        <span className="metric-icon"><MailWarning aria-hidden="true" /></span>
+        <p className="metric-label">{messages.email}</p>
+        <strong className="metric-value">{new Intl.NumberFormat(locale).format(summary.emailExceptions)}</strong>
+      </article>
+      <article className="metric-card metric-orange">
+        <span className="metric-icon"><Activity aria-hidden="true" /></span>
+        <p className="metric-label">{messages.workflow}</p>
+        <strong className="metric-value">{new Intl.NumberFormat(locale).format(summary.workflowExceptions)}</strong>
+      </article>
     </section>
 
     <div className="callout" data-tour="support-boundary"><ShieldCheck size={19} aria-hidden="true" /><div><strong>{messages.boundary}</strong><p>{messages.boundaryBody}</p></div></div>
