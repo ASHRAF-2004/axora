@@ -142,7 +142,7 @@ rollback evidence is attached to the pull request or change record.
 
 ### 6. Render decision
 
-Stop and ask Ashraf for explicit confirmation. Do not disable or delete the
+Stop and ask an authorized Axora platform owner for explicit confirmation. Do not disable or delete the
 Render service automatically.
 
 ## Main risks and controls

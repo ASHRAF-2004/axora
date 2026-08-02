@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <title>دليل تشغيل Axora على كمبيوتر الشركة</title>
+  <title>وثيقة تاريخية — دليل تشغيل Axora على كمبيوتر الشركة</title>
   <style>
     :root{--navy:#102a43;--blue:#2563eb;--teal:#0f9d8a;--ink:#0f172a;--muted:#52637a;--paper:#fff;--wash:#f4f7fb;--line:#dbe4ef;--soft-blue:#eaf1ff;--soft-teal:#e4faf6;--orange:#e67e22;--soft-orange:#fff2df;--red:#c23b3b;--soft-red:#ffeded}
     *{box-sizing:border-box} html,body{margin:0;padding:0;background:#dfe7f1;color:var(--ink);font-family:"Segoe UI",Tahoma,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -20,6 +20,7 @@
     .folder-tree{direction:ltr;text-align:left;background:#f7f9fc;border:1px solid var(--line);border-radius:4mm;padding:5mm 6mm;font:9pt/1.72 Consolas,"Courier New",monospace;color:#25415e}.folder-tree b{color:var(--blue)}
     .terminal-key{direction:ltr;display:inline-block;background:#e8edf4;border:1px solid #c9d3df;border-bottom-width:2px;border-radius:1.5mm;padding:.8mm 2mm;font:8.5pt Consolas,monospace;color:#1d334b}.mini{font-size:8.8pt;line-height:1.55}.separator{height:1px;background:var(--line);margin:5mm 0}.big-rule{display:flex;gap:4mm;align-items:center;background:linear-gradient(90deg,#eef4ff,#e8faf7);border:1px solid #c8dcee;border-radius:5mm;padding:6mm;margin:5mm 0}.big-rule .symbol{font-size:28pt;color:var(--blue);font-weight:900}.big-rule p{margin:0}.manual-tag{display:inline-block;border:1px solid #efc998;background:var(--soft-orange);color:#9a5a12;border-radius:99px;padding:1mm 3mm;font-size:8pt;font-weight:800}.auto-tag{display:inline-block;border:1px solid #a8e0d5;background:var(--soft-teal);color:#087d6d;border-radius:99px;padding:1mm 3mm;font-size:8pt;font-weight:800}
     .dense .page-head{margin-bottom:5mm}.dense h2{margin-bottom:2.5mm}.dense h3{margin-bottom:1mm}.dense p,.dense li{font-size:9.5pt;line-height:1.48}.dense p{margin-bottom:2.3mm}.dense .step{padding:2.5mm 0}.dense .command{padding:3mm 4mm;margin:1.5mm 0 2.5mm;font-size:8.6pt;line-height:1.4}.dense .note,.dense .warning,.dense .danger{padding:3mm 4mm;margin:2.5mm 0}.dense .card{padding:3.5mm}.dense .checklist li{padding-top:1.6mm;padding-bottom:1.6mm}.dense .checklist li:before{top:2.2mm}.dense .big-rule{padding:4mm;margin:3mm 0}.dense .separator{margin:3mm 0}
+    .superseded-banner{position:absolute;z-index:3;top:9mm;right:18mm;left:18mm;padding:4mm 5mm;border:1.2mm solid #991b1b;border-radius:3mm;background:#fff1f2;color:#7f1d1d;text-align:center;font-size:10.5pt;font-weight:800;line-height:1.55;box-shadow:0 2mm 5mm rgba(127,29,29,.18)}.superseded-banner a{color:#0b2d52;text-decoration:underline;text-underline-offset:1mm}.superseded-banner strong{display:block;font-size:13pt}
     @page{size:A4;margin:0}
     @media print{html,body{background:#fff}.page{margin:0;width:210mm;height:296.8mm}}
   </style>
@@ -27,9 +28,13 @@
 <body>
   <section class="page cover">
     <div class="topline"></div>
+    <aside class="superseded-banner" role="alert" aria-label="تنبيه: وثيقة تاريخية مستبدلة">
+      <strong>تنبيه: هذه وثيقة تاريخية مستبدلة — لا تستخدم تعليماتها للتشغيل الحالي.</strong>
+      استخدم <a href="../../docs/PRODUCTION_RUNBOOK.md">دليل تشغيل الإنتاج الحالي</a> بدلًا منها.
+    </aside>
     <div class="hero">
       <div>
-        <img class="cover-logo" src="../../public/brand/axora-logo.svg" alt="Axora operations" />
+        <img class="cover-logo" src="../../public/brand/axora-logo.png" alt="Axora operations" />
         <div style="margin-top:16mm"><span class="eyebrow">دليل بسيط خطوة بخطوة</span>
           <h1>تشغيل Axora على كمبيوتر الشركة</h1>
           <p class="lead">دليل عربي مصوّر يشرح لك ماذا تفتح، ماذا تنسخ، ومتى تتوقف وتسأل المشرف.</p>
@@ -46,7 +51,7 @@
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">01 / الفكرة في صورة واحدة</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">01 / الفكرة في صورة واحدة</span></header>
     <span class="eyebrow">ابدأ من هنا</span><h2>ما هو السيرفر؟ لا تخف من الكلمة</h2>
     <p class="lead">السيرفر هنا هو نفس كمبيوترك. الفرق فقط أنه يبقى يعمل ويعطي صفحات Axora لأجهزة المكتب عبر شبكة الشركة.</p>
     <div class="flow">
@@ -65,7 +70,7 @@
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">02 / ما الذي استلمته؟</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">02 / ما الذي استلمته؟</span></header>
     <span class="eyebrow">محتويات المجلد</span><h2>افتح هذا المجلد أولًا</h2>
     <p>اسم المجلد هو <span class="terminal-key">axora-app</span>. لا تنقل ملفًا واحدًا فقط؛ انسخ المجلد كاملًا إلى السيرفر.</p>
     <div class="grid-2">
@@ -101,7 +106,7 @@
   </section>
 
   <section class="page dense">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">03 / قبل تشغيل أي أمر</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">03 / قبل تشغيل أي أمر</span></header>
     <span class="eyebrow">أشياء يقررها الإنسان</span><h2>اجمع أربع معلومات من المشرف أو مسؤول الشبكة</h2>
     <p class="lead">لا تخمّن هذه القيم. اكتبها على ورقة ثم ضعها في الملف لاحقًا.</p>
     <div class="grid-2">
@@ -125,7 +130,7 @@
   </section>
 
   <section class="page dense">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">04 / نسخ المشروع وفحص الجهاز</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">04 / نسخ المشروع وفحص الجهاز</span></header>
     <span class="eyebrow">الخطوة الأولى في Ubuntu</span><h2>افتح Terminal ثم انسخ هذه الأوامر بالترتيب</h2>
     <div class="step"><span class="number">1</span><div><h3>افتح Terminal</h3><p>اضغط <span class="terminal-key">Ctrl</span> + <span class="terminal-key">Alt</span> + <span class="terminal-key">T</span>.</p></div></div>
     <div class="step"><span class="number">2</span><div><h3>أنشئ مكان المشروع</h3></div></div>
@@ -145,7 +150,7 @@ bash scripts/server/preflight.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">05 / تثبيت Docker</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">05 / تثبيت Docker</span></header>
     <span class="eyebrow">مرة واحدة فقط</span><h2>دع السكربت يثبت Docker من المصدر الرسمي</h2>
     <p>يحتاج هذا الجزء اتصال إنترنت. السكربت يضيف مستودع Docker الرسمي، يثبت Docker Engine وCompose، ويجعلهما يعملان بعد إعادة التشغيل.</p>
     <div class="command-label"><span>شغّل المثبت</span><span class="copy-chip">انسخ والصق</span></div><pre class="command">cd /srv/axora
@@ -167,7 +172,7 @@ docker run --rm hello-world</pre>
   </section>
 
   <section class="page dense">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">06 / إعداد العنوان والأسرار</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">06 / إعداد العنوان والأسرار</span></header>
     <span class="eyebrow">لا تنسخ أسرار Windows</span><h2>أنشئ إعدادات السيرفر من الصفر</h2>
     <div class="step"><span class="number">1</span><div><h3>انسخ نموذج الإعدادات</h3></div></div>
     <pre class="command">cd /srv/axora
@@ -178,25 +183,25 @@ nano .env</pre>
 AXORA_HOST=axora.internal</pre></div>
     <div class="step"><span class="number">2</span><div><h3>أنشئ كلمات سر عشوائية قوية</h3></div></div>
     <pre class="command">bash scripts/server/prepare-secrets.sh</pre>
-    <p>سيُنشئ أربعة ملفات داخل <span class="terminal-key">secrets/</span>: كلمة مدير PostgreSQL، كلمة مستخدم التطبيق، مفتاح الجلسات، وكلمة Admin أولية تُستخدم مرة واحدة.</p>
-    <div class="warning"><strong>انسخ كلمة Admin الأولية إلى Password Manager</strong><p>لا ترسلها في WhatsApp ولا تضعها في PDF. بعد نجاح أول تسجيل دخول سنحذف ملفها فقط.</p></div>
+    <p>سيُنشئ أسرار خدمات PostgreSQL والتطبيق والجلسات داخل <span class="terminal-key">secrets/</span>. لا ينشئ السكربت أي كلمة مرور لمستخدم.</p>
+    <div class="warning"><strong>الحساب الأول يبدأ بدعوة آمنة</strong><p>لا يختار المسؤول كلمة مرور للمستخدم ولا يرسل كلمة مؤقتة. ينشئ المستخدم كلمة مروره بنفسه من رابط إعداد أحادي الاستخدام.</p></div>
     <div class="grid-2">
       <div class="card teal"><span class="auto-tag">آلي</span><h3 style="margin-top:2mm">الأسرار الحقيقية</h3><p>تُنشأ داخل Ubuntu بصلاحية ملف 600 ولا تدخل صورة Docker أو Git.</p></div>
       <div class="card orange"><span class="manual-tag">يدوي</span><h3 style="margin-top:2mm">عنوان الشبكة</h3><p>يجب أن يؤكده مسؤول الشبكة. السكربت يرفض ترك عنوان المثال.</p></div>
     </div>
-    <div class="danger"><strong>لا تعرض محتوى ملفات secrets في لقطة شاشة</strong><p>لا تستخدم <span class="terminal-key">cat secrets/*</span> أمام الآخرين. كلمة Admin الأولية فقط تُعرض لك وقت الإنشاء.</p></div>
+    <div class="danger"><strong>لا تعرض محتوى ملفات secrets في لقطة شاشة</strong><p>لا تستخدم <span class="terminal-key">cat secrets/*</span> أمام الآخرين، ولا تنسخ أي رمز دعوة أو مفتاح خدمة إلى وثيقة.</p></div>
     <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 7</span></div>
   </section>
 
   <section class="page dense">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">07 / أول تشغيل</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">07 / أول تشغيل</span></header>
     <span class="eyebrow">لحظة التشغيل</span><h2>ابنِ البرنامج وأنشئ أول حساب</h2>
     <div class="step"><span class="number">1</span><div><h3>شغّل حزمة Axora</h3></div></div>
     <pre class="command">cd /srv/axora
 bash scripts/server/deploy.sh</pre>
     <p>الأمر يفحص الإعدادات، يبني صورة البرنامج، يشغّل PostgreSQL، يطبّق migrations، ثم يشغّل التطبيق وCaddy وينتظر حتى تصبح الحاويات Healthy.</p>
-    <div class="step"><span class="number">2</span><div><h3>أنشئ أول Admin</h3><p>بدّل البريد والاسم بالقيم الحقيقية.</p></div></div>
-    <pre class="command">bash scripts/server/create-admin.sh admin@company.com "Administrator name"</pre>
+    <div class="step"><span class="number">2</span><div><h3>ادعُ أول مالك للمنصة</h3><p>نفّذ أمر الدعوة الموثق بعد تفعيل إرسال البريد. الأمر لا يقبل كلمة مرور ولا يطبع رمز الإعداد.</p></div></div>
+    <pre class="command">npm run bootstrap:first-platform-owner -- --help</pre>
     <div class="step"><span class="number">3</span><div><h3>اختبر الحالة</h3></div></div>
     <pre class="command">bash scripts/server/status.sh</pre>
     <div class="grid-3">
@@ -204,15 +209,14 @@ bash scripts/server/deploy.sh</pre>
       <div class="card teal"><h3>app healthy</h3><p class="mini">البرنامج حي وقادر على الوصول للقاعدة.</p></div>
       <div class="card teal"><h3>caddy running</h3><p class="mini">عنوان HTTPS جاهز.</p></div>
     </div>
-    <div class="step"><span class="number">4</span><div><h3>بعد نجاح تسجيل الدخول</h3></div></div>
-    <pre class="command">rm secrets/admin_initial_password</pre>
+    <div class="step"><span class="number">4</span><div><h3>بعد تفعيل الحساب</h3><p>تحقق من اكتمال الدعوة والملف الشخصي ومن أن رابط الإعداد أصبح غير صالح لإعادة الاستخدام.</p></div></div>
     <div class="danger"><strong>لا تستخدم docker compose down -v</strong><p>الحرف <span class="terminal-key">-v</span> يحذف volumes التي تحتوي قاعدة البيانات وشهادة Caddy. في التشغيل العادي استخدم stop أو restart فقط.</p></div>
-    <div class="note"><strong>بيانات التجربة اختيارية</strong><p>إذا طلب المشرف عرض Demo على السيرفر الخالي: شغّل <span class="terminal-key">bash scripts/server/load-demo.sh</span> واكتب LOAD DEMO. لا تشغله بعد إدخال بيانات حقيقية.</p></div>
+    <div class="note"><strong>لا تستخدم بيانات تجريبية في الإنتاج</strong><p>تحقق من أن <span class="terminal-key">DEMO_MODE=false</span> ولا تشغّل سكربت بيانات العرض على قاعدة الإنتاج.</p></div>
     <div class="footer"><span><strong>Axora operations</strong> · دليل السيرفر</span><span>صفحة 8</span></div>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">08 / ربط أجهزة المكتب</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">08 / ربط أجهزة المكتب</span></header>
     <span class="eyebrow">هذه الخطوة يدوية</span><h2>اجعل المتصفح يعرف axora.internal</h2>
     <div class="grid-2">
       <div class="card blue"><h3>الخيار الأفضل: DNS داخلي</h3><p>اطلب من مسؤول الشبكة إنشاء سجل A باسم <span class="terminal-key">axora.internal</span> يشير إلى IP السيرفر الثابت. كل أجهزة المكتب ستعرفه تلقائيًا.</p></div>
@@ -236,7 +240,7 @@ bash scripts/server/export-caddy-root.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">09 / تسجيل الدخول ولوحة التحكم</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">09 / تسجيل الدخول ولوحة التحكم</span></header>
     <span class="eyebrow">استخدام Axora يوميًا</span><h2>افتح الموقع ثم ابدأ من Dashboard</h2>
     <div class="shot-wrap"><span class="shot-label">صورة حقيقية من التطبيق</span><img class="screenshot screen-crop" src="../screenshots/dashboard.png" alt="لوحة تحكم Axora" /></div>
     <p class="shot-caption">لوحة التحكم تعرض 15 طلبًا تجريبيًا، المبيعات، التكلفة، الربح، الفواتير، والتنبيهات.</p>
@@ -251,7 +255,7 @@ bash scripts/server/export-caddy-root.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">10 / الطلب من البداية للنهاية</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">10 / الطلب من البداية للنهاية</span></header>
     <span class="eyebrow">سير العمل</span><h2>لا تقفز بين الحالات</h2>
     <div class="shot-wrap"><span class="shot-label">صفحة تفاصيل الطلب</span><img class="screenshot screen-crop smallcrop" src="../screenshots/request-detail.png" alt="تفاصيل طلب Axora" /></div>
     <p class="shot-caption">صفحة الطلب تحفظ المنتجات والأسعار والمورّد والتوصيل والفاتورة، وتعرض الحالات المسموح بها فقط.</p>
@@ -269,7 +273,7 @@ bash scripts/server/export-caddy-root.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">11 / التوريد والتوصيل والمالية</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">11 / التوريد والتوصيل والمالية</span></header>
     <span class="eyebrow">ثلاث شاشات مهمة</span><h2>كل قسم يسجل دليله</h2>
     <div class="grid-2">
       <div><div class="shot-wrap"><span class="shot-label">Sourcing</span><img class="screenshot" style="height:57mm;object-fit:cover;object-position:top" src="../screenshots/sourcing.png" alt="صفحة التوريد" /></div><h3 style="margin-top:3mm">1. التوريد</h3><p class="mini">سجّل المرجع والسعر والرسوم وMOQ ومدة التوصيل. عند الاختيار اكتب السبب.</p></div>
@@ -286,7 +290,7 @@ bash scripts/server/export-caddy-root.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">12 / المستخدمون والصلاحيات</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">12 / المستخدمون والصلاحيات</span></header>
     <span class="eyebrow">أقل صلاحية تكفي</span><h2>أنشئ حسابًا لكل شخص</h2>
     <p>افتح <strong>Users</strong> بحساب Admin. لا تجعل جميع الناس Admin، ولا تستخدم حسابًا مشتركًا.</p>
     <table class="role-table">
@@ -308,7 +312,7 @@ bash scripts/server/export-caddy-root.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">13 / النسخ الاحتياطي</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">13 / النسخ الاحتياطي</span></header>
     <span class="eyebrow">افعلها قبل أن تحتاجها</span><h2>نسخة اليوم + نسخة خارج SSD</h2>
     <div class="command-label"><span>أنشئ نسخة الآن</span><span class="copy-chip">انسخ والصق</span></div><pre class="command">cd /srv/axora
 bash scripts/server/backup.sh</pre>
@@ -333,7 +337,7 @@ bash scripts/server/backup.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">14 / اختبار الاسترجاع</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">14 / اختبار الاسترجاع</span></header>
     <span class="eyebrow">لا تلمس Production أولًا</span><h2>اختبر النسخة في قاعدة مؤقتة</h2>
     <p class="lead">وجود ملف backup لا يكفي. يجب أن تثبت أن PostgreSQL يستطيع قراءته واسترجاعه.</p>
     <div class="command-label"><span>اختبار آمن</span><span class="copy-chip">غيّر اسم المجلد</span></div><pre class="command">bash scripts/server/restore-test.sh \
@@ -354,7 +358,7 @@ bash scripts/server/backup.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">15 / الجدار الناري</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">15 / الجدار الناري</span></header>
     <span class="eyebrow">بعد معرفة الشبكة الحقيقية</span><h2>اسمح للمكتب فقط</h2>
     <p>Docker يمرر المنافذ قبل بعض قواعد UFW، لذلك السكربت يضع UFW وقاعدة DOCKER-USER معًا.</p>
     <div class="command-label"><span>مثال — استبدل القيم</span><span class="copy-chip">لا تستخدم المثال كما هو</span></div><pre class="command">bash scripts/server/configure-firewall.sh \
@@ -378,7 +382,7 @@ bash scripts/server/backup.sh</pre>
   </section>
 
   <section class="page dense">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">16 / التشغيل والصيانة</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">16 / التشغيل والصيانة</span></header>
     <span class="eyebrow">أوامر قصيرة مفيدة</span><h2>ماذا تفعل كل يوم أو عند مشكلة؟</h2>
     <table class="simple-table">
       <thead><tr><th>المطلوب</th><th>الأمر</th></tr></thead>
@@ -404,7 +408,7 @@ bash scripts/server/backup.sh</pre>
   </section>
 
   <section class="page">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">17 / حل المشكلات بسرعة</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">17 / حل المشكلات بسرعة</span></header>
     <span class="eyebrow">اقرأ السطر المناسب فقط</span><h2>إذا حدث كذا، افعل كذا</h2>
     <table class="simple-table">
       <thead><tr><th>المشكلة</th><th>افحص</th><th>الحل الأول</th></tr></thead>
@@ -428,7 +432,7 @@ docker compose logs --since=30m --tail=200 app db caddy</pre>
   </section>
 
   <section class="page dense">
-    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.svg" alt="Axora" /><span class="page-no">18 / ما يبقى يدويًا؟</span></header>
+    <div class="topline"></div><header class="page-head"><img src="../../public/brand/axora-logo.png" alt="Axora" /><span class="page-no">18 / ما يبقى يدويًا؟</span></header>
     <span class="eyebrow">قائمة النهاية</span><h2>عندما تضع علامة على كل مربع، يصبح السيرفر جاهزًا للـ Pilot</h2>
     <div class="grid-2">
       <div class="card teal"><h3>جاهز داخل الحزمة الآن</h3><ul class="checklist done">
@@ -445,7 +449,7 @@ docker compose logs --since=30m --tail=200 app db caddy</pre>
 
   <section class="page cover">
     <div class="topline"></div><div class="hero">
-      <div><img class="cover-logo" src="../../public/brand/axora-logo.svg" alt="Axora" /><div style="margin-top:20mm"><span class="eyebrow">انتهى الدليل</span><h1 style="font-size:34pt">أنت لا تحتاج أن تحفظ الأوامر</h1><p class="lead">افتح الصفحة المناسبة، انسخ الأمر، اقرأ ما سيحدث، ثم نفّذه. عندما تكون القيمة خاصة بالشبكة، اسأل بدل أن تخمّن.</p></div></div>
+      <div><img class="cover-logo" src="../../public/brand/axora-logo.png" alt="Axora" /><div style="margin-top:20mm"><span class="eyebrow">انتهى الدليل</span><h1 style="font-size:34pt">أنت لا تحتاج أن تحفظ الأوامر</h1><p class="lead">افتح الصفحة المناسبة، انسخ الأمر، اقرأ ما سيحدث، ثم نفّذه. عندما تكون القيمة خاصة بالشبكة، اسأل بدل أن تخمّن.</p></div></div>
       <div class="cover-card"><h2 style="font-size:20pt">أول ثلاثة أوامر لاحقًا</h2><pre class="command">cd /srv/axora
 bash scripts/server/preflight.sh
 bash scripts/server/deploy.sh</pre><p class="mini">لكن لا تشغّل deploy قبل تثبيت Docker وضبط .env وإنشاء secrets كما شرح الدليل.</p></div>

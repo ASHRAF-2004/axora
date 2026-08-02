@@ -11,8 +11,8 @@ restores, or secret replacement.
 - Never remove the existing `tailscale-db` service.
 - Never overwrite a working secret or restore over production without a
   verified backup and explicit approval.
-- Keep Render active until public verification is complete and Ashraf confirms
-  decommissioning.
+- Keep Render active until public verification is complete and an authorized
+  Axora platform owner confirms decommissioning.
 - Do not expose PostgreSQL, Docker, Caddy's origin, Next.js, SSH, metrics, or
   admin tools through public inbound ports or the Tunnel.
 
@@ -51,6 +51,11 @@ recorded before automatic deployment is enabled:
 - [ ] The recorded active Render session secret has been copied into the stable
       production `session_secret` file without displaying it; the old local
       secret remains preserved separately for rollback.
+- [ ] Cloudflare Email Sending is still disabled, or its paid-plan eligibility,
+      exact sending-domain DNS, dedicated account-owned token, monitored
+      Reply-To mailbox, Queue/DLQ, event subscription, queue-only Worker,
+      HMAC secret, and controlled real-message test have all passed the
+      separate email runbooks.
 
 ## Paths and commands
 
@@ -186,6 +191,29 @@ sudo /usr/local/libexec/axora-production/health-check.sh --external
 The live endpoint proves the process responds. The ready endpoint must return
 success only when the application can query PostgreSQL.
 
+### Operate transactional email safely
+
+Production installs `email-sender` as an isolated service even while delivery
+is disabled. A `disabled` sender readiness result is expected and healthy when
+`AXORA_EMAIL_DELIVERY_ENABLED=false`; it does not prove a provider token,
+sending domain, DNS, Queue subscription, Worker, webhook, monitored mailbox,
+or real email.
+
+Do not enable delivery by editing only one flag. Email delivery and provider
+events must be enabled together, and production preflight must pass with the
+dedicated secret files. The developer-only `email-preview` Mailpit profile is
+not part of the production Compose invocation and must never be published
+through Caddy or the Tunnel.
+
+Before any email enablement or provider-side mutation, follow:
+
+- [Transactional email runbook](ACCOUNT_EMAILS.md)
+- [Provider, DNS, and credential gates](refactor/EMAIL_PROVIDER_AND_DNS.md)
+- [Provider events and suppression](refactor/EMAIL_PROVIDER_EVENTS.md)
+
+Until a real provider message and lifecycle-event checks succeed, describe
+the feature as implemented and locally testable—not production email verified.
+
 ### View logs
 
 ```bash
@@ -197,7 +225,7 @@ docker compose \
   -f compose.yaml \
   -f compose.hybrid.yaml \
   -f compose.production.yaml \
-  logs --since 30m app caddy cloudflared db
+  logs --since 30m app caddy cloudflared db email-sender
 ```
 
 The systemd `cloudflared` journal is for the retained legacy Tunnel. Production
@@ -216,6 +244,45 @@ Confirm the script reports successful archive/checksum validation. Copy the
 completed backup directory to the approved encrypted off-machine destination
 and verify the copied checksums there. A backup that exists only under
 `/var/lib/axora-production` is not a disaster-recovery backup.
+
+### Prepare a guarded encrypted reset recovery point
+
+The installer creates a stable root-owned mode-`0600` passphrase at
+`/etc/axora-production/secrets/reset_backup_passphrase`. Do not print, rotate,
+or copy it beside an encrypted artifact. Escrow it through the separately
+approved recovery channel before relying on the artifact for host-loss
+recovery.
+
+In an approved maintenance-preparation window, create and independently verify
+the database/upload recovery point:
+
+```bash
+sudo /usr/local/libexec/axora-production/encrypted-reset-backup.sh
+sudo /usr/local/libexec/axora-production/reset-baseline.sh --plan
+```
+
+The encrypted controller runs the normal verified backup, wraps the complete
+folder with GPG AES-256, decrypts it, validates both manifest layers and upload
+hashes, and restores it into a disposable database before writing its
+verification marker. Copy the `.tar.gpg`, matching `.manifest`, and `.verified`
+files from `/var/lib/axora-production/reset-backups` to the approved off-machine
+destination and verify the ciphertext checksum there. The local artifact alone
+does not close disaster recovery.
+
+`reset-baseline.sh` defaults to `--plan`. Its `--apply` path is not a routine
+runbook action: it remains blocked until the reset plan's workbook,
+off-machine-recovery, retention, and change-approval gates pass. It additionally
+requires the exact one-shot environment arming flag and a live-fact phrase
+typed at a real TTY; neither value belongs in persistent configuration. See
+[Forward migration and guarded reset plan](refactor/MIGRATION_AND_RESET_PLAN.md)
+before considering it.
+
+Before relying on any existing artifact or controller, complete the read-only
+checks in
+[Production reset and recovery readiness audit](refactor/RESET_READINESS_AUDIT.md).
+An ordinary backup service success does not prove that an encrypted reset
+artifact, separate passphrase escrow, or off-machine application recovery drill
+exists.
 
 ### Start and monitor a deployment
 
@@ -329,6 +396,11 @@ During an approved window:
 | Deployment fails after migration | Keep current compatible app, inspect migration/ready logs, do not restore blindly | Schema/app compatibility |
 | Disk pressure | `df -h`, Docker/backup/release inventory | LVM capacity or retention |
 | Login loops on phone | Public HTTPS, cookie attributes, `APP_BASE_URL`, proxy headers, server time | Edge/proxy/session config |
+| Sender readiness is `disabled` | Confirm both email flags intentionally remain false | Expected pre-enablement state |
+| Sender readiness is `not_ready` | Production runtime values, secret-file ownership/mode, read-only provider preflight | Email configuration; do not expose secret contents |
+| Provider-event endpoint returns 401 | Host time and equality of the independently mounted Worker/application HMAC secret | Event authentication; never print the secret |
+| Email Queue retries or DLQ is nonempty | Worker bounded outcome logs, Axora readiness/5xx, Queue metrics | Disable outbound email until lifecycle processing is repaired |
+| Recipient is suppressed | Provider event history and approved address-correction process | Hard bounce/complaint; never bypass suppression |
 
 Do not prune Docker, delete releases/backups, alter DNS, restart PostgreSQL, or
 restore data merely to clear an alert. Identify the failing boundary first.
@@ -341,7 +413,8 @@ the reviewed controller before resetting and starting the deployment service.
 Only after all migration gates, reboot recovery, automatic deployment, failure
 containment, backup restore, rollback, and request-path evidence are complete:
 
-1. Present the evidence and remaining rollback window to Ashraf.
+1. Present the evidence and remaining rollback window to an authorized Axora
+   platform owner.
 2. Stop and ask for explicit confirmation.
 3. If approved, disable Render in a separate change.
 4. Do not delete Render until its retained logs/configuration and rollback value

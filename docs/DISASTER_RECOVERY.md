@@ -7,7 +7,7 @@ window and a verified backup.
 ## Recovery objectives
 
 Axora does not yet have business-approved RPO or RTO values. Before Render is
-decommissioned, Ashraf must approve:
+decommissioned, an authorized Axora platform owner must approve:
 
 - the maximum acceptable data loss (RPO);
 - the maximum acceptable outage (RTO);

@@ -1,5 +1,17 @@
 # Ready for the server PC
 
+> **Historical checklist — superseded.** This 22 July 2026 preparation record
+> is not the current deployment, identity, email, or migration runbook. Do not
+> use its test counts, migration `002` instruction, demo-era administrator
+> step, or LAN deployment sequence as the current baseline. The reviewed
+> refactor target now runs through migration `032`. The last read-only
+> production audit observed migration `013`, so migrations `014` through `032`
+> are 19 pending branch changes until an approved release is deployed. Use
+> `docs/PRODUCTION_RUNBOOK.md`,
+> `docs/refactor/MIGRATION_AND_RESET_PLAN.md`, and `docs/ACCOUNT_EMAILS.md`.
+> The first production owner is created only through the guarded one-time
+> invitation flow, never with a default or administrator-visible password.
+
 Preparation on the Windows PC is complete as of 22 July 2026.
 
 ## Verified here

@@ -1,11 +1,12 @@
-# Axora operations
+# Axora procurement
 
-Axora is a self-hosted, multi-company procurement and operations application. It
-replaces fragile workbook calculations with quantity-correct requests,
-quotations, approvals, deliveries, invoices, payments, documents, audit
-history, and role-based access.
+Axora is a self-hosted, secure multi-company procurement platform. It gives
+company requesters and approvers, Axora operations, suppliers, delivery teams,
+receivers, finance reviewers, auditors, and support staff focused workspaces
+while preserving one tenant-scoped, append-only lifecycle from need through
+receipt, invoice, and COD evidence.
 
-![Axora operations logo](public/brand/axora-logo.svg)
+![Axora logo](public/brand/axora-logo.png)
 
 ## Production migration
 
@@ -19,24 +20,48 @@ here:
 
 These documents are preparation assets, not evidence of a completed cutover.
 Render must remain available until the public domain, restart recovery,
-automatic deployment, backups, and rollback have all been verified and Ashraf
-explicitly approves decommissioning.
+automatic deployment, backups, and rollback have all been verified and an
+authorized Axora platform owner explicitly approves decommissioning.
 
 ## What is ready now
 
-- Next.js application with 22 routes and responsive pages.
+- Localized public Axora website plus responsive role-specific portals.
+- Top application navigation with a permission-aware drawer, profile,
+  notifications, and language control; no permanent left sidebar.
+- Canonical account/role/scope assignments, one-time invitations, Argon2id
+  passwords, live sessions, profile onboarding, and role tutorials.
+- Automatically derived accessible company branding from validated logos;
+  company users receive no color/theme editor.
+- Dedicated supplier, mobile delivery-driver, and independent receiver flows,
+  customer three-way matching, workflow timelines, and in-app/email outboxes.
 - Optional sanitized demonstration data for isolated local development only.
-- PostgreSQL 18 schema, guarded workflow transitions, financial views, audit
-  triggers, relationship constraints, and optional demonstration seed.
+- PostgreSQL 18 forward migrations through the refactor target `032`, guarded
+  workflow transitions, financial views, audit triggers, relationship
+  constraints, and optional development seed. Production never seeds a demo
+  account or default password. This target is not evidence that production has
+  advanced beyond its separately audited migration state.
+- Technical-support diagnostics use narrow database capabilities: the
+  application role cannot insert arbitrary audit rows or read private support
+  source tables.
+- Session revocation is audited by a database trigger that records only the
+  bounded revocation transition, without exposing credential-adjacent session
+  fields or granting the application role direct audit-table writes.
 - Docker Compose production override with private database/application/edge
   networks, loopback diagnostics, Caddy, and a dedicated Cloudflare Tunnel.
 - Exact-commit deployment, migration locking, health, verified backup,
   rollback, and systemd scheduling assets for the Ubuntu server.
 - Automated lint, TypeScript, database, seed, formula, and workflow checks.
-- A trusted interactive-experience foundation with validated AI
-  recommendations, owner preview/override controls, an accessible mascot
-  runtime, publication revisions, and browser-level safety checks. See
-  [Trusted interactive experiences](docs/TRUSTED_INTERACTIONS.md).
+
+Refactor architecture and operating decisions are documented in:
+
+- [Product and data architecture](docs/refactor/ARCHITECTURE.md)
+- [Role and scope matrix](docs/refactor/ROLE_MATRIX.md)
+- [Security baseline](docs/refactor/SECURITY_BASELINE.md)
+- [Migration and guarded reset plan](docs/refactor/MIGRATION_AND_RESET_PLAN.md)
+- [Workbook import report](docs/refactor/WORKBOOK_IMPORT_REPORT.md)
+- [Transactional email runbook](docs/ACCOUNT_EMAILS.md)
+- [Email provider and DNS gates](docs/refactor/EMAIL_PROVIDER_AND_DNS.md)
+- [Email provider events and suppression](docs/refactor/EMAIL_PROVIDER_EVENTS.md)
 
 ## Try it on this Windows PC
 
@@ -109,5 +134,4 @@ Ubuntu server as described in the production runbook.
   evidence and numbered receipt for every payment, and reconcile them daily.
 - A backup on the same SSD is not sufficient; copy verified backup folders to a
   separate USB drive or NAS.
-- The open-source Lucide-based mark is not an exclusive registered trademark.
   See `THIRD_PARTY_NOTICES.md`.
