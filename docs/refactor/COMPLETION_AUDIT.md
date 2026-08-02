@@ -85,7 +85,7 @@ Legend:
 ### 9) Process and review readiness
 
 - Logical commits, pushed branch, clean tree, unmerged review-ready PR
-- **Verified** now: `feature/coherent-product-refactor` currently at `ed4f787`; latest validated checkpoint is `5c47b59` (tracking `origin/feature/coherent-product-refactor`), PR #30 open/ready, checks passed in run `30767164798`.
+- **Verified** now: `feature/coherent-product-refactor` currently at `e8c0c5f`; latest validated checkpoint is `5c47b59` (tracking `origin/feature/coherent-product-refactor`), PR #30 open/ready, checks passed in run `30767164798`.
   - Evidence: `git status --short`, `git log`, `gh run view 30767164798`, `docs/refactor/PR_REVIEW_PACKAGE.md`.
 
 ### 10) Fresh verification snapshot (continuation turn)
