@@ -85,7 +85,7 @@ Legend:
 ### 9) Process and review readiness
 
 - Logical commits, pushed branch, clean tree, unmerged review-ready PR
-- **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `7f5d09f` (tracking `origin/feature/coherent-product-refactor`), PR #30 open/ready, checks passing.
+- **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `490e2cf` (tracking `origin/feature/coherent-product-refactor`), PR #30 open/ready, checks passing.
   - Evidence: `git status --short`, `git log`, `gh pr checks 30`, `docs/refactor/PR_REVIEW_PACKAGE.md`.
 
 ### 10) Fresh verification snapshot (continuation turn)
@@ -123,4 +123,4 @@ Legend:
 - `npm run test:e2e`
   - Result: **66 passed, 2 skipped**.
 - Latest authoritative CI run for this turn:
-- GitHub Actions run `30758360850` (PR #30) - all jobs successful.
+- GitHub Actions run `30758688584` (PR #30) - all jobs successful.
