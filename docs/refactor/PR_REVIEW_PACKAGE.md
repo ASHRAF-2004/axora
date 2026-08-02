@@ -1,6 +1,6 @@
 # Pull Request #30 Review Package: Axora coherent product refactor
 
-Date: 2026-08-02
+Date: 2026-08-03
 
 ## Repository branch
 
@@ -29,6 +29,9 @@ Date: 2026-08-02
   - `tsc --noEmit` pass
   - `vitest run` -> **111** files, **578** tests passed
   - `next build` pass (78 route compile and static checks)
+- `npm run test:e2e`
+  - **66** passed, **2** skipped
+- Latest CI: run `30756253565` (all checks successful)
 - GitHub CI status on PR #30: passing
 - PR checks previously include browser journey verification, dependency audit, and build checks for worker/runtime artifacts.
 - Security and migration coverage: unit/integration tests for invitation lifecycle, invitation email rendering, onboarding, onboarding-gate allowlist, portal authorization, permissions, event timeline, supplier/driver workflows, notifications, reset scripts, and migration chains.

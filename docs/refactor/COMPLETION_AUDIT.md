@@ -115,3 +115,12 @@ Legend:
 - Additional focused verification run:
   - `npm run test -- tests/production-reset-scripts.test.mjs tests/workbook-bootstrap-validator.test.mjs tests/account-setup-lifecycle.test.ts tests/tenant-branding.test.ts tests/portal-navigation-security.test.ts`
   - Result: **5 passed / 5 files**.
+
+### 13) Full verification with latest head commit (2026-08-03)
+
+- `npm run verify`
+  - Result: **111 test files passed (586 tests)**, lint/typecheck/build successful, and `pg-cloudflare` dual artifact checks succeeded.
+- `npm run test:e2e`
+  - Result: **66 passed, 2 skipped**.
+- Latest authoritative CI run for this turn:
+  - GitHub Actions run `30756253565` (PR #30) - all jobs successful.
