@@ -78,9 +78,26 @@ services:
       DB_PASSWORD_FILE: /run/secrets/axora_app_password
       SESSION_SECRET_FILE: /run/secrets/session_secret
       APP_BASE_URL: "https://${AXORA_HOST:?Set AXORA_HOST in .env}"
+      AXORA_EMAIL_DELIVERY_ENABLED: "${AXORA_EMAIL_DELIVERY_ENABLED:-false}"
+      AXORA_EMAIL_EVENTS_ENABLED: "${AXORA_EMAIL_EVENTS_ENABLED:-false}"
+      AXORA_EMAIL_SENDER_URL: "http://email-sender:3100"
+      AXORA_EMAIL_SERVICE_AUTH_KEY_FILE: /run/secrets/axora_email_service_auth_key
+      AXORA_EMAIL_EVENTS_WEBHOOK_SECRET_FILE: /run/secrets/axora_email_events_webhook_secret
+      ACCOUNT_SETUP_TTL_HOURS: "${ACCOUNT_SETUP_TTL_HOURS:-24}"
+      AXORA_EMAIL_REPLY_TO: "${AXORA_EMAIL_REPLY_TO:-support@axora.management}"
+      # Server-only monitored inbox; never expose this as NEXT_PUBLIC_*.
+      AXORA_CONTACT_NOTIFICATION_TO: "${AXORA_CONTACT_NOTIFICATION_TO:-}"
+      AXORA_UPLOADS_CONTAINER_DIR: /app/data/uploads
+      TURNSTILE_SITE_KEY: "${TURNSTILE_SITE_KEY:-}"
+      TURNSTILE_SECRET_FILE: /run/secrets/turnstile_secret
+      TURNSTILE_HOSTNAMES: "${TURNSTILE_HOSTNAMES:-axora.management}"
+      AXORA_TURNSTILE_EXPECTED_HOSTNAME: "${AXORA_TURNSTILE_EXPECTED_HOSTNAME:-axora.management}"
     secrets:
       - axora_app_password
       - session_secret
+      - axora_email_service_auth_key
+      - axora_email_events_webhook_secret
+      - turnstile_secret
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -91,6 +108,7 @@ services:
     networks:
       - frontend
       - backend
+      - mail
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -102,6 +120,90 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+
+  email-sender:
+    image: axora-app:1.0.0
+    restart: unless-stopped
+    init: true
+    read_only: true
+    group_add:
+      - "1000"
+    command: ["node", "server-tools/email-sender.mjs"]
+    environment:
+      NODE_ENV: production
+      EMAIL_SENDER_PORT: "3100"
+      AXORA_EMAIL_DELIVERY_ENABLED: "${AXORA_EMAIL_DELIVERY_ENABLED:-false}"
+      APP_BASE_URL: "https://${AXORA_HOST:?Set AXORA_HOST in .env}"
+      CLOUDFLARE_ACCOUNT_ID: "${CLOUDFLARE_ACCOUNT_ID:-}"
+      CLOUDFLARE_EMAIL_API_TOKEN_FILE: /run/secrets/cloudflare_email_api_token
+      AXORA_EMAIL_SERVICE_AUTH_KEY_FILE: /run/secrets/axora_email_service_auth_key
+      AXORA_EMAIL_OUTBOX_URL: "http://app:3000/account/email-outbox"
+      AXORA_EMAIL_PROVIDER: "${AXORA_EMAIL_PROVIDER:-cloudflare-email-service}"
+      AXORA_EMAIL_FROM_ADDRESS: "${AXORA_EMAIL_FROM_ADDRESS:-noreply@axora.management}"
+      AXORA_EMAIL_FROM_NAME: "${AXORA_EMAIL_FROM_NAME:-Axora}"
+      AXORA_EMAIL_REPLY_TO: "${AXORA_EMAIL_REPLY_TO:-support@axora.management}"
+    secrets:
+      - cloudflare_email_api_token
+      - axora_email_service_auth_key
+    expose:
+      - "3100"
+    networks:
+      mail: {}
+      # Compose selects the highest gw_priority as the default route. Keep
+      # outbound Internet access on this dedicated network, never on mail.
+      email-egress:
+        gw_priority: 1
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Developer-only captured email viewer. It is excluded unless the explicit
+  # email-preview profile is selected and is never part of production ingress.
+  mailpit:
+    profiles: ["email-preview"]
+    image: axllent/mailpit:v1.30.0@sha256:0059ef81e492a7192af3816281eed6859eb078bd7bdc58b76757c13e10e53a7d
+    restart: "no"
+    read_only: true
+    environment:
+      MP_DATABASE: /tmp/mailpit.db
+      MP_MAX_MESSAGES: "100"
+      MP_MAX_AGE: 24h
+      MP_ALLOW_INTERNAL_HTTP_REQUESTS: "false"
+    command:
+      - --listen
+      - "127.0.0.1:${MAILPIT_PREVIEW_PORT:-8025}"
+      - --smtp
+      - "127.0.0.1:0"
+      - --pop3
+      - "127.0.0.1:0"
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    # Host networking avoids Docker port-publishing differences while the
+    # explicit loopback listener above keeps the viewer private to this PC.
+    network_mode: host
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: 128m
+    logging:
+      driver: local
+      options:
+        max-size: "2m"
+        max-file: "2"
 
   caddy:
     image: caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
@@ -136,6 +238,9 @@ networks:
   frontend:
   backend:
     internal: true
+  mail:
+    internal: true
+  email-egress:
 
 volumes:
   postgres_data:
@@ -149,3 +254,11 @@ secrets:
     file: ./secrets/axora_app_password
   session_secret:
     file: ./secrets/session_secret
+  cloudflare_email_api_token:
+    file: ./secrets/cloudflare_email_api_token
+  axora_email_service_auth_key:
+    file: ./secrets/axora_email_service_auth_key
+  axora_email_events_webhook_secret:
+    file: ./secrets/axora_email_events_webhook_secret
+  turnstile_secret:
+    file: ./secrets/turnstile_secret

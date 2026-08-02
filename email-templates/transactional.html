@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="{{EMAIL_LANG}}" dir="{{EMAIL_DIR}}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>{{EMAIL_TITLE}}</title>
+  <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+  <style>
+    html,body{margin:0!important;padding:0!important;width:100%!important;background:#d2e7f5}table{border-collapse:collapse!important;border-spacing:0!important}img{border:0;display:block;height:auto;line-height:100%;outline:none;text-decoration:none}a{color:inherit}@media(max-width:620px){.shell{width:100%!important}.pad{padding-left:24px!important;padding-right:24px!important}.title{font-size:31px!important;line-height:37px!important}.action{width:100%!important}.detail-label,.detail-value{display:block!important;width:100%!important;text-align:start!important}.detail-value{padding-top:4px!important}}
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#d2e7f5;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all">{{PREHEADER}}&#847; &zwnj; &#847; &zwnj; &#847;</div>
+  <table role="presentation" width="100%" bgcolor="#d2e7f5" style="width:100%;background:#d2e7f5">
+    <tr><td align="center" style="padding:42px 16px 54px">
+      <table role="presentation" width="620" class="shell" bgcolor="#ffffff" style="width:620px;max-width:620px;background:#ffffff;border-radius:12px;overflow:hidden">
+        <tr><td align="center" class="pad" style="padding:39px 44px 22px"><img src="cid:axora-logo" width="210" height="39" alt="Axora" style="width:210px;max-width:100%;height:auto"></td></tr>
+        <tr><td class="pad" style="padding:19px 52px 0;font-family:Arial,Helvetica,sans-serif;color:#0f3156;text-align:{{TEXT_ALIGN}}">
+          <p style="margin:0 0 9px;font-size:13px;line-height:20px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4185b8">{{EYEBROW}}</p>
+          <h1 class="title" style="margin:0;font-size:36px;line-height:42px;letter-spacing:-.8px;font-weight:700">{{EMAIL_TITLE}}</h1>
+          <p style="margin:16px 0 0;font-size:16px;line-height:25px;color:#526b80">{{INTRO}}</p>
+        </td></tr>
+        <tr><td class="pad" style="padding:26px 52px 0">{{DETAILS_BLOCK}}</td></tr>
+        <tr><td class="pad" style="padding:0 52px">{{MESSAGE_BLOCK}}</td></tr>
+        <tr><td align="center" class="pad" style="padding:0 52px">{{ACTION_BLOCK}}</td></tr>
+        <tr><td class="pad" style="padding:28px 52px 42px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#526b80;text-align:{{TEXT_ALIGN}}">
+          <p style="margin:0">{{SECURITY_NOTE}}</p>
+          <p style="margin:12px 0 0">{{HELP_TEXT}}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td align="center" bgcolor="#ffffff" style="padding:24px 18px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:21px;color:#526b80">&copy; {{CURRENT_YEAR}} Axora. {{FOOTER_TEXT}}</td></tr>
+  </table>
+</body>
+</html>

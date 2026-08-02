@@ -18,6 +18,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  email-events-worker:
+    name: Verify Email Sending event consumer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the tested commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.13.0"
+          cache: npm
+          cache-dependency-path: workers/email-events/package-lock.json
+
+      - name: Install locked Worker dependencies
+        run: npm ci
+        working-directory: workers/email-events
+
+      - name: Audit Worker dependencies
+        run: npm audit --audit-level=high
+        working-directory: workers/email-events
+
+      - name: Verify generated runtime and binding types
+        run: npm run types:check
+        working-directory: workers/email-events
+
+      - name: Typecheck the Worker
+        run: npm run typecheck
+        working-directory: workers/email-events
+
+      - name: Test inside the Workers runtime
+        run: npm test
+        working-directory: workers/email-events
+
+      - name: Bundle without deploying
+        run: npm run deploy:dry-run
+        working-directory: workers/email-events
+
   application:
     name: Lint, typecheck, test, and build
     runs-on: ubuntu-24.04
@@ -57,7 +98,7 @@ jobs:
       - name: Install the browser used by interaction checks
         run: npx playwright install --with-deps chromium
 
-      - name: Test trusted interactions in a browser
+      - name: Test critical browser journeys
         run: npm run test:e2e
 
       - name: Retain browser evidence after a failure
