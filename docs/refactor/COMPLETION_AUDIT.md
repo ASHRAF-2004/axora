@@ -87,3 +87,9 @@ Legend:
 - Logical commits, pushed branch, clean tree, unmerged review-ready PR
   - **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `eaa94e2`, PR #30 open/ready, checks passing.
   - Evidence: `git status --short`, `git log`, `gh pr checks 30`, `docs/refactor/PR_REVIEW_PACKAGE.md`.
+
+### 10) Fresh verification snapshot (continuation turn)
+
+- Targeted repository-backed tooling verification run:
+  - `npm run test -- tests/production-reset-scripts.test.mjs tests/workbook-bootstrap-validator.test.mjs tests/account-setup-lifecycle.test.ts tests/workflow-event-rls-security.test.ts`
+  - Result: **4 test files passed, 25 tests passed**.
