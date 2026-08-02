@@ -83,6 +83,11 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
+      - name: Prepare deterministic manual artifacts
+        run: |
+          mkdir -p output/pdf
+          cp -f public/manuals/*.pdf output/pdf/
+
       - name: Lint
         run: npm run lint
 
