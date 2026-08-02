@@ -80,12 +80,12 @@ Legend:
   - **Manual Gate**: required to prove production cutover and render decommissioning safety.
 
 - No destructive production reset has been executed in this PR
-  - **Verified/explicitly blocked** by acceptance and migration plans (`docs/refactor/ACCEPTANCE_STATUS.md`, `docs/refactor/RESET_READINESS_AUDIT.md`) and absence of reset execution commands in this branch history.
+- **Verified/explicitly blocked** by acceptance and migration plans (`docs/refactor/ACCEPTANCE_STATUS.md`, `docs/refactor/RESET_READINESS_AUDIT.md`) and absence of reset execution commands in this branch history.
 
 ### 9) Process and review readiness
 
 - Logical commits, pushed branch, clean tree, unmerged review-ready PR
-  - **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `f89d8dd`, PR #30 open/ready, checks passing.
+- **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `d8a1c49` (tracking `origin/feature/coherent-product-refactor`), PR #30 open/ready, checks passing.
   - Evidence: `git status --short`, `git log`, `gh pr checks 30`, `docs/refactor/PR_REVIEW_PACKAGE.md`.
 
 ### 10) Fresh verification snapshot (continuation turn)
@@ -104,4 +104,8 @@ Legend:
   - Result: **no failures**.
 - `npm run build`
   - Result: successful full route build.
-- GitHub run `30754704298` (CI) in pull request check: all jobs successful.
+- GitHub CI run `30755583378` (PR #30): all jobs successful.
+- `npm run manuals:verify`
+  - Result: exact four manuals rebuilt and deterministic validation succeeded.
+- Production readiness config check note:
+  - `/etc/axora-production/runtime.env` and `/etc/axora-production/deploy.env` are not yet present in this session, so production preflight in local-only mode could not be executed without the deployment bootstrap step.
