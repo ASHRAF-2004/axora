@@ -85,11 +85,23 @@ Legend:
 ### 9) Process and review readiness
 
 - Logical commits, pushed branch, clean tree, unmerged review-ready PR
-  - **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `eaa94e2`, PR #30 open/ready, checks passing.
+  - **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `f89d8dd`, PR #30 open/ready, checks passing.
   - Evidence: `git status --short`, `git log`, `gh pr checks 30`, `docs/refactor/PR_REVIEW_PACKAGE.md`.
 
 ### 10) Fresh verification snapshot (continuation turn)
 
 - Targeted repository-backed tooling verification run:
-  - `npm run test -- tests/production-reset-scripts.test.mjs tests/workbook-bootstrap-validator.test.mjs tests/account-setup-lifecycle.test.ts tests/workflow-event-rls-security.test.ts`
+- `npm run test -- tests/production-reset-scripts.test.mjs tests/workbook-bootstrap-validator.test.mjs tests/account-setup-lifecycle.test.ts tests/workflow-event-rls-security.test.ts`
   - Result: **4 test files passed, 25 tests passed**.
+
+### 11) CI verification after menu-state stabilization
+
+- `npm run test:e2e -- e2e/public-i18n.spec.ts`
+  - Result: **22 passed, 2 skipped**.
+- `npm run test:e2e`
+  - Result: **66 passed, 2 skipped**.
+- `npm run lint && npm run typecheck && npm run test`
+  - Result: **no failures**.
+- `npm run build`
+  - Result: successful full route build.
+- GitHub run `30754704298` (CI) in pull request check: all jobs successful.
