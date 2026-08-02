@@ -6,9 +6,24 @@
 :8080 {
 	encode zstd gzip
 
-	request_body {
-		# Axora validates files at 2 MB and Next.js allows 3 MB for multipart
-		# overhead. Reject unexpectedly large requests before they reach Node.
+	# Most requests stay tightly bounded. Only authenticated upload surfaces get
+	# enough multipart headroom for their server-validated files (the product
+	# editor accepts up to eight 5 MB images in one request).
+	@email_event_webhook path /api/email/provider-events/cloudflare
+	request_body @email_event_webhook {
+		max_size 4KB
+	}
+	@driver_evidence_upload path /api/driver/evidence
+	request_body @driver_evidence_upload {
+		# One server-validated 5 MB proof file plus multipart fields.
+		max_size 6MB
+	}
+	@bounded_upload path /products* /supplier* /driver*
+	request_body @bounded_upload {
+		max_size 44MB
+	}
+	@standard_body not path /api/email/provider-events/cloudflare /api/driver/evidence /products* /supplier* /driver*
+	request_body @standard_body {
 		max_size 4MB
 	}
 
@@ -26,13 +41,12 @@
 	header {
 		-Server
 		X-Content-Type-Options "nosniff"
-		X-Frame-Options "SAMEORIGIN"
+		X-Frame-Options "DENY"
 		Referrer-Policy "no-referrer"
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		Cross-Origin-Opener-Policy "same-origin"
 		Strict-Transport-Security "max-age=15552000"
 		X-Permitted-Cross-Domain-Policies "none"
-		X-Robots-Tag "noindex, nofollow"
 	}
 
 	reverse_proxy app:3000 {

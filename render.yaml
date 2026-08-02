@@ -30,13 +30,6 @@ services:
         value: axora-render
       - key: SESSION_SECRET
         generateValue: true
-      - key: ADMIN_EMAIL
-        value: admin@axora.local
-      - key: ADMIN_DISPLAY_NAME
-        value: Ashraf
-      - key: ADMIN_INITIAL_PASSWORD
-        sync: false
-
 databases:
   - name: axora-db
     plan: free

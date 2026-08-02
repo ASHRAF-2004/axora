@@ -31,16 +31,18 @@ command -v install >/dev/null 2>&1 || fail "install is required."
 command -v ssh-keygen >/dev/null 2>&1 || fail "ssh-keygen is required."
 command -v systemctl >/dev/null 2>&1 || fail "systemd is required."
 command -v jq >/dev/null 2>&1 || fail "jq is required for the one-time active session-secret migration."
-for required_command in cmp cp find getent sha256sum sort stat useradd xargs; do
+for required_command in cmp cp find getent gpg grep mktemp node sha256sum sort stat tail useradd xargs; do
   command -v "$required_command" >/dev/null 2>&1 || fail "$required_command is required."
 done
+LC_ALL=C gpg --version | grep -Eq '^Cipher:.*[,[:space:]]AES256([,[:space:]]|$)' \
+  || fail "GPG must support AES256 for guarded reset recovery points."
 [[ -d /srv/axora && ! -L /srv/axora ]] || fail "/srv/axora must be an existing regular directory."
 getent group "$RUNTIME_GID" >/dev/null || fail "Required runtime GID $RUNTIME_GID does not exist."
 for protected_path in "$CONFIG_DIR" "$STATE_DIR" "$CONTROLLER_HOME" "$LOG_DIR" "$BUILD_HOME" "$SECRETS_DIR" "$UPLOADS_DIR"; do
   [[ ! -L "$protected_path" ]] || fail "Refusing symlinked production path: $protected_path"
 done
 
-for source_file in deploy.sh rollback.sh backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh; do
+for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs; do
   [[ -f "$SOURCE_DIR/$source_file" ]] || fail "Missing source script: $source_file"
 done
 for unit_file in \
@@ -61,6 +63,8 @@ if ! id "$BUILD_USER" >/dev/null 2>&1; then
 fi
 
 install -d -o root -g root -m 0750 "$LIBEXEC_DIR" "$STATE_DIR" "$STATE_DIR/releases" "$STATE_DIR/backups" "$LOG_DIR"
+install -d -o root -g root -m 0700 \
+  "$STATE_DIR/reset-backups" "$STATE_DIR/reset-quarantine" "$STATE_DIR/reset-audit"
 install -d -o root -g root -m 0700 "$CONFIG_DIR"
 install -d -o root -g root -m 0700 \
   "$CONTROLLER_HOME" "$CONTROLLER_HOME/docker" "$CONTROLLER_HOME/buildx"
@@ -70,6 +74,61 @@ install -d -o root -g root -m 0700 "$MIGRATION_BACKUP_DIR"
 install -d -o "$BUILD_USER" -g "$BUILD_USER" -m 0700 "$BUILD_HOME"
 install -d -m 0750 /srv/axora /srv/axora/data /srv/axora/data/uploads
 chmod go-w /srv/axora /srv/axora/data /srv/axora/data/uploads
+
+# One random key serves only as input key material. The application derives
+# separate encryption and request-authentication keys with domain separation.
+# It never enters runtime.env, command output, or the repository.
+email_service_key_file="$SECRETS_DIR/axora_email_service_auth_key"
+[[ ! -L "$email_service_key_file" ]] || fail "Account email service key must not be a symlink."
+if [[ ! -e "$email_service_key_file" ]]; then
+  email_service_key_temporary="$(mktemp "$CONFIG_DIR/.email-service-key.XXXXXX")"
+  trap 'rm -f -- "$email_service_key_temporary"' EXIT
+  node -e 'process.stdout.write(require("node:crypto").randomBytes(48).toString("base64url"))' \
+    > "$email_service_key_temporary"
+  install -o root -g "$RUNTIME_GID" -m 0640 \
+    "$email_service_key_temporary" "$email_service_key_file"
+  rm -f -- "$email_service_key_temporary"
+  trap - EXIT
+else
+  [[ -f "$email_service_key_file" ]] \
+    || fail "Account email service key path must be a regular file."
+  chown root:"$RUNTIME_GID" "$email_service_key_file"
+  chmod 0640 "$email_service_key_file"
+fi
+
+# This passphrase encrypts reset recovery points only. It is never mounted into
+# an application container or written to deployment/runtime environment files.
+reset_backup_passphrase_file="$SECRETS_DIR/reset_backup_passphrase"
+[[ ! -L "$reset_backup_passphrase_file" ]] \
+  || fail "Reset-backup passphrase must not be a symlink."
+if [[ ! -e "$reset_backup_passphrase_file" ]]; then
+  reset_passphrase_temporary="$(mktemp "$CONFIG_DIR/.reset-backup-passphrase.XXXXXX")"
+  trap 'rm -f -- "$reset_passphrase_temporary"' EXIT
+  node -e 'process.stdout.write(require("node:crypto").randomBytes(64).toString("base64url"))' \
+    > "$reset_passphrase_temporary"
+  install -o root -g root -m 0600 \
+    "$reset_passphrase_temporary" "$reset_backup_passphrase_file"
+  rm -f -- "$reset_passphrase_temporary"
+  trap - EXIT
+else
+  [[ -f "$reset_backup_passphrase_file" ]] \
+    || fail "Reset-backup passphrase path must be a regular file."
+fi
+[[ "$(stat -c '%u' "$reset_backup_passphrase_file")" == "0" ]] \
+  || fail "Reset-backup passphrase must be owned by root."
+reset_passphrase_mode="$(stat -c '%a' "$reset_backup_passphrase_file")"
+(( (8#$reset_passphrase_mode & 8#077) == 0 )) \
+  || fail "Reset-backup passphrase must not be accessible by group or other users."
+reset_passphrase_size="$(stat -c '%s' "$reset_backup_passphrase_file")"
+(( reset_passphrase_size >= 32 && reset_passphrase_size <= 4096 )) \
+  || fail "Reset-backup passphrase has an invalid size."
+reset_passphrase_value=""
+IFS= read -r -d '' reset_passphrase_value < "$reset_backup_passphrase_file" || true
+[[ "${#reset_passphrase_value}" -eq "$reset_passphrase_size" \
+  && "$reset_passphrase_value" =~ ^[A-Za-z0-9_-]{43,4096}$ ]] \
+  || fail "Reset-backup passphrase must be one generated base64url line without whitespace."
+unset reset_passphrase_value
+
 # Harden the checkout without changing the permissions needed by the existing
 # production secret/upload paths during the controlled migration window.
 find /srv/axora -xdev \
@@ -138,6 +197,51 @@ fi
 rm -f -- "$session_temporary"
 trap - EXIT
 
+# Compose always mounts this path into the isolated email-sender service. An
+# empty, permission-hardened placeholder keeps delivery disabled without
+# weakening deployment; the operator later installs the dedicated token in
+# place after Cloudflare Email Service is verified.
+email_token_file="$SECRETS_DIR/cloudflare_email_api_token"
+[[ ! -L "$email_token_file" ]] || fail "Cloudflare email token must not be a symlink."
+if [[ ! -e "$email_token_file" ]]; then
+  install -o root -g "$RUNTIME_GID" -m 0640 /dev/null "$email_token_file"
+else
+  [[ -f "$email_token_file" ]] || fail "Cloudflare email token path must be a regular file."
+  chown root:"$RUNTIME_GID" "$email_token_file"
+  chmod 0640 "$email_token_file"
+fi
+
+# The Queue consumer and application share this single-purpose HMAC key. The
+# installer creates only a hardened empty placeholder; an operator generates
+# and installs the value, then enters the same value through `wrangler secret
+# put` without writing it to runtime.env or Git.
+email_events_webhook_secret_file="$SECRETS_DIR/axora_email_events_webhook_secret"
+[[ ! -L "$email_events_webhook_secret_file" ]] \
+  || fail "Email event webhook secret must not be a symlink."
+if [[ ! -e "$email_events_webhook_secret_file" ]]; then
+  install -o root -g "$RUNTIME_GID" -m 0640 /dev/null \
+    "$email_events_webhook_secret_file"
+else
+  [[ -f "$email_events_webhook_secret_file" ]] \
+    || fail "Email event webhook secret path must be a regular file."
+  chown root:"$RUNTIME_GID" "$email_events_webhook_secret_file"
+  chmod 0640 "$email_events_webhook_secret_file"
+fi
+
+# The Contact Us widget remains visibly unavailable until an operator installs
+# the dedicated Turnstile widget secret and its non-secret site key. Compose
+# always mounts this permission-hardened path; an empty file is a safe disabled
+# state and is never accepted by server-side verification.
+turnstile_secret_file="$SECRETS_DIR/turnstile_secret"
+[[ ! -L "$turnstile_secret_file" ]] || fail "Turnstile secret must not be a symlink."
+if [[ ! -e "$turnstile_secret_file" ]]; then
+  install -o root -g "$RUNTIME_GID" -m 0640 /dev/null "$turnstile_secret_file"
+else
+  [[ -f "$turnstile_secret_file" ]] || fail "Turnstile secret path must be a regular file."
+  chown root:"$RUNTIME_GID" "$turnstile_secret_file"
+  chmod 0640 "$turnstile_secret_file"
+fi
+
 uploads_marker="$STATE_DIR/uploads-migrated-from-srv-axora"
 if [[ -d "$LEGACY_UPLOADS_DIR" && ! -f "$uploads_marker" ]]; then
   if ! find "$UPLOADS_DIR" -mindepth 1 -print -quit | grep -q .; then
@@ -202,7 +306,7 @@ chown -R root:"$RUNTIME_GID" "$UPLOADS_DIR"
 find "$UPLOADS_DIR" -type d -exec chmod 0770 {} +
 find "$UPLOADS_DIR" -type f -exec chmod 0660 {} +
 
-for source_file in deploy.sh rollback.sh backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh; do
+for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs; do
   install -o root -g root -m 0750 "$SOURCE_DIR/$source_file" "$LIBEXEC_DIR/$source_file"
 done
 
@@ -214,6 +318,45 @@ fi
 if [[ ! -f "$CONFIG_DIR/runtime.env" ]]; then
   install -o root -g root -m 0600 "$REPOSITORY_DIR/deploy/systemd/runtime.env.example" "$CONFIG_DIR/runtime.env"
 fi
+
+# Preserve operator values during upgrades while adding newly introduced
+# non-secret settings. Reject duplicates instead of silently choosing one.
+ensure_runtime_default() {
+  local key="$1"
+  local value="$2"
+  local canonical_count managed_count
+
+  [[ "$key" =~ ^[A-Z][A-Z0-9_]*$ ]] || fail "Unsafe runtime setting key."
+  [[ "$value" != *$'\n'* && "$value" != *$'\r'* ]] \
+    || fail "Runtime setting defaults must be single-line values."
+  canonical_count="$(grep -cE "^${key}=" "$CONFIG_DIR/runtime.env" || true)"
+  managed_count="$(
+    grep -cE "^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=" \
+      "$CONFIG_DIR/runtime.env" || true
+  )"
+  [[ "$canonical_count" -le 1 && "$managed_count" -le 1 ]] \
+    || fail "Duplicate runtime setting: $key"
+  [[ "$canonical_count" -eq "$managed_count" ]] \
+    || fail "Runtime setting must use the exact KEY=value form: $key"
+  if [[ "$canonical_count" -eq 0 ]]; then
+    if [[ -s "$CONFIG_DIR/runtime.env" && -n "$(tail -c 1 "$CONFIG_DIR/runtime.env")" ]]; then
+      printf '\n' >> "$CONFIG_DIR/runtime.env"
+    fi
+    printf '%s=%s\n' "$key" "$value" >> "$CONFIG_DIR/runtime.env"
+  fi
+}
+ensure_runtime_default AXORA_EMAIL_DELIVERY_ENABLED false
+ensure_runtime_default AXORA_EMAIL_EVENTS_ENABLED false
+ensure_runtime_default CLOUDFLARE_ACCOUNT_ID ""
+ensure_runtime_default CLOUDFLARE_ZONE_ID ""
+ensure_runtime_default AXORA_EMAIL_FROM_ADDRESS noreply@axora.management
+ensure_runtime_default AXORA_EMAIL_FROM_NAME Axora
+ensure_runtime_default AXORA_EMAIL_REPLY_TO support@axora.management
+ensure_runtime_default AXORA_EMAIL_PROVIDER cloudflare-email-service
+ensure_runtime_default ACCOUNT_SETUP_TTL_HOURS 24
+ensure_runtime_default TURNSTILE_SITE_KEY ""
+ensure_runtime_default TURNSTILE_HOSTNAMES axora.management
+ensure_runtime_default AXORA_TURNSTILE_EXPECTED_HOSTNAME axora.management
 chown root:root "$CONFIG_DIR/deploy.env" "$CONFIG_DIR/runtime.env"
 chmod 0600 "$CONFIG_DIR/deploy.env" "$CONFIG_DIR/runtime.env"
 
@@ -261,6 +404,7 @@ printf '  4. Create a DEDICATED Axora production Tunnel, then install only its t
 printf '     %s/cloudflare_tunnel_token (root:GID %s, mode 0640).\n' "$SECRETS_DIR" "$RUNTIME_GID"
 printf '     Never reuse the existing /etc/cloudflared/token; it belongs to bekal-production.\n'
 printf '  5. Run: sudo %s/preflight.sh\n' "$LIBEXEC_DIR"
+printf '  6. Email delivery stays disabled until the dedicated Cloudflare Email Sending token and non-secret runtime values are installed.\n'
 
 if [[ "${1:-}" == "--enable" ]]; then
   "$LIBEXEC_DIR/preflight.sh" --for-automation

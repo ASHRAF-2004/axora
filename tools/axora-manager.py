@@ -4,8 +4,6 @@
 import re
 import csv
 import shlex
-import secrets
-import string
 import subprocess
 import threading
 from datetime import datetime
@@ -46,6 +44,17 @@ SENSITIVE_ENV_KEYS = (
     "auth",
 )
 ROLE_LABELS = {
+    "PLATFORM_OWNER": "Axora Platform Owner",
+    "PLATFORM_OPERATIONS": "Axora Operations Administrator",
+    "COMPANY_ADMIN": "Company Administrator",
+    "COMPANY_APPROVER": "Company Approver",
+    "BRANCH_APPROVER": "Branch Approver",
+    "FINANCE_REVIEWER": "Finance Reviewer",
+    "AUDITOR": "Read-Only Auditor",
+    "TECHNICAL_SUPPORT": "Technical Support",
+    "SUPPLIER_USER": "Supplier User",
+    "DELIVERY_DRIVER": "Delivery Driver",
+    "RECEIVING_USER": "Receiving User",
     "ADMIN": "Company Administrator",
     "BRANCH_ADMIN": "Branch Administrator",
     "APPROVER": "Approver (HR/CEO)",
@@ -87,13 +96,10 @@ class Manager(Gtk.Window):
         self._user_role_dropdown = None
         self._user_status_dropdown = None
         self._refresh_users_button = None
-        self._user_create_btn = None
-        self._user_activate_btn = None
-        self._user_delete_btn = None
-        self._user_reset_btn = None
         self._user_identity = None
         self._user_scope = None
         self._user_meta = None
+        self._identity_model = "legacy"
         self._users_refresh_running = False
         self._users_refresh_pending = False
         self._users_refresh_source = 0
@@ -625,14 +631,23 @@ class Manager(Gtk.Window):
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         page.set_border_width(12)
 
-        frame, body = self._container_panel("Users administration (Render-style)")
+        frame, body = self._container_panel("User and invitation diagnostics (read-only)")
+        notice = Gtk.Label(xalign=0)
+        notice.set_line_wrap(True)
+        notice.set_text(
+            "This local manager never creates accounts, changes passwords, deactivates users, "
+            "or deletes identity data. Authorized account lifecycle actions use Axora's audited "
+            "one-time invitation and security workflows."
+        )
+        body.pack_start(notice, False, False, 0)
+
         filters = Gtk.Box(spacing=10)
         self._user_search = Gtk.Entry()
         self._user_search.set_placeholder_text("Search name, email or role…")
         self._user_search.connect("changed", self._queue_user_refresh)
 
         self._user_status_dropdown = Gtk.ComboBoxText()
-        for label in ("All status", "Active", "Inactive"):
+        for label in ("All status", "Active", "Invited", "Suspended", "Deactivated", "Inactive"):
             self._user_status_dropdown.append_text(label)
         self._user_status_dropdown.set_active(0)
         self._user_status_dropdown.connect("changed", self._queue_user_refresh)
@@ -649,7 +664,6 @@ class Manager(Gtk.Window):
         self._user_company_filter_signal = self._user_company_dropdown.connect("changed", self._queue_user_refresh)
 
         self._refresh_users_button = self._button("Refresh users", "subtle", self._refresh_users)
-        self._user_create_btn = self._button("Create user", "accent", self._open_create_user_dialog)
 
         filters.pack_start(Gtk.Label(label="Search", xalign=0), False, False, 0)
         filters.pack_start(self._user_search, True, True, 0)
@@ -660,10 +674,9 @@ class Manager(Gtk.Window):
         filters.pack_start(Gtk.Label(label="Company", xalign=0), False, False, 4)
         filters.pack_start(self._user_company_dropdown, False, False, 0)
         filters.pack_start(self._refresh_users_button, False, False, 0)
-        filters.pack_start(self._user_create_btn, False, False, 0)
         body.pack_start(filters, False, False, 0)
 
-        model = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
+        model = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str)
         model.set_sort_column_id(1, Gtk.SortType.ASCENDING)
         self._user_tree = Gtk.TreeView(model=model)
         self._user_tree.set_headers_visible(True)
@@ -673,11 +686,12 @@ class Manager(Gtk.Window):
             (1, "Name", False),
             (2, "Email", True),
             (3, "Role", False),
-            (4, "Company", False),
+            (4, "Organization", False),
             (5, "Scope", False),
-            (6, "Status", False),
-            (7, "Last login", False),
-            (8, "Created", True),
+            (6, "Account", False),
+            (7, "Invitation", False),
+            (8, "Last login", False),
+            (9, "Created", True),
         ]:
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(title, renderer, text=idx)
@@ -686,7 +700,6 @@ class Manager(Gtk.Window):
             if idx == 2:
                 column.set_min_width(170)
             self._user_tree.append_column(column)
-        self._user_tree.set_rules_hint(True)
         sel = self._user_tree.get_selection()
         sel.connect("changed", self._user_row_selected)
 
@@ -695,7 +708,7 @@ class Manager(Gtk.Window):
         scroll.add(self._user_tree)
         body.pack_start(scroll, True, True, 0)
 
-        action_box = Gtk.Box(spacing=10)
+        action_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self._user_identity = Gtk.Label(label="No user selected", xalign=0)
         self._user_scope = Gtk.Label(label="", xalign=0)
         self._user_identity.get_style_context().add_class("section-title")
@@ -703,22 +716,9 @@ class Manager(Gtk.Window):
         self._user_identity.set_line_wrap(True)
         self._user_meta.set_line_wrap(True)
 
-        self._user_activate_btn = self._button("Deactivate user", "warn", self._toggle_selected_user_active)
-        self._user_activate_btn.set_sensitive(False)
-        self._user_reset_btn = self._button("Reset password", "subtle", self._reset_selected_password)
-        self._user_reset_btn.set_sensitive(False)
-        self._user_delete_btn = self._button("Delete user", "danger", self._delete_selected_user)
-        self._user_delete_btn.set_sensitive(False)
-
-        action_box.pack_start(self._user_identity, True, True, 0)
-        action_box.pack_start(self._user_scope, False, False, 10)
-        action_box.pack_start(self._user_activate_btn, False, False, 0)
-        action_box.pack_start(self._user_reset_btn, False, False, 0)
-        action_box.pack_start(self._user_delete_btn, False, False, 0)
-
-        meta_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        meta_box.pack_start(self._user_meta, False, False, 0)
-        action_box.pack_start(meta_box, True, True, 0)
+        action_box.pack_start(self._user_identity, False, False, 0)
+        action_box.pack_start(self._user_scope, False, False, 0)
+        action_box.pack_start(self._user_meta, False, False, 0)
 
         body.pack_start(action_box, False, False, 0)
         page.pack_start(frame, True, True, 0)
@@ -745,16 +745,83 @@ class Manager(Gtk.Window):
         return rows
 
     def _load_users(self):
+        schema = self._run_psql(
+            "SELECT ("
+            "to_regclass('public.role_assignments') IS NOT NULL AND "
+            "to_regclass('public.user_profiles') IS NOT NULL AND "
+            "to_regclass('public.account_setup_invitations') IS NOT NULL AND "
+            "EXISTS (SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema='public' AND table_name='users' AND column_name='account_kind') AND "
+            "EXISTS (SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema='public' AND table_name='users' AND column_name='account_status')"
+            ")::text"
+        )
+        normalized = schema.get("ok", False) and self._safe_bool(schema.get("out", ""))
+        if normalized:
+            result = self._load_normalized_users()
+            if result.get("ok", False):
+                self._identity_model = "normalized"
+                return result
+
+        self._identity_model = "legacy"
         return self._run_psql(
             "SELECT u.id::text,u.display_name,u.email,r.role_key,u.active::text,u.is_owner::text,"
             "COALESCE(c.id::text,''),COALESCE(c.name,''),"
             "COALESCE(b.id::text,''),COALESCE(b.name,''),"
             "COALESCE(to_char(u.last_login_at, 'YYYY-MM-DD HH24:MI'),''),"
-            "COALESCE(to_char(u.created_at, 'YYYY-MM-DD'),'') "
+            "COALESCE(to_char(u.created_at, 'YYYY-MM-DD'),''),"
+            "'',CASE WHEN u.active THEN 'ACTIVE' ELSE 'INACTIVE' END,"
+            "CASE WHEN u.is_owner THEN 'PLATFORM' WHEN u.branch_id IS NOT NULL THEN 'BRANCH' ELSE 'COMPANY' END,"
+            "'','','','','','','','','','' "
             "FROM users u JOIN roles r ON r.id=u.role_id "
             "LEFT JOIN companies c ON c.id=u.company_id "
             "LEFT JOIN branches b ON b.id=u.branch_id "
             "ORDER BY u.display_name ASC"
+        )
+
+    def _load_normalized_users(self):
+        return self._run_psql(
+            "SELECT u.id::text,COALESCE(NULLIF(profile.display_name,''),u.display_name),u.email,"
+            "COALESCE(scoped_role.role_key,legacy_role.role_key),u.active::text,u.is_owner::text,"
+            "COALESCE(COALESCE(assignment.company_id,u.company_id)::text,''),COALESCE(company.name,''),"
+            "COALESCE(COALESCE(assignment.branch_id,u.branch_id)::text,''),COALESCE(branch.name,''),"
+            "COALESCE(to_char(u.last_login_at, 'YYYY-MM-DD HH24:MI'),''),"
+            "COALESCE(to_char(u.created_at, 'YYYY-MM-DD'),''),"
+            "COALESCE(u.account_kind,''),COALESCE(u.account_status,''),COALESCE(assignment.scope_type,''),"
+            "COALESCE(assignment.supplier_id::text,''),COALESCE(supplier.name,''),"
+            "COALESCE(to_char(profile.profile_completed_at, 'YYYY-MM-DD HH24:MI'),''),"
+            "COALESCE(CASE "
+            "WHEN setup.consumed_at IS NOT NULL THEN 'USED' "
+            "WHEN setup.revoked_at IS NOT NULL THEN 'REVOKED' "
+            "WHEN setup.expires_at<=now() THEN 'EXPIRED' "
+            "ELSE setup.delivery_status END,''),"
+            "COALESCE(to_char(setup.expires_at, 'YYYY-MM-DD HH24:MI'),''),"
+            "COALESCE(to_char(setup.sent_at, 'YYYY-MM-DD HH24:MI'),''),"
+            "COALESCE(to_char(setup.delivery_attempted_at, 'YYYY-MM-DD HH24:MI'),''),"
+            "COALESCE(to_char(setup.consumed_at, 'YYYY-MM-DD HH24:MI'),''),"
+            "COALESCE(to_char(setup.revoked_at, 'YYYY-MM-DD HH24:MI'),''),"
+            "COALESCE(to_char(u.account_setup_completed_at, 'YYYY-MM-DD HH24:MI'),'') "
+            "FROM users u JOIN roles legacy_role ON legacy_role.id=u.role_id "
+            "LEFT JOIN LATERAL ("
+            "SELECT current_assignment.role_id,current_assignment.scope_type,current_assignment.company_id,"
+            "current_assignment.branch_id,current_assignment.supplier_id "
+            "FROM role_assignments current_assignment "
+            "WHERE current_assignment.user_id=u.id AND current_assignment.active=true "
+            "AND current_assignment.revoked_at IS NULL "
+            "ORDER BY current_assignment.assigned_at DESC,current_assignment.id DESC LIMIT 1"
+            ") assignment ON true "
+            "LEFT JOIN roles scoped_role ON scoped_role.id=assignment.role_id "
+            "LEFT JOIN companies company ON company.id=COALESCE(assignment.company_id,u.company_id) "
+            "LEFT JOIN branches branch ON branch.id=COALESCE(assignment.branch_id,u.branch_id) "
+            "LEFT JOIN suppliers supplier ON supplier.id=assignment.supplier_id "
+            "LEFT JOIN user_profiles profile ON profile.user_id=u.id "
+            "LEFT JOIN LATERAL ("
+            "SELECT invitation.delivery_status,invitation.expires_at,invitation.sent_at,"
+            "invitation.delivery_attempted_at,invitation.consumed_at,invitation.revoked_at "
+            "FROM account_setup_invitations invitation WHERE invitation.user_id=u.id "
+            "ORDER BY invitation.created_at DESC,invitation.id DESC LIMIT 1"
+            ") setup ON true "
+            "ORDER BY COALESCE(NULLIF(profile.display_name,''),u.display_name),u.id"
         )
 
     def _load_companies(self):
@@ -762,15 +829,30 @@ class Manager(Gtk.Window):
             "SELECT id::text,name FROM companies WHERE active=true ORDER BY name ASC"
         )
 
-    def _load_branches(self):
-        return self._run_psql(
-            "SELECT b.id::text,b.name,c.name FROM branches b "
-            "LEFT JOIN companies c ON c.id=b.company_id WHERE b.active=true ORDER BY c.name ASC,b.name ASC"
-        )
-
     def _user_dict(self, row):
         role_key = row[3]
-        # row mapping: id, name, email, role, active, is_owner, company_id, company, branch_id, branch, last_login, created
+        account_status = self._normalize_text(row[13]) if len(row) > 13 else ""
+        if not account_status:
+            account_status = "ACTIVE" if self._safe_bool(row[4]) else "INACTIVE"
+        scope_type = self._normalize_text(row[14]) if len(row) > 14 else ""
+        if not scope_type:
+            scope_type = "PLATFORM" if self._safe_bool(row[5]) else ("BRANCH" if row[8] else "COMPANY")
+
+        delivery_status = self._normalize_text(row[18]) if len(row) > 18 else ""
+        consumed_at = self._normalize_text(row[22]) if len(row) > 22 else ""
+        revoked_at = self._normalize_text(row[23]) if len(row) > 23 else ""
+        setup_completed_at = self._normalize_text(row[24]) if len(row) > 24 else ""
+        if consumed_at:
+            invitation_status = "USED"
+        elif revoked_at:
+            invitation_status = "REVOKED"
+        elif delivery_status:
+            invitation_status = delivery_status
+        elif setup_completed_at:
+            invitation_status = "COMPLETE"
+        else:
+            invitation_status = "—"
+
         return {
             "id": row[0],
             "name": row[1],
@@ -785,7 +867,19 @@ class Manager(Gtk.Window):
             "lastLogin": self._normalize_text(row[10]) if len(row) > 10 else "",
             "created": self._normalize_text(row[11]) if len(row) > 11 else "",
             "roleLabel": ROLE_LABELS.get(role_key, role_key),
-            "scope": self._normalize_text(row[9]) if len(row) > 9 else "Company-wide",
+            "accountKind": self._normalize_text(row[12]) if len(row) > 12 else "",
+            "accountStatus": account_status,
+            "scopeType": scope_type,
+            "supplierId": self._normalize_text(row[15]) if len(row) > 15 else "",
+            "supplier": self._normalize_text(row[16]) if len(row) > 16 else "",
+            "profileCompletedAt": self._normalize_text(row[17]) if len(row) > 17 else "",
+            "invitationStatus": invitation_status,
+            "invitationExpiresAt": self._normalize_text(row[19]) if len(row) > 19 else "",
+            "invitationSentAt": self._normalize_text(row[20]) if len(row) > 20 else "",
+            "invitationAttemptedAt": self._normalize_text(row[21]) if len(row) > 21 else "",
+            "invitationConsumedAt": consumed_at,
+            "invitationRevokedAt": revoked_at,
+            "setupCompletedAt": setup_completed_at,
         }
 
     def _queue_user_refresh(self, *_args):
@@ -845,10 +939,9 @@ class Manager(Gtk.Window):
     def _set_users_busy(self, enabled):
         if self._refresh_users_button:
             self._refresh_users_button.set_sensitive(not enabled)
-        if self._user_create_btn:
-            self._user_create_btn.set_sensitive(not enabled)
         self._build_users_filters()
-        self._user_tree.set_sensitive(not enabled)
+        if self._user_tree:
+            self._user_tree.set_sensitive(not enabled)
 
     def _refresh_user_filters(self, companies):
         if self._user_company_dropdown is None:
@@ -910,15 +1003,16 @@ class Manager(Gtk.Window):
                         user["roleLabel"],
                         user["company"],
                         user["branch"],
+                        user["supplier"],
+                        user["accountStatus"],
+                        user["invitationStatus"],
                     ]
                 ).lower()
                 if search not in target:
                     continue
             if role != "All roles" and user["role"] != role:
                 continue
-            if status == "Active" and not user["active"]:
-                continue
-            if status == "Inactive" and user["active"]:
+            if status != "All status" and user["accountStatus"] != status.upper():
                 continue
             if company and user["companyId"] != company:
                 continue
@@ -930,9 +1024,10 @@ class Manager(Gtk.Window):
                 user["name"],
                 user["email"],
                 user["roleLabel"],
-                user["company"] or "Axora platform",
+                user["company"] or user["supplier"] or "Axora platform",
                 self._safe_company_scope(user),
-                "Active" if user["active"] else "Inactive",
+                user["accountStatus"].title(),
+                user["invitationStatus"].title(),
                 user["lastLogin"] or "never",
                 user["created"] or "—",
             ]
@@ -944,13 +1039,23 @@ class Manager(Gtk.Window):
 
         if self._user_meta:
             self._user_meta.set_text(
-                "Password: not retrievable (hashed). Use “Reset password” to set a new one."
+                "Select an account to inspect its role, scope, profile, and invitation lifecycle. "
+                "Credential values are never queried or displayed."
             )
 
     def _safe_company_scope(self, user):
+        scope_type = user.get("scopeType", "")
         if user.get("isOwner"):
             return "Platform owner"
-        return user.get("branch") or "Company-wide"
+        if scope_type == "PLATFORM":
+            return "Axora platform"
+        if scope_type == "SUPPLIER":
+            return user.get("supplier") or "Supplier-scoped"
+        if scope_type == "DELIVERY":
+            return "Assigned deliveries"
+        if scope_type == "BRANCH":
+            return user.get("branch") or "Branch-scoped"
+        return "Company-wide"
 
     def _user_row_selected(self, selection):
         model, tree_iter = selection.get_selected()
@@ -959,9 +1064,6 @@ class Manager(Gtk.Window):
             self._user_identity.set_text("No user selected")
             self._user_scope.set_text("")
             self._user_meta.set_text("")
-            self._user_activate_btn.set_sensitive(False)
-            self._user_reset_btn.set_sensitive(False)
-            self._user_delete_btn.set_sensitive(False)
             return
         user_id = model[tree_iter][0]
         self._user_selected_id = user_id
@@ -970,403 +1072,23 @@ class Manager(Gtk.Window):
             return
 
         self._user_identity.set_text(f"{user['name']} · {user['email']}")
-        self._user_scope.set_text(f"{user['roleLabel']} · {user.get('company', 'Axora platform')} · {user['scope']}")
+        organization = user.get("company") or user.get("supplier") or "Axora platform"
+        self._user_scope.set_text(
+            f"{user['roleLabel']} · {organization} · {self._safe_company_scope(user)}"
+        )
+        invitation = user.get("invitationStatus") or "—"
+        if user.get("invitationExpiresAt"):
+            invitation += f" · expires {user['invitationExpiresAt']}"
+        if user.get("invitationSentAt"):
+            invitation += f" · sent {user['invitationSentAt']}"
         self._user_meta.set_text(
-            f"User ID: {user_id}\nCreated: {user.get('created') or '—'} · Last login: {user.get('lastLogin') or 'never'}"
+            f"Account: {user['accountStatus']} ({user.get('accountKind') or 'legacy model'})"
+            f" · Active flag: {'yes' if user['active'] else 'no'}\n"
+            f"Invitation: {invitation}\n"
+            f"Profile: {'completed ' + user['profileCompletedAt'] if user.get('profileCompletedAt') else 'not completed / unavailable'}\n"
+            f"Setup completed: {user.get('setupCompletedAt') or 'no'} · Last login: {user.get('lastLogin') or 'never'}\n"
+            f"User ID: {user_id} · Created: {user.get('created') or '—'} · Identity schema: {self._identity_model}"
         )
-        self._set_selection_controls(user)
-
-    def _set_selection_controls(self, user):
-        if user.get("isOwner"):
-            self._user_activate_btn.set_sensitive(False)
-            self._user_reset_btn.set_sensitive(False)
-            self._user_delete_btn.set_sensitive(False)
-            self._user_activate_btn.set_label("Owner protected")
-            return
-
-        self._user_activate_btn.set_sensitive(True)
-        self._user_reset_btn.set_sensitive(True)
-        self._user_delete_btn.set_sensitive(True)
-        self._user_activate_btn.set_label("Deactivate user" if user["active"] else "Reactivate user")
-
-    def _safe_dialog(self, title, text):
-        dialog = Gtk.MessageDialog(
-            self,
-            Gtk.DialogFlags.MODAL,
-            Gtk.MessageType.INFO,
-            Gtk.ButtonsType.OK_CANCEL,
-            title,
-        )
-        dialog.format_secondary_text(text)
-        response = dialog.run()
-        dialog.destroy()
-        return response == Gtk.ResponseType.OK
-
-    def _toggle_selected_user_active(self, _button):
-        user = self._user_index.get(self._user_selected_id)
-        if not user:
-            self.write("Select a user first.")
-            return
-
-        action = "deactivate" if user["active"] else "reactivate"
-        if not self._safe_dialog("Change user status", f"{action.title()} {user['email']}?"):
-            return
-        # keep logic to avoid removing last active company administrator
-        validation = self._run_psql(
-            "SELECT u.company_id::text, u.active::text, r.role_key "
-            f"FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id = {self._pg_quote(user['id'])}"
-        )
-        if not validation.get("ok", False) or not validation["out"].strip():
-            self.write("Cannot verify selected user state.")
-            return
-        row = self._parse_user_csv_rows(validation["out"])[0] if validation["out"].strip() else []
-        company_id = row[0] if len(row) > 0 else ""
-        role = row[2] if len(row) > 2 else "REQUESTER"
-        if role == "ADMIN" and company_id and user["active"]:
-            count = self._run_psql(
-                "SELECT count(*)::text FROM users u JOIN roles r ON r.id=u.role_id "
-                f"WHERE u.company_id={self._pg_quote(company_id)} AND u.active=true AND r.role_key='ADMIN';"
-            )
-            if count.get("ok", False):
-                current = int(count["out"].strip() or "0")
-                if current <= 1:
-                    self.write("The last active company admin cannot be deactivated.")
-                    return
-
-        update = self._run_psql(
-            "UPDATE users SET active="
-            + ("true" if action == "reactivate" else "false")
-            + " WHERE id="
-            + self._pg_quote(user["id"])
-        )
-        if update.get("ok", False):
-            self.write(f"User status updated: {action}d {user['email']}.")
-            self._refresh_users()
-        else:
-            self.write(f"Unable to update user status: {update['err'] or update['out']}")
-
-    def _delete_selected_user(self, _button):
-        user = self._user_index.get(self._user_selected_id)
-        if not user:
-            self.write("Select a user first.")
-            return
-        if not self._safe_dialog("Delete user", f"Delete {user['email']} and remove access immediately?"):
-            return
-        if user["isOwner"]:
-            self.write("The platform owner account cannot be deleted.")
-            return
-
-        if user["role"] == "ADMIN" and user.get("companyId"):
-            count = self._run_psql(
-                "SELECT count(*)::text FROM users u JOIN roles r ON r.id=u.role_id "
-                f"WHERE u.company_id={self._pg_quote(user['companyId'])} AND u.active=true AND r.role_key='ADMIN';"
-            )
-            if count.get("ok", False):
-                if int(count["out"].strip() or "0") <= 1:
-                    self.write("The last company admin cannot be deleted.")
-                    return
-
-        tx = "BEGIN;"
-        tx += f"UPDATE requests SET created_by=NULL WHERE created_by={self._pg_quote(user['id'])};"
-        tx += f"UPDATE approvals SET reviewer_id=NULL WHERE reviewer_id={self._pg_quote(user['id'])};"
-        tx += f"UPDATE payments SET recorded_by=NULL WHERE recorded_by={self._pg_quote(user['id'])};"
-        tx += f"UPDATE attachments SET uploaded_by=NULL WHERE uploaded_by={self._pg_quote(user['id'])};"
-        tx += f"UPDATE audit_logs SET actor_id=NULL WHERE actor_id={self._pg_quote(user['id'])};"
-        tx += f"UPDATE product_images SET created_by=NULL WHERE created_by={self._pg_quote(user['id'])};"
-        tx += f"DELETE FROM users WHERE id={self._pg_quote(user['id'])};"
-        tx += "COMMIT;"
-        result = self._run_psql(tx)
-        if result.get("ok", False):
-            self.write(f"Deleted user {user['email']}.")
-            self._refresh_users()
-        else:
-            self.write(f"Delete failed: {result['err'] or result['out']}")
-
-    def _reset_selected_password(self, _button):
-        user = self._user_index.get(self._user_selected_id)
-        if not user:
-            self.write("Select a user first.")
-            return
-
-        dialog = Gtk.Dialog(title="Reset password", transient_for=self, flags=Gtk.DialogFlags.MODAL)
-        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
-        dialog.add_button("Set password", Gtk.ResponseType.OK)
-        dialog.set_default_size(520, 180)
-        body = dialog.get_content_area()
-        body.set_border_width(12)
-        body.pack_start(Gtk.Label(xalign=0, label=f"Set a new password for {user['email']}"), False, False, 0)
-        password_entry = Gtk.Entry()
-        password_entry.set_visibility(False)
-        password_entry.set_invisible_char("•")
-        password_entry.set_placeholder_text("New password (min 14)")
-        body.pack_start(password_entry, False, False, 8)
-        body.pack_start(self._button("Generate strong password", "subtle", lambda _button: self._fill_random_password(password_entry)), False, False, 0)
-        body.show_all()
-        response = dialog.run()
-        password = password_entry.get_text().strip()
-        dialog.destroy()
-        if response != Gtk.ResponseType.OK:
-            return
-        if len(password) < 14:
-            self.write("Password must be at least 14 characters.")
-            return
-        hash_result = self._hash_password(password)
-        if not hash_result:
-            self.write("Password hashing failed.")
-            return
-        update = self._run_psql(
-            "UPDATE users SET password_hash = " + self._pg_quote(hash_result) + " WHERE id=" + self._pg_quote(user["id"])
-        )
-        if update.get("ok", False):
-            self.write(f"Password updated for {user['email']}.")
-        else:
-            self.write(f"Password update failed: {update['err'] or update['out']}")
-
-    def _fill_random_password(self, entry):
-        chars = string.ascii_letters + string.digits + "!@#$%^&*()-_"
-        generated = "".join(secrets.choice(chars) for _ in range(16))
-        entry.set_text(generated)
-
-    def _hash_password(self, password):
-        result = self._run_cmd(
-            ["node", "-e",
-             "const {hash}=require('bcryptjs'); (async()=>{"
-             "const h = await hash(process.argv[1],12); console.log(h);})();",
-             password]
-        )
-        if not result.get("ok", False):
-            return ""
-        return result.get("out", "").strip()
-
-    def _open_create_user_dialog(self, _button):
-        dialog = Gtk.Dialog(title="Create user", transient_for=self, flags=Gtk.DialogFlags.MODAL)
-        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
-        dialog.add_button("Create", Gtk.ResponseType.OK)
-        dialog.set_default_size(700, 520)
-        body = dialog.get_content_area()
-        body.set_border_width(12)
-
-        grid = Gtk.Grid(column_spacing=12, row_spacing=10)
-        grid.set_row_homogeneous(False)
-        body.pack_start(grid, True, True, 0)
-
-        email = Gtk.Entry()
-        email.set_placeholder_text("user@company.local")
-        display = Gtk.Entry()
-        display.set_placeholder_text("Full name")
-        password = Gtk.Entry()
-        password.set_visibility(False)
-        password.set_placeholder_text("Temporary password (min 14)")
-        company = Gtk.ComboBoxText()
-        company.append_text("Select company")
-        company.set_active(0)
-        branch = Gtk.ComboBoxText()
-        branch.append_text("Company-wide user")
-        branch.set_active(0)
-        branch.set_sensitive(False)
-        owner = Gtk.CheckButton(label="Platform owner (system-wide)")
-        owner_note = Gtk.Label(xalign=0)
-        owner_note.set_text("Owner users should be used sparingly.")
-
-        role = Gtk.ComboBoxText()
-        for role_key in ROLE_LABELS:
-            role.append_text(role_key)
-        role.set_active(0)
-
-        company_result = self._run_psql("SELECT id::text,name FROM companies WHERE active=true ORDER BY name ASC")
-        branch_result = self._run_psql(
-            "SELECT b.id::text,b.name,COALESCE(c.id::text,'') "
-            "FROM branches b LEFT JOIN companies c ON c.id=b.company_id "
-            "WHERE b.active=true ORDER BY c.name ASC,b.name ASC"
-        )
-
-        company_rows = self._parse_user_csv_rows(company_result["out"]) if company_result.get("ok", False) else []
-        branch_rows = self._parse_user_csv_rows(branch_result["out"]) if branch_result.get("ok", False) else []
-        branches_by_company = {}
-        for row in branch_rows:
-            if len(row) < 3:
-                continue
-            branches_by_company.setdefault(row[2], []).append((row[0], row[1]))
-
-        for row in company_rows:
-            if len(row) < 2:
-                continue
-            company.append_text(f"{row[1]} · {row[0]}")
-
-        def company_id():
-            value = company.get_active_text() or ""
-            if value == "Select company" or " · " not in value:
-                return ""
-            return value.rsplit(" · ", 1)[-1]
-
-        def refresh_branches(*_):
-            selected_company = company_id()
-            branch.remove_all()
-            branch.append_text("Company-wide user")
-            if selected_company and selected_company in branches_by_company:
-                for branch_id, branch_name in branches_by_company[selected_company]:
-                    branch.append_text(f"{branch_name} · {branch_id}")
-            branch.set_active(0)
-
-        def branch_id():
-            value = branch.get_active_text() or "Company-wide user"
-            if value == "Company-wide user" or " · " not in value:
-                return ""
-            return value.rsplit(" · ", 1)[-1]
-
-        def branch_required(selected_role):
-            return selected_role in ("REQUESTER", "APPROVER", "BRANCH_ADMIN")
-
-        def refresh_visibility(*_):
-            selected_role = role.get_active_text() or "VIEWER"
-            is_owner = owner.get_active()
-            company.set_sensitive(not is_owner)
-            if is_owner:
-                company.set_active(0)
-                branch.set_active(0)
-                branch.set_sensitive(False)
-                note.set_text("Owner users are system-scoped and are not tied to branches.")
-                return
-
-            role_needs_branch = branch_required(selected_role)
-            if role_needs_branch:
-                branch.set_sensitive(True)
-                note.set_text(
-                    "Requester/Approver/Branch Admin users require an active branch assignment."
-                )
-            else:
-                branch.set_sensitive(False)
-                branch.set_active(0)
-                note.set_text("Company-wide roles are selected unless a specific branch is needed.")
-
-            refresh_branches()
-            if selected_role == "ADMIN":
-                note.set_text("Admin users manage company scope.")
-
-        role.connect("changed", refresh_visibility)
-        owner.connect("toggled", refresh_visibility)
-        company.connect("changed", lambda *_: refresh_visibility())
-
-        grid.attach(Gtk.Label(label="Email", xalign=0), 0, 0, 1, 1)
-        grid.attach(email, 1, 0, 1, 1)
-        grid.attach(Gtk.Label(label="Display name", xalign=0), 0, 1, 1, 1)
-        grid.attach(display, 1, 1, 1, 1)
-        grid.attach(Gtk.Label(label="Role", xalign=0), 0, 2, 1, 1)
-        grid.attach(role, 1, 2, 1, 1)
-        grid.attach(Gtk.Label(label="Company", xalign=0), 0, 3, 1, 1)
-        grid.attach(company, 1, 3, 1, 1)
-        grid.attach(Gtk.Label(label="System owner", xalign=0), 0, 4, 1, 1)
-        grid.attach(owner, 1, 4, 1, 1)
-        grid.attach(Gtk.Label(label="Branch", xalign=0), 0, 5, 1, 1)
-        grid.attach(branch, 1, 5, 1, 1)
-        grid.attach(Gtk.Label(label="Password", xalign=0), 0, 6, 1, 1)
-        grid.attach(password, 1, 6, 1, 1)
-        grid.attach(owner_note, 1, 7, 1, 1)
-
-        gen_btn = self._button("Generate password", "subtle", lambda *_: password.set_text(self._generate_password()))
-        gen_wrapper = Gtk.Box(spacing=8)
-        gen_wrapper.pack_start(gen_btn, False, False, 0)
-        grid.attach(gen_wrapper, 1, 8, 1, 1)
-
-        note = Gtk.Label(xalign=0)
-        note.set_text("Branch users (Requester/Approver/Branch Admin) require an active branch id.")
-        body.pack_start(note, False, False, 8)
-        body.show_all()
-        refresh_visibility()
-
-        response = dialog.run()
-        result = (
-            email.get_text().strip(),
-            display.get_text().strip(),
-            role.get_active_text() or "VIEWER",
-            company_id(),
-            branch_id(),
-            password.get_text().strip(),
-            owner.get_active(),
-        )
-        dialog.destroy()
-
-        if response != Gtk.ResponseType.OK:
-            return
-
-        email_value, display_value, selected_role, company_id, branch_id_value, password_value, is_owner_value = result
-        if not email_value or "@" not in email_value:
-            self.write("Invalid email.")
-            return
-        if not display_value:
-            self.write("Display name required.")
-            return
-        if len(password_value) < 14:
-            self.write("Password must be at least 14 characters.")
-            return
-
-        if not is_owner_value and not company_id:
-            self.write("Company is required for this role.")
-            return
-
-        if selected_role in ("REQUESTER", "APPROVER", "BRANCH_ADMIN"):
-            if not branch_id_value:
-                self.write(f"{selected_role} users require a branch.")
-                return
-            branch_check = self._run_psql(
-                "SELECT id::text FROM branches WHERE id="
-                + self._pg_quote(branch_id_value)
-                + " AND company_id="
-                + self._pg_quote(company_id)
-                + " AND active=true"
-            )
-            if not branch_check.get("ok", False) or not branch_check["out"].strip():
-                self.write("Branch not found or not active.")
-                return
-
-        exists = self._run_psql(
-            "SELECT 1 FROM users WHERE lower(email)=" + self._pg_quote(email_value.lower())
-        )
-        if exists.get("ok", False) and exists["out"].strip():
-            self.write("Email already exists.")
-            return
-
-        password_hash = self._hash_password(password_value)
-        if not password_hash:
-            self.write("Could not hash password.")
-            return
-
-        company_sql = "NULL" if is_owner_value else self._pg_quote(company_id)
-        branch_sql = self._pg_quote(branch_id_value) if branch_id_value else "NULL"
-
-        statement = (
-            "INSERT INTO users(email,display_name,password_hash,role_id,company_id,branch_id,is_owner) "
-            f"VALUES ({self._pg_quote(email_value.lower())}, "
-            f"{self._pg_quote(display_value)}, "
-            f"{self._pg_quote(password_hash)}, "
-            "(SELECT id FROM roles WHERE role_key="
-            f"{self._pg_quote(selected_role)}), "
-            f"{company_sql}, "
-            f"{branch_sql}, "
-            f"{'TRUE' if is_owner_value else 'FALSE'}) "
-            "ON CONFLICT (lower(email)) DO UPDATE SET "
-            "display_name=EXCLUDED.display_name, "
-            "password_hash=EXCLUDED.password_hash, "
-            "role_id=EXCLUDED.role_id, "
-            "company_id=EXCLUDED.company_id, "
-            "branch_id=EXCLUDED.branch_id"
-        )
-        create = self._run_psql(statement)
-        if create.get("ok", False):
-            self.write(f"Created user {email_value}")
-            self._refresh_users()
-        else:
-            self.write(f"Could not create user: {create['err'] or create['out']}")
-
-    @staticmethod
-    def _generate_password():
-        chars = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
-        return "".join(secrets.choice(chars) for _ in range(16))
-
-    def _pg_quote(self, value):
-        if value is None:
-            return "NULL"
-        return "'" + str(value).replace("'", "''") + "'"
 
     def _build_activity_page(self):
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)

@@ -1,0 +1,300 @@
+{
+  "format": "axora.workbook-bootstrap-schemas.v1",
+  "entities": {
+    "account_roles": {
+      "description": "Invited account identity and one explicit normalized role assignment. PLATFORM_OWNER rows are never accepted from a workbook.",
+      "fields": {
+        "email": {
+          "aliases": ["email", "email address", "sign-in email", "user email"],
+          "required": true,
+          "type": "email"
+        },
+        "display_name": {
+          "aliases": ["display name", "full name", "user name"],
+          "required": true,
+          "type": "string"
+        },
+        "role_key": {
+          "aliases": ["role", "role key", "account role"],
+          "required": true,
+          "type": "role"
+        },
+        "company_key": {
+          "aliases": ["company id", "company key", "company code", "company scope"],
+          "required": false,
+          "type": "key"
+        },
+        "branch_key": {
+          "aliases": ["branch id", "branch key", "branch code", "branch scope"],
+          "required": false,
+          "type": "key"
+        },
+        "locale": {
+          "aliases": ["locale", "preferred locale", "language"],
+          "enum": ["en", "ar", "ms"],
+          "required": true,
+          "type": "enum"
+        }
+      },
+      "minimum_header_matches": 2,
+      "required_header_any": ["role_key"]
+    },
+    "branches": {
+      "description": "A company branch identified by stable company and branch keys; labels are not converted into keys.",
+      "fields": {
+        "company_key": {
+          "aliases": ["company id", "company key", "company code"],
+          "required": true,
+          "type": "key"
+        },
+        "branch_key": {
+          "aliases": ["branch id", "branch key", "branch code id"],
+          "required": true,
+          "type": "key"
+        },
+        "name": {
+          "aliases": ["branch name", "name"],
+          "required": true,
+          "type": "string"
+        },
+        "branch_code": {
+          "aliases": ["branch code", "code"],
+          "required": true,
+          "type": "key"
+        },
+        "delivery_address": {
+          "aliases": ["delivery address", "address"],
+          "required": true,
+          "type": "string"
+        },
+        "city_area": {
+          "aliases": ["city", "city area", "city / area", "area"],
+          "required": true,
+          "type": "string"
+        },
+        "contact_name": {
+          "aliases": ["contact name", "main contact"],
+          "required": false,
+          "type": "string"
+        },
+        "contact_phone": {
+          "aliases": ["contact phone", "phone"],
+          "required": false,
+          "type": "phone"
+        },
+        "contact_email": {
+          "aliases": ["contact email"],
+          "required": false,
+          "type": "email"
+        },
+        "active": {
+          "aliases": ["active", "data on file?"],
+          "required": true,
+          "type": "boolean"
+        }
+      },
+      "minimum_header_matches": 3,
+      "required_header_any": ["branch_key", "name"]
+    },
+    "companies": {
+      "description": "A customer company identified by an operator-approved stable key.",
+      "fields": {
+        "company_key": {
+          "aliases": ["company id", "company key", "company code"],
+          "required": true,
+          "type": "key"
+        },
+        "name": {
+          "aliases": ["company name", "name"],
+          "required": true,
+          "type": "string"
+        },
+        "industry": {
+          "aliases": ["industry"],
+          "required": false,
+          "type": "string"
+        },
+        "active": {
+          "aliases": ["active", "status"],
+          "required": true,
+          "type": "boolean"
+        }
+      },
+      "minimum_header_matches": 2,
+      "required_header_any": ["company_key", "name"]
+    },
+    "products": {
+      "description": "A catalog product with explicit commercial values and review status.",
+      "fields": {
+        "product_key": {
+          "aliases": ["product id", "product key", "product code"],
+          "required": true,
+          "type": "key"
+        },
+        "name": {
+          "aliases": ["product name", "product / item name", "name"],
+          "required": true,
+          "type": "string"
+        },
+        "brand": {
+          "aliases": ["brand", "brand (malaysia)"],
+          "required": false,
+          "type": "string"
+        },
+        "category": {
+          "aliases": ["category"],
+          "required": true,
+          "type": "string"
+        },
+        "subcategory": {
+          "aliases": ["subcategory"],
+          "required": false,
+          "type": "string"
+        },
+        "unit": {
+          "aliases": ["unit", "unit of measure", "uom"],
+          "required": true,
+          "type": "string"
+        },
+        "size": {
+          "aliases": ["size", "size of product", "product size"],
+          "required": true,
+          "type": "string"
+        },
+        "buy_price": {
+          "aliases": ["buy price", "buy price (rm)", "axora buying cost", "buying cost"],
+          "minimum": "0",
+          "required": true,
+          "type": "decimal"
+        },
+        "sell_price": {
+          "aliases": ["sell price", "sell price (rm)", "customer selling price (rm)", "selling price"],
+          "minimum": "0",
+          "required": true,
+          "type": "decimal"
+        },
+        "preferred_supplier": {
+          "aliases": ["preferred supplier", "preferred supplier (malaysia)"],
+          "required": false,
+          "type": "string"
+        },
+        "description": {
+          "aliases": ["description"],
+          "required": false,
+          "type": "string"
+        },
+        "status": {
+          "aliases": ["status"],
+          "enum": ["ACTIVE", "INACTIVE", "DISCONTINUED"],
+          "required": true,
+          "type": "enum"
+        },
+        "confirmed": {
+          "aliases": ["confirmed", "confirmed (yes/no)"],
+          "required": true,
+          "type": "boolean"
+        }
+      },
+      "minimum_header_matches": 4,
+      "required_header_any": ["product_key", "name"]
+    },
+    "recurring_products": {
+      "description": "A recurring demand row linked by stable company and product keys; labels remain review context only.",
+      "fields": {
+        "company_key": {
+          "aliases": ["company id", "company key", "company code"],
+          "required": true,
+          "type": "key"
+        },
+        "company_label": {
+          "aliases": ["company name", "company label"],
+          "required": false,
+          "type": "string"
+        },
+        "product_key": {
+          "aliases": ["product id", "product key", "product code"],
+          "required": true,
+          "type": "key"
+        },
+        "product_name": {
+          "aliases": ["product name", "product / item name"],
+          "required": false,
+          "type": "string"
+        },
+        "department": {
+          "aliases": ["department", "department (if known)"],
+          "required": false,
+          "type": "string"
+        },
+        "frequency": {
+          "aliases": ["frequency", "estimated frequency"],
+          "enum": ["WEEKLY", "MONTHLY", "QUARTERLY", "AD_HOC"],
+          "required": true,
+          "type": "enum"
+        },
+        "estimated_quantity": {
+          "aliases": ["estimated quantity", "estimated qty per order", "quantity"],
+          "exclusive_minimum": "0",
+          "required": true,
+          "type": "decimal"
+        },
+        "request_source": {
+          "aliases": ["request source", "source of info"],
+          "enum": ["STAKEHOLDER_INTERVIEW", "PURCHASE_HISTORY", "BRANCH_SURVEY", "OPERATOR_ENTRY"],
+          "required": true,
+          "type": "enum"
+        },
+        "confirmed": {
+          "aliases": ["confirmed", "confirmed (yes/no)"],
+          "required": true,
+          "type": "boolean"
+        },
+        "notes": {
+          "aliases": ["notes"],
+          "required": false,
+          "type": "string"
+        }
+      },
+      "minimum_header_matches": 4,
+      "required_header_any": ["company_key", "company_label", "product_key", "product_name"]
+    }
+  },
+  "normalizations": {
+    "boolean": {
+      "false": false,
+      "no": false,
+      "true": true,
+      "yes": true
+    },
+    "roles": {
+      "Auditor": "AUDITOR",
+      "Branch Administrator": "BRANCH_ADMIN",
+      "Branch Approver": "BRANCH_APPROVER",
+      "Company Administrator": "COMPANY_ADMIN",
+      "Company Approver": "COMPANY_APPROVER",
+      "Delivery Driver": "DELIVERY_DRIVER",
+      "Finance Reviewer": "FINANCE_REVIEWER",
+      "Platform Operations": "PLATFORM_OPERATIONS",
+      "Purchase Requester": "REQUESTER",
+      "Read-Only Auditor": "AUDITOR",
+      "Receiving User": "RECEIVING_USER",
+      "Supplier User": "SUPPLIER_USER",
+      "Technical Support": "TECHNICAL_SUPPORT"
+    },
+    "scope_by_role": {
+      "AUDITOR": "COMPANY",
+      "BRANCH_ADMIN": "BRANCH",
+      "BRANCH_APPROVER": "BRANCH",
+      "COMPANY_ADMIN": "COMPANY",
+      "COMPANY_APPROVER": "COMPANY",
+      "DELIVERY_DRIVER": "DELIVERY",
+      "FINANCE_REVIEWER": "COMPANY",
+      "PLATFORM_OPERATIONS": "PLATFORM",
+      "PLATFORM_OWNER": "PLATFORM",
+      "RECEIVING_USER": "BRANCH",
+      "REQUESTER": "BRANCH",
+      "SUPPLIER_USER": "SUPPLIER",
+      "TECHNICAL_SUPPORT": "PLATFORM"
+    }
+  }
+}
