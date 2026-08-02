@@ -1,0 +1,222 @@
+import { expect, test, type BrowserContext } from "@playwright/test";
+
+const baseURL = "http://127.0.0.1:3100";
+
+async function rememberLocale(
+  context: BrowserContext,
+  locale: "en" | "ar" | "ms",
+) {
+  await context.addCookies([{ name: "axora_locale", value: locale, url: baseURL }]);
+}
+
+test.describe("first-visit language decision", () => {
+  test.use({ locale: "ar-SA" });
+
+  test("detects the browser language and persists an explicit choice", async ({ context, page }) => {
+    await context.clearCookies();
+    await page.goto("/");
+
+    await expect(page).toHaveURL(/\/ar$/);
+    await expect(page.locator(".public-site")).toHaveAttribute("lang", "ar");
+    await expect(page.locator(".public-site")).toHaveAttribute("dir", "rtl");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "هل تريد استخدام لغة المتصفح؟" })).toBeVisible();
+
+    await page.getByRole("button", { name: /Bahasa Melayu/ }).click();
+    await expect(page).toHaveURL(/\/ms$/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect.poll(async () => (await context.cookies()).find((cookie) => cookie.name === "axora_locale")?.value).toBe("ms");
+
+    await page.reload();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/ms$/);
+  });
+});
+
+const localeCases = [
+  {
+    locale: "en" as const,
+    viewport: { width: 1440, height: 900 },
+    heading: "One clear path from business need to verified delivery.",
+    direction: "ltr",
+    navigation: "Primary navigation",
+    menu: null,
+  },
+  {
+    locale: "ms" as const,
+    viewport: { width: 834, height: 1112 },
+    heading: "Satu laluan jelas daripada keperluan perniagaan kepada penghantaran yang disahkan.",
+    direction: "ltr",
+    navigation: "Navigasi mudah alih",
+    menu: "Buka menu",
+  },
+  {
+    locale: "ar" as const,
+    viewport: { width: 320, height: 568 },
+    heading: "مسار واحد واضح من احتياج الشركة إلى تسليم موثّق.",
+    direction: "rtl",
+    navigation: "التنقل عبر الجوال",
+    menu: "فتح القائمة",
+  },
+] as const;
+
+for (const localeCase of localeCases) {
+  test(`${localeCase.locale} public home is localized and responsive at ${localeCase.viewport.width}px`, async ({ context, page }) => {
+    await rememberLocale(context, localeCase.locale);
+    await page.setViewportSize(localeCase.viewport);
+    await page.goto(`/${localeCase.locale}`);
+
+    const publicSite = page.locator(".public-site");
+    await expect(page.locator("html")).toHaveAttribute("lang", localeCase.locale);
+    await expect(page.locator("html")).toHaveAttribute("dir", localeCase.direction);
+    await expect(publicSite).toHaveAttribute("lang", localeCase.locale);
+    await expect(publicSite).toHaveAttribute("dir", localeCase.direction);
+    await expect(page.getByRole("main")).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1, name: localeCase.heading })).toBeVisible();
+    await expect(page.locator(".public-login-link")).toHaveAttribute("href", "/login");
+
+    if (localeCase.menu) {
+      await page.getByLabel(localeCase.menu).click();
+      await expect(page.getByRole("navigation", { name: localeCase.navigation })).toBeVisible();
+    } else {
+      await expect(page.getByRole("navigation", { name: localeCase.navigation })).toBeVisible();
+    }
+
+    const horizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(horizontalOverflow).toBeLessThanOrEqual(2);
+  });
+}
+
+test("mobile navigation closes after a localized client-side route change", async ({ context, page }) => {
+  await rememberLocale(context, "ms");
+  await page.setViewportSize({ width: 834, height: 1112 });
+  await page.goto("/ms");
+
+  await page.getByLabel("Buka menu").click();
+  const menu = page.locator(".public-mobile-menu");
+  await expect(menu).toHaveAttribute("open", "");
+  await page.getByRole("navigation", { name: "Navigasi mudah alih" }).getByRole("link", { name: "Hubungi Kami" }).click();
+
+  await expect(page).toHaveURL(/\/ms\/contact$/);
+  await expect(menu).not.toHaveAttribute("open", "");
+  await expect(page.getByRole("heading", { level: 1, name: "Beritahu kami tentang aliran perolehan anda." })).toBeVisible();
+});
+
+test("small-phone skip link moves keyboard focus to public content", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile-chrome", "Keyboard order is covered with desktop Chromium at a small-phone viewport.");
+  await rememberLocale(context, "en");
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/en");
+
+  const skipLink = page.getByRole("link", { name: "Skip to main content" });
+  await skipLink.focus();
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("main")).toBeFocused();
+});
+
+test("small-phone keyboard flow exposes language, login, and menu controls", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile-chrome", "Keyboard order is covered with desktop Chromium at a small-phone viewport.");
+  await rememberLocale(context, "en");
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/en?keyboard=header");
+  await page.locator("nextjs-portal").evaluateAll((portals) => portals.forEach((portal) => portal.remove()));
+  const skipLink = page.getByRole("link", { name: "Skip to main content" });
+  await skipLink.focus();
+  await expect(skipLink).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".public-brand")).toBeFocused();
+  await page.keyboard.press("Tab");
+  const language = page.getByRole("combobox", { name: "Language" });
+  await expect(language).toBeFocused();
+  await expect(page.locator(".public-language-select")).toHaveCSS("outline-style", "solid");
+
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".public-login-link")).toBeFocused();
+  await page.keyboard.press("Tab");
+  const menuButton = page.getByLabel("Open menu");
+  await expect(menuButton).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeVisible();
+});
+
+test("localized contact form keeps real fields labeled and the anti-spam field out of keyboard flow", async ({ context, page }) => {
+  await rememberLocale(context, "ar");
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/ar/contact");
+
+  await expect(page.getByRole("form", { name: "أخبرنا عن مسار المشتريات في شركتك." })).toBeVisible();
+  await expect(page.getByLabel("الاسم")).toBeVisible();
+  await expect(page.getByLabel("البريد الإلكتروني للعمل")).toHaveAttribute("type", "email");
+  await expect(page.getByLabel("الرسالة")).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /أفهم أن أكسورا/ })).toBeVisible();
+  await expect(page.locator('input[name="website"]')).toHaveAttribute("tabindex", "-1");
+  await expect(page.locator(".contact-honeypot")).toHaveAttribute("aria-hidden", "true");
+
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(horizontalOverflow).toBeLessThanOrEqual(2);
+});
+
+test("reduced-motion preference removes meaningful public transition motion", async ({ context, page }) => {
+  await rememberLocale(context, "en");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/en");
+
+  await expect.poll(() => page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
+  const roleCard = page.locator(".public-role-grid > a").first();
+  await roleCard.hover();
+  const styles = await roleCard.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { transform: style.transform, transitionDuration: style.transitionDuration };
+  });
+  expect(styles.transform).toBe("none");
+  expect(Number.parseFloat(styles.transitionDuration)).toBeLessThanOrEqual(0.001);
+});
+
+test("the public login entry resolves to the sign-in page", async ({ context, page }) => {
+  await rememberLocale(context, "en");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/en");
+  await page.locator(".public-login-link").click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("main")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+});
+
+test("login guide reacts to password privacy and respects reduced motion", async ({ context, page }) => {
+  await rememberLocale(context, "en");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/login");
+
+  const guide = page.locator(".login-guide");
+  const password = page.getByLabel("Password", { exact: true });
+  await expect(guide).toHaveAttribute("data-state", "idle");
+  await password.focus();
+  await expect(guide).toHaveAttribute("data-state", "private");
+  await page.getByRole("button", { name: "Show password" }).click();
+  await expect(guide).toHaveAttribute("data-state", "peek");
+  await expect(password).toHaveAttribute("type", "text");
+
+  const motion = await guide.locator(".login-guide-orbit").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { animation: style.animationName, transition: style.transitionDuration };
+  });
+  expect(motion.animation).toBe("none");
+  expect(Number.parseFloat(motion.transition)).toBeLessThanOrEqual(0.001);
+});
+
+test("Arabic login keeps directional navigation and localized controls", async ({ context, page }) => {
+  await rememberLocale(context, "ar");
+  await page.goto("/login");
+
+  await expect(page.getByRole("main")).toHaveAttribute("dir", "rtl");
+  await expect(page.getByRole("link", { name: "موقع Axora" })).toHaveAttribute("href", "/ar");
+  await expect(page.getByLabel("البريد الإلكتروني")).toHaveAttribute("type", "email");
+  await expect(page.getByRole("button", { name: "إظهار كلمة المرور" })).toBeVisible();
+});

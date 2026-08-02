@@ -2,7 +2,7 @@
   "name": "axora-app",
   "version": "1.0.0",
   "private": true,
-  "description": "Axora internal procurement and pilot operations application",
+  "description": "Axora secure multi-company procurement platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build && test -f .next/standalone/node_modules/pg-cloudflare/dist/index.js && test -f .next/standalone/node_modules/pg-cloudflare/esm/index.mjs",
@@ -14,6 +14,12 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "qa:visual": "node scripts/qa/visual-smoke.mjs",
+    "bootstrap:review-workbook": "python3 scripts/bootstrap/validate_workbook.py",
+    "bootstrap:first-platform-owner": "node scripts/bootstrap/create_first_platform_owner.mjs",
+    "email:preview": "node scripts/email/preview.mjs",
+    "manuals:build": "uv run scripts/manuals/generate_user_manuals.py --publish",
+    "manuals:validate": "uv run scripts/manuals/validate_user_manuals.py",
+    "manuals:verify": "npm run manuals:build && uv run scripts/manuals/generate_user_manuals.py --output-dir output/manuals-rebuild && uv run scripts/manuals/validate_user_manuals.py --compare-dir output/manuals-rebuild",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "keywords": [
@@ -33,7 +39,6 @@
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.4",
     "lucide-react": "^1.25.0",
-    "motion": "^12.43.0",
     "next": "^16.2.11",
     "pg": "^8.22.0",
     "pg-cloudflare": "^1.4.0",
@@ -43,6 +48,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@electric-sql/pglite": "^0.5.4",
     "@playwright/test": "^1.61.1",
     "@types/node": "^26.1.1",

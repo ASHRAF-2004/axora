@@ -5,5 +5,13 @@ import nextTypeScript from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTypeScript,
-  globalIgnores([".next/**", "coverage/**", "reports/**", "public/brand/lucide-boxes-source.svg"]),
+  globalIgnores([
+    ".next/**",
+    "coverage/**",
+    "reports/**",
+    "tmp/**",
+    "workers/**/.wrangler/**",
+    "workers/**/dist/**",
+    "workers/**/worker-configuration.d.ts",
+  ]),
 ]);
