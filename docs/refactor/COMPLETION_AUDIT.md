@@ -85,27 +85,33 @@ Legend:
 ### 9) Process and review readiness
 
 - Logical commits, pushed branch, clean tree, unmerged review-ready PR
-- **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `d8a1c49` (tracking `origin/feature/coherent-product-refactor`), PR #30 open/ready, checks passing.
+- **Verified** now: clean working tree, `feature/coherent-product-refactor` pushed at `7f5d09f` (tracking `origin/feature/coherent-product-refactor`), PR #30 open/ready, checks passing.
   - Evidence: `git status --short`, `git log`, `gh pr checks 30`, `docs/refactor/PR_REVIEW_PACKAGE.md`.
 
 ### 10) Fresh verification snapshot (continuation turn)
 
 - Targeted repository-backed tooling verification run:
-- `npm run test -- tests/production-reset-scripts.test.mjs tests/workbook-bootstrap-validator.test.mjs tests/account-setup-lifecycle.test.ts tests/workflow-event-rls-security.test.ts`
-  - Result: **4 test files passed, 25 tests passed**.
+- `npm run test -- tests/production-reset-scripts.test.mjs tests/workbook-bootstrap-validator.test.mjs tests/account-setup-lifecycle.test.ts tests/tenant-branding.test.ts tests/portal-navigation-security.test.ts`
+  - Result: **5 test files passed, 35 tests passed**.
 
 ### 11) CI verification after menu-state stabilization
 
-- `npm run test:e2e -- e2e/public-i18n.spec.ts`
-  - Result: **22 passed, 2 skipped**.
+- `npm run test:e2e -- e2e/public-i18n.spec.ts e2e/public-accessibility.spec.ts e2e/role-portals.spec.ts`
+  - Result: **54 passed, 2 skipped**.
 - `npm run test:e2e`
   - Result: **66 passed, 2 skipped**.
 - `npm run lint && npm run typecheck && npm run test`
   - Result: **no failures**.
 - `npm run build`
   - Result: successful full route build.
-- GitHub CI run `30755583378` (PR #30): all jobs successful.
+- GitHub CI run `30755936383` (PR #30): all jobs successful.
 - `npm run manuals:verify`
   - Result: exact four manuals rebuilt and deterministic validation succeeded.
 - Production readiness config check note:
   - `/etc/axora-production/runtime.env` and `/etc/axora-production/deploy.env` are not yet present in this session, so production preflight in local-only mode could not be executed without the deployment bootstrap step.
+
+### 12) This continuation turn (2026-08-03)
+
+- Additional focused verification run:
+  - `npm run test -- tests/production-reset-scripts.test.mjs tests/workbook-bootstrap-validator.test.mjs tests/account-setup-lifecycle.test.ts tests/tenant-branding.test.ts tests/portal-navigation-security.test.ts`
+  - Result: **5 passed / 5 files**.
