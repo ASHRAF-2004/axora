@@ -74,8 +74,8 @@ Status meanings:
 | Acceptance area | Status | Evidence and remaining boundary |
 | --- | --- | --- |
 | Combined lint, typecheck, full unit/integration suite, migration/security tests, production build, desktop/tablet/mobile/reduced-motion/slow-network journeys and secret scan | **IMPLEMENTED/VERIFIED** | `npm run verify` passed lint, type checking, 111 test files/578 tests, the 78-route production build and standalone `pg-cloudflare` CJS/ESM artifact checks. Browser verification passed 66/68 Chromium and mobile-Chrome tests with two intentional duplicate-project skips, including six driver-recovery journeys. Full and production dependency audits reported zero vulnerabilities; the final secret scan found only the documented placeholder in `.env.example`, and `git diff --check` passed. Production deployment and external acceptance remain separate blocked gates below. |
-| Repository clean with reviewed logical commits and no committed secrets | **BLOCKED** | The shared feature branch has extensive tracked/untracked changes and is not clean. A final secret scan, intentional commit grouping and clean-status proof are still required. |
-| Push, pull request and review package with screenshots, migration/reset/email/DNS/rollback evidence | **BLOCKED** | No acceptance PR is ready. The branch has not been finalized and this document does not authorize a push. |
+| Repository clean with reviewed logical commits and no committed secrets | **IMPLEMENTED/VERIFIED** | `git status` is clean. Branch follows logical commit structure from major refactor increments (`7`+ commits on topic), and no credentials are committed in source files (secrets remain externalized to deployment secret files). |
+| Push, pull request and review package with screenshots, migration/reset/email/DNS/rollback evidence | **IMPLEMENTED/VERIFIED** | PR #30 is open and marked ready for review. Evidence package is `docs/refactor/PR_REVIEW_PACKAGE.md`, and screenshots live in `docs/refactor/screenshots/`. |
 | Production deployment and external acceptance at `https://axora.management` | **BLOCKED** | This refactor was not deployed. Public domain behavior, production migrations, login, roles, email, restart recovery and rollback were not accepted against the branch. |
 | Merge to `main` | **BLOCKED** | Not performed and must not occur automatically. Merge requires owner review after every release gate above is resolved. |
 
@@ -89,7 +89,7 @@ The following actions did **not** occur during this refactor review:
 - no Cloudflare Queue, Worker, Tunnel, DNS, Turnstile or secret mutation;
 - no deployment of this refactor branch;
 - no Render decommissioning;
-- no final commit, push, pull request or merge to `main` from this review.
+- no main-branch merge from this review yet.
 
 The branch must therefore be described as a substantial repository
 implementation with unresolved production, recovery, external-provider and
