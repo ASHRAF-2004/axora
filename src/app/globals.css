@@ -533,6 +533,10 @@ textarea { min-height: 82px; resize: vertical; }
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .login-guide-orbit { animation: none !important; transition: none !important; }
+}
+
 /* Global UX feedback */
 button,
 a,
