@@ -1,112 +1,657 @@
 "use client";
 
 import { loginAction } from "@/app/login/actions";
-import { Eye, EyeOff, LoaderCircle } from "lucide-react";
-import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
 import type { SupportedLocale } from "@/lib/i18n";
 
+type GuideState = "idle" | "email" | "private" | "peek" | "success" | "error" | "loading";
+type GuideMouth = "small" | "medium" | "large";
+type GuideFocus = "email" | "password" | null;
+
+type FacePose = {
+  eyeOffset: number;
+  eyeScale: number;
+  mouthRotate: number;
+  mouthShiftX: number;
+  mouthShiftY: number;
+  chinShiftX: number;
+  chinShiftY: number;
+  chinScaleY: number;
+  faceShiftX: number;
+  faceShiftY: number;
+  faceSkew: number;
+  eyebrowShiftX: number;
+  eyebrowShiftY: number;
+  eyebrowSkew: number;
+  earShiftX: number;
+  earShiftLShiftY: number;
+  earShiftRShiftY: number;
+  earHairShiftX: number;
+  earHairShiftY: number;
+  hairShiftX: number;
+  hairScaleY: number;
+  tongueShiftY: number;
+};
+
 const loginCopy = {
   en: {
-    checking: "Checking your account securely", private: "Your password stays private", retry: "Check your details and try again",
-    success: "Password created successfully", finding: "Finding your Axora workspace", guide: "Secure sign in",
-    feedback: "Signing in to Axora…", connecting: "Connecting to Axora…", signIn: "Sign in", welcome: "Welcome back",
-    title: "Sign in to Axora", subtitle: "Use your assigned account.", resetComplete: "Your password was changed and prior sessions were ended. Sign in with the new password.",
-    setupComplete: "Your password is ready. Sign in with your new credentials.", error: "The email or password is incorrect. If your account is new, use the private setup link in your invitation email first.",
-    email: "Email", password: "Password", hidePassword: "Hide password", showPassword: "Show password",
-    manager: "Paste and password managers are supported.", forgot: "Forgot password?", demo: "Local demo only:", demoHelp: "the filled credentials are disabled when the server is deployed.",
+    checking: "Checking your account securely",
+    private: "Your password stays private",
+    retry: "Check your details and try again",
+    success: "Password created successfully",
+    finding: "Finding your Axora workspace",
+    guide: "Secure sign in",
+    feedback: "Signing in to Axora…",
+    connecting: "Connecting to Axora…",
+    signIn: "Log in",
+    title: "Sign in to Axora",
+    subtitle: "Use your assigned account.",
+    resetComplete: "Your password was changed and prior sessions were ended. Sign in with the new password.",
+    setupComplete: "Your password is ready. Sign in with your new credentials.",
+    error: "The email or password is incorrect. If your account is new, use the private setup link in your invitation email first.",
+    email: "Email",
+    password: "Password",
+    hidePassword: "Hide",
+    showPassword: "Show",
+    showPasswordLabel: "Show password",
+    manager: "Paste and password managers are supported.",
+    forgot: "Forgot password?",
+    demo: "Local demo only:",
+    demoHelp: "the filled credentials are disabled when the server is deployed.",
+    emailHint: "email@domain.com",
   },
   ar: {
-    checking: "جارٍ التحقق من حسابك بأمان", private: "تبقى كلمة مرورك خاصة", retry: "راجع بياناتك وحاول مرة أخرى",
-    success: "تم إنشاء كلمة المرور بنجاح", finding: "جارٍ العثور على مساحة عملك في Axora", guide: "تسجيل دخول آمن",
-    feedback: "جارٍ تسجيل الدخول إلى Axora…", connecting: "جارٍ الاتصال بـ Axora…", signIn: "تسجيل الدخول", welcome: "مرحبًا بعودتك",
-    title: "تسجيل الدخول إلى Axora", subtitle: "استخدم الحساب المخصص لك.", resetComplete: "تم تغيير كلمة المرور وإنهاء الجلسات السابقة. سجّل الدخول بكلمة المرور الجديدة.",
-    setupComplete: "كلمة مرورك جاهزة. سجّل الدخول ببياناتك الجديدة.", error: "البريد الإلكتروني أو كلمة المرور غير صحيحين. إذا كان حسابك جديدًا، استخدم أولًا رابط الإعداد الخاص في رسالة الدعوة.",
-    email: "البريد الإلكتروني", password: "كلمة المرور", hidePassword: "إخفاء كلمة المرور", showPassword: "إظهار كلمة المرور",
-    manager: "يدعم الحقل اللصق ومديري كلمات المرور.", forgot: "هل نسيت كلمة المرور؟", demo: "عرض محلي فقط:", demoHelp: "يتم تعطيل بيانات الدخول المعبأة عند نشر الخادم.",
+    checking: "جارٍ التحقق من حسابك بأمان",
+    private: "تبقى كلمة مرورك خاصة",
+    retry: "راجع بياناتك وحاول مرة أخرى",
+    success: "تم إنشاء كلمة المرور بنجاح",
+    finding: "جارٍ العثور على مساحة عمل Axora",
+    guide: "تسجيل دخول آمن",
+    feedback: "جارٍ تسجيل الدخول إلى Axora…",
+    connecting: "جارٍ الاتصال بـ Axora…",
+    signIn: "تسجيل الدخول",
+    title: "تسجيل الدخول إلى Axora",
+    subtitle: "استخدم الحساب المخصص لك.",
+    resetComplete: "تم تغيير كلمة المرور وإنهاء الجلسات السابقة. سجّل الدخول بكلمة المرور الجديدة.",
+    setupComplete: "كلمة مرورك جاهزة. سجّل الدخول ببياناتك الجديدة.",
+    error: "البريد الإلكتروني أو كلمة المرور غير صحيحين. إذا كان حسابك جديدًا، استخدم أولًا رابط الإعداد الخاص في رسالة الدعوة.",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    hidePassword: "إخفاء",
+    showPassword: "إظهار",
+    showPasswordLabel: "إظهار كلمة المرور",
+    manager: "يدعم الحقل اللصق ومديري كلمات المرور.",
+    forgot: "هل نسيت كلمة المرور؟",
+    demo: "عرض محلي فقط:",
+    demoHelp: "يتم تعطيل بيانات الدخول المعبأة عند نشر الخادم.",
+    emailHint: "email@domain.com",
   },
   ms: {
-    checking: "Menyemak akaun anda dengan selamat", private: "Kata laluan anda kekal peribadi", retry: "Semak butiran anda dan cuba lagi",
-    success: "Kata laluan berjaya dicipta", finding: "Mencari ruang kerja Axora anda", guide: "Log masuk selamat",
-    feedback: "Melog masuk ke Axora…", connecting: "Menyambung ke Axora…", signIn: "Log masuk", welcome: "Selamat kembali",
-    title: "Log masuk ke Axora", subtitle: "Gunakan akaun yang ditetapkan kepada anda.", resetComplete: "Kata laluan anda telah ditukar dan sesi terdahulu ditamatkan. Log masuk dengan kata laluan baharu.",
-    setupComplete: "Kata laluan anda sudah sedia. Log masuk dengan kelayakan baharu.", error: "E-mel atau kata laluan tidak betul. Jika akaun anda baharu, gunakan dahulu pautan persediaan peribadi dalam e-mel jemputan.",
-    email: "E-mel", password: "Kata laluan", hidePassword: "Sembunyikan kata laluan", showPassword: "Tunjukkan kata laluan",
-    manager: "Tampal dan pengurus kata laluan disokong.", forgot: "Lupa kata laluan?", demo: "Demo setempat sahaja:", demoHelp: "kelayakan yang diisi dilumpuhkan apabila pelayan digunakan.",
+    checking: "Menyemak akaun anda dengan selamat",
+    private: "Kata laluan anda kekal peribadi",
+    retry: "Semak butiran anda dan cuba lagi",
+    success: "Kata laluan berjaya dicipta",
+    finding: "Mencari ruang kerja Axora anda",
+    guide: "Log masuk selamat",
+    feedback: "Melog masuk ke Axora…",
+    connecting: "Menyambung ke Axora…",
+    signIn: "Log masuk",
+    title: "Log masuk ke Axora",
+    subtitle: "Gunakan akaun yang ditetapkan kepada anda.",
+    resetComplete: "Kata laluan anda telah ditukar dan sesi terdahulu ditamatkan. Log masuk dengan kelayakan baharu.",
+    setupComplete: "Kata laluan anda sudah sedia. Log masuk dengan kelayakan baharu.",
+    error: "E-mel atau kata laluan tidak betul. Jika akaun anda baharu, gunakan dahulu pautan persediaan peribadi dalam e-mel jemputan.",
+    email: "E-mel",
+    password: "Kata laluan",
+    hidePassword: "Sembunyikan",
+    showPassword: "Tunjuk",
+    showPasswordLabel: "Tunjuk kata laluan",
+    manager: "Tampal dan pengurus kata laluan disokong.",
+    forgot: "Lupa kata laluan?",
+    demo: "Demo setempat sahaja:",
+    demoHelp: "kelayakan yang diisi dilumpuhkan apabila pelayan digunakan.",
+    emailHint: "email@domain.com",
   },
 } as const;
 
+function classifyMouthState(emailValue: string): GuideMouth {
+  if (!emailValue) {
+    return "small";
+  }
+  return emailValue.includes("@") ? "large" : "medium";
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function computePoseFromEmail(value: string, focus: GuideFocus): FacePose {
+  const length = value.length;
+
+  // Keep the character feel from the original pen style without pulling GSAP.
+  const baseOffset = ((length % 10) - 4.5) * 1.9;
+  const eyeOffset = clamp(baseOffset, -7, 7);
+
+  const mouthState = classifyMouthState(value);
+
+  const mouthRotate = mouthState === "large"
+    ? -2
+    : mouthState === "medium"
+      ? -1
+      : 0;
+
+  const mouthShiftX = mouthState === "large" ? -0.8 * eyeOffset : -0.55 * eyeOffset;
+  const mouthShiftY = mouthState === "large" ? 0.2 : mouthState === "medium" ? 0.8 : 0;
+
+  const chinShiftX = mouthShiftX * 0.84;
+  const chinShiftY = mouthShiftY * 0.62;
+
+  const faceScale = mouthState === "large" ? 0.92 : mouthState === "medium" ? 0.96 : 1;
+
+  return {
+    eyeOffset,
+    eyeScale: mouthState === "large" ? 0.65 : mouthState === "medium" ? 0.85 : 1,
+    mouthRotate,
+    mouthShiftX,
+    mouthShiftY,
+    chinShiftX,
+    chinShiftY,
+    chinScaleY: Math.max(0.78, faceScale),
+    faceShiftX: (mouthShiftX * 0.3),
+    faceShiftY: (mouthShiftY * 0.45),
+    faceSkew: mouthState === "large" ? 5 : mouthState === "medium" ? 3 : 0,
+    eyebrowShiftX: (mouthShiftX * 0.3),
+    eyebrowShiftY: (mouthShiftY * 0.45),
+    eyebrowSkew: mouthState === "large" ? 12 : mouthState === "medium" ? 9 : 0,
+    earShiftX: mouthState === "small" && focus === "email" ? 1.2 : -1.2,
+    earShiftLShiftY: mouthState === "large" ? -5.5 : mouthState === "medium" ? -4 : 0,
+    earShiftRShiftY: mouthState === "large" ? 5.5 : mouthState === "medium" ? 4 : 0,
+    earHairShiftX: mouthState === "small" ? -1 : 1,
+    earHairShiftY: mouthState === "large" ? -3 : 0,
+    hairShiftX: mouthState === "large" ? 1.4 : 0,
+    hairScaleY: mouthState === "large" ? 1.17 : 1,
+    tongueShiftY: mouthState === "large" ? 2 : mouthState === "medium" ? 1 : 0,
+  };
+}
+
 function LoginGuide({
   focus,
-  emailLength,
   passwordVisible,
   error,
   success,
+  emailValue,
   locale,
+  mouth,
 }: {
-  focus: "email" | "password" | null;
-  emailLength: number;
+  focus: GuideFocus;
   passwordVisible: boolean;
   error: boolean;
   success: boolean;
+  emailValue: string;
   locale: SupportedLocale;
+  mouth: GuideMouth;
 }) {
   const { pending } = useFormStatus();
-  const glance = focus === "email" ? Math.min(4, Math.max(-4, (emailLength % 9) - 4)) : 0;
-  const state = pending ? "loading" : error ? "error" : success ? "success" : focus === "password" ? (passwordVisible ? "peek" : "private") : focus === "email" ? "email" : "idle";
-  return <div className="login-guide" data-state={state} aria-hidden="true">
-    <svg viewBox="0 0 220 150" role="presentation">
-      <defs>
-        <linearGradient id="axora-yeti-body" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#f8fbff" />
-          <stop offset="1" stopColor="#e4eef7" />
-        </linearGradient>
-        <linearGradient id="axora-yeti-glow" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#E8A33D" stopOpacity="0.12" />
-          <stop offset="1" stopColor="#E8A33D" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <ellipse className="login-guide-orbit" cx="110" cy="82" rx="86" ry="58" fill="none" stroke="#E8A33D" strokeWidth="2" strokeDasharray="4 10" />
 
-      <g transform="translate(110 28)">
-        <ellipse cx="0" cy="82" rx="56" ry="20" fill="url(#axora-yeti-glow)" />
-      </g>
-      <circle cx="58" cy="39" r="9" fill="#fff" stroke="#c6d8eb" strokeWidth="2" />
-      <circle cx="162" cy="40" r="9" fill="#fff" stroke="#c6d8eb" strokeWidth="2" />
-      <path d="M58 43C57 44 56 47 56 50C56 58 62 64 70 64C78 64 84 58 84 50C84 47 83 44 82 43" fill="none" stroke="#7f9eb8" strokeWidth="3" strokeLinecap="round" />
-      <path d="M162 43C161 44 160 47 160 50C160 58 166 64 174 64C182 64 188 58 188 50C188 47 187 44 186 43" fill="none" stroke="#7f9eb8" strokeWidth="3" strokeLinecap="round" />
+  const showArms = focus === "password" || passwordVisible;
+  const state: GuideState =
+    pending
+      ? "loading"
+      : error
+        ? "error"
+        : success
+          ? "success"
+          : focus === "password"
+            ? (passwordVisible ? "peek" : "private")
+            : focus === "email"
+              ? "email"
+              : "idle";
 
-      <ellipse cx="110" cy="85" rx="76" ry="42" fill="url(#axora-yeti-body)" stroke="#c7d9ed" strokeWidth="3" />
-      <circle cx="66" cy="82" r="22" fill="#ffffff" stroke="#d5e4f1" strokeWidth="3" />
-      <circle cx="154" cy="82" r="22" fill="#ffffff" stroke="#d5e4f1" strokeWidth="3" />
-      <circle cx="110" cy="82" r="30" fill="#ffffff" stroke="#d5e4f1" strokeWidth="3" />
+  const pose = useMemo(() => computePoseFromEmail(emailValue, focus), [emailValue, focus]);
 
-      <circle cx="70" cy="80" r="16" fill="#fff" />
-      <circle cx="150" cy="80" r="16" fill="#fff" />
-      <circle cx="150" cy="80" r="13" fill="#f3f8fd" stroke="#bfd2e3" strokeWidth="2" />
-      <circle cx="70" cy="80" r="13" fill="#f3f8fd" stroke="#bfd2e3" strokeWidth="2" />
+  const armTransform = showArms
+    ? "translate(-93px, 10px) rotate(0deg)"
+    : "translate(-93px, 220px) rotate(105deg)";
 
-      <g className="login-guide-eyes" style={{ transform: `translateX(${glance}px)` }}>
-        <circle cx="70" cy="81" r="4.8" fill="#0B2D52" />
-        <circle cx="150" cy="81" r="4.8" fill="#0B2D52" />
-      </g>
-      <g className="login-guide-lids" opacity="0.9">
-        <path d="M58 83C58 74 62 70 70 70" fill="none" stroke="#5c7690" strokeWidth="3.5" strokeLinecap="round" />
-        <path d="M140 70C148 70 152 74 152 83" fill="none" stroke="#5c7690" strokeWidth="3.5" strokeLinecap="round" />
-      </g>
+  const twoFingerTransform = passwordVisible
+    ? "rotate(30deg) translate(-9px, -2px)"
+    : "rotate(0deg) translate(0px, 0px)";
 
-      <path className="login-guide-mouth login-guide-mouth-neutral" d="M96 102C110 108 130 108 142 102" fill="none" stroke="#334f6c" strokeWidth="4.3" strokeLinecap="round" />
-      <path className="login-guide-mouth login-guide-mouth-success" d="M96 108C110 100 130 100 142 108" fill="none" stroke="#15803d" strokeWidth="4.3" strokeLinecap="round" />
-      <path className="login-guide-mouth login-guide-mouth-error" d="M96 98C110 106 130 106 142 98" fill="none" stroke="#b91c1c" strokeWidth="4.3" strokeLinecap="round" />
+  const armStyle = {
+    transformOrigin: "top left",
+    transition: "transform 450ms cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+    transform: armTransform,
+  };
+  const rightArmStyle = {
+    transformOrigin: "top right",
+    transition: "transform 450ms cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+    transform: `${armTransform.replace("rotate(105deg)", "rotate(-105deg)")}`,
+  };
+  const twoFingerStyle = {
+    transformOrigin: "bottom left",
+    transition: "transform 350ms ease-in-out",
+    transform: twoFingerTransform,
+  };
 
-      <path d="M90 40C93 34 98 31 104 30M126 30C132 31 137 34 140 40" fill="none" stroke="#2d4966" strokeWidth="3.2" strokeLinecap="round" />
-      <path d="M110 108C103 116 115 116 110 108" fill="none" stroke="#334f6c" strokeWidth="2.8" strokeLinecap="round" />
-      <path d="M66 72Q64 68 68 66" fill="none" stroke="#f2a8bb" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M154 72Q156 68 152 66" fill="none" stroke="#f2a8bb" strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
-    <span>{pending ? loginCopy[locale].checking : focus === "password" && !passwordVisible ? loginCopy[locale].private : error ? loginCopy[locale].retry : success ? loginCopy[locale].success : focus === "email" ? loginCopy[locale].finding : loginCopy[locale].guide}</span>
-  </div>;
+  return (
+    <div className="login-guide" data-state={state} aria-hidden="true">
+      <svg
+        className="mySVG"
+        viewBox="0 0 200 200"
+        xmlns="http://www.w3.org/2000/svg"
+        xmlnsXlink="http://www.w3.org/1999/xlink"
+      >
+        <defs>
+          <circle id="armMaskPath" cx="100" cy="100" r="100" />
+          <clipPath id="armMask">
+            <use xlinkHref="#armMaskPath" overflow="visible" />
+          </clipPath>
+        </defs>
+
+        <g className="login-guide-orbit" aria-hidden="true" style={{ opacity: 0 }}>
+          <circle cx="100" cy="100" r="98" />
+        </g>
+
+        <circle cx="100" cy="100" r="100" fill="#a9ddf3" />
+        <g className="body">
+          <path
+            className="bodyBGchanged"
+            style={{
+              display: showArms ? "block" : "none",
+              transition: "opacity 420ms ease",
+            }}
+            fill="#FFFFFF"
+            d="M200,122h-35h-14.9V72c0-27.6-22.4-50-50-50s-50,22.4-50,50v50H35.8H0l0,91h200L200,122z"
+          />
+          <path
+            className="bodyBGnormal"
+            style={{
+              display: showArms ? "none" : "block",
+              stroke: "#3A5E77",
+              transition: "opacity 420ms ease",
+            }}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="#FFFFFF"
+            d="M200,158.5c0-20.2-14.8-36.5-35-36.5h-14.9V72.8c0-27.4-21.7-50.4-49.1-50.8c-28-0.5-50.9,22.1-50.9,50v50 H35.8C16,122,0,138,0,157.8L0,213h200L200,158.5z"
+          />
+          <path fill="#DDF1FA" d="M100,156.4c-22.9,0-43,11.1-54.1,27.7c15.6,10,34.2,15.9,54.1,15.9s38.5-5.8,54.1-15.9 C143,167.5,122.9,156.4,100,156.4z" />
+        </g>
+
+        <g className="earL">
+          <g className="outerEar" fill="#ddf1fa" stroke="#3a5e77" strokeWidth="2.5">
+            <circle cx="47" cy="83" r="11.5" />
+            <path
+              d="M46.3 78.9c-2.3 0-4.1 1.9-4.1 4.1 0 2.3 1.9 4.1 4.1 4.1"
+              fill="none"
+              stroke="#3a5e77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+          <g className="earHair" style={{
+            transform: `translate(${-pose.earHairShiftX}px, ${-pose.earShiftLShiftY}px)`,
+            transition: "transform 430ms ease",
+          }}>
+            <rect x="51" y="64" fill="#FFFFFF" width="15" height="35" />
+            <path
+              d="M53.4 62.8C48.5 67.4 45 72.2 42.8 77c3.4-.1 6.8-.1 10.1.1-4 3.7-6.8 7.6-8.2 11.6 2.1 0 4.2 0 6.3.2-2.6 4.1-3.8 8.3-3.7 12.5 1.2-.7 3.4-1.4 5.2-1.9"
+              fill="#fff"
+              stroke="#3a5e77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        </g>
+
+        <g className="earR">
+          <g className="outerEar" style={{
+            transform: `translate(${-pose.earShiftX}px, ${pose.earShiftRShiftY}px)`,
+            transition: "transform 380ms ease",
+          }}>
+            <circle fill="#DDF1FA" stroke="#3A5E77" strokeWidth="2.5" cx="153" cy="83" r="11.5" />
+            <path
+              fill="#DDF1FA"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M153.7,78.9 c2.3,0,4.1,1.9,4.1,4.1c0,2.3-1.9,4.1-4.1,4.1"
+            />
+          </g>
+          <g
+            className="earHair"
+            style={{
+              transform: `translate(${pose.earHairShiftX}px, ${pose.earShiftRShiftY}px)`,
+              transition: "transform 430ms ease",
+            }}
+          >
+            <rect x="134" y="64" fill="#FFFFFF" width="15" height="35" />
+            <path
+              fill="#FFFFFF"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M146.6,62.8 c4.9,4.6,8.4,9.4,10.6,14.2c-3.4-0.1-6.8-0.1-10.1,0.1c4,3.7,6.8,7.6,8.2,11.6c-2.1,0-4.2,0-6.3,0.2c2.6,4.1,3.8,8.3,3.7,12.5 c-1.2-0.7-3.4-1.4-5.2-1.9"
+            />
+          </g>
+        </g>
+
+        <path
+          className="chin"
+          d="M84.1 121.6c2.7 2.9 6.1 5.4 9.8 7.5l.9-4.5c2.9 2.5 6.3 4.8 10.2 6.5 0-1.9-.1-3.9-.2-5.8 3 1.2 6.2 2 9.7 2.5-.3-2.1-.7-4.1-1.2-6.1"
+          fill="none"
+          stroke="#3a5e77"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: `translate(${pose.chinShiftX}px, ${pose.chinShiftY}px) scaleY(${pose.chinScaleY})`,
+            transformOrigin: "center",
+            transition: "transform 650ms ease",
+          }}
+        />
+        <path
+          className="face"
+          fill="#DDF1FA"
+          d="M134.5,46v35.5c0,21.815-15.446,39.5-34.5,39.5s-34.5-17.685-34.5-39.5V46"
+          style={{
+            transform: `translate(${pose.faceShiftX}px, ${pose.faceShiftY}px) skewX(${-pose.faceSkew}deg)`,
+            transformOrigin: "center top",
+            transition: "transform 650ms ease",
+          }}
+        />
+        <path
+          className="hair"
+          fill="#FFFFFF"
+          stroke="#3A5E77"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M81.457,27.929 c1.755-4.084,5.51-8.262,11.253-11.77c0.979,2.565,1.883,5.14,2.712,7.723c3.162-4.265,8.626-8.27,16.272-11.235 c-0.737,3.293-1.588,6.573-2.554,9.837c4.857-2.116,11.049-3.64,18.428-4.156c-2.403,3.23-5.021,6.391-7.852,9.474"
+          style={{
+            transform: `translate(${pose.hairShiftX}px, 0px) scaleY(${pose.hairScaleY})`,
+            transformOrigin: "center bottom",
+            transition: "transform 550ms ease",
+          }}
+        />
+
+        <g
+          className="eyebrow"
+          style={{
+            transform: `translate(${pose.eyebrowShiftX}px, ${pose.eyebrowShiftY}px) skewX(${-pose.eyebrowSkew}deg)`,
+            transformOrigin: "center top",
+            transition: "transform 550ms ease",
+          }}
+        >
+          <path
+            fill="#FFFFFF"
+            d="M138.142,55.064c-4.93,1.259-9.874,2.118-14.787,2.599c-0.336,3.341-0.776,6.689-1.322,10.037 c-4.569-1.465-8.909-3.222-12.996-5.226c-0.98,3.075-2.07,6.137-3.267,9.179c-5.514-3.067-10.559-6.545-15.097-10.329 c-1.806,2.889-3.745,5.73-5.816,8.515c-7.916-4.124-15.053-9.114-21.296-14.738l1.107-11.768h73.475V55.064z"
+          />
+          <path
+            fill="#FFFFFF"
+            stroke="#3A5E77"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M63.56,55.102 c6.243,5.624,13.38,10.614,21.296,14.738c2.071-2.785,4.01-5.626,5.816-8.515c4.537,3.785,9.583,7.263,15.097,10.329 c1.197-3.043,2.287-6.104,3.267-9.179c4.087,2.004,8.427,3.761,12.996,5.226c0.545-3.348,0.986-6.696,1.322-10.037 c4.913-0.481,9.857-1.34,14.787-2.599"
+          />
+        </g>
+
+        <g
+          className="eyeL"
+          style={{
+            transform: `translate(${pose.eyeOffset}px, 0px) scale(${pose.eyeScale})`,
+            transformOrigin: "center",
+            transition: "transform 230ms ease",
+          }}
+        >
+          <circle cx="85.5" cy="78.5" r="3.5" fill="#3a5e77" />
+          <circle cx="84" cy="76" r="1" fill="#fff" />
+        </g>
+        <g
+          className="eyeR"
+          style={{
+            transform: `translate(${-pose.eyeOffset}px, 0px) scale(${pose.eyeScale})`,
+            transformOrigin: "center",
+            transition: "transform 230ms ease",
+          }}
+        >
+          <circle cx="114.5" cy="78.5" r="3.5" fill="#3a5e77" />
+          <circle cx="113" cy="76" r="1" fill="#fff" />
+        </g>
+
+        <g
+          className="mouth"
+          style={{
+            transform: `translate(${pose.mouthShiftX}px, ${pose.mouthShiftY}px) rotate(${pose.mouthRotate}deg)`,
+            transformOrigin: "center center",
+            transition: "transform 500ms ease",
+          }}
+        >
+          <path
+            className="mouthBG"
+            fill="#617E92"
+            d="M100.2,101c-0.4,0-1.4,0-1.8,0c-2.7-0.3-5.3-1.1-8-2.5c-0.7-0.3-0.9-1.2-0.6-1.8 c0.2-0.5,0.7-0.7,1.2-0.7c0.2,0,0.5,0.1,0.6,0.2c3,1.5,5.8,2.3,8.6,2.3s5.7-0.7,8.6-2.3c0.2-0.1,0.4-0.2,0.6-0.2 c0.5,0,1,0.3,1.2,0.7c0.4,0.7,0.1,1.5-0.6,1.9c-2.6,1.4-5.3,2.2-7.9,2.5C101.7,101,100.5,101,100.2,101z"
+            style={{ display: mouth === "small" ? "block" : "none" }}
+          />
+          <path
+            className="mouthSmallBG"
+            style={{ display: mouth === "small" ? "block" : "none" }}
+            fill="#617E92"
+            d="M100.2,101c-0.4,0-1.4,0-1.8,0c-2.7-0.3-5.3-1.1-8-2.5c-0.7-0.3-0.9-1.2-0.6-1.8 c0.2-0.5,0.7-0.7,1.2-0.7c0.2,0,0.5,0.1,0.6,0.2c3,1.5,5.8,2.3,8.6,2.3s5.7-0.7,8.6-2.3c0.2-0.1,0.4-0.2,0.6-0.2 c0.5,0,1,0.3,1.2,0.7c0.4,0.7,0.1,1.5-0.6,1.9c-2.6,1.4-5.3,2.2-7.9,2.5C101.7,101,100.5,101,100.2,101z"
+          />
+          <path
+            className="mouthMediumBG"
+            style={{ display: mouth === "medium" ? "block" : "none" }}
+            fill="#617E92"
+            d="M95,104.2c-4.5,0-8.2-3.7-8.2-8.2v-2c0-1.2,1-2.2,2.2-2.2h22c1.2,0,2.2,1,2.2,2.2v2 c0,4.5-3.7,8.2-8.2,8.2H95z"
+          />
+          <path
+            className="mouthLargeBG"
+            style={{ display: mouth === "large" ? "block" : "none" }}
+            d="M100 110.2c-9 0-16.2-7.3-16.2-16.2 0-2.3 1.9-4.2 4.2-4.2h24c2.3 0 4.2 1.9 4.2 4.2 0 9-7.2 16.2-16.2 16.2z"
+            fill="#617e92"
+            stroke="#3a5e77"
+            strokeLinecap="round"
+            strokeWidth="2.5"
+          />
+          <defs>
+            <path
+              id="mouthMaskPath"
+              d="M100.2,101c-0.4,0-1.4,0-1.8,0c-2.7-0.3-5.3-1.1-8-2.5c-0.7-0.3-0.9-1.2-0.6-1.8 c0.2-0.5,0.7-0.7,1.2-0.7c0.2,0,0.5,0.1,0.6,0.2c3,1.5,5.8,2.3,8.6,2.3s5.7-0.7,8.6-2.3c0.2-0.1,0.4-0.2,0.6-0.2 c0.5,0,1,0.3,1.2,0.7c0.4,0.7,0.1,1.5-0.6,1.9c-2.6,1.4-5.3,2.2-7.9,2.5C101.7,101,100.5,101,100.2,101z"
+            />
+          </defs>
+          <clipPath id="mouthMask">
+            <use xlinkHref="#mouthMaskPath" overflow="visible" />
+          </clipPath>
+          <g clipPath="url(#mouthMask)">
+            <g
+              className="tongue"
+              style={{
+                transform: `translate(0, ${pose.tongueShiftY}px)`,
+                transition: "transform 500ms ease",
+              }}
+            >
+              <circle cx="100" cy="107" r="8" fill="#cc4a6c" />
+              <ellipse
+                className="tongueHighlight"
+                cx="100"
+                cy="100.5"
+                rx="3"
+                ry="1.5"
+                opacity=".1"
+                fill="#fff"
+              />
+            </g>
+          </g>
+          <path
+            className="tooth"
+            style={{ fill: "#FFFFFF" }}
+            d="M106,97h-4c-1.1,0-2-0.9-2-2v-2h8v2C108,96.1,107.1,97,106,97z"
+          />
+          <path
+            className="mouthOutline"
+            fill="none"
+            stroke="#3A5E77"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            d="M100.2,101c-0.4,0-1.4,0-1.8,0c-2.7-0.3-5.3-1.1-8-2.5c-0.7-0.3-0.9-1.2-0.6-1.8 c0.2-0.5,0.7-0.7,1.2-0.7c0.2,0,0.5,0.1,0.6,0.2c3,1.5,5.8,2.3,8.6,2.3s5.7-0.7,8.6-2.3c0.2-0.1,0.4-0.2,0.6-0.2 c0.5,0,1,0.3,1.2,0.7c0.4,0.7,0.1,1.5-0.6,1.9c-2.6,1.4-5.3,2.2-7.9,2.5C101.7,101,100.5,101,100.2,101z"
+          />
+        </g>
+
+        <g className="nose" style={{ transition: "transform 500ms ease", transformOrigin: "center center" }}>
+          <path d="M97.7 79.9h4.7c1.9 0 3 2.2 1.9 3.7l-2.3 3.3c-.9 1.3-2.9 1.3-3.8 0l-2.3-3.3c-1.3-1.6-.2-3.7 1.8-3.7z" fill="#3a5e77" />
+        </g>
+
+        <g className="arms" clipPath="url(#armMask)">
+          <g className="armL" style={{ ...armStyle, visibility: showArms ? "visible" : "hidden" }}>
+            <polygon
+              fill="#DDF1FA"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeMiterlimit="10"
+              points="121.3,98.4 111,59.7 149.8,49.3 169.8,85.4"
+            />
+            <path
+              fill="#DDF1FA"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeMiterlimit="10"
+              d="M134.4,53.5l19.3-5.2c2.7-0.7,5.4,0.9,6.1,3.5v0c0.7,2.7-0.9,5.4-3.5,6.1l-10.3,2.8"
+            />
+            <path
+              fill="#DDF1FA"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeMiterlimit="10"
+              d="M150.9,59.4l26-7c2.7-0.7,5.4,0.9,6.1,3.5v0c0.7,2.7-0.9,5.4-3.5,6.1l-21.3,5.7"
+            />
+            <g className="twoFingers" style={twoFingerStyle}>
+              <path
+                fill="#DDF1FA"
+                stroke="#3A5E77"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeMiterlimit="10"
+                d="M158.3,67.8l23.1-6.2c2.7-0.7,5.4,0.9,6.1,3.5v0c0.7,2.7-0.9,5.4-3.5,6.1l-23.1,6.2"
+              />
+              <path
+                fill="#A9DDF3"
+                d="M180.1,65l2.2-0.6c1.1-0.3,2.2,0.3,2.4,1.4v0c0.3,1.1-0.3,2.2-1.4,2.4l-2.2,0.6L180.1,65z"
+              />
+              <path
+                fill="#DDF1FA"
+                stroke="#3A5E77"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeMiterlimit="10"
+                d="M160.8,77.5l19.4-5.2c2.7-0.7,5.4,0.9,6.1,3.5v0c0.7,2.7-0.9,5.4-3.5,6.1l-18.3,4.9"
+              />
+              <path
+                fill="#A9DDF3"
+                d="M178.8,75.7l2.2-0.6c1.1-0.3,2.2,0.3,2.4,1.4v0c0.3,1.1-0.3,2.2-1.4,2.4l-2.2,0.6L178.8,75.7z"
+              />
+            </g>
+            <path
+              fill="#A9DDF3"
+              d="M175.5,55.9l2.2-0.6c1.1-0.3,2.2,0.3,2.4,1.4v0c0.3,1.1-0.3,2.2-1.4,2.4l-2.2,0.6L175.5,55.9z"
+            />
+            <path
+              fill="#A9DDF3"
+              d="M152.1,50.4l2.2-0.6c1.1-0.3,2.2,0.3,2.4,1.4v0c0.3,1.1-0.3,2.2-1.4,2.4l-2.2,0.6L152.1,50.4z"
+            />
+            <path
+              fill="#FFFFFF"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M123.5,97.8 c-41.4,14.9-84.1,30.7-108.2,35.5L1.2,81c33.5-9.9,71.9-16.5,111.9-21.8"
+            />
+            <path
+              fill="#FFFFFF"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M108.5,60.4 c7.7-5.3,14.3-8.4,22.8-13.2c-2.4,5.3-4.7,10.3-6.7,15.1c4.3,0.3,8.4,0.7,12.3,1.3c-4.2,5-8.1,9.6-11.5,13.9 c3.1,1.1,6,2.4,8.7,3.8c-1.4,2.9-2.7,5.8-3.9,8.5c2.5,3.5,4.6,7.2,6.3,11c-4.9-0.8-9-0.7-16.2-2.7"
+            />
+            <path
+              fill="#FFFFFF"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M94.5,103.8 c-0.6,4-3.8,8.9-9.4,14.7c-2.6-1.8-5-3.7-7.2-5.7c-2.5,4.1-6.6,8.8-12.2,14c-1.9-2.2-3.4-4.5-4.5-6.9c-4.4,3.3-9.5,6.9-15.4,10.8 c-0.2-3.4,0.1-7.1,1.1-10.9"
+            />
+            <path
+              fill="#FFFFFF"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M97.5,63.9 c-1.7-2.4-5.9-4.1-12.4-5.2c-0.9,2.2-1.8,4.3-2.5,6.5c-3.8-1.8-9.4-3.1-17-3.8c0.5,2.3,1.2,4.5,1.9,6.8c-5-0.6-11.2-0.9-18.4-1 c2,2.9,0.9,3.5,3.9,6.2"
+            />
+          </g>
+
+          <g className="armR" style={{ ...rightArmStyle, visibility: showArms ? "visible" : "hidden" }}>
+            <path
+              fill="#ddf1fa"
+              stroke="#3a5e77"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeMiterlimit="10"
+              strokeWidth="2.5"
+              d="M265.4 97.3l10.4-38.6-38.9-10.5-20 36.1z"
+            />
+            <path
+              fill="#ddf1fa"
+              stroke="#3a5e77"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeMiterlimit="10"
+              strokeWidth="2.5"
+              d="M252.4 52.4L233 47.2c-2.7-.7-5.4.9-6.1 3.5-.7 2.7.9 5.4 3.5 6.1l10.3 2.8M226 76.4l-19.4-5.2c-2.7-.7-5.4.9-6.1 3.5-.7 2.7.9 5.4 3.5 6.1l18.3 4.9M228.4 66.7l-23.1-6.2c-2.7-.7-5.4.9-6.1 3.5-.7 2.7.9 5.4 3.5 6.1l23.1 6.2M235.8 58.3l-26-7c-2.7-.7-5.4.9-6.1 3.5-.7 2.7.9 5.4 3.5 6.1l21.3 5.7"
+            />
+            <path
+              fill="#a9ddf3"
+              d="M207.9 74.7l-2.2-.6c-1.1-.3-2.2.3-2.4 1.4-.3 1.1.3 2.2 1.4 2.4l2.2.6 1-3.8zM206.7 64l-2.2-.6c-1.1-.3-2.2.3-2.4 1.4-.3 1.1.3 2.2 1.4 2.4l2.2.6 1-3.8zM211.2 54.8l-2.2-.6c-1.1-.3-2.2.3-2.4 1.4-.3 1.1.3 2.2 1.4 2.4l2.2.6 1-3.8zM234.6 49.4l-2.2-.6c-1.1-.3-2.2.3-2.4 1.4-.3 1.1.3 2.2 1.4 2.4l2.2.6 1-3.8z"
+            />
+            <path
+              fill="#fff"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M263.3 96.7c41.4 14.9 84.1 30.7 108.2 35.5l14-52.3C352 70 313.6 63.5 273.6 58.1"
+            />
+            <path
+              fill="#fff"
+              stroke="#3A5E77"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M278.2 59.3l-18.6-10 2.5 11.9-10.7 6.5 9.9 8.7-13.9 6.4 9.1 5.9-13.2 9.2 23.1-.9M284.5 100.1c-.4 4 1.8 8.9 6.7 14.8 3.5-1.8 6.7-3.6 9.7-5.5 1.8 4.2 5.1 8.9 10.1 14.1 2.7-2.1 5.1-4.4 7.1-6.8 4.1 3.4 9 7 14.7 11 1.2-3.4 1.8-7 1.7-10.9M314 66.7s5.4-5.7 12.6-7.4c1.7 2.9 3.3 5.7 4.9 8.6 3.8-2.5 9.8-4.4 18.2-5.7.1 3.1.1 6.1 0 9.2 5.5-1 12.5-1.6 20.8-1.9-1.4 3.9-2.5 8.4-2.5 8.4"
+            />
+          </g>
+        </g>
+      </svg>
+    </div>
+  );
 }
 
 function LoginButton({ locale }: { locale: SupportedLocale }) {
@@ -115,20 +660,14 @@ function LoginButton({ locale }: { locale: SupportedLocale }) {
 
   return (
     <button
-      className="button button-primary button-full"
+      id="login"
+      className="button-primary"
       type="submit"
       disabled={pending}
       aria-busy={pending}
       data-feedback-label={copy.feedback}
     >
-      {pending ? (
-        <>
-          <LoaderCircle className="ux-spin" size={18} />
-          {copy.connecting}
-        </>
-      ) : (
-        copy.signIn
-      )}
+      {copy.signIn}
     </button>
   );
 }
@@ -150,75 +689,128 @@ export function LoginForm({
   demoPassword?: string;
   locale?: SupportedLocale;
 }) {
-  const [focus, setFocus] = useState<"email" | "password" | null>(null);
-  const [emailLength, setEmailLength] = useState(demoEmail?.length ?? 0);
+  const initialEmail = demoEmail ?? "";
+  const initialPassword = demoPassword ?? "";
+  const [focus, setFocus] = useState<GuideFocus>(null);
+  const [emailValue, setEmailValue] = useState(initialEmail);
+  const [passwordValue, setPasswordValue] = useState(initialPassword);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [mouth, setMouth] = useState<GuideMouth>(classifyMouthState(initialEmail));
+
   const copy = loginCopy[locale];
+
+  const handleEmailInput = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setEmailValue(value);
+    setMouth(classifyMouthState(value));
+  };
+
+  const handleEmailFocus = () => setFocus("email");
+  const handlePasswordFocus = () => setFocus("password");
+
+  const handleFieldBlur = () => {
+    requestAnimationFrame(() => {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement) {
+        if (activeElement.id === "loginPassword" || activeElement.id === "showPasswordCheck") {
+          setFocus("password");
+          return;
+        }
+        if (activeElement.id === "loginEmail") {
+          setFocus("email");
+          return;
+        }
+      }
+      setFocus(null);
+    });
+  };
+
+  const handlePasswordInput = (event: ChangeEvent<HTMLInputElement>) => {
+    setPasswordValue(event.target.value);
+  };
+
   return (
     <form
       action={loginAction}
-      className="login-card"
-      data-feedback-label={copy.feedback}
+      className="login-template-form"
     >
-      <LoginGuide focus={focus} emailLength={emailLength} passwordVisible={passwordVisible} error={error} success={setupComplete || resetComplete} locale={locale} />
-      <p className="eyebrow">{copy.welcome}</p>
-      <h2>{copy.title}</h2>
-      <p className="muted">{copy.subtitle}</p>
-
-      {setupComplete || resetComplete ? (
-        <div className="form-success" role="status">
-          {resetComplete
-            ? copy.resetComplete
-            : copy.setupComplete}
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="form-alert" role="alert">
-          {copy.error}
-        </div>
-      ) : null}
-
-      <label>
-        {copy.email}
-        <input
-          name="email"
-          type="email"
-          defaultValue={demo ? demoEmail : ""}
-          autoComplete="username"
-          onFocus={() => setFocus("email")}
-          onBlur={() => setFocus(null)}
-          onChange={(event) => setEmailLength(event.target.value.length)}
-          required
-        />
-      </label>
-
-      <div className="field-control">
-        <label htmlFor="login-password">{copy.password}</label>
-        <span className="password-input-wrap">
-          <input
-            id="login-password"
-            name="password"
-            type={passwordVisible ? "text" : "password"}
-            defaultValue={demo ? demoPassword : ""}
-            autoComplete="current-password"
-            onFocus={() => setFocus("password")}
-            onBlur={() => setFocus(null)}
-            required
+      <div className="svgContainer">
+        <div>
+          <LoginGuide
+            focus={focus}
+            passwordVisible={passwordVisible}
+            error={error}
+            success={setupComplete || resetComplete}
+            locale={locale}
+            emailValue={emailValue}
+            mouth={mouth}
           />
-          <button type="button" className="password-visibility" aria-label={passwordVisible ? copy.hidePassword : copy.showPassword} aria-pressed={passwordVisible} onMouseDown={(event) => event.preventDefault()} onClick={() => setPasswordVisible((visible) => !visible)}>{passwordVisible ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-        </span>
+        </div>
       </div>
 
-      <div className="login-form-meta"><span>{copy.manager}</span><Link href="/account/forgot-password">{copy.forgot}</Link></div>
+      <div className={`inputGroup inputGroup1 ${focus === "email" || emailValue.length > 0 ? "focusWithText" : ""}`}>
+        <label htmlFor="loginEmail" id="loginEmailLabel">
+          {copy.email}
+        </label>
+        <input
+          type="email"
+          id="loginEmail"
+          name="email"
+          maxLength={254}
+          value={emailValue}
+          autoComplete="username"
+          onChange={handleEmailInput}
+          onFocus={handleEmailFocus}
+          onBlur={handleFieldBlur}
+          required
+        />
+        <p className="helper helper1">{copy.emailHint}</p>
+      </div>
 
-      <LoginButton locale={locale} />
+      <div className="inputGroup inputGroup2">
+        <label htmlFor="loginPassword" id="loginPasswordLabel">
+          {copy.password}
+        </label>
+        <input
+          id="loginPassword"
+          name="password"
+          type={passwordVisible ? "text" : "password"}
+          value={passwordValue}
+          onChange={handlePasswordInput}
+          autoComplete="current-password"
+          onFocus={handlePasswordFocus}
+          onBlur={handleFieldBlur}
+          required
+        />
+        <label
+          id="showPasswordToggle"
+          htmlFor="showPasswordCheck"
+          role="button"
+          aria-pressed={passwordVisible}
+          aria-label={copy.showPasswordLabel}
+          onFocus={handlePasswordFocus}
+          onBlur={handleFieldBlur}
+        >
+          {copy.showPassword}
+          <input
+            id="showPasswordCheck"
+            type="checkbox"
+            aria-label={copy.showPasswordLabel}
+            checked={passwordVisible}
+            onChange={(event) => {
+              setPasswordVisible(event.currentTarget.checked);
+              setFocus("password");
+            }}
+            onFocus={handlePasswordFocus}
+            onBlur={handleFieldBlur}
+          />
+          <div className="indicator" aria-hidden="true" />
+        </label>
+      </div>
 
-      {demo ? (
-        <p className="demo-note">
-          <strong>{copy.demo}</strong> {copy.demoHelp}
-        </p>
-      ) : null}
+      <div className="inputGroup inputGroup3">
+        <LoginButton locale={locale} />
+      </div>
     </form>
   );
 }
