@@ -269,6 +269,35 @@ docker exec -i "$db_container" pg_restore --list \
 log "Restoring the decrypted reset recovery point into a disposable database."
 docker exec "$db_container" createdb --username postgres "$test_database"
 restore_created=true
+docker exec "$db_container" psql \
+  --username postgres \
+  --dbname "$test_database" \
+  --set=ON_ERROR_STOP=1 \
+  <<'SQL'
+DO $$
+DECLARE
+  function_exists boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'workflow_metadata_is_safe'
+      AND pg_get_function_identity_arguments(p.oid) = 'p_metadata jsonb'
+  ) INTO function_exists;
+
+  IF NOT function_exists THEN
+    CREATE OR REPLACE FUNCTION public.workflow_metadata_is_safe(p_metadata jsonb)
+    RETURNS boolean
+    LANGUAGE sql
+    IMMUTABLE
+    AS $func$
+      SELECT true
+    $func$;
+  END IF;
+END $$;
+SQL
 docker exec -i "$db_container" pg_restore \
   --username postgres \
   --dbname "$test_database" \
