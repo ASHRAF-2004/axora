@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap");
+
 :root {
   --navy-950: #061c33;
   --navy-900: #0b2d52;
@@ -391,7 +393,9 @@ textarea { min-height: 82px; resize: vertical; }
   border-radius: 4px;
   box-sizing: border-box;
   width: 100%;
+  height: 65px;
   min-height: 65px;
+  box-shadow: none !important;
   font-size: 1.55em;
   color: #fff;
   font-weight: 600;
@@ -463,15 +467,23 @@ textarea { min-height: 82px; resize: vertical; }
 .login-back-link:hover { color: var(--navy-900); }
 .login-guide { display: block; }
 .login-guide svg { width: 200px; height: 200px; overflow: visible; }
-.login-guide-orbit { transform-box: fill-box; transform-origin: center; }
+.login-guide-orbit {
+  animation: none !important;
+  transition: none !important;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.login-guide-orbit circle {
+  fill: none;
+  stroke: rgba(33, 112, 147, 0.12);
+  stroke-width: 0.35;
+}
 .password-input-wrap { position: relative; display: block; }
 .password-input-wrap input { padding-inline-end: 48px; }
 .password-visibility { position: absolute; inset-inline-end: 4px; top: 4px; width: 40px; height: calc(100% - 8px); display: grid; place-items: center; color: var(--slate-500); background: transparent; border: 0; border-radius: 9px; }
 .password-visibility:hover { color: var(--navy-900); background: var(--slate-100); }
 .login-form-meta { margin-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--slate-500); font-size: 12px; }
 .login-form-meta a { color: var(--blue-600); font-weight: 800; white-space: nowrap; }
-@keyframes login-orbit { to { transform: rotate(360deg); } }
-@keyframes login-blink { 50% { opacity: .35; } }
 .muted { color: var(--slate-500); }
 .demo-note { margin: 18px 0 0; padding: 12px; border-radius: 10px; color: var(--slate-500); background: var(--slate-50); font-size: 12px; line-height: 1.5; }
 .account-setup-requirements { margin: 13px 0 0; color: var(--slate-500); font-size: 12px; line-height: 1.55; }
@@ -519,10 +531,6 @@ textarea { min-height: 82px; resize: vertical; }
   .login-template-form {
     padding: 1.65em;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .login-guide-orbit { animation: none !important; transition: none !important; }
 }
 
 /* Global UX feedback */

@@ -249,8 +249,8 @@ function LoginGuide({
           </clipPath>
         </defs>
 
-        <g className="login-guide-orbit" aria-hidden="true">
-          <circle cx="100" cy="100" r="98" fill="none" stroke="rgba(33, 112, 147, 0.12)" strokeWidth="0.35" />
+        <g className="login-guide-orbit" aria-hidden="true" style={{ opacity: 0 }}>
+          <circle cx="100" cy="100" r="98" />
         </g>
 
         <circle cx="100" cy="100" r="100" fill="#a9ddf3" />
