@@ -67,6 +67,7 @@ function LoginGuide({
           <stop offset="1" stopColor="#E8A33D" stopOpacity="0" />
         </linearGradient>
       </defs>
+      <ellipse className="login-guide-orbit" cx="110" cy="82" rx="86" ry="58" fill="none" stroke="#E8A33D" strokeWidth="2" strokeDasharray="4 10" />
 
       <g transform="translate(110 28)">
         <ellipse cx="0" cy="82" rx="56" ry="20" fill="url(#axora-yeti-glow)" />
