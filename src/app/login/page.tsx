@@ -37,15 +37,17 @@ export default async function LoginPage({
       lang={locale}
       dir={locale === "ar" ? "rtl" : "ltr"}
     >
-      <LoginForm
-        error={Boolean(error)}
-        setupComplete={setup === "complete"}
-        resetComplete={reset === "complete"}
-        demo={demo}
-        demoEmail={process.env.DEMO_EMAIL}
-        demoPassword={process.env.DEMO_PASSWORD}
-        locale={locale}
-      />
+      <div className="login-template-container">
+        <LoginForm
+          error={Boolean(error)}
+          setupComplete={setup === "complete"}
+          resetComplete={reset === "complete"}
+          demo={demo}
+          demoEmail={process.env.DEMO_EMAIL}
+          demoPassword={process.env.DEMO_PASSWORD}
+          locale={locale}
+        />
+      </div>
     </main>
   );
 }
