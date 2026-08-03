@@ -174,8 +174,8 @@ textarea { min-height: 82px; resize: vertical; }
 .login-panel-stack { width: min(420px, 100%); display: grid; gap: 14px; }
 .login-back-link { justify-self: start; color: var(--slate-500); font-size: 12px; font-weight: 750; }
 .login-back-link:hover { color: var(--navy-900); }
-.login-guide { height: 142px; margin: -18px -10px 14px; display: grid; place-items: center; align-content: center; }
-.login-guide svg { width: 180px; height: 116px; overflow: visible; }
+.login-guide { height: 142px; margin: -18px 0 14px; display: grid; place-items: center; align-content: center; }
+.login-guide svg { width: 200px; height: 136px; overflow: visible; justify-self: center; }
 .login-guide > span { margin-top: -3px; color: var(--slate-500); font-size: 12px; font-weight: 750; letter-spacing: .03em; }
 .login-guide-eyes { transform-box: fill-box; transform-origin: center; transition: transform .18s ease, opacity .18s ease; }
 .login-guide-lids { opacity: 0; transition: opacity .18s ease; }
