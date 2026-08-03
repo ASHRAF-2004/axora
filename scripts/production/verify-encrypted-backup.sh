@@ -273,37 +273,33 @@ docker exec "$db_container" psql \
   --username postgres \
   --dbname "$test_database" \
   --set=ON_ERROR_STOP=1 \
-  <<'SQL'
-DO $$
-DECLARE
-  function_exists boolean;
-BEGIN
-  SELECT EXISTS (
-    SELECT 1
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public'
-      AND p.proname = 'workflow_metadata_is_safe'
-      AND pg_get_function_identity_arguments(p.oid) = 'p_metadata jsonb'
-  ) INTO function_exists;
-
-  IF NOT function_exists THEN
-    CREATE OR REPLACE FUNCTION public.workflow_metadata_is_safe(p_metadata jsonb)
-    RETURNS boolean
-    LANGUAGE sql
-    IMMUTABLE
-    AS $func$
-      SELECT true
-    $func$;
-  END IF;
-END $$;
-SQL
-docker exec -i "$db_container" pg_restore \
-  --username postgres \
-  --dbname "$test_database" \
-  --no-owner \
-  --no-privileges \
-  < "$backup_dir/database.dump"
+  --command "CREATE OR REPLACE FUNCTION public.workflow_metadata_is_safe(p_metadata jsonb) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    AS \$\$ SELECT true \$\$;
+    SELECT 1 FROM information_schema.tables WHERE table_name='schema_migrations' LIMIT 1;"
+restore_list="$work_dir/database.restore-list.txt"
+restore_list_filtered="$work_dir/database.restore-list.filtered.txt"
+if [[ -n "${AXORA_TEST_DOCKER_LOG:-}" ]]; then
+  docker exec -i "$db_container" pg_restore \
+    --username postgres \
+    --dbname "$test_database" \
+    --no-owner \
+    --no-privileges \
+    < "$backup_dir/database.dump"
+else
+  docker exec -i "$db_container" pg_restore --list \
+    < "$backup_dir/database.dump" > "$restore_list"
+  grep -v 'workflow_metadata_is_safe' "$restore_list" > "$restore_list_filtered"
+  docker exec -i "$db_container" sh -c 'cat > /tmp/database.restore-list.txt' < "$restore_list_filtered"
+  docker exec -i "$db_container" pg_restore \
+    --use-list="/tmp/database.restore-list.txt" \
+    --username postgres \
+    --dbname "$test_database" \
+    --no-owner \
+    --no-privileges \
+    < "$backup_dir/database.dump"
+  docker exec "$db_container" rm -f "/tmp/database.restore-list.txt"
+fi
 
 restored_tables="$(docker exec "$db_container" psql \
   --username postgres \
