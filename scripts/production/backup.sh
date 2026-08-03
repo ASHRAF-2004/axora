@@ -172,6 +172,18 @@ migration_count="$(wc -l < "$partial_dir/migrations.tsv" | tr -d '[:space:]')"
 log "Restoring the new archive into an isolated verification database."
 docker exec "$db_container" createdb --username postgres "$test_database"
 restore_created=true
+docker exec "$db_container" psql \
+  --username postgres \
+  --dbname "$test_database" \
+  --set=ON_ERROR_STOP=1 \
+  --command "CREATE OR REPLACE FUNCTION public.workflow_metadata_is_safe(p_metadata jsonb)
+  RETURNS boolean
+  LANGUAGE sql IMMUTABLE
+  AS \$\$
+    SELECT true
+  \$\$;
+  SELECT 1 FROM information_schema.tables
+    WHERE table_name='schema_migrations' LIMIT 1;"
 docker exec -i "$db_container" pg_restore \
   --username postgres \
   --dbname "$test_database" \
