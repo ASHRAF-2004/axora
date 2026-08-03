@@ -56,29 +56,54 @@ function LoginGuide({
   const glance = focus === "email" ? Math.min(4, Math.max(-4, (emailLength % 9) - 4)) : 0;
   const state = pending ? "loading" : error ? "error" : success ? "success" : focus === "password" ? (passwordVisible ? "peek" : "private") : focus === "email" ? "email" : "idle";
   return <div className="login-guide" data-state={state} aria-hidden="true">
-    <svg viewBox="0 0 180 126" role="presentation">
+    <svg viewBox="0 0 220 150" role="presentation">
       <defs>
-        <linearGradient id="axora-login-face" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#0B2D52"/><stop offset="1" stopColor="#164E7A"/></linearGradient>
+        <linearGradient id="axora-yeti-body" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f8fbff" />
+          <stop offset="1" stopColor="#e4eef7" />
+        </linearGradient>
+        <linearGradient id="axora-yeti-glow" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#E8A33D" stopOpacity="0.12" />
+          <stop offset="1" stopColor="#E8A33D" stopOpacity="0" />
+        </linearGradient>
       </defs>
-      <path className="login-guide-orbit" d="M24 61C35 20 145 15 160 60C171 96 128 116 84 112C44 109 13 94 24 61Z" fill="none" stroke="#E8A33D" strokeWidth="3" strokeDasharray="4 8" />
-      <rect x="43" y="27" width="94" height="76" rx="27" fill="url(#axora-login-face)" />
-      <path d="M72 27V17M108 27V17" stroke="#E8A33D" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="72" cy="16" r="5" fill="#E8A33D"/><circle cx="108" cy="16" r="5" fill="#E8A33D"/>
+      <ellipse className="login-guide-orbit" cx="110" cy="82" rx="86" ry="58" fill="none" stroke="#E8A33D" strokeWidth="2" strokeDasharray="4 10" />
+
+      <g transform="translate(110 28)">
+        <ellipse cx="0" cy="82" rx="56" ry="20" fill="url(#axora-yeti-glow)" />
+      </g>
+      <circle cx="58" cy="39" r="9" fill="#fff" stroke="#c6d8eb" strokeWidth="2" />
+      <circle cx="162" cy="40" r="9" fill="#fff" stroke="#c6d8eb" strokeWidth="2" />
+      <path d="M58 43C57 44 56 47 56 50C56 58 62 64 70 64C78 64 84 58 84 50C84 47 83 44 82 43" fill="none" stroke="#7f9eb8" strokeWidth="3" strokeLinecap="round" />
+      <path d="M162 43C161 44 160 47 160 50C160 58 166 64 174 64C182 64 188 58 188 50C188 47 187 44 186 43" fill="none" stroke="#7f9eb8" strokeWidth="3" strokeLinecap="round" />
+
+      <ellipse cx="110" cy="85" rx="76" ry="42" fill="url(#axora-yeti-body)" stroke="#c7d9ed" strokeWidth="3" />
+      <circle cx="66" cy="82" r="22" fill="#ffffff" stroke="#d5e4f1" strokeWidth="3" />
+      <circle cx="154" cy="82" r="22" fill="#ffffff" stroke="#d5e4f1" strokeWidth="3" />
+      <circle cx="110" cy="82" r="30" fill="#ffffff" stroke="#d5e4f1" strokeWidth="3" />
+
+      <circle cx="70" cy="80" r="16" fill="#fff" />
+      <circle cx="150" cy="80" r="16" fill="#fff" />
+      <circle cx="150" cy="80" r="13" fill="#f3f8fd" stroke="#bfd2e3" strokeWidth="2" />
+      <circle cx="70" cy="80" r="13" fill="#f3f8fd" stroke="#bfd2e3" strokeWidth="2" />
+
       <g className="login-guide-eyes" style={{ transform: `translateX(${glance}px)` }}>
-        <ellipse cx="73" cy="59" rx="9" ry="10" fill="#fff" />
-        <ellipse cx="107" cy="59" rx="9" ry="10" fill="#fff" />
-        <circle cx="73" cy="60" r="4" fill="#0B2D52" />
-        <circle cx="107" cy="60" r="4" fill="#0B2D52" />
+        <circle cx="70" cy="81" r="4.8" fill="#0B2D52" />
+        <circle cx="150" cy="81" r="4.8" fill="#0B2D52" />
       </g>
-      <g className="login-guide-lids">
-        <path d="M62 59Q73 51 84 59" fill="none" stroke="#E8A33D" strokeWidth="4" strokeLinecap="round" />
-        <path d="M96 59Q107 51 118 59" fill="none" stroke="#E8A33D" strokeWidth="4" strokeLinecap="round" />
+      <g className="login-guide-lids" opacity="0.9">
+        <path d="M58 83C58 74 62 70 70 70" fill="none" stroke="#5c7690" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M140 70C148 70 152 74 152 83" fill="none" stroke="#5c7690" strokeWidth="3.5" strokeLinecap="round" />
       </g>
-      <path className="login-guide-mouth login-guide-mouth-neutral" d="M80 82H100" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
-      <path className="login-guide-mouth login-guide-mouth-success" d="M77 79Q90 91 103 79" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
-      <path className="login-guide-mouth login-guide-mouth-error" d="M77 87Q90 75 103 87" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
-      <path className="login-guide-shield" d="M139 74L151 69L163 74V84C163 94 157 100 151 103C145 100 139 94 139 84Z" fill="#fff" stroke="#E8A33D" strokeWidth="3" />
-      <path d="M147 85L150 88L156 80" fill="none" stroke="#0B2D52" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+      <path className="login-guide-mouth login-guide-mouth-neutral" d="M96 102C110 108 130 108 142 102" fill="none" stroke="#334f6c" strokeWidth="4.3" strokeLinecap="round" />
+      <path className="login-guide-mouth login-guide-mouth-success" d="M96 108C110 100 130 100 142 108" fill="none" stroke="#15803d" strokeWidth="4.3" strokeLinecap="round" />
+      <path className="login-guide-mouth login-guide-mouth-error" d="M96 98C110 106 130 106 142 98" fill="none" stroke="#b91c1c" strokeWidth="4.3" strokeLinecap="round" />
+
+      <path d="M90 40C93 34 98 31 104 30M126 30C132 31 137 34 140 40" fill="none" stroke="#2d4966" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M110 108C103 116 115 116 110 108" fill="none" stroke="#334f6c" strokeWidth="2.8" strokeLinecap="round" />
+      <path d="M66 72Q64 68 68 66" fill="none" stroke="#f2a8bb" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M154 72Q156 68 152 66" fill="none" stroke="#f2a8bb" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
     <span>{pending ? loginCopy[locale].checking : focus === "password" && !passwordVisible ? loginCopy[locale].private : error ? loginCopy[locale].retry : success ? loginCopy[locale].success : focus === "email" ? loginCopy[locale].finding : loginCopy[locale].guide}</span>
   </div>;

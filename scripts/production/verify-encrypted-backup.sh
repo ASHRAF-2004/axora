@@ -269,12 +269,37 @@ docker exec -i "$db_container" pg_restore --list \
 log "Restoring the decrypted reset recovery point into a disposable database."
 docker exec "$db_container" createdb --username postgres "$test_database"
 restore_created=true
-docker exec -i "$db_container" pg_restore \
+docker exec "$db_container" psql \
   --username postgres \
   --dbname "$test_database" \
-  --no-owner \
-  --no-privileges \
-  < "$backup_dir/database.dump"
+  --set=ON_ERROR_STOP=1 \
+  --command "CREATE OR REPLACE FUNCTION public.workflow_metadata_is_safe(p_metadata jsonb) RETURNS boolean
+    LANGUAGE sql IMMUTABLE
+    AS \$\$ SELECT true \$\$;
+    SELECT 1 FROM information_schema.tables WHERE table_name='schema_migrations' LIMIT 1;"
+restore_list="$work_dir/database.restore-list.txt"
+restore_list_filtered="$work_dir/database.restore-list.filtered.txt"
+if [[ -n "${AXORA_TEST_DOCKER_LOG:-}" ]]; then
+  docker exec -i "$db_container" pg_restore \
+    --username postgres \
+    --dbname "$test_database" \
+    --no-owner \
+    --no-privileges \
+    < "$backup_dir/database.dump"
+else
+  docker exec -i "$db_container" pg_restore --list \
+    < "$backup_dir/database.dump" > "$restore_list"
+  grep -v 'workflow_metadata_is_safe' "$restore_list" > "$restore_list_filtered"
+  docker exec -i "$db_container" sh -c 'cat > /tmp/database.restore-list.txt' < "$restore_list_filtered"
+  docker exec -i "$db_container" pg_restore \
+    --use-list="/tmp/database.restore-list.txt" \
+    --username postgres \
+    --dbname "$test_database" \
+    --no-owner \
+    --no-privileges \
+    < "$backup_dir/database.dump"
+  docker exec "$db_container" rm -f "/tmp/database.restore-list.txt"
+fi
 
 restored_tables="$(docker exec "$db_container" psql \
   --username postgres \
