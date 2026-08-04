@@ -98,6 +98,14 @@ const loginCopy = {
 } as const;
 
 type GuideFocus = "email" | "password" | null;
+type GuideState =
+  | "idle"
+  | "email"
+  | "private"
+  | "peek"
+  | "success"
+  | "error"
+  | "loading";
 
 function LoginGuide({
   focus,
@@ -116,6 +124,19 @@ function LoginGuide({
 }) {
   const { pending } = useFormStatus();
   const copy = loginCopy[locale];
+  const state: GuideState = pending
+    ? "loading"
+    : error
+      ? "error"
+      : success
+        ? "success"
+        : focus === "password"
+          ? passwordVisible
+            ? "peek"
+            : "private"
+          : focus === "email"
+            ? "email"
+            : "idle";
   const glance =
     focus === "email"
       ? Math.min(5, Math.max(-5, (emailLength % 11) - 5))
@@ -129,21 +150,23 @@ function LoginGuide({
       ? "translate(14 4) rotate(18 148 116)"
       : "translate(0 0) rotate(0 148 116)"
     : "translate(34 54) rotate(28 148 116)";
-  const status = pending
-    ? copy.checking
-    : error
-      ? copy.retry
-      : success
-        ? copy.success
-        : focus === "password" && !passwordVisible
-          ? copy.private
-          : focus === "email"
-            ? copy.finding
-            : copy.guide;
+  const status =
+    state === "loading"
+      ? copy.checking
+      : state === "error"
+        ? copy.retry
+        : state === "success"
+          ? copy.success
+          : state === "private"
+            ? copy.private
+            : state === "email"
+              ? copy.finding
+              : copy.guide;
 
   return (
     <div
       className="login-guide"
+      data-state={state}
       aria-hidden="true"
       style={{
         minHeight: 190,
@@ -172,14 +195,16 @@ function LoginGuide({
           </clipPath>
         </defs>
 
-        <circle
-          cx="110"
-          cy="88"
-          r="78"
-          fill="url(#axora-guide-bg)"
-          stroke="#217093"
-          strokeWidth="3"
-        />
+        <g className="login-guide-orbit">
+          <circle
+            cx="110"
+            cy="88"
+            r="78"
+            fill="url(#axora-guide-bg)"
+            stroke="#217093"
+            strokeWidth="3"
+          />
+        </g>
 
         <g clipPath="url(#axora-guide-clip)">
           <ellipse
@@ -219,6 +244,7 @@ function LoginGuide({
           />
 
           <g
+            className="login-guide-eyes"
             style={{
               transform: `translateX(${glance}px)`,
               transformOrigin: "center",
