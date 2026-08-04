@@ -1,0 +1,96 @@
+name: Verify live exact login
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-live-exact-login
+  cancel-in-progress: true
+
+jobs:
+  verify-live:
+    name: Verify axora.management deployment
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out expected production assets
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Wait for the guarded Ubuntu deployment and verify the public result
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          for attempt in $(seq 1 100); do
+            cache_buster="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}-$(date +%s)"
+
+            ready=false
+            login=false
+            artwork=false
+
+            if curl \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              "https://axora.management/api/health/ready?verify=${cache_buster}" \
+              --output /tmp/axora-ready.json; then
+              if grep -Eq '"status"[[:space:]]*:[[:space:]]*"ready"' /tmp/axora-ready.json; then
+                ready=true
+              fi
+            fi
+
+            if curl \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              "https://axora.management/login?verify=${cache_buster}" \
+              --output /tmp/axora-login.html; then
+              if grep -q 'aria-label="Sign in to Axora"' /tmp/axora-login.html \
+                && grep -q 'id="loginEmail"' /tmp/axora-login.html \
+                && grep -q 'id="loginPassword"' /tmp/axora-login.html \
+                && grep -q '>Log in<' /tmp/axora-login.html \
+                && ! grep -q 'One clear place for every request' /tmp/axora-login.html; then
+                login=true
+              fi
+            fi
+
+            if curl \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --max-time 20 \
+              --header 'Cache-Control: no-cache' \
+              "https://axora.management/login-yeti.svg?verify=${cache_buster}" \
+              --output /tmp/live-login-yeti.svg; then
+              if cmp --silent public/login-yeti.svg /tmp/live-login-yeti.svg; then
+                artwork=true
+              fi
+            fi
+
+            printf 'Attempt %s: ready=%s login=%s artwork=%s\n' \
+              "$attempt" "$ready" "$login" "$artwork"
+
+            if [[ "$ready" == true && "$login" == true && "$artwork" == true ]]; then
+              echo 'The exact supplied Yeti login is live at https://axora.management/login.'
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+          echo 'The public deployment did not reach the expected exact-login state within the verification window.' >&2
+          exit 1
