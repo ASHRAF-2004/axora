@@ -8,13 +8,21 @@ import {
   myProfileMeetsRequiredOnboarding,
 } from "@/lib/profile";
 import { landingPathForSession } from "@/lib/session-landing";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Sign in",
   robots: { index: false, follow: false, noarchive: true },
 };
+
+const backLabels = {
+  en: "Back to website",
+  ar: "العودة إلى الموقع",
+  ms: "Kembali ke laman web",
+} as const;
 
 export default async function LoginPage({
   searchParams,
@@ -39,6 +47,7 @@ export default async function LoginPage({
   const { error, setup, reset } = await searchParams;
   const demo = isDemoMode();
   const { locale } = await requestLocaleDecision();
+  const BackIcon = locale === "ar" ? ArrowRight : ArrowLeft;
 
   return (
     <main
@@ -47,6 +56,15 @@ export default async function LoginPage({
       dir={locale === "ar" ? "rtl" : "ltr"}
       aria-label="Axora login"
     >
+      <Link
+        className={styles.backLink}
+        href={`/${locale}`}
+        aria-label={backLabels[locale]}
+      >
+        <BackIcon size={18} aria-hidden="true" />
+        <span>{backLabels[locale]}</span>
+      </Link>
+
       <div className={styles.container}>
         <LoginForm
           error={Boolean(error)}

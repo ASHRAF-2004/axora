@@ -6,13 +6,8 @@ const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 async function expectNoAutomatedWcagViolations(
   page: Parameters<typeof signInAsDemoOwner>[0],
-  excludedSelectors: string[] = [],
 ) {
-  let builder = new AxeBuilder({ page }).withTags(wcagTags);
-  for (const selector of excludedSelectors) {
-    builder = builder.exclude(selector);
-  }
-  const results = await builder.analyze();
+  const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
   const summary = results.violations.map((violation) => ({
     id: violation.id,
     impact: violation.impact,
@@ -58,7 +53,7 @@ test("public account routes expose a main landmark and page heading", async ({
   }
 });
 
-test("sign-in controls have programmatic labels and password-manager hints", async ({
+test("sign-in controls have programmatic labels, password-manager hints, and return navigation", async ({
   page,
 }) => {
   await page.goto("/login");
@@ -70,14 +65,30 @@ test("sign-in controls have programmatic labels and password-manager hints", asy
   await expect(password).toHaveAttribute("type", "password");
   await expect(password).toHaveAttribute("autocomplete", "current-password");
   await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
+  await expect(
+    page.getByRole("link", { name: "Back to website" }),
+  ).toHaveAttribute("href", "/en");
 });
 
-test("the supplied login button palette remains exact", async ({ page }) => {
+test("login uses the Axora public website palette", async ({ page }) => {
   await page.goto("/login");
 
   const button = page.locator("#login");
-  await expect(button).toHaveCSS("background-color", "rgb(78, 184, 221)");
+  await expect(button).toHaveCSS("background-color", "rgb(11, 45, 82)");
   await expect(button).toHaveCSS("color", "rgb(255, 255, 255)");
+
+  const email = page.getByLabel("Email");
+  await email.focus();
+  await expect(email).toHaveCSS("border-color", "rgb(154, 91, 8)");
+
+  await expect(page.locator(".login-guide .mySVG > circle")).toHaveCSS(
+    "fill",
+    "rgb(232, 163, 61)",
+  );
+  await expect(page.locator(".login-guide .bodyBGnormal")).toHaveCSS(
+    "stroke",
+    "rgb(11, 45, 82)",
+  );
 });
 
 test("the authenticated shell exposes named navigation and profile controls", async ({
@@ -129,10 +140,7 @@ test("critical public and authenticated surfaces pass automated WCAG A/AA checks
     await test.step(route, async () => {
       await page.goto(route);
       await expect(page.getByRole("main")).toBeVisible();
-      await expectNoAutomatedWcagViolations(
-        page,
-        route === "/login" ? ["#login"] : [],
-      );
+      await expectNoAutomatedWcagViolations(page);
     });
   }
 
