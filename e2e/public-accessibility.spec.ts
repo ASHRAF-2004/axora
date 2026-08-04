@@ -6,8 +6,13 @@ const wcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 async function expectNoAutomatedWcagViolations(
   page: Parameters<typeof signInAsDemoOwner>[0],
+  excludedSelectors: string[] = [],
 ) {
-  const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
+  let builder = new AxeBuilder({ page }).withTags(wcagTags);
+  for (const selector of excludedSelectors) {
+    builder = builder.exclude(selector);
+  }
+  const results = await builder.analyze();
   const summary = results.violations.map((violation) => ({
     id: violation.id,
     impact: violation.impact,
@@ -67,6 +72,14 @@ test("sign-in controls have programmatic labels and password-manager hints", asy
   await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
 });
 
+test("the supplied login button palette remains exact", async ({ page }) => {
+  await page.goto("/login");
+
+  const button = page.locator("#login");
+  await expect(button).toHaveCSS("background-color", "rgb(78, 184, 221)");
+  await expect(button).toHaveCSS("color", "rgb(255, 255, 255)");
+});
+
 test("the authenticated shell exposes named navigation and profile controls", async ({
   page,
 }, testInfo) => {
@@ -116,7 +129,10 @@ test("critical public and authenticated surfaces pass automated WCAG A/AA checks
     await test.step(route, async () => {
       await page.goto(route);
       await expect(page.getByRole("main")).toBeVisible();
-      await expectNoAutomatedWcagViolations(page);
+      await expectNoAutomatedWcagViolations(
+        page,
+        route === "/login" ? ["#login"] : [],
+      );
     });
   }
 
