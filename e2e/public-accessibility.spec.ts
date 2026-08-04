@@ -34,9 +34,15 @@ test("public account routes expose a main landmark and page heading", async ({
     await test.step(route.path, async () => {
       await page.goto(route.path);
       await expect(page.locator("main")).toHaveCount(1);
-      await expect(
-        page.getByRole("heading", { level: 1, name: route.heading }),
-      ).toBeAttached();
+      const heading = page.getByRole("heading", {
+        level: 1,
+        name: route.heading,
+      });
+      if (route.path === "/login") {
+        await expect(heading).toBeAttached();
+      } else {
+        await expect(heading).toBeVisible();
+      }
       const overflow = await page.evaluate(
         () =>
           document.documentElement.scrollWidth -
