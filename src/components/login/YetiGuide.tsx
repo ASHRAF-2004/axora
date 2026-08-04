@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { useFormStatus } from "react-dom";
 import styles from "../LoginForm.module.css";
 
@@ -35,6 +41,10 @@ function querySvg<T extends Element>(root: HTMLElement, selector: string) {
   return root.querySelector<T>(selector);
 }
 
+function cancelAnimations(element: Element | null) {
+  element?.getAnimations().forEach((animation) => animation.cancel());
+}
+
 function setTransform(
   element: SVGGraphicsElement | null,
   transform: string,
@@ -43,6 +53,7 @@ function setTransform(
   easing = "cubic-bezier(.16,1,.3,1)",
 ) {
   if (!element) return;
+  cancelAnimations(element);
   element.style.transformBox = "fill-box";
   element.style.transition = reducedMotion
     ? "none"
@@ -130,7 +141,7 @@ function applyMouthState(
     }BG`,
   );
   const d = source?.getAttribute("d");
-  if (!d) return;
+  if (!d) return 1;
 
   for (const selector of [".mouthBG", ".mouthOutline", "#mouthMaskPath"]) {
     querySvg<SVGPathElement>(root, selector)?.setAttribute("d", d);
@@ -211,7 +222,7 @@ function moveFaceToCaret(
   reducedMotion: boolean,
 ) {
   const svg = querySvg<SVGSVGElement>(root, "svg");
-  if (!svg) return;
+  if (!svg || svg.clientWidth === 0 || svg.clientHeight === 0) return;
 
   const target = caretTarget(input, svg, value, caretIndex);
   const screenCenter = 100;
@@ -240,8 +251,11 @@ function moveFaceToCaret(
   const outerEarX = Math.cos(mouthAngle) * 4;
   const outerEarY = Math.cos(mouthAngle) * 5;
   const hairX = Math.cos(mouthAngle) * 6;
-  const eyeScale =
-    applyMouthState(root, mouthStateFor(value), reducedMotion) ?? 1;
+  const eyeScale = applyMouthState(
+    root,
+    mouthStateFor(value),
+    reducedMotion,
+  );
 
   setTransform(
     querySvg(root, ".eyeL"),
@@ -324,6 +338,9 @@ export function YetiGuide({
 }) {
   const { pending } = useFormStatus();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const svgHostRef = useRef<HTMLDivElement | null>(null);
+  const faceFrameRef = useRef<number | null>(null);
+  const armFrameRef = useRef<number | null>(null);
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
   const state: GuideState = pending
@@ -357,13 +374,37 @@ export function YetiGuide({
     return () => controller.abort();
   }, []);
 
-  useEffect(() => {
+  // Inject the trusted local SVG once. React must not own or replace these
+  // animated nodes on every controlled-input render.
+  useLayoutEffect(() => {
+    const host = svgHostRef.current;
+    if (!host || !svgMarkup) return;
+
+    host.innerHTML = svgMarkup;
+
+    return () => {
+      host.replaceChildren();
+    };
+  }, [svgMarkup]);
+
+  useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root || !svgMarkup) return;
+
     const leftArm = querySvg<SVGGElement>(root, ".armL");
     const rightArm = querySvg<SVGGElement>(root, ".armR");
+    const coveredBody = querySvg<SVGPathElement>(root, ".bodyBGchanged");
+    const normalBody = querySvg<SVGPathElement>(root, ".bodyBGnormal");
+
     setTransform(leftArm, "translate(-93px, 220px) rotate(105deg)", true);
     setTransform(rightArm, "translate(-93px, 220px) rotate(-105deg)", true);
+    if (leftArm) leftArm.style.visibility = "hidden";
+    if (rightArm) rightArm.style.visibility = "hidden";
+    if (coveredBody) {
+      coveredBody.style.display = "none";
+      coveredBody.style.opacity = "0";
+    }
+    if (normalBody) normalBody.style.opacity = "1";
   }, [svgMarkup]);
 
   useEffect(() => {
@@ -375,6 +416,11 @@ export function YetiGuide({
     const coveredBody = querySvg<SVGPathElement>(root, ".bodyBGchanged");
     let hideTimer: number | undefined;
 
+    if (armFrameRef.current !== null) {
+      window.cancelAnimationFrame(armFrameRef.current);
+      armFrameRef.current = null;
+    }
+
     if (focus === "password") {
       if (leftArm) leftArm.style.visibility = "visible";
       if (rightArm) rightArm.style.visibility = "visible";
@@ -383,7 +429,8 @@ export function YetiGuide({
         coveredBody.style.opacity = "1";
       }
       if (normalBody) normalBody.style.opacity = "0";
-      requestAnimationFrame(() => {
+
+      armFrameRef.current = window.requestAnimationFrame(() => {
         setTransform(
           leftArm,
           "translate(-93px, 10px) rotate(0deg)",
@@ -398,6 +445,7 @@ export function YetiGuide({
           450,
           "ease-out",
         );
+        armFrameRef.current = null;
       });
     } else {
       setTransform(
@@ -416,6 +464,7 @@ export function YetiGuide({
       );
       if (normalBody) normalBody.style.opacity = "1";
       if (coveredBody) coveredBody.style.opacity = "0";
+
       hideTimer = window.setTimeout(() => {
         if (leftArm) leftArm.style.visibility = "hidden";
         if (rightArm) rightArm.style.visibility = "hidden";
@@ -425,6 +474,10 @@ export function YetiGuide({
 
     return () => {
       if (hideTimer !== undefined) window.clearTimeout(hideTimer);
+      if (armFrameRef.current !== null) {
+        window.cancelAnimationFrame(armFrameRef.current);
+        armFrameRef.current = null;
+      }
     };
   }, [focus, reducedMotion, svgMarkup]);
 
@@ -448,31 +501,93 @@ export function YetiGuide({
     const input = emailRef.current;
     if (!root || !svgMarkup) return;
 
-    if (focus === "email" && input) {
-      moveFaceToCaret(root, input, emailValue, caretIndex, reducedMotion);
-      return;
+    if (faceFrameRef.current !== null) {
+      window.cancelAnimationFrame(faceFrameRef.current);
     }
 
-    const eyeScale =
-      applyMouthState(root, mouthStateFor(emailValue), reducedMotion) ?? 1;
-    resetFace(root, reducedMotion, eyeScale);
+    faceFrameRef.current = window.requestAnimationFrame(() => {
+      if (focus === "email" && input) {
+        moveFaceToCaret(
+          root,
+          input,
+          emailValue,
+          caretIndex,
+          reducedMotion,
+        );
+      } else {
+        const eyeScale = applyMouthState(
+          root,
+          mouthStateFor(emailValue),
+          reducedMotion,
+        );
+        resetFace(root, reducedMotion, eyeScale);
+      }
+      faceFrameRef.current = null;
+    });
+
+    return () => {
+      if (faceFrameRef.current !== null) {
+        window.cancelAnimationFrame(faceFrameRef.current);
+        faceFrameRef.current = null;
+      }
+    };
   }, [caretIndex, emailRef, emailValue, focus, reducedMotion, svgMarkup]);
 
   useEffect(() => {
+    if (focus !== "email" || !svgMarkup) return;
+
+    const updateAfterLayoutChange = () => {
+      const root = rootRef.current;
+      const input = emailRef.current;
+      if (!root || !input) return;
+
+      if (faceFrameRef.current !== null) {
+        window.cancelAnimationFrame(faceFrameRef.current);
+      }
+      faceFrameRef.current = window.requestAnimationFrame(() => {
+        moveFaceToCaret(
+          root,
+          input,
+          emailValue,
+          caretIndex,
+          reducedMotion,
+        );
+        faceFrameRef.current = null;
+      });
+    };
+
+    window.addEventListener("resize", updateAfterLayoutChange);
+    window.visualViewport?.addEventListener("resize", updateAfterLayoutChange);
+
+    return () => {
+      window.removeEventListener("resize", updateAfterLayoutChange);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updateAfterLayoutChange,
+      );
+    };
+  }, [caretIndex, emailRef, emailValue, focus, reducedMotion, svgMarkup]);
+
+  // Blink only while idle so a blink animation cannot overwrite active
+  // email tracking or password-cover transforms.
+  useEffect(() => {
     const root = rootRef.current;
-    if (!root || !svgMarkup || reducedMotion || focus === "password") return;
+    if (!root || !svgMarkup || reducedMotion || focus !== null) return;
     let timer: number | undefined;
     let cancelled = false;
+    const activeAnimations: Animation[] = [];
 
     const schedule = () => {
       timer = window.setTimeout(() => {
         if (cancelled) return;
+        activeAnimations.length = 0;
+
         for (const selector of [".eyeL", ".eyeR"]) {
           const eye = querySvg<SVGGraphicsElement>(root, selector);
           if (!eye) continue;
           const base =
             eye.style.transform || "translate(0px, 0px) scale(1)";
-          eye.animate(
+          const animation = eye.animate(
             [
               { transform: base },
               { transform: `${base} scaleY(0.05)` },
@@ -480,7 +595,9 @@ export function YetiGuide({
             ],
             { duration: 200, easing: "ease-in-out" },
           );
+          activeAnimations.push(animation);
         }
+
         schedule();
       }, 2000 + Math.floor(Math.random() * 9000));
     };
@@ -489,6 +606,7 @@ export function YetiGuide({
     return () => {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
+      activeAnimations.forEach((animation) => animation.cancel());
     };
   }, [focus, reducedMotion, svgMarkup]);
 
@@ -500,11 +618,7 @@ export function YetiGuide({
       data-reduced-motion={reducedMotion ? "true" : "false"}
       aria-hidden="true"
     >
-      {svgMarkup ? (
-        <div dangerouslySetInnerHTML={{ __html: svgMarkup }} />
-      ) : (
-        <div aria-hidden="true" />
-      )}
+      <div ref={svgHostRef} aria-hidden="true" />
     </div>
   );
 }
