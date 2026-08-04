@@ -280,7 +280,7 @@ test("reduced-motion preference removes meaningful public transition motion", as
   );
 });
 
-test("the public login entry resolves to the exact sign-in form", async ({
+test("the public login entry resolves to the themed sign-in form with return navigation", async ({
   context,
   page,
 }) => {
@@ -293,7 +293,10 @@ test("the public login entry resolves to the exact sign-in form", async ({
   await expect(
     page.getByRole("form", { name: "Sign in to Axora" }),
   ).toBeVisible();
-  await expect(page.getByRole("link")).toHaveCount(0);
+  const backLink = page.getByRole("link", { name: "Back to website" });
+  await expect(backLink).toBeVisible();
+  await expect(backLink).toHaveAttribute("href", "/en");
+  await expect(page.getByRole("link")).toHaveCount(1);
 });
 
 test("login guide reacts to password privacy and respects reduced motion", async ({
@@ -315,7 +318,7 @@ test("login guide reacts to password privacy and respects reduced motion", async
   await expect(guide).toHaveAttribute("data-reduced-motion", "true");
 });
 
-test("Arabic login keeps localized exact controls without extra navigation", async ({
+test("Arabic login keeps localized controls and return navigation", async ({
   context,
   page,
 }) => {
@@ -327,7 +330,9 @@ test("Arabic login keeps localized exact controls without extra navigation", asy
   await expect(
     page.getByRole("form", { name: "تسجيل الدخول إلى Axora" }),
   ).toBeVisible();
-  await expect(main.getByRole("link")).toHaveCount(0);
+  const backLink = main.getByRole("link", { name: "العودة إلى الموقع" });
+  await expect(backLink).toHaveAttribute("href", "/ar");
+  await expect(main.getByRole("link")).toHaveCount(1);
   await expect(page.getByLabel("البريد الإلكتروني")).toHaveAttribute(
     "type",
     "email",
