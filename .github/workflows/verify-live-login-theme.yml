@@ -16,7 +16,7 @@ jobs:
   verify-live:
     name: Verify axora.management login theme
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - name: Check out verification code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -59,7 +59,7 @@ jobs:
 
           let lastError = null;
 
-          for (let attempt = 1; attempt <= 80; attempt += 1) {
+          for (let attempt = 1; attempt <= 20; attempt += 1) {
             const page = await context.newPage();
 
             try {
@@ -152,18 +152,48 @@ jobs:
 
               const password = page.locator("#loginPassword");
               await password.focus();
+              await page.waitForFunction(
+                () => {
+                  const guideElement = document.querySelector(".login-guide");
+                  const armElement = document.querySelector(
+                    ".login-guide .armL",
+                  );
+                  return (
+                    guideElement?.getAttribute("data-state") === "private" &&
+                    armElement instanceof SVGGraphicsElement &&
+                    armElement.style.visibility === "visible" &&
+                    armElement.style.transform.includes("translate(-93px, 10px)")
+                  );
+                },
+                undefined,
+                { timeout: 5_000 },
+              );
+
+              const coveredArm = await guide.locator(".armL").elementHandle();
+              if (!coveredArm) throw new Error("The Yeti arm was unavailable.");
               await password.type("x");
-              const arm = guide.locator(".armL");
-              const armState = await arm.evaluate((element) => ({
-                visibility: element.style.visibility,
-                transform: element.style.transform,
-              }));
-              if (
-                armState.visibility !== "visible" ||
-                !armState.transform.includes("translate(-93px, 10px)")
-              ) {
+              await page.waitForFunction(
+                () => {
+                  const guideElement = document.querySelector(".login-guide");
+                  const armElement = document.querySelector(
+                    ".login-guide .armL",
+                  );
+                  return (
+                    guideElement?.getAttribute("data-state") === "private" &&
+                    armElement instanceof SVGGraphicsElement &&
+                    armElement.style.visibility === "visible" &&
+                    armElement.style.transform.includes("translate(-93px, 10px)")
+                  );
+                },
+                undefined,
+                { timeout: 5_000 },
+              );
+              const armPreserved = await coveredArm.evaluate(
+                (node) => document.querySelector(".login-guide .armL") === node,
+              );
+              if (!armPreserved) {
                 throw new Error(
-                  `The Yeti no longer covers its eyes: ${JSON.stringify(armState)}`,
+                  "The themed login replaced the arm after the first password character.",
                 );
               }
 
@@ -192,7 +222,7 @@ jobs:
                 }`,
               );
               await page.close();
-              await new Promise((resolve) => setTimeout(resolve, 15_000));
+              await new Promise((resolve) => setTimeout(resolve, 10_000));
             }
           }
 
