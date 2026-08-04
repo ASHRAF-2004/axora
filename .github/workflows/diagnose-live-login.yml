@@ -1,0 +1,39 @@
+name: Diagnose live login
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect live login response
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cache_buster="${GITHUB_RUN_ID}-$(date +%s)"
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --max-time 30 \
+            --header 'Cache-Control: no-cache' \
+            "https://axora.management/login?diagnose=${cache_buster}" \
+            --output /tmp/login.html
+
+          echo "Back link count: $(grep -o 'Back to website' /tmp/login.html | wc -l)"
+          echo "Old blue token count: $(grep -o '#4eb8dd' /tmp/login.html | wc -l)"
+          echo "Axora theme label count: $(grep -o 'aria-label=\"Back to website\"' /tmp/login.html | wc -l)"
+
+          if grep -q 'Back to website' /tmp/login.html; then
+            echo 'Live HTML includes the new return navigation.'
+          else
+            echo 'Live HTML is still serving the previous login release.'
+          fi
