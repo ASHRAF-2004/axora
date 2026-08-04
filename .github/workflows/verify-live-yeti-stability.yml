@@ -1,0 +1,189 @@
+name: Verify live Yeti stability
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-live-yeti-stability
+  cancel-in-progress: true
+
+jobs:
+  verify-live:
+    name: Verify live first-password-character behavior
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out the verification commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.13.0"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install the browser used for live verification
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for production and verify the real Yeti interaction
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          node --input-type=module <<'NODE'
+          import { chromium } from "@playwright/test";
+
+          const baseUrl = "https://axora.management";
+          const browser = await chromium.launch();
+          const context = await browser.newContext({ locale: "en-US" });
+          let lastError = null;
+
+          for (let attempt = 1; attempt <= 80; attempt += 1) {
+            const page = await context.newPage();
+
+            try {
+              const cacheBuster = `${process.env.GITHUB_RUN_ID}-${attempt}-${Date.now()}`;
+              const readyResponse = await fetch(
+                `${baseUrl}/api/health/ready?verify=${cacheBuster}`,
+                {
+                  headers: { "Cache-Control": "no-cache" },
+                  signal: AbortSignal.timeout(20_000),
+                },
+              );
+              const readyBody = await readyResponse.text();
+
+              if (!readyResponse.ok || !readyBody.includes('"status":"ready"')) {
+                throw new Error(
+                  `Readiness failed: ${readyResponse.status} ${readyBody.slice(0, 160)}`,
+                );
+              }
+
+              await page.goto(`${baseUrl}/login?verify=${cacheBuster}`, {
+                waitUntil: "domcontentloaded",
+                timeout: 25_000,
+              });
+
+              const guide = page.locator(".login-guide");
+              const email = page.locator("#loginEmail");
+              const password = page.locator("#loginPassword");
+              const eye = guide.locator(".eyeL");
+              const leftArm = guide.locator(".armL");
+              const mouth = guide.locator(".mouthBG");
+
+              await guide.locator("svg").waitFor({ state: "visible", timeout: 15_000 });
+              await email.focus();
+
+              const originalEyeNode = await eye.elementHandle();
+              if (!originalEyeNode) throw new Error("The left eye node was unavailable.");
+
+              await email.type("a");
+              const sameEyeAfterFirstLetter = await originalEyeNode.evaluate(
+                (node) => document.querySelector(".login-guide .eyeL") === node,
+              );
+              if (!sameEyeAfterFirstLetter) {
+                throw new Error("The SVG eye node was replaced after the first email letter.");
+              }
+
+              await email.type("shraf@example.com", { delay: 8 });
+              const sameEyeAfterEmail = await originalEyeNode.evaluate(
+                (node) => document.querySelector(".login-guide .eyeL") === node,
+              );
+              if (!sameEyeAfterEmail) {
+                throw new Error("The SVG eye node was replaced while entering the email.");
+              }
+
+              const openMouthPath = await mouth.getAttribute("d");
+              if (!openMouthPath?.includes("M100 110.2")) {
+                throw new Error("The expected email mouth state was not active.");
+              }
+
+              await password.focus();
+              await page.waitForFunction(
+                () =>
+                  document.querySelector(".login-guide")?.getAttribute("data-state") ===
+                    "private" &&
+                  document.querySelector(".login-guide .armL")?.style.visibility ===
+                    "visible",
+                undefined,
+                { timeout: 5_000 },
+              );
+
+              const coveredArmNode = await leftArm.elementHandle();
+              if (!coveredArmNode) throw new Error("The left arm node was unavailable.");
+
+              await password.type("x");
+
+              const sameArmAfterFirstCharacter = await coveredArmNode.evaluate(
+                (node) => document.querySelector(".login-guide .armL") === node,
+              );
+              if (!sameArmAfterFirstCharacter) {
+                throw new Error(
+                  "The SVG arm node was replaced after the first password character.",
+                );
+              }
+
+              const armState = await leftArm.evaluate((node) => ({
+                visibility: node.style.visibility,
+                transform: node.style.transform,
+              }));
+              if (
+                armState.visibility !== "visible" ||
+                !armState.transform.includes("translate(-93px, 10px)")
+              ) {
+                throw new Error(
+                  `The Yeti stopped covering its eyes: ${JSON.stringify(armState)}`,
+                );
+              }
+
+              const mouthAfterPassword = await mouth.getAttribute("d");
+              if (mouthAfterPassword !== openMouthPath) {
+                throw new Error("The mouth state reset after the first password character.");
+              }
+
+              await email.focus();
+              await email.type("z");
+
+              const sameEyeAfterReturn = await originalEyeNode.evaluate(
+                (node) => document.querySelector(".login-guide .eyeL") === node,
+              );
+              if (!sameEyeAfterReturn) {
+                throw new Error("The SVG eye node was replaced after returning to email.");
+              }
+
+              await page.waitForFunction(
+                () =>
+                  document.querySelector(".login-guide")?.getAttribute("data-state") ===
+                  "email",
+                undefined,
+                { timeout: 5_000 },
+              );
+
+              console.log(
+                `Attempt ${attempt}: live login is healthy and the Yeti remains stable.`,
+              );
+              await page.close();
+              await browser.close();
+              process.exit(0);
+            } catch (error) {
+              lastError = error;
+              console.log(
+                `Attempt ${attempt}: ${error instanceof Error ? error.message : String(error)}`,
+              );
+              await page.close();
+              await new Promise((resolve) => setTimeout(resolve, 15_000));
+            }
+          }
+
+          await browser.close();
+          throw lastError ?? new Error("Live Yeti verification timed out.");
+          NODE
