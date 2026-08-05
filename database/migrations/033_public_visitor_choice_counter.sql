@@ -363,6 +363,8 @@ REVOKE ALL ON TABLE
   public.public_visitor_claim_tokens
 FROM PUBLIC;
 REVOKE ALL ON FUNCTION
+  public.protect_public_visitor_counter_state(),
+  public.reject_public_visitor_claim_mutation(),
   public.axora_public_visitor_snapshot(text,text,text),
   public.axora_claim_public_visitor(
     text,text,text,text,text,text,text,timestamptz,text
@@ -376,6 +378,14 @@ BEGIN
       public.public_visitor_counter_state,
       public.public_visitor_claims,
       public.public_visitor_claim_tokens
+    FROM axora_app;
+    REVOKE ALL ON FUNCTION
+      public.protect_public_visitor_counter_state(),
+      public.reject_public_visitor_claim_mutation(),
+      public.axora_public_visitor_snapshot(text,text,text),
+      public.axora_claim_public_visitor(
+        text,text,text,text,text,text,text,timestamptz,text
+      )
     FROM axora_app;
     GRANT EXECUTE ON FUNCTION
       public.axora_public_visitor_snapshot(text,text,text),
