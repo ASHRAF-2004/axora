@@ -158,8 +158,7 @@ async function openReadyEnglish(page: Page, context: BrowserContext) {
 }
 
 test.describe("visitor-choice recovery state machine", () => {
-  test.beforeEach((fixtures, testInfo) => {
-    void fixtures;
+  test.beforeEach(({}, testInfo) => {
     test.skip(
       testInfo.project.name !== "chromium",
       "Detailed fault injection runs once in desktop Chromium.",
