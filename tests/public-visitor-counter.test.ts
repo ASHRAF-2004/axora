@@ -52,9 +52,11 @@ describe("public visitor identity", () => {
     expect(claim.tokenHash).toMatch(/^[0-9a-f]{64}$/);
     expect(visitorTokenHashFromCookie(claim.value)).toBe(claim.tokenHash);
 
-    const lastCharacter = claim.value.at(-1);
-    const tampered = `${claim.value.slice(0, -1)}${lastCharacter === "A" ? "B" : "A"}`;
-    expect(visitorTokenHashFromCookie(tampered)).toBeUndefined();
+    const parts = claim.value.split(".");
+    const signature = parts[2];
+    if (!signature) throw new Error("The test cookie signature is missing.");
+    parts[2] = `${signature.startsWith("A") ? "B" : "A"}${signature.slice(1)}`;
+    expect(visitorTokenHashFromCookie(parts.join("."))).toBeUndefined();
     expect(visitorTokenHashFromCookie("not-a-cookie")).toBeUndefined();
   });
 
