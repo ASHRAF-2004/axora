@@ -60,8 +60,10 @@ jobs:
 
           let apiScriptRequested = false;
           let apiScriptStatus = null;
+          let challengeRequestCount = 0;
           let visitorPostAttempted = 0;
           let visitorPostBlocked = 0;
+          let pageErrorCount = 0;
 
           await page.route("**/*", async (route) => {
             const request = route.request();
@@ -78,8 +80,14 @@ jobs:
             await route.continue();
           });
 
+          page.on("pageerror", () => {
+            pageErrorCount += 1;
+          });
           page.on("request", (request) => {
             const url = new URL(request.url());
+            if (url.origin === "https://challenges.cloudflare.com") {
+              challengeRequestCount += 1;
+            }
             if (
               url.origin === "https://challenges.cloudflare.com" &&
               url.pathname === "/turnstile/v0/api.js"
@@ -123,6 +131,73 @@ jobs:
           await choice.waitFor({ state: "visible", timeout: 15_000 });
           await page.waitForTimeout(4_000);
 
+          const apiStateBeforeClick = await page.evaluate(() => ({
+            present: Boolean(window.turnstile),
+            ready: typeof window.turnstile?.ready === "function",
+            render: typeof window.turnstile?.render === "function",
+            execute: typeof window.turnstile?.execute === "function",
+          }));
+
+          await page.evaluate(() => {
+            const api = window.turnstile;
+            const trace = {
+              ready: 0,
+              render: 0,
+              execute: 0,
+              reset: 0,
+              remove: 0,
+              successCallback: 0,
+              errorCallback: 0,
+              expiredCallback: 0,
+              timeoutCallback: 0,
+              unsupportedCallback: 0,
+              renderReturnedUsableId: false,
+            };
+            Object.defineProperty(window, "__axoraTurnstileTrace", {
+              value: trace,
+              configurable: true,
+            });
+            if (!api) return;
+
+            for (const name of ["ready", "execute", "reset", "remove"]) {
+              const original = api[name];
+              if (typeof original !== "function") continue;
+              api[name] = function (...args) {
+                trace[name] += 1;
+                return original.apply(this, args);
+              };
+            }
+
+            const originalRender = api.render;
+            if (typeof originalRender === "function") {
+              api.render = function (...args) {
+                trace.render += 1;
+                const options = args[1];
+                if (options && typeof options === "object") {
+                  const callbackMap = {
+                    callback: "successCallback",
+                    "error-callback": "errorCallback",
+                    "expired-callback": "expiredCallback",
+                    "timeout-callback": "timeoutCallback",
+                    "unsupported-callback": "unsupportedCallback",
+                  };
+                  for (const [optionName, traceName] of Object.entries(callbackMap)) {
+                    const originalCallback = options[optionName];
+                    if (typeof originalCallback !== "function") continue;
+                    options[optionName] = function (...callbackArgs) {
+                      trace[traceName] += 1;
+                      return originalCallback.apply(this, callbackArgs);
+                    };
+                  }
+                }
+                const result = originalRender.apply(this, args);
+                trace.renderReturnedUsableId =
+                  typeof result === "string" && result.trim().length > 0;
+                return result;
+              };
+            }
+          });
+
           const iframeBeforeClick = page.frames().some((frame) => {
             try {
               return new URL(frame.url()).origin
@@ -135,6 +210,15 @@ jobs:
           await choice.click();
           await page.waitForTimeout(20_000);
 
+          const apiStateAfterClick = await page.evaluate(() => ({
+            present: Boolean(window.turnstile),
+            ready: typeof window.turnstile?.ready === "function",
+            render: typeof window.turnstile?.render === "function",
+            execute: typeof window.turnstile?.execute === "function",
+          }));
+          const callTrace = await page.evaluate(() =>
+            window.__axoraTurnstileTrace ?? null,
+          );
           const iframeAfterClick = page.frames().some((frame) => {
             try {
               return new URL(frame.url()).origin
@@ -152,11 +236,16 @@ jobs:
 
           console.log(`Turnstile api.js requested: ${apiScriptRequested}`);
           console.log(`Turnstile api.js response status: ${apiScriptStatus ?? "none"}`);
+          console.log(`Cloudflare challenge requests observed: ${challengeRequestCount}`);
+          console.log(`Turnstile API before click: ${JSON.stringify(apiStateBeforeClick)}`);
+          console.log(`Turnstile API after click: ${JSON.stringify(apiStateAfterClick)}`);
+          console.log(`Turnstile call trace: ${JSON.stringify(callTrace)}`);
           console.log(`Turnstile iframe before click: ${iframeBeforeClick}`);
           console.log(`Turnstile iframe after click: ${iframeAfterClick}`);
           console.log(`Visitor-choice POST attempted: ${visitorPostAttempted}`);
           console.log(`Visitor-choice POST blocked before network: ${visitorPostBlocked}`);
           console.log(`Permanent claim cookie present: ${claimCookiePresent}`);
+          console.log(`Page error count: ${pageErrorCount}`);
           console.log(`Final localized UI status: ${statusText || "none"}`);
 
           if (visitorPostBlocked !== visitorPostAttempted) {
