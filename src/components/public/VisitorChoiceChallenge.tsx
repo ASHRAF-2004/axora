@@ -201,10 +201,9 @@ async function buildLimitedClientSignal() {
 }
 
 function abortError(error: unknown) {
-  return (error instanceof DOMException && error.name === "AbortError")
-    || (Boolean(error) && typeof error === "object"
-      && "name" in error
-      && error.name === "AbortError");
+  if (error instanceof DOMException) return error.name === "AbortError";
+  if (typeof error !== "object" || error === null) return false;
+  return "name" in error && error.name === "AbortError";
 }
 
 export function visitorChoicePercentages(snapshot: VisitorCounterSnapshot) {
