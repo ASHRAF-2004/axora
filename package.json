@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test && playwright test --config=playwright.visitor-recovery.config.ts",
     "test:e2e:headed": "playwright test --headed",
     "qa:visual": "node scripts/qa/visual-smoke.mjs",
     "bootstrap:review-workbook": "python3 scripts/bootstrap/validate_workbook.py",
