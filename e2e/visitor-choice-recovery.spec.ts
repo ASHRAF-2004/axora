@@ -481,7 +481,8 @@ test.describe("visitor-choice recovery state machine", () => {
     await page.clock.fastForward(18_100);
     const retry = page.getByRole("button", { name: "Retry" });
     await expect(retry).toBeVisible();
-    await retry.evaluate((button) => {
+    await retry.evaluate((element) => {
+      const button = element as HTMLButtonElement;
       button.click();
       button.click();
     });
