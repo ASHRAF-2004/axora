@@ -138,12 +138,15 @@ export function buildVisitorIdentity(input: {
     ? fingerprint("client-signal", validClientSignal)
     : undefined;
   const networkDeviceHash = remoteIp && validClientSignal
-    ? fingerprint("network-device", `${remoteIp}\0${validClientSignal}`)
+    ? fingerprint(
+      "network-device",
+      JSON.stringify([remoteIp, validClientSignal]),
+    )
     : undefined;
   const turnstileDeviceHash = validEphemeralId && validClientSignal
     ? fingerprint(
       "turnstile-device",
-      `${validEphemeralId}\0${validClientSignal}`,
+      JSON.stringify([validEphemeralId, validClientSignal]),
     )
     : undefined;
 
