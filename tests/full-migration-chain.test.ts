@@ -7,16 +7,16 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 032 to an empty database", async () => {
+  it("applies every numbered migration through 033 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
       expect(available.slice(-5)).toEqual([
-        "028_email_provider_events_and_suppression.sql",
         "029_delivery_driver_event_evidence.sql",
         "030_email_provider_lifecycle_events.sql",
         "031_support_diagnostics_security.sql",
         "032_user_session_revocation_audit.sql",
+        "033_public_visitor_choice_counter.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -48,7 +48,7 @@ describe("complete forward migration chain", () => {
         company_nullable: "YES",
         customer_match_table: "customer_three_way_matches",
       });
-      expect(state.rows[0].table_count).toBeGreaterThanOrEqual(60);
+      expect(state.rows[0].table_count).toBeGreaterThanOrEqual(63);
       expect(state.rows[0].policy_count).toBeGreaterThanOrEqual(35);
 
       await expect(db.query(`
@@ -56,6 +56,11 @@ describe("complete forward migration chain", () => {
           action_key,scope_kind,scope_hash,bucket_started_at
         ) VALUES ('LOGIN','NETWORK',$1,date_trunc('minute',now()))
       `, ["a".repeat(64)])).resolves.not.toThrow();
+      await expect(db.query(`
+        INSERT INTO public_request_rate_buckets(
+          action_key,scope_kind,scope_hash,bucket_started_at
+        ) VALUES ('VISITOR_CHOICE','NETWORK',$1,date_trunc('minute',now()))
+      `, ["c".repeat(64)])).resolves.not.toThrow();
       await expect(db.query(`
         INSERT INTO public_request_rate_buckets(
           action_key,scope_kind,scope_hash,bucket_started_at
@@ -148,6 +153,10 @@ describe("complete forward migration chain", () => {
         migrationUrl("032_user_session_revocation_audit.sql"),
         "utf8",
       ));
+      await db.exec(await readFile(
+        migrationUrl("033_public_visitor_choice_counter.sql"),
+        "utf8",
+      ));
 
       const after = await db.query<{
         requests: number;
@@ -213,7 +222,7 @@ describe("complete forward migration chain", () => {
     }
   }, 30_000);
 
-  it("keeps reset and bootstrap migration discovery dynamic through 032", async () => {
+  it("keeps reset migration discovery dynamic through 033 while bootstrap retains its 032 minimum", async () => {
     const [initializer, reset, bootstrap] = await Promise.all([
       readFile(new URL("../database/init/01-run-migration.sh", import.meta.url), "utf8"),
       readFile(new URL("../scripts/production/reset-baseline.sh", import.meta.url), "utf8"),
@@ -221,8 +230,8 @@ describe("complete forward migration chain", () => {
     ]);
     expect(initializer).toContain("/migrations/[0-9][0-9][0-9]_*.sql");
     expect(reset).toContain("/database/migrations/[0-9][0-9][0-9]_*.sql");
-    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user/);
-    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user/);
+    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public/);
+    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public/);
     expect(bootstrap).toContain(
       'const REQUIRED_MIGRATION = "032_user_session_revocation_audit.sql"',
     );
