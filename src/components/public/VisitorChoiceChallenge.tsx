@@ -27,9 +27,22 @@ type Phase =
   | "loading"
   | "ready"
   | "verifying"
+  | "recovering"
   | "claimed"
   | "unavailable"
   | "error";
+
+type FailureReason =
+  | "generic"
+  | "script"
+  | "unsupported"
+  | "verification-timeout"
+  | "request-timeout"
+  | "rejected"
+  | "rate-limited"
+  | "service-unavailable";
+
+type ScriptState = "loading" | "ready" | "error";
 
 type TurnstileWidgetId = string;
 
@@ -41,9 +54,10 @@ type TurnstileOptions = {
   execution: "execute";
   appearance: "interaction-only";
   callback: (token: string) => void;
-  "error-callback": () => void;
+  "error-callback": () => boolean;
   "expired-callback": () => void;
   "timeout-callback": () => void;
+  "unsupported-callback": () => void;
 };
 
 type TurnstileApi = {
@@ -51,7 +65,7 @@ type TurnstileApi = {
   render: (
     container: HTMLElement,
     options: TurnstileOptions,
-  ) => TurnstileWidgetId;
+  ) => unknown;
   execute: (widgetId: TurnstileWidgetId) => void;
   reset: (widgetId: TurnstileWidgetId) => void;
   remove: (widgetId: TurnstileWidgetId) => void;
@@ -59,9 +73,15 @@ type TurnstileApi = {
 
 declare global {
   interface Window {
-    turnstile?: TurnstileApi;
+    turnstile?: unknown;
   }
 }
+
+const TURNSTILE_SCRIPT_URL =
+  "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+const VERIFICATION_TIMEOUT_MS = 18_000;
+const POST_TIMEOUT_MS = 12_000;
+const SNAPSHOT_TIMEOUT_MS = 12_000;
 
 const LOCALE_TAGS: Record<SupportedLocale, string> = {
   en: "en",
@@ -98,6 +118,24 @@ function isSnapshot(value: unknown): value is VisitorCounterSnapshot {
   }
   return (candidate.choice === undefined)
     === (candidate.visitorNumber === undefined);
+}
+
+function isTurnstileApi(value: unknown): value is TurnstileApi {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<TurnstileApi>;
+  return typeof candidate.ready === "function"
+    && typeof candidate.render === "function"
+    && typeof candidate.execute === "function"
+    && typeof candidate.reset === "function"
+    && typeof candidate.remove === "function";
+}
+
+function currentTurnstileApi() {
+  return isTurnstileApi(window.turnstile) ? window.turnstile : null;
+}
+
+function isUsableWidgetId(value: unknown): value is TurnstileWidgetId {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function toHex(buffer: ArrayBuffer) {
@@ -162,6 +200,13 @@ async function buildLimitedClientSignal() {
   return toHex(digest);
 }
 
+function abortError(error: unknown) {
+  return (error instanceof DOMException && error.name === "AbortError")
+    || (Boolean(error) && typeof error === "object"
+      && "name" in error
+      && error.name === "AbortError");
+}
+
 export function visitorChoicePercentages(snapshot: VisitorCounterSnapshot) {
   if (snapshot.totalCount === 0) {
     return { early: 50, night: 50 };
@@ -184,8 +229,9 @@ export function VisitorChoiceChallenge({
 }) {
   const copy = publicVisitorCopy[locale];
   const localeTag = LOCALE_TAGS[locale];
+  const verifiedSiteKey = siteKey?.trim();
   const validSiteKey = Boolean(
-    siteKey && /^[A-Za-z0-9_-]{10,100}$/.test(siteKey),
+    verifiedSiteKey && /^[A-Za-z0-9_-]{10,100}$/.test(verifiedSiteKey),
   );
   const [snapshot, setSnapshot] = useState<VisitorCounterSnapshot>({
     totalCount: 0,
@@ -193,16 +239,33 @@ export function VisitorChoiceChallenge({
     nightOwlCount: 0,
   });
   const [phase, setPhase] = useState<Phase>("loading");
+  const [failureReason, setFailureReason] = useState<FailureReason>("generic");
   const [hovered, setHovered] = useState<VisitorChoice | null>(null);
   const [pendingChoice, setPendingChoice] = useState<VisitorChoice | null>(
     null,
   );
+  const [scriptGeneration, setScriptGeneration] = useState(0);
+
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<TurnstileWidgetId | null>(null);
   const pendingChoiceRef = useRef<VisitorChoice | null>(null);
   const clientSignalRef = useRef<string | undefined>(undefined);
   const challengeRunningRef = useRef(false);
+  const submissionRunningRef = useRef(false);
+  const retryRunningRef = useRef(false);
   const mountedRef = useRef(true);
+  const claimCompletedRef = useRef(false);
+  const scriptStateRef = useRef<ScriptState>("loading");
+  const scriptReloadPendingRef = useRef(false);
+  const activeAttemptRef = useRef<number | null>(null);
+  const attemptSequenceRef = useRef(0);
+  const preparingAttemptRef = useRef<number | null>(null);
+  const waitingForScriptAttemptRef = useRef<number | null>(null);
+  const verificationTimerRef = useRef<number | null>(null);
+  const postControllerRef = useRef<AbortController | null>(null);
+  const postTimerRef = useRef<number | null>(null);
+  const snapshotControllerRef = useRef<AbortController | null>(null);
+  const snapshotTimerRef = useRef<number | null>(null);
 
   const percentages = useMemo(
     () => visitorChoicePercentages(snapshot),
@@ -213,27 +276,151 @@ export function VisitorChoiceChallenge({
     [localeTag],
   );
 
-  const resetChallenge = useCallback(() => {
-    challengeRunningRef.current = false;
-    if (widgetIdRef.current && window.turnstile) {
-      window.turnstile.reset(widgetIdRef.current);
+  const clearVerificationTimeout = useCallback(() => {
+    if (verificationTimerRef.current !== null) {
+      window.clearTimeout(verificationTimerRef.current);
+      verificationTimerRef.current = null;
     }
   }, []);
 
-  const failChallenge = useCallback(() => {
-    if (!mountedRef.current) return;
-    resetChallenge();
-    pendingChoiceRef.current = null;
-    setPendingChoice(null);
-    setPhase("error");
-  }, [resetChallenge]);
+  const abortPost = useCallback(() => {
+    if (postTimerRef.current !== null) {
+      window.clearTimeout(postTimerRef.current);
+      postTimerRef.current = null;
+    }
+    postControllerRef.current?.abort();
+    postControllerRef.current = null;
+    submissionRunningRef.current = false;
+  }, []);
 
-  const submitClaim = useCallback(async (turnstileToken: string) => {
+  const abortSnapshot = useCallback(() => {
+    if (snapshotTimerRef.current !== null) {
+      window.clearTimeout(snapshotTimerRef.current);
+      snapshotTimerRef.current = null;
+    }
+    snapshotControllerRef.current?.abort();
+    snapshotControllerRef.current = null;
+  }, []);
+
+  const safeResetWidget = useCallback(() => {
+    challengeRunningRef.current = false;
+    const widgetId = widgetIdRef.current;
+    if (!widgetId) return;
+    const api = currentTurnstileApi();
+    if (!api) return;
+    try {
+      api.reset(widgetId);
+    } catch {
+      // A failed reset must never trap the interface in a busy state.
+    }
+  }, []);
+
+  const safeRemoveWidget = useCallback(() => {
+    challengeRunningRef.current = false;
+    const widgetId = widgetIdRef.current;
+    widgetIdRef.current = null;
+    if (widgetId) {
+      const api = currentTurnstileApi();
+      if (api) {
+        try {
+          api.remove(widgetId);
+        } catch {
+          // The container is cleared below even if the vendor teardown fails.
+        }
+      }
+    }
+    try {
+      widgetContainerRef.current?.replaceChildren();
+    } catch {
+      // Ignore detached or browser-managed container teardown failures.
+    }
+  }, []);
+
+  const retireWidget = useCallback(() => {
+    safeResetWidget();
+    safeRemoveWidget();
+  }, [safeRemoveWidget, safeResetWidget]);
+
+  const failAttempt = useCallback((
+    reason: FailureReason,
+    attempt?: number,
+  ) => {
+    if (!mountedRef.current) return;
+    if (attempt !== undefined && activeAttemptRef.current !== attempt) return;
+
+    clearVerificationTimeout();
+    abortPost();
+    preparingAttemptRef.current = null;
+    waitingForScriptAttemptRef.current = null;
+    activeAttemptRef.current = null;
+    safeResetWidget();
+    if (reason === "script") {
+      scriptReloadPendingRef.current = false;
+      scriptStateRef.current = "error";
+    }
+    if (claimCompletedRef.current) return;
+    setFailureReason(reason);
+    setPhase(reason === "service-unavailable" ? "unavailable" : "error");
+  }, [abortPost, clearVerificationTimeout, safeResetWidget]);
+
+  const fetchSnapshot = useCallback(async () => {
+    abortSnapshot();
+    const controller = new AbortController();
+    snapshotControllerRef.current = controller;
+    snapshotTimerRef.current = window.setTimeout(
+      () => controller.abort(),
+      SNAPSHOT_TIMEOUT_MS,
+    );
+
+    try {
+      const response = await fetch("/api/public/visitor-choice", {
+        headers: clientSignalRef.current
+          ? { "X-Axora-Visitor-Signal": clientSignalRef.current }
+          : undefined,
+        credentials: "same-origin",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok || !isSnapshot(payload)) {
+        throw new Error("snapshot_failed");
+      }
+      return payload;
+    } finally {
+      if (snapshotControllerRef.current === controller) {
+        if (snapshotTimerRef.current !== null) {
+          window.clearTimeout(snapshotTimerRef.current);
+          snapshotTimerRef.current = null;
+        }
+        snapshotControllerRef.current = null;
+      }
+    }
+  }, [abortSnapshot]);
+
+  const submitClaim = useCallback(async (
+    turnstileToken: string,
+    attempt: number,
+  ) => {
     const choice = pendingChoiceRef.current;
-    if (!choice || !turnstileToken) {
-      failChallenge();
+    if (activeAttemptRef.current !== attempt
+      || submissionRunningRef.current) {
       return;
     }
+    if (!choice || !turnstileToken) {
+      failAttempt("generic", attempt);
+      return;
+    }
+
+    clearVerificationTimeout();
+    challengeRunningRef.current = false;
+    submissionRunningRef.current = true;
+    const controller = new AbortController();
+    postControllerRef.current = controller;
+    postTimerRef.current = window.setTimeout(
+      () => controller.abort(),
+      POST_TIMEOUT_MS,
+    );
+
     try {
       const response = await fetch("/api/public/visitor-choice", {
         method: "POST",
@@ -242,6 +429,7 @@ export function VisitorChoiceChallenge({
         },
         credentials: "same-origin",
         cache: "no-store",
+        signal: controller.signal,
         body: JSON.stringify({
           choice,
           locale,
@@ -251,73 +439,203 @@ export function VisitorChoiceChallenge({
             : {}),
         }),
       });
-      const payload: unknown = await response.json();
-      if (!response.ok || !isSnapshot(payload)
-        || !payload.choice || !payload.visitorNumber) {
-        throw new Error("claim_failed");
-      }
-      if (!mountedRef.current) return;
-      challengeRunningRef.current = false;
-      pendingChoiceRef.current = null;
-      setPendingChoice(null);
-      setSnapshot(payload);
-      setPhase("claimed");
-    } catch {
-      failChallenge();
-    }
-  }, [failChallenge, locale]);
+      const payload: unknown = await response.json().catch(() => null);
 
-  const executePendingChallenge = useCallback(() => {
-    if (!pendingChoiceRef.current
-      || challengeRunningRef.current
-      || !widgetIdRef.current
-      || !window.turnstile) {
-      return;
-    }
-    challengeRunningRef.current = true;
-    window.turnstile.execute(widgetIdRef.current);
-  }, []);
-
-  const initializeTurnstile = useCallback(() => {
-    if (!validSiteKey || !siteKey
-      || widgetIdRef.current
-      || !widgetContainerRef.current
-      || !window.turnstile) {
-      return;
-    }
-    window.turnstile.ready(() => {
-      if (!mountedRef.current
-        || widgetIdRef.current
-        || !widgetContainerRef.current
-        || !window.turnstile) {
+      if (activeAttemptRef.current !== attempt) return;
+      if (response.status === 403) {
+        failAttempt("rejected", attempt);
         return;
       }
-      widgetIdRef.current = window.turnstile.render(
-        widgetContainerRef.current,
-        {
-          sitekey: siteKey,
-          action: "visitor_choice",
-          theme: "auto",
-          size: "flexible",
-          execution: "execute",
-          appearance: "interaction-only",
-          callback: (token) => {
-            void submitClaim(token);
-          },
-          "error-callback": failChallenge,
-          "expired-callback": failChallenge,
-          "timeout-callback": failChallenge,
-        },
-      );
-      executePendingChallenge();
-    });
+      if (response.status === 429) {
+        failAttempt("rate-limited", attempt);
+        return;
+      }
+      if (response.status === 503) {
+        failAttempt("service-unavailable", attempt);
+        return;
+      }
+      if (!response.ok || !isSnapshot(payload)
+        || !payload.choice || !payload.visitorNumber) {
+        failAttempt("generic", attempt);
+        return;
+      }
+      if (!mountedRef.current) return;
+
+      if (postTimerRef.current !== null) {
+        window.clearTimeout(postTimerRef.current);
+        postTimerRef.current = null;
+      }
+      postControllerRef.current = null;
+      submissionRunningRef.current = false;
+      activeAttemptRef.current = null;
+      pendingChoiceRef.current = null;
+      setPendingChoice(null);
+      claimCompletedRef.current = true;
+      setSnapshot(payload);
+      setFailureReason("generic");
+      setPhase("claimed");
+      retireWidget();
+    } catch (error) {
+      if (activeAttemptRef.current !== attempt) return;
+      failAttempt(abortError(error) ? "request-timeout" : "generic", attempt);
+    }
   }, [
-    executePendingChallenge,
-    failChallenge,
-    siteKey,
+    clearVerificationTimeout,
+    failAttempt,
+    locale,
+    retireWidget,
+  ]);
+
+  const prepareAndExecute = useCallback((attempt: number) => {
+    if (!mountedRef.current || activeAttemptRef.current !== attempt) return;
+    if (challengeRunningRef.current || submissionRunningRef.current) return;
+    if (preparingAttemptRef.current === attempt) return;
+
+    if (scriptReloadPendingRef.current) {
+      waitingForScriptAttemptRef.current = attempt;
+      return;
+    }
+
+    const api = currentTurnstileApi();
+    if (!api) {
+      if (scriptStateRef.current === "loading") {
+        waitingForScriptAttemptRef.current = attempt;
+        return;
+      }
+      failAttempt("script", attempt);
+      return;
+    }
+    if (!verifiedSiteKey || !widgetContainerRef.current) {
+      failAttempt("script", attempt);
+      return;
+    }
+
+    preparingAttemptRef.current = attempt;
+    try {
+      api.ready(() => {
+        if (!mountedRef.current || activeAttemptRef.current !== attempt) {
+          return;
+        }
+        preparingAttemptRef.current = null;
+        const readyApi = currentTurnstileApi();
+        const container = widgetContainerRef.current;
+        if (!readyApi || !container) {
+          failAttempt("script", attempt);
+          return;
+        }
+
+        safeRemoveWidget();
+        let renderedWidgetId: unknown;
+        try {
+          renderedWidgetId = readyApi.render(container, {
+            sitekey: verifiedSiteKey,
+            action: "visitor_choice",
+            theme: "auto",
+            size: "flexible",
+            execution: "execute",
+            appearance: "interaction-only",
+            callback: (token) => {
+              void submitClaim(token, attempt);
+            },
+            "error-callback": () => {
+              failAttempt("generic", attempt);
+              return true;
+            },
+            "expired-callback": () => failAttempt("generic", attempt),
+            "timeout-callback": () => {
+              failAttempt("verification-timeout", attempt);
+            },
+            "unsupported-callback": () => {
+              failAttempt("unsupported", attempt);
+            },
+          });
+        } catch {
+          failAttempt("script", attempt);
+          return;
+        }
+
+        if (!isUsableWidgetId(renderedWidgetId)) {
+          failAttempt("script", attempt);
+          return;
+        }
+        if (activeAttemptRef.current !== attempt) {
+          try {
+            readyApi.remove(renderedWidgetId);
+          } catch {
+            // The attempt was superseded; no UI state depends on teardown.
+          }
+          return;
+        }
+
+        widgetIdRef.current = renderedWidgetId;
+        challengeRunningRef.current = true;
+        try {
+          readyApi.execute(renderedWidgetId);
+        } catch {
+          challengeRunningRef.current = false;
+          failAttempt("generic", attempt);
+        }
+      });
+    } catch {
+      preparingAttemptRef.current = null;
+      failAttempt("script", attempt);
+    }
+  }, [
+    failAttempt,
+    safeRemoveWidget,
     submitClaim,
+    verifiedSiteKey,
+  ]);
+
+  const beginAttempt = useCallback((choice: VisitorChoice) => {
+    if (!mountedRef.current || !validSiteKey || snapshot.choice) return;
+
+    clearVerificationTimeout();
+    abortPost();
+    retireWidget();
+
+    const attempt = ++attemptSequenceRef.current;
+    activeAttemptRef.current = attempt;
+    pendingChoiceRef.current = choice;
+    setPendingChoice(choice);
+    setFailureReason("generic");
+    setPhase("verifying");
+    verificationTimerRef.current = window.setTimeout(() => {
+      failAttempt("verification-timeout", attempt);
+    }, VERIFICATION_TIMEOUT_MS);
+
+    prepareAndExecute(attempt);
+  }, [
+    abortPost,
+    clearVerificationTimeout,
+    failAttempt,
+    prepareAndExecute,
+    retireWidget,
+    snapshot.choice,
     validSiteKey,
   ]);
+
+  const handleScriptReady = useCallback(() => {
+    scriptReloadPendingRef.current = false;
+    scriptStateRef.current = "ready";
+    const api = currentTurnstileApi();
+    const waitingAttempt = waitingForScriptAttemptRef.current;
+    if (!api) {
+      failAttempt("script", waitingAttempt ?? undefined);
+      return;
+    }
+    if (waitingAttempt !== null
+      && activeAttemptRef.current === waitingAttempt) {
+      waitingForScriptAttemptRef.current = null;
+      prepareAndExecute(waitingAttempt);
+    }
+  }, [failAttempt, prepareAndExecute]);
+
+  const handleScriptError = useCallback(() => {
+    scriptReloadPendingRef.current = false;
+    scriptStateRef.current = "error";
+    failAttempt("script", activeAttemptRef.current ?? undefined);
+  }, [failAttempt]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -328,87 +646,188 @@ export function VisitorChoiceChallenge({
         const signal = await buildLimitedClientSignal();
         if (cancelled) return;
         clientSignalRef.current = signal;
-        const response = await fetch(
-          "/api/public/visitor-choice",
-          {
-            headers: signal
-              ? { "X-Axora-Visitor-Signal": signal }
-              : undefined,
-            credentials: "same-origin",
-            cache: "no-store",
-          },
-        );
-        const payload: unknown = await response.json();
-        if (!response.ok || !isSnapshot(payload)) {
-          throw new Error("snapshot_failed");
-        }
+        const payload = await fetchSnapshot();
         if (cancelled) return;
+        claimCompletedRef.current = Boolean(payload.choice);
         setSnapshot(payload);
-        setPhase(payload.choice ? "claimed" : validSiteKey
-          ? "ready"
-          : "unavailable");
+        pendingChoiceRef.current = null;
+        setPendingChoice(null);
+        if (payload.choice) {
+          setPhase("claimed");
+        } else if (!validSiteKey) {
+          setFailureReason("service-unavailable");
+          setPhase("unavailable");
+        } else if (scriptStateRef.current === "error") {
+          setFailureReason("script");
+          setPhase("error");
+        } else {
+          setPhase("ready");
+        }
       } catch {
-        if (!cancelled) setPhase("unavailable");
+        if (!cancelled) {
+          setFailureReason("service-unavailable");
+          setPhase("unavailable");
+        }
       }
     })();
 
     return () => {
       cancelled = true;
       mountedRef.current = false;
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
-      }
-      widgetIdRef.current = null;
+      clearVerificationTimeout();
+      abortPost();
+      abortSnapshot();
+      activeAttemptRef.current = null;
+      retryRunningRef.current = false;
+      preparingAttemptRef.current = null;
+      waitingForScriptAttemptRef.current = null;
+      safeRemoveWidget();
     };
-  }, [validSiteKey]);
+  }, [
+    abortPost,
+    abortSnapshot,
+    clearVerificationTimeout,
+    fetchSnapshot,
+    safeRemoveWidget,
+    validSiteKey,
+  ]);
 
   const choose = useCallback((choice: VisitorChoice) => {
-    if (snapshot.choice
-      || phase === "loading"
-      || phase === "verifying"
-      || !validSiteKey) {
+    if (phase !== "ready" || snapshot.choice || !validSiteKey) return;
+    beginAttempt(choice);
+  }, [beginAttempt, phase, snapshot.choice, validSiteKey]);
+
+  const retry = useCallback(async () => {
+    if ((phase !== "error" && phase !== "unavailable")
+      || !mountedRef.current
+      || retryRunningRef.current) {
       return;
     }
-    pendingChoiceRef.current = choice;
-    setPendingChoice(choice);
-    setPhase("verifying");
-    initializeTurnstile();
-    executePendingChallenge();
+
+    retryRunningRef.current = true;
+    const retryChoice = pendingChoiceRef.current;
+    setPhase("recovering");
+    clearVerificationTimeout();
+    abortPost();
+    abortSnapshot();
+    activeAttemptRef.current = null;
+    preparingAttemptRef.current = null;
+    waitingForScriptAttemptRef.current = null;
+    retireWidget();
+
+    try {
+      const payload = await fetchSnapshot();
+      if (!mountedRef.current) return;
+      claimCompletedRef.current = Boolean(payload.choice);
+      setSnapshot(payload);
+      if (payload.choice) {
+        retryRunningRef.current = false;
+        pendingChoiceRef.current = null;
+        setPendingChoice(null);
+        setFailureReason("generic");
+        setPhase("claimed");
+        return;
+      }
+      if (!validSiteKey) {
+        retryRunningRef.current = false;
+        setFailureReason("service-unavailable");
+        setPhase("unavailable");
+        return;
+      }
+
+      const mustReloadScript =
+        scriptStateRef.current === "error" || !currentTurnstileApi();
+      if (mustReloadScript) {
+        scriptReloadPendingRef.current = true;
+        scriptStateRef.current = "loading";
+        try {
+          window.turnstile = undefined;
+        } catch {
+          // A fresh Script element still provides the recovery boundary.
+        }
+        setScriptGeneration((value) => value + 1);
+      }
+
+      retryRunningRef.current = false;
+      if (retryChoice) {
+        beginAttempt(retryChoice);
+      } else {
+        setFailureReason("generic");
+        setPhase("ready");
+      }
+    } catch {
+      retryRunningRef.current = false;
+      if (!mountedRef.current) return;
+      setFailureReason("service-unavailable");
+      setPhase("unavailable");
+    }
   }, [
-    executePendingChallenge,
-    initializeTurnstile,
+    abortPost,
+    abortSnapshot,
+    beginAttempt,
+    clearVerificationTimeout,
+    fetchSnapshot,
     phase,
-    snapshot.choice,
+    retireWidget,
     validSiteKey,
   ]);
 
   const claimedChoice = snapshot.choice;
+  const failureMessage = failureReason === "script"
+    ? copy.scriptError
+    : failureReason === "unsupported"
+      ? copy.unsupported
+      : failureReason === "verification-timeout"
+        ? copy.verificationTimeout
+        : failureReason === "request-timeout"
+          ? copy.requestTimeout
+          : failureReason === "rejected"
+            ? copy.rejected
+            : failureReason === "rate-limited"
+              ? copy.rateLimited
+              : failureReason === "service-unavailable"
+                ? copy.unavailable
+                : copy.error;
   const statusMessage = phase === "loading"
     ? copy.loading
     : phase === "verifying"
       ? copy.verifying
-      : phase === "unavailable"
-        ? copy.unavailable
-        : phase === "error"
-          ? copy.error
+      : phase === "recovering"
+        ? copy.recovering
+        : phase === "unavailable" || phase === "error"
+          ? failureMessage
           : claimedChoice && snapshot.visitorNumber
             ? `${copy.result(claimedChoice, snapshot.visitorNumber)} ${copy.alreadyClaimed}`
             : "";
+  const canChoose = phase === "ready"
+    && !claimedChoice
+    && validSiteKey;
+  const retryable = phase === "error" || phase === "unavailable";
+  const busy = phase === "loading"
+    || phase === "verifying"
+    || phase === "recovering";
+  const turnstileScriptSrc = scriptGeneration === 0
+    ? TURNSTILE_SCRIPT_URL
+    : `${TURNSTILE_SCRIPT_URL}#axora-retry-${scriptGeneration}`;
 
   return (
     <section
       className={styles.section}
       aria-labelledby="visitor-choice-title"
+      aria-busy={busy}
       data-hovered={hovered ?? "none"}
       data-claimed={claimedChoice ?? "none"}
+      data-phase={phase}
     >
       {validSiteKey ? (
         <Script
-          id="axora-visitor-turnstile"
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          key={scriptGeneration}
+          id={`axora-visitor-turnstile-${scriptGeneration}`}
+          src={turnstileScriptSrc}
           strategy="afterInteractive"
-          onLoad={initializeTurnstile}
-          onReady={initializeTurnstile}
+          onLoad={handleScriptReady}
+          onReady={handleScriptReady}
+          onError={handleScriptError}
         />
       ) : null}
 
@@ -436,10 +855,7 @@ export function VisitorChoiceChallenge({
           className={`${styles.side} ${styles.earlySide}`}
           aria-label={copy.chooseEarly}
           aria-pressed={claimedChoice === "EARLY_BIRD"}
-          disabled={Boolean(claimedChoice)
-            || phase === "loading"
-            || phase === "verifying"
-            || !validSiteKey}
+          disabled={!canChoose}
           onPointerEnter={() => setHovered("EARLY_BIRD")}
           onPointerLeave={() => setHovered(null)}
           onFocus={() => setHovered("EARLY_BIRD")}
@@ -456,7 +872,7 @@ export function VisitorChoiceChallenge({
           <span className={styles.sideCount}>
             {numberFormatter.format(snapshot.earlyBirdCount)}
           </span>
-          {pendingChoice === "EARLY_BIRD" ? (
+          {pendingChoice === "EARLY_BIRD" && busy ? (
             <span className={styles.pendingPulse} aria-hidden="true" />
           ) : null}
         </button>
@@ -470,10 +886,7 @@ export function VisitorChoiceChallenge({
           className={`${styles.side} ${styles.nightSide}`}
           aria-label={copy.chooseNight}
           aria-pressed={claimedChoice === "NIGHT_OWL"}
-          disabled={Boolean(claimedChoice)
-            || phase === "loading"
-            || phase === "verifying"
-            || !validSiteKey}
+          disabled={!canChoose}
           onPointerEnter={() => setHovered("NIGHT_OWL")}
           onPointerLeave={() => setHovered(null)}
           onFocus={() => setHovered("NIGHT_OWL")}
@@ -490,7 +903,7 @@ export function VisitorChoiceChallenge({
           <span className={styles.sideCount}>
             {numberFormatter.format(snapshot.nightOwlCount)}
           </span>
-          {pendingChoice === "NIGHT_OWL" ? (
+          {pendingChoice === "NIGHT_OWL" && busy ? (
             <span className={styles.pendingPulse} aria-hidden="true" />
           ) : null}
         </button>
@@ -526,14 +939,14 @@ export function VisitorChoiceChallenge({
 
       <div
         className={styles.status}
-        role={phase === "error" ? "alert" : "status"}
+        role={retryable ? "alert" : "status"}
         aria-live="polite"
       >
         {statusMessage ? <p>{statusMessage}</p> : null}
-        {phase === "error" ? (
+        {retryable ? (
           <button
             type="button"
-            onClick={() => setPhase("ready")}
+            onClick={() => void retry()}
           >
             {copy.retry}
           </button>
