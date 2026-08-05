@@ -1,0 +1,167 @@
+name: Diagnose live visitor choice
+
+on:
+  push:
+    branches:
+      - hotfix/visitor-choice-verification-recovery
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnose-live-visitor-choice
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    name: Read-only production browser trace
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out diagnostic code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.13.0"
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Trace production without allowing a visitor claim
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          node --input-type=module <<'NODE'
+          import { chromium } from "@playwright/test";
+
+          const baseUrl = "https://axora.management";
+          const browser = await chromium.launch();
+          const context = await browser.newContext({
+            locale: "en-US",
+            viewport: { width: 1280, height: 900 },
+            serviceWorkers: "block",
+          });
+          await context.addCookies([
+            { name: "axora_locale", value: "en", url: baseUrl },
+          ]);
+          const page = await context.newPage();
+
+          let apiScriptRequested = false;
+          let apiScriptStatus = null;
+          let visitorPostAttempted = 0;
+          let visitorPostBlocked = 0;
+
+          await page.route("**/*", async (route) => {
+            const request = route.request();
+            const url = new URL(request.url());
+            if (
+              url.origin === baseUrl &&
+              url.pathname === "/api/public/visitor-choice" &&
+              request.method() === "POST"
+            ) {
+              visitorPostBlocked += 1;
+              await route.abort("blockedbyclient");
+              return;
+            }
+            await route.continue();
+          });
+
+          page.on("request", (request) => {
+            const url = new URL(request.url());
+            if (
+              url.origin === "https://challenges.cloudflare.com" &&
+              url.pathname === "/turnstile/v0/api.js"
+            ) {
+              apiScriptRequested = true;
+            }
+            if (
+              url.origin === baseUrl &&
+              url.pathname === "/api/public/visitor-choice" &&
+              request.method() === "POST"
+            ) {
+              visitorPostAttempted += 1;
+            }
+          });
+
+          page.on("response", (response) => {
+            const url = new URL(response.url());
+            if (
+              url.origin === "https://challenges.cloudflare.com" &&
+              url.pathname === "/turnstile/v0/api.js"
+            ) {
+              apiScriptStatus = response.status();
+            }
+          });
+
+          const navigation = await page.goto(
+            `${baseUrl}/en?diagnosis=visitor-choice`,
+            { waitUntil: "domcontentloaded", timeout: 30_000 },
+          );
+          if (!navigation || navigation.status() !== 200) {
+            throw new Error("Production English homepage did not load.");
+          }
+
+          const section = page.getByRole("region", {
+            name: "Which side are you on?",
+          });
+          await section.waitFor({ state: "visible", timeout: 15_000 });
+          const choice = section.getByRole("button", {
+            name: "Choose Early Birds",
+          });
+          await choice.waitFor({ state: "visible", timeout: 15_000 });
+          await page.waitForTimeout(4_000);
+
+          const iframeBeforeClick = page.frames().some((frame) => {
+            try {
+              return new URL(frame.url()).origin
+                === "https://challenges.cloudflare.com";
+            } catch {
+              return false;
+            }
+          });
+
+          await choice.click();
+          await page.waitForTimeout(20_000);
+
+          const iframeAfterClick = page.frames().some((frame) => {
+            try {
+              return new URL(frame.url()).origin
+                === "https://challenges.cloudflare.com";
+            } catch {
+              return false;
+            }
+          });
+          const statusText = (
+            await section.locator('[role="status"], [role="alert"]').allTextContents()
+          ).join(" ").replace(/\s+/g, " ").trim();
+          const claimCookiePresent = (await context.cookies(baseUrl)).some(
+            (cookie) => cookie.name === "axora_visitor_claim",
+          );
+
+          console.log(`Turnstile api.js requested: ${apiScriptRequested}`);
+          console.log(`Turnstile api.js response status: ${apiScriptStatus ?? "none"}`);
+          console.log(`Turnstile iframe before click: ${iframeBeforeClick}`);
+          console.log(`Turnstile iframe after click: ${iframeAfterClick}`);
+          console.log(`Visitor-choice POST attempted: ${visitorPostAttempted}`);
+          console.log(`Visitor-choice POST blocked before network: ${visitorPostBlocked}`);
+          console.log(`Permanent claim cookie present: ${claimCookiePresent}`);
+          console.log(`Final localized UI status: ${statusText || "none"}`);
+
+          if (visitorPostBlocked !== visitorPostAttempted) {
+            throw new Error("A production visitor-choice POST was not intercepted.");
+          }
+          if (claimCookiePresent) {
+            throw new Error("Diagnostic browser received a permanent claim cookie.");
+          }
+
+          await browser.close();
+          NODE
