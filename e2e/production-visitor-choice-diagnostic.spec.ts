@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
 const productionHome = "https://axora.management/en";
-const productionOrigin = new URL(productionHome).origin;
 
 test("diagnoses the production visitor-choice browser request path without submitting a claim", async ({
   page,
@@ -32,7 +31,7 @@ test("diagnoses the production visitor-choice browser request path without submi
     }
   });
 
-  await page.route(`${productionOrigin}/api/public/visitor-choice`, async (route) => {
+  await page.route("**/api/public/visitor-choice", async (route) => {
     if (route.request().method() === "POST") {
       claimPostAttempted = true;
       await route.abort("blockedbyclient");
