@@ -77,10 +77,13 @@ function isSnapshot(value: unknown): value is VisitorCounterSnapshot {
     candidate.earlyBirdCount,
     candidate.nightOwlCount,
   ];
-  if (!counts.every((count) => Number.isSafeInteger(count) && count! >= 0)) {
+  if (!counts.every(
+    (count) => Number.isSafeInteger(count) && Number(count) >= 0,
+  )) {
     return false;
   }
-  if (candidate.totalCount !== candidate.earlyBirdCount! + candidate.nightOwlCount!) {
+  if (candidate.totalCount
+    !== Number(candidate.earlyBirdCount) + Number(candidate.nightOwlCount)) {
     return false;
   }
   if (candidate.choice !== undefined
@@ -103,28 +106,54 @@ function toHex(buffer: ArrayBuffer) {
     .join("");
 }
 
-async function buildLimitedClientSignal() {
-  if (!globalThis.crypto?.subtle) return undefined;
-  const navigatorWithMemory = navigator as Navigator & {
-    deviceMemory?: number;
+function platformFamily() {
+  const navigatorWithPlatform = navigator as Navigator & {
     userAgentData?: { platform?: string };
   };
-  const longSide = Math.max(screen.width, screen.height);
-  const shortSide = Math.min(screen.width, screen.height);
+  const source = (
+    navigatorWithPlatform.userAgentData?.platform
+    ?? navigator.platform
+    ?? navigator.userAgent
+    ?? ""
+  ).toLowerCase();
+  if (/(iphone|ipad|ipod|ios)/.test(source)) return "ios";
+  if (/android/.test(source)) return "android";
+  if (/windows|win32|win64/.test(source)) return "windows";
+  if (/mac|darwin/.test(source)) return "macos";
+  if (/linux|x11/.test(source)) return "linux";
+  return "other";
+}
+
+function concurrencyBucket(value: number | undefined) {
+  if (!value || value < 1) return 0;
+  if (value <= 2) return 2;
+  if (value <= 4) return 4;
+  if (value <= 8) return 8;
+  if (value <= 16) return 16;
+  return 32;
+}
+
+function roundedDimension(value: number) {
+  return Math.round(value / 10) * 10;
+}
+
+async function buildLimitedClientSignal() {
+  if (!globalThis.crypto?.subtle) return undefined;
+  const longSide = roundedDimension(Math.max(screen.width, screen.height));
+  const shortSide = roundedDimension(Math.min(screen.width, screen.height));
   const signal = JSON.stringify({
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "",
-    languages: [...(navigator.languages ?? [navigator.language])].sort(),
-    platform:
-      navigatorWithMemory.userAgentData?.platform
-      ?? navigator.platform
-      ?? "",
-    hardwareConcurrency: navigator.hardwareConcurrency ?? 0,
-    deviceMemory: navigatorWithMemory.deviceMemory ?? 0,
-    maxTouchPoints: navigator.maxTouchPoints ?? 0,
+    languages: [...(navigator.languages ?? [navigator.language])]
+      .slice(0, 4)
+      .map((language) => language.toLowerCase()),
+    platform: platformFamily(),
+    concurrency: concurrencyBucket(navigator.hardwareConcurrency),
+    touch: navigator.maxTouchPoints > 0,
     longSide,
     shortSide,
     colorDepth: screen.colorDepth ?? 0,
-    pixelRatio: Math.round((window.devicePixelRatio || 1) * 100) / 100,
+    pixelRatio:
+      Math.round((window.devicePixelRatio || 1) * 4) / 4,
   });
   const digest = await globalThis.crypto.subtle.digest(
     "SHA-256",
@@ -299,12 +328,12 @@ export function VisitorChoiceChallenge({
         const signal = await buildLimitedClientSignal();
         if (cancelled) return;
         clientSignalRef.current = signal;
-        const query = signal
-          ? `?signal=${encodeURIComponent(signal)}`
-          : "";
         const response = await fetch(
-          `/api/public/visitor-choice${query}`,
+          "/api/public/visitor-choice",
           {
+            headers: signal
+              ? { "X-Axora-Visitor-Signal": signal }
+              : undefined,
             credentials: "same-origin",
             cache: "no-store",
           },
@@ -514,7 +543,6 @@ export function VisitorChoiceChallenge({
       <div
         ref={widgetContainerRef}
         className={styles.turnstile}
-        aria-hidden="true"
       />
 
       <p className={styles.privacyNote}>
