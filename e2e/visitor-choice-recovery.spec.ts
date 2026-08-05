@@ -157,6 +157,12 @@ async function openReadyEnglish(page: Page, context: BrowserContext) {
   return choice;
 }
 
+function visitorAlert(page: Page) {
+  return page.locator(
+    "section[data-phase='error'] [role='alert'], section[data-phase='unavailable'] [role='alert']",
+  );
+}
+
 test.describe("visitor-choice recovery state machine", () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(
@@ -195,7 +201,7 @@ test.describe("visitor-choice recovery state machine", () => {
 
       await page.goto(`/${localeCase.locale}`);
 
-      await expect(page.getByRole("alert")).toContainText(
+      await expect(visitorAlert(page)).toContainText(
         localeCase.message,
       );
       await expect(
@@ -214,7 +220,7 @@ test.describe("visitor-choice recovery state machine", () => {
 
     await page.goto("/en");
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(visitorAlert(page)).toContainText(
       "Secure verification could not load.",
     );
     await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
@@ -261,7 +267,7 @@ test.describe("visitor-choice recovery state machine", () => {
 
     await choice.click();
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(visitorAlert(page)).toContainText(
       "Secure verification could not load.",
     );
   });
@@ -273,7 +279,7 @@ test.describe("visitor-choice recovery state machine", () => {
 
     await choice.click();
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(visitorAlert(page)).toContainText(
       "Secure verification could not load.",
     );
   });
@@ -288,7 +294,7 @@ test.describe("visitor-choice recovery state machine", () => {
 
     await choice.click();
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(visitorAlert(page)).toContainText(
       "Secure verification could not load.",
     );
     await expect(page.locator("[data-phase='verifying']")).toHaveCount(0);
@@ -301,7 +307,7 @@ test.describe("visitor-choice recovery state machine", () => {
 
     await choice.click();
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(visitorAlert(page)).toContainText(
       "Your choice could not be verified.",
     );
   });
@@ -319,7 +325,7 @@ test.describe("visitor-choice recovery state machine", () => {
     await expect(page.getByText("Verifying your one-time choice…")).toBeVisible();
     await page.clock.fastForward(18_100);
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(visitorAlert(page)).toContainText(
       "Verification took too long and was stopped.",
     );
     await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
@@ -335,7 +341,7 @@ test.describe("visitor-choice recovery state machine", () => {
 
     await choice.click();
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(visitorAlert(page)).toContainText(
       "This browser cannot run secure verification.",
     );
   });
@@ -381,7 +387,7 @@ test.describe("visitor-choice recovery state machine", () => {
     await choice.click();
     await page.clock.fastForward(12_100);
 
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(visitorAlert(page)).toContainText(
       "The claim request took too long.",
     );
   });
@@ -415,7 +421,7 @@ test.describe("visitor-choice recovery state machine", () => {
 
       await choice.click();
 
-      await expect(page.getByRole("alert")).toContainText(
+      await expect(visitorAlert(page)).toContainText(
         responseFailure.message,
       );
       await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
