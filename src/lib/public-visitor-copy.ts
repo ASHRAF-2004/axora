@@ -18,8 +18,15 @@ interface VisitorChoiceCopy {
   alreadyClaimed: string;
   loading: string;
   verifying: string;
+  recovering: string;
   unavailable: string;
   error: string;
+  scriptError: string;
+  unsupported: string;
+  verificationTimeout: string;
+  requestTimeout: string;
+  rejected: string;
+  rateLimited: string;
   retry: string;
   protectedBy: string;
   privacy: string;
@@ -46,9 +53,16 @@ export const publicVisitorCopy: Record<SupportedLocale, VisitorChoiceCopy> = {
     alreadyClaimed: "Your spot is already claimed.",
     loading: "Loading the live count…",
     verifying: "Verifying your one-time choice…",
-    unavailable: "Visitor claiming is temporarily unavailable. The live totals will return shortly.",
+    recovering: "Checking whether your choice was already recorded…",
+    unavailable: "Visitor claiming is temporarily unavailable. Nothing new was counted.",
     error: "Your choice could not be verified. Nothing was counted.",
-    retry: "Try again",
+    scriptError: "Secure verification could not load. Check your connection or content blocker, then retry.",
+    unsupported: "This browser cannot run secure verification. Update it or try another browser, then retry.",
+    verificationTimeout: "Verification took too long and was stopped. Nothing was counted.",
+    requestTimeout: "The claim request took too long. Axora will check for an existing claim before retrying.",
+    rejected: "Secure verification was rejected or expired. Nothing was counted.",
+    rateLimited: "Too many verification attempts were made. Please wait briefly, then retry.",
+    retry: "Retry",
     protectedBy: "Protected by Cloudflare Turnstile",
     privacy: "Axora stores a signed first-party claim cookie and irreversible hashes of limited network and device signals. The counter does not store your raw IP address.",
     privacyLink: "Privacy",
@@ -72,9 +86,16 @@ export const publicVisitorCopy: Record<SupportedLocale, VisitorChoiceCopy> = {
     alreadyClaimed: "مكانك محجوز بالفعل.",
     loading: "جارٍ تحميل العدد المباشر…",
     verifying: "جارٍ التحقق من اختيارك لمرة واحدة…",
-    unavailable: "حجز رقم الزائر غير متاح مؤقتًا. ستعود الأعداد المباشرة قريبًا.",
+    recovering: "جارٍ التحقق مما إذا كان اختيارك قد سُجِّل بالفعل…",
+    unavailable: "حجز رقم الزائر غير متاح مؤقتًا. لم يُضف أي اختيار جديد.",
     error: "تعذر التحقق من اختيارك، ولم تتم إضافة أي عدد.",
-    retry: "المحاولة مجددًا",
+    scriptError: "تعذر تحميل التحقق الآمن. تحقق من الاتصال أو مانع المحتوى، ثم أعد المحاولة.",
+    unsupported: "لا يدعم هذا المتصفح التحقق الآمن. حدّثه أو استخدم متصفحًا آخر، ثم أعد المحاولة.",
+    verificationTimeout: "استغرق التحقق وقتًا طويلًا وتم إيقافه. لم تتم إضافة أي عدد.",
+    requestTimeout: "استغرق إرسال المطالبة وقتًا طويلًا. ستتحقق أكسورا من وجود مطالبة سابقة قبل إعادة المحاولة.",
+    rejected: "رُفض التحقق الآمن أو انتهت صلاحيته. لم تتم إضافة أي عدد.",
+    rateLimited: "تمت محاولات تحقق كثيرة. انتظر قليلًا، ثم أعد المحاولة.",
+    retry: "إعادة المحاولة",
     protectedBy: "محمي بواسطة Cloudflare Turnstile",
     privacy: "تخزن أكسورا ملف ارتباط موقّعًا من الطرف الأول وبصمات غير قابلة للعكس لإشارات محدودة من الشبكة والجهاز. لا يخزن العداد عنوان IP الخام.",
     privacyLink: "الخصوصية",
@@ -98,8 +119,15 @@ export const publicVisitorCopy: Record<SupportedLocale, VisitorChoiceCopy> = {
     alreadyClaimed: "Tempat anda telah pun dituntut.",
     loading: "Memuatkan kiraan langsung…",
     verifying: "Mengesahkan pilihan sekali sahaja anda…",
-    unavailable: "Tuntutan nombor pelawat tidak tersedia buat sementara waktu. Jumlah langsung akan kembali tidak lama lagi.",
+    recovering: "Menyemak sama ada pilihan anda telah direkodkan…",
+    unavailable: "Tuntutan nombor pelawat tidak tersedia buat sementara waktu. Tiada pilihan baharu dikira.",
     error: "Pilihan anda tidak dapat disahkan. Tiada kiraan ditambah.",
+    scriptError: "Pengesahan selamat tidak dapat dimuatkan. Semak sambungan atau penyekat kandungan anda, kemudian cuba lagi.",
+    unsupported: "Pelayar ini tidak dapat menjalankan pengesahan selamat. Kemas kini atau gunakan pelayar lain, kemudian cuba lagi.",
+    verificationTimeout: "Pengesahan mengambil masa terlalu lama lalu dihentikan. Tiada kiraan ditambah.",
+    requestTimeout: "Permintaan tuntutan mengambil masa terlalu lama. Axora akan menyemak tuntutan sedia ada sebelum mencuba lagi.",
+    rejected: "Pengesahan selamat ditolak atau telah tamat tempoh. Tiada kiraan ditambah.",
+    rateLimited: "Terlalu banyak percubaan pengesahan dibuat. Tunggu sebentar, kemudian cuba lagi.",
     retry: "Cuba lagi",
     protectedBy: "Dilindungi oleh Cloudflare Turnstile",
     privacy: "Axora menyimpan kuki tuntutan pihak pertama yang ditandatangani serta cincangan tidak boleh dibalikkan bagi isyarat rangkaian dan peranti yang terhad. Kaunter tidak menyimpan alamat IP mentah anda.",
