@@ -1,3 +1,4 @@
+import { VisitorChoiceChallenge } from "@/components/public/VisitorChoiceChallenge";
 import type { Metadata } from "next";
 import {
   ArrowRight,
@@ -37,6 +38,7 @@ export default async function PublicHome({ params }: { params: Promise<{ locale:
   const locale = rawLocale as SupportedLocale;
   const messages = publicMessages(locale);
   const prefix = `/${locale}`;
+  const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY?.trim();
   return (
     <>
       <section className="public-hero">
@@ -66,6 +68,11 @@ export default async function PublicHome({ params }: { params: Promise<{ locale:
           <div className="hero-proof-chip"><CheckCircle2 size={17} aria-hidden="true" /> {messages.home.traceableLabel}</div>
         </div>
       </section>
+
+      <VisitorChoiceChallenge
+        locale={locale}
+        siteKey={turnstileSiteKey}
+      />
 
       <section className="public-section public-process-section">
         <div className="public-section-heading">

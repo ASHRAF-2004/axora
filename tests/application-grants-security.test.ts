@@ -35,6 +35,9 @@ async function expectSensitiveBoundary(db: PGlite) {
     provider_select: boolean;
     suppression_select: boolean;
     lifecycle_select: boolean;
+    visitor_state_select: boolean;
+    visitor_claims_select: boolean;
+    visitor_tokens_select: boolean;
     audit_insert: boolean;
   }>(`
     SELECT
@@ -61,6 +64,15 @@ async function expectSensitiveBoundary(db: PGlite) {
         'axora_app','email_provider_delivery_lifecycle','SELECT'
       ) AS lifecycle_select,
       has_table_privilege(
+        'axora_app','public_visitor_counter_state','SELECT'
+      ) AS visitor_state_select,
+      has_table_privilege(
+        'axora_app','public_visitor_claims','SELECT'
+      ) AS visitor_claims_select,
+      has_table_privilege(
+        'axora_app','public_visitor_claim_tokens','SELECT'
+      ) AS visitor_tokens_select,
+      has_table_privilege(
         'axora_app','audit_logs','INSERT'
       ) AS audit_insert
   `);
@@ -73,6 +85,9 @@ async function expectSensitiveBoundary(db: PGlite) {
     provider_select: false,
     suppression_select: false,
     lifecycle_select: false,
+    visitor_state_select: false,
+    visitor_claims_select: false,
+    visitor_tokens_select: false,
     audit_insert: false,
   });
 
@@ -82,6 +97,8 @@ async function expectSensitiveBoundary(db: PGlite) {
     received_quantity: boolean;
     suppression_check: boolean;
     provider_record: boolean;
+    visitor_snapshot: boolean;
+    visitor_claim: boolean;
     raw_received: boolean;
     raw_recipient_scope: boolean;
     fingerprint: boolean;
@@ -90,6 +107,8 @@ async function expectSensitiveBoundary(db: PGlite) {
     support_audit: boolean;
     support_actor_helper: boolean;
     session_audit_trigger: boolean;
+    visitor_counter_trigger: boolean;
+    visitor_claim_trigger: boolean;
   }>(`
     SELECT
       has_function_privilege(
@@ -111,6 +130,15 @@ async function expectSensitiveBoundary(db: PGlite) {
         'axora_record_cloudflare_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)',
         'EXECUTE'
       ) AS provider_record,
+      has_function_privilege(
+        'axora_app',
+        'axora_public_visitor_snapshot(text,text,text)','EXECUTE'
+      ) AS visitor_snapshot,
+      has_function_privilege(
+        'axora_app',
+        'axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text)',
+        'EXECUTE'
+      ) AS visitor_claim,
       has_function_privilege(
         'axora_app',
         'axora_effective_received_quantity_internal(uuid)','EXECUTE'
@@ -139,7 +167,13 @@ async function expectSensitiveBoundary(db: PGlite) {
       ) AS support_actor_helper,
       has_function_privilege(
         'axora_app','audit_user_session_revocation()','EXECUTE'
-      ) AS session_audit_trigger
+      ) AS session_audit_trigger,
+      has_function_privilege(
+        'axora_app','protect_public_visitor_counter_state()','EXECUTE'
+      ) AS visitor_counter_trigger,
+      has_function_privilege(
+        'axora_app','reject_public_visitor_claim_mutation()','EXECUTE'
+      ) AS visitor_claim_trigger
   `);
   expect(functions.rows[0]).toEqual({
     workflow_enqueue: true,
@@ -147,6 +181,8 @@ async function expectSensitiveBoundary(db: PGlite) {
     received_quantity: true,
     suppression_check: true,
     provider_record: true,
+    visitor_snapshot: true,
+    visitor_claim: true,
     raw_received: false,
     raw_recipient_scope: false,
     fingerprint: false,
@@ -155,6 +191,8 @@ async function expectSensitiveBoundary(db: PGlite) {
     support_audit: true,
     support_actor_helper: false,
     session_audit_trigger: false,
+    visitor_counter_trigger: false,
+    visitor_claim_trigger: false,
   });
 }
 
@@ -183,11 +221,15 @@ describe("application database grant boundaries", () => {
       expect(source).toContain("REVOKE ALL ON TABLE");
       expect(source).toContain("public.request_line_receipt_baselines");
       expect(source).toContain("public.email_recipient_suppressions");
+      expect(source).toContain("public.public_visitor_claims");
       expect(source).toContain("public.axora_support_system_summary()");
       expect(source).toContain(
         "public.axora_record_support_audit(text,uuid,boolean,integer,text)",
       );
       expect(source).toContain("public.audit_user_session_revocation()");
+      expect(source).toContain(
+        "public.axora_public_visitor_snapshot(text,text,text)",
+      );
       await expectSensitiveBoundary(db);
     } finally {
       await db.close();

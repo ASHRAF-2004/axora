@@ -32,7 +32,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT EXECUTE ON FUNCTIONS TO axora_app;
 
 -- Broad grants keep ordinary application tables and routines deployable, but
--- migrations 026-032 deliberately expose sensitive state only through narrow
+-- migrations 026-033 deliberately expose sensitive state only through narrow
 -- SECURITY DEFINER capabilities. Re-apply those boundaries here because this
 -- script runs after migrations during hybrid imports and baseline resets.
 REVOKE ALL ON TABLE
@@ -41,7 +41,10 @@ REVOKE ALL ON TABLE
   public.request_line_receipt_baseline_sources,
   public.email_provider_events,
   public.email_recipient_suppressions,
-  public.email_provider_delivery_lifecycle
+  public.email_provider_delivery_lifecycle,
+  public.public_visitor_counter_state,
+  public.public_visitor_claims,
+  public.public_visitor_claim_tokens
 FROM axora_app;
 
 REVOKE ALL ON FUNCTION
@@ -61,7 +64,13 @@ REVOKE ALL ON FUNCTION
   public.axora_authorized_support_actor(),
   public.axora_support_system_summary(),
   public.axora_record_support_audit(text,uuid,boolean,integer,text),
-  public.audit_user_session_revocation()
+  public.audit_user_session_revocation(),
+  public.protect_public_visitor_counter_state(),
+  public.reject_public_visitor_claim_mutation(),
+  public.axora_public_visitor_snapshot(text,text,text),
+  public.axora_claim_public_visitor(
+    text,text,text,text,text,text,text,timestamptz,text
+  )
 FROM axora_app;
 
 GRANT EXECUTE ON FUNCTION
@@ -75,5 +84,9 @@ GRANT EXECUTE ON FUNCTION
     uuid,text,text,text,text,boolean,timestamptz,integer
   ),
   public.axora_support_system_summary(),
-  public.axora_record_support_audit(text,uuid,boolean,integer,text)
+  public.axora_record_support_audit(text,uuid,boolean,integer,text),
+  public.axora_public_visitor_snapshot(text,text,text),
+  public.axora_claim_public_visitor(
+    text,text,text,text,text,text,text,timestamptz,text
+  )
 TO axora_app;
