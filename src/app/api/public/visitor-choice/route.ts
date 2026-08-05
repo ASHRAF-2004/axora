@@ -31,7 +31,7 @@ const claimSchema = z.object({
 
 const noStoreHeaders = {
   "Cache-Control": "private, no-store, max-age=0",
-  Vary: "Cookie",
+  Vary: "Cookie, X-Axora-Visitor-Signal",
 };
 
 function remoteIp(request: NextRequest) {
@@ -93,7 +93,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const clientSignal = request.nextUrl.searchParams.get("signal") ?? undefined;
+    const clientSignal = request.headers.get(
+      "x-axora-visitor-signal",
+    ) ?? undefined;
     const cookieValue = request.cookies.get(VISITOR_CLAIM_COOKIE)?.value;
     const identity = buildVisitorIdentity({
       cookieValue,
@@ -133,11 +135,11 @@ export async function POST(request: NextRequest) {
     const parsed = claimSchema.parse(await request.json());
     const sourceIp = remoteIp(request);
     const existingCookie = request.cookies.get(VISITOR_CLAIM_COOKIE)?.value;
-    const usableCookie = existingCookie
-      && visitorTokenHashFromCookie(existingCookie)
+    const existingTokenHash = visitorTokenHashFromCookie(existingCookie);
+    const usableCookie = existingCookie && existingTokenHash
       ? {
         value: existingCookie,
-        tokenHash: visitorTokenHashFromCookie(existingCookie)!,
+        tokenHash: existingTokenHash,
       }
       : createVisitorClaimCookie();
 
