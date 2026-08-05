@@ -694,17 +694,21 @@ export function VisitorChoiceChallenge({
         const payload = await loadSnapshot();
         if (cancelled) return;
         updateSnapshot(payload);
-        setFailureKind(null);
         if (payload.choice) {
+          setFailureKind(null);
           transitionTo("claimed");
         } else if (!validSiteKey) {
+          setFailureKind(null);
           transitionTo("unavailable");
         } else if (!scriptFailedRef.current) {
+          setFailureKind(null);
           transitionTo("ready");
           initializeTurnstile();
         }
       } catch {
-        if (!cancelled) transitionTo("unavailable");
+        if (!cancelled && activeAttemptRef.current === 0) {
+          transitionTo("unavailable");
+        }
       }
     })();
 
