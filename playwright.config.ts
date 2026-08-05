@@ -43,6 +43,9 @@ export default defineConfig({
       DEMO_EMAIL: "owner@axora.e2e",
       DEMO_PASSWORD: "public-e2e-fixture-password",
       SESSION_SECRET: "public-e2e-session-key-not-for-production-0001",
+      // Cloudflare's documented always-pass public test key. All claim POSTs
+      // in recovery tests are intercepted before they reach the application.
+      TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
       NEXT_TELEMETRY_DISABLED: "1",
     },
   },
