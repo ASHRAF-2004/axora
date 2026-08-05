@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - hotfix/visitor-choice-verification-recovery
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
