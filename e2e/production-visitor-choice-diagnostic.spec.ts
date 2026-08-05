@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const productionHome = "https://axora-operations.onrender.com/en";
+const productionHome = "https://axora.management/en";
 const productionOrigin = new URL(productionHome).origin;
 
 test("diagnoses the production visitor-choice browser request path without submitting a claim", async ({
