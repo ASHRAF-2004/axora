@@ -19,7 +19,6 @@ import {
 const originalEnvironment = {
   sessionSecret: process.env.SESSION_SECRET,
   sessionSecretFile: process.env.SESSION_SECRET_FILE,
-  nodeEnvironment: process.env.NODE_ENV,
   turnstileSecret: process.env.TURNSTILE_SECRET,
   turnstileSecretFile: process.env.TURNSTILE_SECRET_FILE,
   turnstileHostnames: process.env.TURNSTILE_HOSTNAMES,
@@ -29,7 +28,6 @@ describe("public visitor identity", () => {
   beforeAll(() => {
     process.env.SESSION_SECRET = "visitor-test-secret-".repeat(4);
     delete process.env.SESSION_SECRET_FILE;
-    process.env.NODE_ENV = "test";
     process.env.TURNSTILE_SECRET = "turnstile-test-secret-".repeat(3);
     delete process.env.TURNSTILE_SECRET_FILE;
     process.env.TURNSTILE_HOSTNAMES = "axora.management";
@@ -39,7 +37,6 @@ describe("public visitor identity", () => {
     for (const [key, value] of Object.entries({
       SESSION_SECRET: originalEnvironment.sessionSecret,
       SESSION_SECRET_FILE: originalEnvironment.sessionSecretFile,
-      NODE_ENV: originalEnvironment.nodeEnvironment,
       TURNSTILE_SECRET: originalEnvironment.turnstileSecret,
       TURNSTILE_SECRET_FILE: originalEnvironment.turnstileSecretFile,
       TURNSTILE_HOSTNAMES: originalEnvironment.turnstileHostnames,
