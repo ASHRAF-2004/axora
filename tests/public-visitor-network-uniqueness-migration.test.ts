@@ -278,6 +278,7 @@ describe("permanent public-network visitor uniqueness", () => {
   it("keeps raw network data inaccessible and grants only narrow functions", async () => {
     const db = new PGlite();
     try {
+      await db.exec("CREATE ROLE axora_app NOLOGIN");
       await applyMigrations(db);
       const boundary = await db.query<{
         appSnapshot: boolean;
