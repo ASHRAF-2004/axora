@@ -460,7 +460,9 @@ BEGIN
 
   IF NOT existing_row.active THEN
     RETURN QUERY SELECT existing_row.id,
-      (SELECT auth_version FROM public.users WHERE id=existing_row.user_id),
+      (SELECT account.auth_version
+       FROM public.users AS account
+       WHERE account.id=existing_row.user_id),
       0,false;
     RETURN;
   END IF;
