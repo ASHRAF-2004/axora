@@ -1,6 +1,6 @@
 import type { QueryResultRow } from "pg";
 import { z } from "zod";
-import type { SessionUser } from "./auth";
+import type { AuthenticatedSessionUser } from "./auth";
 import { isDemoMode, query } from "./db";
 import {
   canonicalRoleForAuthorization,
@@ -105,7 +105,7 @@ export class EffectiveAccessUnavailableError extends Error {
   }
 }
 
-function scopeFromSession(user: SessionUser): AuthorizationScope | undefined {
+function scopeFromSession(user: AuthenticatedSessionUser): AuthorizationScope | undefined {
   if (user.scopeType === "PLATFORM") {
     return { type: "PLATFORM" };
   }
@@ -138,7 +138,7 @@ function sameScope(first: AuthorizationScope, second: AuthorizationScope) {
 }
 
 function compatibilitySnapshot(
-  user: SessionUser,
+  user: AuthenticatedSessionUser,
   capturedAt: Date,
 ): EffectiveAccessSnapshot {
   const scope = scopeFromSession(user);
@@ -176,7 +176,7 @@ function compatibilitySnapshot(
 }
 
 function validateSnapshotAgainstSession(
-  user: SessionUser,
+  user: AuthenticatedSessionUser,
   parsed: z.infer<typeof liveSnapshotSchema>,
 ) {
   const sessionScope = scopeFromSession(user);
@@ -205,7 +205,7 @@ function validateSnapshotAgainstSession(
 }
 
 export async function loadEffectiveAccess(
-  user: SessionUser,
+  user: AuthenticatedSessionUser,
   capturedAt = new Date(),
 ): Promise<EffectiveAccessSnapshot> {
   if (!Number.isFinite(capturedAt.getTime())) {
