@@ -1,6 +1,6 @@
 # Axora P0-01 authorization policy foundation
 
-Status: implementation foundation for the canonical backlog dated 6 August 2026.
+Status: implemented as an expand-compatible foundation. See [Live effective-access runtime](EFFECTIVE_ACCESS_RUNTIME.md) for the authenticated request integration.
 
 This document complements `ROLE_MATRIX.md`. Runtime authorization remains deny-by
 default and is the intersection of account state, role, explicit permission,

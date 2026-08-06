@@ -7,16 +7,16 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 036 to an empty database", async () => {
+  it("applies every numbered migration through 037 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
       expect(available.slice(-5)).toEqual([
-        "032_user_session_revocation_audit.sql",
         "033_public_visitor_choice_counter.sql",
         "034_public_visitor_network_fallback.sql",
         "035_public_visitor_network_uniqueness.sql",
         "036_authorization_policy_foundation.sql",
+        "037_effective_access_snapshot.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -169,6 +169,10 @@ describe("complete forward migration chain", () => {
         migrationUrl("036_authorization_policy_foundation.sql"),
         "utf8",
       ));
+      await db.exec(await readFile(
+        migrationUrl("037_effective_access_snapshot.sql"),
+        "utf8",
+      ));
 
       const after = await db.query<{
         requests: number;
@@ -234,7 +238,7 @@ describe("complete forward migration chain", () => {
     }
   }, 30_000);
 
-  it("keeps reset migration discovery dynamic through 036 while bootstrap retains its 032 minimum", async () => {
+  it("keeps reset migration discovery dynamic through 037 while bootstrap retains its 032 minimum", async () => {
     const [initializer, reset, bootstrap] = await Promise.all([
       readFile(new URL("../database/init/01-run-migration.sh", import.meta.url), "utf8"),
       readFile(new URL("../scripts/production/reset-baseline.sh", import.meta.url), "utf8"),
@@ -242,8 +246,8 @@ describe("complete forward migration chain", () => {
     ]);
     expect(initializer).toContain("/migrations/[0-9][0-9][0-9]_*.sql");
     expect(reset).toContain("/database/migrations/[0-9][0-9][0-9]_*.sql");
-    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization/);
-    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization/);
+    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective/);
+    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective/);
     expect(bootstrap).toContain(
       'const REQUIRED_MIGRATION = "032_user_session_revocation_audit.sql"',
     );

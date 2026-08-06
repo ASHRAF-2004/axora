@@ -615,6 +615,15 @@ export interface PermissionDelegation {
   scopes: readonly AuthorizationScope[];
 }
 
+export interface PermissionOverride {
+  permission: PermissionCode;
+  effect: "GRANT" | "DENY";
+  scope: AuthorizationScope;
+  active: boolean;
+  startsAt?: Date;
+  endsAt?: Date;
+}
+
 export interface ApprovalLimit {
   permission:
     | "request.approve.other"
@@ -637,6 +646,8 @@ export interface AuthorizationSubject {
   accountStatus: AuthorizationAccountStatus;
   isOwner: boolean;
   scopes: readonly AuthorizationScope[];
+  roleGrants?: readonly PermissionCode[];
+  permissionOverrides?: readonly PermissionOverride[];
   explicitGrants?: readonly PermissionCode[];
   explicitDenies?: readonly PermissionCode[];
   delegations?: readonly PermissionDelegation[];
@@ -1181,21 +1192,48 @@ function activeDelegations(subject: AuthorizationSubject, now: Date) {
   ));
 }
 
+function activeMatchingOverrides(
+  subject: AuthorizationSubject,
+  permission: PermissionCode,
+  resource: AuthorizationResource,
+  now: Date,
+) {
+  return (subject.permissionOverrides ?? []).filter((override) => (
+    override.active
+      && override.permission === permission
+      && (!override.startsAt || override.startsAt.getTime() <= now.getTime())
+      && (!override.endsAt || override.endsAt.getTime() > now.getTime())
+      && scopeContains(override.scope, resource.scope)
+  ));
+}
+
 function permissionSource(
   subject: AuthorizationSubject,
   permission: PermissionCode,
   resource: AuthorizationResource,
   now: Date,
 ) {
-  if (subject.explicitDenies?.includes(permission)) return undefined;
-  if (subject.explicitGrants?.includes(permission)) return "EXPLICIT_GRANT" as const;
-  if (defaultPermissionsForRole(
-    subject.role,
-    subject.scopes[0]?.type,
-    subject.isOwner,
-  ).includes(permission)) {
-    return "ROLE" as const;
+  const matchingOverrides = activeMatchingOverrides(
+    subject,
+    permission,
+    resource,
+    now,
+  );
+  if (subject.explicitDenies?.includes(permission)
+    || matchingOverrides.some((override) => override.effect === "DENY")) {
+    return undefined;
   }
+  if (subject.explicitGrants?.includes(permission)
+    || matchingOverrides.some((override) => override.effect === "GRANT")) {
+    return "EXPLICIT_GRANT" as const;
+  }
+  const rolePermissions = subject.roleGrants
+    ?? defaultPermissionsForRole(
+      subject.role,
+      subject.scopes[0]?.type,
+      subject.isOwner,
+    );
+  if (rolePermissions.includes(permission)) return "ROLE" as const;
   if (activeDelegations(subject, now).some((delegation) => (
     delegation.permissions.includes(permission)
       && delegation.scopes.some((scope) => scopeContains(scope, resource.scope))
@@ -1253,7 +1291,10 @@ export function authorize(
       reason: "INVALID_RESOURCE_STATE",
     };
   }
-  if (!subject.scopes.some((scope) => scopeContains(scope, resource.scope))) {
+  const delegatedScopes = activeDelegations(subject, now)
+    .flatMap((delegation) => delegation.scopes);
+  if (!subject.scopes.some((scope) => scopeContains(scope, resource.scope))
+    && !delegatedScopes.some((scope) => scopeContains(scope, resource.scope))) {
     return {
       allowed: false,
       permission: input.permission,

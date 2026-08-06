@@ -16,7 +16,9 @@ describe("P0-01 authorization policy foundation migration", () => {
   it("installs the canonical role and permission catalogue on a fresh schema", async () => {
     const db = new PGlite();
     try {
-      const applied = await applyMigrations(db);
+      const applied = await applyMigrations(db, {
+        through: "036_authorization_policy_foundation.sql",
+      });
       expect(applied.at(-1)).toBe(
         "036_authorization_policy_foundation.sql",
       );
