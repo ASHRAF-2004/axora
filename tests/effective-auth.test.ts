@@ -22,11 +22,11 @@ import {
   requireStablePermission,
   StablePermissionDeniedError,
 } from "@/lib/effective-auth";
-import type { SessionUser } from "@/lib/auth";
+import type { AuthenticatedSessionUser } from "@/lib/auth";
 
 const companyId = "30000000-0000-4000-8000-000000000001";
 
-const user: SessionUser = {
+const user: AuthenticatedSessionUser = {
   id: "10000000-0000-4000-8000-000000000001",
   name: "Approver",
   email: "approver@example.test",
@@ -34,13 +34,11 @@ const user: SessionUser = {
   roleAssignmentId: "20000000-0000-4000-8000-000000000001",
   isOwner: false,
   accountKind: "COMPANY",
-  accountStatus: "ACTIVE",
   authVersion: 4,
   scopeType: "COMPANY",
   companyId,
-  locale: "en",
+  preferredLocale: "en",
   timezone: "Asia/Kuala_Lumpur",
-  onboardingRequired: false,
 };
 
 function access(roleGrants: string[]) {
