@@ -1,0 +1,107 @@
+name: Verify visitor-choice fallback live
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-visitor-choice-fallback-live
+  cancel-in-progress: true
+
+jobs:
+  verify-live-fallback:
+    name: Verify GET-only production fallback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Wait for the merged release and verify the fallback cookie
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          ready_url="https://axora.management/api/health/ready"
+          snapshot_url="https://axora.management/api/public/visitor-choice"
+          signal="$(printf 'a%.0s' {1..64})"
+
+          for attempt in $(seq 1 48); do
+            ready_headers="$RUNNER_TEMP/axora-ready.headers"
+            ready_body="$RUNNER_TEMP/axora-ready.json"
+            snapshot_headers="$RUNNER_TEMP/axora-snapshot.headers"
+            snapshot_body="$RUNNER_TEMP/axora-snapshot.json"
+            : > "$ready_headers"
+            : > "$ready_body"
+            : > "$snapshot_headers"
+            : > "$snapshot_body"
+
+            ready_code="$(
+              curl --silent --show-error --max-time 20 \
+                --dump-header "$ready_headers" \
+                --output "$ready_body" \
+                --write-out '%{http_code}' \
+                "$ready_url" || true
+            )"
+            snapshot_code="$(
+              curl --silent --show-error --max-time 20 \
+                --header "X-Axora-Visitor-Signal: $signal" \
+                --dump-header "$snapshot_headers" \
+                --output "$snapshot_body" \
+                --write-out '%{http_code}' \
+                "$snapshot_url" || true
+            )"
+
+            ready_valid="$(node - "$ready_body" <<'NODE'
+          const fs = require('node:fs');
+          try {
+            const value = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+            process.stdout.write(value?.status === 'ready' ? '1' : '0');
+          } catch {
+            process.stdout.write('0');
+          }
+          NODE
+            )"
+            snapshot_valid="$(node - "$snapshot_body" <<'NODE'
+          const fs = require('node:fs');
+          try {
+            const value = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+            const counts = [
+              value?.totalCount,
+              value?.earlyBirdCount,
+              value?.nightOwlCount,
+            ];
+            const valid = counts.every(Number.isSafeInteger)
+              && counts.every((item) => item >= 0)
+              && value.totalCount === value.earlyBirdCount + value.nightOwlCount;
+            process.stdout.write(valid ? '1' : '0');
+          } catch {
+            process.stdout.write('0');
+          }
+          NODE
+            )"
+            fallback_cookie_present="$(node - "$snapshot_headers" <<'NODE'
+          const fs = require('node:fs');
+          const headers = fs.readFileSync(process.argv[2], 'utf8');
+          const match = headers.match(/(?:^|\r?\n)set-cookie:\s*axora_visitor_fallback=([^;\r\n]*)/i);
+          process.stdout.write(match && match[1].length > 0 ? '1' : '0');
+          NODE
+            )"
+
+            echo "attempt=$attempt ready_http=$ready_code ready_valid=$ready_valid snapshot_http=$snapshot_code snapshot_valid=$snapshot_valid fallback_cookie_present=$fallback_cookie_present"
+
+            if [[ "$ready_code" == "200" \
+              && "$ready_valid" == "1" \
+              && "$snapshot_code" == "200" \
+              && "$snapshot_valid" == "1" \
+              && "$fallback_cookie_present" == "1" ]]; then
+              echo "Production fallback verification passed using GET requests only. No visitor-choice POST was sent."
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+          echo "::error::The production endpoint did not expose the merged fallback within the bounded verification window."
+          exit 1
