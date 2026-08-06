@@ -10,7 +10,7 @@ vi.mock("@/lib/db", () => ({
   query: mocks.query,
 }));
 
-import type { SessionUser } from "@/lib/auth";
+import type { AuthenticatedSessionUser } from "@/lib/auth";
 import {
   EffectiveAccessUnavailableError,
   loadEffectiveAccess,
@@ -24,7 +24,9 @@ const ids = {
   otherCompany: "30000000-0000-4000-8000-000000000002",
 };
 
-function session(overrides: Partial<SessionUser> = {}): SessionUser {
+function session(
+  overrides: Partial<AuthenticatedSessionUser> = {},
+): AuthenticatedSessionUser {
   return {
     id: ids.user,
     name: "Policy User",
@@ -33,13 +35,11 @@ function session(overrides: Partial<SessionUser> = {}): SessionUser {
     roleAssignmentId: ids.assignment,
     isOwner: false,
     accountKind: "COMPANY",
-    accountStatus: "ACTIVE",
     authVersion: 7,
     scopeType: "COMPANY",
     companyId: ids.company,
-    locale: "en",
+    preferredLocale: "en",
     timezone: "Asia/Kuala_Lumpur",
-    onboardingRequired: false,
     ...overrides,
   };
 }
