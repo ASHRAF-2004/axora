@@ -1,0 +1,50 @@
+name: Patch visitor uniqueness migration expectations
+
+on:
+  push:
+    branches:
+      - agent/fix-private-visitor-duplicates
+    paths:
+      - .github/workflows/patch-private-visitor-migration-expectations.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: agent/fix-private-visitor-duplicates
+          fetch-depth: 0
+      - name: Advance exact migration expectations and remove helper workflow
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = [
+            'tests/support-diagnostics-migration.test.ts',
+            'tests/account-security-session-audit-migration.test.ts',
+          ];
+          const oldText = 'expect(applied.at(-1)).toBe("034_public_visitor_network_fallback.sql");';
+          const newText = 'expect(applied.at(-1)).toBe("035_public_visitor_network_uniqueness.sql");';
+          for (const file of files) {
+            const source = fs.readFileSync(file, 'utf8');
+            const matches = source.split(oldText).length - 1;
+            if (matches !== 1) {
+              throw new Error(`${file}: expected one exact migration assertion, found ${matches}`);
+            }
+            fs.writeFileSync(file, source.replace(oldText, newText));
+          }
+          fs.rmSync('.github/workflows/patch-private-visitor-migration-expectations.yml');
+          NODE
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/support-diagnostics-migration.test.ts \
+            tests/account-security-session-audit-migration.test.ts \
+            .github/workflows/patch-private-visitor-migration-expectations.yml
+          git commit -m "Advance migration expectations through 035"
+          git push origin HEAD:agent/fix-private-visitor-duplicates
