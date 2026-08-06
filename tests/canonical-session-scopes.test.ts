@@ -82,6 +82,7 @@ describe("canonical authenticated session scopes", () => {
       departmentId: ids.department,
       scopeDepartmentActive: true,
       scopeDepartmentBranchId: ids.branch,
+      scopeDepartmentBranchActive: true,
       departmentAssignmentStatus: "ACTIVE",
       departmentAssignmentPrimary: true,
     } satisfies Partial<IdentityCandidateRow>;
@@ -138,6 +139,7 @@ describe("canonical authenticated session scopes", () => {
     for (const invalid of [
       candidate({ ...department, assignedRole: "DEPARTMENT_ADMIN", departmentAssignmentStatus: "SUSPENDED" }),
       candidate({ ...department, assignedRole: "DEPARTMENT_ADMIN", scopeDepartmentActive: false }),
+      candidate({ ...department, assignedRole: "DEPARTMENT_ADMIN", scopeDepartmentBranchActive: false }),
       candidate({ ...department, assignedRole: "DEPARTMENT_ADMIN", scopeDepartmentBranchId: "40000000-0000-4000-8000-000000000099" }),
       candidate({ ...department, assignedRole: "DEPARTMENT_ADMIN", companyMembershipStatus: "SUSPENDED" }),
     ]) {
@@ -188,6 +190,7 @@ describe("canonical authenticated session scopes", () => {
       departmentId: ids.department,
       scopeDepartmentActive: true,
       scopeDepartmentBranchId: ids.branch,
+      scopeDepartmentBranchActive: true,
       departmentAssignmentStatus: "ACTIVE",
     })])!;
 

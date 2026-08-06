@@ -113,6 +113,7 @@ export interface IdentityCandidateRow {
   branchAssignmentPrimary?: boolean;
   scopeDepartmentActive?: boolean;
   scopeDepartmentBranchId?: string;
+  scopeDepartmentBranchActive?: boolean;
   departmentAssignmentStatus?: string;
   departmentAssignmentPrimary?: boolean;
   scopeSupplierActive?: boolean;
@@ -246,6 +247,7 @@ const identityRowsSql = `
     scope_branch_assignment.is_primary AS "branchAssignmentPrimary",
     scope_department.active AS "scopeDepartmentActive",
     scope_department.branch_id::text AS "scopeDepartmentBranchId",
+    scope_department_branch.active AS "scopeDepartmentBranchActive",
     scope_department_assignment.status AS "departmentAssignmentStatus",
     scope_department_assignment.is_primary AS "departmentAssignmentPrimary",
     scope_supplier.active AS "scopeSupplierActive",
@@ -281,6 +283,9 @@ const identityRowsSql = `
   LEFT JOIN departments scope_department
     ON scope_department.id=assignment.department_id
    AND scope_department.company_id=assignment.company_id
+  LEFT JOIN branches scope_department_branch
+    ON scope_department_branch.id=scope_department.branch_id
+   AND scope_department_branch.company_id=scope_department.company_id
   LEFT JOIN department_assignments scope_department_assignment
     ON scope_department_assignment.user_id=account.id
    AND scope_department_assignment.company_id=assignment.company_id
@@ -512,6 +517,7 @@ function validAssignmentCandidate(row: IdentityCandidateRow) {
       && row.scopeCompanyActive === true
       && row.companyMembershipStatus === "ACTIVE"
       && row.scopeDepartmentActive === true
+      && (!row.scopeDepartmentBranchId || row.scopeDepartmentBranchActive === true)
       && row.departmentAssignmentStatus === "ACTIVE"
       && (!row.branchId || row.scopeDepartmentBranchId === row.branchId);
   }
