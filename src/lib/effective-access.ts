@@ -244,8 +244,7 @@ export async function loadEffectiveAccess(
       isOwner: parsed.data.isOwner,
       scopes: parsed.data.scopes as AuthorizationScope[],
       roleGrants: parsed.data.rolePermissions as PermissionCode[],
-      permissionOverrides: parsed.data.permissionOverrides
-        as PermissionOverride[],
+      permissionOverrides: parsed.data.permissionOverrides as PermissionOverride[],
       delegations: parsed.data.delegations as PermissionDelegation[],
       approvalLimits: parsed.data.approvalLimits as ApprovalLimit[],
     },
