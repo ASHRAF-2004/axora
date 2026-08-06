@@ -1117,8 +1117,12 @@ function roleScopeContract(role: AuthorizationRole) {
       return { accountKind: "COMPANY" as const, scopes: ["COMPANY"] as const };
     case "BRANCH_ADMIN":
     case "BRANCH_APPROVER":
-    case "REQUESTER":
       return { accountKind: "COMPANY" as const, scopes: ["BRANCH"] as const };
+    case "REQUESTER":
+      return {
+        accountKind: "COMPANY" as const,
+        scopes: ["BRANCH", "DEPARTMENT"] as const,
+      };
     case "DEPARTMENT_ADMIN":
       return { accountKind: "COMPANY" as const, scopes: ["DEPARTMENT"] as const };
     case "FINANCE_REVIEWER":

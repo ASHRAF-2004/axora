@@ -119,6 +119,14 @@ function scopeFromSession(user: AuthenticatedSessionUser): AuthorizationScope | 
       branchId: user.branchId,
     };
   }
+  if (user.scopeType === "DEPARTMENT" && user.companyId && user.departmentId) {
+    return {
+      type: "DEPARTMENT",
+      companyId: user.companyId,
+      ...(user.branchId ? { branchId: user.branchId } : {}),
+      departmentId: user.departmentId,
+    };
+  }
   if (user.scopeType === "SUPPLIER" && user.supplierId) {
     return { type: "SUPPLIER", supplierId: user.supplierId };
   }

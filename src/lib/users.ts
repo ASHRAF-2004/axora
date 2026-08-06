@@ -29,6 +29,7 @@ export async function listUsers(actor: SessionUser): Promise<UserRecord[]> {
     assignment.scope_type AS "scopeType",
     COALESCE(assignment.company_id,u.company_id)::text AS "companyId",c.name AS "companyName",
     COALESCE(assignment.branch_id,u.branch_id)::text AS "branchId",b.name AS "branchName",
+    assignment.department_id::text AS "departmentId",department.name AS "departmentName",
     assignment.supplier_id::text AS "supplierId",supplier.name AS "supplierName",
     profile.job_title AS "jobTitle",
     u.account_setup_completed_at::text AS "accountSetupCompletedAt",
@@ -41,7 +42,8 @@ export async function listUsers(actor: SessionUser): Promise<UserRecord[]> {
     JOIN roles legacy_role ON legacy_role.id=u.role_id
     LEFT JOIN LATERAL (
       SELECT current_assignment.id,current_assignment.role_id,current_assignment.scope_type,
-        current_assignment.company_id,current_assignment.branch_id,current_assignment.supplier_id
+        current_assignment.company_id,current_assignment.branch_id,
+        current_assignment.department_id,current_assignment.supplier_id
       FROM role_assignments current_assignment
       WHERE current_assignment.user_id=u.id AND current_assignment.active=true
       ORDER BY current_assignment.assigned_at DESC,current_assignment.id
@@ -50,6 +52,9 @@ export async function listUsers(actor: SessionUser): Promise<UserRecord[]> {
     LEFT JOIN roles scoped_role ON scoped_role.id=assignment.role_id
     LEFT JOIN companies c ON c.id=COALESCE(assignment.company_id,u.company_id)
     LEFT JOIN branches b ON b.id=COALESCE(assignment.branch_id,u.branch_id)
+    LEFT JOIN departments department
+      ON department.id=assignment.department_id
+     AND department.company_id=assignment.company_id
     LEFT JOIN suppliers supplier ON supplier.id=assignment.supplier_id
     LEFT JOIN user_profiles profile ON profile.user_id=u.id
     LEFT JOIN LATERAL (
