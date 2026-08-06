@@ -86,11 +86,11 @@ function setVisitorCookie(response: NextResponse, value: string) {
 
 function setFallbackCookie(
   response: NextResponse,
-  networkDeviceHash: string,
+  networkHash: string,
 ) {
   response.cookies.set({
     name: VISITOR_FALLBACK_COOKIE,
-    value: createVisitorFallbackCookie(networkDeviceHash),
+    value: createVisitorFallbackCookie(networkHash),
     httpOnly: true,
     secure: secureCookie(),
     sameSite: "lax",
@@ -149,8 +149,8 @@ export async function GET(request: NextRequest) {
     if (cookieValue && visitorTokenHashFromCookie(cookieValue)) {
       setVisitorCookie(response, cookieValue);
     }
-    if (!snapshot.choice && identity.networkDeviceHash) {
-      setFallbackCookie(response, identity.networkDeviceHash);
+    if (!snapshot.choice && identity.networkHash) {
+      setFallbackCookie(response, identity.networkHash);
     } else {
       clearFallbackCookie(response);
     }
@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
       if (!networkHash || !networkDeviceHash || !clientSignalHash
         || !verifyVisitorFallbackCookie(
           fallbackCookie,
-          networkDeviceHash,
+          networkHash,
         )) {
         throw error;
       }
