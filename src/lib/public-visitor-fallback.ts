@@ -43,15 +43,15 @@ function visitorSecret() {
 function fallbackSignature(
   issuedAt: string,
   nonce: string,
-  networkDeviceHash: string,
+  networkHash: string,
 ) {
   return createHmac("sha256", visitorSecret())
-    .update("axora-public-visitor-fallback-v1\0", "utf8")
+    .update("axora-public-visitor-fallback-v2\0", "utf8")
     .update(issuedAt, "utf8")
     .update("\0", "utf8")
     .update(nonce, "utf8")
     .update("\0", "utf8")
-    .update(networkDeviceHash, "utf8")
+    .update(networkHash, "utf8")
     .digest("base64url");
 }
 
@@ -63,10 +63,10 @@ function signaturesMatch(provided: string, expected: string) {
 }
 
 export function createVisitorFallbackCookie(
-  networkDeviceHash: string,
+  networkHash: string,
   now = Date.now(),
 ) {
-  if (!HASH_PATTERN.test(networkDeviceHash)
+  if (!HASH_PATTERN.test(networkHash)
     || !Number.isFinite(now)
     || now < 0) {
     throw new Error("The visitor fallback context is invalid.");
@@ -76,7 +76,7 @@ export function createVisitorFallbackCookie(
   const value = `v1.${issuedAt}.${nonce}.${fallbackSignature(
     issuedAt,
     nonce,
-    networkDeviceHash,
+    networkHash,
   )}`;
   if (!FALLBACK_COOKIE_PATTERN.test(value)) {
     throw new Error("The visitor fallback cookie could not be generated.");
@@ -86,11 +86,11 @@ export function createVisitorFallbackCookie(
 
 export function verifyVisitorFallbackCookie(
   value: string | undefined | null,
-  networkDeviceHash: string | undefined,
+  networkHash: string | undefined,
   now = Date.now(),
 ) {
   if (!value || value.length > 160
-    || !networkDeviceHash || !HASH_PATTERN.test(networkDeviceHash)
+    || !networkHash || !HASH_PATTERN.test(networkHash)
     || !Number.isFinite(now) || now < 0) {
     return false;
   }
@@ -110,7 +110,7 @@ export function verifyVisitorFallbackCookie(
 
   return signaturesMatch(
     signature,
-    fallbackSignature(issuedAtText, nonce, networkDeviceHash),
+    fallbackSignature(issuedAtText, nonce, networkHash),
   );
 }
 
@@ -177,7 +177,7 @@ export async function claimPublicVisitorFallback(input: {
   const parsedChoice = visitorChoiceSchema.parse(input.choice);
 
   return withAuditTransaction(
-    { reason: "Public visitor choice claimed with network-device fallback" },
+    { reason: "Public visitor choice claimed with network fallback" },
     async (client) => {
       const result = await client.query<FallbackSnapshotRow>(
         `SELECT * FROM public.axora_claim_public_visitor_fallback(
