@@ -244,15 +244,22 @@ function canonicalSubjectIsValid(subject: AccessSubject) {
     case "COMPANY_APPROVER":
       return !subject.isOwner && validCompanyScope(subject, ["COMPANY"]);
     case "BRANCH_ADMIN":
-    case "REQUESTER":
     case "BRANCH_APPROVER":
       return !subject.isOwner && validCompanyScope(subject, ["BRANCH"]);
+    case "REQUESTER":
+      return !subject.isOwner && (
+        validCompanyScope(subject, ["BRANCH"])
+        || validDepartmentScope(subject)
+      );
     case "DEPARTMENT_ADMIN":
       return !subject.isOwner && validDepartmentScope(subject);
     case "FINANCE_REVIEWER":
     case "AUDITOR":
     case "RECEIVING_USER":
-      return !subject.isOwner && validCompanyScope(subject, ["COMPANY", "BRANCH"]);
+      return !subject.isOwner && (
+        validCompanyScope(subject, ["COMPANY", "BRANCH"])
+        || validDepartmentScope(subject)
+      );
     case "SUPPLIER_USER":
       return !subject.isOwner
         && subject.accountKind === "SUPPLIER"

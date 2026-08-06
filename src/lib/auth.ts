@@ -38,6 +38,7 @@ interface StepUpClaim {
   scopeType: RoleScopeType;
   companyId?: string;
   branchId?: string;
+  departmentId?: string;
   supplierId?: string;
   roleAssignmentId?: string;
   authVersion: number;
@@ -51,6 +52,7 @@ export interface SessionUser {
   role: UserRole;
   companyId?: string;
   branchId?: string;
+  departmentId?: string;
   supplierId?: string;
   accountKind?: AccountKind;
   scopeType?: RoleScopeType;
@@ -101,6 +103,7 @@ export interface IdentityCandidateRow {
   scopeType?: string;
   companyId?: string;
   branchId?: string;
+  departmentId?: string;
   supplierId?: string;
   scopeCompanyActive?: boolean;
   companyMembershipStatus?: string;
@@ -108,6 +111,11 @@ export interface IdentityCandidateRow {
   scopeBranchActive?: boolean;
   branchAssignmentStatus?: string;
   branchAssignmentPrimary?: boolean;
+  scopeDepartmentActive?: boolean;
+  scopeDepartmentBranchId?: string;
+  scopeDepartmentBranchActive?: boolean;
+  departmentAssignmentStatus?: string;
+  departmentAssignmentPrimary?: boolean;
   scopeSupplierActive?: boolean;
   supplierMembershipStatus?: string;
   deliveryProfileActive?: boolean;
@@ -152,6 +160,7 @@ async function encodeStepUpCookie(
     scopeType: actor.scopeType,
     companyId: actor.companyId,
     branchId: actor.branchId,
+    departmentId: actor.departmentId,
     supplierId: actor.supplierId,
     roleAssignmentId: actor.roleAssignmentId,
     authVersion: actor.authVersion ?? 1,
@@ -228,6 +237,7 @@ const identityRowsSql = `
     assignment.scope_type AS "scopeType",
     assignment.company_id::text AS "companyId",
     assignment.branch_id::text AS "branchId",
+    assignment.department_id::text AS "departmentId",
     assignment.supplier_id::text AS "supplierId",
     scope_company.active AS "scopeCompanyActive",
     scope_membership.status AS "companyMembershipStatus",
@@ -235,6 +245,11 @@ const identityRowsSql = `
     scope_branch.active AS "scopeBranchActive",
     scope_branch_assignment.status AS "branchAssignmentStatus",
     scope_branch_assignment.is_primary AS "branchAssignmentPrimary",
+    scope_department.active AS "scopeDepartmentActive",
+    scope_department.branch_id::text AS "scopeDepartmentBranchId",
+    scope_department_branch.active AS "scopeDepartmentBranchActive",
+    scope_department_assignment.status AS "departmentAssignmentStatus",
+    scope_department_assignment.is_primary AS "departmentAssignmentPrimary",
     scope_supplier.active AS "scopeSupplierActive",
     scope_supplier_membership.status AS "supplierMembershipStatus",
     delivery_profile.active AS "deliveryProfileActive"
@@ -265,6 +280,16 @@ const identityRowsSql = `
     ON scope_branch_assignment.user_id=account.id
    AND scope_branch_assignment.company_id=assignment.company_id
    AND scope_branch_assignment.branch_id=assignment.branch_id
+  LEFT JOIN departments scope_department
+    ON scope_department.id=assignment.department_id
+   AND scope_department.company_id=assignment.company_id
+  LEFT JOIN branches scope_department_branch
+    ON scope_department_branch.id=scope_department.branch_id
+   AND scope_department_branch.company_id=scope_department.company_id
+  LEFT JOIN department_assignments scope_department_assignment
+    ON scope_department_assignment.user_id=account.id
+   AND scope_department_assignment.company_id=assignment.company_id
+   AND scope_department_assignment.department_id=assignment.department_id
   LEFT JOIN suppliers scope_supplier ON scope_supplier.id=assignment.supplier_id
   LEFT JOIN supplier_memberships scope_supplier_membership
     ON scope_supplier_membership.user_id=account.id
@@ -318,6 +343,18 @@ const branchScopeRoles = new Set([
   "OPERATIONS",
   "FINANCE",
   "VIEWER",
+]);
+const departmentScopeRoles = new Set([
+  "DEPARTMENT_ADMIN",
+  "REQUESTER",
+  "FINANCE_REVIEWER",
+  "AUDITOR",
+  "RECEIVING_USER",
+]);
+const deliveryScopeRoles = new Set([
+  "DELIVERY_TEAM_SUPERVISOR",
+  "DELIVERY_AGENT",
+  "DELIVERY_DRIVER",
 ]);
 const legacyCompanyRoles = new Set([
   "ADMIN",
@@ -430,19 +467,22 @@ function roleFitsAccountScope(
   scopeType: RoleScopeType,
 ) {
   if (accountKind === "PLATFORM") {
-    if (scopeType !== "PLATFORM") return false;
-    return isOwner ? platformOwnerRoles.has(role) : platformActorRoles.has(role);
+    if (isOwner) {
+      return scopeType === "PLATFORM" && platformOwnerRoles.has(role);
+    }
+    if (role === "CLIENT_ACCOUNT_MANAGER") return scopeType === "COMPANY";
+    return scopeType === "PLATFORM" && platformActorRoles.has(role);
   }
   if (isOwner) return false;
   if (accountKind === "COMPANY") {
-    return scopeType === "COMPANY"
-      ? companyScopeRoles.has(role)
-      : scopeType === "BRANCH" && branchScopeRoles.has(role);
+    if (scopeType === "COMPANY") return companyScopeRoles.has(role);
+    if (scopeType === "BRANCH") return branchScopeRoles.has(role);
+    return scopeType === "DEPARTMENT" && departmentScopeRoles.has(role);
   }
   if (accountKind === "SUPPLIER") {
     return scopeType === "SUPPLIER" && role === "SUPPLIER_USER";
   }
-  return scopeType === "DELIVERY" && role === "DELIVERY_DRIVER";
+  return scopeType === "DELIVERY" && deliveryScopeRoles.has(role);
 }
 
 function validAssignmentCandidate(row: IdentityCandidateRow) {
@@ -453,27 +493,43 @@ function validAssignmentCandidate(row: IdentityCandidateRow) {
     return false;
   }
   if (row.scopeType === "PLATFORM") {
-    return !row.companyId && !row.branchId && !row.supplierId;
+    return !row.companyId && !row.branchId && !row.departmentId && !row.supplierId;
   }
   if (row.scopeType === "COMPANY") {
-    return Boolean(row.companyId) && !row.branchId && !row.supplierId
+    const platformManager = row.accountKind === "PLATFORM"
+      && row.assignedRole === "CLIENT_ACCOUNT_MANAGER";
+    return Boolean(row.companyId) && !row.branchId && !row.departmentId && !row.supplierId
       && row.scopeCompanyActive === true
-      && row.companyMembershipStatus === "ACTIVE";
+      && (platformManager || (
+        row.accountKind === "COMPANY"
+        && row.companyMembershipStatus === "ACTIVE"
+      ));
   }
   if (row.scopeType === "BRANCH") {
-    return Boolean(row.companyId && row.branchId) && !row.supplierId
+    return Boolean(row.companyId && row.branchId) && !row.departmentId && !row.supplierId
       && row.scopeCompanyActive === true
       && row.companyMembershipStatus === "ACTIVE"
       && row.scopeBranchActive === true
       && row.branchAssignmentStatus === "ACTIVE";
   }
+  if (row.scopeType === "DEPARTMENT") {
+    return Boolean(row.companyId && row.departmentId) && !row.supplierId
+      && row.scopeCompanyActive === true
+      && row.companyMembershipStatus === "ACTIVE"
+      && row.scopeDepartmentActive === true
+      && (!row.scopeDepartmentBranchId || row.scopeDepartmentBranchActive === true)
+      && row.departmentAssignmentStatus === "ACTIVE"
+      && (!row.branchId || row.scopeDepartmentBranchId === row.branchId);
+  }
   if (row.scopeType === "SUPPLIER") {
     return Boolean(row.supplierId) && !row.companyId && !row.branchId
+      && !row.departmentId
       && row.scopeSupplierActive === true
       && row.supplierMembershipStatus === "ACTIVE";
   }
-  return !row.companyId && !row.branchId && !row.supplierId
-    && row.deliveryProfileActive === true;
+  return !row.companyId && !row.branchId && !row.departmentId && !row.supplierId
+    && (row.assignedRole === "DELIVERY_TEAM_SUPERVISOR"
+      || row.deliveryProfileActive === true);
 }
 
 function candidateScore(row: IdentityCandidateRow) {
@@ -486,6 +542,7 @@ function candidateScore(row: IdentityCandidateRow) {
   if (row.branchId && row.branchId !== row.legacyBranchId) score += 10;
   if (row.companyMembershipPrimary === false) score += 2;
   if (row.branchAssignmentPrimary === false) score += 1;
+  if (row.departmentAssignmentPrimary === false) score += 1;
   return score;
 }
 
@@ -500,6 +557,7 @@ function sessionFromAssignment(row: IdentityCandidateRow): AuthenticatedSessionU
     roleAssignmentId: row.assignmentId,
     ...(row.companyId ? { companyId: row.companyId } : {}),
     ...(row.branchId ? { branchId: row.branchId } : {}),
+    ...(row.departmentId ? { departmentId: row.departmentId } : {}),
     ...(row.supplierId ? { supplierId: row.supplierId } : {}),
     isOwner: row.isOwner,
     authVersion: Number(row.authVersion),
@@ -559,13 +617,16 @@ export function sessionScopeIsValid(user: SessionUser): user is AuthenticatedSes
     return false;
   }
   if (user.scopeType === "PLATFORM" || user.scopeType === "DELIVERY") {
-    return !user.companyId && !user.branchId && !user.supplierId;
+    return !user.companyId && !user.branchId && !user.departmentId && !user.supplierId;
   }
   if (user.scopeType === "SUPPLIER") {
-    return Boolean(user.supplierId) && !user.companyId && !user.branchId;
+    return Boolean(user.supplierId) && !user.companyId && !user.branchId
+      && !user.departmentId;
   }
   if (!user.companyId || user.supplierId) return false;
-  return user.scopeType === "BRANCH" ? Boolean(user.branchId) : !user.branchId;
+  if (user.scopeType === "COMPANY") return !user.branchId && !user.departmentId;
+  if (user.scopeType === "BRANCH") return Boolean(user.branchId) && !user.departmentId;
+  return user.scopeType === "DEPARTMENT" && Boolean(user.departmentId);
 }
 
 export function resolveActiveIdentityCandidates(
@@ -596,6 +657,7 @@ export function liveSessionScopeMatches(tokenUser: SessionUser, liveUser: Sessio
     && tokenUser.roleAssignmentId === liveUser.roleAssignmentId
     && tokenUser.companyId === liveUser.companyId
     && tokenUser.branchId === liveUser.branchId
+    && tokenUser.departmentId === liveUser.departmentId
     && tokenUser.supplierId === liveUser.supplierId
     && tokenUser.isOwner === liveUser.isOwner
     && Number(tokenUser.authVersion) === Number(liveUser.authVersion);
@@ -629,6 +691,7 @@ async function createToken(user: SessionUser) {
     roleAssignmentId: user.roleAssignmentId,
     companyId: user.companyId,
     branchId: user.branchId,
+    departmentId: user.departmentId,
     supplierId: user.supplierId,
     isOwner: user.isOwner,
     authVersion: user.authVersion ?? 1,
@@ -816,6 +879,7 @@ async function readLiveSession(): Promise<LiveIdentity | null> {
       ...(payload.roleAssignmentId ? { roleAssignmentId: String(payload.roleAssignmentId) } : {}),
       ...(payload.companyId ? { companyId: String(payload.companyId) } : {}),
       ...(payload.branchId ? { branchId: String(payload.branchId) } : {}),
+      ...(payload.departmentId ? { departmentId: String(payload.departmentId) } : {}),
       ...(payload.supplierId ? { supplierId: String(payload.supplierId) } : {}),
       isOwner: payload.isOwner,
       authVersion,
@@ -866,6 +930,7 @@ function stepUpClaimsMatch(user: SessionUser, claims: StepUpClaim) {
     && Number(claims.authVersion) === Number(user.authVersion)
     && ((claims.companyId ?? "") === (user.companyId ?? ""))
     && ((claims.branchId ?? "") === (user.branchId ?? ""))
+    && ((claims.departmentId ?? "") === (user.departmentId ?? ""))
     && ((claims.supplierId ?? "") === (user.supplierId ?? ""))
     && ((claims.roleAssignmentId ?? "") === (user.roleAssignmentId ?? ""));
 }

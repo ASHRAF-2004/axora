@@ -180,14 +180,21 @@ describe("live effective authorization access", () => {
     expect(mocks.query).not.toHaveBeenCalled();
   });
 
-  it("does not invent department context before department sessions are normalized", async () => {
+  it("preserves normalized department context in the compatibility boundary", async () => {
     mocks.isDemoMode.mockReturnValueOnce(true);
-    await expect(loadEffectiveAccess(session({
+    const department = await loadEffectiveAccess(session({
       role: "DEPARTMENT_ADMIN",
       scopeType: "DEPARTMENT",
       companyId: ids.company,
       branchId: ids.branch,
+      departmentId: "50000000-0000-4000-8000-000000000038",
       roleAssignmentId: undefined,
-    }))).rejects.toBeInstanceOf(EffectiveAccessUnavailableError);
+    }));
+    expect(department.subject.scopes).toEqual([{
+      type: "DEPARTMENT",
+      companyId: ids.company,
+      branchId: ids.branch,
+      departmentId: "50000000-0000-4000-8000-000000000038",
+    }]);
   });
 });
