@@ -38,12 +38,20 @@ const setPermissionOverrideSchema = z.object({
   permission: permissionSchema,
   effect: z.enum(["GRANT", "DENY"]),
   scope: scopeSchema,
-  startsAt: z.coerce.date().optional(),
+  // The caller persists this command timestamp before submission so an
+  // ambiguous network retry reuses the same effective identity.
+  startsAt: z.coerce.date(),
   endsAt: z.coerce.date().optional(),
   reason: reasonSchema,
 }).strict().superRefine((value, context) => {
-  if (value.endsAt && value.startsAt
-    && value.endsAt.getTime() <= value.startsAt.getTime()) {
+  if (!Number.isFinite(value.startsAt.getTime())) {
+    context.addIssue({
+      code: "custom",
+      path: ["startsAt"],
+      message: "Permission start time is invalid",
+    });
+  }
+  if (value.endsAt && value.endsAt.getTime() <= value.startsAt.getTime()) {
     context.addIssue({
       code: "custom",
       path: ["endsAt"],
@@ -140,7 +148,7 @@ export async function setUserPermissionOverride(
         branchId,
         departmentId,
         supplierId,
-        parsed.startsAt ?? new Date(),
+        parsed.startsAt,
         parsed.endsAt ?? null,
         parsed.reason,
       ],
