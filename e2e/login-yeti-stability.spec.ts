@@ -67,6 +67,10 @@ test("Yeti animation nodes remain stable while typing email and password", async
     .toContain("translate(-93px, 10px)");
   await expect(mouth).toHaveAttribute("d", openMouthPath ?? "");
 
+  // Let the component's delayed password-group blur reconciliation finish
+  // before this node-stability test begins a separate email interaction.
+  await password.blur();
+  await expect(guide).toHaveAttribute("data-state", "idle");
   await email.focus();
   await email.type("z");
 
