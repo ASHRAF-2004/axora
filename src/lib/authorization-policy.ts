@@ -1022,6 +1022,8 @@ export const ROLE_DEFAULT_PERMISSIONS = {
 } as const satisfies
   Readonly<Partial<Record<KnownUserRole, readonly PermissionCode[]>>>;
 
+export type AuthorizationRole = keyof typeof ROLE_DEFAULT_PERMISSIONS;
+
 const knownPermissionCodes = new Set<string>(
   PERMISSION_CATALOG.map((permission) => permission.code),
 );
@@ -1041,7 +1043,7 @@ export function canonicalRoleForAuthorization(
   role: UserRole | string,
   scopeType?: RoleScopeType,
   isOwner = false,
-): KnownUserRole | undefined {
+): AuthorizationRole | undefined {
   if (!isUserRole(role)) return undefined;
   if (role === "ADMIN") return isOwner ? "PLATFORM_OWNER" : "COMPANY_ADMIN";
   if (role === "APPROVER") {
@@ -1091,7 +1093,7 @@ function scopeIsStructurallyValid(scope: AuthorizationScope) {
     && !scope.supplierId;
 }
 
-function roleScopeContract(role: KnownUserRole) {
+function roleScopeContract(role: AuthorizationRole) {
   switch (role) {
     case "PLATFORM_OWNER":
     case "PLATFORM_OPERATIONS":
