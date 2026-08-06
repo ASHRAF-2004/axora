@@ -423,7 +423,6 @@ AS $$
 DECLARE
   actor_snapshot jsonb;
   existing_row public.user_permission_overrides%ROWTYPE;
-  permission_code text;
   invalidation record;
   clean_reason text:=btrim(COALESCE(p_reason,''));
 BEGIN
@@ -431,12 +430,11 @@ BEGIN
     RAISE EXCEPTION 'A reason between 3 and 500 characters is required';
   END IF;
 
-  SELECT override_row.*,permission.permission_code
-  INTO existing_row,permission_code
+  SELECT override_row.*
+  INTO existing_row
   FROM public.user_permission_overrides override_row
-  JOIN public.permissions permission ON permission.id=override_row.permission_id
   WHERE override_row.id=p_override_id
-  FOR UPDATE OF override_row;
+  FOR UPDATE;
   IF existing_row.id IS NULL THEN
     RAISE EXCEPTION 'The permission override is unavailable';
   END IF;
