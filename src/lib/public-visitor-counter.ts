@@ -109,8 +109,20 @@ export function visitorTokenHashFromCookie(value: string | undefined | null) {
 }
 
 export function normalizedPublicNetworkIdentifier(value: string | null | undefined) {
-  const candidate = value?.trim();
-  return candidate && isIP(candidate) ? candidate : undefined;
+  const candidate = value?.trim().toLowerCase();
+  const version = candidate ? isIP(candidate) : 0;
+  if (!candidate || !version) return undefined;
+  if (version === 4) {
+    return candidate.split(".").map((part) => String(Number(part))).join(".");
+  }
+  try {
+    const hostname = new URL(`http://[${candidate}]`).hostname;
+    return hostname.startsWith("[") && hostname.endsWith("]")
+      ? hostname.slice(1, -1).toLowerCase()
+      : candidate;
+  } catch {
+    return candidate;
+  }
 }
 
 export function buildVisitorIdentity(input: {
@@ -199,9 +211,10 @@ function mapSnapshot(row: VisitorSnapshotRow): VisitorCounterSnapshot {
 
 export async function getPublicVisitorSnapshot(identity: VisitorIdentity) {
   const result = await query<VisitorSnapshotRow>(
-    `SELECT * FROM public.axora_public_visitor_snapshot($1,$2,$3)`,
+    `SELECT * FROM public.axora_public_visitor_snapshot_v2($1,$2,$3,$4)`,
     [
       identity.tokenHash ?? null,
+      identity.networkHash ?? null,
       identity.networkDeviceHash ?? null,
       identity.turnstileDeviceHash ?? null,
     ],
