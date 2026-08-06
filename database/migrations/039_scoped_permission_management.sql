@@ -205,10 +205,10 @@ DECLARE
   new_version integer;
   revoked integer;
 BEGIN
-  UPDATE public.users
-  SET auth_version=auth_version+1
-  WHERE id=p_target_user_id
-  RETURNING users.auth_version INTO new_version;
+  UPDATE public.users AS account
+  SET auth_version=account.auth_version+1
+  WHERE account.id=p_target_user_id
+  RETURNING account.auth_version INTO new_version;
   IF new_version IS NULL THEN
     RAISE EXCEPTION 'The target account is unavailable';
   END IF;
