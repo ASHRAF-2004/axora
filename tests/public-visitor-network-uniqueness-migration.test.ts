@@ -284,7 +284,7 @@ describe("permanent public-network visitor uniqueness", () => {
         appTurnstileClaim: boolean;
         appFallbackClaim: boolean;
         appTableSelect: boolean;
-        publicSnapshot: boolean;
+        publicSnapshotDenied: boolean;
         triggerCount: number;
       }>(`
         SELECT
@@ -306,11 +306,18 @@ describe("permanent public-network visitor uniqueness", () => {
           has_table_privilege(
             'axora_app','public_visitor_network_claims','SELECT'
           ) AS "appTableSelect",
-          has_function_privilege(
-            'public',
-            'axora_public_visitor_snapshot_v2(text,text,text,text)',
-            'EXECUTE'
-          ) AS "publicSnapshot",
+          NOT EXISTS (
+            SELECT 1
+            FROM pg_proc routine
+            CROSS JOIN LATERAL aclexplode(
+              COALESCE(routine.proacl,acldefault('f',routine.proowner))
+            ) privilege
+            WHERE routine.oid=(
+              'axora_public_visitor_snapshot_v2(text,text,text,text)'
+            )::regprocedure
+              AND privilege.grantee=0
+              AND privilege.privilege_type='EXECUTE'
+          ) AS "publicSnapshotDenied",
           (SELECT count(*)::int FROM pg_trigger
            WHERE tgname='reject_public_visitor_network_claim_update'
              AND NOT tgisinternal) AS "triggerCount"
@@ -320,7 +327,7 @@ describe("permanent public-network visitor uniqueness", () => {
         appTurnstileClaim: true,
         appFallbackClaim: true,
         appTableSelect: false,
-        publicSnapshot: false,
+        publicSnapshotDenied: true,
         triggerCount: 1,
       });
     } finally {
