@@ -16,8 +16,8 @@ const originalEnvironment = {
   sessionSecretFile: process.env.SESSION_SECRET_FILE,
 };
 
-const networkDeviceHash = "a".repeat(64);
-const anotherNetworkDeviceHash = "b".repeat(64);
+const networkHash = "a".repeat(64);
+const anotherNetworkHash = "b".repeat(64);
 const issuedAt = Date.UTC(2026, 7, 6, 8, 0, 0);
 
 describe("public visitor fallback proof", () => {
@@ -39,27 +39,27 @@ describe("public visitor fallback proof", () => {
     }
   });
 
-  it("issues a short-lived signed proof bound to one irreversible network-device hash", () => {
-    const value = createVisitorFallbackCookie(networkDeviceHash, issuedAt);
+  it("issues a short-lived signed proof bound to one irreversible network hash", () => {
+    const value = createVisitorFallbackCookie(networkHash, issuedAt);
 
     expect(value).toMatch(
       /^v1\.[0-9a-z]{1,12}\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/,
     );
-    expect(value).not.toContain(networkDeviceHash);
+    expect(value).not.toContain(networkHash);
     expect(verifyVisitorFallbackCookie(
       value,
-      networkDeviceHash,
+      networkHash,
       issuedAt + 30_000,
     )).toBe(true);
     expect(verifyVisitorFallbackCookie(
       value,
-      anotherNetworkDeviceHash,
+      anotherNetworkHash,
       issuedAt + 30_000,
     )).toBe(false);
   });
 
-  it("rejects tampering, expiry, malformed values, and missing device context", () => {
-    const value = createVisitorFallbackCookie(networkDeviceHash, issuedAt);
+  it("rejects tampering, expiry, malformed values, and missing network context", () => {
+    const value = createVisitorFallbackCookie(networkHash, issuedAt);
     const parts = value.split(".");
     const signature = parts[3];
     if (!signature) throw new Error("The fallback signature is missing.");
@@ -67,17 +67,17 @@ describe("public visitor fallback proof", () => {
 
     expect(verifyVisitorFallbackCookie(
       parts.join("."),
-      networkDeviceHash,
+      networkHash,
       issuedAt + 30_000,
     )).toBe(false);
     expect(verifyVisitorFallbackCookie(
       value,
-      networkDeviceHash,
+      networkHash,
       issuedAt + (VISITOR_FALLBACK_COOKIE_MAX_AGE + 1) * 1_000,
     )).toBe(false);
     expect(verifyVisitorFallbackCookie(
       "not-a-cookie",
-      networkDeviceHash,
+      networkHash,
       issuedAt,
     )).toBe(false);
     expect(verifyVisitorFallbackCookie(value, undefined, issuedAt)).toBe(false);

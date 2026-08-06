@@ -138,7 +138,7 @@ describe("public visitor-choice endpoint", () => {
       tokenHash: hashes.token,
     });
     mocks.createFallbackCookie.mockReturnValue(
-      "v1.signed-network-device-fallback",
+      "v1.signed-network-fallback",
     );
     mocks.verifyFallbackCookie.mockReturnValue(false);
     mocks.buildIdentity.mockImplementation((input: {
@@ -165,7 +165,7 @@ describe("public visitor-choice endpoint", () => {
     mocks.claimFallback.mockResolvedValue(claimed);
   });
 
-  it("returns a private no-store snapshot and issues a short-lived fallback cookie", async () => {
+  it("returns a private no-store snapshot and issues an IP-hash-bound fallback cookie", async () => {
     const request = new NextRequest(
       "https://axora.management/api/public/visitor-choice",
       {
@@ -191,10 +191,10 @@ describe("public visitor-choice endpoint", () => {
     });
     expect(mocks.getSnapshot).toHaveBeenCalledOnce();
     expect(mocks.createFallbackCookie).toHaveBeenCalledWith(
-      hashes.networkDevice,
+      hashes.network,
     );
     expect(response.headers.get("set-cookie")).toContain(
-      "axora_visitor_fallback=v1.signed-network-device-fallback",
+      "axora_visitor_fallback=v1.signed-network-fallback",
     );
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
   });
@@ -218,6 +218,7 @@ describe("public visitor-choice endpoint", () => {
     expect(mocks.claim).toHaveBeenCalledWith(expect.objectContaining({
       identity: expect.objectContaining({
         tokenHash: hashes.token,
+        networkHash: hashes.network,
         turnstileDeviceHash: hashes.turnstileDevice,
       }),
       choice: "EARLY_BIRD",
@@ -232,7 +233,7 @@ describe("public visitor-choice endpoint", () => {
     expect(response.headers.get("set-cookie")).toContain("SameSite=lax");
   });
 
-  it("records through the signed network-device fallback when Siteverify rejects", async () => {
+  it("records through the signed network fallback when Siteverify rejects", async () => {
     mocks.verifyTurnstile.mockRejectedValueOnce(
       new TurnstileVerificationError(),
     );
@@ -252,7 +253,7 @@ describe("public visitor-choice endpoint", () => {
     await expect(response.json()).resolves.toEqual(claimed);
     expect(mocks.verifyFallbackCookie).toHaveBeenCalledWith(
       "signed-fallback-cookie",
-      hashes.networkDevice,
+      hashes.network,
     );
     expect(mocks.claim).not.toHaveBeenCalled();
     expect(mocks.claimFallback).toHaveBeenCalledWith({

@@ -84,10 +84,29 @@ describe("public visitor identity", () => {
     expect(first.turnstileDeviceHash).not.toBe(first.clientSignalHash);
   });
 
-  it("ignores malformed or unavailable network and browser signals", () => {
+  it("canonicalizes equivalent public IP text before deriving the permanent network hash", () => {
     expect(normalizedPublicNetworkIdentifier("203.0.113.8")).toBe(
       "203.0.113.8",
     );
+    expect(normalizedPublicNetworkIdentifier("2001:0DB8:0:0::1")).toBe(
+      "2001:db8::1",
+    );
+
+    const expanded = buildVisitorIdentity({
+      remoteIp: "2001:0DB8:0:0::1",
+      clientSignal: "b".repeat(64),
+    });
+    const compressed = buildVisitorIdentity({
+      remoteIp: "2001:db8::1",
+      clientSignal: "c".repeat(64),
+    });
+    expect(expanded.networkHash).toBe(compressed.networkHash);
+    expect(expanded.networkDeviceHash).not.toBe(
+      compressed.networkDeviceHash,
+    );
+  });
+
+  it("ignores malformed or unavailable network and browser signals", () => {
     expect(normalizedPublicNetworkIdentifier("not-an-ip")).toBeUndefined();
     expect(buildVisitorIdentity({
       remoteIp: "not-an-ip",
