@@ -39,7 +39,36 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("docs/refactor/AUTHORIZATION_POLICY.md")
+          source = path.read_text()
+          current = "Status: implementation foundation for the canonical backlog dated 6 August 2026.\n"
+          expected = "Status: implemented as an expand-compatible foundation. Existing production\n"
+          if current in source:
+              path.write_text(source.replace(current, expected, 1))
+          elif expected not in source:
+              raise RuntimeError("Authorization policy status line is not recognized")
+          PY
           python3 .tmp/apply-p0-01-effective-access.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("docs/refactor/AUTHORIZATION_POLICY.md")
+          source = path.read_text()
+          old = (
+              "Status: implemented as an expand-compatible foundation. See "
+              "[Live effective-access runtime](EFFECTIVE_ACCESS_RUNTIME.md) for the "
+              "authenticated request integration. Existing production\n"
+          )
+          new = (
+              "Status: implemented as an expand-compatible foundation. See "
+              "[Live effective-access runtime](EFFECTIVE_ACCESS_RUNTIME.md) for the "
+              "authenticated request integration.\n"
+          )
+          if old not in source:
+              raise RuntimeError("Authorization runtime documentation link was not applied")
+          path.write_text(source.replace(old, new, 1))
+          PY
           rm -rf .tmp
           git fetch --no-tags origin main:refs/remotes/origin/main
           git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
