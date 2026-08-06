@@ -126,16 +126,32 @@ describe("P0-01 authorization policy foundation migration", () => {
       await applyMigrations(db);
       await applyDemoSeed(db);
 
+      const actorId = "f9000000-0000-4000-8000-000000000036";
+      await db.query(`
+        INSERT INTO users(
+          id,email,display_name,password_hash,role_id,is_owner,
+          account_kind,account_status
+        )
+        SELECT
+          $1,
+          'authorization-foundation-actor@example.test',
+          'Authorization foundation actor',
+          'not-a-real-password-hash',
+          id,
+          true,
+          'PLATFORM',
+          'ACTIVE'
+        FROM roles
+        WHERE role_key='PLATFORM_OWNER'
+      `, [actorId]);
+
       const fixture = await db.query<{
-        actorId: string;
         companyId: string;
         branchId: string;
         companyAdminRoleId: string;
         approvePermissionId: string;
       }>(`
         SELECT
-          (SELECT id::text FROM users ORDER BY is_owner DESC,id LIMIT 1)
-            AS "actorId",
           selected.company_id::text AS "companyId",
           selected.id::text AS "branchId",
           (SELECT id::text FROM roles
@@ -150,7 +166,10 @@ describe("P0-01 authorization policy foundation migration", () => {
           LIMIT 1
         ) selected
       `);
-      const value = fixture.rows[0];
+      const value = {
+        ...fixture.rows[0],
+        actorId,
+      };
 
       const department = await db.query<{ id: string }>(`
         INSERT INTO departments(
