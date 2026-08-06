@@ -40,6 +40,43 @@ jobs:
         run: |
           set -Eeuo pipefail
           cat .tmp/p0-01-payload.part* | base64 --decode | tar -xzf -
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path(".tmp/apply-p0-01.py")
+          source = path.read_text()
+          old = r'''platform_shape = (
+              '        && !subject.companyId && !subject.branchId && !subject.supplierId;\n'
+          )
+          for _ in range(5):
+              replace_once(
+                  "src/lib/permissions.ts",
+                  platform_shape,
+                  '        && !subject.companyId && !subject.branchId\n'
+                  '        && !subject.departmentId && !subject.supplierId;\n',
+              )
+          '''
+          new = r'''platform_shape = (
+              '        && !subject.companyId && !subject.branchId && !subject.supplierId;\n'
+          )
+          permissions_path = Path("src/lib/permissions.ts")
+          permissions_source = permissions_path.read_text()
+          platform_shape_count = permissions_source.count(platform_shape)
+          if platform_shape_count != 3:
+              raise RuntimeError(
+                  "src/lib/permissions.ts: expected three platform-scope shapes, "
+                  f"found {platform_shape_count}"
+              )
+          permissions_path.write_text(permissions_source.replace(
+              platform_shape,
+              '        && !subject.companyId && !subject.branchId\n'
+              '        && !subject.departmentId && !subject.supplierId;\n',
+          ))
+          '''
+          if source.count(old) != 1:
+              raise RuntimeError("Prepared permission-scope patch was not found exactly once")
+          path.write_text(source.replace(old, new, 1))
+          PY
           python3 .tmp/apply-p0-01.py
           rm -rf .tmp
           git fetch --no-tags origin main
