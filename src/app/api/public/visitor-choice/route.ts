@@ -1,5 +1,12 @@
 import { isDemoMode } from "@/lib/db";
 import {
+  claimPublicVisitorFallback,
+  createVisitorFallbackCookie,
+  verifyVisitorFallbackCookie,
+  VISITOR_FALLBACK_COOKIE,
+  VISITOR_FALLBACK_COOKIE_MAX_AGE,
+} from "@/lib/public-visitor-fallback";
+import {
   buildVisitorIdentity,
   claimPublicVisitor,
   consumeVisitorClaimRateLimit,
@@ -60,15 +67,48 @@ function isSameOrigin(request: NextRequest) {
   }
 }
 
+function secureCookie() {
+  return process.env.NODE_ENV === "production";
+}
+
 function setVisitorCookie(response: NextResponse, value: string) {
   response.cookies.set({
     name: VISITOR_CLAIM_COOKIE,
     value,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookie(),
     sameSite: "lax",
     path: "/",
     maxAge: VISITOR_CLAIM_COOKIE_MAX_AGE,
+    priority: "high",
+  });
+}
+
+function setFallbackCookie(
+  response: NextResponse,
+  networkDeviceHash: string,
+) {
+  response.cookies.set({
+    name: VISITOR_FALLBACK_COOKIE,
+    value: createVisitorFallbackCookie(networkDeviceHash),
+    httpOnly: true,
+    secure: secureCookie(),
+    sameSite: "lax",
+    path: "/",
+    maxAge: VISITOR_FALLBACK_COOKIE_MAX_AGE,
+    priority: "high",
+  });
+}
+
+function clearFallbackCookie(response: NextResponse) {
+  response.cookies.set({
+    name: VISITOR_FALLBACK_COOKIE,
+    value: "",
+    httpOnly: true,
+    secure: secureCookie(),
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
     priority: "high",
   });
 }
@@ -108,6 +148,11 @@ export async function GET(request: NextRequest) {
     });
     if (cookieValue && visitorTokenHashFromCookie(cookieValue)) {
       setVisitorCookie(response, cookieValue);
+    }
+    if (!snapshot.choice && identity.networkDeviceHash) {
+      setFallbackCookie(response, identity.networkDeviceHash);
+    } else {
+      clearFallbackCookie(response);
     }
     return response;
   } catch {
@@ -150,37 +195,71 @@ export async function POST(request: NextRequest) {
     });
     await consumeVisitorClaimRateLimit(preVerificationIdentity);
 
-    const verified = await verifyTurnstileVisitorChoice({
-      token: parsed.turnstileToken,
-      remoteIp: sourceIp,
-    });
-    const challengeAt = new Date(verified.challengeTimestamp);
-    if (!Number.isFinite(challengeAt.getTime())) {
-      throw new TurnstileVerificationError();
-    }
+    let snapshot;
+    try {
+      const verified = await verifyTurnstileVisitorChoice({
+        token: parsed.turnstileToken,
+        remoteIp: sourceIp,
+      });
+      const challengeAt = new Date(verified.challengeTimestamp);
+      if (!Number.isFinite(challengeAt.getTime())) {
+        throw new TurnstileVerificationError();
+      }
 
-    const identity = buildVisitorIdentity({
-      cookieValue: usableCookie.value,
-      remoteIp: sourceIp,
-      clientSignal: parsed.clientSignal,
-      ephemeralId: verified.ephemeralId,
-    });
-    const tokenHash = identity.tokenHash ?? usableCookie.tokenHash;
-    const snapshot = await claimPublicVisitor({
-      identity: {
-        ...identity,
-        tokenHash,
-      },
-      choice: parsed.choice,
-      locale: parsed.locale,
-      turnstileChallengeAt: challengeAt,
-      turnstileHostname: verified.hostname,
-    });
+      const identity = buildVisitorIdentity({
+        cookieValue: usableCookie.value,
+        remoteIp: sourceIp,
+        clientSignal: parsed.clientSignal,
+        ephemeralId: verified.ephemeralId,
+      });
+      const tokenHash = identity.tokenHash ?? usableCookie.tokenHash;
+      snapshot = await claimPublicVisitor({
+        identity: {
+          ...identity,
+          tokenHash,
+        },
+        choice: parsed.choice,
+        locale: parsed.locale,
+        turnstileChallengeAt: challengeAt,
+        turnstileHostname: verified.hostname,
+      });
+    } catch (error) {
+      if (!(error instanceof TurnstileVerificationError)) throw error;
+
+      const fallbackCookie = request.cookies.get(
+        VISITOR_FALLBACK_COOKIE,
+      )?.value;
+      const tokenHash = preVerificationIdentity.tokenHash
+        ?? usableCookie.tokenHash;
+      const networkHash = preVerificationIdentity.networkHash;
+      const networkDeviceHash = preVerificationIdentity.networkDeviceHash;
+      const clientSignalHash = preVerificationIdentity.clientSignalHash;
+      if (!networkHash || !networkDeviceHash || !clientSignalHash
+        || !verifyVisitorFallbackCookie(
+          fallbackCookie,
+          networkDeviceHash,
+        )) {
+        throw error;
+      }
+
+      snapshot = await claimPublicVisitorFallback({
+        identity: {
+          ...preVerificationIdentity,
+          tokenHash,
+          networkHash,
+          networkDeviceHash,
+          clientSignalHash,
+        },
+        choice: parsed.choice,
+        locale: parsed.locale,
+      });
+    }
 
     const response = NextResponse.json(snapshot, {
       headers: noStoreHeaders,
     });
     setVisitorCookie(response, usableCookie.value);
+    clearFallbackCookie(response);
     return response;
   } catch (error) {
     if (error instanceof VisitorClaimRateLimitError) {
