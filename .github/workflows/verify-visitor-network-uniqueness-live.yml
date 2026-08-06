@@ -1,0 +1,148 @@
+name: Verify visitor network uniqueness live
+
+on:
+  push:
+    branches:
+      - ops/verify-visitor-network-uniqueness-live
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify GET-only production network identity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Wait for the merged release and verify migration 035 through reads
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          ready_url="https://axora.management/api/health/ready"
+          home_url="https://axora.management/en"
+          snapshot_url="https://axora.management/api/public/visitor-choice"
+          signal_one="$(printf 'a%.0s' {1..64})"
+          signal_two="$(printf 'b%.0s' {1..64})"
+
+          for attempt in $(seq 1 48); do
+            ready_body="$RUNNER_TEMP/axora-ready.json"
+            home_body="$RUNNER_TEMP/axora-home.html"
+            snapshot_one="$RUNNER_TEMP/axora-snapshot-one.json"
+            snapshot_two="$RUNNER_TEMP/axora-snapshot-two.json"
+            : > "$ready_body"
+            : > "$home_body"
+            : > "$snapshot_one"
+            : > "$snapshot_two"
+
+            ready_code="$(
+              curl --silent --show-error --max-time 20 \
+                --output "$ready_body" --write-out '%{http_code}' \
+                "$ready_url" || true
+            )"
+            home_code="$(
+              curl --silent --show-error --max-time 20 \
+                --output "$home_body" --write-out '%{http_code}' \
+                "$home_url" || true
+            )"
+            snapshot_one_code="$(
+              curl --silent --show-error --max-time 20 \
+                --header "X-Axora-Visitor-Signal: $signal_one" \
+                --output "$snapshot_one" --write-out '%{http_code}' \
+                "$snapshot_url" || true
+            )"
+            snapshot_two_code="$(
+              curl --silent --show-error --max-time 20 \
+                --header "X-Axora-Visitor-Signal: $signal_two" \
+                --output "$snapshot_two" --write-out '%{http_code}' \
+                "$snapshot_url" || true
+            )"
+
+            result="$(node - \
+              "$ready_body" "$home_body" "$snapshot_one" "$snapshot_two" <<'NODE'
+          const fs = require('node:fs');
+          const [readyPath, homePath, firstPath, secondPath] = process.argv.slice(2);
+          let ready = false;
+          let homeCopy = false;
+          let firstValid = false;
+          let secondValid = false;
+          let samePublicState = false;
+          try {
+            ready = JSON.parse(fs.readFileSync(readyPath, 'utf8'))?.status === 'ready';
+          } catch {}
+          try {
+            const html = fs.readFileSync(homePath, 'utf8');
+            homeCopy = html.includes(
+              'One public network can hold one permanent visitor spot',
+            ) && html.includes(
+              'permanent keyed hash of the server-observed public IP address',
+            );
+          } catch {}
+          const validateSnapshot = (path) => {
+            try {
+              const value = JSON.parse(fs.readFileSync(path, 'utf8'));
+              const counts = [
+                value?.totalCount,
+                value?.earlyBirdCount,
+                value?.nightOwlCount,
+              ];
+              const valid = counts.every(Number.isSafeInteger)
+                && counts.every((item) => item >= 0)
+                && value.totalCount === value.earlyBirdCount + value.nightOwlCount
+                && ((value.choice === undefined) === (value.visitorNumber === undefined));
+              return { valid, value };
+            } catch {
+              return { valid: false, value: null };
+            }
+          };
+          const first = validateSnapshot(firstPath);
+          const second = validateSnapshot(secondPath);
+          firstValid = first.valid;
+          secondValid = second.valid;
+          if (first.valid && second.valid) {
+            const publicShape = (value) => JSON.stringify({
+              totalCount: value.totalCount,
+              earlyBirdCount: value.earlyBirdCount,
+              nightOwlCount: value.nightOwlCount,
+              visitorNumber: value.visitorNumber ?? null,
+              choice: value.choice ?? null,
+            });
+            samePublicState = publicShape(first.value) === publicShape(second.value);
+          }
+          process.stdout.write(JSON.stringify({
+            ready,
+            homeCopy,
+            firstValid,
+            secondValid,
+            samePublicState,
+          }));
+          NODE
+            )"
+
+            ready_valid="$(node -e 'const v=JSON.parse(process.argv[1]);process.stdout.write(v.ready?"1":"0")' "$result")"
+            home_copy="$(node -e 'const v=JSON.parse(process.argv[1]);process.stdout.write(v.homeCopy?"1":"0")' "$result")"
+            first_valid="$(node -e 'const v=JSON.parse(process.argv[1]);process.stdout.write(v.firstValid?"1":"0")' "$result")"
+            second_valid="$(node -e 'const v=JSON.parse(process.argv[1]);process.stdout.write(v.secondValid?"1":"0")' "$result")"
+            same_state="$(node -e 'const v=JSON.parse(process.argv[1]);process.stdout.write(v.samePublicState?"1":"0")' "$result")"
+
+            echo "attempt=$attempt ready_http=$ready_code ready_valid=$ready_valid home_http=$home_code new_copy=$home_copy snapshot_one_http=$snapshot_one_code snapshot_one_valid=$first_valid snapshot_two_http=$snapshot_two_code snapshot_two_valid=$second_valid same_network_state=$same_state"
+
+            if [[ "$ready_code" == "200" \
+              && "$ready_valid" == "1" \
+              && "$home_code" == "200" \
+              && "$home_copy" == "1" \
+              && "$snapshot_one_code" == "200" \
+              && "$first_valid" == "1" \
+              && "$snapshot_two_code" == "200" \
+              && "$second_valid" == "1" \
+              && "$same_state" == "1" ]]; then
+              echo "Production migration-035 read path and permanent network-identity copy are live. GET requests only; no visitor claim was submitted."
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+          echo "::error::The merged permanent network-identity release was not observable within the bounded verification window."
+          exit 1
