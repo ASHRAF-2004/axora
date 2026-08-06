@@ -18,6 +18,7 @@ const ids = {
   company: "50000000-0000-4000-8000-000000000039",
   override: "60000000-0000-4000-8000-000000000039",
 };
+const stableStart = new Date("2026-08-06T10:00:00.000Z");
 
 const actor: AuthenticatedSessionUser = {
   id: ids.actor,
@@ -47,14 +48,13 @@ describe("scoped permission management service", () => {
   });
 
   it("submits a normalized scoped grant to the database command", async () => {
-    const startsAt = new Date("2026-08-06T10:00:00.000Z");
     const result = await setUserPermissionOverride(actor, {
       targetUserId: ids.target,
       targetRoleAssignmentId: ids.targetAssignment,
       permission: "request.approve.other",
       effect: "GRANT",
       scope: { type: "COMPANY", companyId: ids.company },
-      startsAt,
+      startsAt: stableStart,
       reason: "Temporary approval responsibility",
     });
 
@@ -78,14 +78,14 @@ describe("scoped permission management service", () => {
         null,
         null,
         null,
-        startsAt,
+        stableStart,
         null,
         "Temporary approval responsibility",
       ],
     );
   });
 
-  it("rejects self-escalation, malformed scopes, unknown permissions, and invalid periods before SQL", async () => {
+  it("rejects self-escalation, malformed scopes, unknown permissions, missing stable time, and invalid periods before SQL", async () => {
     const invalidInputs = [
       {
         targetUserId: ids.actor,
@@ -93,6 +93,7 @@ describe("scoped permission management service", () => {
         permission: "request.approve.other",
         effect: "GRANT",
         scope: { type: "COMPANY", companyId: ids.company },
+        startsAt: stableStart,
         reason: "Self change is prohibited",
       },
       {
@@ -101,6 +102,7 @@ describe("scoped permission management service", () => {
         permission: "request.approve.other",
         effect: "GRANT",
         scope: { type: "BRANCH", companyId: ids.company },
+        startsAt: stableStart,
         reason: "Missing branch identifier",
       },
       {
@@ -109,7 +111,16 @@ describe("scoped permission management service", () => {
         permission: "forged.root",
         effect: "GRANT",
         scope: { type: "COMPANY", companyId: ids.company },
+        startsAt: stableStart,
         reason: "Unknown permission",
+      },
+      {
+        targetUserId: ids.target,
+        targetRoleAssignmentId: ids.targetAssignment,
+        permission: "request.approve.other",
+        effect: "GRANT",
+        scope: { type: "COMPANY", companyId: ids.company },
+        reason: "Missing stable command start",
       },
       {
         targetUserId: ids.target,
@@ -141,6 +152,7 @@ describe("scoped permission management service", () => {
         permission: "request.approve.other",
         effect: "GRANT",
         scope: { type: "COMPANY", companyId: ids.company },
+        startsAt: stableStart,
         reason: "No normalized actor assignment",
       },
     )).rejects.toBeInstanceOf(AccessManagementUnavailableError);
@@ -154,6 +166,7 @@ describe("scoped permission management service", () => {
       permission: "request.approve.other",
       effect: "GRANT",
       scope: { type: "COMPANY", companyId: ids.company },
+      startsAt: stableStart,
       reason: "Database denial remains private",
     })).rejects.toThrow("The requested access change could not be completed.");
   });
