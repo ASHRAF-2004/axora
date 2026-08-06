@@ -44,8 +44,22 @@ REVOKE ALL ON TABLE
   public.email_provider_delivery_lifecycle,
   public.public_visitor_counter_state,
   public.public_visitor_claims,
-  public.public_visitor_claim_tokens
+  public.public_visitor_claim_tokens,
+  public.permissions,
+  public.role_permissions,
+  public.departments,
+  public.department_assignments,
+  public.user_scopes,
+  public.user_permission_overrides,
+  public.approval_limits,
+  public.delegated_access,
+  public.delegated_access_permissions,
+  public.delegated_access_scopes,
+  public.permission_change_history
 FROM axora_app;
+
+GRANT SELECT ON TABLE public.permissions,public.role_permissions
+TO axora_app;
 
 REVOKE ALL ON FUNCTION
   public.axora_workflow_email_available_at(text,timestamptz),
@@ -70,7 +84,22 @@ REVOKE ALL ON FUNCTION
   public.axora_public_visitor_snapshot(text,text,text),
   public.axora_claim_public_visitor(
     text,text,text,text,text,text,text,timestamptz,text
-  )
+  ),
+  public.axora_effective_access_snapshot(uuid,uuid,timestamptz),
+  public.axora_authorization_scope_contains(
+    text,uuid,uuid,uuid,uuid,text,uuid,uuid,uuid,uuid
+  ),
+  public.axora_scope_contains_nullable(
+    text,uuid,uuid,uuid,uuid,text,uuid,uuid,uuid,uuid
+  ),
+  public.axora_snapshot_scope_contains(jsonb,text,uuid,uuid,uuid,uuid),
+  public.axora_snapshot_has_permission(jsonb,text,text,uuid,uuid,uuid,uuid),
+  public.axora_invalidate_authorization_sessions(uuid,uuid,text),
+  public.axora_set_user_permission_override(
+    uuid,uuid,uuid,uuid,text,text,text,uuid,uuid,uuid,uuid,
+    timestamptz,timestamptz,text
+  ),
+  public.axora_remove_user_permission_override(uuid,uuid,uuid,text)
 FROM axora_app;
 
 GRANT EXECUTE ON FUNCTION
@@ -88,5 +117,11 @@ GRANT EXECUTE ON FUNCTION
   public.axora_public_visitor_snapshot(text,text,text),
   public.axora_claim_public_visitor(
     text,text,text,text,text,text,text,timestamptz,text
-  )
+  ),
+  public.axora_effective_access_snapshot(uuid,uuid,timestamptz),
+  public.axora_set_user_permission_override(
+    uuid,uuid,uuid,uuid,text,text,text,uuid,uuid,uuid,uuid,
+    timestamptz,timestamptz,text
+  ),
+  public.axora_remove_user_permission_override(uuid,uuid,uuid,text)
 TO axora_app;
