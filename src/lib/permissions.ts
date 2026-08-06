@@ -48,6 +48,7 @@ export interface AccessSubject {
   scopeType?: RoleScopeType;
   companyId?: string;
   branchId?: string;
+  departmentId?: string;
   supplierId?: string;
 }
 
@@ -149,6 +150,11 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   IT_SUPPORT: ["view_system_diagnostics"],
 
   PLATFORM_OWNER: platformOwnerPermissions,
+  CLIENT_ACCOUNT_MANAGER: [
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "manage_companies", "view_documents", "view_reports",
+    "manage_users",
+  ],
   PLATFORM_OPERATIONS: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
     "view_branches", "manage_catalog", "manage_suppliers",
@@ -156,6 +162,11 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
     "manage_documents", "view_reports", "view_receiving",
   ],
   COMPANY_ADMIN: companyAdminPermissions,
+  DEPARTMENT_ADMIN: [
+    "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_branches", "create_requests", "view_approvals", "approve_requests",
+    "view_documents", "manage_documents", "view_reports", "manage_users",
+  ],
   BRANCH_APPROVER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
     "view_branches", "view_approvals", "approve_requests", "view_documents", "view_reports",
@@ -175,6 +186,11 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   ],
   TECHNICAL_SUPPORT: ["view_system_diagnostics"],
   SUPPLIER_USER: ["view_supplier_portal", "respond_to_rfqs"],
+  DELIVERY_TEAM_SUPERVISOR: [
+    "view_dashboard", "view_deliveries", "manage_deliveries", "view_reports",
+    "view_delivery_portal", "update_assigned_deliveries",
+  ],
+  DELIVERY_AGENT: ["view_delivery_portal", "update_assigned_deliveries"],
   DELIVERY_DRIVER: ["view_delivery_portal", "update_assigned_deliveries"],
   RECEIVING_USER: ["view_receiving", "confirm_receipts"],
 };
@@ -189,7 +205,22 @@ function validCompanyScope(subject: AccessSubject, allowed: readonly RoleScopeTy
     && subject.scopeType !== undefined
     && allowed.includes(subject.scopeType)
     && (subject.scopeType === "BRANCH" ? Boolean(subject.branchId) : !subject.branchId)
+    && subject.departmentId === undefined
     && subject.supplierId === undefined;
+}
+
+function validPlatformCompanyScope(subject: AccessSubject) {
+  return subject.accountKind === "PLATFORM"
+    && subject.scopeType === "COMPANY"
+    && Boolean(subject.companyId)
+    && !subject.branchId && !subject.departmentId && !subject.supplierId;
+}
+
+function validDepartmentScope(subject: AccessSubject) {
+  return subject.accountKind === "COMPANY"
+    && subject.scopeType === "DEPARTMENT"
+    && Boolean(subject.companyId && subject.departmentId)
+    && !subject.supplierId;
 }
 
 function canonicalSubjectIsValid(subject: AccessSubject) {
@@ -198,13 +229,17 @@ function canonicalSubjectIsValid(subject: AccessSubject) {
       return subject.isOwner
         && subject.accountKind === "PLATFORM"
         && subject.scopeType === "PLATFORM"
-        && !subject.companyId && !subject.branchId && !subject.supplierId;
+        && !subject.companyId && !subject.branchId
+        && !subject.departmentId && !subject.supplierId;
+    case "CLIENT_ACCOUNT_MANAGER":
+      return !subject.isOwner && validPlatformCompanyScope(subject);
     case "PLATFORM_OPERATIONS":
     case "TECHNICAL_SUPPORT":
       return !subject.isOwner
         && subject.accountKind === "PLATFORM"
         && subject.scopeType === "PLATFORM"
-        && !subject.companyId && !subject.branchId && !subject.supplierId;
+        && !subject.companyId && !subject.branchId
+        && !subject.departmentId && !subject.supplierId;
     case "COMPANY_ADMIN":
     case "COMPANY_APPROVER":
       return !subject.isOwner && validCompanyScope(subject, ["COMPANY"]);
@@ -212,6 +247,8 @@ function canonicalSubjectIsValid(subject: AccessSubject) {
     case "REQUESTER":
     case "BRANCH_APPROVER":
       return !subject.isOwner && validCompanyScope(subject, ["BRANCH"]);
+    case "DEPARTMENT_ADMIN":
+      return !subject.isOwner && validDepartmentScope(subject);
     case "FINANCE_REVIEWER":
     case "AUDITOR":
     case "RECEIVING_USER":
@@ -222,11 +259,14 @@ function canonicalSubjectIsValid(subject: AccessSubject) {
         && subject.scopeType === "SUPPLIER"
         && Boolean(subject.supplierId)
         && !subject.companyId && !subject.branchId;
+    case "DELIVERY_TEAM_SUPERVISOR":
+    case "DELIVERY_AGENT":
     case "DELIVERY_DRIVER":
       return !subject.isOwner
         && subject.accountKind === "DELIVERY"
         && subject.scopeType === "DELIVERY"
-        && !subject.companyId && !subject.branchId && !subject.supplierId;
+        && !subject.companyId && !subject.branchId
+        && !subject.departmentId && !subject.supplierId;
     default:
       return true;
   }
@@ -261,7 +301,10 @@ export function canAccess(subject: AccessSubject, permission: Permission) {
     if (subject.role !== "ADMIN" && subject.role !== "PLATFORM_OWNER") return false;
     return platformOwnerPermissions.includes(permission);
   }
-  if (permission === "view_audit" && subject.scopeType === "BRANCH") return false;
+  if (permission === "view_audit"
+    && (subject.scopeType === "BRANCH" || subject.scopeType === "DEPARTMENT")) {
+    return false;
+  }
   // Legacy callers only carry branchId. Preserve the old audit restriction.
   if (permission === "view_audit" && !subject.scopeType && subject.branchId) return false;
   return Boolean(rolePermissions[subject.role]?.includes(permission));

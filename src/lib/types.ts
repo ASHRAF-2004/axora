@@ -12,8 +12,10 @@ export const LEGACY_USER_ROLES = [
 export const CANONICAL_USER_ROLES = [
   "PLATFORM_OWNER",
   "PLATFORM_OPERATIONS",
+  "CLIENT_ACCOUNT_MANAGER",
   "COMPANY_ADMIN",
   "BRANCH_ADMIN",
+  "DEPARTMENT_ADMIN",
   "BRANCH_APPROVER",
   "COMPANY_APPROVER",
   "REQUESTER",
@@ -21,6 +23,8 @@ export const CANONICAL_USER_ROLES = [
   "AUDITOR",
   "TECHNICAL_SUPPORT",
   "SUPPLIER_USER",
+  "DELIVERY_TEAM_SUPERVISOR",
+  "DELIVERY_AGENT",
   "DELIVERY_DRIVER",
   "RECEIVING_USER",
 ] as const;
@@ -38,7 +42,7 @@ export type UserRole = LegacyUserRole | (string & {});
 export const ACCOUNT_KINDS = ["PLATFORM", "COMPANY", "SUPPLIER", "DELIVERY"] as const;
 export type AccountKind = (typeof ACCOUNT_KINDS)[number];
 
-export const ROLE_SCOPE_TYPES = ["PLATFORM", "COMPANY", "BRANCH", "SUPPLIER", "DELIVERY"] as const;
+export const ROLE_SCOPE_TYPES = ["PLATFORM", "COMPANY", "BRANCH", "DEPARTMENT", "SUPPLIER", "DELIVERY"] as const;
 export type RoleScopeType = (typeof ROLE_SCOPE_TYPES)[number];
 
 const knownUserRoles = new Set<string>([
