@@ -6,14 +6,14 @@ import {
   type AuthorizationResource,
   type PermissionCode,
 } from "./authorization-policy";
-import { requireSession, type SessionUser } from "./auth";
+import { requireSession, type AuthenticatedSessionUser } from "./auth";
 import {
   loadEffectiveAccess,
   type EffectiveAccessSnapshot,
 } from "./effective-access";
 
 export interface StableAuthorizationResult {
-  user: SessionUser;
+  user: AuthenticatedSessionUser;
   access: EffectiveAccessSnapshot;
   decision: AuthorizationDecision;
 }
@@ -29,7 +29,7 @@ export class StablePermissionDeniedError extends Error {
 }
 
 export async function evaluateStablePermission(
-  user: SessionUser,
+  user: AuthenticatedSessionUser,
   permission: PermissionCode,
   resource: AuthorizationResource,
   now = new Date(),
