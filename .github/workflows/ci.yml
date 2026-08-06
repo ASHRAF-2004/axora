@@ -11,94 +11,13 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-
-  apply_p0_01_authorization_foundation:
-    name: Apply prepared P0-01 branch payload
-    if: >-
-      github.event_name == 'pull_request'
-      && github.event.pull_request.head.ref == 'agent/p0-01-authorization-foundation'
-      && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - name: Check out the implementation branch
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: agent/p0-01-authorization-foundation
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Apply the reviewed payload and restore CI
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          cat .tmp/p0-01-payload.part* | base64 --decode | tar -xzf -
-          python3 <<'PY'
-          from pathlib import Path
-
-          path = Path(".tmp/apply-p0-01.py")
-          source = path.read_text()
-          old = r'''platform_shape = (
-              '        && !subject.companyId && !subject.branchId && !subject.supplierId;\n'
-          )
-          for _ in range(5):
-              replace_once(
-                  "src/lib/permissions.ts",
-                  platform_shape,
-                  '        && !subject.companyId && !subject.branchId\n'
-                  '        && !subject.departmentId && !subject.supplierId;\n',
-              )
-          '''
-          new = r'''platform_shape = (
-              '        && !subject.companyId && !subject.branchId && !subject.supplierId;\n'
-          )
-          permissions_path = Path("src/lib/permissions.ts")
-          permissions_source = permissions_path.read_text()
-          platform_shape_count = permissions_source.count(platform_shape)
-          if platform_shape_count != 3:
-              raise RuntimeError(
-                  "src/lib/permissions.ts: expected three platform-scope shapes, "
-                  f"found {platform_shape_count}"
-              )
-          permissions_path.write_text(permissions_source.replace(
-              platform_shape,
-              '        && !subject.companyId && !subject.branchId\n'
-              '        && !subject.departmentId && !subject.supplierId;\n',
-          ))
-          '''
-          if source.count(old) != 1:
-              raise RuntimeError("Prepared permission-scope patch was not found exactly once")
-          path.write_text(source.replace(old, new, 1))
-          PY
-          python3 .tmp/apply-p0-01.py
-          rm -rf .tmp
-          git fetch --no-tags origin main
-          git show FETCH_HEAD:.github/workflows/ci.yml > .github/workflows/ci.yml
-          git diff --check
-          test -f database/migrations/036_authorization_policy_foundation.sql
-          test -f src/lib/authorization-policy.ts
-          test -f tests/authorization-policy.test.ts
-          test -f tests/authorization-foundation-migration.test.ts
-          test -f docs/refactor/AUTHORIZATION_POLICY.md
-          test ! -e .github/workflows/apply-p0-01-authorization-foundation.yml
-          test ! -e .tmp
-
-      - name: Commit and push the implementation
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Add P0-01 authorization policy foundation"
-          git push origin HEAD:agent/p0-01-authorization-foundation
 
   application:
     name: Lint, typecheck, test, and build

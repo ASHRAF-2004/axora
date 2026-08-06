@@ -236,3 +236,95 @@ describe("normalized least-privilege permissions", () => {
     }
   });
 });
+
+describe("new canonical role compatibility permissions", () => {
+  const companyId = "company-1";
+  const branchId = "branch-1";
+  const departmentId = "department-1";
+
+  it("scopes a client account manager to one assigned company", () => {
+    expectExactPermissions({
+      role: "CLIENT_ACCOUNT_MANAGER",
+      isOwner: false,
+      accountKind: "PLATFORM",
+      scopeType: "COMPANY",
+      companyId,
+    }, [
+      "view_dashboard",
+      "view_catalog",
+      "view_requests",
+      "view_deliveries",
+      "view_branches",
+      "manage_companies",
+      "view_documents",
+      "view_reports",
+      "manage_users",
+    ]);
+  });
+
+  it("scopes a department administrator to one department", () => {
+    expectExactPermissions({
+      role: "DEPARTMENT_ADMIN",
+      isOwner: false,
+      accountKind: "COMPANY",
+      scopeType: "DEPARTMENT",
+      companyId,
+      branchId,
+      departmentId,
+    }, [
+      "view_dashboard",
+      "view_catalog",
+      "view_requests",
+      "view_deliveries",
+      "view_branches",
+      "create_requests",
+      "view_approvals",
+      "approve_requests",
+      "view_documents",
+      "manage_documents",
+      "view_reports",
+      "manage_users",
+    ]);
+  });
+
+  it("separates delivery supervision from delivery-agent updates", () => {
+    expectExactPermissions({
+      role: "DELIVERY_TEAM_SUPERVISOR",
+      isOwner: false,
+      accountKind: "DELIVERY",
+      scopeType: "DELIVERY",
+    }, [
+      "view_dashboard",
+      "view_deliveries",
+      "manage_deliveries",
+      "view_reports",
+      "view_delivery_portal",
+      "update_assigned_deliveries",
+    ]);
+    expectExactPermissions({
+      role: "DELIVERY_AGENT",
+      isOwner: false,
+      accountKind: "DELIVERY",
+      scopeType: "DELIVERY",
+    }, [
+      "view_delivery_portal",
+      "update_assigned_deliveries",
+    ]);
+  });
+
+  it("fails closed when a new role carries a structurally wrong scope", () => {
+    expect(canAccess({
+      role: "CLIENT_ACCOUNT_MANAGER",
+      isOwner: false,
+      accountKind: "PLATFORM",
+      scopeType: "PLATFORM",
+    }, "manage_companies")).toBe(false);
+    expect(canAccess({
+      role: "DEPARTMENT_ADMIN",
+      isOwner: false,
+      accountKind: "COMPANY",
+      scopeType: "DEPARTMENT",
+      companyId,
+    }, "create_requests")).toBe(false);
+  });
+});

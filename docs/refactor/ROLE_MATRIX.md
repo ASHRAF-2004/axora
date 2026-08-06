@@ -1,6 +1,8 @@
 # Axora role and scope matrix
 
-Status: refactor-branch authorization contract, audited 2026-08-02. The
+Status: refactor-branch authorization contract, audited 2026-08-02. P0-01 now also defines the forward authorization foundation in `AUTHORIZATION_POLICY.md`, `src/lib/authorization-policy.ts`, and migration 036.
+
+The
 executable sources are `src/lib/permissions.ts`, `src/lib/role-catalog.ts`,
 `src/lib/auth.ts`, server actions/repositories, and migrations `016` and `024`.
 Workbook names are input for a reviewed import, never authorization logic.
