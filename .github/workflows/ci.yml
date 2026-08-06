@@ -11,86 +11,13 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-
-  apply_p0_01_effective_access:
-    name: Apply prepared effective-access integration
-    if: >-
-      github.event_name == 'pull_request'
-      && github.event.pull_request.head.ref == 'agent/p0-01-effective-access-session'
-      && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - name: Check out implementation branch
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: agent/p0-01-effective-access-session
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Apply reviewed patches and remove scaffolding
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path("docs/refactor/AUTHORIZATION_POLICY.md")
-          source = path.read_text()
-          current = "Status: implementation foundation for the canonical backlog dated 6 August 2026.\n"
-          expected = "Status: implemented as an expand-compatible foundation. Existing production\n"
-          if current in source:
-              path.write_text(source.replace(current, expected, 1))
-          elif expected not in source:
-              raise RuntimeError("Authorization policy status line is not recognized")
-          PY
-          python3 .tmp/apply-p0-01-effective-access.py
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path("docs/refactor/AUTHORIZATION_POLICY.md")
-          source = path.read_text()
-          old = (
-              "Status: implemented as an expand-compatible foundation. See "
-              "[Live effective-access runtime](EFFECTIVE_ACCESS_RUNTIME.md) for the "
-              "authenticated request integration. Existing production\n"
-          )
-          new = (
-              "Status: implemented as an expand-compatible foundation. See "
-              "[Live effective-access runtime](EFFECTIVE_ACCESS_RUNTIME.md) for the "
-              "authenticated request integration.\n"
-          )
-          if old not in source:
-              raise RuntimeError("Authorization runtime documentation link was not applied")
-          path.write_text(source.replace(old, new, 1))
-          PY
-          rm -rf .tmp
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          git diff --check
-          test -f database/migrations/037_effective_access_snapshot.sql
-          test -f src/lib/effective-access.ts
-          test -f src/lib/effective-auth.ts
-          test -f tests/effective-access.test.ts
-          test -f tests/effective-auth.test.ts
-          test -f tests/effective-access-migration.test.ts
-          test -f docs/refactor/EFFECTIVE_ACCESS_RUNTIME.md
-          test ! -e .tmp
-
-      - name: Commit and push clean implementation
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Add live effective-access authorization"
-          git push origin HEAD:agent/p0-01-effective-access-session
 
   application:
     name: Lint, typecheck, test, and build

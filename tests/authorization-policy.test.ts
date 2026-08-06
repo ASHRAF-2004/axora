@@ -410,3 +410,126 @@ describe("canonical authorization policy", () => {
     }).allowed).toBe(false);
   });
 });
+
+
+describe("live policy facts", () => {
+  const companyA = { type: "COMPANY" as const, companyId: "company-a" };
+  const companyB = { type: "COMPANY" as const, companyId: "company-b" };
+  const now = new Date("2026-08-06T05:00:00.000Z");
+
+  function liveApprover() {
+    return {
+      userId: "approver-1",
+      role: "COMPANY_APPROVER" as const,
+      accountKind: "COMPANY" as const,
+      accountStatus: "ACTIVE" as const,
+      isOwner: false,
+      scopes: [companyA, companyB],
+      roleGrants: ["request.approve.other" as const],
+      permissionOverrides: [],
+      delegations: [],
+      approvalLimits: [{
+        permission: "request.approve.other" as const,
+        currency: "MYR",
+        maximumAmount: 1000,
+        allowSelfApproval: false,
+        active: true,
+        scope: companyA,
+      }, {
+        permission: "request.approve.other" as const,
+        currency: "MYR",
+        maximumAmount: 1000,
+        allowSelfApproval: false,
+        active: true,
+        scope: companyB,
+      }],
+    };
+  }
+
+  it("uses the live database role grant set instead of stale static defaults", () => {
+    expect(authorize({
+      subject: liveApprover(),
+      permission: "request.approve.other",
+      resource: { scope: companyA, amount: 500, currency: "MYR" },
+      now,
+    })).toMatchObject({ allowed: true, source: "ROLE" });
+
+    expect(authorize({
+      subject: { ...liveApprover(), roleGrants: [] },
+      permission: "request.approve.other",
+      resource: { scope: companyA, amount: 500, currency: "MYR" },
+      now,
+    })).toMatchObject({ allowed: false, reason: "PERMISSION_DENIED" });
+  });
+
+  it("applies a scoped denial only to its matching company", () => {
+    const subject = {
+      ...liveApprover(),
+      permissionOverrides: [{
+        permission: "request.approve.other" as const,
+        effect: "DENY" as const,
+        scope: companyA,
+        active: true,
+        startsAt: new Date("2026-08-06T04:00:00.000Z"),
+        endsAt: new Date("2026-08-06T06:00:00.000Z"),
+      }],
+    };
+    expect(authorize({
+      subject,
+      permission: "request.approve.other",
+      resource: { scope: companyA, amount: 100, currency: "MYR" },
+      now,
+    })).toMatchObject({ allowed: false, reason: "PERMISSION_DENIED" });
+    expect(authorize({
+      subject,
+      permission: "request.approve.other",
+      resource: { scope: companyB, amount: 100, currency: "MYR" },
+      now,
+    })).toMatchObject({ allowed: true, source: "ROLE" });
+  });
+
+  it("allows an active delegation to extend both permission and scope", () => {
+    const subject = {
+      userId: "auditor-1",
+      role: "AUDITOR" as const,
+      accountKind: "COMPANY" as const,
+      accountStatus: "ACTIVE" as const,
+      isOwner: false,
+      scopes: [companyA],
+      roleGrants: [],
+      permissionOverrides: [],
+      delegations: [{
+        active: true,
+        startsAt: new Date("2026-08-06T04:00:00.000Z"),
+        endsAt: new Date("2026-08-06T06:00:00.000Z"),
+        permissions: ["request.view" as const],
+        scopes: [companyB],
+      }],
+      approvalLimits: [],
+    };
+    expect(authorize({
+      subject,
+      permission: "request.view",
+      resource: { scope: companyB },
+      now,
+    })).toMatchObject({ allowed: true, source: "DELEGATION" });
+  });
+
+  it("ignores expired scoped overrides", () => {
+    expect(authorize({
+      subject: {
+        ...liveApprover(),
+        permissionOverrides: [{
+          permission: "request.approve.other" as const,
+          effect: "DENY" as const,
+          scope: companyA,
+          active: true,
+          endsAt: new Date("2026-08-06T04:59:59.000Z"),
+        }],
+      },
+      permission: "request.approve.other",
+      resource: { scope: companyA, amount: 100, currency: "MYR" },
+      now,
+    })).toMatchObject({ allowed: true, source: "ROLE" });
+  });
+});
