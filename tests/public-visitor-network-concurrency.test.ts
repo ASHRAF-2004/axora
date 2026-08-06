@@ -64,7 +64,7 @@ describe("public visitor network claim concurrency", () => {
       expect(results.every((result) => result.total === 1)).toBe(true);
       expect(results.every((result) => result.visitorNumber === 1)).toBe(true);
       expect(results.filter((result) => result.claimedNew)).toHaveLength(1);
-      expect(new Set(results.map((result) => result.choice))).toHaveLength(1);
+      expect(new Set(results.map((result) => result.choice)).size).toBe(1);
 
       const state = await db.query<{
         total: number;
