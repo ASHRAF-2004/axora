@@ -5,10 +5,13 @@ const mocks = vi.hoisted(() => ({
   isDemoMode: vi.fn(),
   buildIdentity: vi.fn(),
   claim: vi.fn(),
+  claimFallback: vi.fn(),
   consumeRateLimit: vi.fn(),
   createCookie: vi.fn(),
+  createFallbackCookie: vi.fn(),
   getSnapshot: vi.fn(),
   tokenHashFromCookie: vi.fn(),
+  verifyFallbackCookie: vi.fn(),
   verifyTurnstile: vi.fn(),
 }));
 
@@ -34,6 +37,18 @@ vi.mock("@/lib/public-visitor-counter", async () => {
     createVisitorClaimCookie: mocks.createCookie,
     getPublicVisitorSnapshot: mocks.getSnapshot,
     visitorTokenHashFromCookie: mocks.tokenHashFromCookie,
+  };
+});
+
+vi.mock("@/lib/public-visitor-fallback", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/public-visitor-fallback")
+  >("@/lib/public-visitor-fallback");
+  return {
+    ...actual,
+    claimPublicVisitorFallback: mocks.claimFallback,
+    createVisitorFallbackCookie: mocks.createFallbackCookie,
+    verifyVisitorFallbackCookie: mocks.verifyFallbackCookie,
   };
 });
 
@@ -82,6 +97,7 @@ function postRequest(
     origin?: string;
     contentType?: string;
     cookie?: string;
+    fallbackCookie?: string;
   } = {},
 ) {
   const headers = new Headers({
@@ -89,9 +105,15 @@ function postRequest(
     "Content-Type": options.contentType ?? "application/json",
     "CF-Connecting-IP": "203.0.113.8",
   });
-  if (options.cookie) {
-    headers.set("Cookie", `axora_visitor_claim=${options.cookie}`);
-  }
+  const cookies = [
+    ...(options.cookie
+      ? [`axora_visitor_claim=${options.cookie}`]
+      : []),
+    ...(options.fallbackCookie
+      ? [`axora_visitor_fallback=${options.fallbackCookie}`]
+      : []),
+  ];
+  if (cookies.length) headers.set("Cookie", cookies.join("; "));
   return new NextRequest(
     "https://axora.management/api/public/visitor-choice",
     {
@@ -115,6 +137,10 @@ describe("public visitor-choice endpoint", () => {
       value: "v1.new-cookie.signature",
       tokenHash: hashes.token,
     });
+    mocks.createFallbackCookie.mockReturnValue(
+      "v1.signed-network-device-fallback",
+    );
+    mocks.verifyFallbackCookie.mockReturnValue(false);
     mocks.buildIdentity.mockImplementation((input: {
       ephemeralId?: string;
     }) => ({
@@ -136,9 +162,10 @@ describe("public visitor-choice endpoint", () => {
       ephemeralId: "x:verified-device",
     });
     mocks.claim.mockResolvedValue(claimed);
+    mocks.claimFallback.mockResolvedValue(claimed);
   });
 
-  it("returns a private no-store snapshot without putting the signal in the URL", async () => {
+  it("returns a private no-store snapshot and issues a short-lived fallback cookie", async () => {
     const request = new NextRequest(
       "https://axora.management/api/public/visitor-choice",
       {
@@ -163,6 +190,13 @@ describe("public visitor-choice endpoint", () => {
       clientSignal: hashes.clientSignal,
     });
     expect(mocks.getSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.createFallbackCookie).toHaveBeenCalledWith(
+      hashes.networkDevice,
+    );
+    expect(response.headers.get("set-cookie")).toContain(
+      "axora_visitor_fallback=v1.signed-network-device-fallback",
+    );
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
   });
 
   it("verifies and records one same-origin choice using the existing signed cookie", async () => {
@@ -190,11 +224,53 @@ describe("public visitor-choice endpoint", () => {
       locale: "en",
       turnstileHostname: "axora.management",
     }));
+    expect(mocks.claimFallback).not.toHaveBeenCalled();
     expect(response.headers.get("set-cookie")).toContain(
       "axora_visitor_claim=valid-cookie",
     );
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
     expect(response.headers.get("set-cookie")).toContain("SameSite=lax");
+  });
+
+  it("records through the signed network-device fallback when Siteverify rejects", async () => {
+    mocks.verifyTurnstile.mockRejectedValueOnce(
+      new TurnstileVerificationError(),
+    );
+    mocks.verifyFallbackCookie.mockReturnValueOnce(true);
+
+    const response = await POST(postRequest({
+      choice: "EARLY_BIRD",
+      locale: "en",
+      turnstileToken: "provider-rejected-token",
+      clientSignal: hashes.clientSignal,
+    }, {
+      cookie: "valid-cookie",
+      fallbackCookie: "signed-fallback-cookie",
+    }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(claimed);
+    expect(mocks.verifyFallbackCookie).toHaveBeenCalledWith(
+      "signed-fallback-cookie",
+      hashes.networkDevice,
+    );
+    expect(mocks.claim).not.toHaveBeenCalled();
+    expect(mocks.claimFallback).toHaveBeenCalledWith({
+      identity: expect.objectContaining({
+        tokenHash: hashes.token,
+        networkHash: hashes.network,
+        networkDeviceHash: hashes.networkDevice,
+        clientSignalHash: hashes.clientSignal,
+      }),
+      choice: "EARLY_BIRD",
+      locale: "en",
+    });
+    expect(response.headers.get("set-cookie")).toContain(
+      "axora_visitor_claim=valid-cookie",
+    );
+    expect(response.headers.get("set-cookie")).toContain(
+      "axora_visitor_fallback=;",
+    );
   });
 
   it("rejects cross-origin, malformed, and unverified claims without counting", async () => {
@@ -223,8 +299,10 @@ describe("public visitor-choice endpoint", () => {
       choice: "NIGHT_OWL",
       locale: "ms",
       turnstileToken: "invalid-token",
+      clientSignal: hashes.clientSignal,
     }))).status).toBe(403);
     expect(mocks.claim).not.toHaveBeenCalled();
+    expect(mocks.claimFallback).not.toHaveBeenCalled();
   });
 
   it("returns a generic limit response before Turnstile and persistence", async () => {
@@ -242,6 +320,7 @@ describe("public visitor-choice endpoint", () => {
     });
     expect(mocks.verifyTurnstile).not.toHaveBeenCalled();
     expect(mocks.claim).not.toHaveBeenCalled();
+    expect(mocks.claimFallback).not.toHaveBeenCalled();
   });
 
   it("fails closed in demo mode or after an unexpected persistence error", async () => {
