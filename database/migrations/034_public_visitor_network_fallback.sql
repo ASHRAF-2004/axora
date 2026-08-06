@@ -5,12 +5,11 @@ BEGIN;
 -- unavailable or rejects an otherwise same-origin browser attempt. Raw IP
 -- addresses and raw browser signals are still never stored: the application
 -- passes only domain-separated HMAC fingerprints into PostgreSQL.
+-- Add the default and NOT NULL contract atomically: existing claim rows are
+-- populated by ALTER TABLE itself, without firing their append-only DML trigger.
 ALTER TABLE public.public_visitor_claims
-  ADD COLUMN IF NOT EXISTS verification_method text;
-
-UPDATE public.public_visitor_claims
-SET verification_method='TURNSTILE'
-WHERE verification_method IS NULL;
+  ADD COLUMN IF NOT EXISTS verification_method text
+    NOT NULL DEFAULT 'TURNSTILE';
 
 ALTER TABLE public.public_visitor_claims
   ALTER COLUMN verification_method SET DEFAULT 'TURNSTILE',
