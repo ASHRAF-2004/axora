@@ -32,9 +32,9 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT EXECUTE ON FUNCTIONS TO axora_app;
 
 -- Broad grants keep ordinary application tables and routines deployable, but
--- migrations 026-033 deliberately expose sensitive state only through narrow
--- SECURITY DEFINER capabilities. Re-apply those boundaries here because this
--- script runs after migrations during hybrid imports and baseline resets.
+-- migrations 026 onward deliberately expose sensitive state only through
+-- narrow SECURITY DEFINER capabilities. Re-apply those boundaries here because
+-- this script runs after migrations during hybrid imports and baseline resets.
 REVOKE ALL ON TABLE
   public.workflow_email_outbox,
   public.request_line_receipt_baselines,
@@ -99,7 +99,15 @@ REVOKE ALL ON FUNCTION
     uuid,uuid,uuid,uuid,text,text,text,uuid,uuid,uuid,uuid,
     timestamptz,timestamptz,text
   ),
-  public.axora_remove_user_permission_override(uuid,uuid,uuid,text)
+  public.axora_remove_user_permission_override(uuid,uuid,uuid,text),
+  public.axora_invalidate_approval_limit_subject(
+    uuid,uuid,text,uuid,uuid,uuid,uuid,text
+  ),
+  public.axora_set_approval_limit(
+    uuid,uuid,uuid,uuid,uuid,text,text,uuid,uuid,uuid,text,numeric,
+    boolean,timestamptz,timestamptz,text
+  ),
+  public.axora_remove_approval_limit(uuid,uuid,uuid,text)
 FROM axora_app;
 
 GRANT EXECUTE ON FUNCTION
@@ -123,5 +131,10 @@ GRANT EXECUTE ON FUNCTION
     uuid,uuid,uuid,uuid,text,text,text,uuid,uuid,uuid,uuid,
     timestamptz,timestamptz,text
   ),
-  public.axora_remove_user_permission_override(uuid,uuid,uuid,text)
+  public.axora_remove_user_permission_override(uuid,uuid,uuid,text),
+  public.axora_set_approval_limit(
+    uuid,uuid,uuid,uuid,uuid,text,text,uuid,uuid,uuid,text,numeric,
+    boolean,timestamptz,timestamptz,text
+  ),
+  public.axora_remove_approval_limit(uuid,uuid,uuid,text)
 TO axora_app;
