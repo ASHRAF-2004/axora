@@ -49,7 +49,7 @@ async function fallbackClaim(
   return result.rows[0];
 }
 
-describe("public visitor network-device fallback migration", () => {
+describe("public visitor network fallback migration", () => {
   it("upgrades populated append-only Turnstile claims without rewriting them", async () => {
     const db = new PGlite();
     try {
@@ -137,13 +137,13 @@ describe("public visitor network-device fallback migration", () => {
         clientSignal: hash("3"),
         choice: "NIGHT_OWL",
       });
-      expect(sharedNetworkDifferentDevice).toMatchObject({
-        total: 2,
+      expect(sharedNetworkDifferentDevice).toEqual({
+        total: 1,
         early: 1,
-        night: 1,
-        visitorNumber: 2,
-        choice: "NIGHT_OWL",
-        claimedNew: true,
+        night: 0,
+        visitorNumber: 1,
+        choice: "EARLY_BIRD",
+        claimedNew: false,
       });
 
       const turnstile = await db.query<ClaimResult>(`
@@ -159,10 +159,10 @@ describe("public visitor network-device fallback migration", () => {
         )
       `, [hash("4"), hash("5"), hash("6"), hash("7")]);
       expect(turnstile.rows[0]).toMatchObject({
-        total: 3,
+        total: 2,
         early: 2,
-        night: 1,
-        visitorNumber: 3,
+        night: 0,
+        visitorNumber: 2,
         claimedNew: true,
       });
 
@@ -182,7 +182,7 @@ describe("public visitor network-device fallback migration", () => {
         FROM public_visitor_claims
         ORDER BY visitor_number
       `);
-      expect(evidence.rows).toHaveLength(3);
+      expect(evidence.rows).toHaveLength(2);
       expect(evidence.rows[0]).toMatchObject({
         visitorNumber: 1,
         method: "NETWORK_DEVICE_FALLBACK",
@@ -192,18 +192,11 @@ describe("public visitor network-device fallback migration", () => {
       });
       expect(evidence.rows[1]).toMatchObject({
         visitorNumber: 2,
-        method: "NETWORK_DEVICE_FALLBACK",
-        challengeAt: null,
-        hostname: null,
-        action: null,
-      });
-      expect(evidence.rows[2]).toMatchObject({
-        visitorNumber: 3,
         method: "TURNSTILE",
         hostname: "axora.management",
         action: "visitor_choice",
       });
-      expect(evidence.rows[2]?.challengeAt).not.toBeNull();
+      expect(evidence.rows[1]?.challengeAt).not.toBeNull();
     } finally {
       await db.close();
     }
