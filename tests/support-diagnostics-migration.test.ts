@@ -112,7 +112,7 @@ describe("support diagnostics migration and SQL contract", () => {
     db = new PGlite();
     await createMigrationLedger(db);
     const applied = await applyMigrations(db);
-    expect(applied.at(-1)).toBe("033_public_visitor_choice_counter.sql");
+    expect(applied.at(-1)).toBe("034_public_visitor_network_fallback.sql");
     await markMigration(db, "032_user_session_revocation_audit.sql");
     await createSupportFixtures(db);
   }, 30_000);
