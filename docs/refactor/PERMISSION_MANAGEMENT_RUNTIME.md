@@ -21,8 +21,10 @@ Every command carries:
 - the immutable permission code;
 - one typed platform, company, branch, department, supplier, or delivery scope;
 - the grant or deny effect;
-- an effective period;
+- an explicit effective-start timestamp and optional end timestamp;
 - a mandatory reason.
+
+The caller creates and retains the effective-start timestamp before submission. Any retry after a timeout or uncertain response must reuse that same timestamp and payload. The database therefore recognizes the repeated operation as the same logical override rather than creating another authorization change.
 
 Display names, email addresses, job titles, hidden form fields, and client-provided company IDs never establish authority.
 
