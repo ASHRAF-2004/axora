@@ -130,7 +130,9 @@ jobs:
           cache: npm
 
       - name: Apply reviewed patches
-        run: python scripts/ci/prepare-delegated-access.py
+        run: |
+          python scripts/ci/prepare-delegated-access.py
+          python scripts/ci/qualify-delegation-variables.py
 
       - name: Install locked dependencies
         run: npm ci
@@ -153,7 +155,9 @@ jobs:
         run: |
           git fetch origin main
           git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          rm -f scripts/ci/prepare-delegated-access.py
+          rm -f \
+            scripts/ci/prepare-delegated-access.py \
+            scripts/ci/qualify-delegation-variables.py
           git diff --check
           git config user.name "Axora Release Agent"
           git config user.email "actions@users.noreply.github.com"
