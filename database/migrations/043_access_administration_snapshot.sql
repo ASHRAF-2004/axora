@@ -240,7 +240,11 @@ BEGIN
       FROM public.permissions permission
       WHERE permission.active
         AND (
-          public.axora_snapshot_has_permission(
+          -- A manager may proactively deny any active permission in scope,
+          -- even when anti-escalation rules prohibit granting that permission.
+          -- Read-only actors still receive only relevant permission facts.
+          can_manage
+          OR public.axora_snapshot_has_permission(
             actor_snapshot,permission.permission_code,
             selected_scope_type,selected_company_id,selected_branch_id,
             selected_department_id,selected_supplier_id
@@ -457,7 +461,13 @@ BEGIN
           ON history_actor.id=history.actor_user_id
         LEFT JOIN public.user_profiles actor_profile
           ON actor_profile.user_id=history_actor.id
-        WHERE history.target_user_id=p_target_user_id
+        WHERE (
+            history.target_user_id=p_target_user_id
+            OR (
+              history.target_user_id IS NULL
+              AND history.target_role_id=selected_role_id
+            )
+          )
           AND (
             -- Direct permission, approval-limit, and role events carry a
             -- normalized top-level scope. Include broader or narrower scopes
