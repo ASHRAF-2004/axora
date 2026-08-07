@@ -108,6 +108,10 @@ interface SnapshotRow extends QueryResultRow {
   snapshot: unknown;
 }
 
+type EffectiveSubject = Awaited<
+  ReturnType<typeof loadEffectiveAccess>
+>["subject"];
+
 export type OrganizationCompany = Omit<Company, "paymentTerms"> & {
   paymentTerms: string;
 };
@@ -149,7 +153,7 @@ function uniqueIds(values: readonly { id: string }[]) {
 }
 
 function permissionAtAnyScope(
-  subject: Awaited<ReturnType<typeof loadEffectiveAccess>>["subject"],
+  subject: EffectiveSubject,
   permission: PermissionCode,
   scopes: readonly AuthorizationScope[],
   capturedAt: Date,
@@ -162,6 +166,48 @@ function permissionAtAnyScope(
   }).allowed);
 }
 
+function companyPermissionContexts(
+  subject: EffectiveSubject,
+  companyId: string,
+): AuthorizationScope[] {
+  return subject.scopes.flatMap((scope): AuthorizationScope[] => {
+    if (scope.type === "PLATFORM") {
+      return [{ type: "COMPANY", companyId }];
+    }
+    if (scope.companyId !== companyId) return [];
+    if (scope.type === "COMPANY") {
+      return [{ type: "COMPANY", companyId }];
+    }
+    if (scope.type === "BRANCH" || scope.type === "DEPARTMENT") {
+      return [scope];
+    }
+    return [];
+  });
+}
+
+function branchPermissionContexts(
+  subject: EffectiveSubject,
+  branch: Pick<Branch, "id" | "companyId">,
+): AuthorizationScope[] {
+  const branchScope: AuthorizationScope = {
+    type: "BRANCH",
+    companyId: branch.companyId,
+    branchId: branch.id,
+  };
+  return subject.scopes.flatMap((scope): AuthorizationScope[] => {
+    if (scope.type === "PLATFORM") return [branchScope];
+    if (scope.companyId !== branch.companyId) return [];
+    if (scope.type === "COMPANY") return [branchScope];
+    if (scope.type === "BRANCH" && scope.branchId === branch.id) {
+      return [branchScope];
+    }
+    if (scope.type === "DEPARTMENT" && scope.branchId === branch.id) {
+      return [scope];
+    }
+    return [];
+  });
+}
+
 async function demoDirectory(
   actor: AuthenticatedSessionUser,
   capturedAt: Date,
@@ -169,9 +215,7 @@ async function demoDirectory(
   const effective = await loadEffectiveAccess(actor, capturedAt);
   const store = getDemoStore();
   const companies = store.companies.filter((company) => {
-    const contexts = effective.subject.scopes.filter((scope) => (
-      scope.companyId === company.id
-    ));
+    const contexts = companyPermissionContexts(effective.subject, company.id);
     return permissionAtAnyScope(
       effective.subject,
       "company.view",
@@ -183,17 +227,15 @@ async function demoDirectory(
       contexts,
       capturedAt,
     );
-  }).map((company) => ({ ...company, paymentTerms: String(company.paymentTerms) }));
+  }).map((company) => ({
+    ...company,
+    paymentTerms: String(company.paymentTerms),
+  })).sort((left, right) => (
+    left.name.localeCompare(right.name) || left.id.localeCompare(right.id)
+  ));
 
   const branches = store.branches.flatMap((branch) => {
-    const contexts = effective.subject.scopes.filter((scope) => (
-      scope.companyId === branch.companyId
-      && (
-        scope.type === "COMPANY"
-        || (scope.type === "BRANCH" && scope.branchId === branch.id)
-        || (scope.type === "DEPARTMENT" && scope.branchId === branch.id)
-      )
-    ));
+    const contexts = branchPermissionContexts(effective.subject, branch);
     if (!permissionAtAnyScope(
       effective.subject,
       "organization.branch.view",
@@ -225,7 +267,11 @@ async function demoDirectory(
         remainingAmount: undefined,
       }),
     }];
-  });
+  }).sort((left, right) => (
+    left.companyName.localeCompare(right.companyName)
+    || left.name.localeCompare(right.name)
+    || left.id.localeCompare(right.id)
+  ));
 
   return { capturedAt, companies, branches };
 }
@@ -329,7 +375,9 @@ export async function loadOrganizationResourceAccess(
 }
 
 export const organizationAccessInternals = {
+  branchPermissionContexts,
   branchSchema,
+  companyPermissionContexts,
   companySchema,
   directorySchema,
   resourceAccessSchema,
