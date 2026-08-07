@@ -205,5 +205,21 @@ BEGIN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_organization_resource_access(uuid,uuid,text,text,uuid,timestamptz) TO axora_app';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_organization_directory_snapshot(uuid,uuid,timestamptz) TO axora_app';
   END IF;
+
+  IF to_regprocedure(
+    'public.axora_request_access_rows(uuid,uuid,timestamptz)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_validate_request_department_scope() FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_request_scope_type(uuid) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_request_permission_is_effective(jsonb,uuid,text,uuid,uuid,uuid,uuid) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_request_access_rows(uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_request_resource_access(uuid,uuid,text,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_lock_request_resource_access(uuid,uuid,text,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_lock_request_creation_scope(uuid,uuid,uuid,uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_request_access_rows(uuid,uuid,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_request_resource_access(uuid,uuid,text,uuid,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_lock_request_resource_access(uuid,uuid,text,uuid,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_lock_request_creation_scope(uuid,uuid,uuid,uuid,uuid,timestamptz) TO axora_app';
+  END IF;
 END
 $$;

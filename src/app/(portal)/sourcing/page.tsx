@@ -2,8 +2,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/domain";
-import { listQuotations, listSupplierRfqs } from "@/lib/operations";
-import { listRequests, listSuppliers } from "@/lib/repository";
+import { listSuppliers } from "@/lib/repository";
+import { loadAuthorizedSourcingRegisters } from "@/lib/sourcing-isolation";
 import { CheckCircle2, Scale } from "lucide-react";
 import { operationalMessage, operationalNumber, operationalStatus, type OperationalMessageKey } from "@/lib/operational-i18n";
 import { createQuotationAction, issueSupplierRfqAction, selectQuotationAction } from "../operations/actions";
@@ -17,9 +17,12 @@ export default async function SourcingPage({ searchParams }: { searchParams: Pro
   const supplierCopy = supplierSourcingMessages(locale);
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
   const canManage = true;
-  const [requests, suppliers, quotations, supplierRfqs, params] = await Promise.all([
-    listRequests(), listSuppliers(), listQuotations(), listSupplierRfqs(actor), searchParams,
+  const [sourcing, suppliers, params] = await Promise.all([
+    loadAuthorizedSourcingRegisters(actor),
+    listSuppliers(actor),
+    searchParams,
   ]);
+  const { requests, quotations, supplierRfqs } = sourcing;
   const lines = requests.filter((request) =>
     request.status === "Waiting for Quotation" && request.approvalStatus === "Approved")
     .flatMap((request) => request.lines.map((line) => ({ ...line, orderCode: request.orderCode, companyName: request.companyName })));

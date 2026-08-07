@@ -1,9 +1,8 @@
 import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
+import { loadAuthorizedDocumentRegisters } from "@/lib/document-isolation";
 import { formatDateTime } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
-import { listAttachments, listDeliveries, listInvoices } from "@/lib/operations";
-import { listRequests } from "@/lib/repository";
 import { FileCheck2, Upload } from "lucide-react";
 import { uploadAttachmentAction } from "../operations/actions";
 import { operationalMessage, type OperationalMessageKey } from "@/lib/operational-i18n";
@@ -14,12 +13,8 @@ export default async function DocumentsPage() {
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) => operationalMessage(locale, key, values);
   const canManage = canAccess(actor, "manage_documents");
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
-  const [requests, invoices, deliveries, attachments] = await Promise.all([
-    listRequests(),
-    canAccess(actor, "view_invoices") ? listInvoices() : Promise.resolve([]),
-    listDeliveries(),
-    listAttachments(),
-  ]);
+  const { requests, invoices, deliveries, attachments } =
+    await loadAuthorizedDocumentRegisters(actor);
   const targets = [
     ...requests.map((item) => ({ type: "request", id: item.id, label: `${item.orderCode} · ${m("documents.requestSuffix")}` })),
     ...invoices.map((item) => ({ type: "invoice", id: item.id, label: `${item.invoiceNumber} · ${m("documents.invoiceSuffix")}` })),

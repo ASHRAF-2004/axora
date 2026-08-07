@@ -11,7 +11,8 @@ import {
 } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
 import { listApprovals } from "@/lib/operations";
-import { listBranches, listRequests } from "@/lib/repository";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
+import { listAuthorizedRequests } from "@/lib/request-reader";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 
 export default async function ApprovalsPage() {
@@ -20,7 +21,16 @@ export default async function ApprovalsPage() {
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const copy = corePortalMessages(locale).approvals;
   const canDecide = canAccess(actor, "approve_requests");
-  const [requests, approvals, branches] = await Promise.all([listRequests(actor), listApprovals(), listBranches(actor)]);
+  const [requests, rawApprovals, organization] = await Promise.all([
+    listAuthorizedRequests(actor),
+    listApprovals(),
+    loadOrganizationDirectory(actor),
+  ]);
+  const visibleRequestIds = new Set(requests.map((request) => request.id));
+  const approvals = rawApprovals.filter((approval) => (
+    visibleRequestIds.has(approval.requestId)
+  ));
+  const branches = organization.branches;
   const awaitingDecision = requests.filter((item) => item.status === "New Request" && item.approvalStatus === "Pending");
   const pending = awaitingDecision.filter((item) => item.createdById
     ? item.createdById !== actor.id
@@ -34,7 +44,9 @@ export default async function ApprovalsPage() {
       {ownPendingCount ? <div className="callout" style={{ marginBlockEnd: 17 }}><strong>{ownPendingCount === 1 ? copy.ownSingle : copy.ownMany(ownPendingCount)}</strong><p>{copy.separation}</p></div> : null}
       {pending.length ? <div className="detail-grid">{pending.map((request) => {
         const branch = branches.find((item) => item.id === request.branchId);
-        const projected = branch?.remainingAmount == null ? undefined : branch.remainingAmount - request.estimatedTotal;
+        const projected = branch?.canViewBudget && branch.remainingAmount != null
+          ? branch.remainingAmount - request.estimatedTotal
+          : undefined;
         const requestSubtotal = request.subtotal ?? request.lines.reduce(
           (total, line) =>
             total + calculateLineAmounts(line).sales,
@@ -46,8 +58,8 @@ export default async function ApprovalsPage() {
           <div className="panel-body">
             <div className="request-summary">
               <div className="summary-box"><span>{copy.requestTotal}</span><strong>{formatCurrency(request.estimatedTotal, locale)}</strong></div>
-              <div className="summary-box"><span>{copy.monthlyBudget}</span><strong>{branch?.monthlyBudget == null ? corePortalMessages(locale).common.noLimit : formatCurrency(branch.monthlyBudget, locale)}</strong></div>
-              <div className="summary-box"><span>{copy.availableNow}</span><strong>{branch?.remainingAmount == null ? corePortalMessages(locale).common.noLimit : formatCurrency(branch.remainingAmount, locale)}</strong></div>
+              <div className="summary-box"><span>{copy.monthlyBudget}</span><strong>{branch?.canViewBudget && branch.monthlyBudget != null ? formatCurrency(branch.monthlyBudget, locale) : corePortalMessages(locale).common.noLimit}</strong></div>
+              <div className="summary-box"><span>{copy.availableNow}</span><strong>{branch?.canViewBudget && branch.remainingAmount != null ? formatCurrency(branch.remainingAmount, locale) : corePortalMessages(locale).common.noLimit}</strong></div>
               <div className="summary-box"><span>{copy.afterApproval}</span><strong>{projected === undefined ? corePortalMessages(locale).common.noLimit : formatCurrency(Math.max(projected, 0), locale)}</strong></div>
             </div>
 

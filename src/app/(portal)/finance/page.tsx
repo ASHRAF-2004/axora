@@ -3,9 +3,9 @@ import { FinanceManagementForms } from "@/components/FinanceManagementForms";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/domain";
+import { loadAuthorizedFinanceRegisters } from "@/lib/finance-isolation";
 import { canAccess } from "@/lib/permissions";
-import { listInvoices, listPayments } from "@/lib/operations";
-import { listRequests, listSuppliers } from "@/lib/repository";
+import { listSuppliers } from "@/lib/repository";
 import { getCustomerMatchWorkspace } from "@/lib/customer-matching";
 import { randomUUID } from "node:crypto";
 import { evaluateCustomerMatchAction, overrideCustomerMatchAction } from "../operations/actions";
@@ -18,10 +18,12 @@ export default async function FinancePage() {
   const canManage = canAccess(actor, "manage_finance");
   const canMatch = canAccess(actor, "review_three_way_matches");
   const platformFinance = actor.accountKind === "PLATFORM" && actor.scopeType === "PLATFORM";
-  const [requests, suppliers, invoices, payments, matching] = await Promise.all([
-    listRequests(actor), listSuppliers(actor), listInvoices(), listPayments(),
+  const [finance, suppliers, matching] = await Promise.all([
+    loadAuthorizedFinanceRegisters(actor),
+    listSuppliers(actor),
     canMatch ? getCustomerMatchWorkspace(actor) : Promise.resolve(null),
   ]);
+  const { requests, invoices, payments } = finance;
   const deliveredRequests = requests
     .filter((item) => ["Delivered", "Invoice Issued"].includes(item.status) && item.approvalStatus === "Approved")
     .map((item) => ({

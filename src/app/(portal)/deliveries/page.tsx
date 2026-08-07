@@ -1,10 +1,9 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
+import { loadAuthorizedDeliveryRegisters } from "@/lib/delivery-isolation";
 import { formatDate, formatDateTime } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
-import { listDeliveries } from "@/lib/operations";
-import { listRequests } from "@/lib/repository";
 import { listDeliveryAgents, listDeliveryJobs } from "@/lib/delivery-admin";
 import { randomUUID } from "node:crypto";
 import { assignDeliveryDriverAction, createDeliveryJobAction } from "./actions";
@@ -15,12 +14,12 @@ export default async function DeliveriesPage() {
   const locale = actor.preferredLocale ?? "en";
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) => operationalMessage(locale, key, values);
   const canManage = canAccess(actor, "manage_deliveries");
-  const [requests, deliveries, jobs, drivers] = await Promise.all([
-    listRequests(actor),
-    listDeliveries(),
+  const [delivery, jobs, drivers] = await Promise.all([
+    loadAuthorizedDeliveryRegisters(actor),
     canManage ? listDeliveryJobs(actor) : Promise.resolve([]),
     canManage ? listDeliveryAgents(actor) : Promise.resolve([]),
   ]);
+  const { requests, deliveries } = delivery;
   const eligibleRequests = requests.filter((request) =>
     ["Supplier Assigned", "Ordered", "Preparing for Delivery", "Out for Delivery"].includes(request.status)
       && request.approvalStatus === "Approved");

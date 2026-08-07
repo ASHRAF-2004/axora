@@ -6,13 +6,16 @@ import { calculateLineAmounts, formatCurrency, formatDate, formatDateTime } from
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { requestDetailMessages } from "@/lib/request-detail-i18n";
 import { canAccess } from "@/lib/permissions";
-import { getRequest, listBranches } from "@/lib/repository";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
+import {
+  getAuthorizedRequest,
+  listAuthorizedRequestWorkflowEvents,
+} from "@/lib/request-reader";
 import { allowedNextStatuses } from "@/lib/workflow";
 import { CircleDollarSign, PackageCheck, Route, UserRound, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateStatusAction } from "../actions";
-import { listRequestWorkflowEvents } from "@/lib/workflow-repository";
 
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,15 +25,19 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const requestCopy = corePortalMessages(locale).requests;
   const detail = requestDetailMessages(locale);
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
-  const canViewInvoices = canAccess(actor, "view_invoices");
-  const request = await getRequest(id, actor);
+  const request = await getAuthorizedRequest(actor, id);
   if (!request) notFound();
+  const canViewInvoices = request.invoiceStatus !== undefined
+    || request.paymentStatus !== undefined
+    || request.invoiceNumber !== undefined;
 
   const [branchBudget, workflowTimeline] = await Promise.all([
     actor.accountKind === "PLATFORM"
       ? Promise.resolve(undefined)
-      : listBranches(actor).then((branches) => branches.find((branch) => branch.id === request.branchId)),
-    listRequestWorkflowEvents(actor, request.id),
+      : loadOrganizationDirectory(actor).then(({ branches }) => (
+          branches.find((branch) => branch.id === request.branchId)
+        )),
+    listAuthorizedRequestWorkflowEvents(actor, request.id),
   ]);
   const totals = request.lines.reduce((sum, line) => {
     const current = calculateLineAmounts(line);
@@ -132,9 +139,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 {platformView
                   ? <div className="readiness-item"><CircleDollarSign size={19} /><div><strong>{formatCurrency(totals.delivery, locale)} {detail.deliveryFees}</strong><p>{detail.deliveryFeesBody}</p></div></div>
                   : <div className="readiness-item"><WalletCards size={19} /><div>
-                      <strong>{branchBudget?.monthlyBudget != null ? `${formatCurrency(branchBudget.remainingAmount ?? 0, locale)} ${detail.remaining}` : detail.noBudget}</strong>
-                      <p>{branchBudget?.monthlyBudget != null
-                        ? detail.committedBudget(formatCurrency(branchBudget.committedAmount, locale), formatCurrency(branchBudget.monthlyBudget, locale))
+                      <strong>{branchBudget?.canViewBudget && branchBudget.monthlyBudget != null ? `${formatCurrency(branchBudget.remainingAmount ?? 0, locale)} ${detail.remaining}` : detail.noBudget}</strong>
+                      <p>{branchBudget?.canViewBudget && branchBudget.monthlyBudget != null
+                        ? detail.committedBudget(formatCurrency(branchBudget.committedAmount ?? 0, locale), formatCurrency(branchBudget.monthlyBudget, locale))
                         : detail.budgetHelp}</p>
                     </div></div>}
               </div>

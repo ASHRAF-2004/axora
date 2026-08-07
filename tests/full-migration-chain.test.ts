@@ -7,11 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 044 to an empty database", async () => {
+  it("applies every numbered migration through 045 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-9)).toEqual([
+      expect(available.slice(-10)).toEqual([
         "036_authorization_policy_foundation.sql",
         "037_effective_access_snapshot.sql",
         "038_canonical_session_scopes.sql",
@@ -21,6 +21,7 @@ describe("complete forward migration chain", () => {
         "042_role_scope_lifecycle.sql",
         "043_access_administration_snapshot.sql",
         "044_organization_resource_isolation.sql",
+        "045_request_resource_isolation.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -33,6 +34,7 @@ describe("complete forward migration chain", () => {
         policy_count: number;
         company_nullable: string;
         customer_match_table: string | null;
+        request_department_column: string | null;
       }>(`
         SELECT
           (SELECT count(*)::int FROM information_schema.tables
@@ -44,13 +46,18 @@ describe("complete forward migration chain", () => {
               AND table_name='account_setup_invitations'
               AND column_name='company_id') AS company_nullable,
           to_regclass('public.customer_three_way_matches')::text
-            AS customer_match_table
+            AS customer_match_table,
+          (SELECT is_nullable FROM information_schema.columns
+            WHERE table_schema='public'
+              AND table_name='requests'
+              AND column_name='department_id') AS request_department_column
       `);
       expect(state.rows[0]).toMatchObject({
         table_count: expect.any(Number),
         policy_count: expect.any(Number),
         company_nullable: "YES",
         customer_match_table: "customer_three_way_matches",
+        request_department_column: "YES",
       });
       expect(state.rows[0].table_count).toBeGreaterThanOrEqual(64);
       expect(state.rows[0].policy_count).toBeGreaterThanOrEqual(35);
@@ -205,6 +212,10 @@ describe("complete forward migration chain", () => {
         migrationUrl("044_organization_resource_isolation.sql"),
         "utf8",
       ));
+      await db.exec(await readFile(
+        migrationUrl("045_request_resource_isolation.sql"),
+        "utf8",
+      ));
 
       const after = await db.query<{
         requests: number;
@@ -216,6 +227,7 @@ describe("complete forward migration chain", () => {
         match_policies: number;
         receipt_baselines: number;
         receipt_baseline_sources: number;
+        canonical_departments: number;
       }>(`
         SELECT
           (SELECT count(*)::int FROM requests) AS requests,
@@ -244,7 +256,9 @@ describe("complete forward migration chain", () => {
           (SELECT count(*)::int
             FROM request_line_receipt_baselines) AS receipt_baselines,
           (SELECT count(*)::int
-            FROM request_line_receipt_baseline_sources) AS receipt_baseline_sources
+            FROM request_line_receipt_baseline_sources) AS receipt_baseline_sources,
+          (SELECT count(*)::int FROM requests
+            WHERE department_id IS NOT NULL) AS canonical_departments
       `);
       expect(after.rows[0]).toEqual({
         requests: 15,
@@ -256,6 +270,7 @@ describe("complete forward migration chain", () => {
         match_policies: 3,
         receipt_baselines: 17,
         receipt_baseline_sources: 0,
+        canonical_departments: 0,
       });
       const metadata = await db.query<{ bad: number }>(`
         SELECT count(*)::int AS bad FROM workflow_events
@@ -270,7 +285,7 @@ describe("complete forward migration chain", () => {
     }
   }, 30_000);
 
-  it("keeps reset migration discovery dynamic through 044 while bootstrap retains its 032 minimum", async () => {
+  it("keeps reset migration discovery dynamic through 045 while bootstrap retains its 032 minimum", async () => {
     const [initializer, reset, bootstrap] = await Promise.all([
       readFile(new URL("../database/init/01-run-migration.sh", import.meta.url), "utf8"),
       readFile(new URL("../scripts/production/reset-baseline.sh", import.meta.url), "utf8"),
@@ -278,8 +293,8 @@ describe("complete forward migration chain", () => {
     ]);
     expect(initializer).toContain("/migrations/[0-9][0-9][0-9]_*.sql");
     expect(reset).toContain("/database/migrations/[0-9][0-9][0-9]_*.sql");
-    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization/);
-    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization/);
+    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request/);
+    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request/);
     expect(bootstrap).toContain(
       'const REQUIRED_MIGRATION = "032_user_session_revocation_audit.sql"',
     );

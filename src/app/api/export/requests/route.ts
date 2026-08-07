@@ -1,5 +1,5 @@
 import { calculateLineAmounts } from "@/lib/domain";
-import { listRequests } from "@/lib/repository";
+import { listAuthorizedRequests } from "@/lib/request-reader";
 import { getSession } from "@/lib/auth";
 import { canAccess } from "@/lib/permissions";
 import { encodeCsvCell } from "@/lib/csv";
@@ -10,8 +10,12 @@ export async function GET() {
   if (!canAccess(user, "view_reports")) {
     return Response.json({ error: "You do not have permission to export reports." }, { status: 403 });
   }
-  const requests = await listRequests();
-  const canViewInvoices = canAccess(user, "view_invoices");
+  const requests = await listAuthorizedRequests(user);
+  const canViewInvoices = requests.some((request) => (
+    request.invoiceStatus !== undefined
+    || request.paymentStatus !== undefined
+    || request.invoiceNumber !== undefined
+  ));
   const platformView = user.isOwner || user.accountKind === "PLATFORM";
   const ownerHeader = ["Order Group ID", "Request Line ID", "Request Date", "Company", "Branch", "Product", "Quantity", "Unit", "Status", "Supplier", "Buying Cost (RM)", "Sales (RM)", "Gross Profit (RM)", "Delivery Fee (RM)", "Payment Status"];
   const companyHeader = ["Request ID", "Request Line ID", "Request Date", "Branch", "Requested By", "Product", "Quantity", "Unit", "Approval", "Fulfilment Status", "Estimated Line Total (RM)"];

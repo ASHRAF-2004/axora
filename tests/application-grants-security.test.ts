@@ -122,6 +122,13 @@ async function expectSensitiveBoundary(db: PGlite) {
     access_administration_snapshot: boolean;
     organization_directory: boolean;
     organization_resource: boolean;
+    request_access_rows: boolean;
+    request_resource: boolean;
+    request_lock: boolean;
+    request_creation_lock: boolean;
+    request_permission_internal: boolean;
+    request_scope_internal: boolean;
+    request_trigger_internal: boolean;
     live_authorization_internal: boolean;
     organization_resolver_internal: boolean;
     raw_received: boolean;
@@ -181,6 +188,37 @@ async function expectSensitiveBoundary(db: PGlite) {
       ) AS organization_resource,
       has_function_privilege(
         'axora_app',
+        'axora_request_access_rows(uuid,uuid,timestamptz)',
+        'EXECUTE'
+      ) AS request_access_rows,
+      has_function_privilege(
+        'axora_app',
+        'axora_request_resource_access(uuid,uuid,text,uuid,timestamptz)',
+        'EXECUTE'
+      ) AS request_resource,
+      has_function_privilege(
+        'axora_app',
+        'axora_lock_request_resource_access(uuid,uuid,text,uuid,timestamptz)',
+        'EXECUTE'
+      ) AS request_lock,
+      has_function_privilege(
+        'axora_app',
+        'axora_lock_request_creation_scope(uuid,uuid,uuid,uuid,uuid,timestamptz)',
+        'EXECUTE'
+      ) AS request_creation_lock,
+      has_function_privilege(
+        'axora_app',
+        'axora_request_permission_is_effective(jsonb,uuid,text,uuid,uuid,uuid,uuid)',
+        'EXECUTE'
+      ) AS request_permission_internal,
+      has_function_privilege(
+        'axora_app','axora_request_scope_type(uuid)','EXECUTE'
+      ) AS request_scope_internal,
+      has_function_privilege(
+        'axora_app','axora_validate_request_department_scope()','EXECUTE'
+      ) AS request_trigger_internal,
+      has_function_privilege(
+        'axora_app',
         'axora_live_authorization_snapshot(uuid,uuid,timestamptz)',
         'EXECUTE'
       ) AS live_authorization_internal,
@@ -236,6 +274,13 @@ async function expectSensitiveBoundary(db: PGlite) {
     access_administration_snapshot: true,
     organization_directory: true,
     organization_resource: true,
+    request_access_rows: true,
+    request_resource: true,
+    request_lock: true,
+    request_creation_lock: true,
+    request_permission_internal: false,
+    request_scope_internal: false,
+    request_trigger_internal: false,
     live_authorization_internal: false,
     organization_resolver_internal: false,
     raw_received: false,
@@ -293,6 +338,16 @@ describe("application database grant boundaries", () => {
       );
       expect(source).toContain(
         "public.axora_organization_resource_access(",
+      );
+      expect(source).toContain("public.axora_request_access_rows(");
+      expect(source).toContain(
+        "public.axora_request_resource_access(",
+      );
+      expect(source).toContain(
+        "public.axora_lock_request_resource_access(",
+      );
+      expect(source).toContain(
+        "public.axora_lock_request_creation_scope(",
       );
       await expectSensitiveBoundary(db);
     } finally {

@@ -4,7 +4,7 @@ import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency, formatDate, formatDateTime, REQUEST_STATUSES } from "@/lib/domain";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { canAccess } from "@/lib/permissions";
-import { listRequests } from "@/lib/repository";
+import { listAuthorizedRequests } from "@/lib/request-reader";
 import { Download, Search } from "lucide-react";
 import Link from "next/link";
 
@@ -14,11 +14,16 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const copy = corePortalMessages(locale).requests;
-  const canViewInvoices = canAccess(actor, "view_invoices");
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
   const query = (filters.q ?? "").trim().toLowerCase();
   const status = filters.status ?? "all";
-  const requests = (await listRequests(actor)).filter((request) => {
+  const scopedRequests = await listAuthorizedRequests(actor);
+  const canViewInvoices = scopedRequests.some((request) => (
+    request.invoiceStatus !== undefined
+    || request.paymentStatus !== undefined
+    || request.invoiceNumber !== undefined
+  ));
+  const requests = scopedRequests.filter((request) => {
     const matchesQuery = !query || [request.orderCode, request.companyName, request.branchName, ...request.lines.map((line) => line.productName)].some((value) => value.toLowerCase().includes(query));
     const matchesStatus = status === "all" || (status === "open" ? !["Completed", "Cancelled"].includes(request.status) : request.status === status);
     return matchesQuery && matchesStatus;
@@ -49,7 +54,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
               <td><StatusBadge status={request.status}>{localizedStatus(request.status, locale)}</StatusBadge></td>
               <td><strong>{formatCurrency(request.estimatedTotal, locale)}</strong></td>
               <td><StatusBadge status={delivery}>{localizedStatus(delivery, locale)}</StatusBadge></td>
-              {canViewInvoices ? <td><StatusBadge status={request.paymentStatus ?? "Unpaid"}>{localizedStatus(request.paymentStatus ?? "Unpaid", locale)}</StatusBadge></td> : null}
+              {canViewInvoices ? <td>{request.paymentStatus ? <StatusBadge status={request.paymentStatus}>{localizedStatus(request.paymentStatus, locale)}</StatusBadge> : <span className="subtle">—</span>}</td> : null}
             </tr>;
           })}{requests.length === 0 ? <tr><td colSpan={canViewInvoices ? 9 : 8}>{copy.empty}</td></tr> : null}</tbody>
         </table></div>
