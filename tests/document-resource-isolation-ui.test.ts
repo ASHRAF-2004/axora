@@ -27,7 +27,7 @@ describe("document resource isolation route integration", () => {
     );
     expect(action).toContain('requirePermission("manage_documents")');
     expect(action).toContain('requireRecentStepUp(actor, "/documents")');
-    expect(action).toContain("recordId: z.string().uuid()");
+    expect(action).toContain("recordId: documentRecordIdSchema");
     expect(action).toContain("createAuthorizedAttachment(actor");
     expect(action).not.toContain("saveAttachment(");
     expect(action).not.toContain("INSERT INTO attachments");
@@ -53,6 +53,9 @@ describe("document resource isolation route integration", () => {
     expect(service).toContain("axora_attachment_access_rows");
     expect(service).toContain("axora_attachment_download");
     expect(service).toContain("axora_create_attachment");
+    expect(service).toContain(
+      "uuidSchema.safeParse(request.data.recordId).success",
+    );
     expect(service).not.toMatch(/FROM\s+attachments\b/i);
     expect(service).not.toMatch(/INSERT\s+INTO\s+attachments\b/i);
   });
