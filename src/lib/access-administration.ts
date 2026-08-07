@@ -197,16 +197,16 @@ export async function loadAccessAdministration(
   targetRoleAssignmentId?: string,
   capturedAt = new Date(),
 ): Promise<AccessAdministrationSnapshot> {
-  const actorRoleAssignmentId = requireNormalizedActor(actor);
-  const safeTargetUserId = uuidSchema.parse(targetUserId);
-  const safeTargetRoleAssignmentId = targetRoleAssignmentId
-    ? uuidSchema.parse(targetRoleAssignmentId)
-    : undefined;
-  if (!Number.isFinite(capturedAt.getTime()) || isDemoMode()) {
-    throw new AccessAdministrationUnavailableError();
-  }
-
   try {
+    const actorRoleAssignmentId = requireNormalizedActor(actor);
+    const safeTargetUserId = uuidSchema.parse(targetUserId);
+    const safeTargetRoleAssignmentId = targetRoleAssignmentId
+      ? uuidSchema.parse(targetRoleAssignmentId)
+      : undefined;
+    if (!Number.isFinite(capturedAt.getTime()) || isDemoMode()) {
+      throw new AccessAdministrationUnavailableError();
+    }
+
     const result = await query<AccessAdministrationRow>(
       `SELECT public.axora_access_administration_snapshot(
          $1,$2,$3,$4,$5
@@ -230,10 +230,7 @@ export async function loadAccessAdministration(
     }
     return parsed.data;
   } catch (error) {
-    if (error instanceof z.ZodError
-      || error instanceof AccessAdministrationUnavailableError) {
-      throw error;
-    }
+    if (error instanceof AccessAdministrationUnavailableError) throw error;
     throw new AccessAdministrationUnavailableError();
   }
 }
