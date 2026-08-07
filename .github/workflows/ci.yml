@@ -130,7 +130,9 @@ jobs:
           cache: npm
 
       - name: Apply reviewed patches
-        run: python scripts/ci/prepare-role-scope-lifecycle.py
+        run: |
+          python scripts/ci/prepare-role-scope-lifecycle.py
+          python scripts/ci/rewrite-role-lifecycle-functions.py
 
       - name: Install locked dependencies
         run: npm ci
@@ -162,6 +164,7 @@ jobs:
           git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
           rm -f \
             scripts/ci/prepare-role-scope-lifecycle.py \
+            scripts/ci/rewrite-role-lifecycle-functions.py \
             tests/role-scope-migration-diagnostic.test.ts
           git diff --check
           git config user.name "Axora Release Agent"
