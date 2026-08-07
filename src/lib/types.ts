@@ -225,6 +225,7 @@ export interface ProcurementRequest {
   companyName: string;
   branchId: string;
   branchName: string;
+  departmentId?: string;
   department: string;
   requestedBy: string;
   requesterContact: string;
