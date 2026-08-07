@@ -72,6 +72,12 @@ async function createSupportFixtures(db: PGlite) {
       'not-a-real-hash',id,'${ids.company}',false,'COMPANY','ACTIVE',now()
     FROM roles WHERE role_key='COMPANY_ADMIN';
 
+    INSERT INTO company_memberships(
+      user_id,company_id,status,is_primary,joined_at,created_by
+    ) VALUES (
+      '${ids.target}','${ids.company}','ACTIVE',true,now(),'${ids.owner}'
+    );
+
     INSERT INTO role_assignments(user_id,role_id,scope_type)
     SELECT '${ids.support}',id,'PLATFORM'
     FROM roles WHERE role_key='TECHNICAL_SUPPORT';
@@ -112,7 +118,7 @@ describe("support diagnostics migration and SQL contract", () => {
     db = new PGlite();
     await createMigrationLedger(db);
     const applied = await applyMigrations(db);
-    expect(applied.at(-1)).toBe("041_delegated_access_management.sql");
+    expect(applied.at(-1)).toBe("042_role_scope_lifecycle.sql");
     await markMigration(db, "032_user_session_revocation_audit.sql");
     await createSupportFixtures(db);
   }, 30_000);

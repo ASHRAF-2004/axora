@@ -646,40 +646,57 @@ SECURITY DEFINER
 SET search_path=pg_catalog,public,pg_temp
 AS $$
 DECLARE
-  assignment_row public.role_assignments%ROWTYPE;
-  role_key text;
-  account_kind text;
+  selected_role_id uuid;
+  selected_scope_type text;
+  selected_company_id uuid;
+  selected_branch_id uuid;
+  selected_role_key text;
+  selected_account_kind text;
 BEGIN
-  SELECT assignment.*,role.role_key,account.account_kind
-  INTO assignment_row,role_key,account_kind
+  SELECT
+    assignment.role_id,
+    assignment.scope_type,
+    assignment.company_id,
+    assignment.branch_id,
+    role.role_key,
+    account.account_kind
+  INTO
+    selected_role_id,
+    selected_scope_type,
+    selected_company_id,
+    selected_branch_id,
+    selected_role_key,
+    selected_account_kind
   FROM public.role_assignments assignment
   JOIN public.roles role ON role.id=assignment.role_id
   JOIN public.users account ON account.id=assignment.user_id
   WHERE assignment.id=p_assignment_id
     AND assignment.user_id=p_user_id
     AND assignment.active AND assignment.revoked_at IS NULL;
-  IF assignment_row.id IS NULL THEN
+
+  IF selected_role_id IS NULL THEN
     RAISE EXCEPTION 'The preferred role assignment is unavailable';
   END IF;
 
   UPDATE public.users account
-  SET role_id=assignment_row.role_id,
+  SET role_id=selected_role_id,
       is_owner=(
-        account_kind='PLATFORM'
-        AND role_key IN ('PLATFORM_OWNER','ADMIN')
+        selected_account_kind='PLATFORM'
+        AND selected_role_key IN ('PLATFORM_OWNER','ADMIN')
       ),
       company_id=CASE
-        WHEN account_kind='COMPANY' THEN assignment_row.company_id
+        WHEN selected_account_kind='COMPANY' THEN selected_company_id
         ELSE NULL
       END,
       branch_id=CASE
-        WHEN account_kind='COMPANY'
-          AND assignment_row.scope_type IN ('BRANCH','DEPARTMENT')
-        THEN assignment_row.branch_id
+        WHEN selected_account_kind='COMPANY'
+          AND selected_scope_type IN ('BRANCH','DEPARTMENT')
+        THEN selected_branch_id
         ELSE NULL
       END
   WHERE account.id=p_user_id;
-END $$;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.axora_refresh_preferred_role_assignment(
   p_user_id uuid
@@ -737,14 +754,21 @@ AS $$
 DECLARE
   actor_snapshot jsonb;
   actor_role_key text;
-  target_row public.users%ROWTYPE;
-  role_row public.roles%ROWTYPE;
+  target_account_kind text;
+  target_is_owner boolean;
+  target_current_role_id uuid;
+  target_current_company_id uuid;
+  target_current_branch_id uuid;
+  target_auth_version integer;
+  selected_role_id uuid;
   existing_command public.permission_change_history%ROWTYPE;
-  existing_assignment public.role_assignments%ROWTYPE;
+  existing_assignment_id uuid;
   previous_identity jsonb;
   invalidation record;
   clean_reason text:=btrim(COALESCE(p_reason,''));
   prospective_owner boolean;
+  expected_company_id uuid;
+  expected_branch_id uuid;
 BEGIN
   IF p_command_id IS NULL OR p_actor_user_id IS NULL
     OR p_actor_role_assignment_id IS NULL OR p_target_user_id IS NULL THEN
@@ -789,7 +813,8 @@ BEGIN
 
   PERFORM 1 FROM public.users account
   WHERE account.id IN (p_actor_user_id,p_target_user_id)
-  ORDER BY account.id FOR UPDATE;
+  ORDER BY account.id
+  FOR UPDATE;
 
   actor_snapshot:=public.axora_effective_access_snapshot(
     p_actor_user_id,p_actor_role_assignment_id,now()
@@ -806,17 +831,30 @@ BEGIN
     END;
   END IF;
 
-  SELECT account.* INTO target_row
+  SELECT
+    account.account_kind,
+    account.is_owner,
+    account.role_id,
+    account.company_id,
+    account.branch_id,
+    account.auth_version
+  INTO
+    target_account_kind,
+    target_is_owner,
+    target_current_role_id,
+    target_current_company_id,
+    target_current_branch_id,
+    target_auth_version
   FROM public.users account
   WHERE account.id=p_target_user_id
     AND account.active
     AND account.account_status='ACTIVE'
     AND account.account_setup_completed_at IS NOT NULL;
-  IF target_row.id IS NULL THEN
+  IF target_account_kind IS NULL THEN
     RAISE EXCEPTION 'The target account is not active and fully established';
   END IF;
 
-  SELECT role.* INTO role_row
+  SELECT role.id INTO selected_role_id
   FROM public.roles role
   WHERE role.role_key=p_role_key
     AND role.role_key IN (
@@ -827,16 +865,16 @@ BEGIN
       'DELIVERY_TEAM_SUPERVISOR','DELIVERY_AGENT','DELIVERY_DRIVER'
     )
   FOR KEY SHARE;
-  IF role_row.id IS NULL THEN
+  IF selected_role_id IS NULL THEN
     RAISE EXCEPTION 'The selected canonical role is unavailable';
   END IF;
 
-  prospective_owner := p_role_key='PLATFORM_OWNER';
-  IF target_row.is_owner AND NOT prospective_owner THEN
+  prospective_owner:=p_role_key='PLATFORM_OWNER';
+  IF target_is_owner AND NOT prospective_owner THEN
     RAISE EXCEPTION 'Revoke the current Platform Owner assignment before assigning a non-owner role';
   END IF;
   IF NOT public.axora_role_scope_contract_is_valid(
-    target_row.account_kind,prospective_owner,p_role_key,
+    target_account_kind,prospective_owner,p_role_key,
     p_scope_type,p_company_id,p_branch_id,p_department_id,p_supplier_id
   ) OR NOT public.axora_role_scope_resource_is_active(
     p_scope_type,p_company_id,p_branch_id,p_department_id,p_supplier_id
@@ -849,12 +887,11 @@ BEGIN
     FROM public.role_assignment_management_rules rule
     JOIN public.roles manager_role ON manager_role.id=rule.manager_role_id
     WHERE manager_role.role_key=actor_role_key
-      AND rule.target_role_id=role_row.id
+      AND rule.target_role_id=selected_role_id
       AND rule.scope_type=p_scope_type
   ) THEN
     RAISE EXCEPTION 'The actor role cannot assign this role and scope';
   END IF;
-
   IF NOT public.axora_snapshot_has_permission(
     actor_snapshot,'user.permission.manage',
     p_scope_type,p_company_id,p_branch_id,p_department_id,p_supplier_id
@@ -862,7 +899,7 @@ BEGIN
     RAISE EXCEPTION 'The actor cannot manage role assignments in this scope';
   END IF;
 
-  IF target_row.account_kind='COMPANY' THEN
+  IF target_account_kind='COMPANY' THEN
     IF NOT EXISTS (
       SELECT 1 FROM public.company_memberships membership
       WHERE membership.user_id=p_target_user_id
@@ -880,22 +917,21 @@ BEGIN
       ON CONFLICT(user_id,branch_id) DO UPDATE
       SET company_id=EXCLUDED.company_id,status='ACTIVE',ended_at=NULL;
     END IF;
-    IF p_scope_type='DEPARTMENT' THEN
-      IF NOT EXISTS (
+    IF p_scope_type='DEPARTMENT'
+      AND NOT EXISTS (
         SELECT 1 FROM public.department_assignments assignment
         WHERE assignment.user_id=p_target_user_id
           AND assignment.department_id=p_department_id
           AND assignment.status='ACTIVE'
       ) THEN
-        INSERT INTO public.department_assignments(
-          user_id,company_id,department_id,status,is_primary,assigned_by
-        ) VALUES (
-          p_target_user_id,p_company_id,p_department_id,
-          'ACTIVE',false,p_actor_user_id
-        );
-      END IF;
+      INSERT INTO public.department_assignments(
+        user_id,company_id,department_id,status,is_primary,assigned_by
+      ) VALUES (
+        p_target_user_id,p_company_id,p_department_id,
+        'ACTIVE',false,p_actor_user_id
+      );
     END IF;
-  ELSIF target_row.account_kind='SUPPLIER' THEN
+  ELSIF target_account_kind='SUPPLIER' THEN
     IF NOT EXISTS (
       SELECT 1 FROM public.supplier_memberships membership
       WHERE membership.user_id=p_target_user_id
@@ -904,34 +940,42 @@ BEGIN
     ) THEN
       RAISE EXCEPTION 'The target account does not belong to the requested supplier';
     END IF;
-  ELSIF target_row.account_kind='DELIVERY'
-    AND p_role_key IN ('DELIVERY_AGENT','DELIVERY_DRIVER') THEN
-    IF NOT EXISTS (
+  ELSIF target_account_kind='DELIVERY'
+    AND p_role_key IN ('DELIVERY_AGENT','DELIVERY_DRIVER')
+    AND NOT EXISTS (
       SELECT 1 FROM public.delivery_agent_profiles profile
       WHERE profile.user_id=p_target_user_id AND profile.active
     ) THEN
-      RAISE EXCEPTION 'The target delivery agent profile is not active';
-    END IF;
+    RAISE EXCEPTION 'The target delivery agent profile is not active';
   END IF;
 
+  expected_company_id:=CASE
+    WHEN target_account_kind='COMPANY' THEN p_company_id
+    ELSE NULL
+  END;
+  expected_branch_id:=CASE
+    WHEN target_account_kind='COMPANY'
+      AND p_scope_type IN ('BRANCH','DEPARTMENT') THEN p_branch_id
+    ELSE NULL
+  END;
   previous_identity:=jsonb_strip_nulls(jsonb_build_object(
-    'roleId',target_row.role_id,
-    'companyId',target_row.company_id,
-    'branchId',target_row.branch_id,
-    'isOwner',target_row.is_owner
+    'roleId',target_current_role_id,
+    'companyId',target_current_company_id,
+    'branchId',target_current_branch_id,
+    'isOwner',target_is_owner
   ));
 
-  IF prospective_owner AND NOT target_row.is_owner THEN
+  IF prospective_owner AND NOT target_is_owner THEN
     UPDATE public.users account
-    SET is_owner=true,role_id=role_row.id,
+    SET is_owner=true,role_id=selected_role_id,
         company_id=NULL,branch_id=NULL
     WHERE account.id=p_target_user_id;
   END IF;
 
-  SELECT assignment.* INTO existing_assignment
+  SELECT assignment.id INTO existing_assignment_id
   FROM public.role_assignments assignment
   WHERE assignment.user_id=p_target_user_id
-    AND assignment.role_id=role_row.id
+    AND assignment.role_id=selected_role_id
     AND assignment.scope_type=p_scope_type
     AND assignment.company_id IS NOT DISTINCT FROM p_company_id
     AND assignment.branch_id IS NOT DISTINCT FROM p_branch_id
@@ -940,30 +984,40 @@ BEGIN
     AND assignment.active
   FOR UPDATE;
 
-  IF existing_assignment.id IS NULL THEN
+  IF existing_assignment_id IS NOT NULL
+    AND target_current_role_id=selected_role_id
+    AND target_is_owner=prospective_owner
+    AND target_current_company_id IS NOT DISTINCT FROM expected_company_id
+    AND target_current_branch_id IS NOT DISTINCT FROM expected_branch_id THEN
+    RETURN QUERY SELECT existing_assignment_id,target_auth_version,0,false;
+    RETURN;
+  END IF;
+
+  IF existing_assignment_id IS NULL THEN
     INSERT INTO public.role_assignments(
       id,user_id,role_id,scope_type,company_id,branch_id,department_id,
       supplier_id,active,assigned_by,assigned_at,revoked_at,
       revoked_by,revoke_reason
     ) VALUES (
-      p_command_id,p_target_user_id,role_row.id,p_scope_type,
+      p_command_id,p_target_user_id,selected_role_id,p_scope_type,
       p_company_id,p_branch_id,p_department_id,p_supplier_id,
       true,p_actor_user_id,now(),NULL,NULL,NULL
-    ) RETURNING * INTO existing_assignment;
+    ) RETURNING id INTO existing_assignment_id;
   END IF;
 
   PERFORM public.axora_apply_preferred_role_assignment(
-    p_target_user_id,existing_assignment.id
+    p_target_user_id,existing_assignment_id
   );
 
   INSERT INTO public.permission_change_history(
-    actor_user_id,target_user_id,target_role_id,change_type,
+    actor_user_id,target_user_id,change_type,
     previous_value,new_value,reason,correlation_id
   ) VALUES (
-    p_actor_user_id,p_target_user_id,role_row.id,'ROLE_ASSIGNED',
+    p_actor_user_id,p_target_user_id,'ROLE_ASSIGNED',
     previous_identity,
     jsonb_strip_nulls(jsonb_build_object(
-      'assignmentId',existing_assignment.id,
+      'assignmentId',existing_assignment_id,
+      'roleId',selected_role_id,
       'roleKey',p_role_key,
       'scopeType',p_scope_type,
       'companyId',p_company_id,
@@ -980,9 +1034,10 @@ BEGIN
     p_target_user_id,p_actor_user_id,
     'Role or scope assigned: ' || clean_reason
   );
-  RETURN QUERY SELECT existing_assignment.id,invalidation.auth_version,
+  RETURN QUERY SELECT existing_assignment_id,invalidation.auth_version,
     invalidation.revoked_sessions,true;
-END $$;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.axora_revoke_user_role_scope(
   p_command_id uuid,
@@ -1004,9 +1059,16 @@ AS $$
 DECLARE
   actor_snapshot jsonb;
   actor_role_key text;
-  assignment_row public.role_assignments%ROWTYPE;
-  target_row public.users%ROWTYPE;
-  role_row public.roles%ROWTYPE;
+  assignment_user_id uuid;
+  assignment_role_id uuid;
+  assignment_scope_type text;
+  assignment_company_id uuid;
+  assignment_branch_id uuid;
+  assignment_department_id uuid;
+  assignment_supplier_id uuid;
+  assignment_active boolean;
+  target_auth_version integer;
+  revoked_role_key text;
   existing_command public.permission_change_history%ROWTYPE;
   invalidation record;
   clean_reason text:=btrim(COALESCE(p_reason,''));
@@ -1040,21 +1102,42 @@ BEGIN
     RAISE EXCEPTION 'The role-revocation command ID conflicts with another request';
   END IF;
 
-  SELECT assignment.*,account.*,role.*
-  INTO assignment_row,target_row,role_row
+  SELECT
+    assignment.user_id,
+    assignment.role_id,
+    assignment.scope_type,
+    assignment.company_id,
+    assignment.branch_id,
+    assignment.department_id,
+    assignment.supplier_id,
+    assignment.active,
+    account.auth_version,
+    role.role_key
+  INTO
+    assignment_user_id,
+    assignment_role_id,
+    assignment_scope_type,
+    assignment_company_id,
+    assignment_branch_id,
+    assignment_department_id,
+    assignment_supplier_id,
+    assignment_active,
+    target_auth_version,
+    revoked_role_key
   FROM public.role_assignments assignment
   JOIN public.users account ON account.id=assignment.user_id
   JOIN public.roles role ON role.id=assignment.role_id
   WHERE assignment.id=p_target_role_assignment_id
   FOR UPDATE OF assignment,account;
-  IF assignment_row.id IS NULL THEN
+
+  IF assignment_user_id IS NULL THEN
     RAISE EXCEPTION 'The selected role assignment is unavailable';
   END IF;
-  IF assignment_row.user_id=p_actor_user_id THEN
+  IF assignment_user_id=p_actor_user_id THEN
     RAISE EXCEPTION 'Users cannot revoke their own role assignment';
   END IF;
-  IF NOT assignment_row.active THEN
-    RETURN QUERY SELECT assignment_row.id,target_row.auth_version,0,false;
+  IF NOT assignment_active THEN
+    RETURN QUERY SELECT p_target_role_assignment_id,target_auth_version,0,false;
     RETURN;
   END IF;
 
@@ -1078,16 +1161,16 @@ BEGIN
     FROM public.role_assignment_management_rules rule
     JOIN public.roles manager_role ON manager_role.id=rule.manager_role_id
     WHERE manager_role.role_key=actor_role_key
-      AND rule.target_role_id=assignment_row.role_id
-      AND rule.scope_type=assignment_row.scope_type
+      AND rule.target_role_id=assignment_role_id
+      AND rule.scope_type=assignment_scope_type
   ) THEN
     RAISE EXCEPTION 'The actor role cannot revoke this role and scope';
   END IF;
   IF NOT public.axora_snapshot_has_permission(
     actor_snapshot,'user.permission.manage',
-    assignment_row.scope_type,assignment_row.company_id,
-    assignment_row.branch_id,assignment_row.department_id,
-    assignment_row.supplier_id
+    assignment_scope_type,assignment_company_id,
+    assignment_branch_id,assignment_department_id,
+    assignment_supplier_id
   ) THEN
     RAISE EXCEPTION 'The actor cannot manage role assignments in this scope';
   END IF;
@@ -1095,22 +1178,22 @@ BEGIN
   UPDATE public.role_assignments assignment
   SET active=false,revoked_at=now(),revoked_by=p_actor_user_id,
       revoke_reason=clean_reason
-  WHERE assignment.id=assignment_row.id;
+  WHERE assignment.id=p_target_role_assignment_id;
 
   INSERT INTO public.permission_change_history(
-    actor_user_id,target_user_id,target_role_id,change_type,
+    actor_user_id,target_user_id,change_type,
     previous_value,new_value,reason,correlation_id
   ) VALUES (
-    p_actor_user_id,assignment_row.user_id,assignment_row.role_id,
-    'ROLE_REVOKED',
+    p_actor_user_id,assignment_user_id,'ROLE_REVOKED',
     jsonb_strip_nulls(jsonb_build_object(
-      'assignmentId',assignment_row.id,
-      'roleKey',role_row.role_key,
-      'scopeType',assignment_row.scope_type,
-      'companyId',assignment_row.company_id,
-      'branchId',assignment_row.branch_id,
-      'departmentId',assignment_row.department_id,
-      'supplierId',assignment_row.supplier_id,
+      'assignmentId',p_target_role_assignment_id,
+      'roleId',assignment_role_id,
+      'roleKey',revoked_role_key,
+      'scopeType',assignment_scope_type,
+      'companyId',assignment_company_id,
+      'branchId',assignment_branch_id,
+      'departmentId',assignment_department_id,
+      'supplierId',assignment_supplier_id,
       'active',true
     )),
     jsonb_build_object('active',false,'revokedAt',now()),
@@ -1118,17 +1201,18 @@ BEGIN
   );
 
   PERFORM public.axora_refresh_preferred_role_assignment(
-    assignment_row.user_id
+    assignment_user_id
   );
 
   SELECT * INTO invalidation
   FROM public.axora_invalidate_authorization_sessions(
-    assignment_row.user_id,p_actor_user_id,
+    assignment_user_id,p_actor_user_id,
     'Role or scope revoked: ' || clean_reason
   );
-  RETURN QUERY SELECT assignment_row.id,invalidation.auth_version,
+  RETURN QUERY SELECT p_target_role_assignment_id,invalidation.auth_version,
     invalidation.revoked_sessions,true;
-END $$;
+END;
+$$;
 
 REVOKE ALL ON TABLE public.role_assignment_management_rules FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.axora_role_scope_contract_is_valid(

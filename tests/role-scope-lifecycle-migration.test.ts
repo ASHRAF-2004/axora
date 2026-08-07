@@ -119,7 +119,7 @@ async function lifecycleFixture(db: PGlite): Promise<RoleIds> {
         $11,$12,$13,false,now(),'COMPANY','ACTIVE',true,1),
       ($14,'role-other-admin@example.test','Other company admin','not-a-real-hash',
         $10,$12,NULL,false,now(),'COMPANY','ACTIVE',true,1),
-      ($15,'role-invited@example.test','Invited user','pending-account-setup',
+      ($15,'role-invited@example.test','Invited user','$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By',
         $11,$6,$7,false,NULL,'COMPANY','INVITED',true,1)
   `, [
     ids.owner,
@@ -548,6 +548,10 @@ describe("audited role and scope lifecycle", () => {
       ]);
 
       await db.exec("CREATE ROLE axora_app NOLOGIN");
+      await db.exec(`CREATE TABLE schema_migrations(
+        filename text PRIMARY KEY,sha256 text NOT NULL,
+        applied_at timestamptz NOT NULL DEFAULT now()
+      )`);
       const source = await applyApplicationGrantScript(db);
       const privileges = await db.query<{
         assignmentSelect: boolean;
