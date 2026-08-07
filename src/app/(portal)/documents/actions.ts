@@ -1,7 +1,10 @@
 "use server";
 
 import { requirePermission, requireRecentStepUp } from "@/lib/auth";
-import { createAuthorizedAttachment } from "@/lib/document-isolation";
+import {
+  createAuthorizedAttachment,
+  documentRecordIdSchema,
+} from "@/lib/document-isolation";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -9,7 +12,7 @@ import { z } from "zod";
 
 const attachmentInputSchema = z.object({
   entityType: z.enum(["request", "invoice", "delivery"]),
-  recordId: z.string().uuid(),
+  recordId: documentRecordIdSchema,
   visibility: z.enum(["CUSTOMER", "INTERNAL"]),
 }).strict();
 
