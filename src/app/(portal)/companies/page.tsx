@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
-import { listCompanies } from "@/lib/repository";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { COD_PAYMENT_METHOD } from "@/lib/types";
 import { operationalMessage, operationalNumber, operationalStatus, type OperationalMessageKey } from "@/lib/operational-i18n";
 import { createCompanyAction, regenerateCompanyBrandAction, setMasterActiveAction } from "../masters/actions";
@@ -10,7 +10,7 @@ export default async function CompaniesPage() {
   const actor = await requirePagePermission("manage_companies");
   const locale = actor.preferredLocale ?? "en";
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) => operationalMessage(locale, key, values);
-  const companies = await listCompanies(actor);
+  const { companies } = await loadOrganizationDirectory(actor);
   return <><PageHeader eyebrow={m("companies.eyebrow")} title={m("companies.title")} description={m("companies.description")} />
     <section className="split-layout"><article className="panel"><div className="panel-header"><div><h2>{m("companies.register")}</h2><p>{m("companies.count", { count: operationalNumber(locale, companies.length) })}</p></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>{m("companies.code")}</th><th>{m("companies.company")}</th><th>{m("companies.industry")}</th><th>{m("companies.contact")}</th><th>{m("companies.terms")}</th><th>{m("common.status")}</th><th>{m("common.action")}</th></tr></thead><tbody>{companies.map((company) => <tr key={company.id}><td><strong>{company.code}</strong></td><td><strong>{company.name}</strong><br /><span className="subtle">{company.billingCycle}</span></td><td>{company.industry}</td><td>{company.mainContactName}<br /><span className="subtle">{company.mainContactEmail}</span></td><td>{company.paymentTerms}</td><td><StatusBadge>{operationalStatus(locale, company.status)}</StatusBadge></td><td><div className="table-action-stack"><form action={setMasterActiveAction.bind(null, "companies", company.id, company.status !== "Active")}><button className="button button-secondary" type="submit">{m(company.status === "Active" ? "common.deactivate" : "common.activate")}</button></form><details><summary>{m("companies.replaceLogo")}</summary><form action={regenerateCompanyBrandAction.bind(null, company.id)}><label><span className="sr-only">{m("companies.newLogo", { name: company.name })}</span><input name="logo" type="file" accept="image/png,image/jpeg,image/webp" required /></label><button className="button button-secondary" type="submit">{m("companies.regenerate")}</button></form></details></div></td></tr>)}</tbody></table></div></article>
     <form action={createCompanyAction} className="panel form-panel"><h2>{m("companies.createTitle")}</h2><p>{m("companies.createIntro")}</p><div className="form-grid">

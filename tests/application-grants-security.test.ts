@@ -120,6 +120,10 @@ async function expectSensitiveBoundary(db: PGlite) {
     visitor_snapshot: boolean;
     visitor_claim: boolean;
     access_administration_snapshot: boolean;
+    organization_directory: boolean;
+    organization_resource: boolean;
+    live_authorization_internal: boolean;
+    organization_resolver_internal: boolean;
     raw_received: boolean;
     raw_recipient_scope: boolean;
     fingerprint: boolean;
@@ -167,6 +171,26 @@ async function expectSensitiveBoundary(db: PGlite) {
       ) AS access_administration_snapshot,
       has_function_privilege(
         'axora_app',
+        'axora_organization_directory_snapshot(uuid,uuid,timestamptz)',
+        'EXECUTE'
+      ) AS organization_directory,
+      has_function_privilege(
+        'axora_app',
+        'axora_organization_resource_access(uuid,uuid,text,text,uuid,timestamptz)',
+        'EXECUTE'
+      ) AS organization_resource,
+      has_function_privilege(
+        'axora_app',
+        'axora_live_authorization_snapshot(uuid,uuid,timestamptz)',
+        'EXECUTE'
+      ) AS live_authorization_internal,
+      has_function_privilege(
+        'axora_app',
+        'axora_resolve_organization_resource_scope(text,uuid)',
+        'EXECUTE'
+      ) AS organization_resolver_internal,
+      has_function_privilege(
+        'axora_app',
         'axora_effective_received_quantity_internal(uuid)','EXECUTE'
       ) AS raw_received,
       has_function_privilege(
@@ -210,6 +234,10 @@ async function expectSensitiveBoundary(db: PGlite) {
     visitor_snapshot: true,
     visitor_claim: true,
     access_administration_snapshot: true,
+    organization_directory: true,
+    organization_resource: true,
+    live_authorization_internal: false,
+    organization_resolver_internal: false,
     raw_received: false,
     raw_recipient_scope: false,
     fingerprint: false,
@@ -259,6 +287,12 @@ describe("application database grant boundaries", () => {
       );
       expect(source).toContain(
         "public.axora_access_administration_snapshot(",
+      );
+      expect(source).toContain(
+        "public.axora_organization_directory_snapshot(",
+      );
+      expect(source).toContain(
+        "public.axora_organization_resource_access(",
       );
       await expectSensitiveBoundary(db);
     } finally {
