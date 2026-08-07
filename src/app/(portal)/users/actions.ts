@@ -10,7 +10,10 @@ import {
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
 import { requirePermission, requireRecentStepUp } from "@/lib/auth";
-import { setUserActive } from "@/lib/users";
+import {
+  lockAuthorizedUserTarget,
+  setAuthorizedUserActive,
+} from "@/lib/user-isolation";
 import { isUserRole, type UserRole } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
@@ -43,8 +46,6 @@ async function deliverInvitation(
       status: delivery.status,
     });
   } catch {
-    // The account and invitation remain valid. Report that tracking could not
-    // be confirmed instead of pretending that the transaction rolled back.
     return "unconfirmed";
   }
 
@@ -100,6 +101,7 @@ export async function resendAccountSetupInvitationAction(userId: string) {
   const actor = await requirePermission("manage_users");
   await requireRecentStepUp(actor, "/users");
   const safeUserId = z.uuid().parse(userId);
+  await lockAuthorizedUserTarget(actor, safeUserId, "user.invite");
   let invitation: AccountSetupInvitationResult;
   try {
     invitation = await resendAccountSetupInvitation(safeUserId, actor);
@@ -120,6 +122,10 @@ export async function resendAccountSetupInvitationAction(userId: string) {
 export async function setUserActiveAction(id: string, active: boolean) {
   const actor = await requirePermission("manage_users");
   await requireRecentStepUp(actor, "/users");
-  await setUserActive(z.uuid().parse(id), z.boolean().parse(active), actor);
+  await setAuthorizedUserActive(
+    z.uuid().parse(id),
+    z.boolean().parse(active),
+    actor,
+  );
   revalidatePath("/users");
 }
