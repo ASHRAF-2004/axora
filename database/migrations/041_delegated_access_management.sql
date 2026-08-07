@@ -182,6 +182,57 @@ AS $$
   )
 $$;
 
+CREATE OR REPLACE FUNCTION public.axora_delegation_scope_is_active(
+  p_scope_type text,
+  p_company_id uuid,
+  p_branch_id uuid,
+  p_department_id uuid,
+  p_supplier_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path=pg_catalog,public,pg_temp
+AS $$
+  SELECT CASE p_scope_type
+    WHEN 'COMPANY' THEN EXISTS (
+      SELECT 1 FROM public.companies company
+      WHERE company.id=p_company_id AND company.active
+        AND p_branch_id IS NULL AND p_department_id IS NULL
+        AND p_supplier_id IS NULL
+    )
+    WHEN 'BRANCH' THEN EXISTS (
+      SELECT 1
+      FROM public.branches branch
+      JOIN public.companies company ON company.id=branch.company_id
+      WHERE branch.id=p_branch_id
+        AND branch.company_id=p_company_id
+        AND branch.active AND company.active
+        AND p_department_id IS NULL AND p_supplier_id IS NULL
+    )
+    WHEN 'DEPARTMENT' THEN EXISTS (
+      SELECT 1
+      FROM public.departments department
+      JOIN public.companies company ON company.id=department.company_id
+      WHERE department.id=p_department_id
+        AND department.company_id=p_company_id
+        AND department.branch_id IS NOT DISTINCT FROM p_branch_id
+        AND department.active AND company.active
+        AND p_supplier_id IS NULL
+        AND (
+          department.branch_id IS NULL OR EXISTS (
+            SELECT 1 FROM public.branches branch
+            WHERE branch.id=department.branch_id
+              AND branch.company_id=department.company_id
+              AND branch.active
+          )
+        )
+    )
+    ELSE false
+  END
+$$;
+
 CREATE OR REPLACE FUNCTION public.axora_delegation_authority_is_live(
   p_delegated_access_id uuid,
   p_at timestamptz
@@ -208,6 +259,16 @@ AS $$
         SELECT 1
         FROM public.delegated_access_scopes delegated_scope
         WHERE delegated_scope.delegated_access_id=delegation.id
+      )
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.delegated_access_scopes delegated_scope
+        WHERE delegated_scope.delegated_access_id=delegation.id
+          AND NOT public.axora_delegation_scope_is_active(
+            delegated_scope.scope_type,delegated_scope.company_id,
+            delegated_scope.branch_id,delegated_scope.department_id,
+            delegated_scope.supplier_id
+          )
       )
       AND NOT EXISTS (
         SELECT 1
@@ -449,6 +510,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=pg_catalog,public,pg_temp
 AS $$
+<<delegation_command>>
 DECLARE
   normalized_permissions text[];
   normalized_scopes jsonb:='[]'::jsonb;
@@ -464,6 +526,7 @@ DECLARE
   permission_code text;
   grantee_account_kind text;
   grantee_role_key text;
+  grantee_scope_type text;
   grantee_is_owner boolean;
   existing_row public.delegated_access%ROWTYPE;
   existing_permissions text[];
@@ -545,7 +608,7 @@ BEGIN
         RAISE EXCEPTION 'A delegated company scope is invalid';
       END IF;
       PERFORM 1 FROM public.companies company
-      WHERE company.id=company_id AND company.active
+      WHERE company.id=delegation_command.company_id AND company.active
       FOR KEY SHARE;
       IF NOT FOUND THEN RAISE EXCEPTION 'The delegated company is unavailable'; END IF;
     ELSIF scope_type='BRANCH' THEN
@@ -557,7 +620,7 @@ BEGIN
       PERFORM 1
       FROM public.branches branch
       JOIN public.companies company ON company.id=branch.company_id
-      WHERE branch.id=branch_id AND branch.company_id=company_id
+      WHERE branch.id=delegation_command.branch_id AND branch.company_id=delegation_command.company_id
         AND branch.active AND company.active
       FOR KEY SHARE OF branch,company;
       IF NOT FOUND THEN RAISE EXCEPTION 'The delegated branch is unavailable'; END IF;
@@ -572,8 +635,8 @@ BEGIN
       INTO canonical_branch_id
       FROM public.departments department
       JOIN public.companies company ON company.id=department.company_id
-      WHERE department.id=department_id
-        AND department.company_id=company_id
+      WHERE department.id=delegation_command.department_id
+        AND department.company_id=delegation_command.company_id
         AND department.active AND company.active
       FOR KEY SHARE OF department,company;
       IF NOT FOUND THEN RAISE EXCEPTION 'The delegated department is unavailable'; END IF;
@@ -583,8 +646,8 @@ BEGIN
       END IF;
       IF canonical_branch_id IS NOT NULL AND NOT EXISTS (
         SELECT 1 FROM public.branches branch
-        WHERE branch.id=canonical_branch_id
-          AND branch.company_id=company_id AND branch.active
+        WHERE branch.id=delegation_command.canonical_branch_id
+          AND branch.company_id=delegation_command.company_id AND branch.active
       ) THEN
         RAISE EXCEPTION 'The delegated department branch is unavailable';
       END IF;
@@ -634,8 +697,10 @@ BEGIN
     RAISE EXCEPTION 'The delegation authorizer context is no longer active';
   END IF;
 
-  SELECT account.account_kind,account.is_owner,role.role_key
-  INTO grantee_account_kind,grantee_is_owner,grantee_role_key
+  SELECT account.account_kind,account.is_owner,role.role_key,
+    assignment.scope_type
+  INTO grantee_account_kind,grantee_is_owner,grantee_role_key,
+    grantee_scope_type
   FROM public.users account
   JOIN public.role_assignments assignment
     ON assignment.id=p_grantee_role_assignment_id
@@ -732,18 +797,40 @@ BEGIN
       IF NOT EXISTS (
         SELECT 1 FROM public.company_memberships membership
         WHERE membership.user_id=p_grantee_user_id
-          AND membership.company_id=company_id
+          AND membership.company_id=delegation_command.company_id
           AND membership.status='ACTIVE'
       ) THEN
         RAISE EXCEPTION 'A company grantee cannot receive another tenant scope';
       END IF;
+
+      IF grantee_role_key IN (
+        'COMPANY_ADMIN','ADMIN','COMPANY_APPROVER',
+        'FINANCE_REVIEWER','FINANCE','AUDITOR','VIEWER','RECEIVING_USER'
+      ) OR (grantee_role_key='APPROVER' AND grantee_scope_type='COMPANY') THEN
+        IF scope_type NOT IN ('COMPANY','BRANCH','DEPARTMENT') THEN
+          RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+        END IF;
+      ELSIF grantee_role_key IN ('BRANCH_ADMIN','BRANCH_APPROVER')
+        OR (grantee_role_key='APPROVER'
+          AND grantee_scope_type IN ('BRANCH','DEPARTMENT')) THEN
+        IF scope_type NOT IN ('BRANCH','DEPARTMENT') THEN
+          RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+        END IF;
+      ELSIF grantee_role_key='DEPARTMENT_ADMIN' THEN
+        IF scope_type<>'DEPARTMENT' THEN
+          RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+        END IF;
+      ELSIF grantee_role_key IN ('REQUESTER','OPERATIONS') THEN
+        IF scope_type NOT IN ('BRANCH','DEPARTMENT') THEN
+          RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+        END IF;
+      ELSE
+        RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+      END IF;
     ELSIF grantee_account_kind='PLATFORM'
       AND grantee_role_key='CLIENT_ACCOUNT_MANAGER' THEN
-      IF NOT public.axora_role_assignment_scope_contains(
-        p_grantee_user_id,p_grantee_role_assignment_id,
-        scope_type,company_id,branch_id,department_id,NULL,now()
-      ) THEN
-        RAISE EXCEPTION 'The account manager is outside the delegated company';
+      IF scope_type<>'COMPANY' THEN
+        RAISE EXCEPTION 'A backup account manager can receive company scope only';
       END IF;
     ELSE
       RAISE EXCEPTION 'This account type cannot receive company delegated access';
@@ -751,7 +838,7 @@ BEGIN
 
     IF NOT public.axora_role_assignment_has_direct_permission(
       p_actor_user_id,p_actor_role_assignment_id,'user.permission.manage',
-      scope_type,company_id,branch_id,department_id,NULL,now()
+      delegation_command.scope_type,delegation_command.company_id,delegation_command.branch_id,delegation_command.department_id,NULL,now()
     ) THEN
       RAISE EXCEPTION 'The actor cannot manage delegated access in this scope';
     END IF;
@@ -759,8 +846,8 @@ BEGIN
     FOREACH permission_code IN ARRAY normalized_permissions
     LOOP
       IF NOT public.axora_role_assignment_has_direct_permission(
-        p_actor_user_id,p_actor_role_assignment_id,permission_code,
-        scope_type,company_id,branch_id,department_id,NULL,now()
+        p_actor_user_id,p_actor_role_assignment_id,delegation_command.permission_code,
+        delegation_command.scope_type,delegation_command.company_id,delegation_command.branch_id,delegation_command.department_id,NULL,now()
       ) THEN
         RAISE EXCEPTION 'The actor cannot delegate a permission they do not directly possess';
       END IF;
@@ -769,7 +856,7 @@ BEGIN
         FROM public.user_permission_overrides override_row
         JOIN public.permissions permission
           ON permission.id=override_row.permission_id
-         AND permission.permission_code=permission_code
+         AND permission.permission_code=delegation_command.permission_code
         WHERE override_row.user_id=p_grantee_user_id
           AND override_row.effect='DENY'
           AND override_row.active
@@ -779,7 +866,7 @@ BEGIN
             override_row.scope_type,override_row.company_id,
             override_row.branch_id,override_row.department_id,
             override_row.supplier_id,
-            scope_type,company_id,branch_id,department_id,NULL
+            delegation_command.scope_type,delegation_command.company_id,delegation_command.branch_id,delegation_command.department_id,NULL
           )
       ) THEN
         RAISE EXCEPTION 'The grantee has an explicit denial for a delegated permission';
@@ -980,6 +1067,9 @@ REVOKE ALL ON FUNCTION public.axora_role_assignment_scope_contains(
 REVOKE ALL ON FUNCTION public.axora_role_assignment_has_direct_permission(
   uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz
 ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.axora_delegation_scope_is_active(
+  text,uuid,uuid,uuid,uuid
+) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
   uuid,timestamptz
 ) FROM PUBLIC;
@@ -1001,6 +1091,9 @@ BEGIN
     ) FROM axora_app;
     REVOKE ALL ON FUNCTION public.axora_role_assignment_has_direct_permission(
       uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz
+    ) FROM axora_app;
+    REVOKE ALL ON FUNCTION public.axora_delegation_scope_is_active(
+      text,uuid,uuid,uuid,uuid
     ) FROM axora_app;
     REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
       uuid,timestamptz

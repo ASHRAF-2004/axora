@@ -116,17 +116,17 @@ async function delegationFixture(db: PGlite): Promise<FixtureContext> {
       active,auth_version
     ) VALUES
       ($1,'delegation-actor@example.test','Delegation actor','not-a-real-hash',
-        $13,$7,NULL,false,now(),'COMPANY','ACTIVE',true,1),
+        $11,$7,NULL,false,now(),'COMPANY','ACTIVE',true,1),
       ($2,'delegation-requester@example.test','Delegation requester','not-a-real-hash',
-        $14,$7,$8,false,now(),'COMPANY','ACTIVE',true,1),
+        $12,$7,$8,false,now(),'COMPANY','ACTIVE',true,1),
       ($3,'delegation-branch-admin@example.test','Delegation branch admin','not-a-real-hash',
-        $15,$7,$8,false,now(),'COMPANY','ACTIVE',true,1),
+        $13,$7,$8,false,now(),'COMPANY','ACTIVE',true,1),
       ($4,'delegation-outside@example.test','Delegation outside requester','not-a-real-hash',
-        $14,$10,$11,false,now(),'COMPANY','ACTIVE',true,1),
+        $12,$9,$10,false,now(),'COMPANY','ACTIVE',true,1),
       ($5,'delegation-backup-manager@example.test','Delegation backup manager','not-a-real-hash',
-        $16,NULL,NULL,false,now(),'PLATFORM','ACTIVE',true,1),
+        $14,NULL,NULL,false,now(),'PLATFORM','ACTIVE',true,1),
       ($6,'delegation-owner@example.test','Delegation owner','not-a-real-hash',
-        $17,NULL,NULL,true,now(),'PLATFORM','ACTIVE',true,1)
+        $15,NULL,NULL,true,now(),'PLATFORM','ACTIVE',true,1)
   `, [
     ids.actor,
     ids.requester,
@@ -136,17 +136,14 @@ async function delegationFixture(db: PGlite): Promise<FixtureContext> {
     ids.owner,
     ids.company,
     ids.branch,
-    ids.secondBranch,
     ids.otherCompany,
     ids.otherBranch,
-    ids.otherCompany,
     context.companyAdminRoleId,
     context.requesterRoleId,
     context.branchAdminRoleId,
     context.accountManagerRoleId,
     context.ownerRoleId,
   ]);
-
   await db.query(`
     INSERT INTO company_memberships(
       user_id,company_id,status,is_primary,joined_at
@@ -185,13 +182,13 @@ async function delegationFixture(db: PGlite): Promise<FixtureContext> {
     INSERT INTO role_assignments(
       id,user_id,role_id,scope_type,company_id,branch_id,active
     ) VALUES
-      ($1,$8,$15,'COMPANY',$16,NULL,true),
-      ($2,$9,$17,'BRANCH',$16,$18,true),
-      ($3,$9,$17,'BRANCH',$16,$19,true),
-      ($4,$10,$20,'BRANCH',$16,$18,true),
-      ($5,$11,$17,'BRANCH',$21,$22,true),
-      ($6,$12,$23,'COMPANY',$21,NULL,true),
-      ($7,$13,$24,'PLATFORM',NULL,NULL,true)
+      ($1,$8,$14,'COMPANY',$15,NULL,true),
+      ($2,$9,$16,'BRANCH',$15,$17,true),
+      ($3,$9,$16,'BRANCH',$15,$18,true),
+      ($4,$10,$19,'BRANCH',$15,$17,true),
+      ($5,$11,$16,'BRANCH',$20,$21,true),
+      ($6,$12,$22,'COMPANY',$20,NULL,true),
+      ($7,$13,$23,'PLATFORM',NULL,NULL,true)
   `, [
     ids.actorAssignment,
     ids.requesterAssignment,
@@ -206,7 +203,6 @@ async function delegationFixture(db: PGlite): Promise<FixtureContext> {
     ids.outsideRequester,
     ids.backupManager,
     ids.owner,
-    null,
     context.companyAdminRoleId,
     ids.company,
     context.requesterRoleId,
@@ -331,23 +327,30 @@ describe("audited delegated-access management", () => {
 
       const snapshot = await db.query<{ snapshot: {
         delegations: Array<{
+          active: boolean;
+          startsAt: string;
+          endsAt: string;
           permissions: string[];
           scopes: Array<Record<string, string>>;
         }>;
       } }>(`
         SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
       `, [ids.requester, ids.requesterAssignment, snapshotAt]);
-      expect(snapshot.rows[0].snapshot.delegations).toEqual([{
+      expect(snapshot.rows[0].snapshot.delegations).toHaveLength(1);
+      const effectiveDelegation = snapshot.rows[0].snapshot.delegations[0];
+      expect(effectiveDelegation).toMatchObject({
         active: true,
-        startsAt: startsAt.toISOString(),
-        endsAt: endsAt.toISOString(),
         permissions: ["document.download", "request.view"],
         scopes: [{
           type: "BRANCH",
           companyId: ids.company,
           branchId: ids.branch,
         }],
-      }]);
+      });
+      expect(new Date(effectiveDelegation.startsAt).getTime())
+        .toBe(startsAt.getTime());
+      expect(new Date(effectiveDelegation.endsAt).getTime())
+        .toBe(endsAt.getTime());
 
       const otherAssignmentSnapshot = await db.query<{ snapshot: {
         delegations: unknown[];
@@ -584,6 +587,27 @@ describe("audited delegated-access management", () => {
       `, [ids.requester, ids.requesterAssignment, snapshotAt]);
       expect(before.rows[0].snapshot.delegations).toHaveLength(1);
 
+      await db.query(
+        "UPDATE branches SET active=false WHERE id=$1",
+        [ids.branch],
+      );
+      const inactiveScope = await db.query<{
+        snapshot: { delegations: unknown[] };
+      }>(`
+        SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
+      `, [ids.requester, ids.requesterAssignment, snapshotAt]);
+      expect(inactiveScope.rows[0].snapshot.delegations).toEqual([]);
+      await db.query(
+        "UPDATE branches SET active=true WHERE id=$1",
+        [ids.branch],
+      );
+      const restoredScope = await db.query<{
+        snapshot: { delegations: unknown[] };
+      }>(`
+        SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
+      `, [ids.requester, ids.requesterAssignment, snapshotAt]);
+      expect(restoredScope.rows[0].snapshot.delegations).toHaveLength(1);
+
       await db.query(`
         INSERT INTO user_permission_overrides(
           user_id,permission_id,effect,scope_type,company_id,branch_id,
@@ -626,6 +650,7 @@ describe("audited delegated-access management", () => {
         snapshot: boolean;
         scopeHelper: boolean;
         permissionHelper: boolean;
+        activeScopeHelper: boolean;
         authorityHelper: boolean;
       }>(`
         SELECT
@@ -657,6 +682,11 @@ describe("audited delegated-access management", () => {
             'EXECUTE'
           ) AS "permissionHelper",
           has_function_privilege(
+            'axora_app',
+            'axora_delegation_scope_is_active(text,uuid,uuid,uuid,uuid)',
+            'EXECUTE'
+          ) AS "activeScopeHelper",
+          has_function_privilege(
             'axora_app','axora_delegation_authority_is_live(uuid,timestamptz)',
             'EXECUTE'
           ) AS "authorityHelper"
@@ -669,10 +699,12 @@ describe("audited delegated-access management", () => {
         snapshot: true,
         scopeHelper: false,
         permissionHelper: false,
+        activeScopeHelper: false,
         authorityHelper: false,
       });
       expect(source).toContain("public.axora_create_delegated_access(");
       expect(source).toContain("public.axora_revoke_delegated_access(");
+      expect(source).toContain("public.axora_delegation_scope_is_active(");
       expect(source).toContain("public.axora_delegation_authority_is_live(");
     } finally {
       await db.close();
