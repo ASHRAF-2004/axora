@@ -35,14 +35,6 @@ jobs:
           python <<'PY'
           from pathlib import Path
 
-          def replace_once(path: str, old: str, new: str) -> None:
-              file = Path(path)
-              text = file.read_text()
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"{path}: expected one replacement, found {count}")
-              file.write_text(text.replace(old, new, 1))
-
           migration_path = Path("database/migrations/041_delegated_access_management.sql")
           migration = migration_path.read_text()
           migration = migration.replace(
@@ -59,12 +51,103 @@ jobs:
               "    grantee_scope_type",
               1,
           )
+
+          helper_anchor = (
+              "CREATE OR REPLACE FUNCTION public.axora_delegation_authority_is_live("
+          )
+          active_helper = """CREATE OR REPLACE FUNCTION public.axora_delegation_scope_is_active(
+            p_scope_type text,
+            p_company_id uuid,
+            p_branch_id uuid,
+            p_department_id uuid,
+            p_supplier_id uuid
+          )
+          RETURNS boolean
+          LANGUAGE sql
+          STABLE
+          SECURITY DEFINER
+          SET search_path=pg_catalog,public,pg_temp
+          AS $$
+            SELECT CASE p_scope_type
+              WHEN 'COMPANY' THEN EXISTS (
+                SELECT 1 FROM public.companies company
+                WHERE company.id=p_company_id AND company.active
+                  AND p_branch_id IS NULL AND p_department_id IS NULL
+                  AND p_supplier_id IS NULL
+              )
+              WHEN 'BRANCH' THEN EXISTS (
+                SELECT 1
+                FROM public.branches branch
+                JOIN public.companies company ON company.id=branch.company_id
+                WHERE branch.id=p_branch_id
+                  AND branch.company_id=p_company_id
+                  AND branch.active AND company.active
+                  AND p_department_id IS NULL AND p_supplier_id IS NULL
+              )
+              WHEN 'DEPARTMENT' THEN EXISTS (
+                SELECT 1
+                FROM public.departments department
+                JOIN public.companies company ON company.id=department.company_id
+                WHERE department.id=p_department_id
+                  AND department.company_id=p_company_id
+                  AND department.branch_id IS NOT DISTINCT FROM p_branch_id
+                  AND department.active AND company.active
+                  AND p_supplier_id IS NULL
+                  AND (
+                    department.branch_id IS NULL OR EXISTS (
+                      SELECT 1 FROM public.branches branch
+                      WHERE branch.id=department.branch_id
+                        AND branch.company_id=department.company_id
+                        AND branch.active
+                    )
+                  )
+              )
+              ELSE false
+            END
+          $$;
+
+          """
+          if helper_anchor not in migration:
+              raise SystemExit("delegation authority helper anchor was not found")
+          migration = migration.replace(
+              helper_anchor,
+              active_helper + helper_anchor,
+              1,
+          )
+
+          authority_anchor = """      AND NOT EXISTS (
+                SELECT 1
+                FROM public.delegated_access_scopes delegated_scope
+                WHERE delegated_scope.delegated_access_id=delegation.id
+                  AND NOT public.axora_role_assignment_has_direct_permission("""
+          authority_replacement = """      AND NOT EXISTS (
+                SELECT 1
+                FROM public.delegated_access_scopes delegated_scope
+                WHERE delegated_scope.delegated_access_id=delegation.id
+                  AND NOT public.axora_delegation_scope_is_active(
+                    delegated_scope.scope_type,delegated_scope.company_id,
+                    delegated_scope.branch_id,delegated_scope.department_id,
+                    delegated_scope.supplier_id
+                  )
+              )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM public.delegated_access_scopes delegated_scope
+                WHERE delegated_scope.delegated_access_id=delegation.id
+                  AND NOT public.axora_role_assignment_has_direct_permission("""
+          if migration.count(authority_anchor) != 1:
+              raise SystemExit("live delegation authority anchor was not found once")
+          migration = migration.replace(authority_anchor, authority_replacement, 1)
+
           old_start = "    IF grantee_account_kind='COMPANY' THEN\n"
           old_end = (
               "    IF NOT public.axora_role_assignment_has_direct_permission(\n"
               "      p_actor_user_id,p_actor_role_assignment_id,'user.permission.manage',"
           )
-          start = migration.find(old_start, migration.find("FOR scope_value IN", migration.find("axora_create_delegated_access")))
+          start = migration.find(
+              old_start,
+              migration.find("FOR scope_value IN", migration.find("axora_create_delegated_access")),
+          )
           end = migration.find(old_end, start)
           if start < 0 or end < 0:
               raise SystemExit("delegated grantee compatibility block was not found")
@@ -113,7 +196,34 @@ jobs:
 
           """
           migration = migration[:start] + new_block + migration[end:]
-          migration_path.write_text(migration)
+
+          revoke_anchor = """REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
+            uuid,timestamptz
+          ) FROM PUBLIC;"""
+          revoke_replacement = """REVOKE ALL ON FUNCTION public.axora_delegation_scope_is_active(
+            text,uuid,uuid,uuid,uuid
+          ) FROM PUBLIC;
+          REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
+            uuid,timestamptz
+          ) FROM PUBLIC;"""
+          if migration.count(revoke_anchor) != 1:
+              raise SystemExit("public helper revoke anchor was not found")
+          migration = migration.replace(revoke_anchor, revoke_replacement, 1)
+
+          app_revoke_anchor = """    REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
+              uuid,timestamptz
+            ) FROM axora_app;"""
+          app_revoke_replacement = """    REVOKE ALL ON FUNCTION public.axora_delegation_scope_is_active(
+              text,uuid,uuid,uuid,uuid
+            ) FROM axora_app;
+            REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
+              uuid,timestamptz
+            ) FROM axora_app;"""
+          if migration.count(app_revoke_anchor) != 1:
+              raise SystemExit("application helper revoke anchor was not found")
+          migration_path.write_text(
+              migration.replace(app_revoke_anchor, app_revoke_replacement, 1)
+          )
 
           grants_path = Path("database/admin/apply-app-grants.sql")
           grants = grants_path.read_text()
@@ -126,6 +236,7 @@ jobs:
             public.axora_role_assignment_has_direct_permission(
               uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz
             ),
+            public.axora_delegation_scope_is_active(text,uuid,uuid,uuid,uuid),
             public.axora_delegation_authority_is_live(uuid,timestamptz),
             public.axora_create_delegated_access(
               uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
@@ -193,6 +304,167 @@ jobs:
               if old not in text:
                   raise SystemExit(f"{path}: latest migration expectation missing")
               file.write_text(text.replace(old, '"041_delegated_access_management.sql"'))
+
+          fixture_path = Path("tests/delegated-access-management-migration.test.ts")
+          fixture = fixture_path.read_text()
+          users_start = fixture.index("  await db.query(`\n    INSERT INTO users(")
+          users_end = fixture.index(
+              "  await db.query(`\n    INSERT INTO company_memberships(",
+              users_start,
+          )
+          corrected_users = '''  await db.query(`
+            INSERT INTO users(
+              id,email,display_name,password_hash,role_id,company_id,branch_id,
+              is_owner,account_setup_completed_at,account_kind,account_status,
+              active,auth_version
+            ) VALUES
+              ($1,'delegation-actor@example.test','Delegation actor','not-a-real-hash',
+                $11,$7,NULL,false,now(),'COMPANY','ACTIVE',true,1),
+              ($2,'delegation-requester@example.test','Delegation requester','not-a-real-hash',
+                $12,$7,$8,false,now(),'COMPANY','ACTIVE',true,1),
+              ($3,'delegation-branch-admin@example.test','Delegation branch admin','not-a-real-hash',
+                $13,$7,$8,false,now(),'COMPANY','ACTIVE',true,1),
+              ($4,'delegation-outside@example.test','Delegation outside requester','not-a-real-hash',
+                $12,$9,$10,false,now(),'COMPANY','ACTIVE',true,1),
+              ($5,'delegation-backup-manager@example.test','Delegation backup manager','not-a-real-hash',
+                $14,NULL,NULL,false,now(),'PLATFORM','ACTIVE',true,1),
+              ($6,'delegation-owner@example.test','Delegation owner','not-a-real-hash',
+                $15,NULL,NULL,true,now(),'PLATFORM','ACTIVE',true,1)
+          `, [
+            ids.actor,
+            ids.requester,
+            ids.branchAdmin,
+            ids.outsideRequester,
+            ids.backupManager,
+            ids.owner,
+            ids.company,
+            ids.branch,
+            ids.otherCompany,
+            ids.otherBranch,
+            context.companyAdminRoleId,
+            context.requesterRoleId,
+            context.branchAdminRoleId,
+            context.accountManagerRoleId,
+            context.ownerRoleId,
+          ]);
+          '''
+          fixture = fixture[:users_start] + corrected_users + fixture[users_end:]
+
+          roles_start = fixture.index("  await db.query(`\n    INSERT INTO role_assignments(")
+          roles_end = fixture.index(
+              "  await db.query(`\n    INSERT INTO user_sessions(",
+              roles_start,
+          )
+          corrected_roles = '''  await db.query(`
+            INSERT INTO role_assignments(
+              id,user_id,role_id,scope_type,company_id,branch_id,active
+            ) VALUES
+              ($1,$8,$14,'COMPANY',$15,NULL,true),
+              ($2,$9,$16,'BRANCH',$15,$17,true),
+              ($3,$9,$16,'BRANCH',$15,$18,true),
+              ($4,$10,$19,'BRANCH',$15,$17,true),
+              ($5,$11,$16,'BRANCH',$20,$21,true),
+              ($6,$12,$22,'COMPANY',$20,NULL,true),
+              ($7,$13,$23,'PLATFORM',NULL,NULL,true)
+          `, [
+            ids.actorAssignment,
+            ids.requesterAssignment,
+            ids.requesterSecondAssignment,
+            ids.branchAdminAssignment,
+            ids.outsideAssignment,
+            ids.backupManagerAssignment,
+            ids.ownerAssignment,
+            ids.actor,
+            ids.requester,
+            ids.branchAdmin,
+            ids.outsideRequester,
+            ids.backupManager,
+            ids.owner,
+            context.companyAdminRoleId,
+            ids.company,
+            context.requesterRoleId,
+            ids.branch,
+            ids.secondBranch,
+            context.branchAdminRoleId,
+            ids.otherCompany,
+            ids.otherBranch,
+            context.accountManagerRoleId,
+            context.ownerRoleId,
+          ]);
+          '''
+          fixture = fixture[:roles_start] + corrected_roles + fixture[roles_end:]
+
+          deny_anchor = """      await db.query(`
+                INSERT INTO user_permission_overrides("""
+          inactive_check = """      await db.query(
+                "UPDATE branches SET active=false WHERE id=$1",
+                [ids.branch],
+              );
+              const inactiveScope = await db.query<{
+                snapshot: { delegations: unknown[] };
+              }>(`
+                SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
+              `, [ids.requester, ids.requesterAssignment, snapshotAt]);
+              expect(inactiveScope.rows[0].snapshot.delegations).toEqual([]);
+              await db.query(
+                "UPDATE branches SET active=true WHERE id=$1",
+                [ids.branch],
+              );
+              const restoredScope = await db.query<{
+                snapshot: { delegations: unknown[] };
+              }>(`
+                SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
+              `, [ids.requester, ids.requesterAssignment, snapshotAt]);
+              expect(restoredScope.rows[0].snapshot.delegations).toHaveLength(1);
+
+              await db.query(`
+                INSERT INTO user_permission_overrides("""
+          if fixture.count(deny_anchor) != 1:
+              raise SystemExit("delegation live-authority test anchor was not found")
+          fixture = fixture.replace(deny_anchor, inactive_check, 1)
+
+          privilege_type_anchor = """        authorityHelper: boolean;
+              }>(`"""
+          privilege_type_replacement = """        activeScopeHelper: boolean;
+                authorityHelper: boolean;
+              }>(`"""
+          if fixture.count(privilege_type_anchor) != 1:
+              raise SystemExit("delegation privilege type anchor was not found")
+          fixture = fixture.replace(
+              privilege_type_anchor,
+              privilege_type_replacement,
+              1,
+          )
+          privilege_query_anchor = """          has_function_privilege(
+                    'axora_app','axora_delegation_authority_is_live(uuid,timestamptz)',
+                    'EXECUTE'
+                  ) AS \"authorityHelper\""""
+          privilege_query_replacement = """          has_function_privilege(
+                    'axora_app',
+                    'axora_delegation_scope_is_active(text,uuid,uuid,uuid,uuid)',
+                    'EXECUTE'
+                  ) AS \"activeScopeHelper\",
+                  has_function_privilege(
+                    'axora_app','axora_delegation_authority_is_live(uuid,timestamptz)',
+                    'EXECUTE'
+                  ) AS \"authorityHelper\""""
+          if fixture.count(privilege_query_anchor) != 1:
+              raise SystemExit("delegation privilege query anchor was not found")
+          fixture = fixture.replace(
+              privilege_query_anchor,
+              privilege_query_replacement,
+              1,
+          )
+          expected_anchor = """        authorityHelper: false,
+              });"""
+          expected_replacement = """        activeScopeHelper: false,
+                authorityHelper: false,
+              });"""
+          if fixture.count(expected_anchor) != 1:
+              raise SystemExit("delegation privilege expectation anchor was not found")
+          fixture_path.write_text(
+              fixture.replace(expected_anchor, expected_replacement, 1)
+          )
           PY
 
       - name: Install locked dependencies
@@ -218,17 +490,6 @@ jobs:
           git diff --check
           git config user.name "Axora Release Agent"
           git config user.email "actions@users.noreply.github.com"
-          git add \
-            database/admin/apply-app-grants.sql \
-            database/migrations/041_delegated_access_management.sql \
-            docs/refactor/DELEGATED_ACCESS_MANAGEMENT_RUNTIME.md \
-            src/lib/delegated-access-management.ts \
-            tests/account-security-session-audit-migration.test.ts \
-            tests/delegated-access-management.test.ts \
-            tests/delegated-access-management-migration.test.ts \
-            tests/delegated-access-policy.test.ts \
-            tests/full-migration-chain.test.ts \
-            tests/support-diagnostics-migration.test.ts \
-            .github/workflows/prepare-delegated-access.yml
+          git add -A
           git commit -m "Add audited delegated access management"
           git push origin HEAD:agent/p0-01-delegated-access-management
