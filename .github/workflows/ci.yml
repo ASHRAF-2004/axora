@@ -135,6 +135,12 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Identify the exact migration statement boundary
+        run: >-
+          npx vitest run
+          tests/role-scope-migration-diagnostic.test.ts
+          --reporter=verbose
+
       - name: Verify focused authorization slice
         run: |
           npm run lint
@@ -154,7 +160,9 @@ jobs:
         run: |
           git fetch origin main
           git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          rm -f scripts/ci/prepare-role-scope-lifecycle.py
+          rm -f \
+            scripts/ci/prepare-role-scope-lifecycle.py \
+            tests/role-scope-migration-diagnostic.test.ts
           git diff --check
           git config user.name "Axora Release Agent"
           git config user.email "actions@users.noreply.github.com"
