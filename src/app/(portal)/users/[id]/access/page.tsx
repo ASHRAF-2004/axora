@@ -14,6 +14,7 @@ import { requirePagePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
 import { localizedAccountRole } from "@/lib/user-form-i18n";
+import { formatZonedDateTimeInput } from "@/lib/zoned-date-time";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -61,12 +62,16 @@ function PermissionOverrideForm({
   effect,
   options,
   startsAt,
+  timeZone,
+  minimumExpiry,
   action,
 }: {
   copy: ReturnType<typeof accessAdministrationMessages>;
   effect: "GRANT" | "DENY";
   options: PermissionOption[];
   startsAt: string;
+  timeZone: string;
+  minimumExpiry: string;
   action: (formData: FormData) => void | Promise<void>;
 }) {
   if (!options.length) return null;
@@ -87,7 +92,8 @@ function PermissionOverrideForm({
           </select>
         </label>
         <label className="field-full">{copy.expiresAt} <span className="subtle">({copy.optional})</span>
-          <input name="endsAt" type="datetime-local" />
+          <input name="endsAt" type="datetime-local" min={minimumExpiry} />
+          <small>{timeZone}</small>
         </label>
         <label className="field-full">{copy.reason}
           <textarea
@@ -161,6 +167,10 @@ export default async function UserAccessPage({
     groupedPermissions.set(permission.group, group);
   }
   const notice = accessAdministrationNotice(locale, query.notice);
+  const minimumExpiry = formatZonedDateTimeInput(
+    new Date(snapshot.capturedAt.getTime() + 60_000),
+    timeZone,
+  );
 
   return (
     <>
@@ -243,6 +253,8 @@ export default async function UserAccessPage({
               effect="GRANT"
               options={grantableOptions}
               startsAt={snapshot.capturedAt.toISOString()}
+              timeZone={timeZone}
+              minimumExpiry={minimumExpiry}
               action={setOverrideAction}
             />
             <PermissionOverrideForm
@@ -250,6 +262,8 @@ export default async function UserAccessPage({
               effect="DENY"
               options={snapshot.permissionOptions}
               startsAt={snapshot.capturedAt.toISOString()}
+              timeZone={timeZone}
+              minimumExpiry={minimumExpiry}
               action={setOverrideAction}
             />
           </div>
