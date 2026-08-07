@@ -55,11 +55,17 @@ REVOKE ALL ON TABLE
   public.delegated_access,
   public.delegated_access_permissions,
   public.delegated_access_scopes,
-  public.permission_change_history
+  public.permission_change_history,
+  public.role_assignment_management_rules
 FROM axora_app;
 
 GRANT SELECT ON TABLE public.permissions,public.role_permissions
 TO axora_app;
+
+-- Invitation creation still inserts one trigger-validated assignment. Every
+-- post-setup role change uses the audited lifecycle commands below.
+REVOKE UPDATE,DELETE ON TABLE public.role_assignments FROM axora_app;
+GRANT SELECT,INSERT ON TABLE public.role_assignments TO axora_app;
 
 REVOKE ALL ON FUNCTION
   public.axora_workflow_email_available_at(text,timestamptz),
@@ -119,7 +125,26 @@ REVOKE ALL ON FUNCTION
   public.axora_create_delegated_access(
     uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
   ),
-  public.axora_revoke_delegated_access(uuid,uuid,uuid,text)
+  public.axora_revoke_delegated_access(uuid,uuid,uuid,text),
+  public.axora_role_scope_contract_is_valid(
+    text,boolean,text,text,uuid,uuid,uuid,uuid
+  ),
+  public.axora_role_scope_resource_is_active(text,uuid,uuid,uuid,uuid),
+  public.axora_role_assignment_target_is_ready(
+    uuid,uuid,text,uuid,uuid,uuid,uuid
+  ),
+  public.axora_validate_role_assignment_write(),
+  public.axora_reject_role_assignment_delete(),
+  public.axora_active_platform_owner_count(uuid,uuid),
+  public.axora_active_company_admin_count(uuid,uuid,uuid),
+  public.axora_protect_critical_role_assignment(),
+  public.axora_protect_critical_account_state(),
+  public.axora_apply_preferred_role_assignment(uuid,uuid),
+  public.axora_refresh_preferred_role_assignment(uuid),
+  public.axora_assign_user_role_scope(
+    uuid,uuid,uuid,uuid,text,text,uuid,uuid,uuid,uuid,text
+  ),
+  public.axora_revoke_user_role_scope(uuid,uuid,uuid,uuid,text)
 FROM axora_app;
 
 GRANT EXECUTE ON FUNCTION
@@ -152,5 +177,9 @@ GRANT EXECUTE ON FUNCTION
   public.axora_create_delegated_access(
     uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
   ),
-  public.axora_revoke_delegated_access(uuid,uuid,uuid,text)
+  public.axora_revoke_delegated_access(uuid,uuid,uuid,text),
+  public.axora_assign_user_role_scope(
+    uuid,uuid,uuid,uuid,text,text,uuid,uuid,uuid,uuid,text
+  ),
+  public.axora_revoke_user_role_scope(uuid,uuid,uuid,uuid,text)
 TO axora_app;
