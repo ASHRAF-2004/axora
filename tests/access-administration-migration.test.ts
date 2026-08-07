@@ -91,17 +91,16 @@ async function accessFixture(db: PGlite, createAppRole = false) {
       active,auth_version
     ) VALUES
       ($1,'admin-a@example.test','Administrator A','not-a-real-hash',
-        $4,$7,NULL,false,now(),'COMPANY','ACTIVE',true,1),
+        $4,$6,NULL,false,now(),'COMPANY','ACTIVE',true,1),
       ($2,'admin-b@example.test','Administrator B','not-a-real-hash',
-        $4,$8,NULL,false,now(),'COMPANY','ACTIVE',true,1),
+        $4,$7,NULL,false,now(),'COMPANY','ACTIVE',true,1),
       ($3,'target@example.test','Scoped target','not-a-real-hash',
-        $6,$7,$9,false,now(),'COMPANY','ACTIVE',true,1)
+        $5,$6,$8,false,now(),'COMPANY','ACTIVE',true,1)
   `, [
     ids.actorA,
     ids.actorB,
     ids.target,
     context.companyAdminRoleId,
-    context.companyApproverRoleId,
     context.requesterRoleId,
     ids.companyA,
     ids.companyB,
