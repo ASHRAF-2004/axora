@@ -224,6 +224,18 @@ async function accessFixture(db: PGlite, createAppRole = false) {
     ids.companyA,
     "Company approval ceiling for delegated coverage",
   ]);
+  await db.query(`
+    SELECT * FROM axora_set_approval_limit(
+      $1,$2,NULL,NULL,$3,'request.approve.other','COMPANY',$4,
+      NULL,NULL,'MYR',9000,false,now(),NULL,$5
+    )
+  `, [
+    ids.actorA,
+    ids.actorAssignmentA,
+    context.companyApproverRoleId,
+    ids.companyA,
+    "Role-wide company approver ceiling",
+  ]);
 
   await db.query(`
     SELECT * FROM axora_create_delegated_access(
@@ -310,6 +322,13 @@ describe("scoped access administration snapshot", () => {
         effective: true,
         actorCanGrant: true,
       });
+      expect(permissions.find((row) => (
+        row.code === "commercial.platform_margin.view"
+      ))).toMatchObject({
+        targetRoleIncludes: false,
+        effective: false,
+        actorCanGrant: false,
+      });
 
       const overrides = array(snapshot.permissionOverrides);
       expect(overrides).toEqual(expect.arrayContaining([
@@ -362,12 +381,43 @@ describe("scoped access administration snapshot", () => {
       ]));
       expect(JSON.stringify(history))
         .not.toContain("Other tenant confidential denial");
+      expect(JSON.stringify(history))
+        .not.toContain("Role-wide company approver ceiling");
 
       const serialized = JSON.stringify(snapshot);
       expect(serialized).not.toContain("not-a-real-hash");
       expect(serialized).not.toContain("passwordHash");
       expect(serialized).not.toContain("tokenHash");
       expect(serialized).not.toContain("networkHash");
+
+      const companyResult = await db.query<SnapshotRow>(`
+        SELECT axora_access_administration_snapshot(
+          $1,$2,$3,$4,now()
+        ) AS snapshot
+      `, [
+        ids.actorA,
+        ids.actorAssignmentA,
+        ids.target,
+        ids.targetCompanyAssignment,
+      ]);
+      const companySnapshot = companyResult.rows[0]?.snapshot;
+      expect(companySnapshot).toMatchObject({
+        selectedAssignmentId: ids.targetCompanyAssignment,
+      });
+      if (!companySnapshot) throw new Error("Expected company assignment snapshot");
+      const companyLimits = array(companySnapshot.approvalLimits);
+      expect(companyLimits).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          subjectType: "USER",
+          reason: "Company approval ceiling for delegated coverage",
+        }),
+        expect.objectContaining({
+          subjectType: "ROLE",
+          reason: "Role-wide company approver ceiling",
+        }),
+      ]));
+      expect(JSON.stringify(companySnapshot.history))
+        .toContain("Role-wide company approver ceiling");
     } finally {
       await db.close();
     }
