@@ -147,6 +147,17 @@ describe("access administration read service", () => {
       .rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
   });
 
+  it("treats malformed route identifiers as unavailable without querying policy state", async () => {
+    await expect(loadAccessAdministration(actor, "not-a-uuid"))
+      .rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
+    await expect(loadAccessAdministration(
+      actor,
+      ids.target,
+      "not-a-role-assignment-uuid",
+    )).rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
   it("requires a normalized actor, rejects demo mode, and hides database details", async () => {
     await expect(loadAccessAdministration(
       { ...actor, roleAssignmentId: undefined },
