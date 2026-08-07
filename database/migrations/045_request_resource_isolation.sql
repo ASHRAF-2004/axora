@@ -68,7 +68,7 @@ EXECUTE FUNCTION public.axora_validate_request_department_scope();
 WITH unique_match AS (
   SELECT
     request.id AS request_id,
-    min(department.id) AS department_id
+    (array_agg(department.id ORDER BY department.id))[1] AS department_id
   FROM public.requests request
   JOIN public.departments department
     ON department.company_id=request.company_id
