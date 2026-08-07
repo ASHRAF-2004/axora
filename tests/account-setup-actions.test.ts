@@ -21,7 +21,8 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
   }),
-  setUserActive: vi.fn(),
+  lockAuthorizedUserTarget: vi.fn(),
+  setAuthorizedUserActive: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -41,8 +42,9 @@ vi.mock("@/lib/account-email", () => ({
   sendAccountSetupEmail: mocks.sendEmail,
 }));
 
-vi.mock("@/lib/users", () => ({
-  setUserActive: mocks.setUserActive,
+vi.mock("@/lib/user-isolation", () => ({
+  lockAuthorizedUserTarget: mocks.lockAuthorizedUserTarget,
+  setAuthorizedUserActive: mocks.setAuthorizedUserActive,
 }));
 
 vi.mock("next/cache", () => ({
@@ -95,6 +97,10 @@ describe("account invitation actions", () => {
     mocks.createInvitedUser.mockResolvedValue(invitation);
     mocks.resendInvitation.mockResolvedValue(invitation);
     mocks.recordDelivery.mockResolvedValue(true);
+    mocks.lockAuthorizedUserTarget.mockResolvedValue({
+      userId: invitation.userId,
+      permission: "user.invite",
+    });
   });
 
   it("creates an invitation without accepting an administrator password", async () => {
@@ -184,13 +190,18 @@ describe("account invitation actions", () => {
     );
   });
 
-  it("resends only through the scoped backend and replaces the prior link", async () => {
+  it("resends only after the exact scoped target is authorized", async () => {
     mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
 
     await expect(
       resendAccountSetupInvitationAction(invitation.userId),
     ).rejects.toThrow("REDIRECT:/users?notice=user-invitation-resent");
 
+    expect(mocks.lockAuthorizedUserTarget).toHaveBeenCalledWith(
+      actor,
+      invitation.userId,
+      "user.invite",
+    );
     expect(mocks.resendInvitation).toHaveBeenCalledWith(invitation.userId, actor);
     expect(mocks.sendEmail).toHaveBeenCalledWith(invitation);
   });
