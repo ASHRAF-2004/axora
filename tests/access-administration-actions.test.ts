@@ -53,6 +53,7 @@ const actor = {
   roleAssignmentId: ids.actorAssignment,
   isOwner: false,
   authVersion: 4,
+  timezone: "Asia/Kuala_Lumpur",
 };
 
 function changeForm() {
@@ -121,6 +122,29 @@ describe("access administration server actions", () => {
       `/users/${ids.target}/access`,
     );
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/users");
+  });
+
+  it("converts a local expiry using the actor's IANA timezone", async () => {
+    const form = changeForm();
+    form.set("endsAt", "2026-08-08T09:30");
+    await expect(setPermissionOverrideAction(
+      ids.target,
+      ids.targetAssignment,
+      "BRANCH",
+      ids.company,
+      ids.branch,
+      undefined,
+      undefined,
+      form,
+    )).rejects.toThrow(
+      `REDIRECT:/users/${ids.target}/access?assignment=${ids.targetAssignment}&notice=override-applied`,
+    );
+    expect(mocks.setUserPermissionOverride).toHaveBeenCalledWith(
+      actor,
+      expect.objectContaining({
+        endsAt: new Date("2026-08-08T01:30:00.000Z"),
+      }),
+    );
   });
 
   it("rejects invalid form data before invoking the management command", async () => {
