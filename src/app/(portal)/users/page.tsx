@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserCreateForm } from "@/components/UserCreateForm";
+import { accessAdministrationMessages } from "@/lib/access-administration-i18n";
 import { requirePagePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/domain";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
@@ -9,6 +10,7 @@ import { localizedAccountRole } from "@/lib/user-form-i18n";
 import { creatableAccountRoles, accountRoleLabel } from "@/lib/role-catalog";
 import { listBranches, listCompanies, listSuppliers } from "@/lib/repository";
 import { listUsers } from "@/lib/users";
+import Link from "next/link";
 import {
   resendAccountSetupInvitationAction,
   setUserActiveAction,
@@ -52,6 +54,7 @@ export default async function UsersPage() {
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const copy = corePortalMessages(locale).users;
   const common = corePortalMessages(locale).common;
+  const accessCopy = accessAdministrationMessages(locale);
   const [users, companies, branches, suppliers] = await Promise.all([
     listUsers(actor),
     actor.isOwner ? listCompanies(actor) : Promise.resolve([]),
@@ -121,6 +124,7 @@ export default async function UsersPage() {
           && actor.branchId === user.branchId
           && ["BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER"].includes(user.role));
       const canResend = setupPending && actorCanManage;
+      const canOpenAccess = user.active && Boolean(user.accountSetupCompletedAt);
       const organization = user.companyName ?? user.supplierName
         ?? (user.accountKind === "DELIVERY" ? copy.deliveryNetwork : copy.platform);
       const scope = user.scopeType === "PLATFORM" ? copy.platformWide
@@ -133,19 +137,22 @@ export default async function UsersPage() {
         <td>{scope}</td>
         <td><StatusBadge status={invitationStatus(user)}>{localizedStatus(invitationStatus(user), locale)}</StatusBadge></td>
         <td>{setupPending ? <span className="subtle">{invitationTimeline(user, locale, timeZone, copy)}</span> : formatDateTime(user.lastLoginAt, locale, timeZone)}</td>
-        <td>{protectedLabel ? <span className="subtle">{protectedLabel}</span> : actorCanManage ? <div className="action-row">
-          {canResend ? <form action={resendAccountSetupInvitationAction.bind(null, user.id)}>
-            <button
-              className="button button-secondary"
-              type="submit"
-              data-feedback-label={copy.resending}
-              aria-label={`Resend account setup link to ${user.displayName}`}
-            >{copy.resend}</button>
-          </form> : null}
-          <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
-            <button className="button button-secondary" type="submit">{user.active ? copy.deactivate : copy.reactivate}</button>
-          </form>
-        </div> : <span className="subtle">{copy.outsideScope}</span>}</td>
+        <td><div className="action-row">
+          {canOpenAccess ? <Link className="button button-secondary" href={`/users/${user.id}/access`}>{accessCopy.openAccess}</Link> : null}
+          {protectedLabel ? <span className="subtle">{protectedLabel}</span> : actorCanManage ? <>
+            {canResend ? <form action={resendAccountSetupInvitationAction.bind(null, user.id)}>
+              <button
+                className="button button-secondary"
+                type="submit"
+                data-feedback-label={copy.resending}
+                aria-label={`Resend account setup link to ${user.displayName}`}
+              >{copy.resend}</button>
+            </form> : null}
+            <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
+              <button className="button button-secondary" type="submit">{user.active ? copy.deactivate : copy.reactivate}</button>
+            </form>
+          </> : <span className="subtle">{copy.outsideScope}</span>}
+        </div></td>
       </tr>;
     })}</tbody></table></div></section>
   </>;
