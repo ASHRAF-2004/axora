@@ -101,6 +101,23 @@ path.write_text(source[:start] + command + source[end:])
 
 test_path = Path("tests/delegated-access-management-migration.test.ts")
 test_source = test_path.read_text()
+old_snapshot_type = """        delegations: Array<{
+          permissions: string[];
+          scopes: Array<Record<string, string>>;
+        }>;"""
+new_snapshot_type = """        delegations: Array<{
+          active: boolean;
+          startsAt: string;
+          endsAt: string;
+          permissions: string[];
+          scopes: Array<Record<string, string>>;
+        }>;"""
+test_source = replace_once(
+    test_source,
+    old_snapshot_type,
+    new_snapshot_type,
+    "delegated snapshot timestamp fields",
+)
 old_assertion = """      expect(snapshot.rows[0].snapshot.delegations).toEqual([{
         active: true,
         startsAt: startsAt.toISOString(),
