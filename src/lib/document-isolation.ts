@@ -4,6 +4,7 @@ import {
   listDeliveries,
   listInvoices,
 } from "./operations";
+import { canAccess } from "./permissions";
 import { listAuthorizedRequests } from "./request-reader";
 
 export async function loadAuthorizedDocumentRegisters(
@@ -12,7 +13,9 @@ export async function loadAuthorizedDocumentRegisters(
   const [requests, allInvoices, allDeliveries, allAttachments] =
     await Promise.all([
       listAuthorizedRequests(actor),
-      listInvoices(),
+      canAccess(actor, "view_invoices")
+        ? listInvoices()
+        : Promise.resolve([]),
       listDeliveries(),
       listAttachments(),
     ]);
