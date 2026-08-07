@@ -210,10 +210,3 @@ export async function removePermissionOverrideAction(
     "override-removed",
   ));
 }
-
-export const accessAdministrationActionInternals = {
-  accessPath,
-  changeSchema,
-  removeSchema,
-  scopeFromChange,
-};
