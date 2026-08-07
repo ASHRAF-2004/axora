@@ -87,18 +87,15 @@ async function fixture() {
       active,auth_version
     ) VALUES
       ($1,'platform-documents-046@example.test','Platform documents 046',
-        'not-a-real-hash',$7,NULL,NULL,true,now(),'PLATFORM','ACTIVE',true,1),
+        'not-a-real-hash',$4,NULL,NULL,true,now(),'PLATFORM','ACTIVE',true,1),
       ($2,'company-documents-046@example.test','Company documents 046',
-        'not-a-real-hash',$8,$10,NULL,false,now(),'COMPANY','ACTIVE',true,1),
+        'not-a-real-hash',$5,$7,NULL,false,now(),'COMPANY','ACTIVE',true,1),
       ($3,'branch-documents-046@example.test','Branch documents 046',
-        'not-a-real-hash',$9,$10,$11,false,now(),'COMPANY','ACTIVE',true,1)
+        'not-a-real-hash',$6,$7,$8,false,now(),'COMPANY','ACTIVE',true,1)
   `, [
     ids.platformOperations,
     ids.companyAdmin,
     ids.branchAdmin,
-    ids.platformAssignment,
-    ids.companyAssignment,
-    ids.branchAssignment,
     roles.platformOperations,
     roles.companyAdmin,
     roles.branchAdmin,
