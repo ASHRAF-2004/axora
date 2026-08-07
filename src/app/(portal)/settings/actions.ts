@@ -1,7 +1,7 @@
 "use server";
 
 import { requirePermission, requireRecentStepUp } from "@/lib/auth";
-import { updateCompanyPricingConfiguration } from "@/lib/repository";
+import { updateAuthorizedCompanyPricingConfiguration } from "@/lib/company-settings-isolation";
 import {
   companyPricingSchema,
   readFormText,
@@ -29,7 +29,7 @@ export async function updateCompanyPricingAction(
     ),
   });
 
-  await updateCompanyPricingConfiguration(
+  await updateAuthorizedCompanyPricingConfiguration(
     input.companyId,
     {
       taxRate: input.taxRate,
