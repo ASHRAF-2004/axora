@@ -184,10 +184,8 @@ GRANT EXECUTE ON FUNCTION
   public.axora_revoke_user_role_scope(uuid,uuid,uuid,uuid,text)
 TO axora_app;
 
--- This script is also applied to intentionally partial schemas during verified
--- hybrid imports. Keep the migration-043 capability conditional so applying the
--- current script to a schema through migration 042 remains valid, while a full
--- schema still receives the same narrow revoke/grant boundary.
+-- These capabilities are conditional because the real grant script is also
+-- applied to verified partial schemas during hybrid import and reset checks.
 DO $$
 BEGIN
   IF to_regprocedure(
@@ -195,6 +193,17 @@ BEGIN
   ) IS NOT NULL THEN
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_access_administration_snapshot(uuid,uuid,uuid,uuid,timestamptz) FROM axora_app';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_access_administration_snapshot(uuid,uuid,uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+
+  IF to_regprocedure(
+    'public.axora_organization_directory_snapshot(uuid,uuid,timestamptz)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_live_authorization_snapshot(uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_resolve_organization_resource_scope(text,uuid) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_organization_resource_access(uuid,uuid,text,text,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_organization_directory_snapshot(uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_organization_resource_access(uuid,uuid,text,text,uuid,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_organization_directory_snapshot(uuid,uuid,timestamptz) TO axora_app';
   END IF;
 END
 $$;
