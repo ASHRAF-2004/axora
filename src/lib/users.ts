@@ -45,7 +45,18 @@ export async function listUsers(actor: SessionUser): Promise<UserRecord[]> {
         current_assignment.company_id,current_assignment.branch_id,
         current_assignment.department_id,current_assignment.supplier_id
       FROM role_assignments current_assignment
-      WHERE current_assignment.user_id=u.id AND current_assignment.active=true
+      WHERE current_assignment.user_id=u.id
+        AND current_assignment.active=true
+        AND (
+          $1::boolean OR (
+            current_assignment.company_id=$2::uuid
+            AND (
+              $3::uuid IS NULL
+              OR current_assignment.branch_id=$3::uuid
+              OR u.id=$4::uuid
+            )
+          )
+        )
       ORDER BY current_assignment.assigned_at DESC,current_assignment.id
       LIMIT 1
     ) assignment ON true
