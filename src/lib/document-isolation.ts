@@ -14,6 +14,11 @@ import type { AttachmentRecord } from "./types";
 
 const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
 const uuidSchema = z.string().uuid();
+export const documentRecordIdSchema = z.string()
+  .trim()
+  .min(1)
+  .max(160)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
 const entityTypeSchema = z.enum(["request", "invoice", "delivery"]);
 const visibilitySchema = z.enum(["CUSTOMER", "INTERNAL"]);
 const contentTypeSchema = z.enum([
@@ -62,7 +67,7 @@ const attachmentCreationRowSchema = z.object({
 
 const creationInputSchema = z.object({
   entityType: entityTypeSchema,
-  recordId: uuidSchema,
+  recordId: documentRecordIdSchema,
   visibility: visibilitySchema.default("CUSTOMER"),
 }).strict();
 
@@ -409,6 +414,9 @@ export async function createAuthorizedAttachment(
     return { attachmentId, visibility };
   }
 
+  if (!uuidSchema.safeParse(request.data.recordId).success) {
+    throw new DocumentAccessUnavailableError();
+  }
   const assignmentId = requireLiveAssignment(actor);
   try {
     return await withAuditTransaction({
@@ -477,6 +485,7 @@ export const documentIsolationInternals = {
   attachmentCreationRowSchema,
   attachmentDownloadRowSchema,
   creationInputSchema,
+  documentRecordIdSchema,
   readLegacyAttachment,
   sanitizeAttachmentFileName,
 };
