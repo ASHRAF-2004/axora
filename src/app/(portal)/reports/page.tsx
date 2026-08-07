@@ -2,7 +2,11 @@ import { MetricCard } from "@/components/MetricCard";
 import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency } from "@/lib/domain";
-import { getDashboardData, listBranches, listRequests } from "@/lib/repository";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
+import {
+  getAuthorizedDashboardData,
+  listAuthorizedRequests,
+} from "@/lib/request-reader";
 import { Banknote, ClipboardCheck, Clock3, Download, Percent, ReceiptText, ShieldCheck, Truck, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { operationalMessage, operationalNumber, type OperationalMessageKey } from "@/lib/operational-i18n";
@@ -12,11 +16,14 @@ export default async function ReportsPage() {
   const locale = actor.preferredLocale ?? "en";
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) => operationalMessage(locale, key, values);
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
-  const [data, requests, branches] = await Promise.all([
-    getDashboardData(actor),
-    platformView ? Promise.resolve([]) : listRequests(actor),
-    platformView ? Promise.resolve([]) : listBranches(actor),
+  const [data, requests, organization] = await Promise.all([
+    getAuthorizedDashboardData(actor),
+    platformView ? Promise.resolve([]) : listAuthorizedRequests(actor),
+    platformView
+      ? Promise.resolve({ companies: [], branches: [] })
+      : loadOrganizationDirectory(actor),
   ]);
+  const branches = organization.branches;
   const requestedSpend = requests
     .filter((request) => request.status !== "Cancelled")
     .reduce((sum, request) => sum + request.estimatedTotal, 0);
@@ -24,7 +31,7 @@ export default async function ReportsPage() {
     .filter((request) => request.approvalStatus === "Approved" && request.status !== "Cancelled")
     .reduce((sum, request) => sum + request.estimatedTotal, 0);
   const pendingApprovalCount = requests.filter((request) => request.approvalStatus === "Pending" && request.status !== "Cancelled").length;
-  const budgetedBranches = branches.filter((branch) => branch.monthlyBudget != null);
+  const budgetedBranches = branches.filter((branch) => branch.canViewBudget && branch.monthlyBudget != null);
   const remainingBudget = budgetedBranches.reduce((sum, branch) => sum + (branch.remainingAmount ?? 0), 0);
   return <><PageHeader
     eyebrow={m(platformView ? "reports.platformEyebrow" : "reports.companyEyebrow")}
