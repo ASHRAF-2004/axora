@@ -101,17 +101,21 @@ path.write_text(source[:start] + command + source[end:])
 
 test_path = Path("tests/delegated-access-management-migration.test.ts")
 test_source = test_path.read_text()
-old_snapshot_type = """        delegations: Array<{
+old_snapshot_type = """      const snapshot = await db.query<{ snapshot: {
+        delegations: Array<{
           permissions: string[];
           scopes: Array<Record<string, string>>;
-        }>;"""
-new_snapshot_type = """        delegations: Array<{
+        }>;
+      } }>(`"""
+new_snapshot_type = """      const snapshot = await db.query<{ snapshot: {
+        delegations: Array<{
           active: boolean;
           startsAt: string;
           endsAt: string;
           permissions: string[];
           scopes: Array<Record<string, string>>;
-        }>;"""
+        }>;
+      } }>(`"""
 test_source = replace_once(
     test_source,
     old_snapshot_type,
