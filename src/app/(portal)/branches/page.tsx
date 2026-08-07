@@ -2,8 +2,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency } from "@/lib/domain";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { canAccess } from "@/lib/permissions";
-import { listBranches, listCompanies } from "@/lib/repository";
 import { createBranchAction, setMasterActiveAction } from "../masters/actions";
 import { setBranchBudgetAction } from "./actions";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
@@ -16,7 +16,9 @@ export default async function BranchesPage() {
   const canManageBranches = canAccess(actor, "manage_branches");
   const canManageBudget = canAccess(actor, "manage_branch_budget");
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
-  const [branches, companies] = await Promise.all([listBranches(actor), listCompanies(actor)]);
+  const { branches, companies } = await loadOrganizationDirectory(actor);
+  const showBudgetColumns = branches.some((branch) => branch.canViewBudget);
+  const showActions = canManageBranches || canManageBudget;
 
   return <><PageHeader eyebrow={copy.eyebrow} title={copy.title}
     description={platformView ? copy.platformDescription : copy.companyDescription} />
@@ -24,16 +26,18 @@ export default async function BranchesPage() {
     <section className="panel">
       <div className="panel-header"><div><h2>{copy.register}</h2><p>{copy.count(branches.length)}</p></div></div>
       <div className="data-table-wrap"><table className="data-table"><thead><tr>
-        <th>{common.branch}</th><th>{common.company}</th><th>{copy.delivery}</th><th>{copy.monthlyBudget}</th><th>{copy.committed}</th><th>{copy.available}</th><th>{common.status}</th>{canManageBranches || canManageBudget ? <th>{common.actions}</th> : null}
+        <th>{common.branch}</th><th>{common.company}</th><th>{copy.delivery}</th>{showBudgetColumns ? <><th>{copy.monthlyBudget}</th><th>{copy.committed}</th><th>{copy.available}</th></> : null}<th>{common.status}</th>{showActions ? <th>{common.actions}</th> : null}
       </tr></thead><tbody>{branches.map((branch) => <tr key={branch.id}>
         <td><strong>{branch.name}</strong><br /><span className="subtle">{branch.code} · {branch.branchCode}</span></td>
         <td>{branch.companyName}</td><td>{branch.city}<br /><span className="subtle">{branch.deliveryAddress}</span></td>
-        <td>{branch.monthlyBudget == null ? <span className="subtle">{common.notSet}</span> : formatCurrency(branch.monthlyBudget, locale)}</td>
-        <td>{formatCurrency(branch.committedAmount, locale)}</td>
-        <td><strong>{branch.remainingAmount == null ? common.noLimit : formatCurrency(branch.remainingAmount, locale)}</strong></td>
+        {showBudgetColumns ? branch.canViewBudget ? <>
+          <td>{branch.monthlyBudget == null ? <span className="subtle">{common.notSet}</span> : formatCurrency(branch.monthlyBudget, locale)}</td>
+          <td>{formatCurrency(branch.committedAmount ?? 0, locale)}</td>
+          <td><strong>{branch.remainingAmount == null ? common.noLimit : formatCurrency(branch.remainingAmount, locale)}</strong></td>
+        </> : <><td aria-label={common.notSet}>—</td><td aria-label={common.notSet}>—</td><td aria-label={common.notSet}>—</td></> : null}
         <td><StatusBadge status={branch.status}>{localizedStatus(branch.status, locale)}</StatusBadge></td>
-        {canManageBranches || canManageBudget ? <td>
-          {canManageBudget ? <form action={setBranchBudgetAction} className="stack-sm">
+        {showActions ? <td>
+          {canManageBudget && branch.canViewBudget ? <form action={setBranchBudgetAction} className="stack-sm">
             <input name="branchId" type="hidden" value={branch.id} />
             <input aria-label={copy.budgetFor(branch.name)} name="monthlyBudget" type="number" min="0" step="0.01"
               defaultValue={branch.monthlyBudget ?? undefined} placeholder={copy.budgetPlaceholder} />
