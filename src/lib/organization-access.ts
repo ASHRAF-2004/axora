@@ -35,8 +35,8 @@ const companySchema = z.object({
   billingAddress: z.string().max(5000),
   paymentTerms: z.string().max(300),
   billingCycle: z.string().max(300),
-  taxRate: z.coerce.number().finite(),
-  estimatedDeliveryFee: z.coerce.number().finite(),
+  taxRate: z.coerce.number().finite().min(0).max(100),
+  estimatedDeliveryFee: z.coerce.number().finite().nonnegative(),
   notes: z.string().max(5000).optional(),
   status: statusSchema,
 }).strict();
@@ -93,7 +93,40 @@ const scopeSchema = z.object({
   branchId: uuidSchema.optional(),
   departmentId: uuidSchema.optional(),
   supplierId: uuidSchema.optional(),
-}).strict();
+}).strict().superRefine((scope, context) => {
+  if (scope.supplierId !== undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["supplierId"],
+      message: "Organization resources cannot carry supplier scope",
+    });
+  }
+  if (scope.type === "COMPANY" && (
+    scope.branchId !== undefined || scope.departmentId !== undefined
+  )) {
+    context.addIssue({
+      code: "custom",
+      path: ["type"],
+      message: "Company scope contains narrower identifiers",
+    });
+  }
+  if (scope.type === "BRANCH" && (
+    scope.branchId === undefined || scope.departmentId !== undefined
+  )) {
+    context.addIssue({
+      code: "custom",
+      path: ["branchId"],
+      message: "Branch scope is malformed",
+    });
+  }
+  if (scope.type === "DEPARTMENT" && scope.departmentId === undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["departmentId"],
+      message: "Department scope is malformed",
+    });
+  }
+});
 
 const resourceAccessSchema = z.object({
   capturedAt: z.coerce.date(),
@@ -102,7 +135,28 @@ const resourceAccessSchema = z.object({
   resourceId: uuidSchema,
   active: z.boolean(),
   scope: scopeSchema,
-}).strict();
+}).strict().superRefine((access, context) => {
+  if (access.scope.type !== access.resourceType) {
+    context.addIssue({
+      code: "custom",
+      path: ["scope", "type"],
+      message: "Resource and scope types differ",
+    });
+    return;
+  }
+  const trustedScopeId = access.resourceType === "COMPANY"
+    ? access.scope.companyId
+    : access.resourceType === "BRANCH"
+      ? access.scope.branchId
+      : access.scope.departmentId;
+  if (trustedScopeId !== access.resourceId) {
+    context.addIssue({
+      code: "custom",
+      path: ["resourceId"],
+      message: "Resource and scope identifiers differ",
+    });
+  }
+});
 
 interface SnapshotRow extends QueryResultRow {
   snapshot: unknown;
@@ -282,9 +336,17 @@ function validateDirectory(
 ): OrganizationDirectory {
   const parsed = directorySchema.safeParse(raw);
   if (!parsed.success
-    || parsed.data.capturedAt.getTime() !== expectedCapturedAt.getTime()
-    || !uniqueIds(parsed.data.companies)
-    || !uniqueIds(parsed.data.branches)) {
+    || parsed.data.capturedAt.getTime() !== expectedCapturedAt.getTime()) {
+    throw new OrganizationAccessUnavailableError();
+  }
+  const companyNames = new Map(
+    parsed.data.companies.map((company) => [company.id, company.name]),
+  );
+  if (!uniqueIds(parsed.data.companies)
+    || !uniqueIds(parsed.data.branches)
+    || parsed.data.branches.some((branch) => (
+      companyNames.get(branch.companyId) !== branch.companyName
+    ))) {
     throw new OrganizationAccessUnavailableError();
   }
   return parsed.data as OrganizationDirectory;
