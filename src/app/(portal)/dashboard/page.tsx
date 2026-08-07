@@ -5,8 +5,12 @@ import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency, formatDate, timeOfDayGreeting } from "@/lib/domain";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { canAccess } from "@/lib/permissions";
-import { getDashboardData, listBranches, listRequests } from "@/lib/repository";
+import {
+  getAuthorizedDashboardData,
+  listAuthorizedRequests,
+} from "@/lib/request-reader";
 import {
   AlertTriangle,
   Banknote,
@@ -45,12 +49,19 @@ export default async function DashboardPage() {
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const copy = corePortalMessages(locale).dashboard;
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
-  const canViewInvoices = canAccess(actor, "view_invoices");
-  const [data, companyRequests, branches] = await Promise.all([
-    getDashboardData(actor),
-    platformView ? Promise.resolve([]) : listRequests(actor),
-    platformView ? Promise.resolve([]) : listBranches(actor),
+  const [data, companyRequests, organization] = await Promise.all([
+    getAuthorizedDashboardData(actor),
+    platformView ? Promise.resolve([]) : listAuthorizedRequests(actor),
+    platformView
+      ? Promise.resolve({ companies: [], branches: [] })
+      : loadOrganizationDirectory(actor),
   ]);
+  const branches = organization.branches;
+  const canViewInvoices = [...data.attention, ...companyRequests].some((request) => (
+    request.invoiceStatus !== undefined
+    || request.paymentStatus !== undefined
+    || request.invoiceNumber !== undefined
+  ));
   const greetingName = actor.name.trim() || "there";
   const requestedSpend = companyRequests
     .filter((request) => request.status !== "Cancelled")
@@ -59,7 +70,7 @@ export default async function DashboardPage() {
     .filter((request) => request.approvalStatus === "Approved" && request.status !== "Cancelled")
     .reduce((sum, request) => sum + request.estimatedTotal, 0);
   const pendingApprovalCount = companyRequests.filter((request) => request.approvalStatus === "Pending" && request.status !== "Cancelled").length;
-  const budgetedBranches = branches.filter((branch) => branch.monthlyBudget != null);
+  const budgetedBranches = branches.filter((branch) => branch.canViewBudget && branch.monthlyBudget != null);
   const monthlyBudget = budgetedBranches.reduce((sum, branch) => sum + (branch.monthlyBudget ?? 0), 0);
   const remainingBudget = budgetedBranches.reduce((sum, branch) => sum + (branch.remainingAmount ?? 0), 0);
   const byBranch = Object.entries(companyRequests.reduce<Record<string, number>>(
@@ -118,7 +129,7 @@ export default async function DashboardPage() {
                   <td>{formatDate(request.neededByDate, locale, timeZone)}</td>
                   {platformView ? null : <td><StatusBadge status={request.approvalStatus}>{localizedStatus(request.approvalStatus, locale)}</StatusBadge></td>}
                   <td><StatusBadge status={request.status}>{localizedStatus(request.status, locale)}</StatusBadge></td>
-                  {canViewInvoices ? <td><StatusBadge status={request.paymentStatus ?? "Unpaid"}>{localizedStatus(request.paymentStatus ?? "Unpaid", locale)}</StatusBadge></td> : null}
+                  {canViewInvoices ? <td>{request.paymentStatus ? <StatusBadge status={request.paymentStatus}>{localizedStatus(request.paymentStatus, locale)}</StatusBadge> : <span className="subtle">—</span>}</td> : null}
                 </tr>
               ))}</tbody>
             </table>
