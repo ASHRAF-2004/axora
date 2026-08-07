@@ -98,7 +98,7 @@ describe("P0-02 active isolation coverage", () => {
 
     expect(attachmentRoute).toContain("loadAuthorizedAttachmentFile(actor");
     expect(requestExport).toContain("listAuthorizedRequests(user)");
-    expect(catalog).toContain("getCatalogSearchResults");
+    expect(catalog).toContain("searchCatalogProducts");
     expect(catalog).toContain('"Cache-Control": "private, no-store"');
     expect(cart).toContain("getCatalogProductsByIds");
     expect(cart).toContain('"Cache-Control": "private, no-store"');
