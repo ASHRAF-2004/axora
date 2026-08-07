@@ -79,7 +79,18 @@ function validDirectory() {
   };
 }
 
-function validResourceAccess() {
+function validResourceAccess(): {
+  capturedAt: string;
+  permission: string;
+  resourceType: string;
+  resourceId: string;
+  active: boolean;
+  scope: {
+    type: string;
+    companyId: string;
+    branchId: string;
+  };
+} {
   return {
     capturedAt: capturedAt.toISOString(),
     permission: "organization.branch.view",
