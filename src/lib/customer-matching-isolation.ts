@@ -357,7 +357,7 @@ export async function evaluateAuthorizedCustomerMatch(
       current.companyId,
       input.idempotencyKey,
     ]);
-    const exceptionCodes = evaluation.exceptions.filter((code) =>
+    const exceptionCodes: string[] = evaluation.exceptions.filter((code) =>
       code !== "MISSING_QUOTATION" && code !== "MISSING_INVOICE");
     if (duplicate.rowCount) exceptionCodes.push("DUPLICATE_INVOICE");
     const uniqueExceptions = [...new Set(exceptionCodes)];
