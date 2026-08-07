@@ -43,7 +43,7 @@ function validInput() {
     commandId: ids.command,
     granteeUserId: ids.grantee,
     granteeRoleAssignmentId: ids.granteeAssignment,
-    permissions: ["request.view", "document.download"] as const,
+    permissions: ["request.view", "document.download"],
     scopes: [
       {
         type: "DEPARTMENT" as const,
