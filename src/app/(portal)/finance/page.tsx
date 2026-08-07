@@ -5,7 +5,8 @@ import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
 import { listInvoices, listPayments } from "@/lib/operations";
-import { listRequests, listSuppliers } from "@/lib/repository";
+import { listAuthorizedRequests } from "@/lib/request-reader";
+import { listSuppliers } from "@/lib/repository";
 import { getCustomerMatchWorkspace } from "@/lib/customer-matching";
 import { randomUUID } from "node:crypto";
 import { evaluateCustomerMatchAction, overrideCustomerMatchAction } from "../operations/actions";
@@ -19,7 +20,7 @@ export default async function FinancePage() {
   const canMatch = canAccess(actor, "review_three_way_matches");
   const platformFinance = actor.accountKind === "PLATFORM" && actor.scopeType === "PLATFORM";
   const [requests, suppliers, invoices, payments, matching] = await Promise.all([
-    listRequests(actor), listSuppliers(actor), listInvoices(), listPayments(),
+    listAuthorizedRequests(actor), listSuppliers(actor), listInvoices(), listPayments(),
     canMatch ? getCustomerMatchWorkspace(actor) : Promise.resolve(null),
   ]);
   const deliveredRequests = requests
