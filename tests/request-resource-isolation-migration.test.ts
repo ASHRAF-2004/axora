@@ -74,7 +74,14 @@ async function applyApplicationGrantScript(db: PGlite) {
 
 async function fixture() {
   const db = new PGlite();
-  await db.exec("CREATE ROLE axora_app NOLOGIN");
+  await db.exec(`
+    CREATE ROLE axora_app NOLOGIN;
+    CREATE TABLE schema_migrations(
+      filename text PRIMARY KEY,
+      sha256 text NOT NULL,
+      applied_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
   await applyMigrations(db, {
     through: "044_organization_resource_isolation.sql",
   });
@@ -133,22 +140,18 @@ async function fixture() {
       active,auth_version
     ) VALUES
       ($1,'platform-ops-045@example.test','Platform Operations 045',
-        'not-a-real-hash',$9,NULL,NULL,false,now(),'PLATFORM','ACTIVE',true,1),
+        'not-a-real-hash',$5,NULL,NULL,false,now(),'PLATFORM','ACTIVE',true,1),
       ($2,'company-admin-045@example.test','Company Admin 045',
-        'not-a-real-hash',$10,$13,NULL,false,now(),'COMPANY','ACTIVE',true,1),
+        'not-a-real-hash',$6,$9,NULL,false,now(),'COMPANY','ACTIVE',true,1),
       ($3,'department-admin-045@example.test','Department Admin 045',
-        'not-a-real-hash',$11,$13,$14,false,now(),'COMPANY','ACTIVE',true,1),
+        'not-a-real-hash',$7,$9,$10,false,now(),'COMPANY','ACTIVE',true,1),
       ($4,'requester-045@example.test','Requester 045',
-        'not-a-real-hash',$12,$13,$14,false,now(),'COMPANY','ACTIVE',true,1)
+        'not-a-real-hash',$8,$9,$10,false,now(),'COMPANY','ACTIVE',true,1)
   `, [
     ids.platformOperations,
     ids.companyAdmin,
     ids.departmentAdmin,
     ids.requester,
-    ids.platformAssignment,
-    ids.companyAssignment,
-    ids.departmentAssignment,
-    ids.requesterAssignment,
     roles.platformOperations,
     roles.companyAdmin,
     roles.departmentAdmin,
@@ -305,8 +308,8 @@ describe("request resource isolation migration", () => {
     const db = await fixture();
     try {
       const state = await db.query<{
-        administration?: string;
-        ambiguous?: string;
+        administration: string | null;
+        ambiguous: string | null;
       }>(`
         SELECT
           (SELECT department_id::text FROM requests WHERE id=$1)
@@ -316,7 +319,7 @@ describe("request resource isolation migration", () => {
       `, [ids.requestA1, ids.requestAmbiguous]);
       expect(state.rows[0]).toEqual({
         administration: ids.administration,
-        ambiguous: undefined,
+        ambiguous: null,
       });
 
       await expect(db.query(`
