@@ -38,6 +38,10 @@ async function expectSensitiveBoundary(db: PGlite) {
     visitor_state_select: boolean;
     visitor_claims_select: boolean;
     visitor_tokens_select: boolean;
+    permission_override_select: boolean;
+    approval_limit_select: boolean;
+    delegated_access_select: boolean;
+    permission_history_select: boolean;
     audit_insert: boolean;
   }>(`
     SELECT
@@ -73,6 +77,18 @@ async function expectSensitiveBoundary(db: PGlite) {
         'axora_app','public_visitor_claim_tokens','SELECT'
       ) AS visitor_tokens_select,
       has_table_privilege(
+        'axora_app','user_permission_overrides','SELECT'
+      ) AS permission_override_select,
+      has_table_privilege(
+        'axora_app','approval_limits','SELECT'
+      ) AS approval_limit_select,
+      has_table_privilege(
+        'axora_app','delegated_access','SELECT'
+      ) AS delegated_access_select,
+      has_table_privilege(
+        'axora_app','permission_change_history','SELECT'
+      ) AS permission_history_select,
+      has_table_privilege(
         'axora_app','audit_logs','INSERT'
       ) AS audit_insert
   `);
@@ -88,6 +104,10 @@ async function expectSensitiveBoundary(db: PGlite) {
     visitor_state_select: false,
     visitor_claims_select: false,
     visitor_tokens_select: false,
+    permission_override_select: false,
+    approval_limit_select: false,
+    delegated_access_select: false,
+    permission_history_select: false,
     audit_insert: false,
   });
 
@@ -99,6 +119,7 @@ async function expectSensitiveBoundary(db: PGlite) {
     provider_record: boolean;
     visitor_snapshot: boolean;
     visitor_claim: boolean;
+    access_administration_snapshot: boolean;
     raw_received: boolean;
     raw_recipient_scope: boolean;
     fingerprint: boolean;
@@ -139,6 +160,11 @@ async function expectSensitiveBoundary(db: PGlite) {
         'axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text)',
         'EXECUTE'
       ) AS visitor_claim,
+      has_function_privilege(
+        'axora_app',
+        'axora_access_administration_snapshot(uuid,uuid,uuid,uuid,timestamptz)',
+        'EXECUTE'
+      ) AS access_administration_snapshot,
       has_function_privilege(
         'axora_app',
         'axora_effective_received_quantity_internal(uuid)','EXECUTE'
@@ -183,6 +209,7 @@ async function expectSensitiveBoundary(db: PGlite) {
     provider_record: true,
     visitor_snapshot: true,
     visitor_claim: true,
+    access_administration_snapshot: true,
     raw_received: false,
     raw_recipient_scope: false,
     fingerprint: false,
@@ -229,6 +256,9 @@ describe("application database grant boundaries", () => {
       expect(source).toContain("public.audit_user_session_revocation()");
       expect(source).toContain(
         "public.axora_public_visitor_snapshot(text,text,text)",
+      );
+      expect(source).toContain(
+        "public.axora_access_administration_snapshot(",
       );
       await expectSensitiveBoundary(db);
     } finally {
