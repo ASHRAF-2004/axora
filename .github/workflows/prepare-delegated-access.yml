@@ -34,28 +34,38 @@ jobs:
         run: |
           python <<'PY'
           from pathlib import Path
+          from textwrap import dedent, indent
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
 
           migration_path = Path("database/migrations/041_delegated_access_management.sql")
           migration = migration_path.read_text()
-          migration = migration.replace(
+          migration = replace_once(
+              migration,
               "  grantee_role_key text;\n  grantee_is_owner boolean;",
               "  grantee_role_key text;\n  grantee_scope_type text;\n  grantee_is_owner boolean;",
-              1,
+              "grantee scope declaration",
           )
-          migration = migration.replace(
+          migration = replace_once(
+              migration,
               "  SELECT account.account_kind,account.is_owner,role.role_key\n"
               "  INTO grantee_account_kind,grantee_is_owner,grantee_role_key",
               "  SELECT account.account_kind,account.is_owner,role.role_key,\n"
               "    assignment.scope_type\n"
               "  INTO grantee_account_kind,grantee_is_owner,grantee_role_key,\n"
               "    grantee_scope_type",
-              1,
+              "grantee assignment query",
           )
 
           helper_anchor = (
               "CREATE OR REPLACE FUNCTION public.axora_delegation_authority_is_live("
           )
-          active_helper = """CREATE OR REPLACE FUNCTION public.axora_delegation_scope_is_active(
+          active_helper = dedent("""\
+          CREATE OR REPLACE FUNCTION public.axora_delegation_scope_is_active(
             p_scope_type text,
             p_company_id uuid,
             p_branch_id uuid,
@@ -106,38 +116,44 @@ jobs:
             END
           $$;
 
-          """
-          if helper_anchor not in migration:
-              raise SystemExit("delegation authority helper anchor was not found")
-          migration = migration.replace(
+          """)
+          migration = replace_once(
+              migration,
               helper_anchor,
               active_helper + helper_anchor,
-              1,
+              "active delegated scope helper",
           )
 
-          authority_anchor = """      AND NOT EXISTS (
-                SELECT 1
-                FROM public.delegated_access_scopes delegated_scope
-                WHERE delegated_scope.delegated_access_id=delegation.id
-                  AND NOT public.axora_role_assignment_has_direct_permission("""
-          authority_replacement = """      AND NOT EXISTS (
-                SELECT 1
-                FROM public.delegated_access_scopes delegated_scope
-                WHERE delegated_scope.delegated_access_id=delegation.id
-                  AND NOT public.axora_delegation_scope_is_active(
-                    delegated_scope.scope_type,delegated_scope.company_id,
-                    delegated_scope.branch_id,delegated_scope.department_id,
-                    delegated_scope.supplier_id
-                  )
-              )
-              AND NOT EXISTS (
-                SELECT 1
-                FROM public.delegated_access_scopes delegated_scope
-                WHERE delegated_scope.delegated_access_id=delegation.id
-                  AND NOT public.axora_role_assignment_has_direct_permission("""
-          if migration.count(authority_anchor) != 1:
-              raise SystemExit("live delegation authority anchor was not found once")
-          migration = migration.replace(authority_anchor, authority_replacement, 1)
+          authority_anchor = (
+              "      AND NOT EXISTS (\n"
+              "        SELECT 1\n"
+              "        FROM public.delegated_access_scopes delegated_scope\n"
+              "        WHERE delegated_scope.delegated_access_id=delegation.id\n"
+              "          AND NOT public.axora_role_assignment_has_direct_permission("
+          )
+          authority_replacement = (
+              "      AND NOT EXISTS (\n"
+              "        SELECT 1\n"
+              "        FROM public.delegated_access_scopes delegated_scope\n"
+              "        WHERE delegated_scope.delegated_access_id=delegation.id\n"
+              "          AND NOT public.axora_delegation_scope_is_active(\n"
+              "            delegated_scope.scope_type,delegated_scope.company_id,\n"
+              "            delegated_scope.branch_id,delegated_scope.department_id,\n"
+              "            delegated_scope.supplier_id\n"
+              "          )\n"
+              "      )\n"
+              "      AND NOT EXISTS (\n"
+              "        SELECT 1\n"
+              "        FROM public.delegated_access_scopes delegated_scope\n"
+              "        WHERE delegated_scope.delegated_access_id=delegation.id\n"
+              "          AND NOT public.axora_role_assignment_has_direct_permission("
+          )
+          migration = replace_once(
+              migration,
+              authority_anchor,
+              authority_replacement,
+              "live delegation authority",
+          )
 
           old_start = "    IF grantee_account_kind='COMPANY' THEN\n"
           old_end = (
@@ -151,148 +167,180 @@ jobs:
           end = migration.find(old_end, start)
           if start < 0 or end < 0:
               raise SystemExit("delegated grantee compatibility block was not found")
-          new_block = """    IF grantee_account_kind='COMPANY' THEN
-              IF NOT EXISTS (
-                SELECT 1 FROM public.company_memberships membership
-                WHERE membership.user_id=p_grantee_user_id
-                  AND membership.company_id=company_id
-                  AND membership.status='ACTIVE'
-              ) THEN
-                RAISE EXCEPTION 'A company grantee cannot receive another tenant scope';
-              END IF;
-
-              IF grantee_role_key IN (
-                'COMPANY_ADMIN','ADMIN','COMPANY_APPROVER',
-                'FINANCE_REVIEWER','FINANCE','AUDITOR','VIEWER','RECEIVING_USER'
-              ) OR (grantee_role_key='APPROVER' AND grantee_scope_type='COMPANY') THEN
-                IF scope_type NOT IN ('COMPANY','BRANCH','DEPARTMENT') THEN
-                  RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
-                END IF;
-              ELSIF grantee_role_key IN ('BRANCH_ADMIN','BRANCH_APPROVER')
-                OR (grantee_role_key='APPROVER'
-                  AND grantee_scope_type IN ('BRANCH','DEPARTMENT')) THEN
-                IF scope_type NOT IN ('BRANCH','DEPARTMENT') THEN
-                  RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
-                END IF;
-              ELSIF grantee_role_key='DEPARTMENT_ADMIN' THEN
-                IF scope_type<>'DEPARTMENT' THEN
-                  RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
-                END IF;
-              ELSIF grantee_role_key IN ('REQUESTER','OPERATIONS') THEN
-                IF scope_type NOT IN ('BRANCH','DEPARTMENT') THEN
-                  RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
-                END IF;
-              ELSE
-                RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
-              END IF;
-            ELSIF grantee_account_kind='PLATFORM'
-              AND grantee_role_key='CLIENT_ACCOUNT_MANAGER' THEN
-              IF scope_type<>'COMPANY' THEN
-                RAISE EXCEPTION 'A backup account manager can receive company scope only';
-              END IF;
-            ELSE
-              RAISE EXCEPTION 'This account type cannot receive company delegated access';
+          new_block = indent(dedent("""\
+          IF grantee_account_kind='COMPANY' THEN
+            IF NOT EXISTS (
+              SELECT 1 FROM public.company_memberships membership
+              WHERE membership.user_id=p_grantee_user_id
+                AND membership.company_id=company_id
+                AND membership.status='ACTIVE'
+            ) THEN
+              RAISE EXCEPTION 'A company grantee cannot receive another tenant scope';
             END IF;
 
-          """
+            IF grantee_role_key IN (
+              'COMPANY_ADMIN','ADMIN','COMPANY_APPROVER',
+              'FINANCE_REVIEWER','FINANCE','AUDITOR','VIEWER','RECEIVING_USER'
+            ) OR (grantee_role_key='APPROVER' AND grantee_scope_type='COMPANY') THEN
+              IF scope_type NOT IN ('COMPANY','BRANCH','DEPARTMENT') THEN
+                RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+              END IF;
+            ELSIF grantee_role_key IN ('BRANCH_ADMIN','BRANCH_APPROVER')
+              OR (grantee_role_key='APPROVER'
+                AND grantee_scope_type IN ('BRANCH','DEPARTMENT')) THEN
+              IF scope_type NOT IN ('BRANCH','DEPARTMENT') THEN
+                RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+              END IF;
+            ELSIF grantee_role_key='DEPARTMENT_ADMIN' THEN
+              IF scope_type<>'DEPARTMENT' THEN
+                RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+              END IF;
+            ELSIF grantee_role_key IN ('REQUESTER','OPERATIONS') THEN
+              IF scope_type NOT IN ('BRANCH','DEPARTMENT') THEN
+                RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+              END IF;
+            ELSE
+              RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+            END IF;
+          ELSIF grantee_account_kind='PLATFORM'
+            AND grantee_role_key='CLIENT_ACCOUNT_MANAGER' THEN
+            IF scope_type<>'COMPANY' THEN
+              RAISE EXCEPTION 'A backup account manager can receive company scope only';
+            END IF;
+          ELSE
+            RAISE EXCEPTION 'This account type cannot receive company delegated access';
+          END IF;
+
+          """), "    ")
           migration = migration[:start] + new_block + migration[end:]
 
-          revoke_anchor = """REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
-            uuid,timestamptz
-          ) FROM PUBLIC;"""
-          revoke_replacement = """REVOKE ALL ON FUNCTION public.axora_delegation_scope_is_active(
-            text,uuid,uuid,uuid,uuid
-          ) FROM PUBLIC;
-          REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
-            uuid,timestamptz
-          ) FROM PUBLIC;"""
-          if migration.count(revoke_anchor) != 1:
-              raise SystemExit("public helper revoke anchor was not found")
-          migration = migration.replace(revoke_anchor, revoke_replacement, 1)
-
-          app_revoke_anchor = """    REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
-              uuid,timestamptz
-            ) FROM axora_app;"""
-          app_revoke_replacement = """    REVOKE ALL ON FUNCTION public.axora_delegation_scope_is_active(
-              text,uuid,uuid,uuid,uuid
-            ) FROM axora_app;
-            REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(
-              uuid,timestamptz
-            ) FROM axora_app;"""
-          if migration.count(app_revoke_anchor) != 1:
-              raise SystemExit("application helper revoke anchor was not found")
-          migration_path.write_text(
-              migration.replace(app_revoke_anchor, app_revoke_replacement, 1)
+          public_revoke = (
+              "REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(\n"
+              "  uuid,timestamptz\n"
+              ") FROM PUBLIC;"
           )
+          public_revoke_new = (
+              "REVOKE ALL ON FUNCTION public.axora_delegation_scope_is_active(\n"
+              "  text,uuid,uuid,uuid,uuid\n"
+              ") FROM PUBLIC;\n"
+              + public_revoke
+          )
+          migration = replace_once(
+              migration,
+              public_revoke,
+              public_revoke_new,
+              "public delegated helper revoke",
+          )
+          app_revoke = (
+              "    REVOKE ALL ON FUNCTION public.axora_delegation_authority_is_live(\n"
+              "      uuid,timestamptz\n"
+              "    ) FROM axora_app;"
+          )
+          app_revoke_new = (
+              "    REVOKE ALL ON FUNCTION public.axora_delegation_scope_is_active(\n"
+              "      text,uuid,uuid,uuid,uuid\n"
+              "    ) FROM axora_app;\n"
+              + app_revoke
+          )
+          migration_path.write_text(replace_once(
+              migration,
+              app_revoke,
+              app_revoke_new,
+              "application delegated helper revoke",
+          ))
 
           grants_path = Path("database/admin/apply-app-grants.sql")
           grants = grants_path.read_text()
-          revoke_old = """  public.axora_remove_approval_limit(uuid,uuid,uuid,text)
-          FROM axora_app;"""
-          revoke_new = """  public.axora_remove_approval_limit(uuid,uuid,uuid,text),
-            public.axora_role_assignment_scope_contains(
-              uuid,uuid,text,uuid,uuid,uuid,uuid,timestamptz
-            ),
-            public.axora_role_assignment_has_direct_permission(
-              uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz
-            ),
-            public.axora_delegation_scope_is_active(text,uuid,uuid,uuid,uuid),
-            public.axora_delegation_authority_is_live(uuid,timestamptz),
-            public.axora_create_delegated_access(
-              uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
-            ),
-            public.axora_revoke_delegated_access(uuid,uuid,uuid,text)
-          FROM axora_app;"""
-          if grants.count(revoke_old) != 1:
-              raise SystemExit("grant script revoke anchor was not found exactly once")
-          grants = grants.replace(revoke_old, revoke_new, 1)
-          grant_old = """  public.axora_remove_approval_limit(uuid,uuid,uuid,text)
-          TO axora_app;"""
-          grant_new = """  public.axora_remove_approval_limit(uuid,uuid,uuid,text),
-            public.axora_create_delegated_access(
-              uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
-            ),
-            public.axora_revoke_delegated_access(uuid,uuid,uuid,text)
-          TO axora_app;"""
-          if grants.count(grant_old) != 1:
-              raise SystemExit("grant script grant anchor was not found exactly once")
-          grants_path.write_text(grants.replace(grant_old, grant_new, 1))
+          revoke_old = (
+              "  public.axora_remove_approval_limit(uuid,uuid,uuid,text)\n"
+              "FROM axora_app;"
+          )
+          revoke_new = (
+              "  public.axora_remove_approval_limit(uuid,uuid,uuid,text),\n"
+              "  public.axora_role_assignment_scope_contains(\n"
+              "    uuid,uuid,text,uuid,uuid,uuid,uuid,timestamptz\n"
+              "  ),\n"
+              "  public.axora_role_assignment_has_direct_permission(\n"
+              "    uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz\n"
+              "  ),\n"
+              "  public.axora_delegation_scope_is_active(text,uuid,uuid,uuid,uuid),\n"
+              "  public.axora_delegation_authority_is_live(uuid,timestamptz),\n"
+              "  public.axora_create_delegated_access(\n"
+              "    uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text\n"
+              "  ),\n"
+              "  public.axora_revoke_delegated_access(uuid,uuid,uuid,text)\n"
+              "FROM axora_app;"
+          )
+          grants = replace_once(
+              grants,
+              revoke_old,
+              revoke_new,
+              "deployment grant revocation",
+          )
+          grant_old = (
+              "  public.axora_remove_approval_limit(uuid,uuid,uuid,text)\n"
+              "TO axora_app;"
+          )
+          grant_new = (
+              "  public.axora_remove_approval_limit(uuid,uuid,uuid,text),\n"
+              "  public.axora_create_delegated_access(\n"
+              "    uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text\n"
+              "  ),\n"
+              "  public.axora_revoke_delegated_access(uuid,uuid,uuid,text)\n"
+              "TO axora_app;"
+          )
+          grants_path.write_text(replace_once(
+              grants,
+              grant_old,
+              grant_new,
+              "deployment command grant",
+          ))
 
           full_path = Path("tests/full-migration-chain.test.ts")
           full = full_path.read_text()
-          full = full.replace(
+          full = replace_once(
+              full,
               'it("applies every numbered migration through 040 to an empty database"',
               'it("applies every numbered migration through 041 to an empty database"',
-              1,
+              "full migration title",
           )
-          full = full.replace("available.slice(-5)", "available.slice(-6)", 1)
+          full = replace_once(
+              full,
+              "available.slice(-5)",
+              "available.slice(-6)",
+              "full migration latest slice",
+          )
           list_anchor = '        "040_approval_limit_management.sql",\n'
-          if full.count(list_anchor) != 1:
-              raise SystemExit("full migration latest-list anchor was not found")
-          full = full.replace(
+          full = replace_once(
+              full,
               list_anchor,
               list_anchor + '        "041_delegated_access_management.sql",\n',
-              1,
+              "full migration latest list",
           )
-          apply_anchor = """      await db.exec(await readFile(
-                migrationUrl("040_approval_limit_management.sql"),
-                "utf8",
-              ));
-
-              const after"""
-          apply_replacement = """      await db.exec(await readFile(
-                migrationUrl("040_approval_limit_management.sql"),
-                "utf8",
-              ));
-              await db.exec(await readFile(
-                migrationUrl("041_delegated_access_management.sql"),
-                "utf8",
-              ));
-
-              const after"""
-          if full.count(apply_anchor) != 1:
-              raise SystemExit("full migration upgrade anchor was not found")
-          full_path.write_text(full.replace(apply_anchor, apply_replacement, 1))
+          apply_anchor = (
+              "      await db.exec(await readFile(\n"
+              "        migrationUrl(\"040_approval_limit_management.sql\"),\n"
+              "        \"utf8\",\n"
+              "      ));\n\n"
+              "      const after"
+          )
+          apply_replacement = (
+              "      await db.exec(await readFile(\n"
+              "        migrationUrl(\"040_approval_limit_management.sql\"),\n"
+              "        \"utf8\",\n"
+              "      ));\n"
+              "      await db.exec(await readFile(\n"
+              "        migrationUrl(\"041_delegated_access_management.sql\"),\n"
+              "        \"utf8\",\n"
+              "      ));\n\n"
+              "      const after"
+          )
+          full_path.write_text(replace_once(
+              full,
+              apply_anchor,
+              apply_replacement,
+              "full migration populated upgrade",
+          ))
 
           for path in [
               "tests/support-diagnostics-migration.test.ts",
@@ -312,7 +360,8 @@ jobs:
               "  await db.query(`\n    INSERT INTO company_memberships(",
               users_start,
           )
-          corrected_users = '''  await db.query(`
+          corrected_users = indent(dedent("""\
+          await db.query(`
             INSERT INTO users(
               id,email,display_name,password_hash,role_id,company_id,branch_id,
               is_owner,account_setup_completed_at,account_kind,account_status,
@@ -347,7 +396,7 @@ jobs:
             context.accountManagerRoleId,
             context.ownerRoleId,
           ]);
-          '''
+          """), "  ")
           fixture = fixture[:users_start] + corrected_users + fixture[users_end:]
 
           roles_start = fixture.index("  await db.query(`\n    INSERT INTO role_assignments(")
@@ -355,7 +404,8 @@ jobs:
               "  await db.query(`\n    INSERT INTO user_sessions(",
               roles_start,
           )
-          corrected_roles = '''  await db.query(`
+          corrected_roles = indent(dedent("""\
+          await db.query(`
             INSERT INTO role_assignments(
               id,user_id,role_id,scope_type,company_id,branch_id,active
             ) VALUES
@@ -391,80 +441,80 @@ jobs:
             context.accountManagerRoleId,
             context.ownerRoleId,
           ]);
-          '''
+          """), "  ")
           fixture = fixture[:roles_start] + corrected_roles + fixture[roles_end:]
 
-          deny_anchor = """      await db.query(`
-                INSERT INTO user_permission_overrides("""
-          inactive_check = """      await db.query(
-                "UPDATE branches SET active=false WHERE id=$1",
-                [ids.branch],
-              );
-              const inactiveScope = await db.query<{
-                snapshot: { delegations: unknown[] };
-              }>(`
-                SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
-              `, [ids.requester, ids.requesterAssignment, snapshotAt]);
-              expect(inactiveScope.rows[0].snapshot.delegations).toEqual([]);
-              await db.query(
-                "UPDATE branches SET active=true WHERE id=$1",
-                [ids.branch],
-              );
-              const restoredScope = await db.query<{
-                snapshot: { delegations: unknown[] };
-              }>(`
-                SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
-              `, [ids.requester, ids.requesterAssignment, snapshotAt]);
-              expect(restoredScope.rows[0].snapshot.delegations).toHaveLength(1);
+          deny_anchor = (
+              "      await db.query(`\n"
+              "        INSERT INTO user_permission_overrides("
+          )
+          inactive_check = indent(dedent("""\
+          await db.query(
+            "UPDATE branches SET active=false WHERE id=$1",
+            [ids.branch],
+          );
+          const inactiveScope = await db.query<{
+            snapshot: { delegations: unknown[] };
+          }>(`
+            SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
+          `, [ids.requester, ids.requesterAssignment, snapshotAt]);
+          expect(inactiveScope.rows[0].snapshot.delegations).toEqual([]);
+          await db.query(
+            "UPDATE branches SET active=true WHERE id=$1",
+            [ids.branch],
+          );
+          const restoredScope = await db.query<{
+            snapshot: { delegations: unknown[] };
+          }>(`
+            SELECT axora_effective_access_snapshot($1,$2,$3) AS snapshot
+          `, [ids.requester, ids.requesterAssignment, snapshotAt]);
+          expect(restoredScope.rows[0].snapshot.delegations).toHaveLength(1);
 
-              await db.query(`
-                INSERT INTO user_permission_overrides("""
-          if fixture.count(deny_anchor) != 1:
-              raise SystemExit("delegation live-authority test anchor was not found")
-          fixture = fixture.replace(deny_anchor, inactive_check, 1)
-
-          privilege_type_anchor = """        authorityHelper: boolean;
-              }>(`"""
-          privilege_type_replacement = """        activeScopeHelper: boolean;
-                authorityHelper: boolean;
-              }>(`"""
-          if fixture.count(privilege_type_anchor) != 1:
-              raise SystemExit("delegation privilege type anchor was not found")
-          fixture = fixture.replace(
-              privilege_type_anchor,
-              privilege_type_replacement,
-              1,
+          await db.query(`
+            INSERT INTO user_permission_overrides("""), "      ")
+          fixture = replace_once(
+              fixture,
+              deny_anchor,
+              inactive_check,
+              "delegation inactive-scope test",
           )
-          privilege_query_anchor = """          has_function_privilege(
-                    'axora_app','axora_delegation_authority_is_live(uuid,timestamptz)',
-                    'EXECUTE'
-                  ) AS \"authorityHelper\""""
-          privilege_query_replacement = """          has_function_privilege(
-                    'axora_app',
-                    'axora_delegation_scope_is_active(text,uuid,uuid,uuid,uuid)',
-                    'EXECUTE'
-                  ) AS \"activeScopeHelper\",
-                  has_function_privilege(
-                    'axora_app','axora_delegation_authority_is_live(uuid,timestamptz)',
-                    'EXECUTE'
-                  ) AS \"authorityHelper\""""
-          if fixture.count(privilege_query_anchor) != 1:
-              raise SystemExit("delegation privilege query anchor was not found")
-          fixture = fixture.replace(
-              privilege_query_anchor,
-              privilege_query_replacement,
-              1,
+          fixture = replace_once(
+              fixture,
+              "        authorityHelper: boolean;\n      }>(`",
+              "        activeScopeHelper: boolean;\n"
+              "        authorityHelper: boolean;\n"
+              "      }>(`",
+              "delegation privilege result type",
           )
-          expected_anchor = """        authorityHelper: false,
-              });"""
-          expected_replacement = """        activeScopeHelper: false,
-                authorityHelper: false,
-              });"""
-          if fixture.count(expected_anchor) != 1:
-              raise SystemExit("delegation privilege expectation anchor was not found")
-          fixture_path.write_text(
-              fixture.replace(expected_anchor, expected_replacement, 1)
+          privilege_query = (
+              "          has_function_privilege(\n"
+              "            'axora_app','axora_delegation_authority_is_live(uuid,timestamptz)',\n"
+              "            'EXECUTE'\n"
+              "          ) AS \"authorityHelper\""
           )
+          privilege_query_new = (
+              "          has_function_privilege(\n"
+              "            'axora_app',\n"
+              "            'axora_delegation_scope_is_active(text,uuid,uuid,uuid,uuid)',\n"
+              "            'EXECUTE'\n"
+              "          ) AS \"activeScopeHelper\",\n"
+              + privilege_query
+          )
+          fixture = replace_once(
+              fixture,
+              privilege_query,
+              privilege_query_new,
+              "delegation privilege query",
+          )
+          fixture = replace_once(
+              fixture,
+              "        authorityHelper: false,\n      });",
+              "        activeScopeHelper: false,\n"
+              "        authorityHelper: false,\n"
+              "      });",
+              "delegation privilege expectation",
+          )
+          fixture_path.write_text(fixture)
           PY
 
       - name: Install locked dependencies
