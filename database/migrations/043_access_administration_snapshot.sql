@@ -21,13 +21,11 @@ DECLARE
   target_snapshot jsonb;
   selected_assignment_id uuid;
   selected_role_id uuid;
-  selected_role_key text;
   selected_scope_type text;
   selected_company_id uuid;
   selected_branch_id uuid;
   selected_department_id uuid;
   selected_supplier_id uuid;
-  can_view boolean;
   can_manage boolean;
   can_view_history boolean;
   snapshot jsonb;
@@ -44,10 +42,12 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- When no assignment is requested, choose the newest assignment the actor
+  -- may actually see. A newer assignment in another tenant must not turn a
+  -- valid in-scope user link into either a leak or a false not-found result.
   SELECT
     assignment.id,
     assignment.role_id,
-    role.role_key,
     assignment.scope_type,
     assignment.company_id,
     assignment.branch_id,
@@ -56,14 +56,12 @@ BEGIN
   INTO
     selected_assignment_id,
     selected_role_id,
-    selected_role_key,
     selected_scope_type,
     selected_company_id,
     selected_branch_id,
     selected_department_id,
     selected_supplier_id
   FROM public.role_assignments assignment
-  JOIN public.roles role ON role.id=assignment.role_id
   JOIN public.users account ON account.id=assignment.user_id
   WHERE assignment.user_id=p_target_user_id
     AND assignment.active AND assignment.revoked_at IS NULL
@@ -74,23 +72,24 @@ BEGIN
       p_target_role_assignment_id IS NULL
       OR assignment.id=p_target_role_assignment_id
     )
+    AND (
+      public.axora_snapshot_has_permission(
+        actor_snapshot,'user.view',
+        assignment.scope_type,assignment.company_id,
+        assignment.branch_id,assignment.department_id,
+        assignment.supplier_id
+      )
+      OR public.axora_snapshot_has_permission(
+        actor_snapshot,'user.permission.manage',
+        assignment.scope_type,assignment.company_id,
+        assignment.branch_id,assignment.department_id,
+        assignment.supplier_id
+      )
+    )
   ORDER BY assignment.assigned_at DESC,assignment.id
   LIMIT 1;
 
   IF selected_assignment_id IS NULL THEN
-    RETURN NULL;
-  END IF;
-
-  can_view:=public.axora_snapshot_has_permission(
-    actor_snapshot,'user.view',
-    selected_scope_type,selected_company_id,selected_branch_id,
-    selected_department_id,selected_supplier_id
-  ) OR public.axora_snapshot_has_permission(
-    actor_snapshot,'user.permission.manage',
-    selected_scope_type,selected_company_id,selected_branch_id,
-    selected_department_id,selected_supplier_id
-  );
-  IF NOT can_view THEN
     RETURN NULL;
   END IF;
 
@@ -121,9 +120,25 @@ BEGIN
     'selectedScope',jsonb_strip_nulls(jsonb_build_object(
       'type',selected_scope_type,
       'companyId',selected_company_id,
+      'companyName',(
+        SELECT company.name FROM public.companies company
+        WHERE company.id=selected_company_id
+      ),
       'branchId',selected_branch_id,
+      'branchName',(
+        SELECT branch.name FROM public.branches branch
+        WHERE branch.id=selected_branch_id
+      ),
       'departmentId',selected_department_id,
-      'supplierId',selected_supplier_id
+      'departmentName',(
+        SELECT department.name FROM public.departments department
+        WHERE department.id=selected_department_id
+      ),
+      'supplierId',selected_supplier_id,
+      'supplierName',(
+        SELECT supplier.name FROM public.suppliers supplier
+        WHERE supplier.id=selected_supplier_id
+      )
     )),
     'identity',(
       SELECT jsonb_strip_nulls(jsonb_build_object(
@@ -212,7 +227,12 @@ BEGIN
           ),
           'targetRoleIncludes',COALESCE(
             target_snapshot->'rolePermissions','[]'::jsonb
-          ) ? permission.permission_code
+          ) ? permission.permission_code,
+          'effective',public.axora_snapshot_has_permission(
+            target_snapshot,permission.permission_code,
+            selected_scope_type,selected_company_id,selected_branch_id,
+            selected_department_id,selected_supplier_id
+          )
         )
         ORDER BY permission.permission_group,permission.label,
           permission.permission_code
@@ -227,6 +247,11 @@ BEGIN
           )
           OR COALESCE(target_snapshot->'rolePermissions','[]'::jsonb)
             ? permission.permission_code
+          OR public.axora_snapshot_has_permission(
+            target_snapshot,permission.permission_code,
+            selected_scope_type,selected_company_id,selected_branch_id,
+            selected_department_id,selected_supplier_id
+          )
           OR EXISTS (
             SELECT 1
             FROM public.user_permission_overrides override_row
@@ -236,11 +261,11 @@ BEGIN
               AND override_row.starts_at<=p_at
               AND (override_row.ends_at IS NULL OR override_row.ends_at>p_at)
               AND public.axora_scope_contains_nullable(
-                selected_scope_type,selected_company_id,selected_branch_id,
-                selected_department_id,selected_supplier_id,
                 override_row.scope_type,override_row.company_id,
                 override_row.branch_id,override_row.department_id,
-                override_row.supplier_id
+                override_row.supplier_id,
+                selected_scope_type,selected_company_id,selected_branch_id,
+                selected_department_id,selected_supplier_id
               )
           )
         )
@@ -255,16 +280,27 @@ BEGIN
           'scope',jsonb_strip_nulls(jsonb_build_object(
             'type',override_row.scope_type,
             'companyId',override_row.company_id,
+            'companyName',company.name,
             'branchId',override_row.branch_id,
+            'branchName',branch.name,
             'departmentId',override_row.department_id,
-            'supplierId',override_row.supplier_id
+            'departmentName',department.name,
+            'supplierId',override_row.supplier_id,
+            'supplierName',supplier.name
           )),
           'startsAt',override_row.starts_at,
           'endsAt',override_row.ends_at,
           'reason',override_row.reason,
           'changedByName',COALESCE(
             changed_by_profile.display_name,changed_by.display_name
-          )
+          ),
+          'manageable',p_actor_user_id<>p_target_user_id
+            AND public.axora_snapshot_has_permission(
+              actor_snapshot,'user.permission.manage',
+              override_row.scope_type,override_row.company_id,
+              override_row.branch_id,override_row.department_id,
+              override_row.supplier_id
+            )
         ))
         ORDER BY permission.permission_group,permission.label,override_row.id
       )
@@ -274,16 +310,21 @@ BEGIN
       JOIN public.users changed_by ON changed_by.id=override_row.changed_by
       LEFT JOIN public.user_profiles changed_by_profile
         ON changed_by_profile.user_id=changed_by.id
+      LEFT JOIN public.companies company ON company.id=override_row.company_id
+      LEFT JOIN public.branches branch ON branch.id=override_row.branch_id
+      LEFT JOIN public.departments department
+        ON department.id=override_row.department_id
+      LEFT JOIN public.suppliers supplier ON supplier.id=override_row.supplier_id
       WHERE override_row.user_id=p_target_user_id
         AND override_row.active
         AND override_row.starts_at<=p_at
         AND (override_row.ends_at IS NULL OR override_row.ends_at>p_at)
         AND public.axora_scope_contains_nullable(
-          selected_scope_type,selected_company_id,selected_branch_id,
-          selected_department_id,selected_supplier_id,
           override_row.scope_type,override_row.company_id,
           override_row.branch_id,override_row.department_id,
-          override_row.supplier_id
+          override_row.supplier_id,
+          selected_scope_type,selected_company_id,selected_branch_id,
+          selected_department_id,selected_supplier_id
         )
     ),'[]'::jsonb),
     'approvalLimits',COALESCE((
@@ -300,8 +341,11 @@ BEGIN
           'scope',jsonb_strip_nulls(jsonb_build_object(
             'type',limit_row.scope_type,
             'companyId',limit_row.company_id,
+            'companyName',company.name,
             'branchId',limit_row.branch_id,
-            'departmentId',limit_row.department_id
+            'branchName',branch.name,
+            'departmentId',limit_row.department_id,
+            'departmentName',department.name
           )),
           'startsAt',limit_row.starts_at,
           'endsAt',limit_row.ends_at,
@@ -312,6 +356,10 @@ BEGIN
       FROM public.approval_limits limit_row
       JOIN public.permissions permission
         ON permission.id=limit_row.permission_id
+      LEFT JOIN public.companies company ON company.id=limit_row.company_id
+      LEFT JOIN public.branches branch ON branch.id=limit_row.branch_id
+      LEFT JOIN public.departments department
+        ON department.id=limit_row.department_id
       WHERE limit_row.active
         AND limit_row.starts_at<=p_at
         AND (limit_row.ends_at IS NULL OR limit_row.ends_at>p_at)
@@ -320,10 +368,10 @@ BEGIN
           OR limit_row.role_id=selected_role_id
         )
         AND public.axora_scope_contains_nullable(
-          selected_scope_type,selected_company_id,selected_branch_id,
-          selected_department_id,selected_supplier_id,
           limit_row.scope_type,limit_row.company_id,
-          limit_row.branch_id,limit_row.department_id,NULL
+          limit_row.branch_id,limit_row.department_id,NULL,
+          selected_scope_type,selected_company_id,selected_branch_id,
+          selected_department_id,selected_supplier_id
         )
     ),'[]'::jsonb),
     'delegations',COALESCE((
@@ -351,15 +399,27 @@ BEGIN
               jsonb_strip_nulls(jsonb_build_object(
                 'type',delegated_scope.scope_type,
                 'companyId',delegated_scope.company_id,
+                'companyName',company.name,
                 'branchId',delegated_scope.branch_id,
+                'branchName',branch.name,
                 'departmentId',delegated_scope.department_id,
-                'supplierId',delegated_scope.supplier_id
+                'departmentName',department.name,
+                'supplierId',delegated_scope.supplier_id,
+                'supplierName',supplier.name
               ))
               ORDER BY delegated_scope.scope_type,
                 delegated_scope.company_id,delegated_scope.branch_id,
                 delegated_scope.department_id,delegated_scope.supplier_id
             )
             FROM public.delegated_access_scopes delegated_scope
+            LEFT JOIN public.companies company
+              ON company.id=delegated_scope.company_id
+            LEFT JOIN public.branches branch
+              ON branch.id=delegated_scope.branch_id
+            LEFT JOIN public.departments department
+              ON department.id=delegated_scope.department_id
+            LEFT JOIN public.suppliers supplier
+              ON supplier.id=delegated_scope.supplier_id
             WHERE delegated_scope.delegated_access_id=delegation.id
           ),'[]'::jsonb)
         )
@@ -399,38 +459,91 @@ BEGIN
           ON actor_profile.user_id=history_actor.id
         WHERE history.target_user_id=p_target_user_id
           AND (
-            selected_scope_type='PLATFORM'
-            OR (
+            -- Direct permission, approval-limit, and role events carry a
+            -- normalized top-level scope. Include broader or narrower scopes
+            -- only when they intersect the selected assignment.
+            (
               COALESCE(
-                history.new_value->>'companyId',
-                history.previous_value->>'companyId'
-              )=selected_company_id::text
+                history.new_value->>'scopeType',
+                history.previous_value->>'scopeType'
+              ) IS NOT NULL
               AND (
-                selected_scope_type='COMPANY'
-                OR (
-                  selected_scope_type='BRANCH'
-                  AND COALESCE(
+                public.axora_scope_contains_nullable(
+                  COALESCE(
+                    history.new_value->>'scopeType',
+                    history.previous_value->>'scopeType'
+                  ),
+                  NULLIF(COALESCE(
+                    history.new_value->>'companyId',
+                    history.previous_value->>'companyId'
+                  ),'')::uuid,
+                  NULLIF(COALESCE(
                     history.new_value->>'branchId',
                     history.previous_value->>'branchId'
-                  )=selected_branch_id::text
-                )
-                OR (
-                  selected_scope_type='DEPARTMENT'
-                  AND COALESCE(
+                  ),'')::uuid,
+                  NULLIF(COALESCE(
                     history.new_value->>'departmentId',
                     history.previous_value->>'departmentId'
-                  )=selected_department_id::text
+                  ),'')::uuid,
+                  NULLIF(COALESCE(
+                    history.new_value->>'supplierId',
+                    history.previous_value->>'supplierId'
+                  ),'')::uuid,
+                  selected_scope_type,selected_company_id,selected_branch_id,
+                  selected_department_id,selected_supplier_id
+                )
+                OR public.axora_scope_contains_nullable(
+                  selected_scope_type,selected_company_id,selected_branch_id,
+                  selected_department_id,selected_supplier_id,
+                  COALESCE(
+                    history.new_value->>'scopeType',
+                    history.previous_value->>'scopeType'
+                  ),
+                  NULLIF(COALESCE(
+                    history.new_value->>'companyId',
+                    history.previous_value->>'companyId'
+                  ),'')::uuid,
+                  NULLIF(COALESCE(
+                    history.new_value->>'branchId',
+                    history.previous_value->>'branchId'
+                  ),'')::uuid,
+                  NULLIF(COALESCE(
+                    history.new_value->>'departmentId',
+                    history.previous_value->>'departmentId'
+                  ),'')::uuid,
+                  NULLIF(COALESCE(
+                    history.new_value->>'supplierId',
+                    history.previous_value->>'supplierId'
+                  ),'')::uuid
                 )
               )
             )
-            OR (
-              selected_scope_type='SUPPLIER'
-              AND COALESCE(
-                history.new_value->>'supplierId',
-                history.previous_value->>'supplierId'
-              )=selected_supplier_id::text
+            OR EXISTS (
+              SELECT 1
+              FROM jsonb_array_elements(COALESCE(
+                history.new_value->'scopes',
+                history.previous_value->'scopes',
+                '[]'::jsonb
+              )) history_scope(value)
+              WHERE public.axora_scope_contains_nullable(
+                history_scope.value->>'type',
+                NULLIF(history_scope.value->>'companyId','')::uuid,
+                NULLIF(history_scope.value->>'branchId','')::uuid,
+                NULLIF(history_scope.value->>'departmentId','')::uuid,
+                NULLIF(history_scope.value->>'supplierId','')::uuid,
+                selected_scope_type,selected_company_id,selected_branch_id,
+                selected_department_id,selected_supplier_id
+              )
+              OR public.axora_scope_contains_nullable(
+                selected_scope_type,selected_company_id,selected_branch_id,
+                selected_department_id,selected_supplier_id,
+                history_scope.value->>'type',
+                NULLIF(history_scope.value->>'companyId','')::uuid,
+                NULLIF(history_scope.value->>'branchId','')::uuid,
+                NULLIF(history_scope.value->>'departmentId','')::uuid,
+                NULLIF(history_scope.value->>'supplierId','')::uuid
+              )
             )
-            OR selected_scope_type='DELIVERY'
           )
         ORDER BY history.occurred_at DESC,history.id DESC
         LIMIT 50
