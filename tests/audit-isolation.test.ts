@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   canAccess: vi.fn(() => true),
   listAuthorizedRequests: vi.fn(),
   listAuthorizedAttachments: vi.fn(),
-  getDemoOperations: vi.fn(() => ({ audit: [] })),
+  getDemoOperations: vi.fn(() => ({ audit: [] as unknown[] })),
 }));
 
 vi.mock("@/lib/db", () => ({
