@@ -26,6 +26,61 @@ migration = replace_once(
     "  INTO assignment_row,target_row,role_row",
     "revocation composite select",
 )
+migration = replace_once(
+    migration,
+    "  INSERT INTO public.permission_change_history(\n"
+    "    actor_user_id,target_user_id,target_role_id,change_type,\n"
+    "    previous_value,new_value,reason,correlation_id\n"
+    "  ) VALUES (\n"
+    "    p_actor_user_id,p_target_user_id,role_row.id,'ROLE_ASSIGNED',",
+    "  INSERT INTO public.permission_change_history(\n"
+    "    actor_user_id,target_user_id,change_type,\n"
+    "    previous_value,new_value,reason,correlation_id\n"
+    "  ) VALUES (\n"
+    "    p_actor_user_id,p_target_user_id,'ROLE_ASSIGNED',",
+    "assigned role history subject",
+)
+migration = replace_once(
+    migration,
+    "  INSERT INTO public.permission_change_history(\n"
+    "    actor_user_id,target_user_id,target_role_id,change_type,\n"
+    "    previous_value,new_value,reason,correlation_id\n"
+    "  ) VALUES (\n"
+    "    p_actor_user_id,assignment_row.user_id,assignment_row.role_id,\n"
+    "    'ROLE_REVOKED',",
+    "  INSERT INTO public.permission_change_history(\n"
+    "    actor_user_id,target_user_id,change_type,\n"
+    "    previous_value,new_value,reason,correlation_id\n"
+    "  ) VALUES (\n"
+    "    p_actor_user_id,assignment_row.user_id,'ROLE_REVOKED',",
+    "revoked role history subject",
+)
+no_op_anchor = """  IF existing_assignment.id IS NULL THEN
+    INSERT INTO public.role_assignments("""
+no_op_replacement = """  IF existing_assignment.id IS NOT NULL
+    AND target_row.role_id=role_row.id
+    AND target_row.is_owner=prospective_owner
+    AND target_row.company_id IS NOT DISTINCT FROM CASE
+      WHEN target_row.account_kind='COMPANY' THEN p_company_id
+      ELSE NULL
+    END
+    AND target_row.branch_id IS NOT DISTINCT FROM CASE
+      WHEN target_row.account_kind='COMPANY'
+        AND p_scope_type IN ('BRANCH','DEPARTMENT') THEN p_branch_id
+      ELSE NULL
+    END THEN
+    RETURN QUERY SELECT existing_assignment.id,target_row.auth_version,0,false;
+    RETURN;
+  END IF;
+
+  IF existing_assignment.id IS NULL THEN
+    INSERT INTO public.role_assignments("""
+migration = replace_once(
+    migration,
+    no_op_anchor,
+    no_op_replacement,
+    "existing preferred assignment no-op",
+)
 migration_path.write_text(migration)
 
 full_path = Path("tests/full-migration-chain.test.ts")
