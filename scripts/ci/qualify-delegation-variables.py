@@ -98,3 +98,38 @@ command = command.replace(
 )
 
 path.write_text(source[:start] + command + source[end:])
+
+test_path = Path("tests/delegated-access-management-migration.test.ts")
+test_source = test_path.read_text()
+old_assertion = """      expect(snapshot.rows[0].snapshot.delegations).toEqual([{
+        active: true,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        permissions: [\"document.download\", \"request.view\"],
+        scopes: [{
+          type: \"BRANCH\",
+          companyId: ids.company,
+          branchId: ids.branch,
+        }],
+      }]);"""
+new_assertion = """      expect(snapshot.rows[0].snapshot.delegations).toHaveLength(1);
+      const effectiveDelegation = snapshot.rows[0].snapshot.delegations[0];
+      expect(effectiveDelegation).toMatchObject({
+        active: true,
+        permissions: [\"document.download\", \"request.view\"],
+        scopes: [{
+          type: \"BRANCH\",
+          companyId: ids.company,
+          branchId: ids.branch,
+        }],
+      });
+      expect(new Date(effectiveDelegation.startsAt).getTime())
+        .toBe(startsAt.getTime());
+      expect(new Date(effectiveDelegation.endsAt).getTime())
+        .toBe(endsAt.getTime());"""
+test_path.write_text(replace_once(
+    test_source,
+    old_assertion,
+    new_assertion,
+    "delegated timestamp assertion",
+))
