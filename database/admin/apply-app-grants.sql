@@ -107,7 +107,19 @@ REVOKE ALL ON FUNCTION
     uuid,uuid,uuid,uuid,uuid,text,text,uuid,uuid,uuid,text,numeric,
     boolean,timestamptz,timestamptz,text
   ),
-  public.axora_remove_approval_limit(uuid,uuid,uuid,text)
+  public.axora_remove_approval_limit(uuid,uuid,uuid,text),
+  public.axora_role_assignment_scope_contains(
+    uuid,uuid,text,uuid,uuid,uuid,uuid,timestamptz
+  ),
+  public.axora_role_assignment_has_direct_permission(
+    uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz
+  ),
+  public.axora_delegation_scope_is_active(text,uuid,uuid,uuid,uuid),
+  public.axora_delegation_authority_is_live(uuid,timestamptz),
+  public.axora_create_delegated_access(
+    uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
+  ),
+  public.axora_revoke_delegated_access(uuid,uuid,uuid,text)
 FROM axora_app;
 
 GRANT EXECUTE ON FUNCTION
@@ -136,5 +148,9 @@ GRANT EXECUTE ON FUNCTION
     uuid,uuid,uuid,uuid,uuid,text,text,uuid,uuid,uuid,text,numeric,
     boolean,timestamptz,timestamptz,text
   ),
-  public.axora_remove_approval_limit(uuid,uuid,uuid,text)
+  public.axora_remove_approval_limit(uuid,uuid,uuid,text),
+  public.axora_create_delegated_access(
+    uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
+  ),
+  public.axora_revoke_delegated_access(uuid,uuid,uuid,text)
 TO axora_app;
