@@ -14,6 +14,7 @@ import {
 import { requirePermission, requireRecentStepUp } from "@/lib/auth";
 import { ROLE_SCOPE_TYPES } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
+import { parseZonedDateTime } from "@/lib/zoned-date-time";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -113,6 +114,7 @@ export async function setPermissionOverrideAction(
 
   let parsed: z.output<typeof changeSchema>;
   try {
+    const expiryInput = readFormText(formData, "endsAt");
     parsed = changeSchema.parse({
       targetUserId,
       targetRoleAssignmentId,
@@ -124,7 +126,12 @@ export async function setPermissionOverrideAction(
       permission: readFormText(formData, "permission"),
       effect: readFormText(formData, "effect"),
       startsAt: readFormText(formData, "startsAt"),
-      endsAt: readFormText(formData, "endsAt") || undefined,
+      endsAt: expiryInput
+        ? parseZonedDateTime(
+            expiryInput,
+            actor.timezone ?? "Asia/Kuala_Lumpur",
+          )
+        : undefined,
       reason: readFormText(formData, "reason"),
     });
   } catch {
