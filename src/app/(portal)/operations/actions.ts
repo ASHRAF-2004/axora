@@ -14,11 +14,14 @@ import {
   createAuthorizedAttachment,
   documentRecordIdSchema,
 } from "@/lib/document-isolation";
+import {
+  evaluateAuthorizedCustomerMatch,
+  overrideAuthorizedCustomerMatch,
+} from "@/lib/customer-matching-isolation";
 import { COD_PAYMENT_METHOD } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { evaluateCustomerMatch, overrideCustomerMatch } from "@/lib/customer-matching";
 import { redirect } from "next/navigation";
 import { actionFeedback, publicApprovalErrorCode, type ActionFeedbackCode } from "@/lib/action-feedback-i18n";
 import { requestLocaleDecision } from "@/lib/locale-server";
@@ -75,11 +78,7 @@ const approvalSchema = z.object({
   reason: z.string().trim().max(1000).optional().transform((value) => value || undefined),
 }).superRefine((value, context) => {
   if (value.status === "Rejected" && !value.reason) {
-    context.addIssue({
-      code: "custom",
-      path: ["reason"],
-      message: "approval.reason_required",
-    });
+    context.addIssue({ code: "custom", path: ["reason"], message: "approval.reason_required" });
   }
 });
 
@@ -96,37 +95,27 @@ export async function recordApprovalAction(
 ): Promise<ApprovalActionState> {
   const submissionId = Date.now();
   let locale = (await requestLocaleDecision()).locale;
-
   try {
     const user = await requirePermission("approve_requests");
     await requireRecentStepUp(user, "/approvals");
     locale = user.preferredLocale ?? locale;
     const input = approvalSchema.parse(Object.fromEntries(formData));
-
-    await recordScopedApproval(
-      { ...input, approvalType: "Company approval" },
-      user,
-    );
-
+    await recordScopedApproval({ ...input, approvalType: "Company approval" }, user);
     revalidatePath("/approvals");
     revalidatePath("/requests");
     revalidatePath("/dashboard");
     revalidatePath("/audit");
-
     return {
       status: "success",
-      message:
-        input.status === "Approved"
-          ? actionFeedback("approval.approved", locale)
-          : actionFeedback("approval.rejected", locale),
+      message: input.status === "Approved"
+        ? actionFeedback("approval.approved", locale)
+        : actionFeedback("approval.rejected", locale),
       submissionId,
     };
   } catch (error) {
     console.error("Approval decision failed", error);
-
     if (error instanceof z.ZodError) {
       const issue = error.issues[0];
-
       return {
         status: "error",
         message: actionFeedback(
@@ -139,13 +128,12 @@ export async function recordApprovalAction(
         submissionId,
       };
     }
-
-    const publicCode = error instanceof Error ? publicApprovalErrorCode(error.message) : undefined;
-    const message = actionFeedback(publicCode ?? "approval.decision_failed", locale);
-
+    const publicCode = error instanceof Error
+      ? publicApprovalErrorCode(error.message)
+      : undefined;
     return {
       status: "error",
-      message,
+      message: actionFeedback(publicCode ?? "approval.decision_failed", locale),
       field: publicCode === "approval.reason_required" ? "reason" : "form",
       submissionId,
     };
@@ -189,7 +177,7 @@ export async function evaluateCustomerMatchAction(formData: FormData) {
   const user = await requirePermission("review_three_way_matches");
   await requireRecentStepUp(user, "/finance");
   try {
-    await evaluateCustomerMatch(user, {
+    await evaluateAuthorizedCustomerMatch(user, {
       requestLineId: readFormText(formData, "requestLineId"),
       customerInvoiceId: readFormText(formData, "customerInvoiceId"),
       invoicedQuantity: Number(readFormText(formData, "invoicedQuantity")),
@@ -207,7 +195,7 @@ export async function overrideCustomerMatchAction(formData: FormData) {
   const user = await requirePermission("review_three_way_matches");
   await requireRecentStepUp(user, "/finance");
   try {
-    await overrideCustomerMatch(
+    await overrideAuthorizedCustomerMatch(
       user,
       readFormText(formData, "matchId"),
       readFormText(formData, "reason"),
