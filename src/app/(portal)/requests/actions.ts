@@ -1,6 +1,9 @@
 "use server";
 
-import { createRequest, updateRequestStatus } from "@/lib/repository";
+import {
+  createAuthorizedRequest,
+  updateAuthorizedRequestStatus,
+} from "@/lib/request-writer";
 import { requirePermission } from "@/lib/auth";
 import { REQUEST_STATUSES } from "@/lib/domain";
 import { readFormText, requestSchema } from "@/lib/validation";
@@ -13,13 +16,24 @@ export async function createRequestAction(formData: FormData) {
   const productIds = formData.getAll("productId").map(String);
   const quantities = formData.getAll("quantity");
   const specifications = formData.getAll("specification").map(String);
-  const lines = productIds.map((productId, index) => ({ productId, quantity: quantities[index], specification: specifications[index] || undefined })).filter((line) => line.productId);
+  const lines = productIds
+    .map((productId, index) => ({
+      productId,
+      quantity: quantities[index],
+      specification: specifications[index] || undefined,
+    }))
+    .filter((line) => line.productId);
   const input = requestSchema.parse({
-    companyId: readFormText(formData, "companyId"), branchId: readFormText(formData, "branchId"), requestType: readFormText(formData, "requestType"),
-    department: readFormText(formData, "department"), neededByDate: readFormText(formData, "neededByDate"),
-    urgency: readFormText(formData, "urgency"), notes: readFormText(formData, "notes"), lines,
+    companyId: readFormText(formData, "companyId"),
+    branchId: readFormText(formData, "branchId"),
+    requestType: readFormText(formData, "requestType"),
+    department: readFormText(formData, "department"),
+    neededByDate: readFormText(formData, "neededByDate"),
+    urgency: readFormText(formData, "urgency"),
+    notes: readFormText(formData, "notes"),
+    lines,
   });
-  const id = await createRequest(input, user);
+  const id = await createAuthorizedRequest(input, user);
   revalidatePath("/dashboard");
   revalidatePath("/requests");
   redirect(`/requests/${id}?notice=request-submitted`);
@@ -28,7 +42,16 @@ export async function createRequestAction(formData: FormData) {
 export async function updateStatusAction(id: string, formData: FormData) {
   const user = await requirePermission("manage_sourcing");
   const status = String(formData.get("status")) as RequestStatus;
-  if (!REQUEST_STATUSES.includes(status)) redirect(`/requests/${id}?notice=request-status-invalid`);
-  await updateRequestStatus(id, status, readFormText(formData, "reason"), user);
-  revalidatePath(`/requests/${id}`); revalidatePath("/requests"); revalidatePath("/dashboard");
+  if (!REQUEST_STATUSES.includes(status)) {
+    redirect(`/requests/${id}?notice=request-status-invalid`);
+  }
+  await updateAuthorizedRequestStatus(
+    id,
+    status,
+    readFormText(formData, "reason"),
+    user,
+  );
+  revalidatePath(`/requests/${id}`);
+  revalidatePath("/requests");
+  revalidatePath("/dashboard");
 }
