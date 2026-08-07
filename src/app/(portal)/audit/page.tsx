@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
+import { listAuthorizedAuditRecords } from "@/lib/audit-isolation";
 import { formatDateTime } from "@/lib/domain";
-import { listAuditRecords } from "@/lib/operations";
 import { operationalMessage, type OperationalMessageKey } from "@/lib/operational-i18n";
 import { normalizeAuditRecordFilters } from "@/lib/audit-filters";
 import Link from "next/link";
@@ -22,7 +22,7 @@ export default async function AuditPage({
   const m = (key: OperationalMessageKey) => operationalMessage(locale, key);
   const filterMessages = filterCopy[locale];
   const filters = normalizeAuditRecordFilters(await searchParams);
-  const records = await listAuditRecords(filters);
+  const records = await listAuthorizedAuditRecords(actor, filters);
   return <><PageHeader eyebrow={m("audit.eyebrow")} title={m("audit.title")} description={m("audit.description")} />
     <section className="panel audit-filter-panel">
       <div className="panel-header"><div><h2>{filterMessages.title}</h2><p>{filterMessages.intro}</p></div></div>

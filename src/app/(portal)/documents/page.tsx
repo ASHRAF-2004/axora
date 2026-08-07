@@ -4,7 +4,7 @@ import { loadAuthorizedDocumentRegisters } from "@/lib/document-isolation";
 import { formatDateTime } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
 import { FileCheck2, Upload } from "lucide-react";
-import { uploadAttachmentAction } from "../operations/actions";
+import { uploadAttachmentAction } from "./actions";
 import { operationalMessage, type OperationalMessageKey } from "@/lib/operational-i18n";
 
 export default async function DocumentsPage() {

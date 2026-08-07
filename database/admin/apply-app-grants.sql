@@ -221,5 +221,20 @@ BEGIN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_lock_request_resource_access(uuid,uuid,text,uuid,timestamptz) TO axora_app';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_lock_request_creation_scope(uuid,uuid,uuid,uuid,uuid,timestamptz) TO axora_app';
   END IF;
+
+  IF to_regprocedure(
+    'public.axora_attachment_access_rows(uuid,uuid,timestamptz)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.attachments FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_resolve_attachment_parent(text,uuid) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_validate_attachment_parent() FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_attachment_permission_is_effective(jsonb,uuid,text,text,text,uuid,uuid,uuid,uuid,text) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_attachment_access_rows(uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_attachment_download(uuid,uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_create_attachment(uuid,uuid,text,uuid,text,text,bytea,text,timestamptz) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_attachment_access_rows(uuid,uuid,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_attachment_download(uuid,uuid,uuid,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_create_attachment(uuid,uuid,text,uuid,text,text,bytea,text,timestamptz) TO axora_app';
+  END IF;
 END
 $$;
