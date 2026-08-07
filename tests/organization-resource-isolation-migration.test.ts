@@ -245,8 +245,8 @@ describe("organization resource isolation migration", () => {
         ids.companyA,
       ]);
       expect(rows(owner?.branches).map((row) => row.id)).toEqual([
-        ids.branchA1,
         ids.branchB1,
+        ids.branchA1,
         ids.branchA2,
       ]);
       expect(rows(owner?.branches).every((row) => row.canViewBudget === true))
