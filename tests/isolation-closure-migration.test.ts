@@ -6,7 +6,6 @@ const ids = {
   companyA: "10000000-0000-4000-8000-000000000001",
   companyB: "10000000-0000-4000-8000-000000000002",
   branchA: "20000000-0000-4000-8000-000000000001",
-  branchB: "20000000-0000-4000-8000-000000000002",
   requestA: "50000000-0000-4000-8000-000000000001",
   requestB: "50000000-0000-4000-8000-000000000006",
   departmentA: "a0470000-0000-4000-8000-000000000001",
@@ -147,8 +146,8 @@ async function fixture(createAppRole = false) {
   await db.query(`
     INSERT INTO branch_assignments(
       user_id,company_id,branch_id,status,is_primary,created_by
-    ) VALUES ($1,$3,$4,'ACTIVE',true,$5)
-  `, [ids.branchAdminA, ids.requesterA, ids.companyA, ids.branchA, ids.owner]);
+    ) VALUES ($1,$2,$3,'ACTIVE',true,$4)
+  `, [ids.branchAdminA, ids.companyA, ids.branchA, ids.owner]);
   await db.query(`
     INSERT INTO department_assignments(
       user_id,company_id,department_id,status,is_primary,assigned_by
@@ -195,6 +194,27 @@ async function fixture(createAppRole = false) {
     ids.companyA,
     ids.branchA,
     ids.departmentA,
+    ids.companyB,
+  ]);
+
+  await db.query(`
+    INSERT INTO user_permission_overrides(
+      user_id,permission_id,effect,scope_type,company_id,starts_at,
+      active,reason,changed_by
+    )
+    SELECT $1,permission.id,'GRANT','COMPANY',$2,now(),true,$3,$4
+    FROM permissions permission
+    WHERE permission.permission_code='finance.manage'
+    UNION ALL
+    SELECT $5,permission.id,'GRANT','COMPANY',$6,now(),true,$3,$4
+    FROM permissions permission
+    WHERE permission.permission_code='finance.manage'
+  `, [
+    ids.companyAdminA,
+    ids.companyA,
+    "Finance isolation fixture",
+    ids.owner,
+    ids.companyAdminB,
     ids.companyB,
   ]);
 
