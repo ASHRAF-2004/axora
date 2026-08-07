@@ -4,7 +4,6 @@ import { calculateTotals } from "./domain";
 import { getDemoStore } from "./demo-data";
 import { isDemoMode, withAuditTransaction } from "./db";
 import { loadOrganizationDirectory } from "./organization-access";
-import { canAccess } from "./permissions";
 import {
   filterVisibleDemoRequests,
   findVisibleDemoRequest,
@@ -32,6 +31,7 @@ interface RequestRow extends QueryResultRow {
   companyName: string;
   branchId: string;
   branchName: string;
+  departmentId?: string;
   department: string;
   requestedBy: string;
   requesterContact: string;
@@ -94,6 +94,7 @@ function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
         companyName: row.companyName,
         branchId: row.branchId,
         branchName: row.branchName,
+        departmentId: row.departmentId,
         department: row.department,
         requestedBy: row.requestedBy,
         requesterContact: row.requesterContact,
@@ -157,6 +158,7 @@ const requestSelect = `SELECT
   c.name AS "companyName",
   r.branch_id::text AS "branchId",
   b.name AS "branchName",
+  r.department_id::text AS "departmentId",
   r.department,
   r.requested_by AS "requestedBy",
   r.requester_contact AS "requesterContact",
@@ -292,9 +294,6 @@ LEFT JOIN LATERAL (
 export async function listAuthorizedRequests(
   actor: AuthenticatedSessionUser,
 ): Promise<ProcurementRequest[]> {
-  if (!canAccess(actor,"view_requests")) {
-    throw new RequestAccessUnavailableError();
-  }
   const capturedAt = new Date();
   if (isDemoMode()) {
     return filterVisibleDemoRequests(
@@ -324,9 +323,6 @@ export async function getAuthorizedRequest(
   actor: AuthenticatedSessionUser,
   requestId: string,
 ): Promise<ProcurementRequest | undefined> {
-  if (!canAccess(actor,"view_requests")) {
-    throw new RequestAccessUnavailableError();
-  }
   const capturedAt = new Date();
   if (isDemoMode()) {
     return findVisibleDemoRequest(
@@ -373,7 +369,7 @@ export async function listAuthorizedRequestWorkflowEvents(
   actor: AuthenticatedSessionUser,
   requestId: string,
 ): Promise<RequestWorkflowEvent[]> {
-  if (!canAccess(actor,"view_requests") || isDemoMode()) return [];
+  if (isDemoMode()) return [];
   const assignmentId = requireAssignment(actor);
   const capturedAt = new Date();
   try {
@@ -435,9 +431,6 @@ export async function listAuthorizedRequestWorkflowEvents(
 export async function getAuthorizedDashboardData(
   actor: AuthenticatedSessionUser,
 ): Promise<DashboardData> {
-  if (!canAccess(actor,"view_dashboard")) {
-    throw new RequestAccessUnavailableError();
-  }
   const [requests,organization,suppliers] = await Promise.all([
     listAuthorizedRequests(actor),
     loadOrganizationDirectory(actor),
