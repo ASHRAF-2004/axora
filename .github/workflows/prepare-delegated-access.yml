@@ -1,0 +1,234 @@
+name: Prepare delegated access integration
+
+on:
+  push:
+    branches:
+      - agent/p0-01-delegated-access-management
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prepare-delegated-access
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out implementation branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: agent/p0-01-delegated-access-management
+          fetch-depth: 0
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.13.0"
+          cache: npm
+
+      - name: Apply reviewed integration patches
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one replacement, found {count}")
+              file.write_text(text.replace(old, new, 1))
+
+          migration_path = Path("database/migrations/041_delegated_access_management.sql")
+          migration = migration_path.read_text()
+          migration = migration.replace(
+              "  grantee_role_key text;\n  grantee_is_owner boolean;",
+              "  grantee_role_key text;\n  grantee_scope_type text;\n  grantee_is_owner boolean;",
+              1,
+          )
+          migration = migration.replace(
+              "  SELECT account.account_kind,account.is_owner,role.role_key\n"
+              "  INTO grantee_account_kind,grantee_is_owner,grantee_role_key",
+              "  SELECT account.account_kind,account.is_owner,role.role_key,\n"
+              "    assignment.scope_type\n"
+              "  INTO grantee_account_kind,grantee_is_owner,grantee_role_key,\n"
+              "    grantee_scope_type",
+              1,
+          )
+          old_start = "    IF grantee_account_kind='COMPANY' THEN\n"
+          old_end = (
+              "    IF NOT public.axora_role_assignment_has_direct_permission(\n"
+              "      p_actor_user_id,p_actor_role_assignment_id,'user.permission.manage',"
+          )
+          start = migration.find(old_start, migration.find("FOR scope_value IN", migration.find("axora_create_delegated_access")))
+          end = migration.find(old_end, start)
+          if start < 0 or end < 0:
+              raise SystemExit("delegated grantee compatibility block was not found")
+          new_block = """    IF grantee_account_kind='COMPANY' THEN
+              IF NOT EXISTS (
+                SELECT 1 FROM public.company_memberships membership
+                WHERE membership.user_id=p_grantee_user_id
+                  AND membership.company_id=company_id
+                  AND membership.status='ACTIVE'
+              ) THEN
+                RAISE EXCEPTION 'A company grantee cannot receive another tenant scope';
+              END IF;
+
+              IF grantee_role_key IN (
+                'COMPANY_ADMIN','ADMIN','COMPANY_APPROVER',
+                'FINANCE_REVIEWER','FINANCE','AUDITOR','VIEWER','RECEIVING_USER'
+              ) OR (grantee_role_key='APPROVER' AND grantee_scope_type='COMPANY') THEN
+                IF scope_type NOT IN ('COMPANY','BRANCH','DEPARTMENT') THEN
+                  RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+                END IF;
+              ELSIF grantee_role_key IN ('BRANCH_ADMIN','BRANCH_APPROVER')
+                OR (grantee_role_key='APPROVER'
+                  AND grantee_scope_type IN ('BRANCH','DEPARTMENT')) THEN
+                IF scope_type NOT IN ('BRANCH','DEPARTMENT') THEN
+                  RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+                END IF;
+              ELSIF grantee_role_key='DEPARTMENT_ADMIN' THEN
+                IF scope_type<>'DEPARTMENT' THEN
+                  RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+                END IF;
+              ELSIF grantee_role_key IN ('REQUESTER','OPERATIONS') THEN
+                IF scope_type NOT IN ('BRANCH','DEPARTMENT') THEN
+                  RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+                END IF;
+              ELSE
+                RAISE EXCEPTION 'The grantee role cannot receive this delegated scope';
+              END IF;
+            ELSIF grantee_account_kind='PLATFORM'
+              AND grantee_role_key='CLIENT_ACCOUNT_MANAGER' THEN
+              IF scope_type<>'COMPANY' THEN
+                RAISE EXCEPTION 'A backup account manager can receive company scope only';
+              END IF;
+            ELSE
+              RAISE EXCEPTION 'This account type cannot receive company delegated access';
+            END IF;
+
+          """
+          migration = migration[:start] + new_block + migration[end:]
+          migration_path.write_text(migration)
+
+          grants_path = Path("database/admin/apply-app-grants.sql")
+          grants = grants_path.read_text()
+          revoke_old = """  public.axora_remove_approval_limit(uuid,uuid,uuid,text)
+          FROM axora_app;"""
+          revoke_new = """  public.axora_remove_approval_limit(uuid,uuid,uuid,text),
+            public.axora_role_assignment_scope_contains(
+              uuid,uuid,text,uuid,uuid,uuid,uuid,timestamptz
+            ),
+            public.axora_role_assignment_has_direct_permission(
+              uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz
+            ),
+            public.axora_delegation_authority_is_live(uuid,timestamptz),
+            public.axora_create_delegated_access(
+              uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
+            ),
+            public.axora_revoke_delegated_access(uuid,uuid,uuid,text)
+          FROM axora_app;"""
+          if grants.count(revoke_old) != 1:
+              raise SystemExit("grant script revoke anchor was not found exactly once")
+          grants = grants.replace(revoke_old, revoke_new, 1)
+          grant_old = """  public.axora_remove_approval_limit(uuid,uuid,uuid,text)
+          TO axora_app;"""
+          grant_new = """  public.axora_remove_approval_limit(uuid,uuid,uuid,text),
+            public.axora_create_delegated_access(
+              uuid,uuid,uuid,uuid,uuid,text[],jsonb,timestamptz,timestamptz,text
+            ),
+            public.axora_revoke_delegated_access(uuid,uuid,uuid,text)
+          TO axora_app;"""
+          if grants.count(grant_old) != 1:
+              raise SystemExit("grant script grant anchor was not found exactly once")
+          grants_path.write_text(grants.replace(grant_old, grant_new, 1))
+
+          full_path = Path("tests/full-migration-chain.test.ts")
+          full = full_path.read_text()
+          full = full.replace(
+              'it("applies every numbered migration through 040 to an empty database"',
+              'it("applies every numbered migration through 041 to an empty database"',
+              1,
+          )
+          full = full.replace("available.slice(-5)", "available.slice(-6)", 1)
+          list_anchor = '        "040_approval_limit_management.sql",\n'
+          if full.count(list_anchor) != 1:
+              raise SystemExit("full migration latest-list anchor was not found")
+          full = full.replace(
+              list_anchor,
+              list_anchor + '        "041_delegated_access_management.sql",\n',
+              1,
+          )
+          apply_anchor = """      await db.exec(await readFile(
+                migrationUrl("040_approval_limit_management.sql"),
+                "utf8",
+              ));
+
+              const after"""
+          apply_replacement = """      await db.exec(await readFile(
+                migrationUrl("040_approval_limit_management.sql"),
+                "utf8",
+              ));
+              await db.exec(await readFile(
+                migrationUrl("041_delegated_access_management.sql"),
+                "utf8",
+              ));
+
+              const after"""
+          if full.count(apply_anchor) != 1:
+              raise SystemExit("full migration upgrade anchor was not found")
+          full_path.write_text(full.replace(apply_anchor, apply_replacement, 1))
+
+          for path in [
+              "tests/support-diagnostics-migration.test.ts",
+              "tests/account-security-session-audit-migration.test.ts",
+          ]:
+              file = Path(path)
+              text = file.read_text()
+              old = '"040_approval_limit_management.sql"'
+              if old not in text:
+                  raise SystemExit(f"{path}: latest migration expectation missing")
+              file.write_text(text.replace(old, '"041_delegated_access_management.sql"'))
+          PY
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify delegated access slice
+        run: |
+          npm run lint
+          npm run typecheck
+          npx vitest run \
+            tests/delegated-access-management.test.ts \
+            tests/delegated-access-policy.test.ts \
+            tests/delegated-access-management-migration.test.ts \
+            tests/full-migration-chain.test.ts \
+            tests/support-diagnostics-migration.test.ts \
+            tests/account-security-session-audit-migration.test.ts \
+            tests/application-grants-security.test.ts
+
+      - name: Commit clean implementation
+        shell: bash
+        run: |
+          rm -f .github/workflows/prepare-delegated-access.yml
+          git diff --check
+          git config user.name "Axora Release Agent"
+          git config user.email "actions@users.noreply.github.com"
+          git add \
+            database/admin/apply-app-grants.sql \
+            database/migrations/041_delegated_access_management.sql \
+            docs/refactor/DELEGATED_ACCESS_MANAGEMENT_RUNTIME.md \
+            src/lib/delegated-access-management.ts \
+            tests/account-security-session-audit-migration.test.ts \
+            tests/delegated-access-management.test.ts \
+            tests/delegated-access-management-migration.test.ts \
+            tests/delegated-access-policy.test.ts \
+            tests/full-migration-chain.test.ts \
+            tests/support-diagnostics-migration.test.ts \
+            .github/workflows/prepare-delegated-access.yml
+          git commit -m "Add audited delegated access management"
+          git push origin HEAD:agent/p0-01-delegated-access-management
