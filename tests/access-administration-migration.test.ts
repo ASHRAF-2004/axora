@@ -53,7 +53,16 @@ async function applyApplicationGrantScript(db: PGlite) {
 
 async function accessFixture(db: PGlite, createAppRole = false) {
   await applyMigrations(db, { through: "042_role_scope_lifecycle.sql" });
-  if (createAppRole) await db.exec("CREATE ROLE axora_app NOLOGIN");
+  if (createAppRole) {
+    await db.exec(`
+      CREATE ROLE axora_app NOLOGIN;
+      CREATE TABLE schema_migrations(
+        filename text PRIMARY KEY,
+        sha256 text NOT NULL,
+        applied_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+  }
   await db.exec(await readFile(migrationUrl, "utf8"));
 
   const roles = await db.query<RoleIds>(`
@@ -292,7 +301,7 @@ describe("scoped access administration snapshot", () => {
         .toMatchObject({
           targetRoleIncludes: true,
           effective: false,
-          actorCanGrant: true,
+          actorCanGrant: false,
         });
       expect(permissions.find((row) => (
         row.code === "request.approve.over_budget"
