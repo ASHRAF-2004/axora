@@ -458,7 +458,7 @@ DECLARE
   actor_snapshot jsonb;
   company_row record;
   branch_row record;
-  department_row record;
+  department_name text;
   resource_type text;
 BEGIN
   IF p_actor_user_id IS NULL
@@ -509,8 +509,8 @@ BEGIN
   IF branch_row.id IS NULL THEN RETURN NULL; END IF;
 
   IF p_department_id IS NOT NULL THEN
-    SELECT department.id,department.name,department.branch_id
-    INTO department_row
+    SELECT department.name
+    INTO department_name
     FROM public.departments department
     WHERE department.id=p_department_id
       AND department.company_id=p_company_id
@@ -518,7 +518,7 @@ BEGIN
       AND (department.branch_id IS NULL
         OR department.branch_id=p_branch_id)
     FOR KEY SHARE;
-    IF department_row.id IS NULL THEN RETURN NULL; END IF;
+    IF NOT FOUND THEN RETURN NULL; END IF;
   END IF;
 
   resource_type:=public.axora_request_scope_type(p_department_id);
@@ -535,15 +535,15 @@ BEGIN
     'companyName',company_row.name,
     'branchId',branch_row.id,
     'branchName',branch_row.name,
-    'departmentId',department_row.id,
-    'departmentName',department_row.name,
+    'departmentId',p_department_id,
+    'departmentName',department_name,
     'taxRate',company_row.tax_rate,
     'estimatedDeliveryFee',company_row.estimated_delivery_fee,
     'scope',jsonb_strip_nulls(jsonb_build_object(
       'type',resource_type,
       'companyId',company_row.id,
       'branchId',branch_row.id,
-      'departmentId',department_row.id
+      'departmentId',p_department_id
     ))
   ));
 END $$;
