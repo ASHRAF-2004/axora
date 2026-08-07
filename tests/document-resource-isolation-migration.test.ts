@@ -60,7 +60,14 @@ async function applyApplicationGrantScript(db: PGlite) {
 
 async function fixture() {
   const db = new PGlite();
-  await db.exec("CREATE ROLE axora_app NOLOGIN");
+  await db.exec(`
+    CREATE ROLE axora_app NOLOGIN;
+    CREATE TABLE schema_migrations(
+      filename text PRIMARY KEY,
+      sha256 text NOT NULL,
+      applied_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
   await applyMigrations(db, {
     through: "045_request_resource_isolation.sql",
   });
