@@ -92,6 +92,9 @@ REVOKE ALL ON FUNCTION
     text,text,text,text,text,text,text,timestamptz,text
   ),
   public.axora_effective_access_snapshot(uuid,uuid,timestamptz),
+  public.axora_access_administration_snapshot(
+    uuid,uuid,uuid,uuid,timestamptz
+  ),
   public.axora_authorization_scope_contains(
     text,uuid,uuid,uuid,uuid,text,uuid,uuid,uuid,uuid
   ),
@@ -164,6 +167,9 @@ GRANT EXECUTE ON FUNCTION
     text,text,text,text,text,text,text,timestamptz,text
   ),
   public.axora_effective_access_snapshot(uuid,uuid,timestamptz),
+  public.axora_access_administration_snapshot(
+    uuid,uuid,uuid,uuid,timestamptz
+  ),
   public.axora_set_user_permission_override(
     uuid,uuid,uuid,uuid,text,text,text,uuid,uuid,uuid,uuid,
     timestamptz,timestamptz,text
