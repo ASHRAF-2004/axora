@@ -15,7 +15,7 @@ import {
 } from "@/lib/session-return";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { portalMessages } from "@/lib/portal-i18n";
 import {
@@ -42,15 +42,19 @@ function lifecycleRoute(path: string) {
 }
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const requestHeaders = await headers();
+  const [requestHeaders, cookieStore] = await Promise.all([
+    headers(),
+    cookies(),
+  ]);
   const returnTo = safeInternalReturnPath(
     requestHeaders.get(SESSION_RETURN_HEADER),
     "/dashboard",
   );
+  const hadSessionCookie = Boolean(cookieStore.get("axora_session")?.value);
   const user = await getAccountLifecycleSession();
   if (!user) {
     const params = new URLSearchParams({
-      reason: "required",
+      reason: hadSessionCookie ? "expired" : "required",
       returnTo,
     });
     redirect(`/login?${params.toString()}`);
