@@ -11,14 +11,31 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { isSupportedLocale, LOCALE_COOKIE } from "@/lib/i18n";
 import { landingPathForSession } from "@/lib/session-landing";
+import {
+  authorizedSessionReturnPath,
+  safeInternalReturnPath,
+} from "@/lib/session-return";
 
 function checked(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
+function profileErrorPath(formData: FormData, error: string) {
+  const params = new URLSearchParams({ error });
+  if (formData.get("onboarding") === "true") params.set("onboarding", "1");
+  const returnTo = safeInternalReturnPath(
+    String(formData.get("returnTo") ?? ""),
+    "/dashboard",
+  );
+  params.set("returnTo", returnTo);
+  return `/profile?${params.toString()}`;
+}
+
 export async function saveProfileAction(formData: FormData) {
   const actor = await requireAccountLifecycleSession();
-  if (!checked(formData, "policyAccepted")) redirect("/profile?error=invalid-profile");
+  if (!checked(formData, "policyAccepted")) {
+    redirect(profileErrorPath(formData, "invalid-profile"));
+  }
   const preferredLocale = String(formData.get("preferredLocale") ?? "en");
   try {
     await completeMyProfile({
@@ -32,7 +49,7 @@ export async function saveProfileAction(formData: FormData) {
       policyAccepted: true,
     }, actor);
   } catch {
-    redirect("/profile?error=invalid-profile");
+    redirect(profileErrorPath(formData, "invalid-profile"));
   }
   if (isSupportedLocale(preferredLocale)) {
     (await cookies()).set(LOCALE_COOKIE, preferredLocale, {
@@ -43,9 +60,18 @@ export async function saveProfileAction(formData: FormData) {
     });
   }
   revalidatePath("/profile");
-  redirect(formData.get("onboarding") === "true"
-    ? `${landingPathForSession(actor)}?tutorial=1`
-    : "/profile?saved=1");
+  if (formData.get("onboarding") === "true") {
+    const landing = landingPathForSession(actor);
+    const destination = authorizedSessionReturnPath(
+      actor,
+      String(formData.get("returnTo") ?? ""),
+      landing,
+    );
+    const parsed = new URL(destination, "https://axora.management");
+    parsed.searchParams.set("tutorial", "1");
+    redirect(`${parsed.pathname}${parsed.search}${parsed.hash}`);
+  }
+  redirect("/profile?saved=1");
 }
 
 export async function uploadProfileImageAction(formData: FormData) {
