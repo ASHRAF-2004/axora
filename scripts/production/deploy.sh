@@ -72,6 +72,36 @@ cleanup_candidate() {
   candidate_container=""
 }
 
+ensure_budget_worker_for_release() {
+  local release="$1"
+  local expected_image="$2"
+  local expected_image_id="$3"
+  local container
+  local health
+
+  if ! release_has_budget_worker "$release"; then
+    remove_budget_worker_if_release_lacks_it "$release"
+    return
+  fi
+
+  if ! container="$(find_service_container budget-worker)"; then
+    [[ "$(docker image inspect --format '{{.Id}}' "$expected_image")" == "$expected_image_id" ]] \
+      || die "Recorded application image no longer resolves to its recorded content digest."
+    log "Production budget-worker is missing; reconciling only that ephemeral service from the recorded image."
+    export AXORA_IMAGE="$expected_image"
+    compose_release "$release" up -d --no-deps --no-build --wait \
+      --wait-timeout "$AXORA_DEPLOY_TIMEOUT_SECONDS" budget-worker
+    container="$(find_service_container budget-worker)" \
+      || die "Expected one running production budget-worker container after reconciliation."
+  fi
+
+  [[ "$(docker inspect --format '{{.Image}}' "$container")" == "$expected_image_id" ]] \
+    || die "Running budget-worker image differs from the recorded content digest."
+  health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container")"
+  [[ "$health" == "healthy" ]] \
+    || die "Production budget-worker is not healthy (status: $health)."
+}
+
 automatic_revert() {
   if ! "$swapped" || ! valid_image_reference "$old_image" || [[ ! -d "$old_release" ]]; then
     return
@@ -133,6 +163,8 @@ if [[ -n "$requested_sha" && "$requested_sha" != "$target_sha" ]]; then
 fi
 current_sha="$(read_state_file "$AXORA_CURRENT_SHA_FILE")"
 if [[ "$current_sha" == "$target_sha" ]]; then
+  release="$(release_path_for_sha "$target_sha")"
+  [[ -d "$release" && ! -L "$release" ]] || die "Current release directory is missing or unsafe."
   recorded_image="$(read_state_file "$AXORA_CURRENT_IMAGE_FILE")"
   recorded_image_id="$(read_state_file "$AXORA_CURRENT_IMAGE_ID_FILE")"
   valid_image_reference "$recorded_image" || die "Current image state is invalid."
@@ -140,13 +172,7 @@ if [[ "$current_sha" == "$target_sha" ]]; then
   current_app_container="$(find_service_container app)" || die "Expected one running production app container."
   [[ "$(docker inspect --format '{{.Image}}' "$current_app_container")" == "$recorded_image_id" ]] \
     || die "Running application image differs from the recorded content digest."
-  current_budget_worker_container="$(find_service_container budget-worker)" \
-    || die "Expected one running production budget-worker container."
-  [[ "$(docker inspect --format '{{.Image}}' "$current_budget_worker_container")" == "$recorded_image_id" ]] \
-    || die "Running budget-worker image differs from the recorded content digest."
-  current_budget_worker_health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$current_budget_worker_container")"
-  [[ "$current_budget_worker_health" == "healthy" ]] \
-    || die "Production budget-worker is not healthy (status: $current_budget_worker_health)."
+  ensure_budget_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
   log "Commit $target_sha is already deployed; running health gates only."
   "$SCRIPT_DIR/health-check.sh" --local
   if bool_is_true "$AXORA_REQUIRE_EXTERNAL"; then
