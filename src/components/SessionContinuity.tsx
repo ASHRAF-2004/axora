@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { SupportedLocale } from "@/lib/i18n";
 import type { BrowserSessionScope } from "@/lib/browser-session-scope";
 import { clearRequestCart } from "@/lib/request-cart";
@@ -26,6 +26,19 @@ const copy = {
   },
 } as const;
 
+function connectivitySnapshot() {
+  return window.navigator.onLine;
+}
+
+function subscribeConnectivity(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
+
 export function clearBrowserSessionWorkspace(scope: BrowserSessionScope) {
   clearBrowserReturnPath();
   clearRequestCart(scope);
@@ -38,26 +51,30 @@ export function SessionContinuity({
   locale: SupportedLocale;
 }) {
   const pathname = usePathname();
-  const [online, setOnline] = useState(true);
+  const online = useSyncExternalStore(
+    subscribeConnectivity,
+    connectivitySnapshot,
+    () => true,
+  );
   const [restored, setRestored] = useState(false);
 
   useEffect(() => {
-    const sync = () => {
-      const nextOnline = window.navigator.onLine;
-      setOnline(nextOnline);
-      if (nextOnline) {
-        setRestored(true);
-        window.setTimeout(() => setRestored(false), 2_500);
-      } else {
-        setRestored(false);
-      }
+    let timer: number | undefined;
+    const connectionRestored = () => {
+      setRestored(true);
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = window.setTimeout(() => setRestored(false), 2_500);
     };
-    setOnline(window.navigator.onLine);
-    window.addEventListener("online", sync);
-    window.addEventListener("offline", sync);
+    const connectionLost = () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      setRestored(false);
+    };
+    window.addEventListener("online", connectionRestored);
+    window.addEventListener("offline", connectionLost);
     return () => {
-      window.removeEventListener("online", sync);
-      window.removeEventListener("offline", sync);
+      if (timer !== undefined) window.clearTimeout(timer);
+      window.removeEventListener("online", connectionRestored);
+      window.removeEventListener("offline", connectionLost);
     };
   }, []);
 
