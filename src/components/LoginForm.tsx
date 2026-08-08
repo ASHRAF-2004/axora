@@ -145,10 +145,11 @@ export function LoginForm({
   ));
 
   useEffect(() => {
-    const stored = browserReturnPath();
+    // Session storage contributes only a fragment for a server-provided route.
+    // A direct login must never inherit a previous person's tab path.
     const recovered = returnTo
-      ? mergeStoredReturnHash(returnTo, stored, "/dashboard")
-      : safeInternalReturnPath(stored, "/dashboard");
+      ? mergeStoredReturnHash(returnTo, browserReturnPath(), "/dashboard")
+      : "/dashboard";
     setReturnToValue(recovered);
   }, [returnTo]);
 
