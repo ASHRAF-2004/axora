@@ -55,20 +55,7 @@ jobs:
         run: npm run typecheck
 
       - name: Test
-        shell: bash
-        run: |
-          set -o pipefail
-          mkdir -p output/test-evidence
-          npm run test 2>&1 | tee output/test-evidence/vitest.log
-
-      - name: Retain unit-test evidence after a failure
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: vitest-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: output/test-evidence/vitest.log
-          if-no-files-found: error
-          retention-days: 3
+        run: npm run test
 
       - name: Build the production application
         run: npm run build
