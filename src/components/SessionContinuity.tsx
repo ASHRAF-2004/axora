@@ -76,6 +76,14 @@ export function SessionContinuity({
     };
   }, [pathname, searchParams]);
 
+  useEffect(() => {
+    if (searchParams.get("notice") !== "request-submitted") return;
+    // The redirect proves the server transaction committed. Clearing before
+    // this point would lose a valid draft when a submission is interrupted.
+    clearRequestCart();
+    clearRequestDraft();
+  }, [searchParams]);
+
   if (online && !restored) return null;
 
   return (
