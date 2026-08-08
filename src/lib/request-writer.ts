@@ -73,7 +73,7 @@ export async function createAuthorizedRequest(
   }
 
   return withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: "Submitted a retry-safe purchase request",
   }, async (client: PoolClient) => {
     const existing = await client.query<{ id: string }>(
@@ -323,7 +323,7 @@ export async function updateAuthorizedRequestStatus(
     return updateLegacyRequestStatus(id, status, reason, actor);
   }
 
-  await withAuditTransaction({ userId: actor.id, reason }, async (client) => {
+  await withAuditTransaction({ actor, reason }, async (client) => {
     const access = await lockRequestResourceAccess(client, actor, {
       permission: "sourcing.manage",
       requestId: id,

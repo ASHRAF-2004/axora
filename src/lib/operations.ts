@@ -123,7 +123,7 @@ export async function listSupplierRfqs(actor: OperationActor): Promise<SupplierR
     throw new Error("Only authorized Axora operations users can view supplier quotation requests.");
   }
   if (isDemoMode()) return [];
-  return withAuditTransaction({ userId: actor.id, reason: "Viewed supplier RFQ activity" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Viewed supplier RFQ activity" }, async (client) => {
     const result = await client.query<SupplierRfqActivityRecord>(`
       SELECT rfq.id::text,rfq.rfq_reference AS reference,
         rfq.request_line_id::text AS "requestLineId",line.request_line_code AS "requestLineCode",
@@ -168,7 +168,7 @@ export async function issueSupplierRfq(input: NewSupplierRfqInput, actor: Operat
     throw new Error("RFQ submission identifier is invalid.");
   }
   if (isDemoMode()) throw new Error("Supplier RFQs require the production database.");
-  return withAuditTransaction({ userId: actor.id, reason: `Issued supplier RFQ ${reference}` }, async (client) => {
+  return withAuditTransaction({ actor, reason: `Issued supplier RFQ ${reference}` }, async (client) => {
     const context = await client.query<{
       requestId: string;
       companyId: string;
@@ -283,7 +283,7 @@ export async function createQuotation(input: NewQuotationInput, actor: Operation
     addDemoAudit("quotations", line.id, "INSERT", actor.name, `Quotation ${input.quotationReference}`);
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
+  await withAuditTransaction({ actor }, async (client) => {
     const result = await client.query<{ id: string }>(`INSERT INTO quotations
       (request_line_id,supplier_id,quotation_reference,quotation_date,unit_price,delivery_charge,minimum_order_quantity,lead_time_days,valid_until,status_id)
       SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,lookup_id('quotation_status','Received')
@@ -358,7 +358,7 @@ export async function selectQuotation(id: string, reason: string, actor: Operati
     addDemoAudit("quotations", id, "SELECT", actor.name, "Axora supplier quotation selected");
     return;
   }
-  await withAuditTransaction({ userId: actor.id, reason: "Axora supplier quotation selected" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "Axora supplier quotation selected" }, async (client) => {
     const quotation = await client.query<{
       requestLineId: string;
       supplierId: string;
@@ -519,7 +519,7 @@ export async function recordApproval(input: { requestId: string; approvalType: s
     addDemoAudit("approvals", request.id, "INSERT", actor.name, input.reason);
     return;
   }
-  await withAuditTransaction({ userId: actor.id, reason: input.reason }, async (client) => {
+  await withAuditTransaction({ actor, reason: input.reason }, async (client) => {
     const request = await client.query<{
       createdBy?: string;
       companyId: string;
@@ -638,7 +638,7 @@ export async function recordDelivery(input: { requestLineId: string; expectedDat
     addDemoAudit("deliveries", line.id, "INSERT", actor.name, input.issueReason);
     return;
   }
-  await withAuditTransaction({ userId: actor.id, reason: input.issueReason }, async (client) => {
+  await withAuditTransaction({ actor, reason: input.issueReason }, async (client) => {
     const line = await client.query<{ requestId: string; companyId: string; branchId: string }>(`SELECT
       r.id::text AS "requestId",r.company_id::text AS "companyId",r.branch_id::text AS "branchId"
       FROM request_lines l JOIN requests r ON r.id=l.request_id
@@ -742,7 +742,7 @@ export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER";
     addDemoAudit("invoices", request.id, "INSERT", actor.name, input.invoiceNumber);
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
+  await withAuditTransaction({ actor }, async (client) => {
     const request = await client.query<{ companyId: string; branchId: string; status: string }>(
       `SELECT r.company_id::text AS "companyId",r.branch_id::text AS "branchId",rs.label AS status
        FROM requests r JOIN lookup_values rs ON rs.id=r.status_id
@@ -867,7 +867,7 @@ export async function recordPayment(input: { invoiceId: string; paymentDate: str
     addDemoAudit("payments", invoice.id, "INSERT", actor.name, reference);
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
+  await withAuditTransaction({ actor }, async (client) => {
     const invoice = await client.query<{ amount: number; direction: "CUSTOMER" | "SUPPLIER"; requestId: string; companyId: string; branchId: string }>(
       `SELECT i.amount::float8 AS amount,i.direction,
          r.id::text AS "requestId",r.company_id::text AS "companyId",
@@ -927,113 +927,7 @@ export async function listAuditRecords(rawFilters: AuditRecordFilters = {}): Pro
       : getDemoOperations().audit.filter((item) => item.entityType !== "quotations");
     return visible.filter((item) => auditRecordMatchesFilters(item, filters));
   }
-  const customerAuditScope = isPlatformScopedActor(actor) ? "" : ` AND (
-      a.entity_type IN ('companies','users','branches','requests','request_lines','approvals','deliveries')
-      OR (a.entity_type='invoices' AND EXISTS (
-        SELECT 1 FROM invoices visible_invoice
-        WHERE visible_invoice.id=a.record_id AND visible_invoice.direction='CUSTOMER'
-      ))
-      OR (a.entity_type='invoice_allocations' AND EXISTS (
-        SELECT 1 FROM invoice_allocations visible_allocation
-        JOIN invoices visible_invoice ON visible_invoice.id=visible_allocation.invoice_id
-        WHERE visible_allocation.id=a.record_id AND visible_invoice.direction='CUSTOMER'
-      ))
-      OR (a.entity_type='payments' AND EXISTS (
-        SELECT 1 FROM payments visible_payment
-        JOIN invoices visible_invoice ON visible_invoice.id=visible_payment.invoice_id
-        WHERE visible_payment.id=a.record_id AND visible_invoice.direction='CUSTOMER'
-      ))
-      OR (a.entity_type='attachments' AND EXISTS (
-        SELECT 1 FROM attachments visible_attachment
-        WHERE visible_attachment.id=a.record_id AND visible_attachment.visibility='CUSTOMER'
-      ))
-    )`;
-  const values: unknown[] = [];
-  const bind = (value: unknown) => {
-    values.push(value);
-    return `$${values.length}`;
-  };
-  const companyParameter = isPlatformScopedActor(actor) ? undefined : bind(actor.companyId);
-  const branchParameter = !isPlatformScopedActor(actor) && actor.branchId
-    ? bind(actor.branchId)
-    : undefined;
-  const branchScope = branchParameter ? ` AND (
-      (a.entity_type='branches' AND a.record_id=${branchParameter})
-      OR (a.entity_type='users' AND EXISTS (
-        SELECT 1 FROM users scoped_user WHERE scoped_user.id=a.record_id AND scoped_user.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='requests' AND EXISTS (
-        SELECT 1 FROM requests scoped_request WHERE scoped_request.id=a.record_id AND scoped_request.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='request_lines' AND EXISTS (
-        SELECT 1 FROM request_lines scoped_line JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-        WHERE scoped_line.id=a.record_id AND scoped_request.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='quotations' AND EXISTS (
-        SELECT 1 FROM quotations scoped_quote
-        JOIN request_lines scoped_line ON scoped_line.id=scoped_quote.request_line_id
-        JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-        WHERE scoped_quote.id=a.record_id AND scoped_request.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='approvals' AND EXISTS (
-        SELECT 1 FROM approvals scoped_approval JOIN requests scoped_request ON scoped_request.id=scoped_approval.request_id
-        WHERE scoped_approval.id=a.record_id AND scoped_request.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='deliveries' AND EXISTS (
-        SELECT 1 FROM deliveries scoped_delivery
-        JOIN request_lines scoped_line ON scoped_line.id=scoped_delivery.request_line_id
-        JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-        WHERE scoped_delivery.id=a.record_id AND scoped_request.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='invoices' AND EXISTS (
-        SELECT 1 FROM invoices scoped_invoice JOIN requests scoped_request ON scoped_request.id=scoped_invoice.request_id
-        WHERE scoped_invoice.id=a.record_id AND scoped_request.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='invoice_allocations' AND EXISTS (
-        SELECT 1 FROM invoice_allocations scoped_allocation
-        JOIN request_lines scoped_line ON scoped_line.id=scoped_allocation.request_line_id
-        JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-        WHERE scoped_allocation.id=a.record_id AND scoped_request.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='payments' AND EXISTS (
-        SELECT 1 FROM payments scoped_payment
-        JOIN invoices scoped_invoice ON scoped_invoice.id=scoped_payment.invoice_id
-        JOIN requests scoped_request ON scoped_request.id=scoped_invoice.request_id
-        WHERE scoped_payment.id=a.record_id AND scoped_request.branch_id=${branchParameter}
-      ))
-      OR (a.entity_type='attachments' AND EXISTS (
-        SELECT 1 FROM attachments scoped_attachment
-        WHERE scoped_attachment.id=a.record_id AND (
-          (scoped_attachment.entity_type='request' AND EXISTS (
-            SELECT 1 FROM requests scoped_request
-            WHERE scoped_request.id=scoped_attachment.record_id AND scoped_request.branch_id=${branchParameter}
-          ))
-          OR (scoped_attachment.entity_type='invoice' AND EXISTS (
-            SELECT 1 FROM invoices scoped_invoice JOIN requests scoped_request ON scoped_request.id=scoped_invoice.request_id
-            WHERE scoped_invoice.id=scoped_attachment.record_id AND scoped_request.branch_id=${branchParameter}
-          ))
-          OR (scoped_attachment.entity_type='delivery' AND EXISTS (
-            SELECT 1 FROM deliveries scoped_delivery
-            JOIN request_lines scoped_line ON scoped_line.id=scoped_delivery.request_line_id
-            JOIN requests scoped_request ON scoped_request.id=scoped_line.request_id
-            WHERE scoped_delivery.id=scoped_attachment.record_id AND scoped_request.branch_id=${branchParameter}
-          ))
-        )
-      ))
-    )` : "";
-  const predicates: string[] = [];
-  if (companyParameter) predicates.push(`(a.company_id=${companyParameter}${customerAuditScope}${branchScope})`);
-  if (filters.entityType) predicates.push(`a.entity_type=${bind(filters.entityType)}`);
-  if (filters.action) predicates.push(`upper(a.action)=${bind(filters.action)}`);
-  if (filters.actor) predicates.push(`strpos(lower(COALESCE(u.display_name,'')),lower(${bind(filters.actor)}))>0`);
-  if (filters.recordId) predicates.push(`a.record_id=${bind(filters.recordId)}::uuid`);
-  if (filters.from) predicates.push(`a.occurred_at>=${bind(filters.from)}::date`);
-  if (filters.to) predicates.push(`a.occurred_at<(${bind(filters.to)}::date + interval '1 day')`);
-  const whereClause = predicates.length ? `WHERE ${predicates.join(" AND ")}` : "";
-  const result = await query<AuditRecord>(`SELECT a.id::text,a.entity_type AS "entityType",a.record_id::text AS "recordId",a.action,
-    u.display_name AS "actorName",a.reason,a.occurred_at::text AS "occurredAt" FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_id
-    ${whereClause} ORDER BY a.occurred_at DESC LIMIT 500`, values);
-  return result.rows;
+  return listScopedAuditRecords(actor, filters);
 }
 
 function getDemoRequestForLinkedRecord(entityType: string, recordId: string) {
@@ -1172,7 +1066,7 @@ export async function saveAttachment(input: {
   const visibility = linked.invoiceDirection === "SUPPLIER"
     ? "INTERNAL"
     : isPlatformOperationsActor(actor) ? input.visibility ?? "INTERNAL" : "CUSTOMER";
-  await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO attachments
+  await withAuditTransaction({ actor }, (client) => client.query(`INSERT INTO attachments
     (id,entity_type,record_id,file_name,content_type,storage_path,uploaded_by,company_id,file_content,visibility)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
     [id, input.entityType, input.recordId, safeName, input.file.type, relativePath, actor.id, linked.companyId, bytes, visibility]));
@@ -1223,3 +1117,4 @@ export async function loadAttachmentFile(id: string) {
     return null;
   }
 }
+import { listScopedAuditRecords } from "@/lib/accountability-reader";

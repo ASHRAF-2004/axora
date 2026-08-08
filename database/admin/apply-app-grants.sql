@@ -396,3 +396,23 @@ BEGIN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_initialize_request_approval(uuid,uuid,uuid,text,timestamptz),public.axora_request_approval_workspace(uuid,uuid,timestamptz),public.axora_decide_request_approval(uuid,uuid,uuid,integer,text,text,uuid,text,text,timestamptz),public.axora_finalize_request_budget(uuid,uuid,uuid,numeric,text,text,timestamptz),public.axora_request_approval_timeline(uuid,uuid,uuid,timestamptz) TO axora_app';
   END IF;
 END $$;
+
+-- P0-10 immutable accountability closure. The application can use only the
+-- scope-enforcing read/access capabilities; audit evidence and chain heads are
+-- never directly readable or mutable by the runtime role.
+DO $$
+BEGIN
+  IF to_regclass('public.audit_integrity_heads') IS NOT NULL
+     AND to_regprocedure('public.axora_audit_rows(uuid,uuid,text,text,text,uuid,uuid,uuid,uuid,uuid,uuid,text,timestamp with time zone,timestamp with time zone,integer)') IS NOT NULL THEN
+    REVOKE ALL ON TABLE public.audit_logs FROM axora_app;
+    REVOKE ALL ON TABLE public.audit_integrity_heads FROM axora_app;
+    GRANT EXECUTE ON FUNCTION public.axora_audit_rows(uuid, uuid, text, text, text, uuid, uuid, uuid, uuid, uuid, uuid, text, timestamptz, timestamptz, integer) TO axora_app;
+    GRANT EXECUTE ON FUNCTION public.axora_record_accountability_access(uuid, uuid, text, uuid, integer, timestamptz) TO axora_app;
+    REVOKE ALL ON FUNCTION public.axora_verify_audit_integrity(text) FROM axora_app;
+    REVOKE ALL ON FUNCTION public.axora_prepare_audit_event() FROM axora_app;
+    REVOKE ALL ON FUNCTION public.axora_reject_audit_mutation() FROM axora_app;
+    REVOKE ALL ON FUNCTION public.axora_audit_redact(jsonb) FROM axora_app;
+    REVOKE ALL ON FUNCTION public.axora_audit_hash(public.audit_logs) FROM axora_app;
+  END IF;
+END
+$$;

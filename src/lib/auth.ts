@@ -41,6 +41,7 @@ interface StepUpClaim {
   departmentId?: string;
   supplierId?: string;
   roleAssignmentId?: string;
+  sessionId?: string;
   authVersion: number;
   purpose: StepUpSessionPurpose;
 }
@@ -88,6 +89,7 @@ export interface IdentityCandidateRow {
   legacyRole: string;
   accountKind: string;
   isOwner: boolean;
+  sessionId?: string;
   authVersion: number;
   legacyCompanyId?: string;
   legacyBranchId?: string;
@@ -223,6 +225,16 @@ const identityRowsSql = `
     account.account_kind AS "accountKind",
     account.is_owner AS "isOwner",
     account.auth_version::int AS "authVersion",
+    (
+      SELECT active_session.id::text
+      FROM public.user_sessions AS active_session
+      WHERE active_session.user_id = account.id
+        AND active_session.token_hash = $2
+        AND active_session.revoked_at IS NULL
+        AND active_session.expires_at > clock_timestamp()
+      ORDER BY active_session.created_at DESC, active_session.id DESC
+      LIMIT 1
+    ) AS "sessionId",
     account.company_id::text AS "legacyCompanyId",
     account.branch_id::text AS "legacyBranchId",
     legacy_company.active AS "legacyCompanyActive",
@@ -555,6 +567,7 @@ function sessionFromAssignment(row: IdentityCandidateRow): AuthenticatedSessionU
     accountKind: row.accountKind as AccountKind,
     scopeType: row.scopeType as RoleScopeType,
     roleAssignmentId: row.assignmentId,
+    ...(row.sessionId ? { sessionId: row.sessionId } : {}),
     ...(row.companyId ? { companyId: row.companyId } : {}),
     ...(row.branchId ? { branchId: row.branchId } : {}),
     ...(row.departmentId ? { departmentId: row.departmentId } : {}),
@@ -580,6 +593,7 @@ function legacyFallback(row: IdentityCandidateRow): AuthenticatedSessionUser | n
       role: row.legacyRole,
       accountKind: "PLATFORM",
       scopeType: "PLATFORM",
+      ...(row.sessionId ? { sessionId: row.sessionId } : {}),
       isOwner: row.isOwner,
       authVersion: Number(row.authVersion),
       ...(isSupportedLocale(row.preferredLocale) ? { preferredLocale: row.preferredLocale } : {}),
@@ -600,6 +614,7 @@ function legacyFallback(row: IdentityCandidateRow): AuthenticatedSessionUser | n
     role: row.legacyRole,
     accountKind: "COMPANY",
     scopeType: hasBranch ? "BRANCH" : "COMPANY",
+    ...(row.sessionId ? { sessionId: row.sessionId } : {}),
     companyId: row.legacyCompanyId,
     ...(row.legacyBranchId ? { branchId: row.legacyBranchId } : {}),
     isOwner: false,
@@ -782,7 +797,7 @@ export async function authenticate(
     }
   }
   await withAuditTransaction(
-    { userId: user.id, reason: upgradedHash ? "Successful login; password hash upgraded" : "Successful login" },
+    { actor: user, reason: upgradedHash ? "Successful login; password hash upgraded" : "Successful login" },
     async (client) => {
       await client.query(
         `UPDATE users

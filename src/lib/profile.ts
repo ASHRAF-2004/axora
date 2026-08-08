@@ -47,8 +47,8 @@ export async function getMyProfile(actor: SessionUser): Promise<MyProfile> {
       displayName: actor.name,
       jobTitle: "",
       phone: "",
-      preferredLocale: "en",
-      timezone: "Asia/Kuala_Lumpur",
+      preferredLocale: actor.preferredLocale ?? "en",
+      timezone: actor.timezone ?? "Asia/Kuala_Lumpur",
       avatarAvailable: false,
       emailNotifications: true,
       inAppNotifications: true,
@@ -94,7 +94,7 @@ export async function completeMyProfile(input: z.input<typeof profileSchema>, ac
   const safe = profileSchema.parse(input);
   if (!validTimezone(safe.timezone)) throw new Error("Choose a valid timezone.");
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Profile completed" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "Profile completed" }, async (client) => {
     await client.query(`
       UPDATE user_profiles SET
         display_name=$2,job_title=$3,phone=$4,preferred_locale=$5,timezone=$6,
@@ -139,7 +139,7 @@ export async function saveMyProfileImage(file: File, actor: SessionUser) {
   const output = await image.rotate().resize(256, 256, { fit: "cover" }).webp({ quality: 82 }).toBuffer();
   const sha256 = createHash("sha256").update(output).digest("hex");
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Profile image updated" }, (client) => client.query(`
+  await withAuditTransaction({ actor, reason: "Profile image updated" }, (client) => client.query(`
     UPDATE user_profiles SET
       avatar_file_name='profile.webp',avatar_content_type='image/webp',
       avatar_content=$2,avatar_sha256=$3
@@ -149,7 +149,7 @@ export async function saveMyProfileImage(file: File, actor: SessionUser) {
 
 export async function removeMyProfileImage(actor: SessionUser) {
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Profile image removed" }, (client) => client.query(`
+  await withAuditTransaction({ actor, reason: "Profile image removed" }, (client) => client.query(`
     UPDATE user_profiles SET
       avatar_file_name=NULL,avatar_content_type=NULL,avatar_content=NULL,avatar_sha256=NULL,
       updated_at=now()
@@ -160,7 +160,7 @@ export async function removeMyProfileImage(actor: SessionUser) {
 export async function updateMyPreferredLocale(locale: SupportedLocale, actor: SessionUser) {
   if (!isSupportedLocale(locale)) throw new Error("Choose a supported language.");
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Preferred language updated" }, (client) => client.query(`
+  await withAuditTransaction({ actor, reason: "Preferred language updated" }, (client) => client.query(`
     UPDATE user_profiles SET preferred_locale=$2,updated_at=now() WHERE user_id=$1
   `, [actor.id, locale]));
 }

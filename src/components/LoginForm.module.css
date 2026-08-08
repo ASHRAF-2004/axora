@@ -386,7 +386,7 @@
 
 .srOnly {
   position: absolute;
-  left: -10000px;
+  inset-inline-start: -10000px;
   width: 1px;
   height: 1px;
   overflow: hidden;
@@ -448,4 +448,8 @@
     animation: none !important;
     transition: none !important;
   }
+}
+[dir="rtl"] .passwordInput {
+  padding-inline-start: 3rem;
+  padding-inline-end: 0.9rem;
 }

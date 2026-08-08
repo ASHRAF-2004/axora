@@ -29,7 +29,7 @@ export async function deleteProduct(productId: string, actor: SessionUser) {
   }
 
   await withAuditTransaction(
-    { userId: actor.id, reason: "Product permanently deleted" },
+    { actor, reason: "Product permanently deleted" },
     async (client) => {
       const productResult = await client.query<{ name: string }>(
         "SELECT name FROM products WHERE id=$1 FOR UPDATE",

@@ -3,6 +3,8 @@ import { listAuthorizedRequests } from "@/lib/request-reader";
 import { getSession } from "@/lib/auth";
 import { canAccess } from "@/lib/permissions";
 import { encodeCsvCell } from "@/lib/csv";
+import { isPlatformAnalyticsActor } from "@/lib/dashboard-data";
+import { recordAccountabilityAccess } from "@/lib/audit-accountability";
 
 export async function GET() {
   const user = await getSession();
@@ -16,7 +18,7 @@ export async function GET() {
     || request.paymentStatus !== undefined
     || request.invoiceNumber !== undefined
   ));
-  const platformView = user.isOwner || user.accountKind === "PLATFORM";
+  const platformView = isPlatformAnalyticsActor(user);
   const ownerHeader = ["Order Group ID", "Request Line ID", "Request Date", "Company", "Branch", "Product", "Quantity", "Unit", "Status", "Supplier", "Buying Cost (RM)", "Sales (RM)", "Gross Profit (RM)", "Delivery Fee (RM)", "Payment Status"];
   const companyHeader = ["Request ID", "Request Line ID", "Request Date", "Branch", "Requested By", "Product", "Quantity", "Unit", "Approval", "Fulfilment Status", "Estimated Line Total (RM)"];
   if (canViewInvoices) companyHeader.push("Payment Status");
@@ -36,5 +38,6 @@ export async function GET() {
   }
   const body = `\uFEFF${rows.map((row) => row.map(encodeCsvCell).join(",")).join("\r\n")}`;
   const fileName = platformView ? "axora-operations-requests.csv" : "axora-company-requests.csv";
+  await recordAccountabilityAccess(user, "REQUEST_EXPORT", user.companyId ?? null, rows.length - 1);
   return new Response(body, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename=${fileName}`, "Cache-Control": "no-store" } });
 }

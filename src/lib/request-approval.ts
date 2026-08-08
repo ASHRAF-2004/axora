@@ -191,7 +191,7 @@ export async function decideRequestApproval(input: {
     } satisfies ApprovalDecisionResult;
   }
   return withAuditTransaction(
-    { userId: input.actor.id, reason: input.reason },
+    { actor: input.actor, reason: input.reason },
     async (client) => {
       const result = await client.query<{ payload: ApprovalDecisionResult }>(
         `SELECT public.axora_decide_request_approval(
@@ -214,7 +214,7 @@ export async function finalizeRequestBudget(input: {
   idempotencyKey: string;
 }) {
   return withAuditTransaction(
-    { userId: input.actor.id, reason: input.reason },
+    { actor: input.actor, reason: input.reason },
     async (client) => {
       const result = await client.query<{ payload: ApprovalDecisionResult }>(
         `SELECT public.axora_finalize_request_budget(

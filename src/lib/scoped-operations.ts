@@ -200,7 +200,7 @@ export async function issueScopedSupplierRfq(
   }
 
   return withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: `Issued supplier RFQ ${reference}`,
   }, async (client) => {
     const access = await lockRequestLine(
@@ -352,7 +352,7 @@ export async function createScopedQuotation(
     );
   }
 
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
+  await withAuditTransaction({ actor }, async (client) => {
     const access = await lockRequestLine(
       client,
       actor,
@@ -439,7 +439,7 @@ export async function selectScopedQuotation(
   }
 
   await withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: "Axora supplier quotation selected",
   }, async (client) => {
     const access = await lockQuotation(
@@ -637,7 +637,7 @@ export async function recordScopedApproval(
   }
 
   await withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: input.reason,
   }, async (client) => {
     const access = await lockRequest(
@@ -792,7 +792,7 @@ export async function recordScopedDelivery(
   }
 
   await withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: input.issueReason,
   }, async (client) => {
     const access = await lockRequestLine(
@@ -899,7 +899,7 @@ export async function createScopedInvoice(
     throw new Error("Enter the invoice number.");
   }
 
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
+  await withAuditTransaction({ actor }, async (client) => {
     const access = await lockRequest(
       client,
       actor,
@@ -1063,7 +1063,7 @@ export async function recordScopedPayment(
     throw new Error("Enter the numbered receipt or collection reference.");
   }
 
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
+  await withAuditTransaction({ actor }, async (client) => {
     const access = await lockInvoice(
       client,
       actor,

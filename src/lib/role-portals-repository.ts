@@ -122,7 +122,7 @@ async function activeSupplierScope(actor: SessionUser, client: import("pg").Pool
 export async function getSupplierWorkspace(actor: SessionUser): Promise<SupplierWorkspace> {
   assertPermission(actor, "view_supplier_portal");
   if (isDemoMode()) return { supplierName: "Supplier workspace", rfqs: [], invoices: [] };
-  return withAuditTransaction({ userId: actor.id, reason: "Viewed assigned supplier work" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Viewed assigned supplier work" }, async (client) => {
     const scope = await activeSupplierScope(actor, client);
     const supplier = await client.query<SupplierProfileSummary>(`
       SELECT supplier_code AS code,name,category,contact_name AS "contactName",phone,email,address,
@@ -217,7 +217,7 @@ export async function acknowledgeSupplierRfq(actor: SessionUser, input: {
 }) {
   assertPermission(actor, "respond_to_rfqs");
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Supplier RFQ acknowledgement recorded" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "Supplier RFQ acknowledgement recorded" }, async (client) => {
     const scope = await activeSupplierScope(actor, client);
     const rfq = await client.query<{ companyId: string; branchId: string; requestId: string; selected: boolean; status: string }>(`
       SELECT rfq.company_id::text AS "companyId",request.branch_id::text AS "branchId",
@@ -304,7 +304,7 @@ export async function submitSupplierQuotation(actor: SessionUser, input: {
 }) {
   assertPermission(actor, "respond_to_rfqs");
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Supplier quotation submitted" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "Supplier quotation submitted" }, async (client) => {
     const scope = await activeSupplierScope(actor, client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`supplier-quotation:${input.rfqId}`]);
     const rfq = await client.query<{ companyId: string; branchId: string; requestId: string; requestLineId: string; nextVersion: number }>(`
@@ -408,7 +408,7 @@ export async function uploadSupplierDocument(
 ) {
   assertPermission(actor, "respond_to_rfqs");
   if (isDemoMode()) return;
-  const scopeInfo = await withAuditTransaction({ userId: actor.id, reason: "Validated supplier document scope" }, async (client) => {
+  const scopeInfo = await withAuditTransaction({ actor, reason: "Validated supplier document scope" }, async (client) => {
     const scope = await activeSupplierScope(actor, client);
     const rfq = await client.query<{ companyId: string; selected: boolean }>(`
       SELECT rfq.company_id::text AS "companyId",
@@ -427,7 +427,7 @@ export async function uploadSupplierDocument(
   });
   const stored = await storePersistentUpload({ namespace: "supplier-portal", scopeSegments: [scopeInfo.scope.supplierId, rfqId], file });
   try {
-    await withAuditTransaction({ userId: actor.id, reason: "Supplier quotation document uploaded" }, async (client) => {
+    await withAuditTransaction({ actor, reason: "Supplier quotation document uploaded" }, async (client) => {
       const scope = await activeSupplierScope(actor, client);
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`supplier-document:${rfqId}`]);
       const rfq = await client.query<{ companyId: string; selected: boolean; nextVersion: number }>(`
@@ -460,7 +460,7 @@ export async function uploadSupplierDocument(
 export async function loadSupplierDocument(actor: SessionUser, documentId: string) {
   assertPermission(actor, "view_supplier_portal");
   if (isDemoMode()) return null;
-  return withAuditTransaction({ userId: actor.id, reason: "Downloaded supplier portal document" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Downloaded supplier portal document" }, async (client) => {
     const scope = await activeSupplierScope(actor, client);
     const result = await client.query<{ fileName: string; contentType: string; storagePath: string }>(`
       SELECT file_name AS "fileName",content_type AS "contentType",storage_path AS "storagePath"
@@ -469,7 +469,15 @@ export async function loadSupplierDocument(actor: SessionUser, documentId: strin
     const item = result.rows[0];
     if (!item) return null;
     const bytes = await readPersistentUpload(item.storagePath);
-    return bytes ? { ...item, bytes } : null;
+    if (!bytes) return null;
+    await recordAccountabilityAccessWithClient(
+      client,
+      actor,
+      "SUPPLIER_DOCUMENT_DOWNLOAD",
+      documentId,
+      1,
+    );
+    return { ...item, bytes };
   });
 }
 
@@ -511,7 +519,7 @@ async function activeDriverScope(actor: SessionUser, client: import("pg").PoolCl
 export async function getDriverWorkspace(actor: SessionUser): Promise<DriverJobWorkspaceItem[]> {
   assertPermission(actor, "view_delivery_portal");
   if (isDemoMode()) return [];
-  return withAuditTransaction({ userId: actor.id, reason: "Viewed assigned delivery work" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Viewed assigned delivery work" }, async (client) => {
     await activeDriverScope(actor, client);
     const result = await client.query<DriverJobWorkspaceItem>(`
       SELECT job.id::text,job.company_id::text AS "companyId",job.branch_id::text AS "branchId",
@@ -576,7 +584,7 @@ export async function recordDriverEvent(actor: SessionUser, input: {
     ...(input.lineOutcomes !== undefined ? { lineOutcomes: input.lineOutcomes } : {}),
   });
   if (isDemoMode()) return { accepted: true as const, eventId: input.clientEventId };
-  return withAuditTransaction({ userId: actor.id, reason: `Driver delivery event ${input.eventType}` }, async (client) => {
+  return withAuditTransaction({ actor, reason: `Driver delivery event ${input.eventType}` }, async (client) => {
     const scope = await activeDriverScope(actor, client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`driver-event:${input.deliveryJobId}`]);
     const assignment = await client.query<{ id: string; companyId: string; branchId: string; requestId: string; jobCode: string; jobStatus: DeliveryJobStatus; deliveryJobId: string; driverUserId: string; status: "ASSIGNED" | "ACCEPTED" | "REJECTED" | "REASSIGNED" | "CANCELLED" | "COMPLETED"; assignedAt: string; endedAt?: string }>(`
@@ -729,7 +737,7 @@ export async function uploadDriverEvidence(actor: SessionUser, input: {
 }) {
   assertPermission(actor, "update_assigned_deliveries");
   if (isDemoMode()) return { accepted: true as const, evidenceId: input.clientEvidenceId };
-  const event = await withAuditTransaction({ userId: actor.id, reason: "Validated delivery evidence scope" }, async (client) => {
+  const event = await withAuditTransaction({ actor, reason: "Validated delivery evidence scope" }, async (client) => {
     await activeDriverScope(actor, client);
     const result = await client.query<{
       companyId: string;
@@ -755,7 +763,7 @@ export async function uploadDriverEvidence(actor: SessionUser, input: {
   });
   const stored = await storePersistentUpload({ namespace: "delivery-evidence", scopeSegments: [actor.id, input.deliveryJobId], file: input.file });
   try {
-    return await withAuditTransaction({ userId: actor.id, reason: "Driver delivery evidence uploaded" }, async (client) => {
+    return await withAuditTransaction({ actor, reason: "Driver delivery evidence uploaded" }, async (client) => {
       const scope = await activeDriverScope(actor, client);
       if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(stored.contentType)) {
         throw new Error("Delivery evidence type is unavailable.");
@@ -827,7 +835,7 @@ export interface ReceivingJobWorkspaceItem {
 export async function getReceivingWorkspace(actor: SessionUser): Promise<ReceivingJobWorkspaceItem[]> {
   assertPermission(actor, "view_receiving");
   if (isDemoMode()) return [];
-  return withAuditTransaction({ userId: actor.id, reason: "Viewed assigned receiving work" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Viewed assigned receiving work" }, async (client) => {
     const companyId = actor.accountKind === "COMPANY" ? actor.companyId : undefined;
     const branchId = actor.accountKind === "COMPANY" ? actor.branchId : undefined;
     if (actor.accountKind === "COMPANY" && !companyId) throw new Error("An active company account is required.");
@@ -912,7 +920,7 @@ export async function confirmReceipt(actor: SessionUser, input: {
 }) {
   assertPermission(actor, "confirm_receipts");
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Customer receipt independently confirmed" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "Customer receipt independently confirmed" }, async (client) => {
     if (actor.accountKind !== "COMPANY" || !actor.companyId) throw new Error("An active company receiving account is required.");
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`receipt:${input.deliveryJobId}`]);
     const job = await client.query<{ companyId: string; branchId: string; requestId: string; jobCode: string }>(`
@@ -996,3 +1004,4 @@ export async function confirmReceipt(actor: SessionUser, input: {
     });
   });
 }
+import { recordAccountabilityAccessWithClient } from "@/lib/audit-accountability";

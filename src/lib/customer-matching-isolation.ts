@@ -157,7 +157,7 @@ export async function getAuthorizedCustomerMatchWorkspace(
   const values = [actor.id, actor.roleAssignmentId, capturedAt];
 
   return withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: "Viewed scoped customer three-way matching",
   }, async (client) => {
     const lines = await client.query<CustomerMatchLineOption>(`
@@ -258,7 +258,7 @@ export async function evaluateAuthorizedCustomerMatch(
   }
 
   return withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: "Evaluated scoped customer three-way match",
   }, async (client) => {
     const capturedAt = new Date();
@@ -460,7 +460,7 @@ export async function overrideAuthorizedCustomerMatch(
   }
 
   await withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: "Independently overrode scoped customer three-way match",
   }, async (client) => {
     const match = await client.query<{

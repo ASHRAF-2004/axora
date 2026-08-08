@@ -56,6 +56,10 @@ export async function listAuthorizedAuditRecords(
   }
   const filters = normalizeAuditRecordFilters(rawFilters);
   const platformView = isPlatformAuditActor(actor);
+  if (!isDemoMode()) {
+    if (!platformView && !actor.companyId) throw new AuditAccessUnavailableError();
+    return listScopedAuditRecords(actor, filters);
+  }
 
   try {
     if (isDemoMode()) {
@@ -223,3 +227,4 @@ export const auditIsolationInternals = {
   demoAuditVisible,
   isPlatformAuditActor,
 };
+import { listScopedAuditRecords } from "@/lib/accountability-reader";

@@ -15,13 +15,14 @@ export default async function ReportsPage() {
   const actor = await requirePagePermission("view_reports");
   const locale = actor.preferredLocale ?? "en";
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) => operationalMessage(locale, key, values);
-  const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
+  const platformView = isPlatformAnalyticsActor(actor);
+  const companyView = actor.accountKind === "COMPANY";
   const [data, requests, organization] = await Promise.all([
     getAuthorizedDashboardData(actor),
-    platformView ? Promise.resolve([]) : listAuthorizedRequests(actor),
-    platformView
-      ? Promise.resolve({ companies: [], branches: [] })
-      : loadOrganizationDirectory(actor),
+    companyView ? listAuthorizedRequests(actor) : Promise.resolve([]),
+    companyView
+      ? loadOrganizationDirectory(actor)
+      : Promise.resolve({ companies: [], branches: [] }),
   ]);
   const branches = organization.branches;
   const requestedSpend = requests
@@ -38,7 +39,7 @@ export default async function ReportsPage() {
     title={m("reports.title")}
     description={m(platformView ? "reports.platformDescription" : "reports.companyDescription")} />
     <section className="metric-grid">
-      {platformView ? <>
+      {data.scope === "platform" ? <>
         <MetricCard label={m("reports.sales")} value={formatCurrency(data.sales, locale)} note={m("reports.salesNote")} icon={ReceiptText} tone="blue" />
         <MetricCard label={m("reports.cost")} value={formatCurrency(data.buyingCost, locale)} note={m("reports.costNote")} icon={Banknote} tone="navy" />
         <MetricCard label={m("reports.margin")} value={`${operationalNumber(locale, data.grossMarginPercent, { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`} note={formatCurrency(data.grossProfit, locale)} icon={Percent} tone="teal" />
@@ -56,3 +57,4 @@ export default async function ReportsPage() {
     </div></article><article className="panel"><div className="panel-header"><div><h3>{m("reports.rule")}</h3><p>{m("reports.ruleIntro")}</p></div></div><div className="panel-body"><div className="callout"><strong>{m(platformView ? "reports.platformRule" : "reports.companyRule")}</strong><p>{m(platformView ? "reports.platformRuleBody" : "reports.companyRuleBody")}</p></div></div></article></section>
   </>;
 }
+import { isPlatformAnalyticsActor } from "@/lib/dashboard-data";

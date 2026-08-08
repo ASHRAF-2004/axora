@@ -48,7 +48,7 @@ export async function updateAuthorizedCompanyPricingConfiguration(
   }
 
   await withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: "Company pricing configuration updated",
   }, async (client) => {
     const access = await client.query<AccessRow>(`

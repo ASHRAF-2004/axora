@@ -5,7 +5,7 @@ export function MetricCard({ label, value, note, icon: Icon, tone = "blue" }: { 
     <article className={`metric-card metric-${tone}`}>
       <div className="metric-icon"><Icon size={20} aria-hidden="true" /></div>
       <div className="metric-label">{label}</div>
-      <div className="metric-value">{value}</div>
+      <div className="metric-value"><bdi dir="auto">{value}</bdi></div>
       <div className="metric-note">{note}</div>
     </article>
   );

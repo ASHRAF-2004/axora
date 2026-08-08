@@ -344,7 +344,7 @@ export async function listRequestWorkflowEvents(
   if (!canAccess(actor, "view_requests")) throw new Error("Your account cannot view this request timeline.");
   if (isDemoMode()) return [];
   return withAuditTransaction(
-    { userId: actor.id, reason: "Viewed request workflow timeline" },
+    { actor, reason: "Viewed request workflow timeline" },
     async (client) => {
       const result = await client.query<{
         id: string;

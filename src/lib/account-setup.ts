@@ -207,7 +207,7 @@ export async function createInvitedUser(
   const invitationId = randomUUID();
 
   const result = await withAuditTransaction(
-    { userId: actor.id, reason: "Account invitation created" },
+    { actor, reason: "Account invitation created" },
     async (client) => {
       await lockAuthorizedInvitationCreationScope(client, actor, resolved);
       await enforceInvitationQuota(
@@ -445,7 +445,7 @@ export async function resendAccountSetupInvitation(
   const invitationId = randomUUID();
 
   const result = await withAuditTransaction(
-    { userId: actor.id, reason: "Account invitation replaced" },
+    { actor, reason: "Account invitation replaced" },
     async (client) => {
       await lockAuthorizedInvitationTarget(client, actor, userId);
       const targetResult = await client.query<ExistingInvitationTarget>(

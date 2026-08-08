@@ -84,7 +84,7 @@ export async function getAccountSecurityOverview(
   }
   const currentHash = await currentSessionTokenHash();
   return withAuditTransaction(
-    { userId: actor.id, reason: "Viewed account security" },
+    { actor, reason: "Viewed account security" },
     async (client) => {
       const summary = await client.query<SecuritySummaryRow>(`
         SELECT account.email,
@@ -184,7 +184,7 @@ export async function changeOwnPassword(
   if (reusesCurrent) return { status: "reused" };
 
   return withAuditTransaction(
-    { userId: actor.id, reason: "Changed own password and rotated sessions" },
+    { actor, reason: "Changed own password and rotated sessions" },
     async (client) => {
       const locked = await client.query<CredentialRow>(`
         SELECT credential.password_hash AS "passwordHash",
@@ -234,7 +234,7 @@ export async function revokeOtherSession(actor: SessionUser, sessionId: string) 
   if (!UUID_PATTERN.test(sessionId)) throw new Error("The session identifier is invalid.");
   const currentHash = await currentSessionTokenHash();
   return withAuditTransaction(
-    { userId: actor.id, reason: "Revoked another active session" },
+    { actor, reason: "Revoked another active session" },
     async (client) => {
       const result = await client.query<{ recordId: string }>(`
         UPDATE user_sessions
@@ -253,7 +253,7 @@ export async function revokeAllOtherSessions(actor: SessionUser) {
   if (isDemoMode()) return 0;
   const currentHash = await currentSessionTokenHash();
   return withAuditTransaction(
-    { userId: actor.id, reason: "Revoked all other active sessions" },
+    { actor, reason: "Revoked all other active sessions" },
     async (client) => {
       const result = await client.query<{ recordId: string }>(`
         UPDATE user_sessions

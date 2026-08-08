@@ -516,7 +516,7 @@ export async function updateTutorialStep(
   const allowed = tutorialForRole(safe.roleKey, actor.isOwner).some((step) => step.key === safe.stepKey);
   if (!allowed) throw new Error("This tutorial step is not available for the current role.");
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Tutorial progress updated" }, (client) => client.query(`
+  await withAuditTransaction({ actor, reason: "Tutorial progress updated" }, (client) => client.query(`
     INSERT INTO tutorial_step_progress(
       user_id,role_key,step_key,status,first_viewed_at,completed_at,skipped_at,dismissed_at,updated_at
     ) VALUES (

@@ -258,7 +258,8 @@ export interface FinancialTotals {
   deliveryCharges: number;
 }
 
-export interface DashboardData extends FinancialTotals {
+export interface PlatformDashboardData extends FinancialTotals {
+  scope: "platform";
   requestCount: number;
   openRequestCount: number;
   urgentRequestCount: number;
@@ -271,6 +272,17 @@ export interface DashboardData extends FinancialTotals {
   topProducts: Array<{ label: string; value: number }>;
   attention: ProcurementRequest[];
 }
+
+export interface CompanyDashboardData {
+  scope: "company";
+  requestCount: number;
+  openRequestCount: number;
+  urgentRequestCount: number;
+  byStatus: PlatformDashboardData["byStatus"];
+  attention: PlatformDashboardData["attention"];
+}
+
+export type DashboardData = PlatformDashboardData | CompanyDashboardData;
 
 export interface QuotationRecord {
   id: string; requestLineId: string; requestLineCode: string; orderCode: string; productName: string;
@@ -305,6 +317,10 @@ export interface PaymentRecord {
 export interface AuditRecord {
   id: string; entityType: string; recordId?: string; action: string; actorName?: string;
   reason?: string; occurredAt: string;
+  eventType?: string; actorRole?: string; companyId?: string; branchId?: string;
+  departmentId?: string; relatedRequestId?: string; relatedDeliveryId?: string;
+  outcome?: string; reasonCode?: string; safeDiff?: Record<string, unknown>;
+  correlationId?: string; integrityHash?: string;
 }
 
 export interface AttachmentRecord {

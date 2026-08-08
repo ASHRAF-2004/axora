@@ -48,13 +48,14 @@ export default async function DashboardPage() {
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const copy = corePortalMessages(locale).dashboard;
-  const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
+  const platformView = isPlatformAnalyticsActor(actor);
+  const companyView = actor.accountKind === "COMPANY";
   const [data, companyRequests, organization] = await Promise.all([
     getAuthorizedDashboardData(actor),
-    platformView ? Promise.resolve([]) : listAuthorizedRequests(actor),
-    platformView
-      ? Promise.resolve({ companies: [], branches: [] })
-      : loadOrganizationDirectory(actor),
+    companyView ? listAuthorizedRequests(actor) : Promise.resolve([]),
+    companyView
+      ? loadOrganizationDirectory(actor)
+      : Promise.resolve({ companies: [], branches: [] }),
   ]);
   const branches = organization.branches;
   const canViewInvoices = [...data.attention, ...companyRequests].some((request) => (
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
     {},
   )).map(([label, value]) => ({ label, value }));
   const maxStatus = Math.max(...data.byStatus.map((item) => item.value), 1);
-  const activity = platformView ? data.byCompany : byBranch;
+  const activity = data.scope === "platform" ? data.byCompany : byBranch;
   const maxActivity = Math.max(...activity.map((item) => item.value), 1);
   const experience = roleDashboard(actor, pendingApprovalCount, locale);
   return (
@@ -95,7 +96,7 @@ export default async function DashboardPage() {
         ))}
       </nav>
       <section className="metric-grid" aria-label={copy.indicators}>
-        {platformView ? <>
+        {data.scope === "platform" ? <>
           <MetricCard label={copy.metrics.totalRequests} value={String(data.requestCount)} note={`${data.openRequestCount} ${copy.notes.open}`} icon={ClipboardList} tone="blue" />
           <MetricCard label={copy.metrics.customerSales} value={formatCurrency(data.sales, locale)} note={copy.notes.customerPrice} icon={TrendingUp} tone="teal" />
           <MetricCard label={copy.metrics.buyingCost} value={formatCurrency(data.buyingCost, locale)} note={copy.notes.supplierCost} icon={Banknote} tone="navy" />
@@ -112,7 +113,6 @@ export default async function DashboardPage() {
           <MetricCard label={copy.metrics.monthlyBudget} value={budgetedBranches.length ? formatCurrency(monthlyBudget, locale) : corePortalMessages(locale).common.notSet} note={`${budgetedBranches.length} / ${branches.length} ${copy.notes.configured}`} icon={WalletCards} tone="blue" />
           <MetricCard label={copy.metrics.remainingBudget} value={budgetedBranches.length ? formatCurrency(remainingBudget, locale) : corePortalMessages(locale).common.notSet} note={copy.notes.remaining} icon={CircleDollarSign} tone="teal" />
           <MetricCard label={copy.metrics.urgent} value={String(data.urgentRequestCount)} note={copy.notes.urgentCompany} icon={AlertTriangle} tone="orange" />
-          <MetricCard label={copy.metrics.delayed} value={String(data.delayedDeliveryCount)} note={copy.notes.delayedCompany} icon={PackageCheck} tone="navy" />
         </>}
       </section>
 
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
               <thead><tr><th>{copy.request}</th><th>{platformView ? copy.companyBranch : corePortalMessages(locale).common.branch}</th><th>{copy.neededBy}</th>{platformView ? null : <th>{copy.approval}</th>}<th>{copy.fulfilment}</th>{canViewInvoices ? <th>{copy.payment}</th> : null}</tr></thead>
               <tbody>{data.attention.map((request) => (
                 <tr key={request.id}>
-                  <td><Link className="table-link" href={`/requests/${request.id}`}>{request.orderCode}</Link><br /><span className="subtle">{localizedStatus(request.urgency, locale)}</span></td>
+                  <td><Link className="table-link" href={`/requests/${request.id}`}><bdi className="bidi-ltr" dir="ltr">{request.orderCode}</bdi></Link><br /><span className="subtle">{localizedStatus(request.urgency, locale)}</span></td>
                   <td>{platformView ? <><strong>{request.companyName}</strong><br /><span className="subtle">{request.branchName}</span></> : <strong>{request.branchName}</strong>}</td>
                   <td>{formatDate(request.neededByDate, locale, timeZone)}</td>
                   {platformView ? null : <td><StatusBadge status={request.approvalStatus}>{localizedStatus(request.approvalStatus, locale)}</StatusBadge></td>}
@@ -153,12 +153,12 @@ export default async function DashboardPage() {
       </section>
 
       <section className="dashboard-grid">
-        <article className="panel">
+        {data.scope === "platform" ? <article className="panel">
           <div className="panel-header"><div><h2>{copy.topProducts}</h2><p>{copy.rankedProducts}</p></div></div>
           <div className="panel-body chart-list">{data.topProducts.map((item) => (
             <div className="chart-row" key={item.label}><span>{item.label}</span><div className="chart-track"><div className="chart-fill" style={{ width: `${Math.min(100, item.value * 8)}%` }} /></div><strong>{item.value}</strong></div>
           ))}</div>
-        </article>
+        </article> : null}
         <article className="panel">
           <div className="panel-header"><div><h3>{platformView ? copy.calculationRule : copy.budgetRule}</h3><p>{platformView ? copy.calculationHelp : copy.budgetHelp}</p></div></div>
           <div className="panel-body"><div className="callout">
@@ -170,3 +170,4 @@ export default async function DashboardPage() {
     </>
   );
 }
+import { isPlatformAnalyticsActor } from "@/lib/dashboard-data";

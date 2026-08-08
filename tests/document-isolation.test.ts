@@ -164,7 +164,9 @@ describe("document isolation service", () => {
   });
 
   it("returns only validated bytes for an exact authorized attachment", async () => {
-    mocks.query.mockResolvedValueOnce({ rows: [downloadRow()] });
+    mocks.clientQuery
+      .mockResolvedValueOnce({ rows: [downloadRow()] })
+      .mockResolvedValueOnce({ rows: [] });
     const file = await loadAuthorizedAttachmentFile(
       actor,
       ids.attachment,
@@ -176,12 +178,16 @@ describe("document isolation service", () => {
       visibility: "CUSTOMER",
     });
     expect(file?.bytes).toEqual(pdfBytes);
-    expect(mocks.query).toHaveBeenCalledWith(
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
       expect.stringContaining("axora_attachment_download"),
       [ids.actor, ids.assignment, ids.attachment, capturedAt],
     );
+    expect(mocks.clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("axora_record_accountability_access"),
+      [ids.actor, ids.assignment, "ATTACHMENT_DOWNLOAD", ids.attachment, 1],
+    );
 
-    mocks.query.mockResolvedValueOnce({
+    mocks.clientQuery.mockResolvedValueOnce({
       rows: [downloadRow(Buffer.from("not a pdf"))],
     });
     await expect(loadAuthorizedAttachmentFile(
@@ -196,7 +202,7 @@ describe("document isolation service", () => {
       "not-a-uuid",
       capturedAt,
     )).resolves.toBeNull();
-    expect(mocks.query).not.toHaveBeenCalled();
+    expect(mocks.clientQuery).not.toHaveBeenCalled();
   });
 
   it("validates upload bytes and invokes only the protected creation function", async () => {
@@ -220,7 +226,7 @@ describe("document isolation service", () => {
     });
     expect(mocks.withAuditTransaction).toHaveBeenCalledWith(
       {
-        userId: ids.actor,
+        actor,
         reason: "Uploaded document Safety_plan__final_.pdf",
       },
       expect.any(Function),
