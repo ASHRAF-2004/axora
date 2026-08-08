@@ -6,15 +6,19 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh-lockfile:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Check out the tested commit
+      - name: Check out the P0-02 branch
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: agent/p0-02-isolation-closure
+          persist-credentials: true
+          fetch-depth: 1
 
       - name: Use Node.js 24
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -31,7 +35,7 @@ jobs:
           const file = "package-lock.json";
           const lock = JSON.parse(readFileSync(file, "utf8"));
           const entry = lock.packages?.["node_modules/nanoid"];
-          if (!entry || entry.version !== "3.3.16") {
+          if (!entry || !["3.3.16", "3.3.17"].includes(entry.version)) {
             throw new Error(`Unexpected nanoid lock entry: ${entry?.version ?? "missing"}`);
           }
           Object.assign(entry, {
@@ -48,10 +52,15 @@ jobs:
           npm ci --ignore-scripts
           npm audit --omit=dev --audit-level=high
 
-      - name: Publish generated lockfile
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: p0-02-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit the validated lockfile
+        run: |
+          set -euo pipefail
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "The validated lockfile is already committed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Refresh lockfile for nanoid 3.3.17 [skip ci]"
+          git push origin HEAD:agent/p0-02-isolation-closure
