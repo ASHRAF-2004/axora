@@ -1,0 +1,48 @@
+name: Refresh P0-02 lockfile
+
+on:
+  push:
+    branches:
+      - agent/p0-02-isolation-closure
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    if: startsWith(github.event.head_commit.message, 'Pin nanoid for GHSA-2v37-7h3g-55p8')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: agent/p0-02-isolation-closure
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.13.0
+          cache: npm
+
+      - name: Regenerate and verify the lockfile
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts
+          npm ci --ignore-scripts
+          npm audit --omit=dev --audit-level=high
+
+      - name: Commit the generated lockfile
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "The lockfile was already current."
+            exit 0
+          fi
+          git commit -m "Refresh lockfile for nanoid 3.3.17 [skip ci]"
+          git push origin HEAD:agent/p0-02-isolation-closure
