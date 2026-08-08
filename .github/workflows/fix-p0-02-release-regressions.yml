@@ -1,0 +1,46 @@
+name: Fix P0-02 release regressions
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  fix-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the P0-02 branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: agent/p0-02-isolation-closure
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Apply deterministic regression patch
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/fix_p0_02_release_regressions.py
+          python3 -m py_compile scripts/ci/fix_p0_02_release_regressions.py
+
+      - name: Commit reviewed release fixes
+        run: |
+          set -euo pipefail
+          git add \
+            tests/account-setup-lifecycle.test.ts \
+            tests/account-setup-actions.test.ts \
+            tests/isolation-closure-migration.test.ts \
+            database/migrations/048_isolation_transaction_lock_hardening.sql \
+            tests/p0-02-isolation-coverage.test.ts \
+            src/lib/scoped-operations.ts
+          if git diff --cached --quiet; then
+            echo "The release regression fixes are already committed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Fix P0-02 release regressions [skip ci]"
+          git push origin HEAD:agent/p0-02-isolation-closure
