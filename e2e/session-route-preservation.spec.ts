@@ -4,6 +4,7 @@ import {
   E2E_OWNER_PASSWORD,
   signInAsDemoOwner,
   signInAsDemoRole,
+  type DemoRoleSession,
 } from "./helpers/auth";
 
 const companyId = "11111111-1111-4111-8111-111111111111";
@@ -18,6 +19,146 @@ const requester = {
   companyId,
   branchId,
 };
+
+const refreshCases: Array<{
+  name: string;
+  actor: DemoRoleSession;
+  route: string;
+}> = [
+  {
+    name: "platform operations",
+    actor: {
+      id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      email: "operations.fixture@axora.invalid",
+      name: "Operations fixture",
+      role: "PLATFORM_OPERATIONS",
+      accountKind: "PLATFORM",
+      scopeType: "PLATFORM",
+    },
+    route: "/sourcing?status=open#quotes",
+  },
+  {
+    name: "supplier",
+    actor: {
+      id: "22222222-2222-4222-8222-222222222222",
+      email: "supplier.fixture@axora.invalid",
+      name: "Supplier fixture",
+      role: "SUPPLIER_USER",
+      accountKind: "SUPPLIER",
+      scopeType: "SUPPLIER",
+      supplierId: "33333333-3333-4333-8333-333333333333",
+    },
+    route: "/supplier?status=open#rfqs",
+  },
+  {
+    name: "delivery driver",
+    actor: {
+      id: "44444444-4444-4444-8444-444444444444",
+      email: "driver.fixture@axora.invalid",
+      name: "Driver fixture",
+      role: "DELIVERY_DRIVER",
+      accountKind: "DELIVERY",
+      scopeType: "DELIVERY",
+    },
+    route: "/driver?status=assigned#today",
+  },
+  {
+    name: "receiver",
+    actor: {
+      id: "55555555-5555-4555-8555-555555555555",
+      email: "receiver.fixture@axora.invalid",
+      name: "Receiver fixture",
+      role: "RECEIVING_USER",
+      accountKind: "COMPANY",
+      scopeType: "COMPANY",
+      companyId,
+    },
+    route: "/receiving?status=delivered#queue",
+  },
+  {
+    name: "company administrator",
+    actor: {
+      id: "66666666-6666-4666-8666-666666666666",
+      email: "company-admin.fixture@axora.invalid",
+      name: "Company administrator fixture",
+      role: "COMPANY_ADMIN",
+      accountKind: "COMPANY",
+      scopeType: "COMPANY",
+      companyId,
+    },
+    route: "/dashboard?period=month#metrics",
+  },
+  {
+    name: "branch administrator",
+    actor: {
+      id: "77777777-7777-4777-8777-777777777777",
+      email: "branch-admin.fixture@axora.invalid",
+      name: "Branch administrator fixture",
+      role: "BRANCH_ADMIN",
+      accountKind: "COMPANY",
+      scopeType: "BRANCH",
+      companyId,
+      branchId,
+    },
+    route: "/branches?status=active#budget",
+  },
+  {
+    name: "requester",
+    actor: requester,
+    route: "/requests/new?product=fixture#request-form",
+  },
+  {
+    name: "approver",
+    actor: {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      email: "approver.fixture@axora.invalid",
+      name: "Approver fixture",
+      role: "COMPANY_APPROVER",
+      accountKind: "COMPANY",
+      scopeType: "COMPANY",
+      companyId,
+    },
+    route: "/approvals?status=pending#queue",
+  },
+  {
+    name: "finance reviewer",
+    actor: {
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      email: "finance.fixture@axora.invalid",
+      name: "Finance fixture",
+      role: "FINANCE_REVIEWER",
+      accountKind: "COMPANY",
+      scopeType: "COMPANY",
+      companyId,
+    },
+    route: "/finance?status=unpaid#invoices",
+  },
+  {
+    name: "auditor",
+    actor: {
+      id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      email: "auditor.fixture@axora.invalid",
+      name: "Auditor fixture",
+      role: "AUDITOR",
+      accountKind: "COMPANY",
+      scopeType: "COMPANY",
+      companyId,
+    },
+    route: "/audit?entityType=requests&action=UPDATE#audit-table",
+  },
+  {
+    name: "technical support",
+    actor: {
+      id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      email: "support.fixture@axora.invalid",
+      name: "Support fixture",
+      role: "TECHNICAL_SUPPORT",
+      accountKind: "PLATFORM",
+      scopeType: "PLATFORM",
+    },
+    route: "/support?account=fixture#diagnostics",
+  },
+];
 
 async function completeDemoLogin(page: Parameters<typeof signInAsDemoOwner>[0]) {
   await page.getByLabel("Email").fill(E2E_OWNER_EMAIL);
@@ -47,7 +188,7 @@ test("an expired cookie resumes the exact prior route after login", async ({ pag
   await page.context().clearCookies();
   await page.reload();
 
-  await expect(page).toHaveURL(/\/login\?.*reason=required|\/login\?.*reason=expired/);
+  await expect(page).toHaveURL(/\/login\?.*(reason=required|reason=expired)/);
   await expect(page.getByText(/session ended|sign in to continue/i)).toBeVisible();
   await expect(page.locator('input[name="returnTo"]')).toHaveValue(
     "/requests?q=paper&status=open#request-table",
@@ -134,4 +275,20 @@ test("multiple tabs independently retain their active authorized routes", async 
 
   await expect(page).toHaveURL(/\/requests\?q=paper&status=open#requests$/);
   await expect(second).toHaveURL(/\/audit\?entityType=requests&action=UPDATE#audit$/);
+});
+
+test("every major role retains its authorized workspace on refresh", async ({ page }) => {
+  for (const scenario of refreshCases) {
+    await page.context().clearCookies();
+    await page.goto("/en");
+    await page.evaluate(() => window.sessionStorage.clear());
+    await signInAsDemoRole(page, scenario.actor);
+    await page.goto(scenario.route);
+    await expect(page, scenario.name).toHaveURL(scenario.route);
+
+    await page.reload();
+
+    await expect(page, scenario.name).toHaveURL(scenario.route);
+    await expect(page.locator("main.app-content"), scenario.name).toBeVisible();
+  }
 });
