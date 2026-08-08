@@ -92,7 +92,7 @@ test("request draft fields recover after a hard refresh", async ({ page }) => {
     .toHaveValue("Preserve this safe draft across refresh.");
   await expect(page.getByLabel("Needed by")).toHaveValue(tomorrow);
   await expect(page.locator('input[name="submissionKey"]'))
-    .toHaveAttribute("value", /^[0-9a-f-]{36}$/i);
+    .toHaveValue(/^[0-9a-f-]{36}$/i);
 });
 
 test("offline and reconnect states retain the current route", async ({ page, context }) => {
