@@ -10,6 +10,9 @@ import { readFormText, requestSchema } from "@/lib/validation";
 import type { RequestStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+
+const requestSubmissionKeySchema = z.string().uuid();
 
 export async function createRequestAction(formData: FormData) {
   const user = await requirePermission("create_requests");
@@ -33,7 +36,10 @@ export async function createRequestAction(formData: FormData) {
     notes: readFormText(formData, "notes"),
     lines,
   });
-  const id = await createAuthorizedRequest(input, user);
+  const submissionKey = requestSubmissionKeySchema.parse(
+    readFormText(formData, "submissionKey"),
+  );
+  const id = await createAuthorizedRequest(input, user, submissionKey);
   revalidatePath("/dashboard");
   revalidatePath("/requests");
   redirect(`/requests/${id}?notice=request-submitted`);

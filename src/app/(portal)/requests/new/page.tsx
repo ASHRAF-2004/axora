@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { RequestDraftBoundary } from "@/components/RequestDraftBoundary";
 import { RequestForm } from "@/components/RequestForm";
 import { requirePagePermission } from "@/lib/auth";
 import { getCatalogProductById } from "@/lib/catalog";
@@ -30,6 +31,11 @@ export default async function NewRequestPage({
     ...branch,
     committedAmount: branch.committedAmount ?? 0,
   }));
+  const companyId = actor.companyId ?? companies[0]?.id;
+  const draftScope = {
+    userId: actor.id,
+    ...(companyId ? { companyId } : {}),
+  };
 
   return (
     <>
@@ -39,13 +45,15 @@ export default async function NewRequestPage({
         description={copy.newDescription}
       />
 
-      <RequestForm
-        actor={actor}
-        companies={companies}
-        branches={branches}
-        initialProduct={initialProduct}
-        locale={locale}
-      />
+      <RequestDraftBoundary scope={draftScope}>
+        <RequestForm
+          actor={actor}
+          companies={companies}
+          branches={branches}
+          initialProduct={initialProduct}
+          locale={locale}
+        />
+      </RequestDraftBoundary>
     </>
   );
 }

@@ -2,6 +2,12 @@
 
 import { loginAction } from "@/app/login/actions";
 import type { SupportedLocale } from "@/lib/i18n";
+import {
+  browserReturnPath,
+  mergeStoredReturnHash,
+  safeInternalReturnPath,
+  type SessionReturnReason,
+} from "@/lib/session-return";
 import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import styles from "./LoginForm.module.css";
@@ -27,6 +33,12 @@ const loginCopy = {
       "Your password was changed and prior sessions were ended. Sign in with the new password.",
     error:
       "The email or password is incorrect. If your account is new, use the private setup link in your invitation email first.",
+    required:
+      "Sign in to continue on the page you requested.",
+    expired:
+      "Your secure session ended. Sign in again to return to your previous page.",
+    accessChanged:
+      "Your access changed. Sign in again and Axora will open the newest route permitted for your role.",
   },
   ar: {
     title: "تسجيل الدخول إلى Axora",
@@ -46,6 +58,11 @@ const loginCopy = {
       "تم تغيير كلمة المرور وإنهاء الجلسات السابقة. سجّل الدخول بكلمة المرور الجديدة.",
     error:
       "البريد الإلكتروني أو كلمة المرور غير صحيحين. إذا كان حسابك جديدًا، استخدم أولًا رابط الإعداد الخاص في رسالة الدعوة.",
+    required: "سجّل الدخول للمتابعة في الصفحة التي طلبتها.",
+    expired:
+      "انتهت جلستك الآمنة. سجّل الدخول مرة أخرى للعودة إلى صفحتك السابقة.",
+    accessChanged:
+      "تغيّر نطاق وصولك. سجّل الدخول مرة أخرى وسيفتح Axora أحدث مسار مسموح لدورك.",
   },
   ms: {
     title: "Log masuk ke Axora",
@@ -66,6 +83,11 @@ const loginCopy = {
       "Kata laluan anda telah ditukar dan sesi terdahulu ditamatkan. Log masuk dengan kata laluan baharu.",
     error:
       "E-mel atau kata laluan tidak betul. Jika akaun anda baharu, gunakan dahulu pautan persediaan peribadi dalam e-mel jemputan.",
+    required: "Log masuk untuk meneruskan pada halaman yang anda minta.",
+    expired:
+      "Sesi selamat anda telah tamat. Log masuk semula untuk kembali ke halaman sebelumnya.",
+    accessChanged:
+      "Akses anda telah berubah. Log masuk semula dan Axora akan membuka laluan terbaharu yang dibenarkan untuk peranan anda.",
   },
 } as const;
 
@@ -95,6 +117,8 @@ export function LoginForm({
   demo,
   demoEmail,
   demoPassword,
+  returnTo,
+  reason,
   locale = "en",
 }: {
   error: boolean;
@@ -103,6 +127,8 @@ export function LoginForm({
   demo: boolean;
   demoEmail?: string;
   demoPassword?: string;
+  returnTo?: string;
+  reason?: SessionReturnReason;
   locale?: SupportedLocale;
 }) {
   const copy = loginCopy[locale];
@@ -115,6 +141,17 @@ export function LoginForm({
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [caretIndex, setCaretIndex] = useState(initialEmail.length);
 
+  const mergedReturnTo = useMemo(() => {
+    // Merge any browser-stored fragment into the same server-provided path.
+    // A direct login must never inherit a previous person's tab path.
+    if (!returnTo) return "/dashboard";
+    return mergeStoredReturnHash(
+      returnTo,
+      browserReturnPath(),
+      "/dashboard",
+    );
+  }, [returnTo]);
+
   const feedback = useMemo(() => {
     if (error) return { kind: "error" as const, message: copy.error };
     if (resetComplete) {
@@ -123,8 +160,17 @@ export function LoginForm({
     if (setupComplete) {
       return { kind: "success" as const, message: copy.setupComplete };
     }
+    if (reason === "expired") {
+      return { kind: "error" as const, message: copy.expired };
+    }
+    if (reason === "access-changed") {
+      return { kind: "error" as const, message: copy.accessChanged };
+    }
+    if (reason === "required") {
+      return { kind: "success" as const, message: copy.required };
+    }
     return null;
-  }, [copy, error, resetComplete, setupComplete]);
+  }, [copy, error, reason, resetComplete, setupComplete]);
 
   const syncCaret = (input: HTMLInputElement) => {
     setCaretIndex(input.selectionEnd ?? input.value.length);
@@ -153,6 +199,11 @@ export function LoginForm({
       data-feedback-label={copy.feedback}
     >
       <h1 className={styles.srOnly}>{copy.title}</h1>
+      <input
+        name="returnTo"
+        type="hidden"
+        defaultValue={safeInternalReturnPath(mergedReturnTo, "/dashboard")}
+      />
 
       <YetiGuide
         focus={focus}

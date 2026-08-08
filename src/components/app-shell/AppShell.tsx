@@ -22,6 +22,10 @@ import { GuidedTutorial } from "@/components/onboarding/GuidedTutorial";
 import type { TutorialStepDefinition, TutorialStepStatus } from "@/lib/onboarding";
 import { setPreferredLocaleAction } from "@/app/(portal)/profile/language-action";
 import { portalMessages } from "@/lib/portal-i18n";
+import {
+  clearBrowserSessionWorkspace,
+  SessionContinuity,
+} from "@/components/SessionContinuity";
 
 export interface AppNavigationItem {
   href: string;
@@ -33,7 +37,15 @@ export interface AppNavigationItem {
 interface AppShellProps {
   children: ReactNode;
   homeHref?: string;
-  user: { name: string; email: string; roleLabel: string; initials: string; avatarUrl?: string };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    roleLabel: string;
+    initials: string;
+    companyId?: string;
+    avatarUrl?: string;
+  };
   primaryItems: AppNavigationItem[];
   drawerItems: AppNavigationItem[];
   quickAction?: AppNavigationItem;
@@ -101,6 +113,10 @@ export function AppShell({
   const [profileOpen, setProfileOpen] = useState(false);
   const [languagePending, startLanguageTransition] = useTransition();
   const messages = portalMessages(locale);
+  const browserScope = {
+    userId: user.id,
+    ...(user.companyId ? { companyId: user.companyId } : {}),
+  };
 
   useEffect(() => {
     persistBrowserLocale(locale);
@@ -149,7 +165,10 @@ export function AppShell({
       style={brand.style}
       data-tenant-theme={brand.tenant ? "company" : "axora"}
       data-theme-version={brand.themeVersion}
+      data-session-user-id={user.id}
+      data-session-company-id={user.companyId}
     >
+      <SessionContinuity locale={locale} />
       <header className="app-topbar">
         <button className="app-menu-button" type="button" onClick={openDrawer} aria-label={messages.shell.openMenu}>
           <Menu size={22} aria-hidden="true" />
@@ -192,7 +211,12 @@ export function AppShell({
                 <Link role="menuitem" href="/profile"><UserRound size={17} aria-hidden="true" />{messages.shell.myProfile}</Link>
                 <Link role="menuitem" href="/account"><Settings2 size={17} aria-hidden="true" />{messages.shell.accountSecurity}</Link>
                 <Link role="menuitem" href="/help"><CircleHelp size={17} aria-hidden="true" />{messages.shell.helpTutorial}</Link>
-                <form action={logoutAction}><button type="submit" role="menuitem"><LogOut size={17} aria-hidden="true" />{messages.shell.signOut}</button></form>
+                <form
+                  action={logoutAction}
+                  onSubmit={() => clearBrowserSessionWorkspace(browserScope)}
+                >
+                  <button type="submit" role="menuitem"><LogOut size={17} aria-hidden="true" />{messages.shell.signOut}</button>
+                </form>
               </div>
             ) : null}
           </div>

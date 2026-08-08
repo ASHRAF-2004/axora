@@ -236,6 +236,7 @@ BEGIN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_attachment_download(uuid,uuid,uuid,timestamptz) TO axora_app';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_create_attachment(uuid,uuid,text,uuid,text,text,bytea,text,timestamptz) TO axora_app';
   END IF;
+
   IF to_regprocedure(
     'public.axora_operation_request_access_rows(uuid,uuid,text,timestamptz)'
   ) IS NOT NULL THEN
@@ -258,6 +259,12 @@ BEGIN
   ) IS NOT NULL THEN
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_lock_user_creation_scope(uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz) FROM axora_app';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_lock_user_creation_scope(uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+
+  IF to_regprocedure(
+    'public.axora_protect_request_submission_identity()'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_protect_request_submission_identity() FROM axora_app';
   END IF;
 END
 $$;

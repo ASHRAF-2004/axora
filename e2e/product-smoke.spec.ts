@@ -30,7 +30,7 @@ async function horizontalOverflow(page: Parameters<typeof signInAsDemoOwner>[0])
 test("redirects an unauthenticated portal visit to sign in", async ({ page }) => {
   await page.goto("/dashboard");
 
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/login\?/);
   await expect(page.getByRole("heading", { name: "Sign in to Axora" })).toBeVisible();
 });
 

@@ -12,6 +12,7 @@ import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import type { Branch, Company, Product } from "@/lib/types";
+import { readRequestDraft } from "@/lib/request-draft";
 import {
   AlertCircle,
   CalendarDays,
@@ -73,6 +74,31 @@ export function RequestForm({
   const today = localDateValue();
   const { notify } = useUxFeedback();
   const copy = corePortalMessages(locale).requestForm;
+  const draftCompanyId = actor.companyId ?? companies[0]?.id;
+  const draftScope = useMemo(() => (
+    draftCompanyId
+      ? { userId: actor.id, companyId: draftCompanyId }
+      : { userId: actor.id }
+  ), [actor.id, draftCompanyId]);
+  const draftState = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return readRequestDraft(draftScope);
+  }, [draftScope]);
+
+  const availableBranches = branches.filter(
+    (item) =>
+      item.status === "Active" && item.companyId === company?.id,
+  );
+
+  const resolveDraftBranch = (storedBranchId: string | undefined) => {
+    if (
+      storedBranchId
+      && availableBranches.some((item) => item.id === storedBranchId)
+    ) {
+      return storedBranchId;
+    }
+    return actor.branchId ?? "";
+  };
 
   const [knownProducts, setKnownProducts] = useState<Product[]>(
     initialProduct ? [initialProduct] : [],
@@ -98,9 +124,16 @@ export function RequestForm({
       : [],
   );
   const [cartHydrated, setCartHydrated] = useState(false);
-  const [branchId, setBranchId] = useState(actor.branchId ?? "");
-  const [department, setDepartment] = useState("");
-  const [neededByDate, setNeededByDate] = useState(today);
+  const [branchId, setBranchId] = useState(() => resolveDraftBranch(
+    draftState?.branchId,
+  ));
+  const [department, setDepartment] = useState(draftState?.department ?? "");
+  const [neededByDate, setNeededByDate] = useState(() => {
+    if (draftState?.neededByDate && draftState.neededByDate >= today) {
+      return draftState.neededByDate;
+    }
+    return today;
+  });
   const [errors, setErrors] = useState<FormErrors>({});
 
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -108,11 +141,6 @@ export function RequestForm({
   const departmentRef = useRef<HTMLInputElement | null>(null);
   const dateRef = useRef<HTMLInputElement | null>(null);
   const productsRef = useRef<HTMLDivElement | null>(null);
-
-  const availableBranches = branches.filter(
-    (item) =>
-      item.status === "Active" && item.companyId === company?.id,
-  );
 
   const selectedBranch = availableBranches.find(
     (item) => item.id === branchId,

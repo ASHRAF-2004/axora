@@ -7,11 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 049 to an empty database", async () => {
+  it("applies every numbered migration through 050 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-14)).toEqual([
+      expect(available.slice(-15)).toEqual([
         "036_authorization_policy_foundation.sql",
         "037_effective_access_snapshot.sql",
         "038_canonical_session_scopes.sql",
@@ -26,6 +26,7 @@ describe("complete forward migration chain", () => {
         "047_isolation_closure_capabilities.sql",
         "048_isolation_transaction_lock_hardening.sql",
         "049_active_request_write_boundary.sql",
+        "050_request_submission_idempotency.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -40,6 +41,7 @@ describe("complete forward migration chain", () => {
         customer_match_table: string | null;
         request_department_column: string | null;
         attachment_request_column: string | null;
+        request_submission_column: string | null;
         operation_capability: string | null;
         user_directory_capability: string | null;
         user_creation_capability: string | null;
@@ -63,6 +65,11 @@ describe("complete forward migration chain", () => {
             WHERE table_schema='public'
               AND table_name='attachments'
               AND column_name='request_id') AS attachment_request_column,
+          (SELECT is_nullable FROM information_schema.columns
+            WHERE table_schema='public'
+              AND table_name='requests'
+              AND column_name='client_submission_key')
+            AS request_submission_column,
           to_regprocedure(
             'public.axora_operation_request_access_rows(uuid,uuid,text,timestamptz)'
           )::text AS operation_capability,
@@ -80,6 +87,7 @@ describe("complete forward migration chain", () => {
         customer_match_table: "customer_three_way_matches",
         request_department_column: "YES",
         attachment_request_column: "YES",
+        request_submission_column: "YES",
         operation_capability:
           "axora_operation_request_access_rows(uuid,uuid,text,timestamp with time zone)",
         user_directory_capability:
@@ -152,114 +160,38 @@ describe("complete forward migration chain", () => {
       `);
       expect(before.rows[0]).toEqual({ requests: 15, decisions: 13, events: 1 });
 
-      await db.exec(await readFile(
-        migrationUrl("023_workflow_event_rls_and_baseline.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("024_canonical_account_invitations.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("025_customer_three_way_matching.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("026_workflow_email_delivery.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("027_receipt_accounting_unification.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("028_email_provider_events_and_suppression.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("029_delivery_driver_event_evidence.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("030_email_provider_lifecycle_events.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("031_support_diagnostics_security.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("032_user_session_revocation_audit.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("033_public_visitor_choice_counter.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("034_public_visitor_network_fallback.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("035_public_visitor_network_uniqueness.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("036_authorization_policy_foundation.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("037_effective_access_snapshot.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("038_canonical_session_scopes.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("039_scoped_permission_management.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("040_approval_limit_management.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("041_delegated_access_management.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("042_role_scope_lifecycle.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("043_access_administration_snapshot.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("044_organization_resource_isolation.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("045_request_resource_isolation.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("046_document_resource_isolation.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("047_isolation_closure_capabilities.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("048_isolation_transaction_lock_hardening.sql"),
-        "utf8",
-      ));
-      await db.exec(await readFile(
-        migrationUrl("049_active_request_write_boundary.sql"),
-        "utf8",
-      ));
+      for (const filename of [
+        "023_workflow_event_rls_and_baseline.sql",
+        "024_canonical_account_invitations.sql",
+        "025_customer_three_way_matching.sql",
+        "026_workflow_email_delivery.sql",
+        "027_receipt_accounting_unification.sql",
+        "028_email_provider_events_and_suppression.sql",
+        "029_delivery_driver_event_evidence.sql",
+        "030_email_provider_lifecycle_events.sql",
+        "031_support_diagnostics_security.sql",
+        "032_user_session_revocation_audit.sql",
+        "033_public_visitor_choice_counter.sql",
+        "034_public_visitor_network_fallback.sql",
+        "035_public_visitor_network_uniqueness.sql",
+        "036_authorization_policy_foundation.sql",
+        "037_effective_access_snapshot.sql",
+        "038_canonical_session_scopes.sql",
+        "039_scoped_permission_management.sql",
+        "040_approval_limit_management.sql",
+        "041_delegated_access_management.sql",
+        "042_role_scope_lifecycle.sql",
+        "043_access_administration_snapshot.sql",
+        "044_organization_resource_isolation.sql",
+        "045_request_resource_isolation.sql",
+        "046_document_resource_isolation.sql",
+        "047_isolation_closure_capabilities.sql",
+        "048_isolation_transaction_lock_hardening.sql",
+        "049_active_request_write_boundary.sql",
+        "050_request_submission_idempotency.sql",
+      ]) {
+        await db.exec(await readFile(migrationUrl(filename), "utf8"));
+      }
 
       const after = await db.query<{
         requests: number;
@@ -273,6 +205,7 @@ describe("complete forward migration chain", () => {
         receipt_baseline_sources: number;
         canonical_departments: number;
         canonical_attachments: number;
+        submission_keys: number;
         closure_capabilities: number;
       }>(`
         SELECT
@@ -307,6 +240,8 @@ describe("complete forward migration chain", () => {
             WHERE department_id IS NOT NULL) AS canonical_departments,
           (SELECT count(*)::int FROM attachments
             WHERE request_id IS NOT NULL) AS canonical_attachments,
+          (SELECT count(*)::int FROM requests
+            WHERE client_submission_key IS NOT NULL) AS submission_keys,
           (SELECT count(*)::int FROM pg_proc
             WHERE proname IN (
               'axora_operation_request_access_rows',
@@ -330,6 +265,7 @@ describe("complete forward migration chain", () => {
         receipt_baseline_sources: 0,
         canonical_departments: 0,
         canonical_attachments: 0,
+        submission_keys: 0,
         closure_capabilities: 7,
       });
       const metadata = await db.query<{ bad: number }>(`
@@ -345,7 +281,7 @@ describe("complete forward migration chain", () => {
     }
   }, 30_000);
 
-  it("keeps reset migration discovery dynamic through 049 while bootstrap retains its 032 minimum", async () => {
+  it("keeps reset migration discovery dynamic through 050 while bootstrap retains its 032 minimum", async () => {
     const [initializer, reset, bootstrap] = await Promise.all([
       readFile(new URL("../database/init/01-run-migration.sh", import.meta.url), "utf8"),
       readFile(new URL("../scripts/production/reset-baseline.sh", import.meta.url), "utf8"),
@@ -353,8 +289,8 @@ describe("complete forward migration chain", () => {
     ]);
     expect(initializer).toContain("/migrations/[0-9][0-9][0-9]_*.sql");
     expect(reset).toContain("/database/migrations/[0-9][0-9][0-9]_*.sql");
-    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active/);
-    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active/);
+    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active|050_request/);
+    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active|050_request/);
     expect(bootstrap).toContain(
       'const REQUIRED_MIGRATION = "032_user_session_revocation_audit.sql"',
     );

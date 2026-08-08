@@ -7,12 +7,14 @@ import {
 } from "@/lib/account-security";
 import {
   authenticate,
+  clearSession,
   clearStepUpSessionCookie,
   requireAccountLifecycleSession,
   setSession,
   setStepUpAfterPassword,
 } from "@/lib/auth";
 import { PasswordPolicyError } from "@/lib/password-policy";
+import { safeInternalReturnPath } from "@/lib/session-return";
 import { requestEmailVerification } from "@/lib/security-notifications";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -27,23 +29,8 @@ function requestNetworkIdentifier(requestHeaders: Headers) {
     : "network-unavailable";
 }
 
-function sanitizeNextPath(rawNext: string | null | undefined) {
-  const safeNext = String(rawNext ?? "").trim();
-  if (!safeNext || safeNext.includes("\u0000")) return "/account";
-  try {
-    const parsed = new URL(safeNext, "https://axora.management");
-    if (parsed.origin !== "https://axora.management" || !parsed.pathname.startsWith("/")) {
-      return "/account";
-    }
-    const safe = `${parsed.pathname}${parsed.search}${parsed.hash}`;
-    return safe.length <= 2048 ? safe : "/account";
-  } catch {
-    return "/account";
-  }
-}
-
 function withReauthSuccess(rawNext: string) {
-  const next = sanitizeNextPath(rawNext);
+  const next = safeInternalReturnPath(rawNext, "/account");
   try {
     const parsed = new URL(next, "https://axora.management");
     parsed.searchParams.set("reauth", "ok");
@@ -56,7 +43,10 @@ function withReauthSuccess(rawNext: string) {
 export async function reauthenticateSensitiveAction(formData: FormData) {
   const actor = await requireAccountLifecycleSession();
   const currentPassword = String(formData.get("currentPassword") ?? "");
-  const next = sanitizeNextPath(formData.get("next") as string | null);
+  const next = safeInternalReturnPath(
+    String(formData.get("next") ?? ""),
+    "/account",
+  );
   const requestHeaders = await headers();
   if (!currentPassword) {
     await clearStepUpSessionCookie();
@@ -71,7 +61,20 @@ export async function reauthenticateSensitiveAction(formData: FormData) {
     redirect(`/account?reauth=1&reauth=invalid&next=${encodeURIComponent(next)}`);
   }
 
-  await setStepUpAfterPassword(actor, next);
+  // Privilege elevation receives a fresh base-session token. Revoking the old
+  // token first is fail-closed; the browser cookie jar then shares the new
+  // token consistently with every open tab.
+  await clearSession();
+  try {
+    await setSession(verified);
+  } catch {
+    const params = new URLSearchParams({
+      reason: "expired",
+      returnTo: next,
+    });
+    redirect(`/login?${params.toString()}`);
+  }
+  await setStepUpAfterPassword(verified, next);
   revalidatePath("/account");
   redirect(withReauthSuccess(next));
 }
@@ -105,7 +108,7 @@ export async function changePasswordAction(formData: FormData) {
   } catch {
     // The password transaction has already committed and prior cookies are
     // invalid. Fall back to a fresh sign-in instead of showing a false failure.
-    redirect("/login?reset=complete");
+    redirect("/login?reset=complete&returnTo=%2Faccount%3Fsecurity%3Dpassword-changed");
   }
   revalidatePath("/account");
   redirect("/account?security=password-changed");

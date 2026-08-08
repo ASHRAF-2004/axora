@@ -3,6 +3,10 @@
 import { authenticate, setSession } from "@/lib/auth";
 import { getMyProfile, myProfileMeetsRequiredOnboarding } from "@/lib/profile";
 import { landingPathForSession } from "@/lib/session-landing";
+import {
+  authorizedSessionReturnPath,
+  safeInternalReturnPath,
+} from "@/lib/session-return";
 import { LOCALE_COOKIE } from "@/lib/i18n";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -19,11 +23,22 @@ function loginNetworkIdentifier(requestHeaders: Headers) {
 export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const requestedReturnTo = safeInternalReturnPath(
+    String(formData.get("returnTo") ?? ""),
+    "/dashboard",
+  );
   const requestHeaders = await headers();
   const user = await authenticate(email, password, {
     networkIdentifier: loginNetworkIdentifier(requestHeaders),
   });
-  if (!user) redirect("/login?error=1");
+  if (!user) {
+    const params = new URLSearchParams({
+      error: "1",
+      returnTo: requestedReturnTo,
+    });
+    redirect(`/login?${params.toString()}`);
+  }
+
   await setSession(user);
   const profile = await getMyProfile(user);
   (await cookies()).set(LOCALE_COOKIE, profile.preferredLocale, {
@@ -32,6 +47,19 @@ export async function loginAction(formData: FormData) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
-  if (!myProfileMeetsRequiredOnboarding(profile)) redirect("/profile?onboarding=1");
-  redirect(landingPathForSession(user));
+
+  const landing = landingPathForSession(user);
+  const destination = authorizedSessionReturnPath(
+    user,
+    requestedReturnTo,
+    landing,
+  );
+  if (!myProfileMeetsRequiredOnboarding(profile)) {
+    const params = new URLSearchParams({
+      onboarding: "1",
+      returnTo: destination,
+    });
+    redirect(`/profile?${params.toString()}`);
+  }
+  redirect(destination);
 }

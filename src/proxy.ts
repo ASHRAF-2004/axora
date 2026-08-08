@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const SESSION_RETURN_HEADER = "x-axora-return-to";
+
 export function buildContentSecurityPolicy(nonce: string, development = false) {
   const directives = [
     "default-src 'self'",
@@ -31,6 +33,17 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
+
+  // Never trust an inbound return-route header. Rebuild it from Next's parsed
+  // same-origin URL so protected pages and actions can preserve the exact path
+  // and query when a real session expiry sends the browser to login.
+  const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  if (returnTo.length <= 2_048) {
+    requestHeaders.set(SESSION_RETURN_HEADER, returnTo);
+  } else {
+    requestHeaders.delete(SESSION_RETURN_HEADER);
+  }
+
   const routeLocale = request.nextUrl.pathname.split("/")[1];
   if (routeLocale === "en" || routeLocale === "ar" || routeLocale === "ms") {
     requestHeaders.set("x-axora-route-locale", routeLocale);

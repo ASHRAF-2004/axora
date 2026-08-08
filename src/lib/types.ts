@@ -218,6 +218,7 @@ export interface RequestLine {
 export interface ProcurementRequest {
   id: string;
   createdById?: string;
+  clientSubmissionKey?: string;
   orderCode: string;
   requestDate: string;
   requestType: "Standard" | "Ad-hoc" | "Recurring";
