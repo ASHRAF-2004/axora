@@ -1,0 +1,40 @@
+name: Apply invitation quota lock
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply-lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the P0-02 branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: agent/p0-02-isolation-closure
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Apply deterministic quota patch
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/apply_invitation_quota_lock_patch.py
+          python3 -m py_compile scripts/ci/apply_invitation_quota_lock_patch.py
+
+      - name: Commit the reviewed quota lock change
+        run: |
+          set -euo pipefail
+          git add src/lib/account-setup.ts
+          if git diff --cached --quiet; then
+            echo "The quota lock change is already committed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Serialize invitation quotas without row-lock upgrades [skip ci]"
+          git push origin HEAD:agent/p0-02-isolation-closure
