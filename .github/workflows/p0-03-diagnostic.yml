@@ -1,0 +1,47 @@
+name: P0-03 diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  targeted-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.13.0"
+          cache: npm
+      - run: npm ci
+      - name: Run targeted P0-03 tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p output/p0-03-diagnostic
+          npx vitest run \
+            tests/account-security-actions.test.ts \
+            tests/request-submission-idempotency-migration.test.ts \
+            tests/session-return.test.ts \
+            tests/browser-session-state.test.ts \
+            tests/request-writer-idempotency.test.ts \
+            tests/session-route-preservation-integration.test.ts \
+            tests/full-migration-chain.test.ts \
+            --reporter=verbose 2>&1 | tee output/p0-03-diagnostic/vitest.log
+      - name: Upload diagnostic output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: p0-03-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: output/p0-03-diagnostic/vitest.log
+          if-no-files-found: error
+          retention-days: 3
