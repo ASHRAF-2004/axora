@@ -135,14 +135,12 @@ export function LoginForm({
   const initialEmail = demo ? (demoEmail ?? "") : "";
   const initialPassword = demo ? (demoPassword ?? "") : "";
   const emailRef = useRef<HTMLInputElement | null>(null);
+  const returnToRef = useRef<HTMLInputElement | null>(null);
   const [focus, setFocus] = useState<GuideFocus>(null);
   const [emailValue, setEmailValue] = useState(initialEmail);
   const [passwordValue, setPasswordValue] = useState(initialPassword);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [caretIndex, setCaretIndex] = useState(initialEmail.length);
-  const [returnToValue, setReturnToValue] = useState(() => (
-    safeInternalReturnPath(returnTo, "/dashboard")
-  ));
 
   useEffect(() => {
     // Session storage contributes only a fragment for a server-provided route.
@@ -150,7 +148,7 @@ export function LoginForm({
     const recovered = returnTo
       ? mergeStoredReturnHash(returnTo, browserReturnPath(), "/dashboard")
       : "/dashboard";
-    setReturnToValue(recovered);
+    if (returnToRef.current) returnToRef.current.value = recovered;
   }, [returnTo]);
 
   const feedback = useMemo(() => {
@@ -200,7 +198,12 @@ export function LoginForm({
       data-feedback-label={copy.feedback}
     >
       <h1 className={styles.srOnly}>{copy.title}</h1>
-      <input name="returnTo" type="hidden" value={returnToValue} />
+      <input
+        ref={returnToRef}
+        name="returnTo"
+        type="hidden"
+        defaultValue={safeInternalReturnPath(returnTo, "/dashboard")}
+      />
 
       <YetiGuide
         focus={focus}
