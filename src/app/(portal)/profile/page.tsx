@@ -93,6 +93,10 @@ export default async function ProfilePage({
     typeof search.returnTo === "string" ? search.returnTo : undefined,
     "/dashboard",
   );
+  const continuityFields = <>
+    <input type="hidden" name="onboarding" value={onboarding ? "true" : "false"} />
+    <input type="hidden" name="returnTo" value={returnTo} />
+  </>;
 
   return <>
     <PageHeader
@@ -117,16 +121,16 @@ export default async function ProfilePage({
         </div>
         <div><strong>{profile.displayName}</strong><span>{profile.email}</span></div>
         <form action={uploadProfileImageAction} className="avatar-upload-form">
+          {continuityFields}
           <label className="button button-secondary"><Camera size={16} />{copy.choosePhoto}<input className="sr-only" name="avatar" type="file" accept="image/png,image/jpeg,image/webp" required /></label>
           <button className="button button-primary" type="submit">{copy.upload}</button>
         </form>
-        {profile.avatarAvailable ? <form action={removeProfileImageAction}><button className="text-button" type="submit">{copy.removePhoto}</button></form> : null}
+        {profile.avatarAvailable ? <form action={removeProfileImageAction}>{continuityFields}<button className="text-button" type="submit">{copy.removePhoto}</button></form> : null}
         <small>{copy.imageHelp}</small>
       </aside>
 
       <form action={saveProfileAction} className="profile-form" aria-label={copy.formLabel}>
-        <input type="hidden" name="onboarding" value={onboarding ? "true" : "false"} />
-        <input type="hidden" name="returnTo" value={returnTo} />
+        {continuityFields}
         <header><UserRound size={21} /><div><h2>{copy.personal}</h2><p>{copy.personalHelp}</p></div></header>
         <div className="form-grid">
           <label>{copy.displayName}<input name="displayName" defaultValue={profile.displayName} minLength={2} maxLength={200} autoComplete="name" required /></label>
