@@ -172,6 +172,7 @@ const mutationSchema = z.object({
 interface SnapshotRow extends QueryResultRow {
   snapshot: unknown;
 }
+
 export type CompanyLifecycleRecord = z.infer<typeof companyLifecycleRecordSchema>;
 export type CompanyLifecycleWorkspace = z.infer<typeof workspaceSchema>;
 export type CompanyLifecycleMutation = z.infer<typeof mutationSchema>;
