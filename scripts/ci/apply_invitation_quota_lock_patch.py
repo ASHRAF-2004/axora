@@ -1,8 +1,21 @@
 from pathlib import Path
 
-path = Path("src/lib/account-setup.ts")
-source = path.read_text()
-old = '''async function enforceInvitationQuota(
+
+def replace_once(path: str, old: str, new: str) -> None:
+    file = Path(path)
+    source = file.read_text()
+    if new in source:
+        return
+    if source.count(old) != 1:
+        raise RuntimeError(
+            f"Expected one patch anchor in {path}, found {source.count(old)}"
+        )
+    file.write_text(source.replace(old, new, 1))
+
+
+account_path = Path("src/lib/account-setup.ts")
+account_source = account_path.read_text()
+old_quota = '''async function enforceInvitationQuota(
   client: PoolClient,
   actorId: string,
   companyId?: string,
@@ -46,7 +59,7 @@ old = '''async function enforceInvitationQuota(
     [actorId, companyId ?? null],
   );
 '''
-new = '''async function enforceInvitationQuota(
+new_quota = '''async function enforceInvitationQuota(
   client: PoolClient,
   actorId: string,
   companyId?: string,
@@ -105,11 +118,44 @@ new = '''async function enforceInvitationQuota(
     [actorId, companyId ?? null],
   );
 '''
+if new_quota not in account_source:
+    if account_source.count(old_quota) != 1:
+        raise RuntimeError(
+            "Expected one invitation quota function before patching"
+        )
+    account_path.write_text(account_source.replace(old_quota, new_quota, 1))
 
-if new in source:
-    raise SystemExit(0)
-if source.count(old) != 1:
-    raise RuntimeError(
-        f"Expected one invitation quota function, found {source.count(old)}"
-    )
-path.write_text(source.replace(old, new, 1))
+
+test_path = Path("tests/account-setup-lifecycle.test.ts")
+test_source = test_path.read_text()
+mock_anchor = '''    mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('AS "actorId"')) {
+'''
+mock_replacement = '''    mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
+      if (sql.includes('AS "actorId"')) {
+'''
+if mock_replacement not in test_source:
+    if test_source.count(mock_anchor) != 2:
+        raise RuntimeError(
+            f"Expected two invitation SQL mocks, found {test_source.count(mock_anchor)}"
+        )
+    test_source = test_source.replace(mock_anchor, mock_replacement)
+
+old_expectation = '''    expect(statements[0]).toContain("FOR UPDATE OF u,c");
+'''
+new_expectation = '''    expect(statements[0]).toContain("axora-account-invite-actor:");
+    expect(statements[1]).toContain("axora-account-invite-company:");
+    expect(statements.find((sql) => sql.includes('AS "actorId"')))
+      .toContain("FOR KEY SHARE OF u,c");
+'''
+if new_expectation not in test_source:
+    if test_source.count(old_expectation) != 1:
+        raise RuntimeError(
+            f"Expected one quota lock assertion, found {test_source.count(old_expectation)}"
+        )
+    test_source = test_source.replace(old_expectation, new_expectation, 1)
+
+test_path.write_text(test_source)
