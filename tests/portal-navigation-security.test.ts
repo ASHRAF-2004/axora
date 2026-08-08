@@ -31,10 +31,10 @@ describe("role-specific portal navigation boundaries", () => {
     };
 
     expect(hrefs(PRIMARY_NAVIGATION, companyAdmin)).toEqual([
-      "/dashboard", "/products", "/requests", "/approvals", "/deliveries", "/finance",
+      "/dashboard", "/products", "/requests", "/approvals", "/budgets", "/deliveries", "/finance",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).toEqual([
-      "/branches", "/users", "/documents", "/reports", "/audit", "/settings", "/help",
+      "/branches", "/budgets", "/users", "/documents", "/reports", "/audit", "/settings", "/help",
     ]);
     expect(canAccess(companyAdmin, "manage_catalog")).toBe(false);
     expect(canAccess(companyAdmin, "manage_suppliers")).toBe(false);
@@ -73,10 +73,10 @@ describe("role-specific portal navigation boundaries", () => {
     expect(hrefs(PRIMARY_NAVIGATION, support)).toEqual([]);
     expect(hrefs(DRAWER_NAVIGATION, support)).toEqual(["/support", "/settings", "/help"]);
     expect(hrefs(PRIMARY_NAVIGATION, auditor)).toEqual([
-      "/dashboard", "/products", "/requests", "/deliveries", "/finance",
+      "/dashboard", "/products", "/requests", "/budgets", "/deliveries", "/finance",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, auditor)).toEqual([
-      "/branches", "/documents", "/reports", "/audit", "/settings", "/help",
+      "/branches", "/budgets", "/documents", "/reports", "/audit", "/settings", "/help",
     ]);
     expect(hrefs(PRIMARY_NAVIGATION, receiver)).toEqual(["/receiving"]);
     expect(hrefs(DRAWER_NAVIGATION, receiver)).toEqual(["/receiving", "/settings", "/help"]);

@@ -22,6 +22,7 @@ import {
   appendWorkflowEvent,
   notifyWorkflowAudience,
 } from "./workflow-repository";
+import { initializeRequestApproval } from "./request-approval";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -90,6 +91,38 @@ export async function createAuthorizedRequest(
       departmentId,
     });
 
+    if (!actor.roleAssignmentId) throw new RequestAccessUnavailableError();
+    const budgetResult = await client.query<{
+      payload: {
+        accounts: Array<{
+          id: string;
+          companyId: string;
+          levelType: "BRANCH" | "DEPARTMENT" | "COST_CENTRE";
+          branchId?: string;
+          departmentId?: string;
+          periodId: string;
+          currency: string;
+          approvalPolicyId: string;
+        }>;
+      } | null;
+    }>(
+      "SELECT public.axora_request_budget_choices($1,$2,now()) AS payload",
+      [actor.id, actor.roleAssignmentId],
+    );
+    const scopedAccounts = budgetResult.rows[0]?.payload?.accounts ?? [];
+    const budgetAccount = scopedAccounts.find((account) => (
+      account.companyId === context.companyId
+      && account.levelType === "DEPARTMENT"
+      && account.departmentId === context.departmentId
+    )) ?? scopedAccounts.find((account) => (
+      account.companyId === context.companyId
+      && account.levelType === "BRANCH"
+      && account.branchId === context.branchId
+    ));
+    if (!budgetAccount) {
+      throw new Error("No active budget period is available for this request scope.");
+    }
+
     const selectedProducts = await client.query<{
       id: string;
       minimumOrderQuantity: number;
@@ -128,11 +161,13 @@ export async function createAuthorizedRequest(
         order_code,request_date,request_type_id,company_id,branch_id,
         department_id,department,requested_by,requester_contact,
         needed_by_date,urgency_id,status_id,notes,created_by,
-        estimated_delivery_fee,tax_rate,client_submission_key
+        estimated_delivery_fee,tax_rate,client_submission_key,
+        budget_account_id,budget_period_id,currency,approval_policy_id
       ) VALUES (
         next_order_code(),CURRENT_DATE,lookup_id('request_type',$1),
         $2,$3,$4,$5,$6,$7,$8,lookup_id('urgency',$9),
-        lookup_id('request_status','New Request'),$10,$11,$12,$13,$14
+        lookup_id('request_status','New Request'),$10,$11,$12,$13,$14,
+        $15,$16,$17,$18
       )
       ON CONFLICT(created_by,client_submission_key)
         WHERE created_by IS NOT NULL AND client_submission_key IS NOT NULL
@@ -153,6 +188,10 @@ export async function createAuthorizedRequest(
         roundMoney(context.estimatedDeliveryFee),
         roundMoney(context.taxRate),
         submissionKey,
+        budgetAccount.id,
+        budgetAccount.periodId,
+        budgetAccount.currency,
+        budgetAccount.approvalPolicyId,
       ],
     );
     let requestId = requestResult.rows[0]?.id;
@@ -215,6 +254,12 @@ export async function createAuthorizedRequest(
       [requestId],
     );
 
+    const approval = await initializeRequestApproval(client, {
+      actor,
+      requestId,
+      idempotencyKey: `approval:${submissionKey}`,
+    });
+
     const event = await appendWorkflowEvent(client, {
       companyId: context.companyId,
       branchId: context.branchId,
@@ -239,7 +284,9 @@ export async function createAuthorizedRequest(
       stableKey: "initial-company-approval",
       actor,
       previousState: "Submitted",
-      newState: "Awaiting company approval",
+      newState: approval.state === "PENDING_DEPARTMENT"
+        ? "Awaiting department approval"
+        : "Awaiting company approval",
       source: "WEB",
       metadata: { submittedEventId: event.id },
     });

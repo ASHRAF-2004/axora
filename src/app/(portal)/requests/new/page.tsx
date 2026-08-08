@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 import { RequestDraftBoundary } from "@/components/RequestDraftBoundary";
 import { RequestForm } from "@/components/RequestForm";
+import { getRequestBudgetChoices } from "@/lib/budget-ledger";
 import { requirePagePermission } from "@/lib/auth";
 import { getCatalogProductById } from "@/lib/catalog";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
@@ -13,6 +14,7 @@ export default async function NewRequestPage({
   searchParams: Promise<{ product?: string }>;
 }) {
   const actor = await requirePagePermission("create_requests");
+  const budgetChoices = await getRequestBudgetChoices(actor);
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).requests;
   const params = await searchParams;
@@ -46,8 +48,9 @@ export default async function NewRequestPage({
       />
 
       <RequestDraftBoundary scope={draftScope}>
-        <RequestForm
-          actor={actor}
+      <RequestForm
+        actor={actor}
+        budgetAccounts={budgetChoices?.accounts ?? []}
           companies={companies}
           branches={branches}
           initialProduct={initialProduct}

@@ -203,7 +203,7 @@ test("requester can shop and create requests but cannot approve", async ({ page 
 test("approver receives the decision queue without sourcing controls", async ({ page }) => {
   await signInAsDemoRole(page, principals.approver);
   await page.goto("/approvals");
-  await expect(page.getByRole("heading", { level: 1, name: "Purchase request approvals" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Request approvals" })).toBeVisible();
   await expect(page.getByText(/cannot approve your own request/i)).toBeVisible();
   await expectOperationalShell(page);
 

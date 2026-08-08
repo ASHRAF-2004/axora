@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { getDemoStore } from "./demo-data";
-import { isDemoMode, withAuditTransaction } from "./db";
+import { isDemoMode } from "./db";
 import type { SessionUser } from "./auth";
 import { canAccess } from "./permissions";
+import { getBudgetWorkspace, setBudgetAllocation } from "./budget-ledger";
 
 export async function setBranchMonthlyBudget(
   branchId: string,
@@ -27,16 +29,18 @@ export async function setBranchMonthlyBudget(
     return;
   }
 
-  await withAuditTransaction(
-    { userId: actor.id, reason: monthlyBudget === null ? "Branch monthly budget cleared" : "Branch monthly budget updated" },
-    async (client) => {
-      const result = await client.query(
-        `UPDATE branches
-         SET monthly_budget=$3,budget_updated_at=now()
-         WHERE id=$1 AND company_id=$2 AND active=true`,
-        [branchId, actor.companyId, monthlyBudget],
-      );
-      if (!result.rowCount) throw new Error("Active branch not found.");
-    },
-  );
+  const workspace = await getBudgetWorkspace(actor);
+  const account = workspace?.accounts.find((item) => (
+    item.levelType === "BRANCH" && item.branchId === branchId
+  ));
+  if (!account) throw new Error("Active branch not found.");
+  await setBudgetAllocation({
+    actor,
+    accountId: account.id,
+    amount: monthlyBudget ?? 0,
+    explanation: monthlyBudget === null
+      ? "Branch recurring budget cleared"
+      : "Branch recurring budget updated",
+    idempotencyKey: `branch-budget-${randomUUID()}`,
+  });
 }

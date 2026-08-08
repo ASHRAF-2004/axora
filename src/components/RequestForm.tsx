@@ -1,5 +1,7 @@
 "use client";
 
+import type { RequestBudgetChoice } from "@/lib/budget-ledger";
+
 import { createRequestAction } from "@/app/(portal)/requests/actions";
 import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import {
@@ -11,6 +13,7 @@ import type { SessionUser } from "@/lib/auth";
 import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
+import { budgetApprovalMessages } from "@/lib/budget-approval-i18n";
 import type { Branch, Company, Product } from "@/lib/types";
 import { readRequestDraft } from "@/lib/request-draft";
 import {
@@ -59,12 +62,14 @@ export function RequestForm({
   actor,
   companies,
   branches,
+  budgetAccounts = [],
   initialProduct,
   locale = "en",
 }: {
   actor: SessionUser;
   companies: Company[];
   branches: Branch[];
+  budgetAccounts?: RequestBudgetChoice[];
   initialProduct?: Product;
   locale?: SupportedLocale;
 }) {
@@ -164,6 +169,16 @@ export function RequestForm({
   const estimatedTotal = roundMoney(
     subtotal + estimatedDeliveryFee + taxAmount,
   );
+  const budgetCopy = budgetApprovalMessages(locale);
+  const selectedBudget = budgetAccounts.find((account) => (
+    account.levelType === "DEPARTMENT"
+    && account.departmentId === actor.departmentId
+    && account.branchId === branchId
+  )) ?? budgetAccounts.find((account) => (
+    account.levelType === "BRANCH" && account.branchId === branchId
+  ));
+  const budgetAvailable = Number(selectedBudget?.available ?? 0);
+  const exceedsBudget = Boolean(selectedBudget) && estimatedTotal > budgetAvailable;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -713,15 +728,13 @@ export function RequestForm({
 
       {selectedBranch ? (
         <div className="callout" style={{ marginBlockStart: 16 }}>
-          <strong>{copy.branchBudget(selectedBranch.name)}</strong>
-          <p>
-            {selectedBranch.monthlyBudget == null
-              ? copy.noMonthlyLimit
-              : copy.availableBudget(
-                  formatCurrency(selectedBranch.remainingAmount ?? 0, locale),
-                  formatCurrency(selectedBranch.monthlyBudget, locale),
-                )}
-          </p>
+          <strong>{selectedBudget?.name ?? copy.branchBudget(selectedBranch.name)}</strong>
+          {selectedBudget ? (
+            <p>
+              {budgetCopy.available}: {formatCurrency(budgetAvailable, locale)} · {budgetCopy.period}: {selectedBudget.periodName}
+              {exceedsBudget ? ` · ${budgetCopy.exceededBy}: ${formatCurrency(estimatedTotal-budgetAvailable, locale)}` : ""}
+            </p>
+          ) : <p>{copy.noMonthlyLimit}</p>}
         </div>
       ) : null}
 
@@ -906,11 +919,17 @@ export function RequestForm({
           {copy.submitHelp}
         </span>
 
+        {exceedsBudget ? (
+          <button className="button button-secondary" type="button">
+            {budgetCopy.keepInCart}
+          </button>
+        ) : null}
         <button
           className="button button-primary"
           type="submit"
+          disabled={!selectedBudget}
         >
-          {copy.submit} ·{" "}
+          {exceedsBudget ? budgetCopy.sendForApproval : copy.submit} ·{" "}
           {formatCurrency(estimatedTotal, locale)}
         </button>
       </div>
