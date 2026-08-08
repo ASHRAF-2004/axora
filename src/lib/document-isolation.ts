@@ -267,21 +267,25 @@ async function readLegacyAttachment(
   try {
     const configuredRoot = process.env.AXORA_UPLOADS_CONTAINER_DIR
       ? path.resolve(process.env.AXORA_UPLOADS_CONTAINER_DIR)
-      : path.resolve(process.cwd(), "data", "uploads");
-    const root = await realpath(configuredRoot);
-    const candidate = path.resolve(root, storagePath);
+      : path.resolve(
+        /* turbopackIgnore: true */ process.cwd(),
+        "data",
+        "uploads",
+      );
+    const root = await realpath(/* turbopackIgnore: true */ configuredRoot);
+    const candidate = path.resolve(/* turbopackIgnore: true */ root, storagePath);
     if (candidate === root || !candidate.startsWith(`${root}${path.sep}`)) {
       return null;
     }
-    const source = await realpath(candidate);
+    const source = await realpath(/* turbopackIgnore: true */ candidate);
     if (!source.startsWith(`${root}${path.sep}`)) return null;
-    const metadata = await stat(source);
+    const metadata = await stat(/* turbopackIgnore: true */ source);
     if (!metadata.isFile()
       || metadata.size < 1
       || metadata.size > MAX_ATTACHMENT_BYTES) {
       return null;
     }
-    const bytes = await readFile(source);
+    const bytes = await readFile(/* turbopackIgnore: true */ source);
     return uploadedContentMatchesMime(contentType, bytes) ? bytes : null;
   } catch {
     return null;

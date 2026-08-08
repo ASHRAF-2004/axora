@@ -8,6 +8,7 @@ export default defineConfig([
   globalIgnores([
     ".next/**",
     "coverage/**",
+    "data/**",
     "reports/**",
     "tmp/**",
     "workers/**/.wrangler/**",

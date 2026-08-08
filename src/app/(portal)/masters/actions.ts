@@ -1,6 +1,24 @@
 "use server";
 
 import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { sendAccountSetupEmail } from "@/lib/account-email";
+import {
+  AccountSetupInvitationQuotaError,
+  createInvitedUser,
+  recordAccountSetupDelivery,
+  type AccountSetupInvitationResult,
+} from "@/lib/account-setup";
+import {
+  activateCompany,
+  assignCompanyManager,
+  COMPANY_LIFECYCLE_STATUSES,
+  resolveCompanyDuplicate,
+  setCompanyPublication,
+  suspendCompany,
+  syncCompanyAdministrator,
+  transitionCompanyLifecycle,
+} from "@/lib/company-lifecycle";
+import { SUPPORTED_LOCALES } from "@/lib/i18n";
 import { createCompanyWithBrand, regenerateCompanyBrand } from "@/lib/tenant-branding";
 import { updateProduct } from "@/lib/product-admin";
 import { deleteProduct } from "@/lib/product-delete";
@@ -16,6 +34,7 @@ import { createBranch, createProduct, createSupplier, setMasterActive, type Mast
 import { branchSchema, companySchema, productSchema, readFormText, supplierSchema } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 
@@ -56,7 +75,9 @@ export async function createCompanyAction(formData: FormData) {
   const mainContactEmail = readFormText(formData, "mainContactEmail");
   const mainContactPhone = readFormText(formData, "mainContactPhone");
   const input = companySchema.parse({
-    name: readFormText(formData, "name"), industry: readFormText(formData, "industry"),
+    name: readFormText(formData, "name"), legalName: readFormText(formData, "legalName"),
+    registrationNumber: readFormText(formData, "registrationNumber"),
+    industry: readFormText(formData, "industry"),
     companyInformation: readFormText(formData, "companyInformation"),
     websiteUrl: readFormText(formData, "websiteUrl"), mainContactName,
     mainContactEmail, mainContactPhone, billingContactName: readFormText(formData, "billingContactName") || mainContactName,
@@ -65,9 +86,188 @@ export async function createCompanyAction(formData: FormData) {
     billingAddress: readFormText(formData, "billingAddress"), paymentTerms: readFormText(formData, "paymentTerms"),
     billingCycle: readFormText(formData, "billingCycle"), notes: readFormText(formData, "notes"),
   });
-  await createCompanyWithBrand(input, logo, user);
+  const created = await createCompanyWithBrand(input, logo, user);
   revalidatePath("/companies"); revalidatePath("/dashboard");
-  redirect("/companies?notice=company-created");
+  redirect(`/companies?notice=company-created&created=${created.companyId}`);
+}
+
+const assignmentSchema = z.object({
+  companyId: z.uuid(),
+  managerUserId: z.uuid(),
+  assignmentType: z.enum(["PRIMARY", "BACKUP"]),
+  coverageStartsAt: z.coerce.date().optional(),
+  coverageEndsAt: z.coerce.date().optional(),
+  reason: z.string().trim().min(3).max(1000),
+});
+
+function lifecycleRedirect(notice: string, companyId: string) {
+  revalidatePath("/companies");
+  revalidatePath("/dashboard");
+  redirect(`/companies?notice=${notice}&created=${encodeURIComponent(companyId)}`);
+}
+
+export async function assignCompanyManagerAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  await requireRecentStepUp(actor, "/companies");
+  const startValue = readFormText(formData, "coverageStartsAt");
+  const endValue = readFormText(formData, "coverageEndsAt");
+  const input = assignmentSchema.parse({
+    companyId: readFormText(formData, "companyId"),
+    managerUserId: readFormText(formData, "managerUserId"),
+    assignmentType: readFormText(formData, "assignmentType"),
+    coverageStartsAt: startValue || undefined,
+    coverageEndsAt: endValue || undefined,
+    reason: readFormText(formData, "reason"),
+  });
+  await assignCompanyManager(actor, input);
+  lifecycleRedirect("company-assigned", input.companyId);
+}
+
+export async function transitionCompanyLifecycleAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  await requireRecentStepUp(actor, "/companies");
+  const companyId = z.uuid().parse(readFormText(formData, "companyId"));
+  const toStatus = z.enum(COMPANY_LIFECYCLE_STATUSES).parse(
+    readFormText(formData, "toStatus"),
+  );
+  const reason = z.string().trim().min(3).max(1000).parse(
+    readFormText(formData, "reason"),
+  );
+  await transitionCompanyLifecycle(actor, companyId, toStatus, reason);
+  lifecycleRedirect("company-status-updated", companyId);
+}
+
+export async function resolveCompanyDuplicateAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  await requireRecentStepUp(actor, "/companies");
+  const companyId = z.uuid().parse(readFormText(formData, "companyId"));
+  const decision = z.enum(["CLEAR", "CONFIRM"]).parse(
+    readFormText(formData, "decision"),
+  );
+  const reason = z.string().trim().min(3).max(1000).parse(
+    readFormText(formData, "reason"),
+  );
+  await resolveCompanyDuplicate(actor, companyId, decision, reason);
+  lifecycleRedirect("company-duplicate-reviewed", companyId);
+}
+
+export async function activateCompanyAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  await requireRecentStepUp(actor, "/companies");
+  const companyId = z.uuid().parse(readFormText(formData, "companyId"));
+  const reason = z.string().trim().min(3).max(1000).parse(
+    readFormText(formData, "reason"),
+  );
+  const mutation = await activateCompany(actor, companyId, reason);
+  lifecycleRedirect(
+    mutation.blockedReasons?.length ? "company-activation-blocked" : "company-activated",
+    companyId,
+  );
+}
+
+export async function suspendCompanyAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  await requireRecentStepUp(actor, "/companies");
+  const companyId = z.uuid().parse(readFormText(formData, "companyId"));
+  const reason = z.string().trim().min(3).max(1000).parse(
+    readFormText(formData, "reason"),
+  );
+  await suspendCompany(actor, companyId, reason);
+  lifecycleRedirect("company-suspended", companyId);
+}
+
+export async function setCompanyPublicationAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  await requireRecentStepUp(actor, "/companies");
+  const companyId = z.uuid().parse(readFormText(formData, "companyId"));
+  const isPubliclyListed = z.enum(["true", "false"]).parse(
+    readFormText(formData, "isPubliclyListed"),
+  ) === "true";
+  const reason = z.string().trim().min(3).max(1000).parse(
+    readFormText(formData, "reason"),
+  );
+  await setCompanyPublication(actor, companyId, isPubliclyListed, reason);
+  lifecycleRedirect(isPubliclyListed ? "company-published" : "company-unpublished", companyId);
+}
+
+export async function syncCompanyAdministratorAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  await requireRecentStepUp(actor, "/companies");
+  const companyId = z.uuid().parse(readFormText(formData, "companyId"));
+  await syncCompanyAdministrator(
+    actor,
+    companyId,
+    "Company Administrator invitation and activation state checked",
+  );
+  lifecycleRedirect("company-administrator-synced", companyId);
+}
+
+export async function inviteCompanyAdministratorAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  await requireRecentStepUp(actor, "/companies");
+  if (!actor.isOwner) {
+    throw new Error("Only a Platform Owner can issue the first Company Administrator invitation.");
+  }
+  const input = z.object({
+    companyId: z.uuid(),
+    displayName: z.string().trim().min(2).max(200),
+    email: z.email().max(254),
+    preferredLocale: z.enum(SUPPORTED_LOCALES),
+  }).parse({
+    companyId: readFormText(formData, "companyId"),
+    displayName: readFormText(formData, "displayName"),
+    email: readFormText(formData, "email"),
+    preferredLocale: readFormText(formData, "preferredLocale") || "en",
+  });
+
+  let invitation: AccountSetupInvitationResult;
+  try {
+    invitation = await createInvitedUser({
+      companyId: input.companyId,
+      displayName: input.displayName,
+      email: input.email,
+      preferredLocale: input.preferredLocale,
+      role: "COMPANY_ADMIN",
+      jobTitle: "Company Administrator",
+    }, actor);
+  } catch (error) {
+    if (error instanceof AccountSetupInvitationQuotaError) {
+      lifecycleRedirect("company-administrator-invitation-rate-limited", input.companyId);
+    }
+    throw error;
+  }
+
+  let delivery: Awaited<ReturnType<typeof sendAccountSetupEmail>>;
+  try {
+    delivery = await sendAccountSetupEmail(invitation);
+  } catch {
+    delivery = { succeeded: false, status: "failed" };
+  }
+  let deliveryRecorded = false;
+  try {
+    await recordAccountSetupDelivery(invitation.invitationId, {
+      succeeded: delivery.succeeded,
+      providerMessageId: delivery.providerMessageId,
+      status: delivery.status,
+    });
+    deliveryRecorded = true;
+  } catch {
+    deliveryRecorded = false;
+  }
+  if (delivery.succeeded && deliveryRecorded) {
+    await syncCompanyAdministrator(
+      actor,
+      input.companyId,
+      "Secure Company Administrator invitation delivered",
+    );
+  }
+  revalidatePath("/users");
+  lifecycleRedirect(
+    delivery.succeeded && deliveryRecorded
+      ? "company-administrator-invited"
+      : "company-administrator-email-failed",
+    input.companyId,
+  );
 }
 
 export async function regenerateCompanyBrandAction(companyId: string, formData: FormData) {
@@ -174,9 +374,10 @@ export async function removeProductImageAction(productId: string, imageId: strin
 }
 
 export async function setMasterActiveAction(entity: MasterEntity, id: string, active: boolean) {
-  const permission = entity === "companies"
-    ? "manage_companies"
-    : entity === "branches"
+  if (entity === "companies") {
+    throw new Error("Company activation is controlled by the onboarding lifecycle.");
+  }
+  const permission = entity === "branches"
       ? "manage_branches"
       : entity === "products"
         ? "manage_catalog"

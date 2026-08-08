@@ -17,9 +17,10 @@ describe("organization directory UI isolation", () => {
       readFile(branchesPageUrl, "utf8"),
     ]);
 
-    expect(companiesPage).toContain("loadOrganizationDirectory(actor)");
+    expect(companiesPage).toContain("loadCompanyLifecycleWorkspace(actor)");
     expect(branchesPage).toContain("loadOrganizationDirectory(actor)");
     expect(companiesPage).not.toContain("listCompanies");
+    expect(companiesPage).not.toContain("loadOrganizationDirectory(actor)");
     expect(branchesPage).not.toContain("listCompanies");
     expect(branchesPage).not.toContain("listBranches");
   });

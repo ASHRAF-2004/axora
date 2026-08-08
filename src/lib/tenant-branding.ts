@@ -5,6 +5,11 @@ import type { SessionUser } from "./auth";
 import { analyzeLogoPixels, type BrandColorAnalysis, type BrandThemeTokens } from "./brand-colors";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import type { Company } from "./types";
+import {
+  createCompanyLeadInTransaction,
+  markCompanyBrandReadyInTransaction,
+  notifyCompanyLifecycleMutation,
+} from "./company-lifecycle";
 
 export const COMPANY_LOGO_MAX_BYTES = 2 * 1024 * 1024;
 export const COMPANY_LOGO_MAX_DIMENSION = 4096;
@@ -103,8 +108,11 @@ async function saveLogoAndTheme(
   logo: ProcessedCompanyLogo,
   actor: SessionUser,
 ) {
-  const company = await client.query("SELECT id FROM companies WHERE id=$1 AND active=true FOR UPDATE", [companyId]);
-  if (!company.rowCount) throw new Error("The selected company is not active.");
+  const company = await client.query(
+    "SELECT id FROM companies WHERE id=$1 AND lifecycle_status<>'ARCHIVED' FOR UPDATE",
+    [companyId],
+  );
+  if (!company.rowCount) throw new Error("The selected company is unavailable.");
   const nextVersion = await client.query<{ version: number }>(`
     SELECT COALESCE(max(version),0)::int+1 AS version FROM company_logos WHERE company_id=$1
   `, [companyId]);
@@ -164,14 +172,16 @@ async function saveLogoAndTheme(
 type NewCompanyWithBrand = Omit<
   Company,
   "id" | "code" | "status" | "taxRate" | "estimatedDeliveryFee"
->;
+> & {
+  legalName: string;
+  registrationNumber: string;
+};
 
 export async function createCompanyWithBrand(
   input: NewCompanyWithBrand,
   logoFile: File,
   actor: SessionUser,
 ) {
-  if (!actor.isOwner) throw new Error("Only an Axora platform owner can create companies.");
   const logo = await processCompanyLogo(
     Buffer.from(await logoFile.arrayBuffer()),
     logoFile.name,
@@ -183,33 +193,11 @@ export async function createCompanyWithBrand(
   return withAuditTransaction(
     { userId: actor.id, reason: "Customer company registered with approved logo and generated theme" },
     async (client) => {
-      const company = await client.query<{ id: string }>(`
-        INSERT INTO companies(
-          company_code,name,industry,company_information,website_url,
-          main_contact_name,main_contact_email,main_contact_phone,
-          billing_contact_name,billing_contact_email,billing_contact_phone,
-          billing_address,payment_terms,billing_cycle,notes
-        ) VALUES (
-          next_company_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
-        ) RETURNING id::text
-      `, [
-        input.name,
-        input.industry,
-        input.companyInformation ?? "",
-        input.websiteUrl ?? null,
-        input.mainContactName,
-        input.mainContactEmail,
-        input.mainContactPhone,
-        input.billingContactName,
-        input.billingContactEmail,
-        input.billingContactPhone,
-        input.billingAddress,
-        input.paymentTerms,
-        input.billingCycle,
-        input.notes ?? null,
-      ]);
-      const branded = await saveLogoAndTheme(client, company.rows[0].id, logo, actor);
-      return { companyId: company.rows[0].id, ...branded, logo };
+      const mutation = await createCompanyLeadInTransaction(client, input, actor);
+      const branded = await saveLogoAndTheme(client, mutation.companyId, logo, actor);
+      await markCompanyBrandReadyInTransaction(client, mutation.companyId, actor);
+      await notifyCompanyLifecycleMutation(client, mutation, actor);
+      return { companyId: mutation.companyId, ...branded, logo };
     },
   );
 }

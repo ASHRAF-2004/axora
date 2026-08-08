@@ -18,7 +18,7 @@ function storageRoot(override?: string) {
   return path.resolve(
     /* turbopackIgnore: true */ override
       ?? process.env.AXORA_UPLOADS_CONTAINER_DIR
-      ?? path.join(process.cwd(), "data", "uploads"),
+      ?? path.join(/* turbopackIgnore: true */ process.cwd(), "data", "uploads"),
   );
 }
 

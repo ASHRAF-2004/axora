@@ -7,11 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 050 to an empty database", async () => {
+  it("applies every numbered migration through 051 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-15)).toEqual([
+      expect(available.slice(-16)).toEqual([
         "036_authorization_policy_foundation.sql",
         "037_effective_access_snapshot.sql",
         "038_canonical_session_scopes.sql",
@@ -27,6 +27,7 @@ describe("complete forward migration chain", () => {
         "048_isolation_transaction_lock_hardening.sql",
         "049_active_request_write_boundary.sql",
         "050_request_submission_idempotency.sql",
+        "051_company_lifecycle.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -189,6 +190,7 @@ describe("complete forward migration chain", () => {
         "048_isolation_transaction_lock_hardening.sql",
         "049_active_request_write_boundary.sql",
         "050_request_submission_idempotency.sql",
+        "051_company_lifecycle.sql",
       ]) {
         await db.exec(await readFile(migrationUrl(filename), "utf8"));
       }
@@ -281,7 +283,7 @@ describe("complete forward migration chain", () => {
     }
   }, 30_000);
 
-  it("keeps reset migration discovery dynamic through 050 while bootstrap retains its 032 minimum", async () => {
+  it("keeps reset migration discovery dynamic through 051 while bootstrap retains its 032 minimum", async () => {
     const [initializer, reset, bootstrap] = await Promise.all([
       readFile(new URL("../database/init/01-run-migration.sh", import.meta.url), "utf8"),
       readFile(new URL("../scripts/production/reset-baseline.sh", import.meta.url), "utf8"),
@@ -289,8 +291,8 @@ describe("complete forward migration chain", () => {
     ]);
     expect(initializer).toContain("/migrations/[0-9][0-9][0-9]_*.sql");
     expect(reset).toContain("/database/migrations/[0-9][0-9][0-9]_*.sql");
-    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active|050_request/);
-    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active|050_request/);
+    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active|050_request|051_company/);
+    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active|050_request|051_company/);
     expect(bootstrap).toContain(
       'const REQUIRED_MIGRATION = "032_user_session_revocation_audit.sql"',
     );

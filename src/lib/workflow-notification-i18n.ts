@@ -12,6 +12,13 @@ type MatchExceptionCode =
 
 export type WorkflowNotificationMessage =
   | { key: "invitation_accepted"; accountName: string }
+  | { key: "company_lead_created"; companyName: string }
+  | { key: "company_assigned"; companyName: string }
+  | { key: "company_reassigned"; companyName: string }
+  | { key: "company_information_requested"; companyName: string }
+  | { key: "company_administrator_activated"; companyName: string }
+  | { key: "company_activated"; companyName: string }
+  | { key: "company_suspended"; companyName: string }
   | { key: "request_needs_approval"; actorName: string }
   | { key: "request_approved" }
   | { key: "request_rejected" }
@@ -194,6 +201,48 @@ export function renderWorkflowNotification(
       if (locale === "ar") return { title: "تم تفعيل الحساب المدعو", body: `أكمل ${accountName} إعداد الحساب ويمكنه الآن تسجيل الدخول.` };
       if (locale === "ms") return { title: "Akaun jemputan diaktifkan", body: `${accountName} telah melengkapkan persediaan akaun dan kini boleh mendaftar masuk.` };
       return { title: "Invited account activated", body: `${accountName} completed account setup and can now sign in.` };
+    }
+    case "company_lead_created": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "أُنشئ عميل محتمل جديد", body: `أُضيف سجل ${companyName} إلى مسار مراجعة الشركات.` };
+      if (locale === "ms") return { title: "Prospek syarikat baharu dicipta", body: `${companyName} ditambah kepada aliran semakan syarikat.` };
+      return { title: "New company lead created", body: `${companyName} was added to the company review workflow.` };
+    }
+    case "company_assigned": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "أُسندت شركة", body: `أُسند سجل ${companyName} إلى مدير حساب عميل.` };
+      if (locale === "ms") return { title: "Syarikat ditugaskan", body: `${companyName} ditugaskan kepada Pengurus Akaun Pelanggan.` };
+      return { title: "Company assigned", body: `${companyName} was assigned to a Client Account Manager.` };
+    }
+    case "company_reassigned": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "أُعيد إسناد شركة", body: `نُقلت مسؤولية ${companyName} ومهام التهيئة المفتوحة إلى المدير الجديد.` };
+      if (locale === "ms") return { title: "Syarikat ditugaskan semula", body: `${companyName} dan tugasan penerimaan masuk terbukanya dipindahkan kepada pengurus baharu.` };
+      return { title: "Company reassigned", body: `${companyName} and its open onboarding work moved to the new manager.` };
+    }
+    case "company_information_requested": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "معلومات الشركة مطلوبة", body: `يحتاج سجل ${companyName} إلى معلومات إضافية قبل متابعة التهيئة.` };
+      if (locale === "ms") return { title: "Maklumat syarikat diperlukan", body: `${companyName} memerlukan maklumat tambahan sebelum penerimaan masuk diteruskan.` };
+      return { title: "Company information requested", body: `${companyName} needs more information before onboarding can continue.` };
+    }
+    case "company_administrator_activated": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "تم تفعيل مدير الشركة", body: `أكمل مدير ${companyName} إعداد الحساب الآمن.` };
+      if (locale === "ms") return { title: "Pentadbir Syarikat diaktifkan", body: `Pentadbir ${companyName} melengkapkan persediaan akaun selamat.` };
+      return { title: "Company Administrator activated", body: `${companyName}'s administrator completed secure account setup.` };
+    }
+    case "company_activated": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "تم تفعيل الشركة", body: `اكتملت متطلبات تهيئة ${companyName} ويمكنها الآن بدء معاملات جديدة.` };
+      if (locale === "ms") return { title: "Syarikat diaktifkan", body: `${companyName} melengkapkan keperluan penerimaan masuk dan kini boleh memulakan transaksi baharu.` };
+      return { title: "Company activated", body: `${companyName} completed onboarding and can now begin new transactions.` };
+    }
+    case "company_suspended": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "تم تعليق الشركة", body: `عُلقت المعاملات الجديدة لـ ${companyName} مع الحفاظ على السجلات والعمل المفتوح.` };
+      if (locale === "ms") return { title: "Syarikat digantung", body: `Transaksi baharu ${companyName} disekat sementara rekod dan kerja terbuka dikekalkan.` };
+      return { title: "Company suspended", body: `${companyName} cannot start new transactions; records and open work were preserved.` };
     }
     case "request_needs_approval": {
       const actorName = boundedParameter(message.actorName, "Notification actor name");
