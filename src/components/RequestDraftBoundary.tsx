@@ -84,26 +84,6 @@ export function RequestDraftBoundary({
     ensureSubmissionInput(form, submissionKey);
 
     if (stored) {
-      const branch = formControl(form, "branchId");
-      if (branch instanceof HTMLSelectElement
-        && stored.branchId
-        && selectedOptionExists(branch, stored.branchId)) {
-        setNativeValue(branch, stored.branchId);
-      }
-
-      const department = formControl(form, "department");
-      if (department) setNativeValue(department, stored.department);
-
-      const neededBy = formControl(form, "neededByDate");
-      if (neededBy) {
-        setNativeValue(
-          neededBy,
-          stored.neededByDate >= localToday()
-            ? stored.neededByDate
-            : localToday(),
-        );
-      }
-
       const requestType = formControl(form, "requestType");
       if (requestType instanceof HTMLSelectElement
         && REQUEST_TYPES.has(stored.requestType)
@@ -122,7 +102,6 @@ export function RequestDraftBoundary({
       if (notes) setNativeValue(notes, stored.notes);
     }
 
-    let timer: number | undefined;
     const persist = () => {
       const branch = formControl(form, "branchId")?.value ?? "";
       const department = formControl(form, "department")?.value ?? "";
@@ -146,17 +125,15 @@ export function RequestDraftBoundary({
         submissionKey,
       }, scope);
     };
-    const schedulePersist = () => {
-      if (timer !== undefined) window.clearTimeout(timer);
-      timer = window.setTimeout(persist, 150);
-    };
+    const schedulePersist = persist;
 
     form.addEventListener("input", schedulePersist);
     form.addEventListener("change", schedulePersist);
-    persist();
+    if (!stored) {
+      persist();
+    }
 
     return () => {
-      if (timer !== undefined) window.clearTimeout(timer);
       persist();
       form.removeEventListener("input", schedulePersist);
       form.removeEventListener("change", schedulePersist);

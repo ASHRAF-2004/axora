@@ -8,7 +8,7 @@ import {
   safeInternalReturnPath,
   type SessionReturnReason,
 } from "@/lib/session-return";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import styles from "./LoginForm.module.css";
 import { YetiGuide, type GuideFocus } from "./login/YetiGuide";
@@ -135,20 +135,21 @@ export function LoginForm({
   const initialEmail = demo ? (demoEmail ?? "") : "";
   const initialPassword = demo ? (demoPassword ?? "") : "";
   const emailRef = useRef<HTMLInputElement | null>(null);
-  const returnToRef = useRef<HTMLInputElement | null>(null);
   const [focus, setFocus] = useState<GuideFocus>(null);
   const [emailValue, setEmailValue] = useState(initialEmail);
   const [passwordValue, setPasswordValue] = useState(initialPassword);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [caretIndex, setCaretIndex] = useState(initialEmail.length);
 
-  useEffect(() => {
-    // Session storage contributes only a fragment for a server-provided route.
+  const mergedReturnTo = useMemo(() => {
+    // Merge any browser-stored fragment into the same server-provided path.
     // A direct login must never inherit a previous person's tab path.
-    const recovered = returnTo
-      ? mergeStoredReturnHash(returnTo, browserReturnPath(), "/dashboard")
-      : "/dashboard";
-    if (returnToRef.current) returnToRef.current.value = recovered;
+    if (!returnTo) return "/dashboard";
+    return mergeStoredReturnHash(
+      returnTo,
+      browserReturnPath(),
+      "/dashboard",
+    );
   }, [returnTo]);
 
   const feedback = useMemo(() => {
@@ -199,10 +200,9 @@ export function LoginForm({
     >
       <h1 className={styles.srOnly}>{copy.title}</h1>
       <input
-        ref={returnToRef}
         name="returnTo"
         type="hidden"
-        defaultValue={safeInternalReturnPath(returnTo, "/dashboard")}
+        defaultValue={safeInternalReturnPath(mergedReturnTo, "/dashboard")}
       />
 
       <YetiGuide
