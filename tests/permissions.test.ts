@@ -100,7 +100,7 @@ describe("normalized least-privilege permissions", () => {
         accountKind: "PLATFORM",
         scopeType: "PLATFORM",
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_companies", "manage_catalog", "manage_suppliers", "manage_branches", "manage_sourcing", "manage_deliveries", "view_invoices", "manage_finance", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_commercial_pricing", "view_system_diagnostics", "view_receiving", "review_three_way_matches"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_companies", "manage_catalog", "manage_suppliers", "manage_branches", "manage_sourcing", "manage_deliveries", "view_approvals", "view_budgets", "view_invoices", "manage_finance", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_commercial_pricing", "view_system_diagnostics", "view_receiving", "review_three_way_matches"],
     },
     {
       subject: {

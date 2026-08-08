@@ -56,6 +56,12 @@ test("keeps customer approval decisions outside the platform-owner role", async 
   await signInAsDemoOwner(page);
   await page.goto("/approvals");
 
-  await expect(page).toHaveURL(/\/access-denied$/);
-  await expect(page.getByRole("heading", { level: 1, name: "This page is not part of your role" })).toBeVisible();
+  await expect(page).toHaveURL(/\/approvals$/);
+  await expect(page.getByRole("heading", {
+    level: 2,
+    name: "Actual-spend and substitute approvals",
+  })).toBeVisible();
+  await expect(page.getByRole("button", {
+    name: "Approve and reserve budget",
+  })).toHaveCount(0);
 });

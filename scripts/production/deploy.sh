@@ -79,10 +79,16 @@ automatic_revert() {
 
   warn "A post-swap gate failed; restoring the previously running application image."
   export AXORA_IMAGE="$old_image"
-  local -a services=(app caddy)
-  if release_has_email_sender "$old_release"; then
-    services=(app email-sender caddy)
+  local -a services=(app)
+  if release_has_budget_worker "$old_release"; then
+    services+=(budget-worker)
+  else
+    remove_ephemeral_budget_worker
   fi
+  if release_has_email_sender "$old_release"; then
+    services+=(email-sender)
+  fi
+  services+=(caddy)
   if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
     services+=(cloudflared)
   fi
@@ -90,6 +96,7 @@ automatic_revert() {
     --wait-timeout "$AXORA_DEPLOY_TIMEOUT_SECONDS" "${services[@]}"; then
     if "$SCRIPT_DIR/health-check.sh" --local; then
       remove_email_sender_if_release_lacks_it "$old_release"
+      remove_budget_worker_if_release_lacks_it "$old_release"
     else
       warn "The automatic app-only rollback also failed its local health gate."
     fi
@@ -133,6 +140,13 @@ if [[ "$current_sha" == "$target_sha" ]]; then
   current_app_container="$(find_service_container app)" || die "Expected one running production app container."
   [[ "$(docker inspect --format '{{.Image}}' "$current_app_container")" == "$recorded_image_id" ]] \
     || die "Running application image differs from the recorded content digest."
+  current_budget_worker_container="$(find_service_container budget-worker)" \
+    || die "Expected one running production budget-worker container."
+  [[ "$(docker inspect --format '{{.Image}}' "$current_budget_worker_container")" == "$recorded_image_id" ]] \
+    || die "Running budget-worker image differs from the recorded content digest."
+  current_budget_worker_health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$current_budget_worker_container")"
+  [[ "$current_budget_worker_health" == "healthy" ]] \
+    || die "Production budget-worker is not healthy (status: $current_budget_worker_health)."
   log "Commit $target_sha is already deployed; running health gates only."
   "$SCRIPT_DIR/health-check.sh" --local
   if bool_is_true "$AXORA_REQUIRE_EXTERNAL"; then
@@ -391,7 +405,7 @@ if [[ "$deployment_mode" == "bootstrap" ]]; then
   fi
 fi
 
-services=(app email-sender caddy)
+services=(app budget-worker email-sender caddy)
 if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
   services+=(cloudflared)
 fi

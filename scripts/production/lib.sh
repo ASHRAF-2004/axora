@@ -424,6 +424,24 @@ release_has_email_sender() {
   return 1
 }
 
+release_has_budget_worker() {
+  local release="$1"
+  local compose_file
+  local -a files
+
+  [[ -d "$release" && ! -L "$release" ]] || die "Release directory is missing: $release"
+  IFS=':' read -r -a files <<< "$AXORA_COMPOSE_FILES"
+  for compose_file in "${files[@]}"; do
+    [[ "$compose_file" =~ ^[A-Za-z0-9._/-]+$ ]] || die "Unsafe Compose filename: $compose_file"
+    [[ -f "$release/$compose_file" && ! -L "$release/$compose_file" ]] \
+      || die "Compose file is missing or unsafe: $compose_file"
+    if grep -Eq '^  budget-worker:[[:space:]]*(#.*)?$' "$release/$compose_file"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 find_service_container() {
   local service="$1"
   local -a matches
@@ -466,6 +484,31 @@ remove_email_sender_if_release_lacks_it() {
 
   if ! release_has_email_sender "$release"; then
     remove_ephemeral_email_sender
+  fi
+}
+
+remove_ephemeral_budget_worker() {
+  local -a matches
+
+  mapfile -t matches < <(
+    docker ps --all \
+      --filter "label=com.docker.compose.project=$AXORA_COMPOSE_PROJECT" \
+      --filter "label=com.docker.compose.service=budget-worker" \
+      --format '{{.ID}}'
+  )
+  (( "${#matches[@]}" <= 1 )) \
+    || die "Expected at most one Axora budget-worker container."
+  if (( "${#matches[@]}" == 1 )); then
+    log "Removing the obsolete ephemeral budget-worker container; no volumes are removed."
+    docker rm --force "${matches[0]}" >/dev/null
+  fi
+}
+
+remove_budget_worker_if_release_lacks_it() {
+  local release="$1"
+
+  if ! release_has_budget_worker "$release"; then
+    remove_ephemeral_budget_worker
   fi
 }
 

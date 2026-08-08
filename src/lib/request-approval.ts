@@ -72,6 +72,7 @@ type Actor = {
   companyId?: string;
   branchId?: string;
   role?: string;
+  accountKind?: string;
 };
 
 function assignmentId(actor: Actor) {
@@ -81,6 +82,13 @@ function assignmentId(actor: Actor) {
 
 export async function getApprovalWorkspace(actor: Actor) {
   if (isDemoMode()) {
+    if (actor.accountKind !== "COMPANY") {
+      const emptyWorkspace: ApprovalWorkspace = {
+        capturedAt: new Date().toISOString(),
+        requests: [],
+      };
+      return emptyWorkspace;
+    }
     const store = getDemoStore();
     return {
       capturedAt: new Date().toISOString(),
@@ -150,6 +158,9 @@ export async function decideRequestApproval(input: {
   idempotencyKey: string;
 }) {
   if (isDemoMode()) {
+    if (input.actor.accountKind !== "COMPANY") {
+      throw new Error("The request is unavailable.");
+    }
     const store = getDemoStore();
     const request = store.requests.find((item) => item.id === input.requestId);
     if (!request || request.approvalStatus !== "Pending"

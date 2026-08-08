@@ -49,12 +49,19 @@ rollback_cleanup_line="$(
   grep -nF 'remove_email_sender_if_release_lacks_it "$target_release"' \
     "$SCRIPT_DIR/rollback.sh" | cut -d: -f1
 )"
+rollback_worker_cleanup_line="$(
+  grep -nF 'remove_budget_worker_if_release_lacks_it "$target_release"' \
+    "$SCRIPT_DIR/rollback.sh" | cut -d: -f1
+)"
 rollback_swap_line="$(
   grep -nF 'compose_release "$target_release" up' "$SCRIPT_DIR/rollback.sh" | cut -d: -f1
 )"
 [[ "$rollback_cleanup_line" =~ ^[0-9]+$ && "$rollback_swap_line" =~ ^[0-9]+$ ]] \
   && (( rollback_cleanup_line > rollback_swap_line )) \
   || die "Rollback must remove a legacy target's orphan email-sender only after its gated Compose swap."
+[[ "$rollback_worker_cleanup_line" =~ ^[0-9]+$ ]] \
+  && (( rollback_worker_cleanup_line > rollback_swap_line )) \
+  || die "Rollback must remove a pre-worker target's orphan budget worker only after its gated Compose swap."
 
 validation_dir="$(mktemp -d)"
 cleanup() {
@@ -66,11 +73,14 @@ trap cleanup EXIT
 
 legacy_release="$validation_dir/legacy-release"
 email_release="$validation_dir/email-release"
-mkdir "$legacy_release" "$email_release"
+worker_release="$validation_dir/worker-release"
+mkdir "$legacy_release" "$email_release" "$worker_release"
 for compose_file in compose.yaml compose.hybrid.yaml compose.production.yaml; do
-  touch "$legacy_release/$compose_file" "$email_release/$compose_file"
+  touch "$legacy_release/$compose_file" "$email_release/$compose_file" \
+    "$worker_release/$compose_file"
 done
 printf 'services:\n  email-sender:\n    image: fixture\n' > "$email_release/compose.yaml"
+printf 'services:\n  budget-worker:\n    image: fixture\n' > "$worker_release/compose.yaml"
 AXORA_COMPOSE_FILES=compose.yaml:compose.hybrid.yaml:compose.production.yaml
 email_sender_removals=0
 remove_ephemeral_email_sender() {
@@ -82,6 +92,16 @@ remove_email_sender_if_release_lacks_it "$legacy_release"
 remove_email_sender_if_release_lacks_it "$email_release"
 [[ "$email_sender_removals" -eq 1 ]] \
   || die "A release that defines email-sender must retain the service."
+budget_worker_removals=0
+remove_ephemeral_budget_worker() {
+  budget_worker_removals=$(( budget_worker_removals + 1 ))
+}
+remove_budget_worker_if_release_lacks_it "$legacy_release"
+[[ "$budget_worker_removals" -eq 1 ]] \
+  || die "A release without budget-worker must trigger orphan cleanup."
+remove_budget_worker_if_release_lacks_it "$worker_release"
+[[ "$budget_worker_removals" -eq 1 ]] \
+  || die "A release that defines budget-worker must retain the service."
 
 release_export_dir="$validation_dir/release-export"
 release_bare_repository="$validation_dir/repository.git"
@@ -159,7 +179,7 @@ jq --exit-status \
   --arg uploads "$uploads_dir" \
   '
     (.services | keys | sort) ==
-      ["app","caddy","cloudflared","db","email-sender","migrate","tailscale-db"]
+      ["app","budget-worker","caddy","cloudflared","db","email-sender","migrate","tailscale-db"]
     and .services.app.environment.DEMO_MODE == "false"
     and .services.app.environment.DB_NAME == "axora_hybrid"
     and .services.app.environment.APP_BASE_URL == "https://axora.management"
@@ -177,6 +197,8 @@ jq --exit-status \
     and .services["email-sender"].environment.ZEPTOMAIL_SEND_TOKEN_NEXT_FILE == "/run/secrets/zeptomail_send_token_next"
     and .services["email-sender"].environment.AXORA_EMAIL_OUTBOX_URL == "http://app:3000/account/email-outbox"
     and .services["email-sender"].environment.AXORA_EMAIL_SERVICE_AUTH_KEY_FILE == "/run/secrets/axora_email_service_auth_key"
+    and .services["budget-worker"].environment.DB_NAME == "axora_hybrid"
+    and .services["budget-worker"].environment.DB_PASSWORD_FILE == "/run/secrets/axora_app_password"
     and .services.db.environment.POSTGRES_DB == "axora_hybrid"
     and .services.migrate.environment.POSTGRES_DB == "axora_hybrid"
     and .networks.backend.internal == true
@@ -186,10 +208,13 @@ jq --exit-status \
     and (.services.app.ports // []) == []
     and (.services.cloudflared.ports // []) == []
     and (.services["email-sender"].ports // []) == []
+    and (.services["budget-worker"].ports // []) == []
     and ([.services.app.secrets[].source] | index("axora_email_service_auth_key")) != null
     and ([.services.app.secrets[].source] | index("turnstile_secret")) != null
     and ([.services["email-sender"].secrets[].source] | sort) ==
       ["axora_email_service_auth_key","cloudflare_email_api_token","zeptomail_send_token","zeptomail_send_token_next"]
+    and ([.services["budget-worker"].secrets[].source] | sort) ==
+      ["axora_app_password"]
     and (
       [
         .services
@@ -215,13 +240,16 @@ jq --exit-status \
     and (.services.caddy.networks | keys | sort) == ["edge","frontend"]
     and (.services.db.networks | keys) == ["backend"]
     and (.services.app.networks | keys | sort) == ["backend","frontend","mail"]
+    and (.services["budget-worker"].networks | keys) == ["backend"]
     and (.services["email-sender"].networks | keys | sort) == ["email-egress","mail"]
     and .services["email-sender"].networks["email-egress"].gw_priority == 1
     and .services.app.read_only == true
     and .services["email-sender"].read_only == true
+    and .services["budget-worker"].read_only == true
     and .services.cloudflared.read_only == true
     and (.services.app.cap_drop | index("ALL")) != null
     and (.services["email-sender"].cap_drop | index("ALL")) != null
+    and (.services["budget-worker"].cap_drop | index("ALL")) != null
     and (.services.caddy.cap_drop | index("ALL")) != null
     and .services.caddy.cap_add == ["NET_BIND_SERVICE"]
     and (.services.cloudflared.cap_drop | index("ALL")) != null
@@ -238,7 +266,7 @@ jq --exit-status \
     and (.secrets.turnstile_secret.file == ($secrets + "/turnstile_secret"))
     and (
       . as $root
-      | ["app","caddy","cloudflared","db","email-sender","tailscale-db"]
+      | ["app","budget-worker","caddy","cloudflared","db","email-sender","tailscale-db"]
       | all(
           . as $service
           | $root.services[$service].restart == "unless-stopped"

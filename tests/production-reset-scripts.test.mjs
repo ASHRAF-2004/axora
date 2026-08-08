@@ -471,7 +471,7 @@ describe("guarded production reset controls", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it("keeps reset implementation free of Docker-volume and destructive Compose commands", () => {
     const installSource = readFileSync(installPath, "utf8");

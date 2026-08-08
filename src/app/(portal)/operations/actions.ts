@@ -25,6 +25,10 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { actionFeedback, publicApprovalErrorCode, type ActionFeedbackCode } from "@/lib/action-feedback-i18n";
 import { requestLocaleDecision } from "@/lib/locale-server";
+import {
+  assignFulfilmentPurchase,
+  submitRequestActual,
+} from "@/lib/budget-variance";
 
 const optionalDate = z.union([z.iso.date(), z.literal("")]).transform((value) => value || undefined);
 const optionalPositive = z.union([z.coerce.number().int().positive(), z.literal("")]).optional().transform((value) => value === "" ? undefined : value);
@@ -217,4 +221,103 @@ export async function uploadAttachmentAction(formData: FormData) {
   if (!(file instanceof File) || file.size < 1) redirect("/documents?notice=document-file-required");
   await createAuthorizedAttachment(user, { entityType, recordId, file, visibility });
   revalidatePath("/documents"); revalidatePath("/audit");
+}
+
+const fulfilmentAssignmentSchema = z.object({
+  requestId: z.string().uuid(),
+  assignee: z.string().regex(
+    /^[0-9a-f-]{36}\|[0-9a-f-]{36}$/i,
+    "Invalid fulfilment assignment",
+  ),
+  reason: z.string().trim().min(3).max(1000),
+  idempotencyKey: z.string().trim().min(8).max(200),
+});
+
+export async function assignFulfilmentPurchaseAction(formData: FormData) {
+  const actor = await requirePermission("manage_sourcing");
+  await requireRecentStepUp(actor, "/sourcing");
+  const input = fulfilmentAssignmentSchema.parse(Object.fromEntries(formData));
+  const [assignedUserId, assignedRoleAssignmentId] = input.assignee.split("|");
+  await assignFulfilmentPurchase({
+    actor,
+    requestId: input.requestId,
+    assignedUserId,
+    assignedRoleAssignmentId,
+    reason: input.reason,
+    idempotencyKey: input.idempotencyKey,
+  });
+  revalidatePath("/sourcing");
+  revalidatePath("/approvals");
+  revalidatePath("/audit");
+  redirect("/sourcing?notice=fulfilment-assigned");
+}
+
+const actualLineSchema = z.object({
+  requestLineId: z.string().uuid(),
+  actualProductId: z.string().uuid(),
+  supplierId: z.string().uuid(),
+  quantity: z.coerce.number().positive().max(999_999_999),
+  actualBuyUnitPrice: z.coerce.number().min(0).max(999_999_999_999),
+  taxRate: z.coerce.number().min(0).max(100),
+  deliveryCharge: z.coerce.number().min(0).max(999_999_999_999),
+  otherCharge: z.coerce.number().min(0).max(999_999_999_999),
+  substituteReason: z.string().trim().max(1000).optional()
+    .transform((value) => value || undefined),
+  notes: z.string().trim().max(1000).optional()
+    .transform((value) => value || undefined),
+});
+
+export async function submitRequestActualAction(formData: FormData) {
+  const actor = await requirePermission("manage_sourcing");
+  await requireRecentStepUp(actor, "/sourcing");
+  const requestId = z.string().uuid().parse(readFormText(formData, "requestId"));
+  const purchaseMode = z.enum(["PARTIAL","FINAL","REFUND"])
+    .parse(readFormText(formData, "purchaseMode"));
+  const notes = z.string().trim().min(3).max(2000)
+    .parse(readFormText(formData, "notes"));
+  const idempotencyKey = z.string().trim().min(8).max(200)
+    .parse(readFormText(formData, "idempotencyKey"));
+  const lineIds = [...new Set(
+    formData.getAll("lineId").map((value) => z.string().uuid().parse(String(value))),
+  )];
+  if (!lineIds.length || lineIds.length>200) {
+    throw new Error("Actual purchase lines are invalid.");
+  }
+  const lines = lineIds.map((lineId) => actualLineSchema.parse({
+    requestLineId: lineId,
+    actualProductId: readFormText(formData, "actualProductId:" + lineId),
+    supplierId: readFormText(formData, "supplierId:" + lineId),
+    quantity: readFormText(formData, "quantity:" + lineId),
+    actualBuyUnitPrice: readFormText(formData, "actualBuyUnitPrice:" + lineId),
+    taxRate: readFormText(formData, "taxRate:" + lineId),
+    deliveryCharge: readFormText(formData, "deliveryCharge:" + lineId),
+    otherCharge: readFormText(formData, "otherCharge:" + lineId),
+    substituteReason: readFormText(formData, "substituteReason:" + lineId),
+    notes: readFormText(formData, "lineNotes:" + lineId),
+  }));
+  const receipt = formData.get("receipt");
+  if (!(receipt instanceof File) || receipt.size<1) {
+    throw new Error("Private receipt evidence is required.");
+  }
+  const attachment = await createAuthorizedAttachment(actor, {
+    entityType: "request",
+    recordId: requestId,
+    file: receipt,
+    visibility: "INTERNAL",
+  });
+  await submitRequestActual({
+    actor,
+    requestId,
+    purchaseMode,
+    receiptAttachmentId: attachment.attachmentId,
+    notes,
+    lines,
+    idempotencyKey,
+  });
+  revalidatePath("/sourcing");
+  revalidatePath("/approvals");
+  revalidatePath("/budgets");
+  revalidatePath("/documents");
+  revalidatePath("/audit");
+  redirect("/sourcing?notice=actual-submitted");
 }
