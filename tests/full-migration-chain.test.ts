@@ -7,11 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 060 to an empty database", async () => {
+  it("applies every numbered migration through 061 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-23)).toEqual([
+      expect(available.slice(-24)).toEqual([
         "038_canonical_session_scopes.sql",
         "039_scoped_permission_management.sql",
         "040_approval_limit_management.sql",
@@ -35,6 +35,7 @@ describe("complete forward migration chain", () => {
       "058_provider_neutral_transactional_email.sql",
       "059_immutable_accountability_and_scope_closure.sql",
       "060_supplier_quantity_and_commercial_pricing.sql",
+      "061_budget_cycles_and_actual_variance.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -290,7 +291,7 @@ describe("complete forward migration chain", () => {
     }
   }, 30_000);
 
-  it("keeps reset migration discovery dynamic through 060 while bootstrap retains its 032 minimum", async () => {
+  it("keeps reset migration discovery dynamic through 061 while bootstrap retains its 032 minimum", async () => {
     const [initializer, reset, bootstrap] = await Promise.all([
       readFile(new URL("../database/init/01-run-migration.sh", import.meta.url), "utf8"),
       readFile(new URL("../scripts/production/reset-baseline.sh", import.meta.url), "utf8"),

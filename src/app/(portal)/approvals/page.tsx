@@ -5,6 +5,8 @@ import { getApprovalWorkspace } from "@/lib/request-approval";
 import { getBudgetWorkspace } from "@/lib/budget-ledger";
 import { approvalStateLabel, budgetApprovalMessages } from "@/lib/budget-approval-i18n";
 import { RequestApprovalDecisionForm } from "@/components/RequestApprovalDecisionForm";
+import { getProcurementVarianceApprovalWorkspace } from "@/lib/budget-variance";
+import { VarianceApprovalPanel } from "@/components/VarianceApprovalPanel";
 import styles from "../budget-approval.module.css";
 
 function money(value: string, currency: string, locale: string) {
@@ -22,9 +24,10 @@ export default async function ApprovalsPage({
 }) {
   const actor = await requirePagePermission("view_approvals");
   if (!isDemoMode() && !actor.roleAssignmentId) redirect("/access-denied");
-  const [workspace, budgets, feedback] = await Promise.all([
+  const [workspace, budgets, varianceWorkspace, feedback] = await Promise.all([
     getApprovalWorkspace(actor),
     getBudgetWorkspace(actor),
+    getProcurementVarianceApprovalWorkspace(actor),
     searchParams,
   ]);
   if (!workspace) redirect("/access-denied");
@@ -82,6 +85,9 @@ export default async function ApprovalsPage({
           ))}
         </section>
       )}
+      {varianceWorkspace ? (
+        <VarianceApprovalPanel workspace={varianceWorkspace} locale={locale} />
+      ) : null}
     </main>
   );
 }

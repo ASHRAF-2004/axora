@@ -454,9 +454,67 @@ describe("transactional budget and approval core", () => {
     const context = await fixture();
     try {
       await context.db.query(`
-        UPDATE budget_accounts SET rollover_policy='CAPPED',rollover_cap=300
-        WHERE id=$1
-      `, [context.accountId]);
+        INSERT INTO role_permissions(role_id,permission_id)
+        SELECT role.id,permission.id
+        FROM roles role
+        CROSS JOIN permissions permission
+        WHERE role.role_key='BRANCH_APPROVER'
+          AND permission.permission_code='budget.assign'
+        ON CONFLICT DO NOTHING
+      `);
+      const change = await context.db.query<{ changeId: string }>(`
+        SELECT (
+          axora_request_budget_cycle_change(
+            $1,$2,$3,
+            jsonb_build_object(
+              'frequency',schedule.frequency,
+              'intervalCount',schedule.interval_count,
+              'customIntervalDays',schedule.custom_interval_days,
+              'timezone',schedule.timezone,
+              'anchorLocal',schedule.anchor_local,
+              'dstResolution',schedule.dst_resolution,
+              'fixedAllocation',schedule.fixed_allocation,
+              'rolloverMode','CUSTOM_AMOUNT',
+              'customRolloverAmount',300,
+              'lowThresholdPercentage',schedule.low_threshold_percentage,
+              'criticalThresholdPercentage',schedule.critical_threshold_percentage,
+              'hysteresisPercentage',schedule.hysteresis_percentage
+            ),
+            'Use a capped carry-forward for the next budget period',
+            'capped-rollover-change',now()
+          )->>'changeRequestId'
+        )::text AS "changeId"
+        FROM budget_periods period
+        JOIN budget_cycle_schedules schedule ON schedule.id=period.schedule_id
+        WHERE period.id=$4
+      `, [ids.admin, ids.adminAssignment, context.accountId, context.periodId]);
+      await expect(context.db.query(`
+        SELECT axora_decide_budget_cycle_change(
+          $1,$2,$3,'APPROVE','Attempted self approval',
+          'capped-self-decision',now()
+        )
+      `, [ids.admin, ids.adminAssignment, change.rows[0].changeId]))
+        .rejects.toThrow();
+      const approval = await context.db.query<{ payload: Record<string, unknown> }>(`
+        SELECT axora_decide_budget_cycle_change(
+          $1,$2,$3,'APPROVE','Independent capped rollover approval',
+          'capped-independent-decision',now()
+        ) AS payload
+      `, [ids.approver, ids.approverAssignment, change.rows[0].changeId]);
+      const retry = await context.db.query<{ payload: Record<string, unknown> }>(`
+        SELECT axora_decide_budget_cycle_change(
+          $1,$2,$3,'APPROVE','Independent capped rollover approval',
+          'capped-independent-decision',now()
+        ) AS payload
+      `, [ids.approver, ids.approverAssignment, change.rows[0].changeId]);
+      expect(retry.rows[0].payload).toEqual(approval.rows[0].payload);
+      await expect(context.db.query(`
+        SELECT axora_decide_budget_cycle_change(
+          $1,$2,$3,'APPROVE','Unauthorized replay attempt',
+          'capped-independent-decision',now()
+        )
+      `, [ids.admin, ids.adminAssignment, change.rows[0].changeId]))
+        .rejects.toThrow();
       const current = await context.db.query<{ endsAt: string }>(`
         SELECT ends_at::text AS "endsAt" FROM budget_periods WHERE id=$1
       `, [context.periodId]);

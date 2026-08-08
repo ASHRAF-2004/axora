@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { decideRequestApproval } from "@/lib/request-approval";
+import { decideRequestActual } from "@/lib/budget-variance";
 
 function field(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
@@ -42,4 +43,40 @@ export async function decideRequestApprovalAction(formData: FormData) {
   revalidatePath("/budgets");
   revalidatePath(`/requests/${requestId}`);
   redirect("/approvals?success=decision");
+}
+
+export async function decideRequestActualAction(formData: FormData) {
+  const actor = await requireSession();
+  const submissionId = field(formData, "submissionId");
+  const expectedRevision = Number(field(formData, "approvalRevision"));
+  const decision = field(formData, "decision").toUpperCase();
+  const fundingOption = field(formData, "fundingOption").toUpperCase();
+  const reason = field(formData, "reason");
+  if (!submissionId || !Number.isInteger(expectedRevision) || expectedRevision<1
+    || !["APPROVE","RETURN","REJECT"].includes(decision)
+    || (fundingOption
+      && !["APPROVE_ADDITIONAL","TRANSFER_RESERVE","TEMPORARY_INCREASE"].includes(fundingOption))
+    || reason.length<3 || reason.length>1000) {
+    redirect("/approvals?error=actual-invalid");
+  }
+  try {
+    await decideRequestActual({
+      actor,
+      submissionId,
+      expectedRevision,
+      decision: decision as "APPROVE" | "RETURN" | "REJECT",
+      fundingOption: fundingOption
+        ? fundingOption as "APPROVE_ADDITIONAL" | "TRANSFER_RESERVE" | "TEMPORARY_INCREASE"
+        : undefined,
+      sourceBudgetAccountId: field(formData, "sourceBudgetAccountId") || undefined,
+      reason,
+      idempotencyKey: field(formData, "idempotencyKey"),
+    });
+  } catch {
+    redirect("/approvals?error=actual-decision");
+  }
+  revalidatePath("/approvals");
+  revalidatePath("/budgets");
+  revalidatePath("/sourcing");
+  redirect("/approvals?success=actual-decision");
 }

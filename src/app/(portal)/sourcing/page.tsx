@@ -9,6 +9,9 @@ import { operationalMessage, operationalNumber, operationalStatus, type Operatio
 import { createQuotationAction, issueSupplierRfqAction, selectQuotationAction } from "../operations/actions";
 import { supplierSourcingMessages } from "@/lib/supplier-sourcing-i18n";
 import { randomUUID } from "node:crypto";
+import { getProcurementActualWorkspace } from "@/lib/budget-variance";
+import { ActualProcurementPanel } from "@/components/ActualProcurementPanel";
+import { budgetCycleVarianceMessages } from "@/lib/budget-cycle-variance-i18n";
 
 export default async function SourcingPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requirePagePermission("manage_sourcing");
@@ -17,9 +20,10 @@ export default async function SourcingPage({ searchParams }: { searchParams: Pro
   const supplierCopy = supplierSourcingMessages(locale);
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
   const canManage = true;
-  const [sourcing, suppliers, params] = await Promise.all([
+  const [sourcing, suppliers, actualWorkspace, params] = await Promise.all([
     loadAuthorizedSourcingRegisters(actor),
     listSuppliers(actor),
+    getProcurementActualWorkspace(actor),
     searchParams,
   ]);
   const { requests, quotations, supplierRfqs } = sourcing;
@@ -38,6 +42,7 @@ export default async function SourcingPage({ searchParams }: { searchParams: Pro
   };
   return <><PageHeader eyebrow={m("sourcing.eyebrow")} title={m("sourcing.title")} description={m("sourcing.description")} />
     {params.notice === "rfq-issued" ? <p className="form-success" role="status">{supplierCopy.issuedNotice}</p> : null}
+    {params.notice === "fulfilment-assigned" || params.notice === "actual-submitted" ? <p className="form-success" role="status">{budgetCycleVarianceMessages(locale).success}</p> : null}
     {canManage ? <section className="panel form-panel" style={{ marginBottom: 17 }}>
       <div className="panel-header"><div><h2>{supplierCopy.issueTitle}</h2><p>{supplierCopy.issueIntro}</p></div></div>
       <form action={issueSupplierRfqAction} className="panel-body">
@@ -74,6 +79,7 @@ export default async function SourcingPage({ searchParams }: { searchParams: Pro
         return <tr key={item.id}><td><strong>{item.orderCode}</strong><br /><span className="subtle">{item.requestLineCode} · {item.productName}</span></td><td>{item.supplierName}</td><td>{item.quotationReference}<br /><span className="subtle">{formatDate(item.quotationDate, locale, actor.timezone)}{item.validUntil ? ` · ${m("sourcing.validTo", { date: formatDate(item.validUntil, locale, actor.timezone) })}` : ""}</span></td><td><strong>{formatCurrency(item.unitPrice, locale)}</strong><br /><span className="subtle">MOQ {item.minimumOrderQuantity == null ? "—" : operationalNumber(locale, item.minimumOrderQuantity)}</span></td><td>{formatCurrency(item.deliveryCharge, locale)}<br /><span className="subtle">{item.leadTimeDays == null ? "—" : m(item.leadTimeDays === 1 ? "common.day" : "common.days", { count: operationalNumber(locale, item.leadTimeDays) })}</span></td><td><StatusBadge>{item.selected ? operationalStatus(locale, "Selected") : unavailable || operationalStatus(locale, item.status)}</StatusBadge></td><td>{item.selected || unavailable || !canManage || !sourceableLineIds.has(item.requestLineId) ? <span className="subtle">{item.selectionReason || unavailable || (item.selected ? m("sourcing.chosen") : m("common.readOnly"))}</span> : <form action={selectQuotationAction.bind(null, item.id)}><input name="reason" required placeholder={m("sourcing.reasonPlaceholder")} aria-label={m("sourcing.reasonLabel", { reference: item.quotationReference })} /><button className="button button-secondary" type="submit">{m("common.select")}</button></form>}</td></tr>;
       })}
     </tbody></table></div></section>
+    {actualWorkspace ? <ActualProcurementPanel workspace={actualWorkspace} locale={locale} /> : null}
   </>;
 }
 

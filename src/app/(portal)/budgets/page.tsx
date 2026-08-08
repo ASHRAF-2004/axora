@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { requireSession } from "@/lib/auth";
 import { getBudgetWorkspace } from "@/lib/budget-ledger";
+import { getBudgetCycleWorkspace } from "@/lib/budget-cycles";
+import { BudgetCycleManagement } from "@/components/BudgetCycleManagement";
 import { budgetApprovalMessages } from "@/lib/budget-approval-i18n";
 import {
   adjustBudgetAction,
@@ -22,7 +24,11 @@ export default async function BudgetsPage({
 }) {
   const actor = await requireSession();
   if (!actor.roleAssignmentId) redirect("/access-denied");
-  const [workspace, feedback] = await Promise.all([getBudgetWorkspace(actor), searchParams]);
+  const [workspace, cycleWorkspace, feedback] = await Promise.all([
+    getBudgetWorkspace(actor),
+    getBudgetCycleWorkspace(actor),
+    searchParams,
+  ]);
   if (!workspace) redirect("/access-denied");
   const locale = actor.preferredLocale ?? "en";
   const messages = budgetApprovalMessages(locale);
@@ -132,6 +138,9 @@ export default async function BudgetsPage({
           ))}
         </ul>
       </section>
+      {cycleWorkspace ? (
+        <BudgetCycleManagement workspace={cycleWorkspace} locale={locale} />
+      ) : null}
     </main>
   );
 }
