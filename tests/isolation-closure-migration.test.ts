@@ -202,11 +202,13 @@ async function fixture(createAppRole = false) {
       user_id,permission_id,effect,scope_type,company_id,starts_at,
       active,reason,changed_by
     )
-    SELECT $1,permission.id,'GRANT','COMPANY',$2,now(),true,$3,$4
+    SELECT $1::uuid,permission.id,'GRANT','COMPANY',$2::uuid,now(),
+      true,$3::text,$4::uuid
     FROM permissions permission
     WHERE permission.permission_code='finance.manage'
     UNION ALL
-    SELECT $5,permission.id,'GRANT','COMPANY',$6,now(),true,$3,$4
+    SELECT $5::uuid,permission.id,'GRANT','COMPANY',$6::uuid,now(),
+      true,$3::text,$4::uuid
     FROM permissions permission
     WHERE permission.permission_code='finance.manage'
   `, [
