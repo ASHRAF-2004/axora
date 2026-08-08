@@ -8,6 +8,11 @@ import {
   myProfileMeetsRequiredOnboarding,
 } from "@/lib/profile";
 import { landingPathForSession } from "@/lib/session-landing";
+import {
+  authorizedSessionReturnPath,
+  safeInternalReturnPath,
+  type SessionReturnReason,
+} from "@/lib/session-return";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -24,6 +29,12 @@ const backLabels = {
   ms: "Kembali ke laman web",
 } as const;
 
+const returnReasons = new Set<SessionReturnReason>([
+  "required",
+  "expired",
+  "access-changed",
+]);
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -31,23 +42,37 @@ export default async function LoginPage({
     error?: string;
     setup?: string;
     reset?: string;
+    returnTo?: string;
+    reason?: string;
   }>;
 }) {
+  const params = await searchParams;
   const user = await getAccountLifecycleSession();
 
   if (user) {
     const profile = await getMyProfile(user);
-    redirect(
-      myProfileMeetsRequiredOnboarding(profile)
-        ? landingPathForSession(user)
-        : "/profile?onboarding=1",
+    const landing = landingPathForSession(user);
+    const destination = authorizedSessionReturnPath(
+      user,
+      params.returnTo,
+      landing,
     );
+    if (!myProfileMeetsRequiredOnboarding(profile)) {
+      const profileParams = new URLSearchParams({
+        onboarding: "1",
+        returnTo: safeInternalReturnPath(destination, landing),
+      });
+      redirect(`/profile?${profileParams.toString()}`);
+    }
+    redirect(destination);
   }
 
-  const { error, setup, reset } = await searchParams;
   const demo = isDemoMode();
   const { locale } = await requestLocaleDecision();
   const BackIcon = locale === "ar" ? ArrowRight : ArrowLeft;
+  const reason = returnReasons.has(params.reason as SessionReturnReason)
+    ? params.reason as SessionReturnReason
+    : undefined;
 
   return (
     <main
@@ -67,12 +92,14 @@ export default async function LoginPage({
 
       <div className={styles.container}>
         <LoginForm
-          error={Boolean(error)}
-          setupComplete={setup === "complete"}
-          resetComplete={reset === "complete"}
+          error={Boolean(params.error)}
+          setupComplete={params.setup === "complete"}
+          resetComplete={params.reset === "complete"}
           demo={demo}
           demoEmail={process.env.DEMO_EMAIL}
           demoPassword={process.env.DEMO_PASSWORD}
+          returnTo={params.returnTo}
+          reason={reason}
           locale={locale}
         />
       </div>
