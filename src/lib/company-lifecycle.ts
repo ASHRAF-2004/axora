@@ -172,7 +172,6 @@ const mutationSchema = z.object({
 interface SnapshotRow extends QueryResultRow {
   snapshot: unknown;
 }
-
 export type CompanyLifecycleRecord = z.infer<typeof companyLifecycleRecordSchema>;
 export type CompanyLifecycleWorkspace = z.infer<typeof workspaceSchema>;
 export type CompanyLifecycleMutation = z.infer<typeof mutationSchema>;
@@ -503,4 +502,3 @@ export function setCompanyPublication(
     [actor.id, requiredAssignment(actor), uuid.parse(companyId), isPubliclyListed, reason, new Date()],
   );
 }
-
