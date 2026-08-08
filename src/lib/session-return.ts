@@ -65,14 +65,14 @@ function parsedInternalPath(raw: string | null | undefined) {
       return null;
     }
 
-    const decodedPath = decodeURIComponent(parsed.pathname);
-    if (CONTROL_CHARACTERS.test(decodedPath)
-      || decodedPath.includes("\\")
-      || decodedPath.startsWith("//")) {
+    const safe = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    const decoded = decodeURIComponent(safe);
+    if (CONTROL_CHARACTERS.test(decoded)
+      || decoded.includes("\\")
+      || decoded.startsWith("//")) {
       return null;
     }
 
-    const safe = `${parsed.pathname}${parsed.search}${parsed.hash}`;
     return safe.length <= MAX_RETURN_PATH_LENGTH ? parsed : null;
   } catch {
     return null;
