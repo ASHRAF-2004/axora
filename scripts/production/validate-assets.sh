@@ -14,6 +14,10 @@ for command in bash cmp cut docker git grep jq mkdir mktemp node rm touch; do
 done
 
 bash -n "$SCRIPT_DIR"/*.sh
+for ignore_rule in .git .env '.env.*' secrets backups data/uploads output; do
+  grep -Fqx "$ignore_rule" "$REPOSITORY_DIR/.dockerignore" \
+    || die ".dockerignore is missing mandatory rule: $ignore_rule"
+done
 node --check "$REPOSITORY_DIR/server-tools/migrate.mjs"
 node --check "$REPOSITORY_DIR/server-tools/account-setup-email.mjs"
 node --check "$REPOSITORY_DIR/server-tools/transactional-email.mjs"
