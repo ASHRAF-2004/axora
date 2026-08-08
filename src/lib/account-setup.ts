@@ -87,23 +87,38 @@ async function enforceInvitationQuota(
   actorId: string,
   companyId?: string,
 ) {
-  // Both quota dimensions are serialized before counting. The actor lock
-  // prevents parallel requests from one administrator; the company lock keeps
-  // different administrators from racing past the shared daily ceiling.
+  // Serialize each quota dimension with transaction-scoped advisory locks.
+  // Using advisory locks avoids upgrading a KEY SHARE resource lock to UPDATE,
+  // which can deadlock when concurrent administrators invite into one company.
+  await client.query(
+    `SELECT pg_advisory_xact_lock(
+       hashtextextended('axora-account-invite-actor:' || $1::text,0)
+     )`,
+    [actorId],
+  );
+  if (companyId) {
+    await client.query(
+      `SELECT pg_advisory_xact_lock(
+         hashtextextended('axora-account-invite-company:' || $1::text,0)
+       )`,
+      [companyId],
+    );
+  }
+
   const scope = companyId
     ? await client.query(
       `SELECT u.id::text AS "actorId",c.id::text AS "companyId"
        FROM users u CROSS JOIN companies c
        WHERE u.id=$1 AND u.active=true AND u.account_status='ACTIVE'
          AND c.id=$2 AND c.active=true
-       FOR UPDATE OF u,c`,
+       FOR KEY SHARE OF u,c`,
       [actorId, companyId],
     )
     : await client.query(
       `SELECT u.id::text AS "actorId"
        FROM users u
        WHERE u.id=$1 AND u.active=true AND u.account_status='ACTIVE'
-       FOR UPDATE OF u`,
+       FOR KEY SHARE OF u`,
       [actorId],
     );
   if (!scope.rowCount) {
