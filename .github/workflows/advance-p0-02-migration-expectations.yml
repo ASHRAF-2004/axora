@@ -1,0 +1,42 @@
+name: Advance P0-02 migration expectations
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  advance-expectations:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the P0-02 branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: agent/p0-02-isolation-closure
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Apply deterministic expectation patch
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/advance_p0_02_migration_expectations.py
+          python3 -m py_compile scripts/ci/advance_p0_02_migration_expectations.py
+
+      - name: Commit the reviewed expectation change
+        run: |
+          set -euo pipefail
+          git add \
+            tests/support-diagnostics-migration.test.ts \
+            tests/account-security-session-audit-migration.test.ts
+          if git diff --cached --quiet; then
+            echo "The migration expectations are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Advance retained migration fixtures through 049 [skip ci]"
+          git push origin HEAD:agent/p0-02-isolation-closure
