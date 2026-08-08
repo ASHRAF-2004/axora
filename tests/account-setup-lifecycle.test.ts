@@ -82,6 +82,9 @@ describe("account setup transactional lifecycle", () => {
 
   it("returns a bearer token once while sending only its hash to PostgreSQL", async () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: actor.id, companyId: actor.companyId }] };
       }
@@ -131,7 +134,10 @@ describe("account setup transactional lifecycle", () => {
     });
     expect(result.rawToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
     const statements = mocks.client.query.mock.calls.map(([sql]) => String(sql));
-    expect(statements[0]).toContain("FOR UPDATE OF u,c");
+    expect(statements[0]).toContain("axora-account-invite-actor:");
+    expect(statements[1]).toContain("axora-account-invite-company:");
+    expect(statements.find((sql) => sql.includes('AS "actorId"')))
+      .toContain("FOR KEY SHARE OF u,c");
     expect(statements.findIndex((sql) => sql.includes('AS "actorCount"')))
       .toBeLessThan(statements.findIndex((sql) => sql.includes("INSERT INTO users")));
 
@@ -175,6 +181,9 @@ describe("account setup transactional lifecycle", () => {
   it("normalizes a branch approver invitation to one tenant and branch scope", async () => {
     const branchId = "20000000-0000-4000-8000-000000000001";
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: actor.id, companyId: actor.companyId }] };
       }
@@ -261,6 +270,9 @@ describe("account setup transactional lifecycle", () => {
     supplierId,
   }) => {
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: platformOwner.id }] };
       }
@@ -321,6 +333,9 @@ describe("account setup transactional lifecycle", () => {
 
   it("blocks the twenty-first invitation by one actor within an hour", async () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: actor.id, companyId: actor.companyId }] };
       }
@@ -346,6 +361,9 @@ describe("account setup transactional lifecycle", () => {
 
   it("blocks the one-hundred-and-first company invitation within a day", async () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: actor.id, companyId: actor.companyId }] };
       }
