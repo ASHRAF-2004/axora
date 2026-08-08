@@ -20,8 +20,13 @@ function checked(formData: FormData, key: string) {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
-function profileErrorPath(formData: FormData, error: string) {
-  const params = new URLSearchParams({ error });
+function profileStatePath(
+  formData: FormData,
+  state: { error?: string; saved?: string },
+) {
+  const params = new URLSearchParams();
+  if (state.error) params.set("error", state.error);
+  if (state.saved) params.set("saved", state.saved);
   if (formData.get("onboarding") === "true") params.set("onboarding", "1");
   const returnTo = safeInternalReturnPath(
     String(formData.get("returnTo") ?? ""),
@@ -34,7 +39,7 @@ function profileErrorPath(formData: FormData, error: string) {
 export async function saveProfileAction(formData: FormData) {
   const actor = await requireAccountLifecycleSession();
   if (!checked(formData, "policyAccepted")) {
-    redirect(profileErrorPath(formData, "invalid-profile"));
+    redirect(profileStatePath(formData, { error: "invalid-profile" }));
   }
   const preferredLocale = String(formData.get("preferredLocale") ?? "en");
   try {
@@ -49,7 +54,7 @@ export async function saveProfileAction(formData: FormData) {
       policyAccepted: true,
     }, actor);
   } catch {
-    redirect(profileErrorPath(formData, "invalid-profile"));
+    redirect(profileStatePath(formData, { error: "invalid-profile" }));
   }
   if (isSupportedLocale(preferredLocale)) {
     (await cookies()).set(LOCALE_COOKIE, preferredLocale, {
@@ -81,15 +86,15 @@ export async function uploadProfileImageAction(formData: FormData) {
     if (!(file instanceof File)) throw new Error("Choose an image.");
     await saveMyProfileImage(file, actor);
   } catch {
-    redirect("/profile?error=invalid-image");
+    redirect(profileStatePath(formData, { error: "invalid-image" }));
   }
   revalidatePath("/profile");
-  redirect("/profile?saved=image");
+  redirect(profileStatePath(formData, { saved: "image" }));
 }
 
-export async function removeProfileImageAction() {
+export async function removeProfileImageAction(formData: FormData) {
   const actor = await requireAccountLifecycleSession();
   await removeMyProfileImage(actor);
   revalidatePath("/profile");
-  redirect("/profile?saved=image-removed");
+  redirect(profileStatePath(formData, { saved: "image-removed" }));
 }
