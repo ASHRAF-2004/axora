@@ -77,7 +77,8 @@ describe("P0-03 route and session integration", () => {
     expect(draft).toContain('const REQUEST_DRAFT_PREFIX = "axora-request-draft:v1"');
     expect(shell).toContain("data-session-user-id={user.id}");
     expect(shell).toContain("clearBrowserSessionWorkspace(browserScope)");
-    expect(continuity).toContain('searchParams.get("notice") !== "request-submitted"');
+    expect(continuity).toContain('get("notice")');
+    expect(continuity).toContain('=== "request-submitted"');
     expect(continuity).toContain("clearRequestCart();");
     expect(continuity).toContain("clearRequestDraft();");
     expect(requestPage).toContain("<RequestDraftBoundary");
