@@ -1,6 +1,11 @@
 import type { Product } from "@/lib/types";
+import {
+  scopedBrowserStorageKey,
+  type BrowserSessionScope,
+} from "./browser-session-scope";
 
-export const REQUEST_CART_STORAGE_KEY = "axora-request-cart:v1";
+const LEGACY_REQUEST_CART_STORAGE_KEY = "axora-request-cart:v1";
+const REQUEST_CART_STORAGE_PREFIX = "axora-request-cart:v2";
 export const REQUEST_CART_EVENT = "axora-request-cart-change";
 
 export interface RequestCartProduct {
@@ -71,12 +76,32 @@ function validItem(value: unknown): value is RequestCartItem {
   );
 }
 
-export function readRequestCart(): RequestCartItem[] {
+export function requestCartStorageKey(scope?: BrowserSessionScope | null) {
+  return scopedBrowserStorageKey(REQUEST_CART_STORAGE_PREFIX, scope);
+}
+
+function discardUnscopedLegacyCart() {
+  if (typeof window === "undefined") return;
+  try {
+    // The old key has no user or tenant identity. Migrating it could expose one
+    // person's draft after a different person signs into the same browser.
+    window.localStorage.removeItem(LEGACY_REQUEST_CART_STORAGE_KEY);
+  } catch {
+    // Storage availability is not required for catalogue browsing.
+  }
+}
+
+export function readRequestCart(
+  scope?: BrowserSessionScope | null,
+): RequestCartItem[] {
   if (typeof window === "undefined") return [];
+  const key = requestCartStorageKey(scope);
+  if (!key) return [];
 
   try {
+    discardUnscopedLegacyCart();
     const parsed: unknown = JSON.parse(
-      window.localStorage.getItem(REQUEST_CART_STORAGE_KEY) ?? "[]",
+      window.localStorage.getItem(key) ?? "[]",
     );
 
     return Array.isArray(parsed) ? parsed.filter(validItem) : [];
@@ -85,13 +110,23 @@ export function readRequestCart(): RequestCartItem[] {
   }
 }
 
-export function writeRequestCart(items: RequestCartItem[]) {
+export function writeRequestCart(
+  items: RequestCartItem[],
+  scope?: BrowserSessionScope | null,
+) {
   if (typeof window === "undefined") return;
+  const key = requestCartStorageKey(scope);
+  if (!key) return;
 
-  window.localStorage.setItem(
-    REQUEST_CART_STORAGE_KEY,
-    JSON.stringify(items),
-  );
+  try {
+    discardUnscopedLegacyCart();
+    window.localStorage.setItem(
+      key,
+      JSON.stringify(items.filter(validItem)),
+    );
+  } catch {
+    return;
+  }
 
   window.dispatchEvent(
     new CustomEvent<RequestCartItem[]>(REQUEST_CART_EVENT, {
@@ -100,8 +135,11 @@ export function writeRequestCart(items: RequestCartItem[]) {
   );
 }
 
-export function addProductToRequestCart(product: Product) {
-  const current = readRequestCart();
+export function addProductToRequestCart(
+  product: Product,
+  scope?: BrowserSessionScope | null,
+) {
+  const current = readRequestCart(scope);
   const existing = current.find(
     (item) => item.product.id === product.id,
   );
@@ -119,10 +157,27 @@ export function addProductToRequestCart(product: Product) {
     },
   ];
 
-  writeRequestCart(items);
+  writeRequestCart(items, scope);
   return { items, added: true };
 }
 
-export function clearRequestCart() {
-  writeRequestCart([]);
+export function clearRequestCart(scope?: BrowserSessionScope | null) {
+  if (typeof window === "undefined") return;
+  const key = requestCartStorageKey(scope);
+  if (!key) return;
+  try {
+    window.localStorage.removeItem(key);
+    discardUnscopedLegacyCart();
+  } catch {
+    // Explicit sign-out and successful submission still proceed.
+  }
+  window.dispatchEvent(
+    new CustomEvent<RequestCartItem[]>(REQUEST_CART_EVENT, { detail: [] }),
+  );
 }
+
+export const requestCartInternals = {
+  legacyStorageKey: LEGACY_REQUEST_CART_STORAGE_KEY,
+  storagePrefix: REQUEST_CART_STORAGE_PREFIX,
+  validItem,
+};
