@@ -17,6 +17,30 @@ async function fixture() {
     through: "049_active_request_write_boundary.sql",
   });
   await applyDemoSeed(db);
+
+  // Historical demo requests predate normalized request ownership. Assign one
+  // deterministic active account to a single template row so this migration
+  // test exercises creator-scoped uniqueness rather than depending on seed
+  // implementation details.
+  await db.exec(`
+    WITH actor AS (
+      SELECT id
+      FROM users
+      WHERE active AND account_status='ACTIVE'
+      ORDER BY is_owner DESC,id
+      LIMIT 1
+    ), template AS (
+      SELECT id
+      FROM requests
+      ORDER BY id
+      LIMIT 1
+    )
+    UPDATE requests request
+    SET created_by=actor.id
+    FROM actor,template
+    WHERE request.id=template.id;
+  `);
+
   const before = await db.query<{ count: number }>(
     "SELECT count(*)::int AS count FROM requests",
   );
