@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => {
   return {
     PasswordPolicyError,
     requireSession: vi.fn(),
+    clearSession: vi.fn(),
     setSession: vi.fn(),
     authenticate: vi.fn(),
     changeOwnPassword: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@/lib/account-security", () => ({
 }));
 vi.mock("@/lib/auth", () => ({
   requireAccountLifecycleSession: mocks.requireSession,
+  clearSession: mocks.clearSession,
   setSession: mocks.setSession,
   authenticate: mocks.authenticate,
   clearStepUpSessionCookie: mocks.clearStepUpSessionCookie,
@@ -75,6 +77,7 @@ describe("account security server actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireSession.mockResolvedValue(actor);
+    mocks.clearSession.mockResolvedValue(undefined);
     mocks.setSession.mockResolvedValue(undefined);
   });
 
@@ -140,6 +143,7 @@ describe("account security server actions", () => {
       .rejects.toThrow("REDIRECT:/account?reauth=1&reauth=invalid&next=%2Fusers");
     expect(mocks.authenticate).not.toHaveBeenCalled();
     expect(mocks.clearStepUpSessionCookie).toHaveBeenCalledTimes(1);
+    expect(mocks.clearSession).not.toHaveBeenCalled();
     expect(mocks.setStepUpAfterPassword).not.toHaveBeenCalled();
   });
 
@@ -156,17 +160,24 @@ describe("account security server actions", () => {
       { networkIdentifier: "203.0.113.55" },
     );
     expect(mocks.clearStepUpSessionCookie).toHaveBeenCalledTimes(1);
+    expect(mocks.clearSession).not.toHaveBeenCalled();
     expect(mocks.setStepUpAfterPassword).not.toHaveBeenCalled();
   });
 
-  it("creates a short-lived re-authorization token after successful password check", async () => {
+  it("rotates the base session before minting short-lived step-up state", async () => {
     mocks.authenticate.mockResolvedValue(actor);
     const form = new FormData();
     form.set("currentPassword", "current memorable password");
     form.set("next", "/finance");
     await expect(reauthenticateSensitiveAction(form))
       .rejects.toThrow("REDIRECT:/finance?reauth=ok");
+    expect(mocks.clearSession).toHaveBeenCalledTimes(1);
+    expect(mocks.setSession).toHaveBeenCalledWith(actor);
     expect(mocks.setStepUpAfterPassword).toHaveBeenCalledWith(actor, "/finance");
+    expect(mocks.clearSession.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.setSession.mock.invocationCallOrder[0]);
+    expect(mocks.setSession.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.setStepUpAfterPassword.mock.invocationCallOrder[0]);
     expect(mocks.clearStepUpSessionCookie).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/account");
   });
