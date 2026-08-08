@@ -10,7 +10,7 @@ import {
   formatDateTime,
 } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
-import { listApprovals } from "@/lib/operations";
+import { listAuthorizedApprovals } from "@/lib/operational-isolation";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { listAuthorizedRequests } from "@/lib/request-reader";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
@@ -21,15 +21,11 @@ export default async function ApprovalsPage() {
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const copy = corePortalMessages(locale).approvals;
   const canDecide = canAccess(actor, "approve_requests");
-  const [requests, rawApprovals, organization] = await Promise.all([
+  const [requests, approvals, organization] = await Promise.all([
     listAuthorizedRequests(actor),
-    listApprovals(),
+    listAuthorizedApprovals(actor),
     loadOrganizationDirectory(actor),
   ]);
-  const visibleRequestIds = new Set(requests.map((request) => request.id));
-  const approvals = rawApprovals.filter((approval) => (
-    visibleRequestIds.has(approval.requestId)
-  ));
   const branches = organization.branches;
   const awaitingDecision = requests.filter((item) => item.status === "New Request" && item.approvalStatus === "Pending");
   const pending = awaitingDecision.filter((item) => item.createdById

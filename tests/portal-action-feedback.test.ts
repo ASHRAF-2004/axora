@@ -20,8 +20,19 @@ vi.mock("@/lib/tenant-branding", () => ({ createCompanyWithBrand: vi.fn(), regen
 vi.mock("@/lib/product-admin", () => ({ updateProduct: vi.fn() }));
 vi.mock("@/lib/product-delete", () => ({ deleteProduct: vi.fn() }));
 vi.mock("@/lib/product-images", () => ({ deactivateProductImage: vi.fn(), prepareProductImages: vi.fn(async () => []), savePreparedProductImages: vi.fn(), saveProductImages: vi.fn(), setPrimaryProductImage: vi.fn(), updateProductImageAltText: vi.fn() }));
-vi.mock("@/lib/operations", () => ({ createInvoice: vi.fn(), createQuotation: vi.fn(), recordApproval: mocks.recordApproval, recordDelivery: vi.fn(), recordPayment: vi.fn(), saveAttachment: vi.fn(), selectQuotation: vi.fn() }));
-vi.mock("@/lib/customer-matching", () => ({ evaluateCustomerMatch: vi.fn(), overrideCustomerMatch: vi.fn() }));
+vi.mock("@/lib/scoped-operations", () => ({
+  createScopedInvoice: vi.fn(),
+  createScopedQuotation: vi.fn(),
+  issueScopedSupplierRfq: vi.fn(),
+  recordScopedApproval: mocks.recordApproval,
+  recordScopedDelivery: vi.fn(),
+  recordScopedPayment: vi.fn(),
+  selectScopedQuotation: vi.fn(),
+}));
+vi.mock("@/lib/customer-matching-isolation", () => ({
+  evaluateAuthorizedCustomerMatch: vi.fn(),
+  overrideAuthorizedCustomerMatch: vi.fn(),
+}));
 
 import { addProductImagesAction, createCompanyAction, regenerateCompanyBrandAction, replaceProductImageAction } from "@/app/(portal)/masters/actions";
 import { recordApprovalAction, uploadAttachmentAction } from "@/app/(portal)/operations/actions";
@@ -29,7 +40,8 @@ import { updateStatusAction } from "@/app/(portal)/requests/actions";
 import { ACTION_FEEDBACK_CODES, ACTION_FEEDBACK_MESSAGES, publicApprovalErrorCode } from "@/lib/action-feedback-i18n";
 import { CORE_PORTAL_MESSAGES } from "@/lib/core-portal-i18n";
 
-const actor = { id: "actor-1", email: "approver@example.test", name: "Approver", role: "BRANCH_APPROVER", accountKind: "COMPANY", isOwner: false, authVersion: 1, preferredLocale: "ar" };
+const actor = { id: "10000000-0000-4000-8000-000000000001", email: "approver@example.test", name: "Approver", role: "BRANCH_APPROVER", accountKind: "COMPANY", isOwner: false, authVersion: 1, preferredLocale: "ar" };
+const requestId = "20000000-0000-4000-8000-000000000001";
 
 describe("localized portal action feedback", () => {
   beforeEach(() => {
@@ -55,7 +67,7 @@ describe("localized portal action feedback", () => {
 
     const documentData = new FormData();
     documentData.set("entityType", "request");
-    documentData.set("recordId", "request-1");
+    documentData.set("recordId", requestId);
     await expect(uploadAttachmentAction(documentData)).rejects.toThrow("REDIRECT:/documents?notice=document-file-required");
 
     const statusData = new FormData();
@@ -75,7 +87,7 @@ describe("localized portal action feedback", () => {
 
   it("returns localized approval validation, domain errors, and success", async () => {
     const rejected = new FormData();
-    rejected.set("requestId", "request-1");
+    rejected.set("requestId", requestId);
     rejected.set("status", "Rejected");
     const validation = await recordApprovalAction({ status: "idle", message: "", submissionId: 0 }, rejected);
     expect(validation.status).toBe("error");
@@ -84,7 +96,7 @@ describe("localized portal action feedback", () => {
 
     mocks.recordApproval.mockRejectedValueOnce(new Error("You cannot approve your own purchase request."));
     const approved = new FormData();
-    approved.set("requestId", "request-1");
+    approved.set("requestId", requestId);
     approved.set("status", "Approved");
     const domain = await recordApprovalAction({ status: "idle", message: "", submissionId: 0 }, approved);
     expect(domain.message).toBe(ACTION_FEEDBACK_MESSAGES.ar["approval.self_approval"]);

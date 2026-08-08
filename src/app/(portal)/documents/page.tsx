@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
-import { loadAuthorizedDocumentRegisters } from "@/lib/document-isolation";
+import { loadAuthorizedDocumentRegisters } from "@/lib/document-register-isolation";
 import { formatDateTime } from "@/lib/domain";
 import { canAccess } from "@/lib/permissions";
 import { FileCheck2, Upload } from "lucide-react";

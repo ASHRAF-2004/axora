@@ -7,11 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 046 to an empty database", async () => {
+  it("applies every numbered migration through 049 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-11)).toEqual([
+      expect(available.slice(-14)).toEqual([
         "036_authorization_policy_foundation.sql",
         "037_effective_access_snapshot.sql",
         "038_canonical_session_scopes.sql",
@@ -23,6 +23,9 @@ describe("complete forward migration chain", () => {
         "044_organization_resource_isolation.sql",
         "045_request_resource_isolation.sql",
         "046_document_resource_isolation.sql",
+        "047_isolation_closure_capabilities.sql",
+        "048_isolation_transaction_lock_hardening.sql",
+        "049_active_request_write_boundary.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -37,6 +40,9 @@ describe("complete forward migration chain", () => {
         customer_match_table: string | null;
         request_department_column: string | null;
         attachment_request_column: string | null;
+        operation_capability: string | null;
+        user_directory_capability: string | null;
+        user_creation_capability: string | null;
       }>(`
         SELECT
           (SELECT count(*)::int FROM information_schema.tables
@@ -56,7 +62,16 @@ describe("complete forward migration chain", () => {
           (SELECT is_nullable FROM information_schema.columns
             WHERE table_schema='public'
               AND table_name='attachments'
-              AND column_name='request_id') AS attachment_request_column
+              AND column_name='request_id') AS attachment_request_column,
+          to_regprocedure(
+            'public.axora_operation_request_access_rows(uuid,uuid,text,timestamptz)'
+          )::text AS operation_capability,
+          to_regprocedure(
+            'public.axora_user_directory_rows(uuid,uuid,timestamptz)'
+          )::text AS user_directory_capability,
+          to_regprocedure(
+            'public.axora_lock_user_creation_scope(uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamptz)'
+          )::text AS user_creation_capability
       `);
       expect(state.rows[0]).toMatchObject({
         table_count: expect.any(Number),
@@ -65,6 +80,12 @@ describe("complete forward migration chain", () => {
         customer_match_table: "customer_three_way_matches",
         request_department_column: "YES",
         attachment_request_column: "YES",
+        operation_capability:
+          "axora_operation_request_access_rows(uuid,uuid,text,timestamp with time zone)",
+        user_directory_capability:
+          "axora_user_directory_rows(uuid,uuid,timestamp with time zone)",
+        user_creation_capability:
+          "axora_lock_user_creation_scope(uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamp with time zone)",
       });
       expect(state.rows[0].table_count).toBeGreaterThanOrEqual(64);
       expect(state.rows[0].policy_count).toBeGreaterThanOrEqual(35);
@@ -227,6 +248,18 @@ describe("complete forward migration chain", () => {
         migrationUrl("046_document_resource_isolation.sql"),
         "utf8",
       ));
+      await db.exec(await readFile(
+        migrationUrl("047_isolation_closure_capabilities.sql"),
+        "utf8",
+      ));
+      await db.exec(await readFile(
+        migrationUrl("048_isolation_transaction_lock_hardening.sql"),
+        "utf8",
+      ));
+      await db.exec(await readFile(
+        migrationUrl("049_active_request_write_boundary.sql"),
+        "utf8",
+      ));
 
       const after = await db.query<{
         requests: number;
@@ -240,6 +273,7 @@ describe("complete forward migration chain", () => {
         receipt_baseline_sources: number;
         canonical_departments: number;
         canonical_attachments: number;
+        closure_capabilities: number;
       }>(`
         SELECT
           (SELECT count(*)::int FROM requests) AS requests,
@@ -272,7 +306,17 @@ describe("complete forward migration chain", () => {
           (SELECT count(*)::int FROM requests
             WHERE department_id IS NOT NULL) AS canonical_departments,
           (SELECT count(*)::int FROM attachments
-            WHERE request_id IS NOT NULL) AS canonical_attachments
+            WHERE request_id IS NOT NULL) AS canonical_attachments,
+          (SELECT count(*)::int FROM pg_proc
+            WHERE proname IN (
+              'axora_operation_request_access_rows',
+              'axora_lock_request_line_access',
+              'axora_lock_quotation_access',
+              'axora_lock_invoice_access',
+              'axora_user_directory_rows',
+              'axora_lock_user_target_access',
+              'axora_lock_user_creation_scope'
+            )) AS closure_capabilities
       `);
       expect(after.rows[0]).toEqual({
         requests: 15,
@@ -286,6 +330,7 @@ describe("complete forward migration chain", () => {
         receipt_baseline_sources: 0,
         canonical_departments: 0,
         canonical_attachments: 0,
+        closure_capabilities: 7,
       });
       const metadata = await db.query<{ bad: number }>(`
         SELECT count(*)::int AS bad FROM workflow_events
@@ -300,7 +345,7 @@ describe("complete forward migration chain", () => {
     }
   }, 30_000);
 
-  it("keeps reset migration discovery dynamic through 046 while bootstrap retains its 032 minimum", async () => {
+  it("keeps reset migration discovery dynamic through 049 while bootstrap retains its 032 minimum", async () => {
     const [initializer, reset, bootstrap] = await Promise.all([
       readFile(new URL("../database/init/01-run-migration.sh", import.meta.url), "utf8"),
       readFile(new URL("../scripts/production/reset-baseline.sh", import.meta.url), "utf8"),
@@ -308,8 +353,8 @@ describe("complete forward migration chain", () => {
     ]);
     expect(initializer).toContain("/migrations/[0-9][0-9][0-9]_*.sql");
     expect(reset).toContain("/database/migrations/[0-9][0-9][0-9]_*.sql");
-    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document/);
-    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document/);
+    expect(initializer).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active/);
+    expect(reset).not.toMatch(/024_canonical|025_customer|026_workflow|027_receipt|028_email|029_delivery|030_email|031_support|032_user|033_public|034_public|035_public|036_authorization|037_effective|038_canonical|039_scoped|040_approval|041_delegated|042_role|043_access|044_organization|045_request|046_document|047_isolation|048_isolation|049_active/);
     expect(bootstrap).toContain(
       'const REQUIRED_MIGRATION = "032_user_session_revocation_audit.sql"',
     );

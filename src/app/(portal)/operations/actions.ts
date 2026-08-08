@@ -1,12 +1,27 @@
 "use server";
 
 import { requirePermission, requireRecentStepUp } from "@/lib/auth";
-import { createInvoice, createQuotation, issueSupplierRfq, recordApproval, recordDelivery, recordPayment, saveAttachment, selectQuotation } from "@/lib/operations";
+import {
+  createScopedInvoice,
+  createScopedQuotation,
+  issueScopedSupplierRfq,
+  recordScopedApproval,
+  recordScopedDelivery,
+  recordScopedPayment,
+  selectScopedQuotation,
+} from "@/lib/scoped-operations";
+import {
+  createAuthorizedAttachment,
+  documentRecordIdSchema,
+} from "@/lib/document-isolation";
+import {
+  evaluateAuthorizedCustomerMatch,
+  overrideAuthorizedCustomerMatch,
+} from "@/lib/customer-matching-isolation";
 import { COD_PAYMENT_METHOD } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { evaluateCustomerMatch, overrideCustomerMatch } from "@/lib/customer-matching";
 import { redirect } from "next/navigation";
 import { actionFeedback, publicApprovalErrorCode, type ActionFeedbackCode } from "@/lib/action-feedback-i18n";
 import { requestLocaleDecision } from "@/lib/locale-server";
@@ -15,7 +30,7 @@ const optionalDate = z.union([z.iso.date(), z.literal("")]).transform((value) =>
 const optionalPositive = z.union([z.coerce.number().positive(), z.literal("")]).optional().transform((value) => value === "" ? undefined : value);
 
 const quotationSchema = z.object({
-  requestLineId: z.string().trim().min(1), supplierId: z.string().trim().min(1), quotationReference: z.string().trim().min(1).max(100),
+  requestLineId: z.string().uuid(), supplierId: z.string().uuid(), quotationReference: z.string().trim().min(1).max(100),
   quotationDate: z.iso.date(), unitPrice: z.coerce.number().min(0), deliveryCharge: z.coerce.number().min(0),
   minimumOrderQuantity: optionalPositive, leadTimeDays: z.union([z.coerce.number().int().min(0), z.literal("")]).optional().transform((value) => value === "" ? undefined : value), validUntil: optionalDate,
 });
@@ -35,7 +50,7 @@ export async function issueSupplierRfqAction(formData: FormData) {
   const input = supplierRfqSchema.parse(Object.fromEntries(formData));
   const respondBy = new Date(input.respondBy);
   if (Number.isNaN(respondBy.getTime())) throw new Error("RFQ response deadline is invalid.");
-  await issueSupplierRfq({ ...input, respondBy: respondBy.toISOString() }, user);
+  await issueScopedSupplierRfq({ ...input, respondBy: respondBy.toISOString() }, user);
   revalidatePath("/sourcing");
   revalidatePath("/requests");
   revalidatePath("/audit");
@@ -46,28 +61,24 @@ export async function createQuotationAction(formData: FormData) {
   const user = await requirePermission("manage_sourcing");
   await requireRecentStepUp(user, "/sourcing");
   const input = quotationSchema.parse(Object.fromEntries(formData));
-  await createQuotation(input, user);
+  await createScopedQuotation(input, user);
   revalidatePath("/sourcing"); revalidatePath("/requests");
 }
 
 export async function selectQuotationAction(id: string, formData: FormData) {
   const user = await requirePermission("manage_sourcing");
   await requireRecentStepUp(user, "/sourcing");
-  await selectQuotation(id, readFormText(formData, "reason"), user);
+  await selectScopedQuotation(z.string().uuid().parse(id), readFormText(formData, "reason"), user);
   revalidatePath("/sourcing"); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
 
 const approvalSchema = z.object({
-  requestId: z.string().trim().min(1),
+  requestId: z.string().uuid(),
   status: z.enum(["Approved", "Rejected"]),
   reason: z.string().trim().max(1000).optional().transform((value) => value || undefined),
 }).superRefine((value, context) => {
   if (value.status === "Rejected" && !value.reason) {
-    context.addIssue({
-      code: "custom",
-      path: ["reason"],
-      message: "approval.reason_required",
-    });
+    context.addIssue({ code: "custom", path: ["reason"], message: "approval.reason_required" });
   }
 });
 
@@ -84,37 +95,27 @@ export async function recordApprovalAction(
 ): Promise<ApprovalActionState> {
   const submissionId = Date.now();
   let locale = (await requestLocaleDecision()).locale;
-
   try {
     const user = await requirePermission("approve_requests");
     await requireRecentStepUp(user, "/approvals");
     locale = user.preferredLocale ?? locale;
     const input = approvalSchema.parse(Object.fromEntries(formData));
-
-    await recordApproval(
-      { ...input, approvalType: "Company approval" },
-      user,
-    );
-
+    await recordScopedApproval({ ...input, approvalType: "Company approval" }, user);
     revalidatePath("/approvals");
     revalidatePath("/requests");
     revalidatePath("/dashboard");
     revalidatePath("/audit");
-
     return {
       status: "success",
-      message:
-        input.status === "Approved"
-          ? actionFeedback("approval.approved", locale)
-          : actionFeedback("approval.rejected", locale),
+      message: input.status === "Approved"
+        ? actionFeedback("approval.approved", locale)
+        : actionFeedback("approval.rejected", locale),
       submissionId,
     };
   } catch (error) {
     console.error("Approval decision failed", error);
-
     if (error instanceof z.ZodError) {
       const issue = error.issues[0];
-
       return {
         status: "error",
         message: actionFeedback(
@@ -127,20 +128,19 @@ export async function recordApprovalAction(
         submissionId,
       };
     }
-
-    const publicCode = error instanceof Error ? publicApprovalErrorCode(error.message) : undefined;
-    const message = actionFeedback(publicCode ?? "approval.decision_failed", locale);
-
+    const publicCode = error instanceof Error
+      ? publicApprovalErrorCode(error.message)
+      : undefined;
     return {
       status: "error",
-      message,
+      message: actionFeedback(publicCode ?? "approval.decision_failed", locale),
       field: publicCode === "approval.reason_required" ? "reason" : "form",
       submissionId,
     };
   }
 }
 
-const deliverySchema = z.object({ requestLineId: z.string().trim().min(1), expectedDate: optionalDate, revisedDate: optionalDate, actualDate: optionalDate,
+const deliverySchema = z.object({ requestLineId: z.string().uuid(), expectedDate: optionalDate, revisedDate: optionalDate, actualDate: optionalDate,
   status: z.enum(["Not Scheduled", "Scheduled", "Preparing", "Out for Delivery", "Delayed", "Failed", "Cancelled"]),
   quantityReceived: z.coerce.number().min(0), receivedBy: z.string().trim().max(200).optional().transform((value) => value || undefined),
   issueReason: z.string().trim().max(1000).optional().transform((value) => value || undefined) });
@@ -148,28 +148,28 @@ const deliverySchema = z.object({ requestLineId: z.string().trim().min(1), expec
 export async function recordDeliveryAction(formData: FormData) {
   const user = await requirePermission("manage_deliveries");
   await requireRecentStepUp(user, "/deliveries");
-  await recordDelivery(deliverySchema.parse(Object.fromEntries(formData)), user);
+  await recordScopedDelivery(deliverySchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/deliveries"); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
 
-const invoiceSchema = z.object({ direction: z.enum(["CUSTOMER", "SUPPLIER"]), requestId: z.string().trim().min(1),
-  supplierId: z.string().trim().optional().transform((value) => value || undefined), invoiceNumber: z.string().trim().min(1).max(100),
+const invoiceSchema = z.object({ direction: z.enum(["CUSTOMER", "SUPPLIER"]), requestId: z.string().uuid(),
+  supplierId: z.string().uuid().optional(), invoiceNumber: z.string().trim().min(1).max(100),
   invoiceDate: z.iso.date(), dueDate: optionalDate, amount: z.coerce.number().positive(), status: z.literal("Issued") });
 
 export async function createInvoiceAction(formData: FormData) {
   const user = await requirePermission("manage_finance");
   await requireRecentStepUp(user, "/finance");
-  await createInvoice(invoiceSchema.parse(Object.fromEntries(formData)), user);
+  await createScopedInvoice(invoiceSchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/finance"); revalidatePath("/dashboard"); revalidatePath("/reports");
 }
 
-const paymentSchema = z.object({ invoiceId: z.string().trim().min(1), paymentDate: z.iso.date(), amount: z.coerce.number().positive(),
+const paymentSchema = z.object({ invoiceId: z.string().uuid(), paymentDate: z.iso.date(), amount: z.coerce.number().positive(),
   method: z.literal(COD_PAYMENT_METHOD), reference: z.string().trim().min(1, "Receipt reference is required.").max(200) });
 
 export async function recordPaymentAction(formData: FormData) {
   const user = await requirePermission("manage_finance");
   await requireRecentStepUp(user, "/finance");
-  await recordPayment(paymentSchema.parse(Object.fromEntries(formData)), user);
+  await recordScopedPayment(paymentSchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/finance"); revalidatePath("/dashboard");
 }
 
@@ -177,7 +177,7 @@ export async function evaluateCustomerMatchAction(formData: FormData) {
   const user = await requirePermission("review_three_way_matches");
   await requireRecentStepUp(user, "/finance");
   try {
-    await evaluateCustomerMatch(user, {
+    await evaluateAuthorizedCustomerMatch(user, {
       requestLineId: readFormText(formData, "requestLineId"),
       customerInvoiceId: readFormText(formData, "customerInvoiceId"),
       invoicedQuantity: Number(readFormText(formData, "invoicedQuantity")),
@@ -195,7 +195,7 @@ export async function overrideCustomerMatchAction(formData: FormData) {
   const user = await requirePermission("review_three_way_matches");
   await requireRecentStepUp(user, "/finance");
   try {
-    await overrideCustomerMatch(
+    await overrideAuthorizedCustomerMatch(
       user,
       readFormText(formData, "matchId"),
       readFormText(formData, "reason"),
@@ -211,10 +211,10 @@ export async function uploadAttachmentAction(formData: FormData) {
   const user = await requirePermission("manage_documents");
   await requireRecentStepUp(user, "/documents");
   const entityType = z.enum(["request", "invoice", "delivery"]).parse(readFormText(formData, "entityType"));
-  const recordId = z.string().trim().min(1).parse(readFormText(formData, "recordId"));
+  const recordId = documentRecordIdSchema.parse(readFormText(formData, "recordId"));
   const visibility = z.enum(["CUSTOMER", "INTERNAL"]).parse(readFormText(formData, "visibility") || "CUSTOMER");
   const file = formData.get("file");
   if (!(file instanceof File) || file.size < 1) redirect("/documents?notice=document-file-required");
-  await saveAttachment({ entityType, recordId, file, visibility }, user);
+  await createAuthorizedAttachment(user, { entityType, recordId, file, visibility });
   revalidatePath("/documents"); revalidatePath("/audit");
 }

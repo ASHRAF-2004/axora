@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/domain";
 import { loadAuthorizedFinanceRegisters } from "@/lib/finance-isolation";
 import { canAccess } from "@/lib/permissions";
 import { listSuppliers } from "@/lib/repository";
-import { getCustomerMatchWorkspace } from "@/lib/customer-matching";
+import { getAuthorizedCustomerMatchWorkspace } from "@/lib/customer-matching-isolation";
 import { randomUUID } from "node:crypto";
 import { evaluateCustomerMatchAction, overrideCustomerMatchAction } from "../operations/actions";
 import { operationalMessage, operationalNumber, operationalStatus, type OperationalMessageKey } from "@/lib/operational-i18n";
@@ -21,7 +21,7 @@ export default async function FinancePage() {
   const [finance, suppliers, matching] = await Promise.all([
     loadAuthorizedFinanceRegisters(actor),
     listSuppliers(actor),
-    canMatch ? getCustomerMatchWorkspace(actor) : Promise.resolve(null),
+    canMatch ? getAuthorizedCustomerMatchWorkspace(actor) : Promise.resolve(null),
   ]);
   const { requests, invoices, payments } = finance;
   const deliveredRequests = requests

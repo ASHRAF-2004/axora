@@ -2,8 +2,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { RequestForm } from "@/components/RequestForm";
 import { requirePagePermission } from "@/lib/auth";
 import { getCatalogProductById } from "@/lib/catalog";
-import { listBranches, listCompanies } from "@/lib/repository";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
+import { COD_PAYMENT_METHOD, type Branch, type Company } from "@/lib/types";
 
 export default async function NewRequestPage({
   searchParams,
@@ -15,14 +16,20 @@ export default async function NewRequestPage({
   const copy = corePortalMessages(locale).requests;
   const params = await searchParams;
 
-  const [companies, branches, initialProduct] =
-    await Promise.all([
-      listCompanies(actor),
-      listBranches(actor),
-      params.product
-        ? getCatalogProductById(params.product, actor)
-        : Promise.resolve(undefined),
-    ]);
+  const [organization, initialProduct] = await Promise.all([
+    loadOrganizationDirectory(actor),
+    params.product
+      ? getCatalogProductById(params.product, actor)
+      : Promise.resolve(undefined),
+  ]);
+  const companies: Company[] = organization.companies.map((company) => ({
+    ...company,
+    paymentTerms: COD_PAYMENT_METHOD,
+  }));
+  const branches: Branch[] = organization.branches.map((branch) => ({
+    ...branch,
+    committedAmount: branch.committedAmount ?? 0,
+  }));
 
   return (
     <>

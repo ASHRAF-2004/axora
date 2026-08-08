@@ -8,15 +8,17 @@ import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
 import { localizedAccountRole } from "@/lib/user-form-i18n";
 import { creatableAccountRoles, accountRoleLabel } from "@/lib/role-catalog";
-import { listBranches, listCompanies, listSuppliers } from "@/lib/repository";
-import { listUsers } from "@/lib/users";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
+import { listSuppliers } from "@/lib/repository";
+import { COD_PAYMENT_METHOD, type Branch, type Company } from "@/lib/types";
+import { listAuthorizedUsers } from "@/lib/user-isolation";
 import Link from "next/link";
 import {
   resendAccountSetupInvitationAction,
   setUserActiveAction,
 } from "./actions";
 
-function invitationStatus(user: Awaited<ReturnType<typeof listUsers>>[number]) {
+function invitationStatus(user: Awaited<ReturnType<typeof listAuthorizedUsers>>[number]) {
   if (!user.active) return "Inactive";
   if (user.accountSetupCompletedAt) return "Active";
   if (user.accountSetupExpiresAt && new Date(user.accountSetupExpiresAt).getTime() <= Date.now()) {
@@ -32,7 +34,7 @@ function invitationStatus(user: Awaited<ReturnType<typeof listUsers>>[number]) {
   return "Pending setup";
 }
 
-function invitationTimeline(user: Awaited<ReturnType<typeof listUsers>>[number], locale: SupportedLocale, timeZone: string, copy: ReturnType<typeof corePortalMessages>["users"]) {
+function invitationTimeline(user: Awaited<ReturnType<typeof listAuthorizedUsers>>[number], locale: SupportedLocale, timeZone: string, copy: ReturnType<typeof corePortalMessages>["users"]) {
   if (user.accountSetupCompletedAt) return formatDateTime(user.lastLoginAt, locale, timeZone);
   if (user.accountSetupDeliveryStatus === "SENT" && user.accountSetupSentAt) {
     return copy.sentExpires(formatDateTime(user.accountSetupSentAt, locale, timeZone), formatDateTime(user.accountSetupExpiresAt, locale, timeZone));
@@ -55,12 +57,19 @@ export default async function UsersPage() {
   const copy = corePortalMessages(locale).users;
   const common = corePortalMessages(locale).common;
   const accessCopy = accessAdministrationMessages(locale);
-  const [users, companies, branches, suppliers] = await Promise.all([
-    listUsers(actor),
-    actor.isOwner ? listCompanies(actor) : Promise.resolve([]),
-    listBranches(actor),
+  const [users, organization, suppliers] = await Promise.all([
+    listAuthorizedUsers(actor),
+    loadOrganizationDirectory(actor),
     actor.isOwner ? listSuppliers(actor) : Promise.resolve([]),
   ]);
+  const companies: Company[] = organization.companies.map((company) => ({
+    ...company,
+    paymentTerms: COD_PAYMENT_METHOD,
+  }));
+  const branches: Branch[] = organization.branches.map((branch) => ({
+    ...branch,
+    committedAmount: branch.committedAmount ?? 0,
+  }));
   const activeAdminCounts = users.reduce<Record<string, number>>((counts, user) => {
     if (user.active && user.accountSetupCompletedAt
       && ["ADMIN", "COMPANY_ADMIN"].includes(user.role) && user.companyId) {
@@ -72,6 +81,7 @@ export default async function UsersPage() {
     && Boolean(user.accountSetupCompletedAt)
     && (user.isOwner || user.role === "PLATFORM_OWNER")).length;
   const availableRoles = creatableAccountRoles(actor);
+  const showOrganization = actor.accountKind === "PLATFORM" || actor.isOwner;
 
   return <><PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
     <section className="detail-grid">
@@ -103,7 +113,7 @@ export default async function UsersPage() {
     </section>
 
     <section className="panel" style={{ marginBlockStart: 17 }}><div className="data-table-wrap"><table className="data-table"><thead><tr>
-      <th>{copy.user}</th>{actor.isOwner ? <th>{copy.organization}</th> : null}<th>{copy.role}</th><th>{copy.scope}</th><th>{common.status}</th><th>{copy.lastLogin}</th><th>{copy.action}</th>
+      <th>{copy.user}</th>{showOrganization ? <th>{copy.organization}</th> : null}<th>{copy.role}</th><th>{copy.scope}</th><th>{common.status}</th><th>{copy.lastLogin}</th><th>{copy.action}</th>
     </tr></thead><tbody>{users.map((user) => {
       const isPlatformOwner = user.isOwner || user.role === "PLATFORM_OWNER";
       const isCompanyAdmin = ["ADMIN", "COMPANY_ADMIN"].includes(user.role);
@@ -114,32 +124,24 @@ export default async function UsersPage() {
             && Boolean(user.companyId) && activeAdminCounts[user.companyId!] <= 1
             ? copy.lastAdmin : "";
       const setupPending = user.active && !user.accountSetupCompletedAt;
-      const actorCanManage = (actor.isOwner && actor.accountKind !== "COMPANY")
-        || ((actor.role === "ADMIN" || actor.role === "COMPANY_ADMIN")
-          && (user.accountKind ?? "COMPANY") === "COMPANY"
-          && actor.companyId === user.companyId)
-        || (actor.role === "BRANCH_ADMIN"
-          && (user.accountKind ?? "COMPANY") === "COMPANY"
-          && actor.companyId === user.companyId
-          && actor.branchId === user.branchId
-          && ["BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER"].includes(user.role));
-      const canResend = setupPending && actorCanManage;
+      const canResend = setupPending;
       const canOpenAccess = user.active && Boolean(user.accountSetupCompletedAt);
-      const organization = user.companyName ?? user.supplierName
+      const organizationName = user.companyName ?? user.supplierName
         ?? (user.accountKind === "DELIVERY" ? copy.deliveryNetwork : copy.platform);
       const scope = user.scopeType === "PLATFORM" ? copy.platformWide
         : user.scopeType === "DELIVERY" ? copy.assignedDeliveries
-          : user.supplierName ?? user.branchName ?? user.companyName ?? copy.companyWide;
+          : user.departmentName ?? user.supplierName ?? user.branchName
+            ?? user.companyName ?? copy.companyWide;
       return <tr key={user.id}>
         <td><strong>{user.displayName}</strong>{user.jobTitle ? ` · ${user.jobTitle}` : ""}<br /><span className="subtle">{user.email}</span></td>
-        {actor.isOwner ? <td>{organization}</td> : null}
+        {showOrganization ? <td>{organizationName}</td> : null}
         <td>{localizedAccountRole(user.role, locale)?.label ?? accountRoleLabel(user.role)}</td>
         <td>{scope}</td>
         <td><StatusBadge status={invitationStatus(user)}>{localizedStatus(invitationStatus(user), locale)}</StatusBadge></td>
         <td>{setupPending ? <span className="subtle">{invitationTimeline(user, locale, timeZone, copy)}</span> : formatDateTime(user.lastLoginAt, locale, timeZone)}</td>
         <td><div className="action-row">
           {canOpenAccess ? <Link className="button button-secondary" href={`/users/${user.id}/access`}>{accessCopy.openAccess}</Link> : null}
-          {protectedLabel ? <span className="subtle">{protectedLabel}</span> : actorCanManage ? <>
+          {protectedLabel ? <span className="subtle">{protectedLabel}</span> : <>
             {canResend ? <form action={resendAccountSetupInvitationAction.bind(null, user.id)}>
               <button
                 className="button button-secondary"
@@ -151,7 +153,7 @@ export default async function UsersPage() {
             <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
               <button className="button button-secondary" type="submit">{user.active ? copy.deactivate : copy.reactivate}</button>
             </form>
-          </> : <span className="subtle">{copy.outsideScope}</span>}
+          </>}
         </div></td>
       </tr>;
     })}</tbody></table></div></section>

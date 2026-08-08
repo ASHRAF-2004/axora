@@ -5,12 +5,12 @@ const repositoryFile = (path: string) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("document resource isolation route integration", () => {
-  it("routes the documents page through the protected register and upload action", async () => {
+  it("routes the documents page through predicate-first registers and the protected upload action", async () => {
     const page = await repositoryFile(
       "src/app/(portal)/documents/page.tsx",
     );
     expect(page).toContain(
-      'loadAuthorizedDocumentRegisters } from "@/lib/document-isolation"',
+      'loadAuthorizedDocumentRegisters } from "@/lib/document-register-isolation"',
     );
     expect(page).toContain(
       'uploadAttachmentAction } from "./actions"',
@@ -50,6 +50,9 @@ describe("document resource isolation route integration", () => {
 
   it("keeps production access on capabilities instead of the raw attachment table", async () => {
     const service = await repositoryFile("src/lib/document-isolation.ts");
+    const registers = await repositoryFile(
+      "src/lib/document-register-isolation.ts",
+    );
     expect(service).toContain("axora_attachment_access_rows");
     expect(service).toContain("axora_attachment_download");
     expect(service).toContain("axora_create_attachment");
@@ -58,5 +61,7 @@ describe("document resource isolation route integration", () => {
     );
     expect(service).not.toMatch(/FROM\s+attachments\b/i);
     expect(service).not.toMatch(/INSERT\s+INTO\s+attachments\b/i);
+    expect(registers).toContain("listAuthorizedInvoices(actor)");
+    expect(registers).toContain("listAuthorizedDeliveries(actor)");
   });
 });

@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
   }),
-  setUserActive: vi.fn(),
+  setAuthorizedUserActive: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -41,8 +41,8 @@ vi.mock("@/lib/account-email", () => ({
   sendAccountSetupEmail: mocks.sendEmail,
 }));
 
-vi.mock("@/lib/users", () => ({
-  setUserActive: mocks.setUserActive,
+vi.mock("@/lib/user-isolation", () => ({
+  setAuthorizedUserActive: mocks.setAuthorizedUserActive,
 }));
 
 vi.mock("next/cache", () => ({
@@ -184,7 +184,7 @@ describe("account invitation actions", () => {
     );
   });
 
-  it("resends only through the scoped backend and replaces the prior link", async () => {
+  it("delegates exact target authorization to the resend transaction", async () => {
     mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
 
     await expect(
