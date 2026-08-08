@@ -7,6 +7,12 @@ export interface AuditRecordFilters {
   action?: string;
   actor?: string;
   recordId?: string;
+  companyId?: string;
+  branchId?: string;
+  departmentId?: string;
+  requestId?: string;
+  deliveryId?: string;
+  outcome?: string;
   from?: string;
   to?: string;
 }
@@ -40,14 +46,23 @@ function actorName(value: string | string[] | undefined) {
 }
 
 export function normalizeAuditRecordFilters(input: AuditFilterInput): AuditRecordFilters {
-  const recordIdInput = one(input.recordId)?.trim();
+  const uuid = (value: string | string[] | undefined) => {
+    const normalized = one(value)?.trim();
+    return normalized && UUID.test(normalized) ? normalized.toLowerCase() : undefined;
+  };
   const from = validDate(input.from);
   const to = validDate(input.to);
   return {
     entityType: token(input.entityType, "lower"),
     action: token(input.action, "upper"),
     actor: actorName(input.actor),
-    recordId: recordIdInput && UUID.test(recordIdInput) ? recordIdInput.toLowerCase() : undefined,
+    recordId: uuid(input.recordId),
+    companyId: uuid(input.companyId),
+    branchId: uuid(input.branchId),
+    departmentId: uuid(input.departmentId),
+    requestId: uuid(input.requestId),
+    deliveryId: uuid(input.deliveryId),
+    outcome: token(input.outcome, "upper"),
     ...(from && to && from > to ? {} : { from, to }),
   };
 }
@@ -63,6 +78,12 @@ export function auditRecordMatchesFilters(
     action: string;
     actorName?: string;
     recordId?: string;
+    companyId?: string;
+    branchId?: string;
+    departmentId?: string;
+    relatedRequestId?: string;
+    relatedDeliveryId?: string;
+    outcome?: string;
     occurredAt: string;
   },
   filters: AuditRecordFilters,
@@ -71,6 +92,12 @@ export function auditRecordMatchesFilters(
   if (filters.action && record.action.toUpperCase() !== filters.action) return false;
   if (filters.actor && !record.actorName?.toLocaleLowerCase().includes(filters.actor.toLocaleLowerCase())) return false;
   if (filters.recordId && record.recordId?.toLowerCase() !== filters.recordId) return false;
+  if (filters.companyId && record.companyId?.toLowerCase() !== filters.companyId) return false;
+  if (filters.branchId && record.branchId?.toLowerCase() !== filters.branchId) return false;
+  if (filters.departmentId && record.departmentId?.toLowerCase() !== filters.departmentId) return false;
+  if (filters.requestId && record.relatedRequestId?.toLowerCase() !== filters.requestId) return false;
+  if (filters.deliveryId && record.relatedDeliveryId?.toLowerCase() !== filters.deliveryId) return false;
+  if (filters.outcome && record.outcome?.toUpperCase() !== filters.outcome) return false;
   const date = record.occurredAt.slice(0, 10);
   if (filters.from && date < filters.from) return false;
   if (filters.to && date > filters.to) return false;

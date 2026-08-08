@@ -129,7 +129,7 @@ export async function getCustomerMatchWorkspace(actor: SessionUser) {
     invoices: [] as CustomerMatchInvoiceOption[],
     matches: [] as CustomerMatchSummary[],
   };
-  return withAuditTransaction({ userId: actor.id, reason: "Viewed customer three-way matching" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Viewed customer three-way matching" }, async (client) => {
     const scope = actorRequestScope(actor, "request");
     const lines = await client.query<CustomerMatchLineOption>(`
       SELECT line.id::text,line.request_id::text AS "requestId",
@@ -190,7 +190,7 @@ export async function evaluateCustomerMatch(actor: SessionUser, input: {
     throw new Error("Invoice quantity and unit price must be non-negative numbers.");
   }
   if (isDemoMode()) return;
-  return withAuditTransaction({ userId: actor.id, reason: "Evaluated customer three-way match" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Evaluated customer three-way match" }, async (client) => {
     const evidence = await client.query<{
       requestId: string;
       companyId: string;
@@ -317,7 +317,7 @@ export async function overrideCustomerMatch(actor: SessionUser, matchId: string,
     throw new Error("A concise override reason is required.");
   }
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Independently overrode customer three-way match" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "Independently overrode customer three-way match" }, async (client) => {
     const result = await client.query(`
       UPDATE customer_three_way_matches
       SET status='OVERRIDDEN',overridden_by_user_id=$2,overridden_at=now(),

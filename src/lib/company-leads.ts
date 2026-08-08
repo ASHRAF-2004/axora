@@ -302,7 +302,7 @@ export async function loadCompanyLeadWorkspace(
   if (isDemoMode()) return { capturedAt, canViewAll: actor.isOwner, managers: [], leads: [] };
   try {
     return await withAuditTransaction(
-      { userId: actor.id, reason: "Viewed authorized company lead workspace" },
+      { actor, reason: "Viewed authorized company lead workspace" },
       async (client) => {
         const overdue = await client.query<SnapshotRow>(
           "SELECT public.axora_claim_overdue_company_lead_events($1,$2,$3) AS snapshot",
@@ -339,7 +339,7 @@ async function mutate(
   values: unknown[],
 ) {
   if (isDemoMode()) throw new CompanyLeadUnavailableError();
-  return withAuditTransaction({ userId: actor.id, reason }, async (client) => {
+  return withAuditTransaction({ actor, reason }, async (client) => {
     const result = await client.query<SnapshotRow>(sql, values);
     const mutation = parseMutation(result.rows[0]?.snapshot);
     await notifyCompanyLeadMutation(client, mutation);

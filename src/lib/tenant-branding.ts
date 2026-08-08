@@ -191,7 +191,7 @@ export async function createCompanyWithBrand(
     return { companyId: "demo-company", logoId: "demo-logo", themeId: "demo-theme", logo };
   }
   return withAuditTransaction(
-    { userId: actor.id, reason: "Customer company registered with approved logo and generated theme" },
+    { actor, reason: "Customer company registered with approved logo and generated theme" },
     async (client) => {
       const mutation = await createCompanyLeadInTransaction(client, input, actor);
       const branded = await saveLogoAndTheme(client, mutation.companyId, logo, actor);
@@ -213,7 +213,7 @@ export async function regenerateCompanyBrand(
   const logo = await processCompanyLogo(bytes, fileName, claimedContentType);
   if (isDemoMode()) return { logoId: "demo-logo", themeId: "demo-theme", logo };
   const saved = await withAuditTransaction(
-    { userId: actor.id, reason: "Company logo uploaded and accessible theme regenerated" },
+    { actor, reason: "Company logo uploaded and accessible theme regenerated" },
     (client) => saveLogoAndTheme(client, companyId, logo, actor),
   );
   return { ...saved, logo };

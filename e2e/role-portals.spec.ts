@@ -268,3 +268,63 @@ test("platform operations can source and deliver without owner-only company cont
   await page.goto("/companies");
   await expect(page).toHaveURL(/\/access-denied$/);
 });
+
+test("Arabic authenticated shell preserves RTL, mixed content, mobile flow, and reduced motion", async ({ page }) => {
+  const arabicAdmin: DemoRoleSession = {
+    ...principals.companyAdmin,
+    preferredLocale: "ar",
+  };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await signInAsDemoRole(page, arabicAdmin);
+  await page.goto("/dashboard");
+
+  const languageSelect = page.locator('select:has(option[value="ar"])').first();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(languageSelect).toHaveValue("ar");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth))
+    .toBeLessThanOrEqual(2);
+
+  const menuButton = page.locator("button:has(.lucide-menu)").first();
+  await menuButton.focus();
+  await expect(menuButton).toBeFocused();
+  await menuButton.click();
+  const drawer = page.locator("dialog.app-drawer");
+  await expect(drawer).toBeVisible();
+  const box = await drawer.boundingBox();
+  expect(box).not.toBeNull();
+  expect(Math.abs((box?.x ?? 0) + (box?.width ?? 0) - 390)).toBeLessThanOrEqual(2);
+  expect(await drawer.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+
+  const email = drawer.locator('bdi.bidi-ltr[dir="ltr"]').first();
+  await expect(email).toContainText(arabicAdmin.email);
+  expect(await email.evaluate((element) => ({
+    direction: getComputedStyle(element).direction,
+    unicodeBidi: getComputedStyle(element).unicodeBidi,
+  }))).toEqual({ direction: "ltr", unicodeBidi: "isolate" });
+
+  const chevron = drawer.locator(".lucide-chevron-right, .lucide-chevron-left").first();
+  if (await chevron.count()) {
+    expect(await chevron.evaluate((element) => getComputedStyle(element).transform)).toMatch(/^matrix\(-1,/);
+  }
+  const reducedDuration = await drawer.evaluate((element) => (
+    Number.parseFloat(getComputedStyle(element).transitionDuration)
+  ));
+  expect(reducedDuration).toBeLessThanOrEqual(0.00001);
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+});
+
+test("company dashboard omits platform-wide analytics and commercial internals", async ({ page }) => {
+  await signInAsDemoRole(page, principals.companyAdmin);
+  await page.goto("/dashboard");
+  await expectOperationalShell(page);
+
+  await expect(page.getByText(/top products/i)).toHaveCount(0);
+  await expect(page.getByText(/buying cost/i)).toHaveCount(0);
+  await expect(page.getByText(/gross profit/i)).toHaveCount(0);
+  await expect(page.getByText(/delayed deliver/i)).toHaveCount(0);
+});

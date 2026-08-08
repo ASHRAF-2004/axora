@@ -311,7 +311,10 @@ export async function loadAuthorizedAttachmentFile(
   }
 
   try {
-    const result = await query<AttachmentDownloadRow>(`
+    return await withAuditTransaction(
+      { actor, reason: "Downloaded an authorized attachment", reasonCode: "ATTACHMENT_DOWNLOAD" },
+      async (client) => {
+    const result = await client.query<AttachmentDownloadRow>(`
       SELECT
         captured_at AS "capturedAt",
         attachment_id::text AS "attachmentId",
@@ -340,12 +343,21 @@ export async function loadAuthorizedAttachmentFile(
       || !uploadedContentMatchesMime(parsed.data.contentType, bytes)) {
       return null;
     }
+    await recordAccountabilityAccessWithClient(
+      client,
+      actor,
+      "ATTACHMENT_DOWNLOAD",
+      attachmentId,
+      1,
+    );
     return {
       fileName: parsed.data.fileName,
       contentType: parsed.data.contentType,
       bytes,
       visibility: parsed.data.visibility,
     };
+      },
+    );
   } catch {
     return null;
   }
@@ -424,7 +436,7 @@ export async function createAuthorizedAttachment(
   const assignmentId = requireLiveAssignment(actor);
   try {
     return await withAuditTransaction({
-      userId: actor.id,
+      actor,
       reason: `Uploaded document ${fileName}`,
     }, async (client) => {
       const result = await client.query<AttachmentCreationRow>(`
@@ -493,3 +505,4 @@ export const documentIsolationInternals = {
   readLegacyAttachment,
   sanitizeAttachmentFileName,
 };
+import { recordAccountabilityAccessWithClient } from "@/lib/audit-accountability";

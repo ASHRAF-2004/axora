@@ -206,7 +206,7 @@ export async function adjustBudgetAllocation(input: {
   idempotencyKey: string;
 }) {
   return withAuditTransaction(
-    { userId: input.actor.id, reason: input.explanation },
+    { actor: input.actor, reason: input.explanation },
     async (client) => {
       const result = await client.query<{ payload: unknown }>(
         `SELECT public.axora_adjust_budget_allocation(
@@ -231,7 +231,7 @@ export async function transferBudgetAllocation(input: {
   idempotencyKey: string;
 }) {
   return withAuditTransaction(
-    { userId: input.actor.id, reason: input.explanation },
+    { actor: input.actor, reason: input.explanation },
     async (client) => {
       const result = await client.query<{ payload: unknown }>(
         `SELECT public.axora_transfer_budget_allocation(
@@ -254,7 +254,7 @@ export async function setBudgetAllocation(input: {
   idempotencyKey: string;
 }) {
   return withAuditTransaction(
-    { userId: input.actor.id, reason: input.explanation },
+    { actor: input.actor, reason: input.explanation },
     async (client) => {
       const result = await client.query<{ payload: unknown }>(
         `SELECT public.axora_set_budget_allocation(
@@ -277,7 +277,7 @@ export async function setCompanyCeiling(input: {
   idempotencyKey: string;
 }) {
   return withAuditTransaction(
-    { userId: input.actor.id, reason: input.explanation },
+    { actor: input.actor, reason: input.explanation },
     async (client) => {
       const result = await client.query<{ payload: unknown }>(
         `SELECT public.axora_set_company_ceiling(
@@ -298,7 +298,7 @@ export async function refreshBudgetPeriod(input: {
   idempotencyKey: string;
 }) {
   return withAuditTransaction(
-    { userId: input.actor.id, reason: input.explanation },
+    { actor: input.actor, reason: input.explanation },
     async (client) => {
       const result = await client.query<{ payload: unknown }>(
         `SELECT public.axora_refresh_budget_period(

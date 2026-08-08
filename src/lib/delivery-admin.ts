@@ -45,7 +45,7 @@ export interface DeliveryJobSummary {
 export async function listDeliveryAgents(actor: SessionUser): Promise<DeliveryAgentOption[]> {
   requireDeliveryManager(actor);
   if (isDemoMode()) return [];
-  return withAuditTransaction({ userId: actor.id, reason: "Viewed active delivery agents" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Viewed active delivery agents" }, async (client) => {
     const result = await client.query<DeliveryAgentOption>(`
       SELECT account.id::text,profile.display_name AS name,account.email
       FROM delivery_agent_profiles driver
@@ -61,7 +61,7 @@ export async function listDeliveryAgents(actor: SessionUser): Promise<DeliveryAg
 export async function listDeliveryJobs(actor: SessionUser): Promise<DeliveryJobSummary[]> {
   requireDeliveryManager(actor);
   if (isDemoMode()) return [];
-  return withAuditTransaction({ userId: actor.id, reason: "Viewed delivery administration" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Viewed delivery administration" }, async (client) => {
     const result = await client.query<DeliveryJobSummary>(`
       SELECT job.id::text,job.request_id::text AS "requestId",
         job.company_id::text AS "companyId",job.branch_id::text AS "branchId",
@@ -124,7 +124,7 @@ export async function createDeliveryJob(actor: SessionUser, input: {
     throw new Error("Delivery window must end after it starts.");
   }
   if (isDemoMode()) return "demo-delivery-job";
-  return withAuditTransaction({ userId: actor.id, reason: "Created delivery job" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Created delivery job" }, async (client) => {
     const request = await client.query<{
       companyId: string;
       branchId: string;
@@ -240,7 +240,7 @@ export async function assignDeliveryDriver(actor: SessionUser, input: {
     throw new Error("Delivery assignment identifiers are invalid.");
   }
   if (isDemoMode()) return;
-  await withAuditTransaction({ userId: actor.id, reason: "Assigned delivery driver" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "Assigned delivery driver" }, async (client) => {
     const job = await client.query<{ companyId: string; branchId: string; requestId: string; jobCode: string }>(`
       SELECT company_id::text AS "companyId",branch_id::text AS "branchId",
         request_id::text AS "requestId",job_code AS "jobCode"

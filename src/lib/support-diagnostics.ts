@@ -141,7 +141,7 @@ export async function getSupportSystemSummary(
     };
   }
   return withAuditTransaction(
-    { userId: actor.id, reason: "Technical support system summary" },
+    { actor, reason: "Technical support system summary" },
     async (client) => {
       const result = await client.query<SupportSystemSummary>(
         SUPPORT_SYSTEM_SUMMARY_SQL,
@@ -181,7 +181,7 @@ export async function diagnoseSupportAccount(
   }
 
   return withAuditTransaction(
-    { userId: actor.id, reason: "Technical support account diagnostic" },
+    { actor, reason: "Technical support account diagnostic" },
     async (client) => {
       const result = await client.query<{
         id: string;
@@ -229,7 +229,7 @@ export async function revokeSupportTargetSessions(
   if (isDemoMode()) return 1;
 
   return withAuditTransaction(
-    { userId: actor.id, reason: "Technical support session revocation" },
+    { actor, reason: "Technical support session revocation" },
     async (client) => {
       const targetResult = await client.query<{
         id: string;

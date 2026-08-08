@@ -376,7 +376,7 @@ async function mutate(
   values: unknown[],
 ) {
   if (isDemoMode()) throw new CompanyLifecycleUnavailableError();
-  return withAuditTransaction({ userId: actor.id, reason }, async (client) => {
+  return withAuditTransaction({ actor, reason }, async (client) => {
     const result = await client.query<SnapshotRow>(sql, values);
     const mutation = parseMutation(result.rows[0]?.snapshot);
     await notifyCompanyLifecycleMutation(client, mutation, actor);

@@ -28,12 +28,13 @@ describe("tenant-safe audit query filters", () => {
       scopeType: "BRANCH",
       companyId: "20000000-0000-4000-8000-000000000001",
       branchId: "30000000-0000-4000-8000-000000000001",
+      roleAssignmentId: "35000000-0000-4000-8000-000000000001",
       isOwner: false,
     });
     mocks.query.mockResolvedValue({ rows: [] });
   });
 
-  it("keeps company and branch predicates ahead of parameterized user filters", async () => {
+  it("binds the exact actor assignment and normalized filters to the scoped capability", async () => {
     await listAuditRecords({
       entityType: "requests",
       action: "update",
@@ -44,20 +45,17 @@ describe("tenant-safe audit query filters", () => {
     });
 
     const [sql, values] = mocks.query.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain("a.company_id=$1");
-    expect(sql).toContain("scoped_request.branch_id=$2");
-    expect(sql).toContain("a.entity_type=$3");
-    expect(sql).toContain("upper(a.action)=$4");
-    expect(sql).toContain("strpos(lower(COALESCE(u.display_name,'')),lower($5))>0");
-    expect(sql).toContain("a.record_id=$6::uuid");
-    expect(sql).toContain("a.occurred_at>=$7::date");
-    expect(sql).toContain("a.occurred_at<($8::date + interval '1 day')");
+    expect(sql).toContain("public.axora_audit_rows");
+    expect(sql).not.toContain("FROM audit_logs");
     expect(values).toEqual([
-      "20000000-0000-4000-8000-000000000001",
-      "30000000-0000-4000-8000-000000000001",
+      "10000000-0000-4000-8000-000000000001",
+      "35000000-0000-4000-8000-000000000001",
       "requests", "UPDATE", "A%_name",
       "40000000-0000-4000-8000-000000000001",
-      "2026-08-01", "2026-08-02",
+      null, null, null, null, null, null,
+      "2026-08-01T00:00:00.000Z",
+      "2026-08-02T23:59:59.999Z",
+      500,
     ]);
   });
 
@@ -67,8 +65,10 @@ describe("tenant-safe audit query filters", () => {
     expect(sql).not.toContain("DROP TABLE");
     expect(sql).not.toContain("OR true");
     expect(values).toEqual([
-      "20000000-0000-4000-8000-000000000001",
-      "30000000-0000-4000-8000-000000000001",
+      "10000000-0000-4000-8000-000000000001",
+      "35000000-0000-4000-8000-000000000001",
+      null, null, null, null, null, null, null, null, null, null, null, null,
+      500,
     ]);
   });
 });

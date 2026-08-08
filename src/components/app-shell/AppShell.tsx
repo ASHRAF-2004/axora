@@ -208,7 +208,7 @@ export function AppShell({
             </button>
             {profileOpen ? (
               <div className="app-profile-menu" id="app-profile-menu" role="menu">
-                <div><strong>{user.name}</strong><span>{user.email}</span></div>
+                <div><strong>{user.name}</strong><span><bdi className="bidi-ltr" dir="ltr">{user.email}</bdi></span></div>
                 <Link role="menuitem" href="/profile"><UserRound size={17} aria-hidden="true" />{messages.shell.myProfile}</Link>
                 <Link role="menuitem" href="/account"><Settings2 size={17} aria-hidden="true" />{messages.shell.accountSecurity}</Link>
                 <Link role="menuitem" href="/help"><CircleHelp size={17} aria-hidden="true" />{messages.shell.helpTutorial}</Link>
@@ -263,7 +263,7 @@ export function AppShell({
             </section>
           ))}
         </nav>
-        <div className="app-drawer-foot"><span>{user.name}</span><small>{user.email}</small></div>
+        <div className="app-drawer-foot"><span>{user.name}</span><small><bdi className="bidi-ltr" dir="ltr">{user.email}</bdi></small></div>
       </dialog>
     </div>
   );

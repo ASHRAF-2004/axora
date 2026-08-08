@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 declare global {
@@ -74,14 +75,52 @@ export async function withTransaction<T>(work: (client: PoolClient) => Promise<T
 }
 
 export async function withAuditTransaction<T>(
-  context: { userId?: string; reason?: string },
+  context: {
+    userId?: string;
+    actor?: {
+      id: string;
+      roleAssignmentId?: string | null;
+      sessionId?: string;
+      timezone?: string;
+    };
+    reason?: string;
+    reasonCode?: string;
+    resultCode?: string;
+    outcome?: "SUCCESS" | "FAILURE";
+    correlationId?: string;
+    commandId?: string;
+    systemIdentity?: string;
+  },
   work: (client: PoolClient) => Promise<T>,
 ) {
   return withTransaction(async (client) => {
-    await client.query("SELECT set_config('axora.user_id', $1, true), set_config('axora.change_reason', $2, true)", [
-      context.userId ?? "",
-      context.reason?.trim() ?? "",
-    ]);
+    await client.query(
+      `SELECT
+         set_config('axora.user_id', $1, true),
+         set_config('axora.change_reason', $2, true),
+         set_config('axora.role_assignment_id', $3, true),
+         set_config('axora.session_id', $4, true),
+         set_config('axora.display_timezone', $5, true),
+         set_config('axora.reason_code', $6, true),
+         set_config('axora.result_code', $7, true),
+         set_config('axora.outcome', $8, true),
+         set_config('axora.correlation_id', $9, true),
+         set_config('axora.command_id', $10, true),
+         set_config('axora.system_identity', $11, true)`,
+      [
+        context.actor?.id ?? context.userId ?? "",
+        context.reason?.trim() ?? "",
+        context.actor?.roleAssignmentId ?? "",
+        context.actor?.sessionId ?? "",
+        context.actor?.timezone ?? "UTC",
+        context.reasonCode ?? "",
+        context.resultCode ?? "",
+        context.outcome ?? "SUCCESS",
+        context.correlationId ?? randomUUID(),
+        context.commandId ?? "",
+        context.systemIdentity ?? "",
+      ],
+    );
     return work(client);
   });
 }

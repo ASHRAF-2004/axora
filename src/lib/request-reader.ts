@@ -305,7 +305,7 @@ export async function listAuthorizedRequests(
   const assignmentId = requireAssignment(actor);
   try {
     const result = await withAuditTransaction(
-      { userId: actor.id, reason: "Viewed scoped purchase requests" },
+      { actor, reason: "Viewed scoped purchase requests" },
       (client) => client.query<RequestRow>(
         `${requestSelect}
          ORDER BY r.request_date DESC,r.order_code,line.request_line_code`,
@@ -335,7 +335,7 @@ export async function getAuthorizedRequest(
   const assignmentId = requireAssignment(actor);
   try {
     const result = await withAuditTransaction(
-      { userId: actor.id, reason: "Viewed scoped purchase request" },
+      { actor, reason: "Viewed scoped purchase request" },
       (client) => client.query<RequestRow>(
         `${requestSelect}
          WHERE r.id=$4
@@ -374,7 +374,7 @@ export async function listAuthorizedRequestWorkflowEvents(
   const capturedAt = new Date();
   try {
     return withAuditTransaction(
-      { userId: actor.id, reason: "Viewed scoped request workflow timeline" },
+      { actor, reason: "Viewed scoped request workflow timeline" },
       async (client) => {
         const result = await client.query<{
           id: string;
@@ -431,6 +431,10 @@ export async function listAuthorizedRequestWorkflowEvents(
 export async function getAuthorizedDashboardData(
   actor: AuthenticatedSessionUser,
 ): Promise<DashboardData> {
+  if (!isPlatformAnalyticsActor(actor)) {
+    return buildCompanyDashboardData(await listAuthorizedRequests(actor));
+  }
+
   const [requests,organization,suppliers] = await Promise.all([
     listAuthorizedRequests(actor),
     loadOrganizationDirectory(actor),
@@ -470,6 +474,7 @@ export async function getAuthorizedDashboardData(
       && ["Issued","Disputed"].includes(request.invoiceStatus)
       && request.paymentStatus!=="Paid")).slice(0,6);
   return {
+    scope: "platform",
     ...totals,
     requestCount: requests.length,
     openRequestCount: requests.filter((request) => ![
@@ -500,3 +505,4 @@ export const requestReaderInternals = {
   groupRequestRows,
   requestSelect,
 };
+import { buildCompanyDashboardData, isPlatformAnalyticsActor } from "@/lib/dashboard-data";

@@ -374,7 +374,7 @@ export async function listRequests(providedActor?: SessionUser): Promise<Procure
   }
   const scope = requestVisibilityScope(actor, "r");
   const result = await withAuditTransaction(
-    { userId: actor.id, reason: "Viewed purchase requests" },
+    { actor, reason: "Viewed purchase requests" },
     (client) => client.query<RequestRow>(
       `${requestSelect}${scope.sql ? ` WHERE ${scope.sql}` : ""} ORDER BY r.request_date DESC, r.order_code, l.request_line_code`,
       scope.values,
@@ -397,7 +397,7 @@ export async function getRequest(id: string, providedActor?: SessionUser) {
   }
   const scope = requestVisibilityScope(actor, "r", 2);
   const result = await withAuditTransaction(
-    { userId: actor.id, reason: "Viewed purchase request" },
+    { actor, reason: "Viewed purchase request" },
     (client) => client.query<RequestRow>(
       `${requestSelect} WHERE r.id=$1${scope.sql ? ` AND ${scope.sql}` : ""} ORDER BY l.request_line_code`,
       [id, ...scope.values],
@@ -411,6 +411,7 @@ export async function getRequest(id: string, providedActor?: SessionUser) {
 export async function getDashboardData(providedActor?: SessionUser): Promise<DashboardData> {
   const actor = await actorOrSession(providedActor);
   if (!canAccess(actor, "view_dashboard")) throw new Error("Your account cannot view procurement dashboard data.");
+  if (!isPlatformAnalyticsActor(actor)) return buildCompanyDashboardData(await listRequests(actor));
   const [requests, companies, suppliers] = await Promise.all([listRequests(actor), listCompanies(actor), listSuppliers(actor)]);
   const totals = calculateTotals(requests);
   const byStatus = Object.entries(requests.reduce<Record<string, number>>((acc, request) => ({ ...acc, [request.status]: (acc[request.status] ?? 0) + 1 }), {})).map(([label, value]) => ({ label, value }));
@@ -424,6 +425,7 @@ export async function getDashboardData(providedActor?: SessionUser): Promise<Das
     || request.lines.some((line) => ["Delayed", "Partially Delivered", "Failed"].includes(line.deliveryStatus))
     || (request.invoiceStatus && ["Issued", "Disputed"].includes(request.invoiceStatus) && request.paymentStatus !== "Paid")).slice(0, 6);
   return {
+    scope: "platform",
     ...totals,
     requestCount: requests.length,
     openRequestCount: requests.filter((request) => !["Completed", "Cancelled"].includes(request.status)).length,
@@ -460,7 +462,7 @@ export async function createCompany(
     });
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, (client) => client.query(`INSERT INTO companies (company_code, name, industry, main_contact_name, main_contact_email, main_contact_phone,
+  await withAuditTransaction({ actor }, (client) => client.query(`INSERT INTO companies (company_code, name, industry, main_contact_name, main_contact_email, main_contact_phone,
       billing_contact_name, billing_contact_email, billing_contact_phone, billing_address, payment_terms, billing_cycle, notes)
       VALUES (next_company_code(), $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [input.name, input.industry, input.mainContactName, input.mainContactEmail, input.mainContactPhone, input.billingContactName, input.billingContactEmail, input.billingContactPhone, input.billingAddress, input.paymentTerms, input.billingCycle, input.notes ?? null]));
 }
@@ -513,7 +515,7 @@ export async function updateCompanyPricingConfiguration(
   }
 
   await withAuditTransaction(
-    { userId: actor.id },
+    { actor },
     async (client) => {
       const result = await client.query(
         `UPDATE companies
@@ -553,7 +555,7 @@ export async function createBranch(input: Omit<Branch, "id" | "code" | "companyN
       committedAmount: 0, status: "Active" });
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, async (client) => {
+  await withAuditTransaction({ actor }, async (client) => {
     const result = await client.query(`INSERT INTO branches (branch_code_id, company_id, name, branch_code, delivery_address, city, contact_name, contact_phone, contact_email, delivery_instructions, notes)
       SELECT next_branch_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10 FROM companies WHERE id=$1 AND active=true`,
     [companyId, input.name, input.branchCode, input.deliveryAddress, input.city, input.contactName, input.contactPhone, input.contactEmail, input.deliveryInstructions ?? null, input.notes ?? null]);
@@ -572,7 +574,7 @@ export async function createSupplier(
     store.suppliers.push({ ...input, id: randomUUID(), code: nextCode("S", store.suppliers.length), status: "Active" });
     return;
   }
-  await withAuditTransaction({ userId: actor.id }, (client) => client.query(
+  await withAuditTransaction({ actor }, (client) => client.query(
     `INSERT INTO suppliers
       (supplier_code,name,category,contact_name,phone,email,address,coverage_area,payment_terms,lead_time_days,minimum_order_quantity,main_products,notes,company_id)
      VALUES (next_supplier_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULL)`,
@@ -597,7 +599,7 @@ export async function createProduct(
       status: "Active", duplicateWarning: false, preferredSupplierName: supplier?.name });
     return id;
   }
-  return withAuditTransaction({ userId: actor.id }, async (client) => {
+  return withAuditTransaction({ actor }, async (client) => {
     if (input.preferredSupplierId) {
       const supplier = await client.query("SELECT 1 FROM suppliers WHERE id=$1 AND active=true AND company_id IS NULL", [input.preferredSupplierId]);
       if (!supplier.rowCount) throw new Error("The preferred supplier must be active.");
@@ -704,7 +706,7 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
     store.requests.unshift(request);
     return request.id;
   }
-  return withAuditTransaction({ userId: actor.id }, async (client: PoolClient) => {
+  return withAuditTransaction({ actor }, async (client: PoolClient) => {
     const company = await client.query<{
       taxRate: number;
       estimatedDeliveryFee: number;
@@ -893,7 +895,7 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
     if (status === "Completed") request.completedDate = new Date().toISOString().slice(0, 10);
     return;
   }
-  await withAuditTransaction({ userId: actor.id, reason }, async (client) => {
+  await withAuditTransaction({ actor, reason }, async (client) => {
     const current = await client.query<{ status: RequestStatus; companyId: string; branchId: string }>(
       `SELECT lv.label AS status,r.company_id::text AS "companyId",
          r.branch_id::text AS "branchId"
@@ -1039,7 +1041,7 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
   }
   const allowedTables: Record<MasterEntity, string> = { companies: "companies", branches: "branches", products: "products", suppliers: "suppliers" };
   const table = allowedTables[entity];
-  await withAuditTransaction({ userId: actor.id, reason: active ? "Master record activated" : "Master record deactivated" }, async (client) => {
+  await withAuditTransaction({ actor, reason: active ? "Master record activated" : "Master record deactivated" }, async (client) => {
     const platformActor = isPlatformProcurementActor(actor);
     const companyPredicate = platformActor ? "" : " AND company_id=$3";
     if (entity === "products" && active) {
@@ -1053,3 +1055,4 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
     if (!result.rowCount) throw new Error("Master record not found.");
   });
 }
+import { buildCompanyDashboardData, isPlatformAnalyticsActor } from "@/lib/dashboard-data";

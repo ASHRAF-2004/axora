@@ -1064,8 +1064,7 @@ html[data-ux-navigating="true"] .ux-navigation-progress {
 .app-notification-button { position: relative; }
 .app-notification-count { position: absolute; inset-block-start: 4px; inset-inline-end: 3px; min-width: 18px; height: 18px; padding-inline: 4px; display: grid; place-items: center; color: white; background: var(--red-600); border: 2px solid white; border-radius: 999px; font-size: 12px; font-weight: 900; }
 .app-profile-control { position: relative; }
-.app-profile-button { min-height: 46px; max-width: 235px; padding: 4px 8px 4px 4px; display: flex; align-items: center; gap: 8px; color: var(--slate-700); background: transparent; border: 0; border-radius: 11px; }
-[dir="rtl"] .app-profile-button { padding: 4px 4px 4px 8px; }
+.app-profile-button { min-height: 46px; max-width: 235px; padding-block: 4px; padding-inline: 4px 8px; display: flex; align-items: center; gap: 8px; color: var(--slate-700); background: transparent; border: 0; border-radius: 11px; }
 .app-profile-button:hover { background: var(--tenant-muted); }
 .app-avatar { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; color: var(--tenant-primary-foreground); background: var(--tenant-primary); border-radius: 10px; font-size: 12px; font-weight: 900; letter-spacing: .03em; }
 .app-profile-copy { min-width: 0; display: grid; text-align: start; line-height: 1.2; }
@@ -1081,8 +1080,7 @@ html[data-ux-navigating="true"] .ux-navigation-progress {
 .app-language-control { position: relative; min-height: 42px; display: flex; align-items: center; }
 .app-language-icon,
 .app-language-code { display: none; }
-.app-language-control select { width: auto; min-height: 40px; padding: 0 27px 0 10px; color: var(--navy-900); background-color: var(--tenant-muted); border-color: transparent; font-size: 12px; font-weight: 800; }
-[dir="rtl"] .app-language-control select { padding: 0 10px 0 27px; }
+.app-language-control select { width: auto; min-height: 40px; padding-block: 0; padding-inline: 10px 27px; color: var(--navy-900); background-color: var(--tenant-muted); border-color: transparent; font-size: 12px; font-weight: 800; }
 .app-context-bar { position: sticky; z-index: 70; top: 68px; min-height: 36px; padding: 4px 30px; display: flex; align-items: center; gap: 8px; color: var(--slate-500); background: var(--tenant-surface); border-bottom: 1px solid var(--tenant-border); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
 .app-context-bar .environment-dot { width: 7px; height: 7px; }
 .app-context-bar strong { color: var(--tenant-primary); }
@@ -1090,9 +1088,9 @@ html[data-ux-navigating="true"] .ux-navigation-progress {
 .app-content { min-height: calc(100vh - 104px); }
 
 .app-drawer { width: min(430px, calc(100vw - 24px)); height: 100dvh; max-height: none; margin: 0; padding: 0; inset-inline-start: 0; inset-inline-end: auto; color: var(--slate-700); background: white; border: 0; box-shadow: 30px 0 90px rgba(6, 28, 51, .28); }
-[dir="rtl"] .app-drawer { inset-inline-start: auto; inset-inline-end: 0; box-shadow: -30px 0 90px rgba(6, 28, 51, .28); }
+[dir="rtl"] .app-drawer { inset-inline-start: 0; inset-inline-end: auto; box-shadow: -30px 0 90px rgba(6, 28, 51, .28); }
 .app-drawer::backdrop { background: rgba(6, 28, 51, .52); backdrop-filter: blur(3px); }
-.app-drawer-head { min-height: 86px; padding: 17px 19px 17px 24px; display: flex; align-items: center; justify-content: space-between; color: white; background: var(--navy-900); }
+.app-drawer-head { min-height: 86px; padding-block: 17px; padding-inline: 24px 19px; display: flex; align-items: center; justify-content: space-between; color: white; background: var(--navy-900); }
 .app-drawer-head > div { display: grid; gap: 4px; }
 .app-drawer-head span { color: #bed0e1; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
 .app-drawer-head strong { font-size: 23px; letter-spacing: -.03em; }
@@ -3725,5 +3723,53 @@ html[data-ux-navigating="true"] .ux-navigation-progress {
 
   .audit-filter-actions .button {
     flex: 1 1 9rem;
+  }
+}
+/* P0-12 global direction and mixed-content closure. Logical layout remains
+   authoritative; machine-readable identifiers keep their intrinsic LTR flow. */
+.bidi-ltr,
+bdi[dir="ltr"] {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+
+bdi[dir="auto"] {
+  unicode-bidi: isolate;
+}
+
+[dir="rtl"] :where(
+  input[type="email"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  input[inputmode="email"],
+  input[inputmode="tel"],
+  a[href^="mailto:"],
+  a[href^="tel:"]
+) {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+
+[dir="rtl"] :where(
+  .lucide-arrow-right,
+  .lucide-arrow-left,
+  .lucide-chevron-right,
+  .lucide-chevron-left
+) {
+  transform: scaleX(-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-drawer,
+  .app-drawer::backdrop,
+  .profile-menu,
+  .public-mobile-panel {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

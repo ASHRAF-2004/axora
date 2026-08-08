@@ -269,7 +269,7 @@ export async function setAuthorizedUserActive(
   }
 
   await withAuditTransaction({
-    userId: actor.id,
+    actor,
     reason: active ? "Account activated" : "Account deactivated",
   }, async (client) => {
     const target = await lockAuthorizedUserTarget(

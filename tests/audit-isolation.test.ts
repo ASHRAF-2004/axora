@@ -108,37 +108,47 @@ describe("audit isolation service", () => {
     mocks.query.mockResolvedValue({
       rows: [{
         id: ids.audit,
-        entityType: "attachments",
-        recordId: ids.attachment,
+        event_type: "ATTACHMENTS.INSERT",
+        entity_type: "attachments",
+        record_id: ids.attachment,
         action: "INSERT",
-        actorName: actor.name,
+        actor_id: ids.actor,
+        actor_name: actor.name,
+        actor_role: actor.role,
+        company_id: ids.company,
+        branch_id: ids.branch,
+        department_id: null,
+        related_request_id: ids.request,
+        related_delivery_id: null,
+        outcome: "SUCCESS",
+        reason_code: "DOCUMENT_UPLOAD",
         reason: "Uploaded document policy.pdf",
-        occurredAt: "2026-08-07T12:00:00.000Z",
+        safe_diff: {},
+        correlation_id: "audit-isolation-test",
+        integrity_hash: "a".repeat(64),
+        occurred_at: "2026-08-07T12:00:00.000Z",
       }],
     });
   });
 
-  it("builds company audit scope from trusted request, line, and attachment IDs", async () => {
+  it("binds company audit reads to the exact actor assignment capability", async () => {
     const records = await listAuthorizedAuditRecords(actor, {
       entityType: "attachments",
     });
     expect(records).toHaveLength(1);
     const [sql, values] = mocks.query.mock.calls[0];
-    expect(sql).toContain("a.record_id=ANY");
-    expect(sql).not.toMatch(/FROM\s+attachments\b/i);
-    expect(values).toContain(ids.company);
-    expect(values).toContainEqual([ids.request]);
-    expect(values).toContainEqual([ids.line]);
-    expect(values).toContainEqual([ids.attachment]);
+    expect(sql).toContain("public.axora_audit_rows");
+    expect(sql).not.toMatch(/FROM\s+(?:public\.)?audit_logs\b/i);
+    expect(values.slice(0, 3)).toEqual([ids.actor, ids.assignment, "attachments"]);
   });
 
-  it("does not trust posted branch or attachment ownership", async () => {
+  it("does not preload or trust application-computed ownership sets", async () => {
     await listAuthorizedAuditRecords(actor);
-    expect(mocks.listAuthorizedRequests).toHaveBeenCalledWith(actor);
-    expect(mocks.listAuthorizedAttachments).toHaveBeenCalledWith(actor);
+    expect(mocks.listAuthorizedRequests).not.toHaveBeenCalled();
+    expect(mocks.listAuthorizedAttachments).not.toHaveBeenCalled();
     expect(mocks.query).toHaveBeenCalledWith(
-      expect.stringContaining("scoped_branch.id="),
-      expect.arrayContaining([ids.branch]),
+      expect.stringContaining("public.axora_audit_rows"),
+      expect.arrayContaining([ids.actor, ids.assignment]),
     );
   });
 

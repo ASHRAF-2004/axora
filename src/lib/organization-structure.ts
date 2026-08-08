@@ -206,7 +206,7 @@ async function mutate(
   values: unknown[],
 ) {
   if (isDemoMode()) throw new OrganizationStructureUnavailableError();
-  return withAuditTransaction({ userId: actor.id, reason }, async (client) => {
+  return withAuditTransaction({ actor, reason }, async (client) => {
     const result = await client.query<SnapshotRow>(sql, values);
     const parsed = mutationSchema.safeParse(result.rows[0]?.snapshot);
     if (!parsed.success) throw new OrganizationStructureUnavailableError();

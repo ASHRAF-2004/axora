@@ -304,7 +304,7 @@ export async function setUserActive(id: string, active: boolean, actor: SessionU
     user.active = active;
     return;
   }
-  await withAuditTransaction({ userId: actor.id, reason: active ? "Account activated" : "Account deactivated" }, async (client) => {
+  await withAuditTransaction({ actor, reason: active ? "Account activated" : "Account deactivated" }, async (client) => {
     const targetResult = await selectManagedTarget(client, id);
     const target = targetResult.rows[0];
     assertActorCanManageTarget(target, actor);
