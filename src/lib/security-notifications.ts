@@ -5,6 +5,7 @@ import { hashPassword } from "./password-policy";
 import {
   consumePublicRequestRateLimit,
   insertSecurityEmailOutbox,
+  insertPasswordChangedEmailOutbox,
   prepareSecurityEmailOutbox,
   publicRequestRateKey,
   PublicRequestRateLimitError,
@@ -298,6 +299,11 @@ export async function consumePasswordResetToken(
                AND reset.user_id=$1
            )`,
         [token.userId],
+      );
+      await insertPasswordChangedEmailOutbox(
+        client,
+        token.tokenId,
+        inspection.locale,
       );
       await client.query(
         `UPDATE user_sessions

@@ -16,6 +16,9 @@ export type WorkflowNotificationMessage =
   | { key: "company_assigned"; companyName: string }
   | { key: "company_reassigned"; companyName: string }
   | { key: "company_information_requested"; companyName: string }
+  | { key: "company_onboarding_updated"; companyName: string }
+  | { key: "company_onboarding_ready"; companyName: string }
+  | { key: "company_onboarding_verified"; companyName: string }
   | { key: "company_administrator_activated"; companyName: string }
   | { key: "company_activated"; companyName: string }
   | { key: "company_suspended"; companyName: string }
@@ -225,6 +228,24 @@ export function renderWorkflowNotification(
       if (locale === "ar") return { title: "معلومات الشركة مطلوبة", body: `يحتاج سجل ${companyName} إلى معلومات إضافية قبل متابعة التهيئة.` };
       if (locale === "ms") return { title: "Maklumat syarikat diperlukan", body: `${companyName} memerlukan maklumat tambahan sebelum penerimaan masuk diteruskan.` };
       return { title: "Company information requested", body: `${companyName} needs more information before onboarding can continue.` };
+    }
+    case "company_onboarding_updated": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "تم تحديث تهيئة الشركة", body: `تم حفظ معلومات أو أدلة تهيئة ${companyName}.` };
+      if (locale === "ms") return { title: "Penerimaan masuk syarikat dikemas kini", body: `Maklumat atau bukti penerimaan masuk ${companyName} telah disimpan.` };
+      return { title: "Company onboarding updated", body: `${companyName}'s onboarding information or evidence was saved.` };
+    }
+    case "company_onboarding_ready": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "تهيئة الشركة جاهزة للمراجعة", body: `اكتملت الفحوص الإلزامية لـ ${companyName} وهي جاهزة للتحقق.` };
+      if (locale === "ms") return { title: "Penerimaan masuk syarikat sedia disemak", body: `Semakan wajib ${companyName} selesai dan sedia untuk pengesahan.` };
+      return { title: "Company onboarding ready for review", body: `${companyName}'s mandatory checks are complete and ready for verification.` };
+    }
+    case "company_onboarding_verified": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "تم التحقق من تهيئة الشركة", body: `تم التحقق من تهيئة ${companyName}. يبقى التفعيل خطوة منفصلة.` };
+      if (locale === "ms") return { title: "Penerimaan masuk syarikat disahkan", body: `Penerimaan masuk ${companyName} disahkan. Pengaktifan kekal langkah berasingan.` };
+      return { title: "Company onboarding verified", body: `${companyName}'s onboarding was verified. Activation remains a separate step.` };
     }
     case "company_administrator_activated": {
       const companyName = boundedParameter(message.companyName, "Company name");

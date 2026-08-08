@@ -7,12 +7,15 @@ import { canAccess } from "@/lib/permissions";
 import { createBranchAction, setMasterActiveAction } from "../masters/actions";
 import { setBranchBudgetAction } from "./actions";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
+import { organizationStructureMessages } from "@/lib/organization-structure-i18n";
+import Link from "next/link";
 
 export default async function BranchesPage() {
   const actor = await requirePagePermission("view_branches");
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).branches;
   const common = corePortalMessages(locale).common;
+  const structureCopy = organizationStructureMessages(locale);
   const canManageBranches = canAccess(actor, "manage_branches");
   const canManageBudget = canAccess(actor, "manage_branch_budget");
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
@@ -23,7 +26,9 @@ export default async function BranchesPage() {
   return <><PageHeader eyebrow={copy.eyebrow} title={copy.title}
     description={platformView ? copy.platformDescription : copy.companyDescription} />
 
-    <section className="panel">
+    <section className="panel"><div className="panel-header"><div><h2>{structureCopy.title}</h2><p>{structureCopy.description}</p></div><Link className="button button-primary" href="/branches/organization">{structureCopy.open}</Link></div></section>
+
+    <section className="panel" style={{ marginBlockStart: 17 }}>
       <div className="panel-header"><div><h2>{copy.register}</h2><p>{copy.count(branches.length)}</p></div></div>
       <div className="data-table-wrap"><table className="data-table"><thead><tr>
         <th>{common.branch}</th><th>{common.company}</th><th>{copy.delivery}</th>{showBudgetColumns ? <><th>{copy.monthlyBudget}</th><th>{copy.committed}</th><th>{copy.available}</th></> : null}<th>{common.status}</th>{showActions ? <th>{common.actions}</th> : null}

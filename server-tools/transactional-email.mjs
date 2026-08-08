@@ -20,6 +20,14 @@ const COPY = {
       message: "Message", security: "The sender accepted the contact privacy notice and passed the configured Turnstile verification before this record was created.",
       help: "Reply to this email to respond directly to the sender.", footer: "Private contact notification.",
     },
+    acknowledgement: {
+      eyebrow: "Company enquiry received", title: "We received your enquiry",
+      intro: "Your company enquiry has been recorded securely for review by the Axora team.",
+      subject: "We received your Axora company enquiry",
+      labels: { company: "Company", subject: "Enquiry", submitted: "Received" },
+      security: "This acknowledgement confirms receipt only. It does not confirm company acceptance, account creation, or access approval.",
+      help: "If you did not submit this enquiry, contact Axora support.", footer: "Company enquiry acknowledgement.",
+    },
     reset: {
       eyebrow: "Account security", title: "Reset your Axora password",
       intro: "We received a request to choose a new password for your Axora account.",
@@ -27,6 +35,13 @@ const COPY = {
       labels: { account: "Account", expires: "Link expires" },
       security: "This private link works once. If you did not request a password reset, ignore this email; your current password remains unchanged.",
       help: "Axora will never ask you to send your password by email.", footer: "Secure account notification.",
+    },
+    passwordChanged: {
+      eyebrow: "Account security", title: "Your Axora password was changed",
+      intro: "The password for your Axora account was changed successfully and prior sessions were ended.",
+      subject: "Your Axora password was changed", labels: { account: "Account" },
+      security: "If you did not make this change, contact Axora support immediately. Never send your password by email.",
+      help: "Sign in again with your new password.", footer: "Secure account notification.",
     },
     verify: {
       eyebrow: "Account verification", title: "Verify your email address",
@@ -56,6 +71,14 @@ const COPY = {
       message: "الرسالة", security: "وافق المرسل على إشعار خصوصية التواصل واجتاز تحقق Turnstile قبل إنشاء هذا السجل.",
       help: "استخدم الرد على هذه الرسالة للتواصل مباشرة مع المرسل.", footer: "إشعار تواصل خاص.",
     },
+    acknowledgement: {
+      eyebrow: "تم استلام استفسار الشركة", title: "استلمنا استفسارك",
+      intro: "تم تسجيل استفسار شركتك بأمان لمراجعته من فريق Axora.",
+      subject: "استلمنا استفسار شركتك لدى Axora",
+      labels: { company: "الشركة", subject: "الاستفسار", submitted: "وقت الاستلام" },
+      security: "يؤكد هذا الإشعار الاستلام فقط، ولا يعني قبول الشركة أو إنشاء حساب أو الموافقة على الوصول.",
+      help: "إذا لم ترسل هذا الاستفسار، فتواصل مع دعم Axora.", footer: "إشعار استلام استفسار شركة.",
+    },
     reset: {
       eyebrow: "أمان الحساب", title: "إعادة تعيين كلمة مرور Axora",
       intro: "تلقينا طلباً لاختيار كلمة مرور جديدة لحسابك في Axora.",
@@ -63,6 +86,13 @@ const COPY = {
       labels: { account: "الحساب", expires: "انتهاء صلاحية الرابط" },
       security: "يعمل هذا الرابط الخاص مرة واحدة. إذا لم تطلب إعادة التعيين فتجاهل الرسالة؛ ستبقى كلمة مرورك الحالية دون تغيير.",
       help: "لن تطلب منك Axora إرسال كلمة مرورك عبر البريد.", footer: "إشعار آمن للحساب.",
+    },
+    passwordChanged: {
+      eyebrow: "أمان الحساب", title: "تم تغيير كلمة مرور Axora",
+      intro: "تم تغيير كلمة مرور حسابك في Axora بنجاح وإنهاء الجلسات السابقة.",
+      subject: "تم تغيير كلمة مرور Axora", labels: { account: "الحساب" },
+      security: "إذا لم تُجرِ هذا التغيير، فتواصل مع دعم Axora فورًا. لا ترسل كلمة مرورك عبر البريد.",
+      help: "سجّل الدخول مجددًا بكلمة المرور الجديدة.", footer: "إشعار آمن للحساب.",
     },
     verify: {
       eyebrow: "توثيق الحساب", title: "توثيق عنوان بريدك الإلكتروني",
@@ -92,6 +122,14 @@ const COPY = {
       message: "Mesej", security: "Pengirim menerima notis privasi hubungan dan lulus pengesahan Turnstile sebelum rekod ini dibuat.",
       help: "Balas e-mel ini untuk memberi respons terus kepada pengirim.", footer: "Pemberitahuan hubungan peribadi.",
     },
+    acknowledgement: {
+      eyebrow: "Pertanyaan syarikat diterima", title: "Kami menerima pertanyaan anda",
+      intro: "Pertanyaan syarikat anda telah direkodkan dengan selamat untuk semakan pasukan Axora.",
+      subject: "Kami menerima pertanyaan syarikat Axora anda",
+      labels: { company: "Syarikat", subject: "Pertanyaan", submitted: "Diterima" },
+      security: "Pengakuan ini hanya mengesahkan penerimaan. Ia tidak mengesahkan penerimaan syarikat, penciptaan akaun atau kelulusan akses.",
+      help: "Jika anda tidak menghantar pertanyaan ini, hubungi sokongan Axora.", footer: "Pengakuan pertanyaan syarikat.",
+    },
     reset: {
       eyebrow: "Keselamatan akaun", title: "Tetapkan semula kata laluan Axora anda",
       intro: "Kami menerima permintaan untuk memilih kata laluan baharu bagi akaun Axora anda.",
@@ -99,6 +137,13 @@ const COPY = {
       labels: { account: "Akaun", expires: "Pautan tamat tempoh" },
       security: "Pautan peribadi ini berfungsi sekali. Jika anda tidak meminta tetapan semula, abaikan e-mel ini; kata laluan semasa kekal sama.",
       help: "Axora tidak akan meminta anda menghantar kata laluan melalui e-mel.", footer: "Pemberitahuan akaun selamat.",
+    },
+    passwordChanged: {
+      eyebrow: "Keselamatan akaun", title: "Kata laluan Axora anda telah diubah",
+      intro: "Kata laluan akaun Axora anda berjaya diubah dan sesi terdahulu telah ditamatkan.",
+      subject: "Kata laluan Axora anda telah diubah", labels: { account: "Akaun" },
+      security: "Jika anda tidak membuat perubahan ini, hubungi sokongan Axora dengan segera. Jangan hantar kata laluan melalui e-mel.",
+      help: "Log masuk semula dengan kata laluan baharu anda.", footer: "Pemberitahuan akaun selamat.",
     },
     verify: {
       eyebrow: "Pengesahan akaun", title: "Sahkan alamat e-mel anda",
@@ -258,7 +303,22 @@ export async function renderTransactionalEmail(input, options = {}) {
   let helpText;
   let text;
 
-  if (input.messageKind === "CONTACT_NOTIFICATION") {
+  if (input.messageKind === "CONTACT_ACKNOWLEDGEMENT") {
+    const contact = input.contact ?? {};
+    const company = boundedText(contact.company, "Company name");
+    const enquirySubject = boundedText(contact.subject, "Contact subject");
+    const submitted = formatDate(contact.submittedAt, copy.locale);
+    kindCopy = copy.acknowledgement;
+    subject = kindCopy.subject;
+    preheader = kindCopy.intro;
+    details = detailRows([
+      [kindCopy.labels.company, company],
+      [kindCopy.labels.subject, enquirySubject],
+      [kindCopy.labels.submitted, submitted],
+    ], copy.align);
+    helpText = `${kindCopy.help} ${copy.supportLabel}: ${supportEmail}`;
+    text = `${kindCopy.title}\n\n${kindCopy.intro}\n\n${kindCopy.labels.company}: ${company}\n${kindCopy.labels.subject}: ${enquirySubject}\n${kindCopy.labels.submitted}: ${submitted}\n\n${kindCopy.security}\n${helpText}`;
+  } else if (input.messageKind === "CONTACT_NOTIFICATION") {
     const contact = input.contact ?? {};
     const name = boundedText(contact.name, "Contact name");
     const email = emailAddress(contact.email, "Contact email");
@@ -281,6 +341,13 @@ export async function renderTransactionalEmail(input, options = {}) {
     replyToName = name;
     helpText = `${kindCopy.help} ${copy.supportLabel}: ${supportEmail}`;
     text = `${kindCopy.title}\n\n${kindCopy.labels.name}: ${name}\n${kindCopy.labels.email}: ${email}\n${kindCopy.labels.company}: ${company}${phone ? `\n${kindCopy.labels.phone}: ${phone}` : ""}\n${kindCopy.labels.subject}: ${enquirySubject}\n${kindCopy.labels.submitted}: ${submitted}\n\n${kindCopy.message}:\n${message}\n\n${kindCopy.security}\n${helpText}`;
+  } else if (input.messageKind === "PASSWORD_CHANGED") {
+    kindCopy = copy.passwordChanged;
+    subject = kindCopy.subject;
+    preheader = kindCopy.intro;
+    details = detailRows([[kindCopy.labels.account, recipientEmail]], copy.align);
+    helpText = `${kindCopy.help} ${copy.supportLabel}: ${supportEmail}`;
+    text = `${kindCopy.title}\n\n${kindCopy.intro}\n\n${kindCopy.labels.account}: ${recipientEmail}\n\n${kindCopy.security}\n${helpText}`;
   } else if (["PASSWORD_RESET", "EMAIL_VERIFICATION"].includes(input.messageKind)) {
     const expires = formatDate(input.expiresAt, copy.locale);
     const url = actionUrl(input.actionUrl, input.messageKind, appBaseUrl);

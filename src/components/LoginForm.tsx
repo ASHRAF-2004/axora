@@ -2,6 +2,7 @@
 
 import { loginAction } from "@/app/login/actions";
 import type { SupportedLocale } from "@/lib/i18n";
+import { LOCALE_NAMES, persistBrowserLocale, SUPPORTED_LOCALES } from "@/lib/i18n";
 import {
   browserReturnPath,
   mergeStoredReturnHash,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/session-return";
 import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import styles from "./LoginForm.module.css";
 import { YetiGuide, type GuideFocus } from "./login/YetiGuide";
 
@@ -39,6 +41,11 @@ const loginCopy = {
       "Your secure session ended. Sign in again to return to your previous page.",
     accessChanged:
       "Your access changed. Sign in again and Axora will open the newest route permitted for your role.",
+    forgot: "Forgot password?",
+    register: "Register your company / request access",
+    inviteOnly: "Employee accounts are invitation-only and are created by an authorized Axora or company administrator.",
+    language: "Language",
+    support: "Contact support",
   },
   ar: {
     title: "تسجيل الدخول إلى Axora",
@@ -63,6 +70,11 @@ const loginCopy = {
       "انتهت جلستك الآمنة. سجّل الدخول مرة أخرى للعودة إلى صفحتك السابقة.",
     accessChanged:
       "تغيّر نطاق وصولك. سجّل الدخول مرة أخرى وسيفتح Axora أحدث مسار مسموح لدورك.",
+    forgot: "هل نسيت كلمة المرور؟",
+    register: "سجّل شركتك / اطلب الوصول",
+    inviteOnly: "حسابات الموظفين متاحة بالدعوة فقط وينشئها مسؤول مخول في Axora أو الشركة.",
+    language: "اللغة",
+    support: "التواصل مع الدعم",
   },
   ms: {
     title: "Log masuk ke Axora",
@@ -88,6 +100,11 @@ const loginCopy = {
       "Sesi selamat anda telah tamat. Log masuk semula untuk kembali ke halaman sebelumnya.",
     accessChanged:
       "Akses anda telah berubah. Log masuk semula dan Axora akan membuka laluan terbaharu yang dibenarkan untuk peranan anda.",
+    forgot: "Lupa kata laluan?",
+    register: "Daftar syarikat anda / minta akses",
+    inviteOnly: "Akaun pekerja adalah melalui jemputan sahaja dan dicipta oleh pentadbir Axora atau syarikat yang dibenarkan.",
+    language: "Bahasa",
+    support: "Hubungi sokongan",
   },
 } as const;
 
@@ -300,6 +317,24 @@ export function LoginForm({
 
       <div className={`${styles.inputGroup} ${styles.inputGroup3}`}>
         <LoginButton locale={locale} />
+      </div>
+      <div className={styles.inputGroup}>
+        <Link href="/account/forgot-password">{copy.forgot}</Link>
+        <Link href={`/${locale}/contact`}>{copy.register}</Link>
+        <p className={styles.helper}>{copy.inviteOnly}</p>
+        <label>
+          {copy.language}
+          <select
+            value={locale}
+            onChange={(event) => {
+              persistBrowserLocale(event.target.value as SupportedLocale);
+              window.location.reload();
+            }}
+          >
+            {SUPPORTED_LOCALES.map((option) => <option key={option} value={option}>{LOCALE_NAMES[option].native}</option>)}
+          </select>
+        </label>
+        <Link href={`/${locale}/contact`}>{copy.support}</Link>
       </div>
     </form>
   );

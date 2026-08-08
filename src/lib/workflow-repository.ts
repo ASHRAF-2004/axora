@@ -22,7 +22,7 @@ import {
 } from "./workflow-events";
 
 type WorkflowActor = Pick<SessionUser,
-  "id" | "role" | "accountKind" | "isOwner" | "companyId" | "branchId"
+  "id" | "role" | "accountKind" | "isOwner" | "companyId" | "branchId" | "departmentId"
 >;
 
 export type WorkflowAudience =

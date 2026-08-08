@@ -150,7 +150,14 @@ describe("P0-02 transaction lock hardening", () => {
       `, [ids.owner, ids.ownerAssignment, ids.requestA]);
       expect(active.rows[0]?.snapshot).toMatchObject({ active: true });
 
-      await db.query("UPDATE branches SET active=false WHERE id=$1", [ids.branchA]);
+      await db.query(`
+        UPDATE branches
+        SET active=false,
+            deactivated_at=now(),
+            deactivated_by=$2,
+            deactivation_reason='Inactive resource security test'
+        WHERE id=$1
+      `, [ids.branchA, ids.owner]);
       const inactive = await db.query<SnapshotRow>(`
         SELECT axora_lock_request_resource_access(
           $1,$2,'request.view',$3,now()

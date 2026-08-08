@@ -153,8 +153,9 @@ describe("account setup transactional lifecycle", () => {
     expect(invitationCall?.[1]?.[6]).toBe("ar");
     expect(invitationCall?.[1]?.[7]).toBe("normalized-role-id");
     expect(invitationCall?.[1]?.[8]).toBeNull();
-    expect(invitationCall?.[1]?.[9]).toBe("COMPANY");
-    expect(invitationCall?.[1]?.[10]).toBeNull();
+    expect(invitationCall?.[1]?.[9]).toBeNull();
+    expect(invitationCall?.[1]?.[10]).toBe("COMPANY");
+    expect(invitationCall?.[1]?.[11]).toBeNull();
     const profileCall = mocks.client.query.mock.calls.find(([sql]) =>
       String(sql).includes("INSERT INTO user_profiles"));
     expect(profileCall?.[1]?.[3]).toBe("ar");
@@ -168,6 +169,7 @@ describe("account setup transactional lifecycle", () => {
       "normalized-role-id",
       "COMPANY",
       actor.companyId,
+      null,
       null,
       null,
       actor.id,
@@ -321,8 +323,9 @@ describe("account setup transactional lifecycle", () => {
     const invitationInsert = mocks.client.query.mock.calls.find(([sql]) =>
       String(sql).includes("INSERT INTO account_setup_invitations"));
     expect(invitationInsert?.[1]?.[1]).toBeNull();
-    expect(invitationInsert?.[1]?.[9]).toBe(scopeType);
-    expect(invitationInsert?.[1]?.[10]).toBe(supplierId ?? null);
+    expect(invitationInsert?.[1]?.[9]).toBeNull();
+    expect(invitationInsert?.[1]?.[10]).toBe(scopeType);
+    expect(invitationInsert?.[1]?.[11]).toBe(supplierId ?? null);
     expect(mocks.client.query.mock.calls.some(([sql]) =>
       String(sql).includes("INSERT INTO company_memberships"))).toBe(false);
     expect(mocks.client.query.mock.calls.some(([sql]) =>
@@ -496,8 +499,9 @@ describe("account setup transactional lifecycle", () => {
     expect(invitation?.[1]?.[1]).toBeNull();
     expect(invitation?.[1]?.[6]).toBe("ms");
     expect(invitation?.[1]?.[8]).toBeNull();
-    expect(invitation?.[1]?.[9]).toBe("SUPPLIER");
-    expect(invitation?.[1]?.[10]).toBe(supplierId);
+    expect(invitation?.[1]?.[9]).toBeNull();
+    expect(invitation?.[1]?.[10]).toBe("SUPPLIER");
+    expect(invitation?.[1]?.[11]).toBe(supplierId);
   });
 
   it("rate-limits repeated resend attempts before revoking the current link", async () => {
@@ -628,7 +632,10 @@ describe("account setup transactional lifecycle", () => {
       throw new Error(`Unexpected SQL: ${sql}`);
     });
 
-    const user = await consumeAccountSetupToken(rawToken, password);
+    const user = await consumeAccountSetupToken(rawToken, password, {
+      displayName: "Pending User", locale: "ar",
+      termsAccepted: true, privacyAccepted: true,
+    });
     expect(user).toMatchObject({ id: "user-id", authVersion: 2 });
     expect(mocks.query.mock.calls[0]?.[1]).toEqual([
       expect.stringMatching(/^[0-9a-f]{64}$/),
@@ -730,6 +737,7 @@ describe("account setup transactional lifecycle", () => {
     await expect(consumeAccountSetupToken(
       rawToken,
       "supplier creates a private password",
+      { displayName: "Supplier User", locale: "ms", termsAccepted: true, privacyAccepted: true },
     )).resolves.toMatchObject({
       id: "supplier-user-id",
       role: "SUPPLIER_USER",

@@ -304,3 +304,49 @@ BEGIN
   END IF;
 END
 $$;
+
+-- P0-05 company lead capability grants. Contact and lead rows remain available
+-- only through authorization-filtering security-definer functions.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regprocedure('public.axora_record_public_company_lead(jsonb,timestamp with time zone)') IS NOT NULL
+  THEN
+    REVOKE ALL ON TABLE
+      public.company_leads,public.company_lead_status_history,
+      public.company_lead_assignments,public.company_lead_duplicate_candidates,
+      public.company_lead_notes,public.company_lead_tasks,
+      public.company_lead_events,public.company_lead_access_events
+    FROM axora_app;
+    REVOKE ALL ON SEQUENCE public.company_lead_code_seq FROM axora_app;
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_record_public_company_lead(jsonb,timestamptz),public.axora_company_lead_workspace(uuid,uuid,jsonb,timestamptz),public.axora_export_company_lead(uuid,uuid,uuid,timestamptz),public.axora_assign_company_lead(uuid,uuid,uuid,uuid,text,timestamptz),public.axora_transition_company_lead(uuid,uuid,uuid,text,text,timestamptz),public.axora_resolve_company_lead_duplicate(uuid,uuid,uuid,uuid,text,text,timestamptz),public.axora_add_company_lead_note(uuid,uuid,uuid,text,text,timestamptz),public.axora_add_company_lead_task(uuid,uuid,uuid,text,timestamptz,uuid,timestamptz),public.axora_complete_company_lead_task(uuid,uuid,uuid,uuid,text,timestamptz),public.axora_convert_company_lead(uuid,uuid,uuid,text,timestamptz),public.axora_anonymize_company_lead(uuid,uuid,uuid,text,timestamptz),public.axora_claim_overdue_company_lead_events(uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+END $$;
+
+-- P0-06/P1-01/P1-02 capabilities are conditional so this script remains
+-- usable while a hybrid environment is advancing through the migration chain.
+DO $$
+BEGIN
+  IF to_regprocedure(
+    'public.axora_account_setup_inviter_can_activate(uuid,timestamp with time zone)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_account_setup_inviter_can_activate(uuid,timestamptz) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_account_setup_inviter_can_activate(uuid,timestamptz) TO axora_app';
+  END IF;
+
+  IF to_regprocedure(
+    'public.axora_company_onboarding_workspace(uuid,uuid,uuid,timestamp with time zone)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.industry_taxonomy,public.company_verification_history,public.company_onboarding_reminders FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_default_company_onboarding_fields(),public.axora_default_onboarding_item_detail(),public.axora_seed_company_onboarding_completion(),public.axora_company_onboarding_content_blockers(uuid,timestamptz),public.axora_company_onboarding_recipients(uuid,uuid,timestamptz),public.axora_company_onboarding_mutation(uuid,uuid,text,timestamptz) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_company_onboarding_workspace(uuid,uuid,uuid,timestamptz),public.axora_save_company_onboarding(uuid,uuid,uuid,integer,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text[],text,timestamptz),public.axora_update_company_onboarding_item(uuid,uuid,uuid,integer,text,text,uuid,text,text,timestamptz,text,timestamptz,text,timestamptz),public.axora_verify_company_onboarding(uuid,uuid,uuid,integer,text,timestamptz) TO axora_app';
+  END IF;
+
+  IF to_regprocedure(
+    'public.axora_organization_structure_workspace(uuid,uuid,timestamp with time zone)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.business_units,public.cost_centres,public.delivery_locations,public.organization_structure_history FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_validate_department_hierarchy(),public.axora_validate_business_unit_hierarchy(),public.axora_validate_organization_tenant_links(),public.axora_reject_organization_delete(),public.axora_protect_invitation_department_scope(),public.axora_organization_permission_at(jsonb,text,uuid,uuid,uuid) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_organization_structure_workspace(uuid,uuid,timestamptz),public.axora_save_organization_node(uuid,uuid,text,uuid,uuid,text,text,uuid,uuid,uuid,uuid,jsonb,text,timestamptz),public.axora_set_organization_node_active(uuid,uuid,text,uuid,boolean,text,timestamptz) TO axora_app';
+  END IF;
+END $$;

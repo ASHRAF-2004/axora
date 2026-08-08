@@ -224,12 +224,16 @@ test("localized contact form keeps real fields labeled and the anti-spam field o
       name: "أخبرنا عن مسار المشتريات في شركتك.",
     }),
   ).toBeVisible();
-  await expect(page.getByLabel("الاسم")).toBeVisible();
+  await expect(page.getByLabel("الاسم الكامل لجهة الاتصال", { exact: true })).toBeVisible();
   await expect(page.getByLabel("البريد الإلكتروني للعمل")).toHaveAttribute(
     "type",
     "email",
   );
-  await expect(page.getByLabel("الرسالة")).toBeVisible();
+  await expect(
+    page.getByLabel("كيف يمكن لـ Axora دعم عمليات المشتريات لديك؟", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(
     page.getByRole("checkbox", { name: /أفهم أن أكسورا/ }),
   ).toBeVisible();
@@ -296,7 +300,7 @@ test("the public login entry resolves to the themed sign-in form with return nav
   const backLink = page.getByRole("link", { name: "Back to website" });
   await expect(backLink).toBeVisible();
   await expect(backLink).toHaveAttribute("href", "/en");
-  await expect(page.getByRole("link")).toHaveCount(1);
+  await expect(page.getByRole("link")).toHaveCount(4);
 });
 
 test("login guide reacts to password privacy and respects reduced motion", async ({
@@ -332,7 +336,7 @@ test("Arabic login keeps localized controls and return navigation", async ({
   ).toBeVisible();
   const backLink = main.getByRole("link", { name: "العودة إلى الموقع" });
   await expect(backLink).toHaveAttribute("href", "/ar");
-  await expect(main.getByRole("link")).toHaveCount(1);
+  await expect(main.getByRole("link")).toHaveCount(4);
   await expect(page.getByLabel("البريد الإلكتروني")).toHaveAttribute(
     "type",
     "email",

@@ -59,7 +59,11 @@ describe("platform owner account setup lifecycle", () => {
       return { rowCount: 1, rows: [] };
     });
 
-    const user = await consumeAccountSetupToken(rawToken, "a secure owner setup passphrase");
+    const user = await consumeAccountSetupToken(
+      rawToken,
+      "a secure owner setup passphrase",
+      { displayName: "First Owner", locale: "en", termsAccepted: true, privacyAccepted: true },
+    );
     expect(user).toMatchObject({
       id: "71000000-0000-4000-8000-000000000001",
       role: "PLATFORM_OWNER",

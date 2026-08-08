@@ -39,6 +39,36 @@ describe("trusted transactional email renderer", () => {
   });
 
   it.each([
+    ["en", "We received your Axora company enquiry", 'lang="en" dir="ltr"'],
+    ["ar", "استلمنا استفسار شركتك لدى Axora", 'lang="ar" dir="rtl"'],
+    ["ms", "Kami menerima pertanyaan syarikat Axora anda", 'lang="ms" dir="ltr"'],
+  ])("renders a privacy-safe %s visitor acknowledgement", async (locale, subject, direction) => {
+    const rendered = await renderTransactionalEmail({
+      deliveryId,
+      messageKind: "CONTACT_ACKNOWLEDGEMENT",
+      locale,
+      recipientEmail: "sender@example.test",
+      recipientName: "Aisha Rahman",
+      contact: {
+        name: "Aisha Rahman",
+        email: "sender@example.test",
+        company: "Example & Company",
+        subject: "Procurement <review>",
+        message: "Sensitive details must not be echoed in the acknowledgement.",
+        submittedAt: "2026-08-03T06:00:00.000Z",
+      },
+    });
+    expect(rendered.subject).toBe(subject);
+    expect(rendered.html).toContain(direction);
+    expect(rendered.html).toContain("Example &amp; Company");
+    expect(rendered.html).toContain("Procurement &lt;review&gt;");
+    expect(rendered.html).not.toContain("Sensitive details");
+    expect(rendered.text).not.toContain("Sensitive details");
+    expect(rendered.replyToEmail).toBe("support@axora.management");
+    expect(rendered.templateKey).toBe("contact-acknowledgement");
+  });
+
+  it.each([
     ["PASSWORD_RESET", "/account/reset-password", "Reset your Axora password"],
     ["EMAIL_VERIFICATION", "/account/verify-email", "Verify your Axora email address"],
   ])("renders a single-origin fragment action for %s", async (messageKind, path, subject) => {
@@ -56,6 +86,20 @@ describe("trusted transactional email renderer", () => {
     expect(rendered.text).toContain(`https://axora.management${path}#token=${token}`);
     expect(rendered.html).toContain('src="cid:axora-logo"');
     expect(rendered.text).toContain("Axora support: support@axora.management");
+  });
+
+  it("renders a tokenless password-change confirmation", async () => {
+    const rendered = await renderTransactionalEmail({
+      deliveryId,
+      messageKind: "PASSWORD_CHANGED",
+      locale: "en",
+      recipientEmail: "person@example.test",
+      recipientName: "Aisha Rahman",
+    });
+    expect(rendered.subject).toBe("Your Axora password was changed");
+    expect(rendered.text).toContain("prior sessions were ended");
+    expect(rendered.html).not.toContain("token=");
+    expect(rendered.templateKey).toBe("password-changed");
   });
 
   it("supports Arabic and Malay copy and rejects off-origin action URLs", async () => {

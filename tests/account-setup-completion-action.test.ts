@@ -40,6 +40,10 @@ function passwordForm(password: string, confirmation = password) {
   const form = new FormData();
   form.set("password", password);
   form.set("confirmPassword", confirmation);
+  form.set("displayName", "New User");
+  form.set("locale", "en");
+  form.set("termsAccepted", "on");
+  form.set("privacyAccepted", "on");
   return form;
 }
 
@@ -78,7 +82,12 @@ describe("public account setup action", () => {
       completeAccountSetupAction(rawToken, initialState, passwordForm(password)),
     ).rejects.toThrow("REDIRECT:/login?setup=complete");
 
-    expect(mocks.consume).toHaveBeenCalledWith(rawToken, password);
+    expect(mocks.consume).toHaveBeenCalledWith(rawToken, password, {
+      displayName: "New User",
+      locale: "en",
+      termsAccepted: true,
+      privacyAccepted: true,
+    });
     expect(JSON.stringify(mocks.redirect.mock.calls)).not.toContain(rawToken);
   });
 

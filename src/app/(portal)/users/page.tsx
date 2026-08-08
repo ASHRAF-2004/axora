@@ -9,6 +9,7 @@ import type { SupportedLocale } from "@/lib/i18n";
 import { localizedAccountRole } from "@/lib/user-form-i18n";
 import { creatableAccountRoles, accountRoleLabel } from "@/lib/role-catalog";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
+import { loadOrganizationStructureWorkspace } from "@/lib/organization-structure";
 import { listSuppliers } from "@/lib/repository";
 import { COD_PAYMENT_METHOD, type Branch, type Company } from "@/lib/types";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
@@ -57,9 +58,10 @@ export default async function UsersPage() {
   const copy = corePortalMessages(locale).users;
   const common = corePortalMessages(locale).common;
   const accessCopy = accessAdministrationMessages(locale);
-  const [users, organization, suppliers] = await Promise.all([
+  const [users, organization, structure, suppliers] = await Promise.all([
     listAuthorizedUsers(actor),
     loadOrganizationDirectory(actor),
+    loadOrganizationStructureWorkspace(actor),
     actor.isOwner ? listSuppliers(actor) : Promise.resolve([]),
   ]);
   const companies: Company[] = organization.companies.map((company) => ({
@@ -89,10 +91,12 @@ export default async function UsersPage() {
         <UserCreateForm
           actorBranchId={actor.branchId}
           actorCompanyId={actor.companyId}
+          actorDepartmentId={actor.departmentId}
           actorIsOwner={actor.isOwner}
           defaultLocale={actor.preferredLocale ?? "en"}
           branches={branches}
           companies={companies}
+          departments={structure.departments}
           suppliers={suppliers}
           roleOptions={availableRoles.map((role) => ({
             value: role.key,
