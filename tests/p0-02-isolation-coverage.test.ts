@@ -105,7 +105,7 @@ describe("P0-02 active isolation coverage", () => {
     expect(notifications).toContain("recipient_user_id=$1");
     expect(rolePortals).toContain("activeSupplierScope");
     expect(rolePortals).toContain("activeDriverScope");
-    expect(rolePortals).toContain("delivery_driver_assignments");
+    expect(rolePortals).toContain("delivery_job_assignments");
     expect(audit).toContain("listAuthorizedAttachments(actor)");
     expect(audit).toContain("listAuthorizedRequests(actor)");
     expect(audit).not.toMatch(/FROM\s+attachments\b/i);
