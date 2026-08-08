@@ -51,6 +51,9 @@ describe("session return paths", () => {
     "/login",
     "/_next/static/chunk.js",
     "/requests%5Cevil",
+    "/requests?next=%5C%5Cevil.example",
+    "/requests?notice=ok%0d%0aSet-Cookie%3Aforged",
+    "/requests#tab%00hidden",
     "/requests\u0000?status=open",
   ])("rejects an external, malformed, or non-portal route: %s", (value) => {
     expect(safeInternalReturnPath(value, "/dashboard")).toBe("/dashboard");
