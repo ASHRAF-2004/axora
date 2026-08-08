@@ -24,13 +24,14 @@ export default async function ApprovalsPage({
 }) {
   const actor = await requirePagePermission("view_approvals");
   if (!isDemoMode() && !actor.roleAssignmentId) redirect("/access-denied");
+  const canReviewCustomerRequests = actor.accountKind === "COMPANY";
   const [workspace, budgets, varianceWorkspace, feedback] = await Promise.all([
-    getApprovalWorkspace(actor),
-    getBudgetWorkspace(actor),
+    canReviewCustomerRequests ? getApprovalWorkspace(actor) : Promise.resolve(null),
+    canReviewCustomerRequests ? getBudgetWorkspace(actor) : Promise.resolve(null),
     getProcurementVarianceApprovalWorkspace(actor),
     searchParams,
   ]);
-  if (!workspace) redirect("/access-denied");
+  if (!workspace && !varianceWorkspace) redirect("/access-denied");
   const locale = actor.preferredLocale ?? "en";
   const messages = budgetApprovalMessages(locale);
   const sourceAccounts = (budgets?.accounts ?? []).map((account) => ({
@@ -47,9 +48,9 @@ export default async function ApprovalsPage({
       </header>
       {feedback.success ? <p className={styles.notice} role="status">{messages.success}</p> : null}
       {feedback.error ? <p className={styles.notice} role="alert">{messages.failure}</p> : null}
-      {workspace.requests.length === 0 ? (
+      {workspace && workspace.requests.length === 0 ? (
         <section className={styles.card}><p>{messages.noApprovals}</p></section>
-      ) : (
+      ) : workspace ? (
         <section className={styles.approvalGrid} aria-label={messages.approvalTitle}>
           {workspace.requests.map((request) => (
             <article className={styles.card} key={request.id}>
@@ -84,7 +85,7 @@ export default async function ApprovalsPage({
             </article>
           ))}
         </section>
-      )}
+      ) : null}
       {varianceWorkspace ? (
         <VarianceApprovalPanel workspace={varianceWorkspace} locale={locale} />
       ) : null}
