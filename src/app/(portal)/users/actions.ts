@@ -98,7 +98,6 @@ export async function resendAccountSetupInvitationAction(userId: string) {
   const actor = await requirePermission("manage_users");
   await requireRecentStepUp(actor, "/users");
   const safeUserId = z.uuid().parse(userId);
-  await lockAuthorizedUserTarget(actor, safeUserId, "user.invite");
   let invitation: AccountSetupInvitationResult;
   try {
     invitation = await resendAccountSetupInvitation(safeUserId, actor);
