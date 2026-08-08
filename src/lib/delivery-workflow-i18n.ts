@@ -12,7 +12,7 @@ const catalog = {
     offline: "Offline commands are retained on this device and retry with the same command ID.",
     recover: "The offline queue could not be read. Export it before clearing local data.",
     exportQueue: "Export queue",
-    noJobs: "No authorized delivery jobs are available.",
+    noJobs: "No active assignments",
     schedule: "Destination schedule",
     deadline: "Acceptance deadline",
     sla: "SLA due",

@@ -28,6 +28,10 @@ type Workspace = {
 type QueuedCommand = {
   version: 2; queuedAt: string; payload: Record<string, unknown>;
 };
+type LegacyQueue = {
+  raw: string; validCount: number; totalCount: number;
+  needsAttention: boolean; message: string;
+};
 
 const MAX_QUEUE_ITEMS = 500;
 const MAX_QUEUE_BYTES = 2 * 1024 * 1024;
@@ -49,6 +53,10 @@ function storageKey(actorId: string) {
   return `axora:delivery-commands:v2:${actorId}`;
 }
 
+function legacyStorageKey(actorId: string) {
+  return `axora:driver:${actorId}:event-queue:v1`;
+}
+
 function nextDeviceSequence() {
   return Date.now();
 }
@@ -65,6 +73,45 @@ function validQueue(value: unknown): value is QueuedCommand[] {
   ));
 }
 
+function validLegacyEvent(value: unknown) {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return ["deliveryJobId", "assignmentId", "deviceId", "clientEventId"]
+    .every((key) => typeof item[key] === "string" && uuidPattern.test(item[key] as string))
+    && typeof item.deviceSequence === "number"
+    && typeof item.eventType === "string"
+    && typeof item.clientRecordedAt === "string";
+}
+
+function inspectLegacyQueue(raw: string, actorId: string): LegacyQueue {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    let events: unknown[];
+    if (Array.isArray(parsed)) events = parsed;
+    else if (parsed && typeof parsed === "object") {
+      const envelope = parsed as Record<string, unknown>;
+      if (envelope.schema !== "axora.driver-offline-events"
+        || envelope.version !== 1
+        || envelope.driverId !== actorId
+        || !Array.isArray(envelope.events)) {
+        return { raw, validCount: 0, totalCount: 0, needsAttention: true, message: "The saved data could not be read." };
+      }
+      events = envelope.events;
+    } else throw new Error("invalid queue");
+    const validCount = events.filter(validLegacyEvent).length;
+    if (!events.length || validCount !== events.length) {
+      return {
+        raw, validCount, totalCount: events.length, needsAttention: true,
+        message: `${validCount} of ${events.length} saved items passed validation.`,
+      };
+    }
+    return { raw, validCount, totalCount: events.length, needsAttention: false, message: "" };
+  } catch {
+    return { raw, validCount: 0, totalCount: 0, needsAttention: true, message: "The saved data could not be read." };
+  }
+}
+
 function availableEvents(job: Job) {
   switch (job.status) {
     case "ASSIGNED": return ["ACCEPTED", "REJECTED"];
@@ -79,11 +126,13 @@ function availableEvents(job: Job) {
   }
 }
 
-export function DeliveryExecutionPanel() {
-  const copy = deliveryWorkflowMessages(locale());
+export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { locale?: "en" | "ar" | "ms" }) {
+  const copy = deliveryWorkflowMessages(initialLocale);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [queue, setQueue] = useState<QueuedCommand[]>([]);
   const [recovery, setRecovery] = useState<string | null>(null);
+  const [legacyQueue, setLegacyQueue] = useState<LegacyQueue | null>(null);
+  const [confirmLegacyDiscard, setConfirmLegacyDiscard] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -94,6 +143,8 @@ export function DeliveryExecutionPanel() {
     if (!response.ok) throw new Error("Delivery workspace unavailable");
     const next = await response.json() as Workspace;
     setWorkspace(next);
+    const legacyRaw = localStorage.getItem(legacyStorageKey(next.actorId));
+    setLegacyQueue(legacyRaw ? inspectLegacyQueue(legacyRaw, next.actorId) : null);
     const raw = localStorage.getItem(storageKey(next.actorId));
     if (!raw) {
       setQueue([]);
@@ -254,6 +305,31 @@ export function DeliveryExecutionPanel() {
       <button className={styles.compactButton} type="button" onClick={() => void refresh()}>{copy.refresh}</button>
     </div>
     {queue.length ? <p className={styles.notice} role="status">{copy.offline} ({queue.length})</p> : null}
+    {legacyQueue && !legacyQueue.needsAttention ? <p className={styles.notice} role="status">{legacyQueue.validCount} update waiting</p> : null}
+    {legacyQueue?.needsAttention ? <div className={styles.recovery} role="alert">
+      <h2>Saved delivery updates need attention</h2>
+      <p>{legacyQueue.message}</p>
+      <p>Nothing was changed or deleted.</p>
+      <div className={styles.actions}>
+        <button type="button" disabled>Sync now</button>
+        <button type="button" onClick={() => workspace && setLegacyQueue(inspectLegacyQueue(legacyQueue.raw, workspace.actorId))}>Retry validation</button>
+        <button type="button" onClick={() => {
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(new Blob([legacyQueue.raw], { type: "application/json" }));
+          link.download = `axora-delivery-queue-recovery-${new Date().toISOString().slice(0, 10)}.json`;
+          link.click(); URL.revokeObjectURL(link.href);
+        }}>Download recovery file</button>
+        <button type="button" onClick={() => setConfirmLegacyDiscard(true)}>Discard local copy</button>
+      </div>
+      {confirmLegacyDiscard ? <div role="group" aria-label="Discard this saved copy?" className={styles.actions}>
+        <button type="button" onClick={() => setConfirmLegacyDiscard(false)}>Keep saved copy</button>
+        <button type="button" onClick={() => {
+          if (workspace) localStorage.removeItem(legacyStorageKey(workspace.actorId));
+          setLegacyQueue(null); setConfirmLegacyDiscard(false);
+          setNotice("Saved delivery updates were discarded after confirmation.");
+        }}>Confirm discard</button>
+      </div> : null}
+    </div> : null}
     {recovery ? <div className={styles.recovery} role="alert"><p>{copy.recover}</p><button type="button" onClick={() => {
       const link = document.createElement("a");
       link.href = URL.createObjectURL(new Blob([recovery], { type: "application/json" }));
@@ -262,7 +338,7 @@ export function DeliveryExecutionPanel() {
     {notice ? <p className={styles.success} role="status">{notice}</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
     {!workspace ? <p className={styles.notice}>Loading…</p> : jobs.length === 0
-      ? <p className={styles.notice}>{copy.noJobs}</p>
+      ? <div className={styles.notice}><h2>{copy.noJobs}</h2></div>
       : <div className={styles.jobList}>{jobs.map((job) => <article className={styles.job} key={job.id}>
         <header className={styles.jobHeader}><div><p>{job.requestNumber} · {job.branchName}</p><h2>{job.code}</h2></div><span className={styles.state}>{job.status.replaceAll("_", " ")}</span></header>
         <div className={styles.jobBody}>

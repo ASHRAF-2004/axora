@@ -136,6 +136,7 @@ export function SessionContinuity({
         background: "var(--surface, white)",
         boxShadow: "0 14px 36px rgba(15, 23, 42, 0.18)",
         fontWeight: 650,
+        pointerEvents: "none",
       }}
     >
       {online ? copy[locale].online : copy[locale].offline}
