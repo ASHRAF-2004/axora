@@ -350,3 +350,23 @@ BEGIN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_organization_structure_workspace(uuid,uuid,timestamptz),public.axora_save_organization_node(uuid,uuid,text,uuid,uuid,text,text,uuid,uuid,uuid,uuid,jsonb,text,timestamptz),public.axora_set_organization_node_active(uuid,uuid,text,uuid,boolean,text,timestamptz) TO axora_app';
   END IF;
 END $$;
+
+-- P0-07/P0-08 transactional budget and request-approval capabilities.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.budget_accounts') IS NOT NULL
+  THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.company_ceiling_history,public.budget_accounts,public.budget_periods,public.budget_ledger_entries,public.budget_reservations,public.budget_reservation_events FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_validate_budget_account_scope(),public.axora_budget_scope_type(text,uuid),public.axora_budget_account_permission(jsonb,text,text,uuid,uuid,uuid),public.axora_post_budget_entry_internal(uuid,uuid,uuid,text,numeric,numeric,numeric,numeric,numeric,numeric,numeric,numeric,uuid,integer,uuid,uuid,text,uuid,uuid,uuid,text,text,text,uuid,text,timestamptz),public.axora_reject_budget_evidence_change(),public.axora_seed_budget_account_for_node() FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_budget_workspace(uuid,uuid,timestamptz),public.axora_adjust_budget_allocation(uuid,uuid,uuid,text,numeric,boolean,text,text,timestamptz),public.axora_set_budget_allocation(uuid,uuid,uuid,numeric,text,text,timestamptz),public.axora_transfer_budget_allocation(uuid,uuid,uuid,uuid,numeric,boolean,text,text,timestamptz),public.axora_set_company_ceiling(uuid,uuid,uuid,numeric,text,text,text,timestamptz),public.axora_refresh_budget_period(uuid,uuid,uuid,text,text,timestamptz),public.axora_request_budget_choices(uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.request_approval_decisions') IS NOT NULL
+  THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.request_approval_policies,public.request_approval_snapshots,public.request_approval_decisions,public.request_approval_escalations,public.request_approval_outbox FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_request_total_internal(uuid),public.axora_request_snapshot_payload_internal(uuid,integer,numeric,text),public.axora_approval_limit_for_request(jsonb,text,uuid,uuid,uuid,text,boolean),public.axora_seed_company_approval_policy(),public.axora_resolve_request_budget_defaults(),public.axora_require_versioned_approval_decision(),public.axora_protect_request_approval_evidence() FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_initialize_request_approval(uuid,uuid,uuid,text,timestamptz),public.axora_request_approval_workspace(uuid,uuid,timestamptz),public.axora_decide_request_approval(uuid,uuid,uuid,integer,text,text,uuid,text,text,timestamptz),public.axora_finalize_request_budget(uuid,uuid,uuid,numeric,text,text,timestamptz),public.axora_request_approval_timeline(uuid,uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+END $$;

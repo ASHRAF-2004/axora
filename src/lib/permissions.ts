@@ -20,6 +20,7 @@ export type Permission =
   | "manage_branch_budget"
   | "create_requests"
   | "view_approvals"
+  | "view_budgets"
   | "approve_requests"
   | "manage_sourcing"
   | "manage_deliveries"
@@ -88,6 +89,7 @@ const legacyCompanyAdminPermissions: readonly Permission[] = [
   "manage_branch_budget",
   "create_requests",
   "view_approvals",
+  "view_budgets",
   "approve_requests",
   "view_invoices",
   "view_documents",
@@ -107,6 +109,7 @@ const companyAdminPermissions: readonly Permission[] = [
   "manage_branches",
   "manage_branch_budget",
   "view_approvals",
+  "view_budgets",
   "approve_requests",
   "view_invoices",
   "view_documents",
@@ -123,12 +126,12 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   ADMIN: legacyCompanyAdminPermissions,
   BRANCH_ADMIN: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "create_requests", "view_approvals", "approve_requests",
+    "view_branches", "create_requests", "view_approvals", "view_budgets", "approve_requests",
     "view_invoices", "view_documents", "manage_documents", "view_reports", "manage_users",
   ],
   APPROVER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "create_requests", "view_approvals", "approve_requests",
+    "view_branches", "create_requests", "view_approvals", "view_budgets", "approve_requests",
     "view_documents", "manage_documents", "view_reports",
   ],
   REQUESTER: [
@@ -164,25 +167,25 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   COMPANY_ADMIN: companyAdminPermissions,
   DEPARTMENT_ADMIN: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "create_requests", "view_approvals", "approve_requests",
+    "view_branches", "create_requests", "view_approvals", "view_budgets", "approve_requests",
     "view_documents", "manage_documents", "view_reports", "manage_users",
   ],
   BRANCH_APPROVER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "view_approvals", "approve_requests", "view_documents", "view_reports",
+    "view_branches", "view_approvals", "view_budgets", "approve_requests", "view_documents", "view_reports",
   ],
   COMPANY_APPROVER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "view_approvals", "approve_requests", "view_documents", "view_reports",
+    "view_branches", "view_approvals", "view_budgets", "approve_requests", "view_documents", "view_reports",
   ],
   FINANCE_REVIEWER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "view_invoices", "manage_finance", "view_documents",
+    "view_branches", "view_budgets", "view_invoices", "manage_finance", "view_documents",
     "view_reports", "review_three_way_matches",
   ],
   AUDITOR: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "view_invoices", "view_documents", "view_reports", "view_audit",
+    "view_branches", "view_budgets", "view_invoices", "view_documents", "view_reports", "view_audit",
   ],
   TECHNICAL_SUPPORT: ["view_system_diagnostics"],
   SUPPLIER_USER: ["view_supplier_portal", "respond_to_rfqs"],

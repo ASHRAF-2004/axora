@@ -32,6 +32,7 @@ const RETURN_RULES: readonly ReturnRule[] = [
   { pattern: /^\/products(?:\/|$)/, permission: "view_catalog" },
   { pattern: /^\/requests(?:\/|$)/, permission: "view_requests" },
   { pattern: /^\/approvals(?:\/|$)/, permission: "view_approvals" },
+  { pattern: /^\/budgets(?:\/|$)/, permission: "view_budgets" },
   { pattern: /^\/sourcing(?:\/|$)/, permission: "manage_sourcing" },
   { pattern: /^\/deliveries(?:\/|$)/, permission: "view_deliveries" },
   { pattern: /^\/finance(?:\/|$)/, permission: "view_invoices" },

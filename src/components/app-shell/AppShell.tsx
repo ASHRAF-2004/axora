@@ -73,6 +73,7 @@ function tourName(href: string) {
     "/products": "shop",
     "/requests": "requests",
     "/approvals": "approvals",
+    "/budgets": "budgets",
     "/sourcing": "sourcing",
     "/deliveries": "deliveries",
     "/finance": "finance",

@@ -26,7 +26,7 @@ describe("P0-02 active isolation coverage", () => {
     expect(finance).not.toContain('from "./operations"');
     expect(sourcing).not.toContain('from "./operations"');
     expect(delivery).not.toContain('from "./operations"');
-    expect(approvals).toContain("listAuthorizedApprovals(actor)");
+    expect(approvals).toContain("getApprovalWorkspace(actor)");
     expect(approvals).not.toContain("listApprovals()");
     expect(documents).toContain("listAuthorizedInvoices(actor)");
     expect(documents).toContain("listAuthorizedDeliveries(actor)");

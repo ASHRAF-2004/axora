@@ -1,0 +1,225 @@
+.page {
+  --ledger-ink: #17322d;
+  --ledger-muted: #61706b;
+  --ledger-line: #d9e1dc;
+  --ledger-paper: #fffdf7;
+  --ledger-accent: #c95f2a;
+  display: grid;
+  gap: 1.25rem;
+  color: var(--ledger-ink);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid var(--ledger-line);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 85% 10%, rgb(217 170 96 / 24%), transparent 32%),
+    linear-gradient(135deg, #fffaf0, #eef6f0);
+}
+
+.hero::after {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: clamp(1rem, 5vw, 4rem);
+  width: 1px;
+  background: rgb(23 50 45 / 12%);
+  content: "";
+  transform: rotate(17deg) scale(1.6);
+}
+
+.hero h1 {
+  margin: 0;
+  max-width: 18ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: .96;
+  letter-spacing: -.035em;
+}
+
+.hero p {
+  max-width: 72ch;
+  margin-block: 1rem 0;
+  color: var(--ledger-muted);
+  line-height: 1.6;
+}
+
+.notice {
+  padding: .85rem 1rem;
+  border-inline-start: .3rem solid var(--ledger-accent);
+  border-radius: .5rem;
+  background: #fff7e7;
+}
+
+.summaryGrid,
+.accountGrid,
+.approvalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+}
+
+.card {
+  padding: 1.1rem;
+  border: 1px solid var(--ledger-line);
+  border-radius: 1rem;
+  background: var(--ledger-paper);
+  box-shadow: 0 .75rem 2rem rgb(23 50 45 / 6%);
+}
+
+.cardHeader,
+.metricRow,
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+}
+
+.card h2,
+.card h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.eyebrow,
+.state {
+  display: inline-flex;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  background: #e6f0e8;
+  color: #275b4c;
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+  margin-block: 1rem;
+}
+
+.metric {
+  padding: .7rem;
+  border-radius: .7rem;
+  background: #f1f5f1;
+}
+
+.metric span {
+  display: block;
+  color: var(--ledger-muted);
+  font-size: .78rem;
+}
+
+.metric strong {
+  display: block;
+  margin-block-start: .2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dangerMetric {
+  background: #fff0e8;
+  color: #8c321b;
+}
+
+.decisionForm,
+.adminForm {
+  display: grid;
+  gap: .75rem;
+  margin-block-start: 1rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--ledger-line);
+}
+
+.decisionForm label,
+.adminForm label {
+  display: grid;
+  gap: .35rem;
+  color: var(--ledger-muted);
+  font-size: .85rem;
+}
+
+.decisionForm input,
+.decisionForm select,
+.decisionForm textarea,
+.adminForm input,
+.adminForm select,
+.adminForm textarea {
+  width: 100%;
+  min-height: 2.65rem;
+  padding: .65rem .75rem;
+  border: 1px solid #bdc9c2;
+  border-radius: .6rem;
+  background: white;
+  color: var(--ledger-ink);
+  font: inherit;
+}
+
+.decisionForm textarea,
+.adminForm textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.primaryAction,
+.secondaryAction,
+.dangerAction {
+  min-height: 2.65rem;
+  padding: .65rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryAction { background: var(--ledger-ink); color: white; }
+.secondaryAction { border-color: #9caaa2; background: white; color: var(--ledger-ink); }
+.dangerAction { border-color: #bd5638; background: #fff6f2; color: #8c321b; }
+
+.lineList,
+.ledgerList {
+  display: grid;
+  gap: .5rem;
+  margin: .75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lineList li,
+.ledgerList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: .55rem;
+  border-block-end: 1px dashed var(--ledger-line);
+}
+
+.muted { color: var(--ledger-muted); }
+
+@media (max-width: 42rem) {
+  .fieldGrid,
+  .metrics { grid-template-columns: 1fr; }
+  .hero::after { display: none; }
+  .actionRow > * { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page *, .page *::before, .page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}

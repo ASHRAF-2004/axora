@@ -39,7 +39,7 @@ describe("request resource isolation integration", () => {
         source("src/lib/operational-isolation.ts"),
       ]);
 
-    expect(approvals).toContain("listAuthorizedApprovals(actor)");
+    expect(approvals).toContain("getApprovalWorkspace(actor)");
     expect(sourcing).toContain("loadAuthorizedSourcingRegisters(actor)");
     expect(finance).toContain("loadAuthorizedFinanceRegisters(actor)");
     expect(delivery).toContain("loadAuthorizedDeliveryRegisters(actor)");

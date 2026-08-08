@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { calculateLineAmounts, formatCurrency, formatDate, formatDateTime } from "@/lib/domain";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
+import { approvalActionLabel, approvalStateLabel } from "@/lib/budget-approval-i18n";
 import { requestDetailMessages } from "@/lib/request-detail-i18n";
 import { canAccess } from "@/lib/permissions";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
@@ -11,6 +12,7 @@ import {
   getAuthorizedRequest,
   listAuthorizedRequestWorkflowEvents,
 } from "@/lib/request-reader";
+import { getRequestApprovalTimeline } from "@/lib/request-approval";
 import { allowedNextStatuses } from "@/lib/workflow";
 import { CircleDollarSign, PackageCheck, Route, UserRound, WalletCards } from "lucide-react";
 import Link from "next/link";
@@ -31,13 +33,14 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     || request.paymentStatus !== undefined
     || request.invoiceNumber !== undefined;
 
-  const [branchBudget, workflowTimeline] = await Promise.all([
+  const [branchBudget, workflowTimeline, approvalTimeline] = await Promise.all([
     actor.accountKind === "PLATFORM"
       ? Promise.resolve(undefined)
       : loadOrganizationDirectory(actor).then(({ branches }) => (
           branches.find((branch) => branch.id === request.branchId)
         )),
     listAuthorizedRequestWorkflowEvents(actor, request.id),
+    getRequestApprovalTimeline(actor, request.id),
   ]);
   const totals = request.lines.reduce((sum, line) => {
     const current = calculateLineAmounts(line);
@@ -182,6 +185,15 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
           <h3 className="section-title">{detail.timeline}</h3>
           <div className="timeline">
+            {approvalTimeline?.events.map((event) => (
+              <div className="timeline-item" key={`approval-${event.id}`}>
+                <div className="timeline-dot" />
+                <div>
+                  <strong>{approvalActionLabel(locale, event.action)} · {approvalStateLabel(locale, event.stateAfter)}</strong>
+                  <p>{formatDateTime(event.decidedAt, locale, timeZone)} · {event.reason}</p>
+                </div>
+              </div>
+            ))}
             {workflowTimeline.length ? workflowTimeline.map((event) => (
               <div className="timeline-item" key={event.id}>
                 <div className="timeline-dot" />
