@@ -1,18 +1,6 @@
 from pathlib import Path
 
 
-def replace_once(path: str, old: str, new: str) -> None:
-    file = Path(path)
-    source = file.read_text()
-    if new in source:
-        return
-    if source.count(old) != 1:
-        raise RuntimeError(
-            f"Expected one patch anchor in {path}, found {source.count(old)}"
-        )
-    file.write_text(source.replace(old, new, 1))
-
-
 account_path = Path("src/lib/account-setup.ts")
 account_source = account_path.read_text()
 old_quota = '''async function enforceInvitationQuota(
@@ -138,9 +126,9 @@ mock_replacement = '''    mocks.client.query.mockImplementation(async (sql: stri
       if (sql.includes('AS "actorId"')) {
 '''
 if mock_replacement not in test_source:
-    if test_source.count(mock_anchor) != 2:
+    if test_source.count(mock_anchor) != 5:
         raise RuntimeError(
-            f"Expected two invitation SQL mocks, found {test_source.count(mock_anchor)}"
+            f"Expected five invitation SQL mocks, found {test_source.count(mock_anchor)}"
         )
     test_source = test_source.replace(mock_anchor, mock_replacement)
 
