@@ -1,0 +1,40 @@
+name: Apply P0-02 grant reapplication
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply-grants:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the P0-02 branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: agent/p0-02-isolation-closure
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Apply deterministic grant patch
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/apply_p0_02_grant_reapplication_patch.py
+          python3 -m py_compile scripts/ci/apply_p0_02_grant_reapplication_patch.py
+
+      - name: Commit the reviewed grant change
+        run: |
+          set -euo pipefail
+          git add database/admin/apply-app-grants.sql
+          if git diff --cached --quiet; then
+            echo "The grant reapplication change is already committed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Reapply P0-02 capability grants after deployment [skip ci]"
+          git push origin HEAD:agent/p0-02-isolation-closure
