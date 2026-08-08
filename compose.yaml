@@ -83,6 +83,13 @@ services:
       AXORA_EMAIL_SENDER_URL: "http://email-sender:3100"
       AXORA_EMAIL_SERVICE_AUTH_KEY_FILE: /run/secrets/axora_email_service_auth_key
       AXORA_EMAIL_EVENTS_WEBHOOK_SECRET_FILE: /run/secrets/axora_email_events_webhook_secret
+      ZEPTOMAIL_WEBHOOK_AUTH_KEY_FILE: /run/secrets/axora_email_events_webhook_secret
+      ZEPTOMAIL_AUTH_AGENT_KEY: "${ZEPTOMAIL_AUTH_AGENT_KEY:-}"
+      ZEPTOMAIL_PROCUREMENT_AGENT_KEY: "${ZEPTOMAIL_PROCUREMENT_AGENT_KEY:-}"
+      ZEPTOMAIL_BUDGET_AGENT_KEY: "${ZEPTOMAIL_BUDGET_AGENT_KEY:-}"
+      ZEPTOMAIL_DELIVERY_AGENT_KEY: "${ZEPTOMAIL_DELIVERY_AGENT_KEY:-}"
+      ZEPTOMAIL_DOCUMENTS_AGENT_KEY: "${ZEPTOMAIL_DOCUMENTS_AGENT_KEY:-}"
+      ZEPTOMAIL_PLATFORM_AGENT_KEY: "${ZEPTOMAIL_PLATFORM_AGENT_KEY:-}"
       ACCOUNT_SETUP_TTL_HOURS: "${ACCOUNT_SETUP_TTL_HOURS:-24}"
       AXORA_EMAIL_REPLY_TO: "${AXORA_EMAIL_REPLY_TO:-support@axora.management}"
       # Server-only monitored inbox; never expose this as NEXT_PUBLIC_*.
@@ -136,6 +143,9 @@ services:
       APP_BASE_URL: "https://${AXORA_HOST:?Set AXORA_HOST in .env}"
       CLOUDFLARE_ACCOUNT_ID: "${CLOUDFLARE_ACCOUNT_ID:-}"
       CLOUDFLARE_EMAIL_API_TOKEN_FILE: /run/secrets/cloudflare_email_api_token
+      ZEPTOMAIL_SEND_TOKEN_FILE: /run/secrets/zeptomail_send_token
+      ZEPTOMAIL_SEND_TOKEN_NEXT_FILE: /run/secrets/zeptomail_send_token_next
+      AXORA_ZEPTOMAIL_TOKEN_SLOT: "${AXORA_ZEPTOMAIL_TOKEN_SLOT:-primary}"
       AXORA_EMAIL_SERVICE_AUTH_KEY_FILE: /run/secrets/axora_email_service_auth_key
       AXORA_EMAIL_OUTBOX_URL: "http://app:3000/account/email-outbox"
       AXORA_EMAIL_PROVIDER: "${AXORA_EMAIL_PROVIDER:-cloudflare-email-service}"
@@ -144,6 +154,8 @@ services:
       AXORA_EMAIL_REPLY_TO: "${AXORA_EMAIL_REPLY_TO:-support@axora.management}"
     secrets:
       - cloudflare_email_api_token
+      - zeptomail_send_token
+      - zeptomail_send_token_next
       - axora_email_service_auth_key
     expose:
       - "3100"
@@ -256,6 +268,10 @@ secrets:
     file: ./secrets/session_secret
   cloudflare_email_api_token:
     file: ./secrets/cloudflare_email_api_token
+  zeptomail_send_token:
+    file: ./secrets/zeptomail_send_token
+  zeptomail_send_token_next:
+    file: ./secrets/zeptomail_send_token_next
   axora_email_service_auth_key:
     file: ./secrets/axora_email_service_auth_key
   axora_email_events_webhook_secret:

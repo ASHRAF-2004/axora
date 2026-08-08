@@ -323,6 +323,32 @@ BEGIN
   END IF;
 END $$;
 
+-- P0-09 approval email fanout remains private to its audited trigger.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regprocedure(
+      'public.axora_enqueue_approval_workflow_email(uuid,uuid,uuid,text,text,text,text,text)'
+    ) IS NOT NULL
+  THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_enqueue_approval_workflow_email(uuid,uuid,uuid,text,text,text,text,text) FROM axora_app';
+  END IF;
+END $$;
+
+-- P0-09 provider-neutral email capabilities. Provider evidence and usage
+-- remain private; the application receives only claim, completion and signed
+-- provider-event write boundaries.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.email_delivery_attempts') IS NOT NULL
+  THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.email_delivery_attempts,public.email_delivery_usage_daily FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_email_retry_delay(integer),public.axora_email_template_key(text),public.axora_email_provider_agent(text),public.axora_email_priority(text),public.axora_set_transactional_email_metadata(),public.axora_protect_transactional_email_metadata(),public.axora_set_workflow_email_metadata(),public.axora_protect_workflow_email_metadata(),public.axora_record_email_provider_event(text,uuid,text,text,text,text,boolean,timestamptz,integer),public.axora_request_email_copy(text,text,text),public.axora_request_approval_recipient_ids(uuid,text,timestamptz),public.axora_emit_request_notification(uuid,uuid,text,uuid[],uuid,uuid,timestamptz),public.axora_dispatch_request_approval_notification(),public.axora_resume_paused_email_jobs(text) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_claim_workflow_email_v2(integer,integer),public.axora_complete_workflow_email_v2(uuid,uuid,text,text,text,integer,text,text,integer),public.axora_record_zeptomail_email_event(uuid,text,text,text,text,boolean,timestamptz,integer) TO axora_app';
+  END IF;
+END $$;
+
 -- P0-06/P1-01/P1-02 capabilities are conditional so this script remains
 -- usable while a hybrid environment is advancing through the migration chain.
 DO $$

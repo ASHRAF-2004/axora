@@ -129,8 +129,8 @@ fi
   || die "AXORA_EMAIL_FROM_NAME must be a non-empty, single-line value of at most 100 characters."
 [[ "$email_reply_to" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] \
   || die "AXORA_EMAIL_REPLY_TO must be a valid email address."
-[[ "$email_provider" == "cloudflare-email-service" ]] \
-  || die "AXORA_EMAIL_PROVIDER must be cloudflare-email-service."
+[[ "$email_provider" == "cloudflare-email-service" || "$email_provider" == "zeptomail" ]] \
+  || die "AXORA_EMAIL_PROVIDER must be cloudflare-email-service or zeptomail."
 if [[ ! "$account_setup_ttl" =~ ^[0-9]+$ ]] \
   || (( account_setup_ttl < 1 || account_setup_ttl > 168 )); then
   die "ACCOUNT_SETUP_TTL_HOURS must be a whole number from 1 to 168."
@@ -171,17 +171,64 @@ email_token_mode="$(stat -c '%a' "$email_token_path")"
   || die "Cloudflare email token must be owned by root:GID-1000."
 (( (8#$email_token_mode & 8#027) == 0 )) \
   || die "Cloudflare email token permissions are too broad."
+
+for zeptomail_token_name in zeptomail_send_token zeptomail_send_token_next; do
+  zeptomail_token_path="$AXORA_SECRETS_DIR/$zeptomail_token_name"
+  [[ -f "$zeptomail_token_path" && ! -L "$zeptomail_token_path" ]] \
+    || die "ZeptoMail token placeholder is missing or unsafe: $zeptomail_token_name"
+  zeptomail_token_mode="$(stat -c '%a' "$zeptomail_token_path")"
+  [[ "$(stat -c '%u:%g' "$zeptomail_token_path")" == "0:1000" ]] \
+    || die "ZeptoMail token must be owned by root:GID-1000: $zeptomail_token_name"
+  (( (8#$zeptomail_token_mode & 8#027) == 0 )) \
+    || die "ZeptoMail token permissions are too broad: $zeptomail_token_name"
+done
+
 if [[ "$email_delivery_enabled" == "true" ]]; then
-  [[ -n "$cloudflare_account_id" ]] \
-    || die "Email delivery requires CLOUDFLARE_ACCOUNT_ID."
-  [[ -n "$cloudflare_zone_id" ]] \
-    || die "Email delivery requires CLOUDFLARE_ZONE_ID."
-  [[ -s "$email_token_path" ]] \
-    || die "Email delivery is enabled but its dedicated Cloudflare API token is empty."
+  if [[ "$email_provider" == "cloudflare-email-service" ]]; then
+    [[ -n "$cloudflare_account_id" ]] \
+      || die "Cloudflare email delivery requires CLOUDFLARE_ACCOUNT_ID."
+    [[ -n "$cloudflare_zone_id" ]] \
+      || die "Cloudflare email delivery requires CLOUDFLARE_ZONE_ID."
+    [[ -s "$email_token_path" ]] \
+      || die "Cloudflare email delivery is enabled but its API token is empty."
+    selected_email_token_path="$email_token_path"
+  else
+    zeptomail_token_slot="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_ZEPTOMAIL_TOKEN_SLOT)"
+    [[ "$zeptomail_token_slot" == "primary" || "$zeptomail_token_slot" == "next" ]] \
+      || die "AXORA_ZEPTOMAIL_TOKEN_SLOT must be primary or next."
+    selected_email_token_path="$AXORA_SECRETS_DIR/zeptomail_send_token"
+    [[ "$zeptomail_token_slot" == "primary" ]] \
+      || selected_email_token_path="$AXORA_SECRETS_DIR/zeptomail_send_token_next"
+    [[ -s "$selected_email_token_path" ]] \
+      || die "ZeptoMail delivery is enabled but the active Send Mail Token is empty."
+    for readiness_key in \
+      ZEPTOMAIL_ACCOUNT_REVIEWED \
+      ZEPTOMAIL_DOMAIN_VERIFIED \
+      ZEPTOMAIL_CREDITS_READY \
+      ZEPTOMAIL_WEBHOOK_VERIFIED; do
+      [[ "$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" "$readiness_key")" == "true" ]] \
+        || die "$readiness_key must be true before ZeptoMail delivery is enabled."
+    done
+    zeptomail_agent_keys=""
+    for agent_key_name in \
+      ZEPTOMAIL_AUTH_AGENT_KEY \
+      ZEPTOMAIL_PROCUREMENT_AGENT_KEY \
+      ZEPTOMAIL_BUDGET_AGENT_KEY \
+      ZEPTOMAIL_DELIVERY_AGENT_KEY \
+      ZEPTOMAIL_DOCUMENTS_AGENT_KEY \
+      ZEPTOMAIL_PLATFORM_AGENT_KEY; do
+      agent_key="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" "$agent_key_name")"
+      [[ "$agent_key" =~ ^[A-Za-z0-9_-]{1,200}$ ]] \
+        || die "$agent_key_name is malformed."
+      [[ " $zeptomail_agent_keys " != *" $agent_key "* ]] \
+        || die "ZeptoMail Agent keys must be unique."
+      zeptomail_agent_keys="$zeptomail_agent_keys $agent_key"
+    done
+  fi
   if [[ "$check_mode" != "local" ]]; then
     "$SCRIPT_DIR/check-email-service.mjs" \
       --runtime-file "$AXORA_RUNTIME_ENV_FILE" \
-      --token-file "$email_token_path"
+      --token-file "$selected_email_token_path"
   fi
 fi
 

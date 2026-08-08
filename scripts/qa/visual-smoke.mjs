@@ -52,6 +52,11 @@ async function inspect(name, route, heading) {
     : page.getByRole("heading", { name: heading });
   await title.waitFor({ state: "visible" });
   await page.waitForTimeout(250);
+  await page.waitForFunction(
+    () => [...document.images].every((image) => image.complete),
+    undefined,
+    { timeout: 5_000 },
+  );
   const layout = await page.evaluate(() => ({
     title: document.title,
     horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -71,12 +76,12 @@ try {
   await page.getByRole("heading", { name: "Sign in to Axora" }).waitFor();
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(outputDir, "login.png"), fullPage: false });
-  await page.getByLabel("Email").fill(environment.DEMO_EMAIL);
-  await page.getByLabel("Password").fill(environment.DEMO_PASSWORD);
+  await page.getByLabel("Email", { exact: true }).fill(environment.DEMO_EMAIL);
+  await page.getByLabel("Password", { exact: true }).fill(environment.DEMO_PASSWORD);
   await Promise.all([page.waitForURL("**/dashboard"), page.getByRole("button", { name: "Sign in" }).click()]);
 
   await inspect("dashboard", "/dashboard", /^(Good morning|Good afternoon|Good evening),\s+\S/u);
-  await inspect("requests", "/requests", "Requests");
+  await inspect("requests", "/requests", "Purchase requests");
   const requestLink = page.locator('.data-table a[href^="/requests/"]').first();
   const requestHref = await requestLink.getAttribute("href");
   const requestHeading = (await requestLink.textContent())?.trim();
@@ -86,8 +91,8 @@ try {
   await inspect("sourcing", "/sourcing", "Sourcing and quotations");
   await inspect("deliveries", "/deliveries", "Deliveries");
   await inspect("finance", "/finance", "Invoices and COD payments");
-  await inspect("users", "/users", "Users and roles");
-  await inspect("settings", "/settings", "Readiness and settings");
+  await inspect("users", "/users", "Create named accounts");
+  await inspect("settings", "/settings", "Settings and security");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseUrl}/dashboard`, { waitUntil: "domcontentloaded" });

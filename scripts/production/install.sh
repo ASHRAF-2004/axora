@@ -211,6 +211,23 @@ else
   chmod 0640 "$email_token_file"
 fi
 
+# ZeptoMail uses a dedicated primary/next pair so token rotation never
+# overwrites the Cloudflare rollback credential. Empty hardened placeholders
+# keep delivery disabled until the provider launch gate is completed.
+for zeptomail_token_name in zeptomail_send_token zeptomail_send_token_next; do
+  zeptomail_token_file="$SECRETS_DIR/$zeptomail_token_name"
+  [[ ! -L "$zeptomail_token_file" ]] \
+    || fail "ZeptoMail token must not be a symlink: $zeptomail_token_name"
+  if [[ ! -e "$zeptomail_token_file" ]]; then
+    install -o root -g "$RUNTIME_GID" -m 0640 /dev/null "$zeptomail_token_file"
+  else
+    [[ -f "$zeptomail_token_file" ]] \
+      || fail "ZeptoMail token path must be a regular file: $zeptomail_token_name"
+    chown root:"$RUNTIME_GID" "$zeptomail_token_file"
+    chmod 0640 "$zeptomail_token_file"
+  fi
+done
+
 # The Queue consumer and application share this single-purpose HMAC key. The
 # installer creates only a hardened empty placeholder; an operator generates
 # and installs the value, then enters the same value through `wrangler secret

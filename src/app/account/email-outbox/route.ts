@@ -26,18 +26,24 @@ const transactionalCompleteSchema = z.object({
   queue: z.literal("transactional"),
   deliveryId: z.uuid(),
   leaseId: z.uuid(),
-  outcome: z.enum(["sent", "retry", "failed", "disabled", "uncertain"]),
+  outcome: z.enum(["sent", "retry", "failed", "paused", "disabled", "uncertain"]),
   providerMessageId: z.string().trim().min(1).max(255).regex(/^[^\r\n]+$/).optional(),
   errorCode: z.string().trim().regex(/^[a-z0-9_]{1,64}$/).optional(),
+  providerName: z.enum(["zeptomail", "cloudflare-email-service", "test", "unconfigured"]).optional(),
+  providerAgent: z.enum(["axora-auth", "axora-procurement", "axora-budget", "axora-delivery", "axora-documents", "axora-platform"]).optional(),
+  httpStatus: z.number().int().min(100).max(599).optional(),
 }).strict();
 const workflowCompleteSchema = z.object({
   action: z.literal("complete"),
   queue: z.literal("workflow"),
   deliveryId: z.uuid(),
   leaseId: z.uuid(),
-  outcome: z.enum(["sent", "retry", "failed", "disabled", "uncertain"]),
+  outcome: z.enum(["sent", "retry", "failed", "paused", "disabled", "uncertain"]),
   providerMessageId: z.string().trim().min(1).max(255).regex(/^[^\r\n]+$/).optional(),
   errorCode: z.string().trim().regex(/^[a-z0-9_]{1,64}$/).optional(),
+  providerName: z.enum(["zeptomail", "cloudflare-email-service", "test", "unconfigured"]).optional(),
+  providerAgent: z.enum(["axora-auth", "axora-procurement", "axora-budget", "axora-delivery", "axora-documents", "axora-platform"]).optional(),
+  httpStatus: z.number().int().min(100).max(599).optional(),
 }).strict();
 const requestSchema = z.union([
   transactionalClaimSchema,
@@ -101,6 +107,9 @@ export async function POST(request: Request) {
         {
           providerMessageId: parsed.providerMessageId,
           errorCode: parsed.errorCode,
+          providerName: parsed.providerName,
+          providerAgent: parsed.providerAgent,
+          httpStatus: parsed.httpStatus,
         },
       );
       return recorded
@@ -116,6 +125,9 @@ export async function POST(request: Request) {
         {
           providerMessageId: parsed.providerMessageId,
           errorCode: parsed.errorCode,
+          providerName: parsed.providerName,
+          providerAgent: parsed.providerAgent,
+          httpStatus: parsed.httpStatus,
         },
       );
       return recorded

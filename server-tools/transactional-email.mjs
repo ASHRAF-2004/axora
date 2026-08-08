@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { resolveEmailTemplate } from "./email-template-catalogue.mjs";
 
 const TEMPLATE_URL = new URL("../email-templates/transactional.html", import.meta.url);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -288,6 +289,7 @@ export async function renderTransactionalEmail(input, options = {}) {
   const locale = String(input.locale ?? "en").toLowerCase();
   const copy = COPY[locale];
   if (!copy) throw new Error("Transactional email locale is invalid.");
+  const templateDefinition = resolveEmailTemplate(input);
   const recipientEmail = emailAddress(input.recipientEmail, "Recipient email");
   const recipientName = boundedText(input.recipientName, "Recipient name");
   const appBaseUrl = options.appBaseUrl ?? "https://axora.management";
@@ -383,6 +385,8 @@ export async function renderTransactionalEmail(input, options = {}) {
     throw new Error("Transactional email kind is invalid.");
   }
 
+  subject = templateDefinition.subjects[locale];
+
   const template = options.template ?? await templateSource();
   const html = applyPlaceholders(template, {
     EMAIL_LANG: locale,
@@ -408,7 +412,11 @@ export async function renderTransactionalEmail(input, options = {}) {
     subject,
     html,
     text,
-    templateKey: input.messageKind.toLowerCase().replaceAll("_", "-"),
+    templateKey: templateDefinition.key,
+    templateVersion: templateDefinition.version,
+    providerAgent: templateDefinition.agent,
+    priority: templateDefinition.priority,
+    tracking: templateDefinition.tracking,
   };
 }
 

@@ -21,6 +21,7 @@ done
 node --check "$REPOSITORY_DIR/server-tools/migrate.mjs"
 node --check "$REPOSITORY_DIR/server-tools/account-setup-email.mjs"
 node --check "$REPOSITORY_DIR/server-tools/transactional-email.mjs"
+node --check "$REPOSITORY_DIR/server-tools/email-template-catalogue.mjs"
 node --check "$REPOSITORY_DIR/server-tools/email-sender.mjs"
 node --check "$REPOSITORY_DIR/scripts/production/check-email-service.mjs"
 
@@ -119,6 +120,7 @@ for secret in \
   turnstile_secret; do
   touch "$secrets_dir/$secret"
 done
+touch "$secrets_dir/zeptomail_send_token" "$secrets_dir/zeptomail_send_token_next"
 
 export AXORA_HOST=axora.management
 export LAN_IP=127.0.0.1
@@ -171,6 +173,8 @@ jq --exit-status \
     and .services.app.environment.TURNSTILE_HOSTNAMES == "axora.management"
     and .services.app.environment.AXORA_TURNSTILE_EXPECTED_HOSTNAME == "axora.management"
     and .services["email-sender"].environment.AXORA_EMAIL_PROVIDER == "cloudflare-email-service"
+    and .services["email-sender"].environment.ZEPTOMAIL_SEND_TOKEN_FILE == "/run/secrets/zeptomail_send_token"
+    and .services["email-sender"].environment.ZEPTOMAIL_SEND_TOKEN_NEXT_FILE == "/run/secrets/zeptomail_send_token_next"
     and .services["email-sender"].environment.AXORA_EMAIL_OUTBOX_URL == "http://app:3000/account/email-outbox"
     and .services["email-sender"].environment.AXORA_EMAIL_SERVICE_AUTH_KEY_FILE == "/run/secrets/axora_email_service_auth_key"
     and .services.db.environment.POSTGRES_DB == "axora_hybrid"
@@ -185,7 +189,7 @@ jq --exit-status \
     and ([.services.app.secrets[].source] | index("axora_email_service_auth_key")) != null
     and ([.services.app.secrets[].source] | index("turnstile_secret")) != null
     and ([.services["email-sender"].secrets[].source] | sort) ==
-      ["axora_email_service_auth_key","cloudflare_email_api_token"]
+      ["axora_email_service_auth_key","cloudflare_email_api_token","zeptomail_send_token","zeptomail_send_token_next"]
     and (
       [
         .services
@@ -228,6 +232,8 @@ jq --exit-status \
     and (.secrets.tailscale_db_auth_key.file == ($secrets + "/tailscale_db_auth_key"))
     and (.secrets.cloudflare_tunnel_token.file == ($secrets + "/cloudflare_tunnel_token"))
     and (.secrets.cloudflare_email_api_token.file == ($secrets + "/cloudflare_email_api_token"))
+    and (.secrets.zeptomail_send_token.file == ($secrets + "/zeptomail_send_token"))
+    and (.secrets.zeptomail_send_token_next.file == ($secrets + "/zeptomail_send_token_next"))
     and (.secrets.axora_email_service_auth_key.file == ($secrets + "/axora_email_service_auth_key"))
     and (.secrets.turnstile_secret.file == ($secrets + "/turnstile_secret"))
     and (

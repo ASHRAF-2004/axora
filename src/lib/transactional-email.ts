@@ -16,8 +16,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_SERVICE_SECRET_MINIMUM_LENGTH = 32;
 const OUTBOX_LEASE_SECONDS = 90;
-const OUTBOX_MAX_ATTEMPTS = 3;
-const OUTBOX_RETRY_SECONDS = 60;
+const OUTBOX_MAX_ATTEMPTS = 7;
 
 export type TransactionalEmailKind =
   | "CONTACT_NOTIFICATION"
@@ -30,6 +29,7 @@ export type TransactionalEmailOutcome =
   | "sent"
   | "retry"
   | "failed"
+  | "paused"
   | "disabled"
   | "uncertain";
 
@@ -52,6 +52,11 @@ export interface TransactionalEmailOutboxJob {
   locale: SupportedEmailLocale;
   recipientEmail: string;
   recipientName: string;
+  eventKey: string;
+  templateKey: string;
+  templateVersion: number;
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  providerAgent: string;
   replyToEmail?: string;
   expiresAt?: string;
   actionUrl?: string;
@@ -352,6 +357,11 @@ interface OutboxRow {
   subject?: string;
   message?: string;
   submittedAt?: string;
+  eventKey: string;
+  templateKey: string;
+  templateVersion: number;
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  providerAgent: string;
 }
 
 export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmailOutboxJob | null> {
@@ -479,6 +489,9 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
       const selected = await client.query<OutboxRow>(
         `SELECT outbox.id::text AS "deliveryId",outbox.message_kind AS "messageKind",
            outbox.locale,
+           outbox.message_kind AS "eventKey",outbox.template_key AS "templateKey",
+           outbox.template_version AS "templateVersion",outbox.priority,
+           outbox.provider_agent AS "providerAgent",
            COALESCE(reset.id,verification.id)::text AS "sourceId",
            COALESCE(reset.token_hash,verification.token_hash) AS "tokenHash",
            outbox.token_ciphertext AS "tokenCiphertext",
@@ -535,7 +548,9 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                AND verification_user.account_status='ACTIVE'
                AND NOT axora_email_recipient_is_suppressed(verification.email))
            )
-         ORDER BY outbox.created_at,outbox.id
+         ORDER BY CASE outbox.priority
+             WHEN 'URGENT' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'NORMAL' THEN 3 ELSE 4 END,
+           outbox.created_at,outbox.id
          FOR UPDATE OF outbox SKIP LOCKED
          LIMIT 1`,
         [privateContactRecipient, OUTBOX_MAX_ATTEMPTS],
@@ -592,6 +607,11 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
           leaseId,
           messageKind: row.messageKind,
           locale: row.locale,
+          eventKey: row.eventKey,
+          templateKey: row.templateKey,
+          templateVersion: row.templateVersion,
+          priority: row.priority,
+          providerAgent: row.providerAgent,
           recipientEmail: acknowledgement
             ? String(row.contactEmail)
             : String(privateContactRecipient),
@@ -617,6 +637,11 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
           leaseId,
           messageKind: row.messageKind,
           locale: row.locale,
+          eventKey: row.eventKey,
+          templateKey: row.templateKey,
+          templateVersion: row.templateVersion,
+          priority: row.priority,
+          providerAgent: row.providerAgent,
           recipientEmail: String(row.recipientEmail),
           recipientName: String(row.recipientName),
         };
@@ -627,6 +652,11 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
         leaseId,
         messageKind: row.messageKind,
         locale: row.locale,
+        eventKey: row.eventKey,
+        templateKey: row.templateKey,
+        templateVersion: row.templateVersion,
+        priority: row.priority,
+        providerAgent: row.providerAgent,
         recipientEmail: String(row.recipientEmail),
         recipientName: String(row.recipientName),
         expiresAt: String(row.expiresAt),
@@ -653,11 +683,42 @@ function safeProviderMessageId(value: string | undefined) {
   return normalized || null;
 }
 
+function safeProviderName(value: string | undefined) {
+  const normalized = value?.trim() || "unconfigured";
+  if (!["zeptomail", "cloudflare-email-service", "test", "unconfigured"].includes(normalized)) {
+    throw new Error("The email provider name is invalid.");
+  }
+  return normalized;
+}
+
+function safeProviderAgent(value: string | undefined) {
+  if (value === undefined) return null;
+  const normalized = value.trim();
+  if (!["axora-auth", "axora-procurement", "axora-budget", "axora-delivery", "axora-documents", "axora-platform"].includes(normalized)) {
+    throw new Error("The email provider Agent is invalid.");
+  }
+  return normalized;
+}
+
+function safeHttpStatus(value: number | undefined) {
+  if (value === undefined) return null;
+  if (!Number.isInteger(value) || value < 100 || value > 599) {
+    throw new Error("The email provider status is invalid.");
+  }
+  return value;
+}
+
 export async function completeTransactionalEmailOutbox(
   deliveryId: string,
   leaseId: string,
   outcome: TransactionalEmailOutcome,
-  details: { providerMessageId?: string; errorCode?: string } = {},
+  details: {
+    providerMessageId?: string;
+    errorCode?: string;
+    providerName?: string;
+    providerAgent?: string;
+    httpStatus?: number;
+  } = {},
 ) {
   if (isDemoMode()) return false;
   if (!UUID_PATTERN.test(deliveryId) || !UUID_PATTERN.test(leaseId)) {
@@ -665,6 +726,9 @@ export async function completeTransactionalEmailOutbox(
   }
   const providerMessageId = safeProviderMessageId(details.providerMessageId);
   const errorCode = safeErrorCode(details.errorCode);
+  const providerName = safeProviderName(details.providerName);
+  const providerAgent = safeProviderAgent(details.providerAgent);
+  const httpStatus = safeHttpStatus(details.httpStatus);
   if (outcome === "sent" && errorCode) {
     throw new Error("A successful transactional email cannot contain an error code.");
   }
@@ -676,18 +740,26 @@ export async function completeTransactionalEmailOutbox(
         contactSubmissionId?: string;
         deliveryStatus: string;
         messageKind: TransactionalEmailKind;
+        attemptCount: number;
+        templateKey: string;
+        templateVersion: number;
+        providerAgent: string;
+        correlationId: string;
       }>(
         `UPDATE transactional_email_outbox
          SET delivery_status=CASE
                WHEN $3='sent' THEN 'SENT'
+               WHEN $3='paused' THEN 'PENDING'
                WHEN $3='retry' AND delivery_attempt_count < $6
                  THEN 'PENDING'
                WHEN $3='uncertain' THEN 'UNCERTAIN'
                WHEN $3='disabled' THEN 'DISABLED'
                ELSE 'FAILED'
              END,
-             delivery_available_at=CASE WHEN $3='retry'
-               THEN now()+make_interval(secs => $7::integer)
+             delivery_available_at=CASE
+               WHEN $3='paused' THEN 'infinity'::timestamptz
+               WHEN $3='retry' AND delivery_attempt_count < $6
+                 THEN now()+axora_email_retry_delay(delivery_attempt_count)
                ELSE delivery_available_at END,
              sent_at=CASE WHEN $3='sent' THEN now() ELSE NULL END,
              provider_message_id=CASE WHEN $3='sent' THEN $4 ELSE NULL END,
@@ -695,22 +767,27 @@ export async function completeTransactionalEmailOutbox(
                WHEN $3='sent' THEN NULL
                WHEN $3='retry' AND delivery_attempt_count >= $6
                  THEN 'retry_exhausted'
+               WHEN $3='paused' THEN COALESCE($5,'provider_paused')
                WHEN $3='disabled' THEN COALESCE($5,'delivery_disabled')
                WHEN $3='uncertain' THEN COALESCE($5,'delivery_uncertain')
                ELSE COALESCE($5,'delivery_failed') END,
              delivery_lease_id=NULL,delivery_lease_expires_at=NULL,
              token_ciphertext=CASE
-               WHEN $3='retry' AND delivery_attempt_count < $6
+               WHEN ($3='retry' AND delivery_attempt_count < $6) OR $3='paused'
                  THEN token_ciphertext ELSE NULL END,
              token_nonce=CASE
-               WHEN $3='retry' AND delivery_attempt_count < $6
+               WHEN ($3='retry' AND delivery_attempt_count < $6) OR $3='paused'
                  THEN token_nonce ELSE NULL END,
              token_authentication_tag=CASE
-               WHEN $3='retry' AND delivery_attempt_count < $6
+               WHEN ($3='retry' AND delivery_attempt_count < $6) OR $3='paused'
                  THEN token_authentication_tag ELSE NULL END
          WHERE id=$1 AND delivery_status='SENDING' AND delivery_lease_id=$2
+           AND ($8::text IS NULL OR provider_agent=$8)
          RETURNING contact_submission_id::text AS "contactSubmissionId",
-           delivery_status AS "deliveryStatus",message_kind AS "messageKind"`,
+           delivery_status AS "deliveryStatus",message_kind AS "messageKind",
+           delivery_attempt_count AS "attemptCount",template_key AS "templateKey",
+           template_version AS "templateVersion",provider_agent AS "providerAgent",
+           correlation_id::text AS "correlationId"`,
         [
           deliveryId,
           leaseId,
@@ -718,11 +795,28 @@ export async function completeTransactionalEmailOutbox(
           providerMessageId,
           errorCode,
           OUTBOX_MAX_ATTEMPTS,
-          OUTBOX_RETRY_SECONDS,
+          providerName,
+          providerAgent,
         ],
       );
       const row = updated.rows[0];
       if (!row) return false;
+      await client.query(
+        `INSERT INTO email_delivery_attempts(
+           delivery_kind,delivery_id,event_type,template_key,template_version,
+           provider_name,provider_agent,attempt_number,outcome,
+           provider_message_fingerprint,error_code,http_status,correlation_id
+         ) VALUES (
+           'TRANSACTIONAL',$1,$2,$3,$4,$5,$6,$7,
+           CASE WHEN $8='retry' AND $7 >= $9 THEN 'failed' ELSE $8 END,
+           CASE WHEN $10::text IS NULL THEN NULL
+             ELSE encode(sha256(convert_to($10,'UTF8')),'hex') END,
+           $11,$12,$13
+         ) ON CONFLICT(delivery_kind,delivery_id,attempt_number) DO NOTHING`,
+        [deliveryId,row.messageKind,row.templateKey,row.templateVersion,
+          providerName,row.providerAgent,row.attemptCount,outcome,OUTBOX_MAX_ATTEMPTS,
+          providerMessageId,errorCode,httpStatus,row.correlationId],
+      );
       const messageKind = row.messageKind ?? "CONTACT_NOTIFICATION";
       if (row.contactSubmissionId && row.deliveryStatus !== "PENDING") {
         if (messageKind === "CONTACT_NOTIFICATION") {

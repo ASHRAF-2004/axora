@@ -182,7 +182,7 @@ function responseOutcome(
     ? payload as Record<string, unknown>
     : {};
   if (response.ok && result.succeeded === true
-    && ["delivered", "queued"].includes(String(result.status))) {
+    && ["delivered", "queued", "submitted"].includes(String(result.status))) {
     return "sent";
   }
   if (result.disposition === "retry") {

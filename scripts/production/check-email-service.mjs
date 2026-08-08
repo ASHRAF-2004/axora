@@ -111,6 +111,43 @@ export async function verifyEmailServiceConfiguration({
   return { accountId, zoneId, senderDomain };
 }
 
+export function verifyZeptoMailConfiguration({ runtimeSource, tokenSource }) {
+  const fromAddress = runtimeValue(runtimeSource, "AXORA_EMAIL_FROM_ADDRESS").toLowerCase();
+  const senderDomain = fromAddress.split("@")[1];
+  const token = tokenSource.trim();
+  if (!/^[^\s@]+@[^\s@]+$/.test(fromAddress) || !senderDomain
+    || (senderDomain !== "axora.management"
+      && !senderDomain.endsWith(".axora.management"))) {
+    throw new Error("Axora sender domain is invalid.");
+  }
+  if (token.length < 20 || token.length > 4096 || !/^[\x21-\x7e]+$/.test(token)) {
+    throw new Error("The active ZeptoMail Send Mail Token is malformed.");
+  }
+  for (const key of [
+    "ZEPTOMAIL_ACCOUNT_REVIEWED",
+    "ZEPTOMAIL_DOMAIN_VERIFIED",
+    "ZEPTOMAIL_CREDITS_READY",
+    "ZEPTOMAIL_WEBHOOK_VERIFIED",
+  ]) {
+    if (runtimeValue(runtimeSource, key) !== "true") {
+      throw new Error(`${key} must be true before production sending.`);
+    }
+  }
+  const agentKeys = [
+    "ZEPTOMAIL_AUTH_AGENT_KEY",
+    "ZEPTOMAIL_PROCUREMENT_AGENT_KEY",
+    "ZEPTOMAIL_BUDGET_AGENT_KEY",
+    "ZEPTOMAIL_DELIVERY_AGENT_KEY",
+    "ZEPTOMAIL_DOCUMENTS_AGENT_KEY",
+    "ZEPTOMAIL_PLATFORM_AGENT_KEY",
+  ].map((key) => runtimeValue(runtimeSource, key));
+  if (new Set(agentKeys).size !== agentKeys.length
+    || agentKeys.some((value) => !/^[A-Za-z0-9_-]{1,200}$/.test(value))) {
+    throw new Error("ZeptoMail Agent identities must be valid and unique.");
+  }
+  return { provider: "zeptomail", senderDomain, agentCount: agentKeys.length };
+}
+
 async function verifyEmailService() {
   const runtimeFile = argument("--runtime-file");
   const tokenFile = argument("--token-file");
@@ -118,6 +155,20 @@ async function verifyEmailService() {
     readFile(runtimeFile, "utf8"),
     readFile(tokenFile, "utf8"),
   ]);
+  const provider = runtimeValue(runtimeSource, "AXORA_EMAIL_PROVIDER");
+  if (provider === "zeptomail") {
+    const { senderDomain, agentCount } = verifyZeptoMailConfiguration({
+      runtimeSource,
+      tokenSource,
+    });
+    process.stdout.write(
+      `ZeptoMail launch evidence is configured for ${senderDomain} across ${agentCount} Agents.\n`,
+    );
+    return;
+  }
+  if (provider !== "cloudflare-email-service") {
+    throw new Error("Unsupported production email provider.");
+  }
   const { senderDomain } = await verifyEmailServiceConfiguration({ runtimeSource, tokenSource });
   process.stdout.write(`Cloudflare Email Sending is ready for ${senderDomain}.\n`);
 }
