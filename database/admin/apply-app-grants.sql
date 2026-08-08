@@ -323,6 +323,52 @@ BEGIN
   END IF;
 END $$;
 
+-- P1-11/P1-12 generated documents. Raw snapshots, private storage metadata,
+-- supplier dispatch evidence and append-only events remain capability-only.
+DO $$
+DECLARE function_identity text;
+BEGIN
+  IF to_regclass('public.document_generation_jobs') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.document_templates,public.document_generation_jobs,public.generated_documents,public.supplier_purchase_order_workflows,public.document_generation_events,public.supplier_purchase_order_events,public.document_enqueue_failures FROM axora_app';
+    FOR function_identity IN
+      SELECT procedure.oid::regprocedure::text
+      FROM pg_catalog.pg_proc procedure
+      WHERE procedure.pronamespace='public'::regnamespace
+        AND procedure.proname IN (
+          'axora_document_json_has_forbidden_key',
+          'axora_assert_document_snapshot_safe',
+          'axora_build_approved_request_document_snapshot',
+          'axora_build_final_delivery_document_snapshot',
+          'axora_build_supplier_po_document_snapshot',
+          'axora_queue_document_generation_job',
+          'axora_enqueue_approval_documents',
+          'axora_maybe_enqueue_final_document',
+          'axora_enqueue_final_document_from_actual',
+          'axora_enqueue_final_document_from_delivery',
+          'axora_cancel_request_document_jobs',
+          'axora_document_request_permission',
+          'axora_document_supplier_permission',
+          'axora_generated_document_access_allowed',
+          'axora_generated_document_download',
+          'axora_generated_document_workspace',
+          'axora_claim_document_generation_job',
+          'axora_document_notification_recipient_ids',
+          'axora_document_internal_recipient_ids',
+          'axora_complete_document_generation_job',
+          'axora_fail_document_generation_job',
+          'axora_request_document_regeneration',
+          'axora_manage_supplier_purchase_order',
+          'axora_protect_document_job_snapshot',
+          'axora_protect_generated_document',
+          'axora_document_audit_change'
+        )
+    LOOP
+      EXECUTE format('REVOKE ALL ON FUNCTION %s FROM axora_app',function_identity);
+    END LOOP;
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_generated_document_download(uuid,uuid,uuid,timestamptz),public.axora_generated_document_workspace(uuid,uuid,timestamptz),public.axora_claim_document_generation_job(uuid,integer,timestamptz),public.axora_complete_document_generation_job(uuid,uuid,text,text,text,integer,bigint,timestamptz),public.axora_fail_document_generation_job(uuid,uuid,text,timestamptz),public.axora_request_document_regeneration(uuid,uuid,uuid,integer,text,text,uuid,timestamptz),public.axora_manage_supplier_purchase_order(uuid,uuid,uuid,integer,text,uuid,text,uuid,timestamptz) TO axora_app';
+  END IF;
+END $$;
+
 -- P0-09 approval email fanout remains private to its audited trigger.
 DO $$
 BEGIN

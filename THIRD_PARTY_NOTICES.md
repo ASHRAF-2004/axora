@@ -64,3 +64,21 @@ Ubuntu PostgreSQL server.
 - License: BSD 3-Clause
 - Copyright: Copyright (c) 2020 Tailscale Inc & contributors
 - Full license text: `licenses/TAILSCALE-BSD-3-CLAUSE.txt`
+
+## PDFKit document generator
+
+The private document worker uses PDFKit to generate versioned procurement PDFs.
+
+- Project: https://pdfkit.org/
+- Version: 0.19.1
+- License: MIT
+- Full license text: `licenses/PDFKIT-MIT.txt`
+
+## DejaVu fonts embedded in generated documents
+
+Generated English, Arabic and Malay procurement PDFs embed DejaVu Sans and
+DejaVu Sans Bold without renaming or modification.
+
+- Project: https://dejavu-fonts.github.io/
+- License: Bitstream Vera license with DejaVu public-domain additions
+- Full license text: `licenses/DEJAVU-FONTS.txt`
