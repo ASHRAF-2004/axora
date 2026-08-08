@@ -81,10 +81,10 @@ describe("request cart pricing migration", () => {
     `);
 
     expect(result.rows[0]).toEqual({
-      sales_amount: 140,
+      sales_amount: 110,
       estimated_delivery_fee: 10,
       tax_amount: 8.4,
-      customer_total: 158.4,
+      customer_total: 128.4,
     });
   });
 
@@ -125,6 +125,6 @@ describe("request cart pricing migration", () => {
       [request.rows[0].branch_id],
     );
 
-    expect(Number(result.rows[0].committed_amount)).toBe(158.4);
+    expect(Number(result.rows[0].committed_amount)).toBe(128.4);
   });
 });

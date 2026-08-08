@@ -38,10 +38,8 @@ import {
 } from "react";
 import { ProductImage } from "./ProductImage";
 import { useUxFeedback } from "./UxFeedbackProvider";
-
-function minimumQuantity(product: Product) {
-  return Math.max(Math.ceil(product.minimumOrderQuantity), 1);
-}
+import { productQuantityRule } from "@/lib/procurement-rules";
+import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
 
 export function ShopCategoryHub({
   departments,
@@ -54,6 +52,7 @@ export function ShopCategoryHub({
 }) {
   const productCopy = corePortalMessages(locale).products;
   const shopCopy = shopMessages(locale);
+  const ruleCopy = procurementRulesMessages(locale);
   const [selectedCategory, setSelectedCategory] =
     useState<ShopCategorySummary | null>(null);
 
@@ -673,12 +672,16 @@ export function ShopCategoryHub({
                           product.defaultSellPrice, locale,
                         )}
                     </strong>
-                    <span>{shopCopy.per} {product.unit}</span>
+                    <span>{shopCopy.per} {product.packSize && product.packSize > 1 ? product.packUnit : product.unit}</span>
                   </div>
+
+                  {product.packSize && product.packSize > 1 ? (
+                    <small>{ruleCopy.packSummary(product.packSize, product.packUnit ?? product.unit)}</small>
+                  ) : null}
 
                   <div className="shop-product-facts">
                     <span>
-                      MOQ {minimumQuantity(product)}
+                      {ruleCopy.quantitySummary(productQuantityRule(product))}
                     </span>
                     <span>
                       {product.deliverySlaDays === 0 ? shopCopy.sameDay : shopCopy.days(product.deliverySlaDays)}

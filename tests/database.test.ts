@@ -122,7 +122,7 @@ describe("PostgreSQL migration and demonstration seed", () => {
       "SELECT committed_amount::float8 FROM v_branch_budget_usage WHERE branch_id=$1",
       [request.rows[0].branch_id],
     );
-    expect(Number(usage.rows[0].committed_amount)).toBe(140);
+    expect(Number(usage.rows[0].committed_amount)).toBe(110);
   });
 
   it("calculates seeded order and invoice balances in database views", async () => {
@@ -148,13 +148,13 @@ describe("PostgreSQL migration and demonstration seed", () => {
 
     expect(order.rows[0]).toEqual({
       buying_cost: 100,
-      sales_amount: 140,
-      gross_profit: 40,
-      gross_margin_percent: 28.57,
+      sales_amount: 110,
+      gross_profit: 10,
+      gross_margin_percent: 9.09,
       delivery_charges: 5,
     });
     expect(paid.rows[0]).toEqual({ payment_status: "Paid", outstanding_amount: 0 });
-    expect(unpaid.rows[0]).toEqual({ payment_status: "Unpaid", outstanding_amount: 81 });
+    expect(unpaid.rows[0]).toEqual({ payment_status: "Unpaid", outstanding_amount: 59.4 });
   });
 
   it("enforces the canonical COD value for payments and settlement terms", async () => {

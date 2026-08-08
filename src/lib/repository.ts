@@ -9,6 +9,7 @@ import { canAccess } from "./permissions";
 import type { Branch, Company, DashboardData, ProcurementRequest, Product, RequestStatus, Supplier } from "./types";
 import { validateStatusTransition } from "./workflow";
 import { appendWorkflowEvent, notifyWorkflowAudience } from "./workflow-repository";
+import { calculateCommercialSellingPrice, quantityMatchesProductRule, withDemoCommercialDefaults } from "./procurement-rules";
 
 function nextCode(prefix: string, count: number, digits = 3) {
   return `${prefix}-${String(count + 1).padStart(digits, "0")}`;
@@ -114,10 +115,12 @@ export async function listProducts(providedActor?: SessionUser): Promise<Product
   const actor = await actorOrSession(providedActor);
   if (!canAccess(actor, "view_catalog")) throw new Error("Your account cannot view the product catalog.");
   if (isDemoMode()) {
+    const managesCatalog = canAccess(actor, "manage_catalog");
     const products = getDemoStore().products.filter((product) =>
-      isPlatformProcurementActor(actor) || (product.status === "Active" && (!product.companyId || product.companyId === actor.companyId)),
+      managesCatalog || (product.status === "Active" && (!product.companyId || product.companyId === actor.companyId)),
     );
-    return isPlatformProcurementActor(actor) ? products : products.map((product) => ({
+    const priced = products.map(withDemoCommercialDefaults);
+    return managesCatalog ? priced : priced.map((product) => ({
       ...product,
       defaultBuyPrice: 0,
       preferredSupplierId: undefined,
@@ -125,21 +128,32 @@ export async function listProducts(providedActor?: SessionUser): Promise<Product
       duplicateWarning: false,
     }));
   }
-  const platformActor = isPlatformProcurementActor(actor);
-  const result = await query<Product>(`SELECT p.id::text,p.company_id::text AS "companyId",c.name AS "companyName",p.product_code AS code, p.name, p.category, p.subcategory, p.brand, p.product_size AS size,
-    p.unit_of_measure AS unit, p.packaging, p.description, ${platformActor ? "p.default_buy_price::float8" : "0::float8"} AS "defaultBuyPrice",
-    p.default_sell_price::float8 AS "defaultSellPrice", p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
-    p.delivery_sla_days AS "deliverySlaDays", ${platformActor ? "ps.supplier_id::text" : "NULL::text"} AS "preferredSupplierId",
-    ${platformActor ? "s.name" : "NULL::text"} AS "preferredSupplierName",
-    (p.image_content IS NOT NULL) AS "hasImage", p.image_alt_text AS "imageAltText",
-    CASE WHEN p.needs_review THEN 'Needs Review' WHEN p.active THEN 'Active' ELSE 'Inactive' END AS status,
-    ${platformActor ? "p.needs_review" : "false"} AS "duplicateWarning"
-    FROM products p
-    LEFT JOIN companies c ON c.id=p.company_id
-    LEFT JOIN product_suppliers ps ON ps.product_id = p.id AND ps.preferred = true
-    LEFT JOIN suppliers s ON s.id = ps.supplier_id
-    ${platformActor ? "" : "WHERE p.active=true AND p.needs_review=false AND (p.company_id IS NULL OR p.company_id=$1)"}
-    ORDER BY p.name`, platformActor ? [] : [actor.companyId]);
+  const platformActor = canAccess(actor, "manage_catalog");
+  if (platformActor) {
+    if (!actor.roleAssignmentId) throw new Error("Product catalog is unavailable.");
+    const privileged = await query<{ products: Product[] }>(
+      "SELECT public.axora_product_administration_catalog($1,$2,now()) AS products",
+      [actor.id, actor.roleAssignmentId],
+    );
+    return privileged.rows[0]?.products ?? [];
+  }
+  const result = await query<Product>(`SELECT offer.id::text,offer.company_id::text AS "companyId",c.name AS "companyName",offer.product_code AS code, offer.name, offer.category, offer.subcategory, offer.brand, offer.product_size AS size,
+    offer.unit_of_measure AS unit, offer.packaging, offer.description, 0::float8 AS "defaultBuyPrice",
+    offer.default_sell_price::float8 AS "defaultSellPrice", offer.minimum_order_quantity::float8 AS "minimumOrderQuantity",
+    offer.maximum_order_quantity::float8 AS "maximumOrderQuantity",offer.order_increment::float8 AS "orderIncrement",
+    offer.pack_size::float8 AS "packSize",offer.pack_unit AS "packUnit",
+    offer.quantity_rule_version AS "quantityRuleVersion",offer.quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
+    offer.price_rule_version AS "priceRuleVersion",offer.price_effective_from::text AS "priceEffectiveFrom",
+    offer.price_changed_at::text AS "priceChangedAt",offer.price_currency AS "priceCurrency",
+    offer.delivery_sla_days AS "deliverySlaDays",NULL::text AS "preferredSupplierId",
+    NULL::text AS "preferredSupplierName",offer.has_image AS "hasImage",
+    offer.image_alt_text AS "imageAltText",'Active'::text AS status,
+    false AS "duplicateWarning"
+    FROM v_customer_catalog_products offer
+    LEFT JOIN companies c ON c.id=offer.company_id
+    WHERE offer.active=true AND offer.needs_review=false
+      AND (offer.company_id IS NULL OR offer.company_id=$1)
+    ORDER BY offer.name`, [actor.companyId]);
   return result.rows;
 }
 
@@ -595,8 +609,20 @@ export async function createProduct(
     }
     const supplier = store.suppliers.find((item) => item.id === input.preferredSupplierId);
     const id = randomUUID();
-    store.products.push({ ...input, id, code: nextCode("AX-NEW", store.products.length), hasImage: false,
-      status: "Active", duplicateWarning: false, preferredSupplierName: supplier?.name });
+    store.products.push(withDemoCommercialDefaults({
+      ...input,
+      defaultSellPrice: calculateCommercialSellingPrice(input.defaultBuyPrice),
+      orderIncrement: input.orderIncrement ?? 1,
+      packSize: input.packSize ?? 1,
+      packUnit: input.packUnit ?? input.unit,
+      quantityRuleEffectiveFrom: input.quantityRuleEffectiveFrom ?? new Date().toISOString(),
+      id,
+      code: nextCode("AX-NEW", store.products.length),
+      hasImage: false,
+      status: "Active",
+      duplicateWarning: false,
+      preferredSupplierName: supplier?.name,
+    }));
     return id;
   }
   return withAuditTransaction({ actor }, async (client) => {
@@ -617,11 +643,25 @@ export async function createProduct(
        default_buy_price,default_sell_price,minimum_order_quantity,delivery_sla_days,needs_review,company_id)
       VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,NULL) RETURNING id::text`,
     [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit,
-      input.packaging ?? null, input.description ?? null, input.defaultBuyPrice, input.defaultSellPrice,
+      input.packaging ?? null, input.description ?? null, input.defaultBuyPrice,
+      calculateCommercialSellingPrice(input.defaultBuyPrice),
       input.minimumOrderQuantity, input.deliverySlaDays]);
     if (input.preferredSupplierId) {
-      await client.query(`INSERT INTO product_suppliers (product_id,supplier_id,preferred,indicative_buy_price,supplier_moq,lead_time_days)
-        VALUES ($1,$2,true,$3,$4,$5)`, [product.rows[0].id, input.preferredSupplierId, input.defaultBuyPrice, input.minimumOrderQuantity, input.deliverySlaDays]);
+      await client.query(
+        `INSERT INTO product_suppliers
+           (product_id,supplier_id,preferred,indicative_buy_price,supplier_moq,
+            maximum_order_quantity,order_increment,pack_size,pack_unit,
+            quantity_rule_effective_from,quantity_rule_effective_to,quantity_rule_reason,
+            quantity_rule_updated_by,lead_time_days)
+         VALUES ($1,$2,true,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [product.rows[0].id, input.preferredSupplierId, input.defaultBuyPrice,
+          input.minimumOrderQuantity, input.maximumOrderQuantity ?? null,
+          input.orderIncrement ?? 1, input.packSize ?? 1, input.packUnit ?? input.unit,
+          input.quantityRuleEffectiveFrom ?? new Date().toISOString(),
+          input.quantityRuleEffectiveTo ?? null,
+          input.quantityRuleReason ?? "Product commercial setup", actor.id,
+          input.deliverySlaDays],
+      );
     }
     return product.rows[0].id;
   });
@@ -658,7 +698,7 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
       product.id === item.productId
       && product.status === "Active"
       && (!product.companyId || product.companyId === companyId)
-      && item.quantity >= product.minimumOrderQuantity,
+      && quantityMatchesProductRule(item.quantity, product),
     ))) throw new Error("One or more products are unavailable or below the minimum order quantity.");
     const subtotal = input.lines.reduce((total, item) => {
       const product = store.products.find(
@@ -666,7 +706,7 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
       );
 
       return total + roundMoney(
-        item.quantity * (product?.defaultSellPrice ?? 0),
+        item.quantity * (product ? calculateCommercialSellingPrice(product.defaultBuyPrice) : 0),
       );
     }, 0);
 
@@ -700,7 +740,7 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
         return { id: randomUUID(), code: `REQ-2026-${String(requestNumber * 10 + index).padStart(5, "0")}`, productId: product.id, productCode: product.code, productName: product.name,
           category: product.category, subcategory: product.subcategory, specification: item.specification, quantity: item.quantity, unit: product.unit,
           supplierConfirmationStatus: "Pending",
-          unitBuyPrice: product.defaultBuyPrice, unitSellPrice: product.defaultSellPrice, deliveryCharge: 0, deliveryStatus: "Not Scheduled", quantityReceived: 0 };
+          unitBuyPrice: product.defaultBuyPrice, unitSellPrice: calculateCommercialSellingPrice(product.defaultBuyPrice), deliveryCharge: 0, deliveryStatus: "Not Scheduled", quantityReceived: 0 };
       }),
     };
     store.requests.unshift(request);
@@ -794,8 +834,8 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
         (request_line_code,request_id,product_id,product_name_snapshot,category_snapshot,subcategory_snapshot,
          specification,quantity,unit_of_measure,supplier_confirmation_status_id,unit_buy_price,unit_sell_price)
         SELECT next_request_line_code(),$1,p.id,p.name,p.category,p.subcategory,$3,$4,p.unit_of_measure,
-          lookup_id('supplier_confirmation','Pending'),p.default_buy_price,p.default_sell_price
-        FROM products p
+          lookup_id('supplier_confirmation','Pending'),0,p.default_sell_price
+        FROM v_customer_catalog_products p
         WHERE p.id=$2 AND p.active=true AND p.needs_review=false
           AND (p.company_id IS NULL OR p.company_id=$5)`,
       [requestId, item.productId, item.specification ?? null, item.quantity, companyId]);

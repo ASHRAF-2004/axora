@@ -8,7 +8,7 @@ describe("P0-09 provider-neutral email migration", () => {
   beforeAll(async () => {
     db = new PGlite();
     const applied = await applyMigrations(db);
-    expect(applied.at(-1)).toBe("059_immutable_accountability_and_scope_closure.sql");
+    expect(applied.at(-1)).toBe("060_supplier_quantity_and_commercial_pricing.sql");
   }, 30_000);
 
   afterAll(async () => db.close());

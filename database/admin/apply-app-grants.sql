@@ -416,3 +416,26 @@ BEGIN
   END IF;
 END
 $$;
+
+-- P1-03/P1-04 supplier quantity and commercial pricing evidence. Customer-safe
+-- catalog rows and the platform-authorized history capability are the only
+-- runtime entry points; confidential cost/rule evidence stays private.
+DO $$
+DECLARE readable_product_columns text;
+BEGIN
+  IF to_regclass('public.commercial_pricing_rules') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.commercial_pricing_rules,public.product_supplier_quantity_rule_history,public.product_commercial_price_history,public.request_line_supplier_rule_snapshots FROM axora_app';
+    EXECUTE 'REVOKE SELECT ON TABLE public.products,public.product_suppliers FROM axora_app';
+    SELECT string_agg(quote_ident(attribute.attname),',' ORDER BY attribute.attnum)
+    INTO readable_product_columns
+    FROM pg_catalog.pg_attribute attribute
+    WHERE attribute.attrelid='public.products'::regclass
+      AND attribute.attnum>0 AND NOT attribute.attisdropped
+      AND attribute.attname<>'default_buy_price';
+    EXECUTE format('GRANT SELECT (%s) ON TABLE public.products TO axora_app',readable_product_columns);
+    EXECUTE 'GRANT SELECT (id,product_id,supplier_id,preferred,active) ON TABLE public.product_suppliers TO axora_app';
+    EXECUTE 'GRANT SELECT ON TABLE public.v_customer_catalog_products TO axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_quantity_is_valid(numeric,numeric,numeric,numeric),public.axora_round_commercial_price(numeric,numeric,integer),public.axora_current_product_offer_internal(uuid,timestamptz),public.axora_append_product_price_history(uuid,text),public.axora_capture_product_price_history(),public.axora_prepare_product_supplier_quantity_rule(),public.axora_capture_product_supplier_quantity_rule(),public.axora_reject_commercial_evidence_mutation(),public.axora_prepare_request_line_commercial_snapshot(),public.axora_validate_request_commercial_snapshots(uuid),public.axora_validate_request_commercial_snapshots_trigger(),public.axora_capture_request_line_supplier_rule(uuid,uuid,text,timestamptz),public.axora_capture_selected_supplier_rule(),public.axora_validate_purchase_order_rules() FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_catalog_offer(uuid,timestamptz),public.axora_product_commercial_history(uuid,uuid,uuid,timestamptz),public.axora_product_administration_catalog(uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+END $$;

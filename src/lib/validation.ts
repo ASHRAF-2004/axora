@@ -8,6 +8,9 @@ const money = z.coerce.number().finite().min(0).max(100_000_000);
 const positive = z.coerce.number().finite().positive().max(100_000_000);
 const wholeQuantity = z.coerce.number().finite().int().min(1).max(100_000_000);
 const wholeDays = z.coerce.number().int().min(0).max(3650);
+const optionalWholeQuantity = z.union([wholeQuantity, z.literal("")])
+  .optional()
+  .transform((value) => value === "" ? undefined : value);
 
 export const companySchema = z.object({
   name: required("Company display name"), legalName: required("Legal company name", 300),
@@ -45,7 +48,23 @@ export const supplierSchema = z.object({
 export const productSchema = z.object({
   name: required("Product name"), category: required("Category"), subcategory: required("Subcategory"), brand: optional(100), size: optional(100),
   unit: required("Unit", 50), packaging: optional(100), description: optional(1000), defaultBuyPrice: money, defaultSellPrice: positive,
-  minimumOrderQuantity: wholeQuantity, deliverySlaDays: wholeDays, preferredSupplierId: z.string().trim().max(100).optional().transform((value) => value || undefined),
+  minimumOrderQuantity: wholeQuantity,
+  maximumOrderQuantity: optionalWholeQuantity,
+  orderIncrement: wholeQuantity.default(1),
+  packSize: wholeQuantity.default(1),
+  packUnit: optional(80),
+  quantityRuleEffectiveFrom: z.union([z.iso.date(), z.literal("")]).optional().transform((value) => value || undefined),
+  quantityRuleReason: z.string().trim().min(3).max(1000).default("Catalog ordering rule configured"),
+  deliverySlaDays: wholeDays, preferredSupplierId: z.string().trim().max(100).optional().transform((value) => value || undefined),
+}).superRefine((value, context) => {
+  if (value.maximumOrderQuantity !== undefined
+    && value.maximumOrderQuantity < value.minimumOrderQuantity) {
+    context.addIssue({
+      code: "custom",
+      path: ["maximumOrderQuantity"],
+      message: "Maximum quantity cannot be below the minimum quantity.",
+    });
+  }
 });
 
 export const requestSchema = z.object({

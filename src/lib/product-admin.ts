@@ -1,22 +1,55 @@
 import type { SessionUser } from "./auth";
 import { isDemoMode, withAuditTransaction } from "./db";
 import { getDemoStore } from "./demo-data";
-import type { Product } from "./types";
 import { canAccess } from "./permissions";
+import { calculateCommercialSellingPrice, withDemoCommercialDefaults } from "./procurement-rules";
 
-export type ProductInput = Omit<
-  Product,
-  | "id"
-  | "code"
-  | "status"
-  | "duplicateWarning"
-  | "preferredSupplierName"
-  | "companyId"
-  | "companyName"
-  | "hasImage"
-  | "imageAltText"
-  | "images"
->;
+export interface ProductInput {
+  name: string; category: string; subcategory: string; brand?: string; size?: string;
+  unit: string; packaging?: string; description?: string; defaultBuyPrice: number;
+  defaultSellPrice: number; minimumOrderQuantity: number; maximumOrderQuantity?: number;
+  orderIncrement?: number; packSize?: number; packUnit?: string;
+  quantityRuleEffectiveFrom?: string; quantityRuleReason?: string;
+  deliverySlaDays: number; preferredSupplierId?: string;
+}
+
+export interface ProductCommercialHistoryEntry {
+  id: string; baseCost: number; rawSellingPrice: number; sellingPrice: number;
+  markupPercentage: number; currency: string; pricingRuleVersion: number;
+  source: string; reason: string; effectiveFrom: string; recordedAt: string;
+}
+
+export async function listProductCommercialHistory(productId: string, actor: SessionUser) {
+  if (!canAccess(actor, "manage_commercial_pricing") || !actor.roleAssignmentId) {
+    return [];
+  }
+  if (isDemoMode()) {
+    const product = getDemoStore().products.find((item) => item.id === productId);
+    if (!product) return [];
+    const priced = withDemoCommercialDefaults(product);
+    return [{
+      id: `demo-price-${product.id}`,
+      baseCost: product.defaultBuyPrice,
+      rawSellingPrice: product.defaultBuyPrice * 1.1,
+      sellingPrice: priced.defaultSellPrice,
+      markupPercentage: 10,
+      currency: "MYR",
+      pricingRuleVersion: 1,
+      source: "SYSTEM_DEFAULT",
+      reason: "Demo commercial pricing baseline",
+      effectiveFrom: product.priceEffectiveFrom ?? new Date(0).toISOString(),
+      recordedAt: product.priceChangedAt ?? new Date(0).toISOString(),
+    }] satisfies ProductCommercialHistoryEntry[];
+  }
+  const result = await withAuditTransaction(
+    { actor, reason: "Viewed confidential product commercial price history" },
+    (client) => client.query<{ payload: ProductCommercialHistoryEntry[] | null }>(
+      "SELECT public.axora_product_commercial_history($1,$2,$3,now()) AS payload",
+      [actor.id, actor.roleAssignmentId, productId],
+    ),
+  );
+  return result.rows[0]?.payload ?? [];
+}
 
 export async function updateProduct(productId: string, input: ProductInput, actor: SessionUser) {
   if (!canAccess(actor, "manage_catalog")) throw new Error("Your account cannot manage the product catalog.");
@@ -34,7 +67,12 @@ export async function updateProduct(productId: string, input: ProductInput, acto
       ? store.suppliers.find((item) => item.id === input.preferredSupplierId && item.status === "Active")
       : undefined;
     if (input.preferredSupplierId && !supplier) throw new Error("The preferred supplier must be active.");
-    Object.assign(product, input, { preferredSupplierName: supplier?.name });
+    Object.assign(product, input, {
+      defaultSellPrice: calculateCommercialSellingPrice(input.defaultBuyPrice),
+      preferredSupplierName: supplier?.name,
+      priceRuleVersion: (product.priceRuleVersion ?? 0) + 1,
+      quantityRuleVersion: (product.quantityRuleVersion ?? 0) + 1,
+    });
     return;
   }
 
@@ -68,7 +106,7 @@ export async function updateProduct(productId: string, input: ProductInput, acto
        WHERE id=$1`,
       [productId, input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null,
         input.unit, input.packaging ?? null, input.description ?? null, input.defaultBuyPrice,
-        input.defaultSellPrice, input.minimumOrderQuantity, input.deliverySlaDays],
+        calculateCommercialSellingPrice(input.defaultBuyPrice), input.minimumOrderQuantity, input.deliverySlaDays],
     );
 
     await client.query(
@@ -78,16 +116,30 @@ export async function updateProduct(productId: string, input: ProductInput, acto
     if (input.preferredSupplierId) {
       await client.query(
         `INSERT INTO product_suppliers
-           (product_id,supplier_id,preferred,indicative_buy_price,supplier_moq,lead_time_days,active)
-         VALUES ($1,$2,true,$3,$4,$5,true)
+           (product_id,supplier_id,preferred,indicative_buy_price,supplier_moq,
+            maximum_order_quantity,order_increment,pack_size,pack_unit,
+            quantity_rule_effective_from,quantity_rule_reason,quantity_rule_updated_by,
+            lead_time_days,active)
+         VALUES ($1,$2,true,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true)
          ON CONFLICT(product_id,supplier_id) DO UPDATE SET
            preferred=true,
            indicative_buy_price=EXCLUDED.indicative_buy_price,
            supplier_moq=EXCLUDED.supplier_moq,
+           maximum_order_quantity=EXCLUDED.maximum_order_quantity,
+           order_increment=EXCLUDED.order_increment,
+           pack_size=EXCLUDED.pack_size,
+           pack_unit=EXCLUDED.pack_unit,
+           quantity_rule_effective_from=EXCLUDED.quantity_rule_effective_from,
+           quantity_rule_effective_to=NULL,
+           quantity_rule_reason=EXCLUDED.quantity_rule_reason,
+           quantity_rule_updated_by=EXCLUDED.quantity_rule_updated_by,
            lead_time_days=EXCLUDED.lead_time_days,
            active=true`,
         [productId, input.preferredSupplierId, input.defaultBuyPrice,
-          input.minimumOrderQuantity, input.deliverySlaDays],
+          input.minimumOrderQuantity, input.maximumOrderQuantity ?? null,
+          input.orderIncrement ?? 1, input.packSize ?? 1, input.packUnit ?? input.unit,
+          input.quantityRuleEffectiveFrom ?? new Date().toISOString(),
+          input.quantityRuleReason ?? "Product commercial setup", actor.id, input.deliverySlaDays],
       );
     }
   });

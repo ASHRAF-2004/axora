@@ -3,6 +3,7 @@ import { isDemoMode, query } from "./db";
 import { getDemoStore } from "./demo-data";
 import { canAccess } from "./permissions";
 import type { Product } from "./types";
+import { withDemoCommercialDefaults } from "./procurement-rules";
 
 export type CatalogSort =
   | "relevance"
@@ -192,7 +193,7 @@ async function searchDemoCatalog(
         !product.companyId ||
         product.companyId === actor.companyId
       ),
-  );
+  ).map(withDemoCommercialDefaults);
 
   const searchMatches = accessibleProducts.filter((product) =>
     input.query
@@ -441,14 +442,22 @@ export async function searchCatalogProducts(
         0::float8 AS "defaultBuyPrice",
         p.default_sell_price::float8 AS "defaultSellPrice",
         p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
+        p.maximum_order_quantity::float8 AS "maximumOrderQuantity",
+        p.order_increment::float8 AS "orderIncrement",
+        p.pack_size::float8 AS "packSize",p.pack_unit AS "packUnit",
+        p.quantity_rule_version AS "quantityRuleVersion",
+        p.quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
+        p.price_rule_version AS "priceRuleVersion",
+        p.price_effective_from::text AS "priceEffectiveFrom",
+        p.price_changed_at::text AS "priceChangedAt",p.price_currency AS "priceCurrency",
         p.delivery_sla_days AS "deliverySlaDays",
         NULL::text AS "preferredSupplierId",
         NULL::text AS "preferredSupplierName",
-        (p.image_content IS NOT NULL) AS "hasImage",
+        p.has_image AS "hasImage",
         p.image_alt_text AS "imageAltText",
         'Active'::text AS status,
         false AS "duplicateWarning"
-      FROM products p
+      FROM v_customer_catalog_products p
       LEFT JOIN companies c ON c.id=p.company_id
       WHERE ${where}
       ORDER BY ${sortExpressions[input.sort]}
@@ -458,13 +467,13 @@ export async function searchCatalogProducts(
     ),
     query<{ total: number }>(
       `SELECT COUNT(*)::int AS total
-       FROM products p
+       FROM v_customer_catalog_products p
        WHERE ${where}`,
       filterValues,
     ),
     query<CatalogFacetOption>(
       `SELECT p.category AS value, COUNT(*)::int AS count
-       FROM products p
+       FROM v_customer_catalog_products p
        WHERE ${facetWhere}
        GROUP BY p.category
        ORDER BY p.category`,
@@ -472,7 +481,7 @@ export async function searchCatalogProducts(
     ),
     query<CatalogFacetOption>(
       `SELECT p.subcategory AS value, COUNT(*)::int AS count
-       FROM products p
+       FROM v_customer_catalog_products p
        WHERE ${facetWhere}
        GROUP BY p.subcategory
        ORDER BY p.subcategory`,
@@ -480,7 +489,7 @@ export async function searchCatalogProducts(
     ),
     query<CatalogFacetOption>(
       `SELECT p.brand AS value, COUNT(*)::int AS count
-       FROM products p
+       FROM v_customer_catalog_products p
        WHERE ${facetWhere} AND p.brand IS NOT NULL
        GROUP BY p.brand
        ORDER BY p.brand`,
@@ -488,7 +497,7 @@ export async function searchCatalogProducts(
     ),
     query<CatalogFacetOption>(
       `SELECT p.unit_of_measure AS value, COUNT(*)::int AS count
-       FROM products p
+       FROM v_customer_catalog_products p
        WHERE ${facetWhere}
        GROUP BY p.unit_of_measure
        ORDER BY p.unit_of_measure`,
@@ -498,7 +507,7 @@ export async function searchCatalogProducts(
       `SELECT
          COALESCE(MIN(p.default_sell_price), 0)::float8 AS "minimumPrice",
          COALESCE(MAX(p.default_sell_price), 0)::float8 AS "maximumPrice"
-       FROM products p
+       FROM v_customer_catalog_products p
        WHERE ${facetWhere}`,
       facetValues,
     ),
@@ -552,7 +561,7 @@ export async function getCatalogProductById(
     if (!product) return undefined;
 
     return {
-      ...product,
+      ...withDemoCommercialDefaults(product),
       defaultBuyPrice: 0,
       preferredSupplierId: undefined,
       preferredSupplierName: undefined,
@@ -591,14 +600,20 @@ export async function getCatalogProductById(
       0::float8 AS "defaultBuyPrice",
       p.default_sell_price::float8 AS "defaultSellPrice",
       p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
+      p.maximum_order_quantity::float8 AS "maximumOrderQuantity",
+      p.order_increment::float8 AS "orderIncrement",p.pack_size::float8 AS "packSize",
+      p.pack_unit AS "packUnit",p.quantity_rule_version AS "quantityRuleVersion",
+      p.quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
+      p.price_rule_version AS "priceRuleVersion",p.price_effective_from::text AS "priceEffectiveFrom",
+      p.price_changed_at::text AS "priceChangedAt",p.price_currency AS "priceCurrency",
       p.delivery_sla_days AS "deliverySlaDays",
       NULL::text AS "preferredSupplierId",
       NULL::text AS "preferredSupplierName",
-      (p.image_content IS NOT NULL) AS "hasImage",
+      p.has_image AS "hasImage",
       p.image_alt_text AS "imageAltText",
       'Active'::text AS status,
       false AS "duplicateWarning"
-    FROM products p
+    FROM v_customer_catalog_products p
     LEFT JOIN companies c ON c.id=p.company_id
     WHERE ${conditions.join(" AND ")}
     LIMIT 1`,
@@ -643,7 +658,7 @@ export async function getCatalogProductsByIds(
           ),
       )
       .map((product): Product => ({
-        ...product,
+        ...withDemoCommercialDefaults(product),
         defaultBuyPrice: 0,
         preferredSupplierId: undefined,
         preferredSupplierName: undefined,
@@ -701,14 +716,20 @@ export async function getCatalogProductsByIds(
       0::float8 AS "defaultBuyPrice",
       p.default_sell_price::float8 AS "defaultSellPrice",
       p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
+      p.maximum_order_quantity::float8 AS "maximumOrderQuantity",
+      p.order_increment::float8 AS "orderIncrement",p.pack_size::float8 AS "packSize",
+      p.pack_unit AS "packUnit",p.quantity_rule_version AS "quantityRuleVersion",
+      p.quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
+      p.price_rule_version AS "priceRuleVersion",p.price_effective_from::text AS "priceEffectiveFrom",
+      p.price_changed_at::text AS "priceChangedAt",p.price_currency AS "priceCurrency",
       p.delivery_sla_days AS "deliverySlaDays",
       NULL::text AS "preferredSupplierId",
       NULL::text AS "preferredSupplierName",
-      (p.image_content IS NOT NULL) AS "hasImage",
+      p.has_image AS "hasImage",
       p.image_alt_text AS "imageAltText",
       'Active'::text AS status,
       false AS "duplicateWarning"
-    FROM products p
+    FROM v_customer_catalog_products p
     LEFT JOIN companies c ON c.id=p.company_id
     WHERE ${conditions.join(" AND ")}`,
     values,
@@ -738,7 +759,7 @@ export interface ShopCategorySummary {
 
 function shopSafeProduct(product: Product): Product {
   return {
-    ...product,
+    ...withDemoCommercialDefaults(product),
     defaultBuyPrice: 0,
     preferredSupplierId: undefined,
     preferredSupplierName: undefined,
@@ -857,6 +878,16 @@ export async function listShopDepartments(
     description?: string;
     defaultSellPrice: number;
     minimumOrderQuantity: number;
+    maximumOrderQuantity?: number;
+    orderIncrement: number;
+    packSize: number;
+    packUnit: string;
+    quantityRuleVersion: number;
+    quantityRuleEffectiveFrom: string;
+    priceRuleVersion: number;
+    priceEffectiveFrom: string;
+    priceChangedAt: string;
+    priceCurrency: string;
     deliverySlaDays: number;
     hasImage: boolean;
     imageAltText?: string;
@@ -892,8 +923,18 @@ export async function listShopDepartments(
         p.description,
         p.default_sell_price,
         p.minimum_order_quantity,
+        p.maximum_order_quantity,
+        p.order_increment,
+        p.pack_size,
+        p.pack_unit,
+        p.quantity_rule_version,
+        p.quantity_rule_effective_from,
+        p.price_rule_version,
+        p.price_effective_from,
+        p.price_changed_at,
+        p.price_currency,
         p.delivery_sla_days,
-        p.image_content,
+        p.has_image,
         p.image_alt_text,
         COUNT(*) OVER (
           PARTITION BY p.category
@@ -904,10 +945,10 @@ export async function listShopDepartments(
         ROW_NUMBER() OVER (
           PARTITION BY p.category, p.subcategory
           ORDER BY
-            (p.image_content IS NOT NULL) DESC,
+            p.has_image DESC,
             p.name
         ) AS sample_rank
-      FROM products p
+      FROM v_customer_catalog_products p
       LEFT JOIN companies c ON c.id=p.company_id
       WHERE ${conditions.join(" AND ")}
     )
@@ -927,8 +968,14 @@ export async function listShopDepartments(
       default_sell_price::float8 AS "defaultSellPrice",
       minimum_order_quantity::float8
         AS "minimumOrderQuantity",
+      maximum_order_quantity::float8 AS "maximumOrderQuantity",
+      order_increment::float8 AS "orderIncrement",pack_size::float8 AS "packSize",
+      pack_unit AS "packUnit",quantity_rule_version AS "quantityRuleVersion",
+      quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
+      price_rule_version AS "priceRuleVersion",price_effective_from::text AS "priceEffectiveFrom",
+      price_changed_at::text AS "priceChangedAt",price_currency AS "priceCurrency",
       delivery_sla_days AS "deliverySlaDays",
-      (image_content IS NOT NULL) AS "hasImage",
+      has_image AS "hasImage",
       image_alt_text AS "imageAltText",
       category_count AS "categoryCount",
       subcategory_count AS "subcategoryCount"
@@ -959,6 +1006,18 @@ export async function listShopDepartments(
       minimumOrderQuantity: Number(
         row.minimumOrderQuantity,
       ),
+      maximumOrderQuantity: row.maximumOrderQuantity === undefined
+        ? undefined
+        : Number(row.maximumOrderQuantity),
+      orderIncrement: Number(row.orderIncrement),
+      packSize: Number(row.packSize),
+      packUnit: row.packUnit,
+      quantityRuleVersion: Number(row.quantityRuleVersion),
+      quantityRuleEffectiveFrom: row.quantityRuleEffectiveFrom,
+      priceRuleVersion: Number(row.priceRuleVersion),
+      priceEffectiveFrom: row.priceEffectiveFrom,
+      priceChangedAt: row.priceChangedAt,
+      priceCurrency: row.priceCurrency,
       deliverySlaDays: row.deliverySlaDays,
       hasImage: row.hasImage,
       imageAltText: row.imageAltText,
