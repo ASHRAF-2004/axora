@@ -1,31 +1,69 @@
 import { z } from "zod";
 import { isDemoMode, withAuditTransaction } from "./db";
+import { recordPublicCompanyLead } from "./company-leads";
 import {
   consumePublicRequestRateLimit,
-  insertContactEmailOutbox,
   publicRequestRateKey,
   type SupportedEmailLocale,
 } from "./transactional-email";
 
 const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
 const MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+const PHONE_PATTERN = /^[+0-9() .-]+$/;
 const singleLine = (minimum: number, maximum: number) => z.string()
   .trim()
   .min(minimum)
   .max(maximum)
-  .refine((value) => !SINGLE_LINE_CONTROL_PATTERN.test(value));
+  .refine((value) => !SINGLE_LINE_CONTROL_PATTERN.test(value))
+  .transform((value) => value.replace(/\s+/g, " "));
+const optionalSingleLine = (maximum: number) => z.string()
+  .trim()
+  .max(maximum)
+  .refine((value) => !SINGLE_LINE_CONTROL_PATTERN.test(value))
+  .transform((value) => value.replace(/\s+/g, " "));
+
+function validIanaTimezone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const campaignSchema = z.object({
+  source: optionalSingleLine(160).optional(),
+  medium: optionalSingleLine(160).optional(),
+  campaign: optionalSingleLine(200).optional(),
+  term: optionalSingleLine(200).optional(),
+  content: optionalSingleLine(200).optional(),
+}).strict();
 
 const contactSubmissionSchema = z.object({
   locale: z.enum(["en", "ar", "ms"]),
-  name: singleLine(2, 200),
-  email: z.email().max(254).transform((value) => value.trim().toLowerCase()),
-  company: singleLine(1, 200),
-  phone: z.string().trim().max(40)
-    .refine((value) => !SINGLE_LINE_CONTROL_PATTERN.test(value))
-    .optional().transform((value) => value || undefined),
+  idempotencyToken: z.string().uuid(),
+  contactName: singleLine(2, 200),
+  contactEmail: z.email().max(254).transform((value) => value.trim().toLowerCase()),
+  companyName: singleLine(2, 200),
+  companyLegalName: singleLine(2, 300),
+  registrationNumber: optionalSingleLine(160),
+  phoneCountryCode: z.string().trim().min(1).max(12).regex(/^\+[0-9]{1,4}$/),
+  phone: z.string().trim().min(3).max(40).regex(PHONE_PATTERN)
+    .transform((value) => value.replace(/\s+/g, " ")),
+  country: singleLine(2, 120),
+  region: singleLine(2, 160),
+  city: singleLine(2, 160),
+  industry: singleLine(2, 200),
+  employeeRange: z.enum(["1_10", "11_50", "51_200", "201_500", "501_1000", "1001_PLUS"]),
+  branchRange: z.enum(["1", "2_5", "6_20", "21_50", "51_PLUS"]),
+  spendRange: z.enum(["UNDER_10K", "10K_50K", "50K_250K", "250K_1M", "OVER_1M", "UNDISCLOSED"]),
+  contactMethod: z.enum(["EMAIL", "PHONE", "WHATSAPP", "VIDEO_CALL"]),
+  contactTime: optionalSingleLine(160),
+  contactTimezone: singleLine(1, 80).refine(validIanaTimezone),
   subject: singleLine(3, 200),
   message: z.string().trim().min(10).max(5_000)
     .refine((value) => !MULTILINE_CONTROL_PATTERN.test(value)),
+  campaign: campaignSchema,
   privacyAccepted: z.literal(true),
 }).strict();
 
@@ -36,16 +74,7 @@ const verifiedTurnstileSchema = z.object({
   action: z.literal("contact"),
 }).strict();
 
-export interface PublicContactSubmissionInput {
-  locale: SupportedEmailLocale;
-  name: string;
-  email: string;
-  company: string;
-  phone?: string;
-  subject: string;
-  message: string;
-  privacyAccepted: true;
-}
+export type PublicContactSubmissionInput = z.input<typeof contactSubmissionSchema>;
 
 export interface VerifiedContactTurnstileResult {
   success: true;
@@ -79,7 +108,6 @@ function validateTurnstileResult(
   try {
     result = verifiedTurnstileSchema.parse(input);
   } catch {
-    // Keep all verification failures indistinguishable to the public caller.
     throw new ContactVerificationError();
   }
   const challengeAt = new Date(result.challengeTimestamp);
@@ -92,11 +120,6 @@ function validateTurnstileResult(
   return { ...result, challengeAt };
 }
 
-/**
- * Persist a contact enquiry and its notification atomically. The caller must
- * pass only a result returned by a server-side Turnstile Siteverify request;
- * the Turnstile response token itself is never accepted or stored here.
- */
 export async function submitPublicContact(
   input: PublicContactSubmissionInput,
   turnstile: VerifiedContactTurnstileResult,
@@ -104,51 +127,63 @@ export async function submitPublicContact(
 ) {
   if (isDemoMode()) throw new Error("Contact submission is unavailable in demo mode.");
   const parsed = contactSubmissionSchema.parse(input);
-  const verified = validateTurnstileResult(turnstile);
+  const capturedAt = new Date();
+  const verified = validateTurnstileResult(turnstile, capturedAt);
   const networkRateKey = publicRequestRateKey("network", networkIdentifier);
-  const senderRateKey = publicRequestRateKey("identifier", parsed.email);
+  const senderRateKey = publicRequestRateKey("identifier", parsed.contactEmail);
+  const idempotencyKey = publicRequestRateKey(
+    "identifier",
+    `company-lead:${parsed.idempotencyToken}:${parsed.contactEmail}`,
+  );
+  const sourceMetadata = Object.fromEntries(
+    Object.entries(parsed.campaign).filter((entry): entry is [string, string] => Boolean(entry[1])),
+  );
 
   return withAuditTransaction(
-    { reason: "Public contact submission received" },
+    { reason: "Public company enquiry received" },
     async (client) => {
       await consumePublicRequestRateLimit(client, "CONTACT", [
         { kind: "NETWORK", hash: networkRateKey, hourlyLimit: 6 },
         { kind: "IDENTIFIER", hash: senderRateKey, hourlyLimit: 4 },
       ]);
-      const submission = await client.query<{ id: string }>(
-        `INSERT INTO public_contact_submissions(
-           locale,contact_name,contact_email,company_name,phone,subject,message,
-           privacy_accepted_at,network_rate_key,sender_rate_key,
-           turnstile_success,turnstile_challenge_at,
-           turnstile_verified_at,turnstile_hostname,turnstile_action
-         ) VALUES (
-           $1,$2,$3,$4,$5,$6,$7,now(),$8,$9,true,$10,now(),$11,'contact'
-         ) RETURNING id::text`,
-        [
-          parsed.locale,
-          parsed.name,
-          parsed.email,
-          parsed.company,
-          parsed.phone ?? null,
-          parsed.subject,
-          parsed.message,
-          networkRateKey,
-          senderRateKey,
-          verified.challengeAt,
-          verified.hostname.toLowerCase(),
-        ],
-      );
-      await insertContactEmailOutbox(
-        client,
-        submission.rows[0].id,
-        parsed.locale,
-      );
-      return { submissionId: submission.rows[0].id };
+      const mutation = await recordPublicCompanyLead(client, {
+        idempotencyKey,
+        locale: parsed.locale,
+        contactName: parsed.contactName,
+        contactEmail: parsed.contactEmail,
+        companyName: parsed.companyName,
+        companyLegalName: parsed.companyLegalName,
+        registrationNumber: parsed.registrationNumber,
+        phoneCountryCode: parsed.phoneCountryCode,
+        phone: parsed.phone,
+        country: parsed.country,
+        region: parsed.region,
+        city: parsed.city,
+        industry: parsed.industry,
+        employeeRange: parsed.employeeRange,
+        branchRange: parsed.branchRange,
+        spendRange: parsed.spendRange,
+        contactMethod: parsed.contactMethod,
+        contactTime: parsed.contactTime,
+        contactTimezone: parsed.contactTimezone,
+        subject: parsed.subject,
+        message: parsed.message,
+        privacyPolicyVersion: "public-enquiry-2026-08-08",
+        sourcePage: `/${parsed.locale}/contact`,
+        sourceMetadata,
+        networkRateKey,
+        senderRateKey,
+        turnstileChallengeAt: verified.challengeAt.toISOString(),
+        turnstileHostname: verified.hostname.toLowerCase(),
+      }, parsed.locale as SupportedEmailLocale, capturedAt);
+      return { submissionId: mutation.submissionId, leadId: mutation.leadId };
     },
   );
 }
 
 export const publicContactInternals = {
+  contactSubmissionSchema,
   expectedTurnstileHostname,
   validateTurnstileResult,
+  validIanaTimezone,
 };

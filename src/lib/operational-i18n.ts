@@ -81,7 +81,7 @@ export function operationalNumber(locale: SupportedLocale, value: number, option
   return new Intl.NumberFormat(locale === "ar" ? "ar-MY" : locale === "ms" ? "ms-MY" : "en-MY", options).format(value);
 }
 
-export const notificationEventKeys = ["invitation.sent","invitation.accepted","company.lead.created","company.assigned","company.reassigned","company.information_requested","company.administrator_activated","company.activated","company.suspended","request.submitted","approval.needed","request.approved","request.rejected","quotation.requested","quotation.received","supplier.selected","supplier.order_selected","supplier.rfq_acknowledged","supplier.order_acknowledged","delivery.scheduled","driver.assigned","driver.assignment_rejected","delivery.accepted","delivery.arrived","delivery.attempted","delivery.partially_delivered","delivery.issue_reported","delivery.note_added","delivery.delayed","delivery.completed","receipt.required","discrepancy.opened","invoice.issued","payment.status_changed","order.confirmed","preparation.started","delivery.out_for_delivery","delivery.evidence_recorded","delivery.partial_evidence_recorded","delivery.failed","receipt.confirmed","three_way_match.completed","three_way_match.exception","request.completed","request.cancelled","request.on_hold"] as const;
+export const notificationEventKeys = ["invitation.sent","invitation.accepted","company.lead.created","company.lead.submitted","company.lead.assigned","company.lead.reassigned","company.lead.contacted","company.lead.information_requested","company.lead.qualified","company.lead.duplicate_cleared","company.lead.duplicate_confirmed","company.lead.note_added","company.lead.task_added","company.lead.task_completed","company.lead.converted","company.lead.rejected","company.lead.archived","company.lead.anonymized","company.lead.sla_overdue","company.onboarding.updated","company.onboarding.ready","company.onboarding.verified","company.assigned","company.reassigned","company.information_requested","company.administrator_activated","company.activated","company.suspended","request.submitted","approval.needed","request.approved","request.rejected","quotation.requested","quotation.received","supplier.selected","supplier.order_selected","supplier.rfq_acknowledged","supplier.order_acknowledged","delivery.scheduled","driver.assigned","driver.assignment_rejected","delivery.accepted","delivery.arrived","delivery.attempted","delivery.partially_delivered","delivery.issue_reported","delivery.note_added","delivery.delayed","delivery.completed","receipt.required","discrepancy.opened","invoice.issued","payment.status_changed","order.confirmed","preparation.started","delivery.out_for_delivery","delivery.evidence_recorded","delivery.partial_evidence_recorded","delivery.failed","receipt.confirmed","three_way_match.completed","three_way_match.exception","request.completed","request.cancelled","request.on_hold"] as const;
 
 const eventLabels: Record<SupportedLocale, Record<string, string>> = {
   en: Object.fromEntries(notificationEventKeys.map((key) => [key, key.replaceAll(".", " ").replaceAll("_", " ")])),
@@ -94,6 +94,25 @@ export function operationalEventLabel(locale: SupportedLocale, eventKey: string)
   const supplierEvents: Record<"ar" | "ms", Record<string, string>> = {
     ar: {
       "company.lead.created": "أُنشئ عميل محتمل جديد",
+      "company.lead.submitted": "استُلم استفسار شركة جديد",
+      "company.lead.assigned": "أُسند العميل المحتمل",
+      "company.lead.reassigned": "أُعيد إسناد العميل المحتمل",
+      "company.lead.contacted": "تم التواصل مع العميل المحتمل",
+      "company.lead.information_requested": "طُلبت معلومات العميل المحتمل",
+      "company.lead.qualified": "تأهل العميل المحتمل",
+      "company.lead.duplicate_cleared": "تم استبعاد تكرار العميل المحتمل",
+      "company.lead.duplicate_confirmed": "تأكد تكرار العميل المحتمل",
+      "company.lead.note_added": "أُضيفت ملاحظة للعميل المحتمل",
+      "company.lead.task_added": "أُضيفت مهمة للعميل المحتمل",
+      "company.lead.task_completed": "اكتملت مهمة العميل المحتمل",
+      "company.lead.converted": "حُوّل العميل المحتمل إلى شركة",
+      "company.lead.rejected": "رُفض العميل المحتمل",
+      "company.lead.archived": "أُرشف العميل المحتمل",
+      "company.lead.anonymized": "أُخفيت هوية العميل المحتمل",
+      "company.lead.sla_overdue": "تأخرت متابعة العميل المحتمل",
+      "company.onboarding.updated": "حُفظ إعداد الشركة",
+      "company.onboarding.ready": "اكتمل إعداد الشركة للمراجعة",
+      "company.onboarding.verified": "تم التحقق من إعداد الشركة",
       "company.assigned": "أُسندت الشركة",
       "company.reassigned": "أُعيد إسناد الشركة",
       "company.information_requested": "طُلبت معلومات الشركة",
@@ -106,6 +125,25 @@ export function operationalEventLabel(locale: SupportedLocale, eventKey: string)
     },
     ms: {
       "company.lead.created": "Prospek syarikat dicipta",
+      "company.lead.submitted": "Pertanyaan syarikat diterima",
+      "company.lead.assigned": "Prospek syarikat ditugaskan",
+      "company.lead.reassigned": "Prospek syarikat ditugaskan semula",
+      "company.lead.contacted": "Prospek syarikat telah dihubungi",
+      "company.lead.information_requested": "Maklumat prospek syarikat diminta",
+      "company.lead.qualified": "Prospek syarikat layak",
+      "company.lead.duplicate_cleared": "Padanan pendua prospek diketepikan",
+      "company.lead.duplicate_confirmed": "Pendua prospek disahkan",
+      "company.lead.note_added": "Nota prospek ditambah",
+      "company.lead.task_added": "Tugasan prospek ditambah",
+      "company.lead.task_completed": "Tugasan prospek selesai",
+      "company.lead.converted": "Prospek ditukar kepada syarikat",
+      "company.lead.rejected": "Prospek syarikat ditolak",
+      "company.lead.archived": "Prospek syarikat diarkibkan",
+      "company.lead.anonymized": "Data prospek syarikat dianonimkan",
+      "company.lead.sla_overdue": "Susulan prospek syarikat lewat",
+      "company.onboarding.updated": "Persediaan syarikat disimpan",
+      "company.onboarding.ready": "Persediaan syarikat sedia untuk semakan",
+      "company.onboarding.verified": "Persediaan syarikat disahkan",
       "company.assigned": "Syarikat ditugaskan",
       "company.reassigned": "Syarikat ditugaskan semula",
       "company.information_requested": "Maklumat syarikat diminta",

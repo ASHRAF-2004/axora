@@ -125,6 +125,60 @@ describe("generic transactional email outbox", () => {
     ]);
   });
 
+  it("claims a visitor acknowledgement to the submitted address", async () => {
+    mocks.client.query
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{
+        deliveryId: outboxId,
+        messageKind: "CONTACT_ACKNOWLEDGEMENT",
+        locale: "ar",
+        contactName: "Aisha Rahman",
+        contactEmail: "aisha@example.test",
+        companyName: "Example Industries",
+        subject: "Procurement workflow",
+        message: "A private contact message for the Axora team.",
+        submittedAt: "2026-08-03T06:00:00.000Z",
+      }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: outboxId }] });
+
+    const job = await claimTransactionalEmailOutbox();
+    expect(job).toMatchObject({
+      messageKind: "CONTACT_ACKNOWLEDGEMENT",
+      locale: "ar",
+      recipientEmail: "aisha@example.test",
+      recipientName: "Aisha Rahman",
+      contact: { company: "Example Industries" },
+    });
+    expect(job?.replyToEmail).toBeUndefined();
+    expect(String(mocks.client.query.mock.calls[3][0])).toContain(
+      "submission.acknowledgement_status='QUEUED'",
+    );
+  });
+
+  it("claims a tokenless password-change confirmation after reset completion", async () => {
+    mocks.client.query
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{
+        deliveryId: outboxId,
+        messageKind: "PASSWORD_CHANGED",
+        locale: "ms",
+        recipientName: "Aisha Rahman",
+        recipientEmail: "aisha@example.test",
+      }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: outboxId }] });
+    const job = await claimTransactionalEmailOutbox();
+    expect(job).toEqual(expect.objectContaining({
+      messageKind: "PASSWORD_CHANGED",
+      locale: "ms",
+      recipientEmail: "aisha@example.test",
+    }));
+    expect(job?.actionUrl).toBeUndefined();
+  });
+
   it("updates contact lifecycle only after a final leased outcome", async () => {
     const leaseId = "00000000-0000-4000-8000-000000000003";
     mocks.client.query
@@ -155,6 +209,25 @@ describe("generic transactional email outbox", () => {
       { errorCode: "provider_rate_limited" },
     )).resolves.toBe(true);
     expect(mocks.client.query).toHaveBeenCalledOnce();
+
+    vi.clearAllMocks();
+    mocks.client.query
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{
+        contactSubmissionId: sourceId,
+        deliveryStatus: "FAILED",
+        messageKind: "CONTACT_ACKNOWLEDGEMENT",
+      }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] });
+    await expect(completeTransactionalEmailOutbox(
+      outboxId,
+      leaseId,
+      "failed",
+      { errorCode: "provider_unavailable" },
+    )).resolves.toBe(true);
+    expect(String(mocks.client.query.mock.calls[1][0])).toContain(
+      "acknowledgement_status=$2",
+    );
+    expect(mocks.client.query.mock.calls[1][1]).toEqual([sourceId, "FAILED"]);
   });
 
   it("leaves contact work unclaimed until a private monitored inbox is configured", async () => {

@@ -90,6 +90,7 @@ export interface UserCreationInput {
   role: UserRole;
   companyId?: string;
   branchId?: string;
+  departmentId?: string;
   supplierId?: string;
   jobTitle?: string;
   preferredLocale?: SupportedLocale;
@@ -103,6 +104,7 @@ export interface ResolvedUserCreation {
   scopeType: RoleScopeType;
   companyId?: string;
   branchId?: string;
+  departmentId?: string;
   supplierId?: string;
   jobTitle?: string;
   preferredLocale: SupportedLocale;
@@ -111,6 +113,7 @@ export interface ResolvedUserCreation {
 export interface ValidatedUserCreation extends ResolvedUserCreation {
   organizationName: string;
   branchName?: string;
+  departmentName?: string;
 }
 
 const USER_EMAIL_SCHEMA = z.email().max(254);
@@ -152,18 +155,28 @@ export function resolveUserCreation(
   const companyId = actor.isOwner ? input.companyId : actor.companyId;
   if (!companyId) throw new Error("Select the approved customer company for this user.");
   const requestedBranchId = actor.branchId ?? input.branchId;
-  const scopeType: RoleScopeType = requestedBranchId && definition.allowedScopes.includes("BRANCH")
-    ? "BRANCH"
-    : "COMPANY";
+  const requestedDepartmentId = actor.departmentId ?? input.departmentId;
+  const scopeType: RoleScopeType = requestedDepartmentId
+    && definition.allowedScopes.includes("DEPARTMENT")
+    ? "DEPARTMENT"
+    : requestedBranchId && definition.allowedScopes.includes("BRANCH")
+      ? "BRANCH"
+      : "COMPANY";
   if (!definition.allowedScopes.includes(scopeType)) {
-    throw new Error("Select the branch this person will work with.");
+    throw new Error("Select the branch or department this person will work with.");
   }
-  const branchId = scopeType === "BRANCH" ? requestedBranchId : undefined;
+  const branchId = scopeType === "BRANCH" || scopeType === "DEPARTMENT"
+    ? requestedBranchId : undefined;
+  const departmentId = scopeType === "DEPARTMENT" ? requestedDepartmentId : undefined;
   if (actor.role === "BRANCH_ADMIN" && (!branchId || branchId !== actor.branchId)) {
     throw new Error("A branch administrator can create users only in their assigned branch.");
   }
+  if (actor.role === "DEPARTMENT_ADMIN"
+    && (!departmentId || departmentId !== actor.departmentId)) {
+    throw new Error("A department administrator can create users only in their assigned department.");
+  }
 
-  return { email, displayName, role, accountKind: "COMPANY", scopeType, companyId, branchId, jobTitle, preferredLocale };
+  return { email, displayName, role, accountKind: "COMPANY", scopeType, companyId, branchId, departmentId, jobTitle, preferredLocale };
 }
 
 /** Lock and validate the tenant records used by a new account transaction. */
@@ -173,6 +186,7 @@ async function validateUserCreation(
 ): Promise<ValidatedUserCreation> {
   let organizationName = "Axora";
   let branchName: string | undefined;
+  let departmentName: string | undefined;
   if (input.accountKind === "COMPANY") {
     const company = await client.query<{ name: string }>(
       `SELECT name FROM companies
@@ -202,6 +216,24 @@ async function validateUserCreation(
     }
     branchName = branch.rows[0].name;
   }
+  if (input.scopeType === "DEPARTMENT") {
+    const department = await client.query<{ name: string; branchName?: string }>(
+      `SELECT department.name,branch.name AS "branchName"
+       FROM departments department
+       LEFT JOIN branches branch
+         ON branch.id=department.branch_id AND branch.company_id=department.company_id
+       WHERE department.id=$1 AND department.company_id=$2
+         AND department.branch_id IS NOT DISTINCT FROM $3::uuid
+         AND department.active=true AND COALESCE(branch.active,true)
+       FOR KEY SHARE OF department`,
+      [input.departmentId, input.companyId, input.branchId ?? null],
+    );
+    if (!department.rowCount) {
+      throw new Error("The selected department is not active or belongs to another company.");
+    }
+    departmentName = department.rows[0].name;
+    branchName = department.rows[0].branchName;
+  }
   if (input.accountKind === "SUPPLIER") {
     const supplier = await client.query<{ name: string }>(
       "SELECT name FROM suppliers WHERE id=$1 AND active=true FOR KEY SHARE",
@@ -211,7 +243,7 @@ async function validateUserCreation(
     organizationName = supplier.rows[0].name;
   }
 
-  return { ...input, organizationName, branchName };
+  return { ...input, organizationName, branchName, departmentName };
 }
 
 async function insertUser(

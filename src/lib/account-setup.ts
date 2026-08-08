@@ -10,6 +10,7 @@ import {
 import { accountRoleDefinition, creatableAccountRoles } from "./role-catalog";
 import type { AccountKind, RoleScopeType, UserRole } from "./types";
 import type { SupportedLocale } from "./i18n";
+import { z } from "zod";
 import { appendWorkflowEvent, notifyWorkflowUsers } from "./workflow-repository";
 import {
   createScopedUserInTransaction,
@@ -40,6 +41,7 @@ export interface AccountSetupInvitationResult {
   companyName: string;
   role: UserRole;
   branchName?: string;
+  departmentName?: string;
   expiresAt: string;
   locale: SupportedLocale;
   /** Returned once for synchronous delivery. Never persist or log this value. */
@@ -52,10 +54,21 @@ export type AccountSetupTokenInspection =
     recipientName: string;
     recipientEmail: string;
     companyName: string;
+    role: UserRole;
+    jobTitle?: string;
     expiresAt: string;
     locale: SupportedLocale;
   }
   | { valid: false };
+
+const activationInputSchema = z.object({
+  displayName: z.string().trim().min(2).max(200),
+  locale: z.enum(["en", "ar", "ms"]),
+  termsAccepted: z.literal(true),
+  privacyAccepted: z.literal(true),
+}).strict();
+
+export type AccountSetupActivationInput = z.infer<typeof activationInputSchema>;
 
 export class AccountSetupTokenError extends Error {
   constructor() {
@@ -86,6 +99,7 @@ async function enforceInvitationQuota(
   client: PoolClient,
   actorId: string,
   companyId?: string,
+  allowOnboardingCompany = false,
 ) {
   // Serialize each quota dimension with transaction-scoped advisory locks.
   // Using advisory locks avoids upgrading a KEY SHARE resource lock to UPDATE,
@@ -110,9 +124,13 @@ async function enforceInvitationQuota(
       `SELECT u.id::text AS "actorId",c.id::text AS "companyId"
        FROM users u CROSS JOIN companies c
        WHERE u.id=$1 AND u.active=true AND u.account_status='ACTIVE'
-         AND c.id=$2 AND c.active=true
+         AND c.id=$2 AND (
+           c.active=true OR ($3::boolean AND c.lifecycle_status IN (
+             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED'
+           ))
+         )
        FOR KEY SHARE OF u,c`,
-      [actorId, companyId],
+      [actorId, companyId, allowOnboardingCompany],
     )
     : await client.query(
       `SELECT u.id::text AS "actorId"
@@ -192,7 +210,12 @@ export async function createInvitedUser(
     { userId: actor.id, reason: "Account invitation created" },
     async (client) => {
       await lockAuthorizedInvitationCreationScope(client, actor, resolved);
-      await enforceInvitationQuota(client, actor.id, resolved.companyId);
+      await enforceInvitationQuota(
+        client,
+        actor.id,
+        resolved.companyId,
+        resolved.role === "COMPANY_ADMIN",
+      );
       const { userId, validated } = await createScopedUserInTransaction(client, resolved, {
         passwordHash: PENDING_ACCOUNT_PASSWORD_HASH,
         setupCompleted: false,
@@ -207,8 +230,9 @@ export async function createInvitedUser(
         `INSERT INTO account_setup_invitations(
            user_id,company_id,token_hash,expires_at,created_by,id,
            email_locale,
-           intended_role_id,intended_branch_id,intended_scope_type,intended_supplier_id
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           intended_role_id,intended_branch_id,intended_department_id,
+           intended_scope_type,intended_supplier_id
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
          RETURNING id::text,expires_at::text AS "expiresAt"`,
         [
           userId,
@@ -220,6 +244,7 @@ export async function createInvitedUser(
           resolved.preferredLocale,
           intendedRoleId,
           resolved.branchId ?? null,
+          resolved.departmentId ?? null,
           resolved.scopeType,
           resolved.supplierId ?? null,
         ],
@@ -233,6 +258,7 @@ export async function createInvitedUser(
         companyName: validated.organizationName,
         role: resolved.role,
         branchName: validated.branchName,
+        departmentName: validated.departmentName,
         expiresAt: invitation.rows[0].expiresAt,
         locale: resolved.preferredLocale,
       };
@@ -254,6 +280,8 @@ interface ExistingInvitationTarget {
   companyName: string;
   branchId?: string;
   branchName?: string;
+  departmentId?: string;
+  departmentName?: string;
   supplierId?: string;
   active: boolean;
   setupCompleted: boolean;
@@ -312,6 +340,16 @@ async function initializeInvitedIdentity(
       [userId, input.companyId, input.branchId, actorId],
     );
   }
+  if (input.departmentId) {
+    await client.query(
+      `INSERT INTO department_assignments(
+         user_id,company_id,department_id,status,is_primary,assigned_by
+       ) VALUES ($1,$2,$3,'ACTIVE',true,$4)
+       ON CONFLICT(user_id,department_id) WHERE status='ACTIVE'
+       DO UPDATE SET status='ACTIVE',ended_at=NULL`,
+      [userId, input.companyId, input.departmentId, actorId],
+    );
+  }
   if (input.accountKind === "SUPPLIER") {
     await client.query(
       `INSERT INTO supplier_memberships(user_id,supplier_id,status,created_by)
@@ -331,13 +369,15 @@ async function initializeInvitedIdentity(
   }
   await client.query(
     `INSERT INTO role_assignments(
-       user_id,role_id,scope_type,company_id,branch_id,supplier_id,active,assigned_by
+       user_id,role_id,scope_type,company_id,branch_id,department_id,
+       supplier_id,active,assigned_by
      ) VALUES (
        $1,$2,$3,
-       CASE WHEN $3 IN ('COMPANY','BRANCH') THEN $4::uuid ELSE NULL END,
-       CASE WHEN $3='BRANCH' THEN $5::uuid ELSE NULL END,
-       CASE WHEN $3='SUPPLIER' THEN $6::uuid ELSE NULL END,
-       true,$7
+       CASE WHEN $3 IN ('COMPANY','BRANCH','DEPARTMENT') THEN $4::uuid ELSE NULL END,
+       CASE WHEN $3 IN ('BRANCH','DEPARTMENT') THEN $5::uuid ELSE NULL END,
+       CASE WHEN $3='DEPARTMENT' THEN $6::uuid ELSE NULL END,
+       CASE WHEN $3='SUPPLIER' THEN $7::uuid ELSE NULL END,
+       true,$8
      )
      ON CONFLICT DO NOTHING`,
     [
@@ -346,6 +386,7 @@ async function initializeInvitedIdentity(
       input.scopeType,
       input.companyId ?? null,
       input.branchId ?? null,
+      input.departmentId ?? null,
       input.supplierId ?? null,
       actorId,
     ],
@@ -381,7 +422,12 @@ function assertCanResendInvitation(
     && target.accountKind === "COMPANY"
     && actor.companyId === target.companyId
     && Boolean(actor.branchId) && actor.branchId === target.branchId
-    && ["BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER"].includes(target.role)) return;
+    && ["DEPARTMENT_ADMIN", "BRANCH_APPROVER", "REQUESTER", "FINANCE_REVIEWER", "AUDITOR", "RECEIVING_USER"].includes(target.role)) return;
+  if (actor.role === "DEPARTMENT_ADMIN"
+    && target.accountKind === "COMPANY"
+    && actor.companyId === target.companyId
+    && Boolean(actor.departmentId) && actor.departmentId === target.departmentId
+    && ["REQUESTER", "FINANCE_REVIEWER", "AUDITOR", "RECEIVING_USER"].includes(target.role)) return;
   throw new Error("Your account cannot resend this invitation.");
 }
 
@@ -413,19 +459,25 @@ export async function resendAccountSetupInvitation(
              CASE WHEN u.account_kind='DELIVERY' THEN 'Axora delivery network' ELSE 'Axora' END
            ) AS "companyName",
            assignment.branch_id::text AS "branchId",b.name AS "branchName",
+           assignment.department_id::text AS "departmentId",
+           department.name AS "departmentName",
            assignment.supplier_id::text AS "supplierId",u.active,
            profile.preferred_locale AS "preferredLocale",
            (u.account_setup_completed_at IS NOT NULL) AS "setupCompleted",
            CASE
-             WHEN assignment.scope_type IN ('COMPANY','BRANCH')
+             WHEN assignment.scope_type IN ('COMPANY','BRANCH','DEPARTMENT')
                THEN COALESCE(c.active,false) AND COALESCE(b.active,true)
+                 AND COALESCE(department.active,true)
              WHEN assignment.scope_type='SUPPLIER' THEN COALESCE(supplier.active,false)
              ELSE true
            END AS "organizationActive",
            CASE
-             WHEN assignment.scope_type IN ('COMPANY','BRANCH')
+             WHEN assignment.scope_type IN ('COMPANY','BRANCH','DEPARTMENT')
                THEN company_membership.status='INVITED'
-                 AND (assignment.scope_type<>'BRANCH' OR branch_assignment.status='ACTIVE')
+                 AND (assignment.scope_type NOT IN ('BRANCH','DEPARTMENT')
+                   OR assignment.branch_id IS NULL OR branch_assignment.status='ACTIVE')
+                 AND (assignment.scope_type<>'DEPARTMENT'
+                   OR department_assignment.status='ACTIVE')
              WHEN assignment.scope_type='SUPPLIER'
                THEN supplier_membership.status='INVITED'
              WHEN assignment.scope_type='DELIVERY'
@@ -437,6 +489,7 @@ export async function resendAccountSetupInvitation(
            SELECT prior.intended_role_id AS role_id,
              prior.intended_scope_type AS scope_type,
              prior.company_id,prior.intended_branch_id AS branch_id,
+             prior.intended_department_id AS department_id,
              prior.intended_supplier_id AS supplier_id
            FROM account_setup_invitations prior
            WHERE prior.user_id=u.id
@@ -449,6 +502,7 @@ export async function resendAccountSetupInvitation(
           AND assignment.scope_type=invitation_scope.scope_type
           AND assignment.company_id IS NOT DISTINCT FROM invitation_scope.company_id
           AND assignment.branch_id IS NOT DISTINCT FROM invitation_scope.branch_id
+          AND assignment.department_id IS NOT DISTINCT FROM invitation_scope.department_id
           AND assignment.supplier_id IS NOT DISTINCT FROM invitation_scope.supplier_id
           AND assignment.active=true
          JOIN roles role ON role.id=assignment.role_id
@@ -461,10 +515,16 @@ export async function resendAccountSetupInvitation(
           AND company_membership.company_id=assignment.company_id
          LEFT JOIN branches b ON b.id=assignment.branch_id
            AND b.company_id=assignment.company_id
+         LEFT JOIN departments department ON department.id=assignment.department_id
+           AND department.company_id=assignment.company_id
          LEFT JOIN branch_assignments branch_assignment
            ON branch_assignment.user_id=u.id
           AND branch_assignment.company_id=assignment.company_id
-          AND branch_assignment.branch_id=assignment.branch_id
+           AND branch_assignment.branch_id=assignment.branch_id
+         LEFT JOIN department_assignments department_assignment
+           ON department_assignment.user_id=u.id
+          AND department_assignment.company_id=assignment.company_id
+          AND department_assignment.department_id=assignment.department_id
          LEFT JOIN suppliers supplier ON supplier.id=assignment.supplier_id
          LEFT JOIN supplier_memberships supplier_membership
            ON supplier_membership.user_id=u.id
@@ -479,7 +539,12 @@ export async function resendAccountSetupInvitation(
       );
       const target = targetResult.rows[0];
       assertCanResendInvitation(target, actor);
-      await enforceInvitationQuota(client, actor.id, target.companyId);
+      await enforceInvitationQuota(
+        client,
+        actor.id,
+        target.companyId,
+        target.role === "COMPANY_ADMIN",
+      );
 
       const rate = await client.query<{ tooSoon: boolean; lastHour: number }>(
         `SELECT
@@ -510,8 +575,9 @@ export async function resendAccountSetupInvitation(
         `INSERT INTO account_setup_invitations(
            user_id,company_id,token_hash,expires_at,created_by,id,
            email_locale,
-           intended_role_id,intended_branch_id,intended_scope_type,intended_supplier_id
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           intended_role_id,intended_branch_id,intended_department_id,
+           intended_scope_type,intended_supplier_id
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
          RETURNING id::text,expires_at::text AS "expiresAt"`,
         [
           target.userId,
@@ -523,6 +589,7 @@ export async function resendAccountSetupInvitation(
           target.preferredLocale,
           target.roleId,
           target.branchId ?? null,
+          target.departmentId ?? null,
           target.scopeType,
           target.supplierId ?? null,
         ],
@@ -536,6 +603,7 @@ export async function resendAccountSetupInvitation(
         companyName: target.companyName,
         role: target.role,
         branchName: target.branchName,
+        departmentName: target.departmentName,
         expiresAt: invitation.rows[0].expiresAt,
         locale: target.preferredLocale,
       };
@@ -728,6 +796,8 @@ export async function inspectAccountSetupToken(
     recipientName: string;
     recipientEmail: string;
     companyName: string;
+    role: UserRole;
+    jobTitle?: string;
     expiresAt: string;
     locale: SupportedLocale;
   }>(
@@ -736,18 +806,21 @@ export async function inspectAccountSetupToken(
          CASE WHEN i.intended_scope_type='DELIVERY'
            THEN 'Axora delivery network' ELSE 'Axora' END
        ) AS "companyName",
+       intended_role.role_key AS role,profile.job_title AS "jobTitle",
        i.expires_at::text AS "expiresAt",i.email_locale AS locale
      FROM account_setup_invitations i
      JOIN users u ON u.id=i.user_id
        AND u.company_id IS NOT DISTINCT FROM i.company_id
        AND u.branch_id IS NOT DISTINCT FROM i.intended_branch_id
+     LEFT JOIN user_profiles profile ON profile.user_id=u.id
      JOIN roles intended_role ON intended_role.id=i.intended_role_id
      JOIN role_assignments intended_assignment
        ON intended_assignment.user_id=u.id
       AND intended_assignment.role_id=i.intended_role_id
       AND intended_assignment.scope_type=i.intended_scope_type
       AND intended_assignment.company_id IS NOT DISTINCT FROM i.company_id
-      AND intended_assignment.branch_id IS NOT DISTINCT FROM i.intended_branch_id
+     AND intended_assignment.branch_id IS NOT DISTINCT FROM i.intended_branch_id
+      AND intended_assignment.department_id IS NOT DISTINCT FROM i.intended_department_id
       AND intended_assignment.supplier_id IS NOT DISTINCT FROM i.intended_supplier_id
       AND intended_assignment.active=true
      LEFT JOIN companies c ON c.id=i.company_id
@@ -759,10 +832,16 @@ export async function inspectAccountSetupToken(
       AND company_membership.company_id=i.company_id
      LEFT JOIN branches b ON b.id=i.intended_branch_id
        AND b.company_id=i.company_id
+     LEFT JOIN departments department ON department.id=i.intended_department_id
+       AND department.company_id=i.company_id
      LEFT JOIN branch_assignments branch_assignment
        ON branch_assignment.user_id=u.id
       AND branch_assignment.company_id=i.company_id
       AND branch_assignment.branch_id=i.intended_branch_id
+     LEFT JOIN department_assignments department_assignment
+       ON department_assignment.user_id=u.id
+      AND department_assignment.company_id=i.company_id
+      AND department_assignment.department_id=i.intended_department_id
      LEFT JOIN supplier_memberships supplier_membership
        ON supplier_membership.user_id=u.id
       AND supplier_membership.supplier_id=i.intended_supplier_id
@@ -773,6 +852,7 @@ export async function inspectAccountSetupToken(
        AND u.account_setup_completed_at IS NULL AND u.password_hash=$2
        AND u.account_status='INVITED'
        AND u.active=true
+       AND public.axora_account_setup_inviter_can_activate(i.id,now())
        AND (
          (i.intended_scope_type='PLATFORM'
            AND u.account_kind='PLATFORM'
@@ -782,19 +862,37 @@ export async function inspectAccountSetupToken(
            AND u.is_owner=(intended_role.role_key='PLATFORM_OWNER'))
          OR (i.intended_scope_type='COMPANY'
            AND u.account_kind='COMPANY' AND u.is_owner=false
-           AND c.active=true AND company_membership.status='INVITED'
+           AND c.lifecycle_status IN (
+             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
+             'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
+           ) AND company_membership.status='INVITED'
            AND intended_role.role_key IN (
              'COMPANY_ADMIN','COMPANY_APPROVER','FINANCE_REVIEWER',
              'AUDITOR','RECEIVING_USER'
            ))
          OR (i.intended_scope_type='BRANCH'
            AND u.account_kind='COMPANY' AND u.is_owner=false
-           AND c.active=true AND b.active=true
+           AND c.lifecycle_status IN (
+             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
+             'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
+           ) AND b.active=true
            AND company_membership.status='INVITED'
            AND branch_assignment.status='ACTIVE'
            AND intended_role.role_key IN (
              'BRANCH_ADMIN','BRANCH_APPROVER','REQUESTER',
              'FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
+           ))
+         OR (i.intended_scope_type='DEPARTMENT'
+           AND u.account_kind='COMPANY' AND u.is_owner=false
+           AND c.lifecycle_status IN (
+             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
+             'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
+           ) AND COALESCE(b.active,true) AND department.active=true
+           AND company_membership.status='INVITED'
+           AND (i.intended_branch_id IS NULL OR branch_assignment.status='ACTIVE')
+           AND department_assignment.status='ACTIVE'
+           AND intended_role.role_key IN (
+             'DEPARTMENT_ADMIN','REQUESTER','FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
            ))
          OR (i.intended_scope_type='SUPPLIER'
            AND u.account_kind='SUPPLIER' AND u.is_owner=false
@@ -814,9 +912,11 @@ export async function inspectAccountSetupToken(
 export async function consumeAccountSetupToken(
   rawToken: string,
   newPassword: string,
+  activationInput: AccountSetupActivationInput,
 ): Promise<SessionUser> {
   if (!validToken(rawToken)) throw new AccountSetupTokenError();
   assertPasswordPolicy(newPassword);
+  const activation = activationInputSchema.parse(activationInput);
 
   // Avoid an expensive public Argon2id operation for random or stale links. The
   // transaction below repeats every condition under row locks for single use.
@@ -839,6 +939,7 @@ export async function consumeAccountSetupToken(
         scopeType: RoleScopeType;
         companyId?: string;
         branchId?: string;
+        departmentId?: string;
         supplierId?: string;
         createdBy: string;
         isOwner: boolean;
@@ -849,6 +950,7 @@ export async function consumeAccountSetupToken(
            u.account_kind AS "accountKind",i.intended_scope_type AS "scopeType",
            i.company_id::text AS "companyId",
            i.intended_branch_id::text AS "branchId",
+           i.intended_department_id::text AS "departmentId",
            i.intended_supplier_id::text AS "supplierId",
            i.created_by::text AS "createdBy",
            u.is_owner AS "isOwner"
@@ -863,6 +965,7 @@ export async function consumeAccountSetupToken(
           AND intended_assignment.scope_type=i.intended_scope_type
           AND intended_assignment.company_id IS NOT DISTINCT FROM i.company_id
           AND intended_assignment.branch_id IS NOT DISTINCT FROM i.intended_branch_id
+          AND intended_assignment.department_id IS NOT DISTINCT FROM i.intended_department_id
           AND intended_assignment.supplier_id IS NOT DISTINCT FROM i.intended_supplier_id
           AND intended_assignment.active=true
          LEFT JOIN companies c ON c.id=i.company_id
@@ -874,10 +977,16 @@ export async function consumeAccountSetupToken(
           AND company_membership.company_id=i.company_id
          LEFT JOIN branches b ON b.id=i.intended_branch_id
            AND b.company_id=i.company_id
+         LEFT JOIN departments department ON department.id=i.intended_department_id
+           AND department.company_id=i.company_id
          LEFT JOIN branch_assignments branch_assignment
            ON branch_assignment.user_id=u.id
           AND branch_assignment.company_id=i.company_id
           AND branch_assignment.branch_id=i.intended_branch_id
+         LEFT JOIN department_assignments department_assignment
+           ON department_assignment.user_id=u.id
+          AND department_assignment.company_id=i.company_id
+          AND department_assignment.department_id=i.intended_department_id
          LEFT JOIN supplier_memberships supplier_membership
            ON supplier_membership.user_id=u.id
           AND supplier_membership.supplier_id=i.intended_supplier_id
@@ -888,6 +997,7 @@ export async function consumeAccountSetupToken(
            AND u.account_setup_completed_at IS NULL AND u.password_hash=$2
            AND u.account_status='INVITED'
            AND u.active=true
+           AND public.axora_account_setup_inviter_can_activate(i.id,now())
            AND (
              (i.intended_scope_type='PLATFORM'
                AND u.account_kind='PLATFORM'
@@ -897,19 +1007,37 @@ export async function consumeAccountSetupToken(
                AND u.is_owner=(intended_role.role_key='PLATFORM_OWNER'))
              OR (i.intended_scope_type='COMPANY'
                AND u.account_kind='COMPANY' AND u.is_owner=false
-               AND c.active=true AND company_membership.status='INVITED'
+               AND c.lifecycle_status IN (
+                 'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
+                 'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
+               ) AND company_membership.status='INVITED'
                AND intended_role.role_key IN (
                  'COMPANY_ADMIN','COMPANY_APPROVER','FINANCE_REVIEWER',
                  'AUDITOR','RECEIVING_USER'
                ))
              OR (i.intended_scope_type='BRANCH'
                AND u.account_kind='COMPANY' AND u.is_owner=false
-               AND c.active=true AND b.active=true
+               AND c.lifecycle_status IN (
+                 'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
+                 'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
+               ) AND b.active=true
                AND company_membership.status='INVITED'
                AND branch_assignment.status='ACTIVE'
                AND intended_role.role_key IN (
                  'BRANCH_ADMIN','BRANCH_APPROVER','REQUESTER',
                  'FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
+               ))
+             OR (i.intended_scope_type='DEPARTMENT'
+               AND u.account_kind='COMPANY' AND u.is_owner=false
+               AND c.lifecycle_status IN (
+                 'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
+                 'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
+               ) AND COALESCE(b.active,true) AND department.active=true
+               AND company_membership.status='INVITED'
+               AND (i.intended_branch_id IS NULL OR branch_assignment.status='ACTIVE')
+               AND department_assignment.status='ACTIVE'
+               AND intended_role.role_key IN (
+                 'DEPARTMENT_ADMIN','REQUESTER','FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
                ))
              OR (i.intended_scope_type='SUPPLIER'
                AND u.account_kind='SUPPLIER' AND u.is_owner=false
@@ -938,11 +1066,12 @@ export async function consumeAccountSetupToken(
         `UPDATE users
          SET password_hash=$2,account_setup_completed_at=now(),
              account_status='ACTIVE',
+             display_name=$3,
              email_verified_at=COALESCE(email_verified_at,now()),
              auth_version=auth_version+1
          WHERE id=$1
          RETURNING auth_version AS "authVersion"`,
-        [invitation.userId, passwordHash],
+        [invitation.userId, passwordHash, activation.displayName],
       );
       await client.query(
         `INSERT INTO account_credentials(
@@ -964,8 +1093,9 @@ export async function consumeAccountSetupToken(
         `INSERT INTO user_profiles(user_id,display_name,preferred_locale)
          VALUES ($1,$2,$3)
          ON CONFLICT(user_id) DO UPDATE
-         SET display_name=EXCLUDED.display_name`,
-        [invitation.userId, invitation.displayName, inspection.locale],
+         SET display_name=EXCLUDED.display_name,
+             preferred_locale=EXCLUDED.preferred_locale`,
+        [invitation.userId, activation.displayName, activation.locale],
       );
       if (invitation.companyId) {
         await client.query(
@@ -997,6 +1127,16 @@ export async function consumeAccountSetupToken(
           [invitation.userId, invitation.companyId, invitation.branchId],
         );
       }
+      if (invitation.departmentId) {
+        await client.query(
+          `INSERT INTO department_assignments(
+             user_id,company_id,department_id,status,is_primary
+           ) VALUES ($1,$2,$3,'ACTIVE',true)
+           ON CONFLICT(user_id,department_id) WHERE status='ACTIVE'
+           DO UPDATE SET status='ACTIVE',ended_at=NULL`,
+          [invitation.userId, invitation.companyId, invitation.departmentId],
+        );
+      }
       await client.query(
         `INSERT INTO onboarding_progress(user_id,profile_stage_status)
          VALUES ($1,'NOT_STARTED')
@@ -1006,6 +1146,10 @@ export async function consumeAccountSetupToken(
       await client.query(
         `UPDATE account_setup_invitations
          SET consumed_at=now(),
+             terms_policy_version='account-terms-2026-08-08',
+             terms_accepted_at=now(),
+             privacy_policy_version='account-privacy-2026-08-08',
+             privacy_accepted_at=now(),
              delivery_status=CASE
                WHEN delivery_status IN ('PENDING','SENDING') THEN 'CANCELLED'
                ELSE delivery_status
@@ -1040,6 +1184,7 @@ export async function consumeAccountSetupToken(
             isOwner: invitation.isOwner,
             companyId: invitation.companyId,
             branchId: invitation.branchId,
+            departmentId: invitation.departmentId,
           },
           previousState: "INVITED",
           newState: "ACTIVE",
@@ -1049,7 +1194,7 @@ export async function consumeAccountSetupToken(
           recipientUserIds: [invitation.createdBy],
           message: {
             key: "invitation_accepted",
-            accountName: invitation.displayName,
+            accountName: activation.displayName,
           },
           routePath: "/users",
         });
@@ -1058,10 +1203,11 @@ export async function consumeAccountSetupToken(
       return {
         id: invitation.userId,
         email: invitation.email,
-        name: invitation.displayName,
+        name: activation.displayName,
         role: invitation.role,
         companyId: invitation.companyId,
         branchId: invitation.branchId,
+        departmentId: invitation.departmentId,
         supplierId: invitation.supplierId,
         accountKind: invitation.accountKind,
         scopeType: invitation.scopeType,

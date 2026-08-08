@@ -205,9 +205,6 @@ export async function syncCompanyAdministratorAction(formData: FormData) {
 export async function inviteCompanyAdministratorAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
   await requireRecentStepUp(actor, "/companies");
-  if (!actor.isOwner) {
-    throw new Error("Only a Platform Owner can issue the first Company Administrator invitation.");
-  }
   const input = z.object({
     companyId: z.uuid(),
     displayName: z.string().trim().min(2).max(200),

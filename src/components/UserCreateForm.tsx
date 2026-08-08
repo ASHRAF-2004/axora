@@ -13,6 +13,8 @@ import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { LOCALE_NAMES, SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n";
 import { userFormMessages } from "@/lib/user-form-i18n";
+import type { OrganizationDepartment } from "@/lib/organization-structure";
+import { organizationStructureMessages } from "@/lib/organization-structure-i18n";
 
 export interface UserRoleOption {
   label: string;
@@ -43,18 +45,22 @@ function CreateAccountButton({ disabled, locale }: { disabled: boolean; locale: 
 export function UserCreateForm({
   actorBranchId,
   actorCompanyId,
+  actorDepartmentId,
   actorIsOwner,
   branches,
   companies,
+  departments,
   roleOptions,
   suppliers,
   defaultLocale,
 }: {
   actorBranchId?: string;
   actorCompanyId?: string;
+  actorDepartmentId?: string;
   actorIsOwner: boolean;
   branches: Branch[];
   companies: Company[];
+  departments: OrganizationDepartment[];
   roleOptions: UserRoleOption[];
   suppliers: Supplier[];
   defaultLocale: SupportedLocale;
@@ -76,14 +82,20 @@ export function UserCreateForm({
     [branches, companyId],
   );
   const [branchId, setBranchId] = useState(actorBranchId ?? "");
+  const [departmentId, setDepartmentId] = useState(actorDepartmentId ?? "");
   const copy = userFormMessages(defaultLocale);
+  const organizationCopy = organizationStructureMessages(defaultLocale);
   const localizedSelectedRole = selectedRole ? copy.roles[selectedRole.value] : undefined;
 
   const isCompanyAccount = selectedRole?.accountKind === "COMPANY";
   const isSupplierAccount = selectedRole?.accountKind === "SUPPLIER";
   const allowsBranch = Boolean(selectedRole?.allowedScopes.includes("BRANCH"));
-  const requiresBranch = allowsBranch
-    && !selectedRole?.allowedScopes.includes("COMPANY");
+  const allowsDepartment = Boolean(selectedRole?.allowedScopes.includes("DEPARTMENT"));
+  const allowsCompany = Boolean(selectedRole?.allowedScopes.includes("COMPANY"));
+  const requiresBranch = allowsBranch && !allowsDepartment && !allowsCompany;
+  const requiresDepartment = allowsDepartment
+    && !allowsBranch && !allowsCompany;
+  const requiresNarrowScope = !allowsCompany && (allowsBranch || allowsDepartment);
   const firstBranchId = actorBranchId
     ?? availableBranches[0]?.id
     ?? "";
@@ -91,6 +103,20 @@ export function UserCreateForm({
     && availableBranches.some((branch) => branch.id === branchId)
     ? branchId
     : requiresBranch ? firstBranchId : "";
+  const availableDepartments = departments.filter((department) => (
+    department.active
+    && department.companyId === companyId
+    && (!actorDepartmentId || department.id === actorDepartmentId)
+    && (!selectedBranchId || department.branchId === selectedBranchId)
+  ));
+  const selectedDepartmentId = allowsDepartment
+    && availableDepartments.some((department) => department.id === departmentId)
+    ? departmentId
+    : requiresDepartment ? availableDepartments[0]?.id ?? "" : "";
+  const selectedDepartment = availableDepartments.find(
+    (department) => department.id === selectedDepartmentId,
+  );
+  const effectiveBranchId = selectedDepartment?.branchId ?? selectedBranchId;
 
   function changeCompany(nextCompanyId: string) {
     const nextBranches = branches.filter(
@@ -98,6 +124,7 @@ export function UserCreateForm({
     );
     setCompanyId(nextCompanyId);
     setBranchId(requiresBranch ? nextBranches[0]?.id ?? "" : "");
+    setDepartmentId("");
   }
 
   function changeRole(nextRole: UserRole) {
@@ -110,10 +137,20 @@ export function UserCreateForm({
         ? current
         : firstBranchId);
     }
+    if (!nextDefinition?.allowedScopes.includes("DEPARTMENT")) {
+      setDepartmentId("");
+    }
+  }
+
+  function changeDepartment(nextDepartmentId: string) {
+    const department = departments.find((item) => item.id === nextDepartmentId);
+    setDepartmentId(nextDepartmentId);
+    if (department?.branchId) setBranchId(department.branchId);
   }
 
   const missingRequiredScope = (isCompanyAccount && !companyId)
-    || (requiresBranch && !selectedBranchId)
+    || (requiresDepartment && !selectedDepartmentId)
+    || (requiresNarrowScope && !effectiveBranchId && !selectedDepartmentId)
     || (isSupplierAccount && !supplierId);
 
   return (
@@ -172,9 +209,9 @@ export function UserCreateForm({
               name="branchId"
               required={requiresBranch}
               value={selectedBranchId}
-              onChange={(event) => setBranchId(event.target.value)}
+              onChange={(event) => { setBranchId(event.target.value); setDepartmentId(""); }}
             >
-              {requiresBranch
+              {requiresNarrowScope && !allowsDepartment
                 ? <option value="" disabled>{copy.selectBranch}</option>
                 : <option value="">{copy.companyWide}</option>}
               {availableBranches.map((branch) => (
@@ -187,6 +224,30 @@ export function UserCreateForm({
               ? copy.branchLimited
               : copy.branchOptional}</small>
           </label>
+        ) : null}
+
+        {isCompanyAccount && allowsDepartment ? (
+          <label>{organizationCopy.department}
+            <select
+              name="departmentId"
+              required={requiresDepartment}
+              value={selectedDepartmentId}
+              onChange={(event) => changeDepartment(event.target.value)}
+            >
+              <option value="">{requiresDepartment
+                ? organizationCopy.selectDepartment
+                : organizationCopy.noDepartment}</option>
+              {availableDepartments.map((department) => (
+                <option key={department.id} value={department.id}>{department.name}</option>
+              ))}
+            </select>
+            <small>{requiresDepartment
+              ? organizationCopy.departmentRequired
+              : organizationCopy.departmentOptional}</small>
+          </label>
+        ) : null}
+        {isCompanyAccount && !allowsBranch && effectiveBranchId ? (
+          <input type="hidden" name="branchId" value={effectiveBranchId} />
         ) : null}
 
         {isSupplierAccount ? (

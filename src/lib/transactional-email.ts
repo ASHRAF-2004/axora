@@ -21,7 +21,9 @@ const OUTBOX_RETRY_SECONDS = 60;
 
 export type TransactionalEmailKind =
   | "CONTACT_NOTIFICATION"
+  | "CONTACT_ACKNOWLEDGEMENT"
   | "PASSWORD_RESET"
+  | "PASSWORD_CHANGED"
   | "EMAIL_VERIFICATION";
 
 export type TransactionalEmailOutcome =
@@ -273,6 +275,34 @@ export async function insertContactEmailOutbox(
   return result.rows[0].id;
 }
 
+export async function insertContactAcknowledgementEmailOutbox(
+  client: PoolClient,
+  submissionId: string,
+  locale: SupportedEmailLocale,
+) {
+  const result = await client.query<{ id: string }>(
+    `INSERT INTO transactional_email_outbox(
+       message_kind,contact_submission_id,locale
+     ) VALUES ('CONTACT_ACKNOWLEDGEMENT',$1,$2)
+     RETURNING id::text`,
+    [submissionId, locale],
+  );
+  return result.rows[0].id;
+}
+
+export async function insertPasswordChangedEmailOutbox(
+  client: PoolClient,
+  passwordResetTokenId: string,
+  locale: SupportedEmailLocale,
+) {
+  await client.query(
+    `INSERT INTO transactional_email_outbox(
+       message_kind,password_reset_token_id,locale
+     ) VALUES ('PASSWORD_CHANGED',$1,$2)`,
+    [passwordResetTokenId, locale],
+  );
+}
+
 function contactNotificationRecipient() {
   const value = (process.env.AXORA_CONTACT_NOTIFICATION_TO ?? "").trim().toLowerCase();
   if (!value) return null;
@@ -345,7 +375,12 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                (outbox.message_kind='CONTACT_NOTIFICATION'
                  AND $1::text IS NOT NULL
                  AND axora_email_recipient_is_suppressed($1::text))
-               OR (outbox.message_kind='PASSWORD_RESET' AND EXISTS (
+               OR (outbox.message_kind='CONTACT_ACKNOWLEDGEMENT' AND EXISTS (
+                 SELECT 1 FROM public_contact_submissions submission
+                 WHERE submission.id=outbox.contact_submission_id
+                   AND axora_email_recipient_is_suppressed(submission.contact_email)
+               ))
+               OR (outbox.message_kind IN ('PASSWORD_RESET','PASSWORD_CHANGED') AND EXISTS (
                  SELECT 1
                  FROM password_reset_tokens reset
                  JOIN users account ON account.id=reset.user_id
@@ -359,11 +394,25 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                    AND axora_email_recipient_is_suppressed(verification.email)
                ))
              )
-           RETURNING contact_submission_id
+           RETURNING contact_submission_id,message_kind
          )
          UPDATE public_contact_submissions submission
-         SET notification_status='NOTIFICATION_FAILED',
-             notification_finalized_at=now()
+         SET notification_status=CASE WHEN EXISTS (
+               SELECT 1 FROM cancelled WHERE contact_submission_id=submission.id
+                 AND message_kind='CONTACT_NOTIFICATION'
+             ) THEN 'NOTIFICATION_FAILED' ELSE notification_status END,
+             notification_finalized_at=CASE WHEN EXISTS (
+               SELECT 1 FROM cancelled WHERE contact_submission_id=submission.id
+                 AND message_kind='CONTACT_NOTIFICATION'
+             ) THEN now() ELSE notification_finalized_at END,
+             acknowledgement_status=CASE WHEN EXISTS (
+               SELECT 1 FROM cancelled WHERE contact_submission_id=submission.id
+                 AND message_kind='CONTACT_ACKNOWLEDGEMENT'
+             ) THEN 'FAILED' ELSE acknowledgement_status END,
+             acknowledgement_finalized_at=CASE WHEN EXISTS (
+               SELECT 1 FROM cancelled WHERE contact_submission_id=submission.id
+                 AND message_kind='CONTACT_ACKNOWLEDGEMENT'
+             ) THEN now() ELSE acknowledgement_finalized_at END
          WHERE submission.id IN (
            SELECT contact_submission_id FROM cancelled
            WHERE contact_submission_id IS NOT NULL
@@ -402,11 +451,25 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                token_authentication_tag=NULL
            WHERE delivery_status='SENDING'
              AND delivery_lease_expires_at <= now()
-           RETURNING contact_submission_id
+           RETURNING contact_submission_id,message_kind
          )
          UPDATE public_contact_submissions submission
-         SET notification_status='NOTIFICATION_UNCERTAIN',
-             notification_finalized_at=now()
+         SET notification_status=CASE WHEN EXISTS (
+               SELECT 1 FROM expired WHERE contact_submission_id=submission.id
+                 AND message_kind='CONTACT_NOTIFICATION'
+             ) THEN 'NOTIFICATION_UNCERTAIN' ELSE notification_status END,
+             notification_finalized_at=CASE WHEN EXISTS (
+               SELECT 1 FROM expired WHERE contact_submission_id=submission.id
+                 AND message_kind='CONTACT_NOTIFICATION'
+             ) THEN now() ELSE notification_finalized_at END,
+             acknowledgement_status=CASE WHEN EXISTS (
+               SELECT 1 FROM expired WHERE contact_submission_id=submission.id
+                 AND message_kind='CONTACT_ACKNOWLEDGEMENT'
+             ) THEN 'UNCERTAIN' ELSE acknowledgement_status END,
+             acknowledgement_finalized_at=CASE WHEN EXISTS (
+               SELECT 1 FROM expired WHERE contact_submission_id=submission.id
+                 AND message_kind='CONTACT_ACKNOWLEDGEMENT'
+             ) THEN now() ELSE acknowledgement_finalized_at END
          WHERE submission.id IN (
            SELECT contact_submission_id FROM expired
            WHERE contact_submission_id IS NOT NULL
@@ -447,9 +510,18 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                AND $1::text IS NOT NULL
                AND submission.notification_status='RECEIVED'
                AND NOT axora_email_recipient_is_suppressed($1::text))
+             OR (outbox.message_kind='CONTACT_ACKNOWLEDGEMENT'
+               AND submission.acknowledgement_status='QUEUED'
+               AND NOT axora_email_recipient_is_suppressed(submission.contact_email))
              OR (outbox.message_kind='PASSWORD_RESET'
                AND reset.used_at IS NULL AND reset.revoked_at IS NULL
                AND reset.expires_at > now()
+               AND reset_user.active=true
+               AND reset_user.account_status='ACTIVE'
+               AND reset_user.account_setup_completed_at IS NOT NULL
+               AND NOT axora_email_recipient_is_suppressed(reset_user.email))
+             OR (outbox.message_kind='PASSWORD_CHANGED'
+               AND reset.used_at IS NOT NULL
                AND reset_user.active=true
                AND reset_user.account_status='ACTIVE'
                AND reset_user.account_setup_completed_at IS NOT NULL
@@ -472,7 +544,8 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
       if (!row) return null;
 
       let rawToken: string | undefined;
-      if (row.messageKind !== "CONTACT_NOTIFICATION") {
+      if (row.messageKind === "PASSWORD_RESET"
+        || row.messageKind === "EMAIL_VERIFICATION") {
         try {
           rawToken = decryptSecurityToken({
             outboxId: row.deliveryId,
@@ -511,15 +584,21 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
       );
       if (!claimed.rowCount) return null;
 
-      if (row.messageKind === "CONTACT_NOTIFICATION") {
+      if (row.messageKind === "CONTACT_NOTIFICATION"
+        || row.messageKind === "CONTACT_ACKNOWLEDGEMENT") {
+        const acknowledgement = row.messageKind === "CONTACT_ACKNOWLEDGEMENT";
         return {
           deliveryId: row.deliveryId,
           leaseId,
           messageKind: row.messageKind,
           locale: row.locale,
-          recipientEmail: String(privateContactRecipient),
-          recipientName: "Axora contact team",
-          replyToEmail: String(row.contactEmail),
+          recipientEmail: acknowledgement
+            ? String(row.contactEmail)
+            : String(privateContactRecipient),
+          recipientName: acknowledgement
+            ? String(row.contactName)
+            : "Axora contact team",
+          replyToEmail: acknowledgement ? undefined : String(row.contactEmail),
           contact: {
             name: String(row.contactName),
             email: String(row.contactEmail),
@@ -529,6 +608,17 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
             message: String(row.message),
             submittedAt: String(row.submittedAt),
           },
+        };
+      }
+
+      if (row.messageKind === "PASSWORD_CHANGED") {
+        return {
+          deliveryId: row.deliveryId,
+          leaseId,
+          messageKind: row.messageKind,
+          locale: row.locale,
+          recipientEmail: String(row.recipientEmail),
+          recipientName: String(row.recipientName),
         };
       }
 
@@ -585,6 +675,7 @@ export async function completeTransactionalEmailOutbox(
       const updated = await client.query<{
         contactSubmissionId?: string;
         deliveryStatus: string;
+        messageKind: TransactionalEmailKind;
       }>(
         `UPDATE transactional_email_outbox
          SET delivery_status=CASE
@@ -619,7 +710,7 @@ export async function completeTransactionalEmailOutbox(
                  THEN token_authentication_tag ELSE NULL END
          WHERE id=$1 AND delivery_status='SENDING' AND delivery_lease_id=$2
          RETURNING contact_submission_id::text AS "contactSubmissionId",
-           delivery_status AS "deliveryStatus"`,
+           delivery_status AS "deliveryStatus",message_kind AS "messageKind"`,
         [
           deliveryId,
           leaseId,
@@ -632,20 +723,35 @@ export async function completeTransactionalEmailOutbox(
       );
       const row = updated.rows[0];
       if (!row) return false;
+      const messageKind = row.messageKind ?? "CONTACT_NOTIFICATION";
       if (row.contactSubmissionId && row.deliveryStatus !== "PENDING") {
-        const status = row.deliveryStatus === "SENT"
-          ? "NOTIFIED"
-          : row.deliveryStatus === "UNCERTAIN"
-            ? "NOTIFICATION_UNCERTAIN"
-            : "NOTIFICATION_FAILED";
-        await client.query(
-          `UPDATE public_contact_submissions
-           SET notification_status=$2,
-               notified_at=CASE WHEN $2='NOTIFIED' THEN now() ELSE NULL END,
-               notification_finalized_at=now()
-           WHERE id=$1 AND notification_status='RECEIVED'`,
-          [row.contactSubmissionId, status],
-        );
+        if (messageKind === "CONTACT_NOTIFICATION") {
+          const status = row.deliveryStatus === "SENT"
+            ? "NOTIFIED"
+            : row.deliveryStatus === "UNCERTAIN"
+              ? "NOTIFICATION_UNCERTAIN"
+              : "NOTIFICATION_FAILED";
+          await client.query(
+            `UPDATE public_contact_submissions
+             SET notification_status=$2,
+                 notified_at=CASE WHEN $2='NOTIFIED' THEN now() ELSE NULL END,
+                 notification_finalized_at=now()
+             WHERE id=$1 AND notification_status='RECEIVED'`,
+            [row.contactSubmissionId, status],
+          );
+        } else if (messageKind === "CONTACT_ACKNOWLEDGEMENT") {
+          const status = row.deliveryStatus === "SENT"
+            ? "SENT"
+            : row.deliveryStatus === "UNCERTAIN" ? "UNCERTAIN" : "FAILED";
+          await client.query(
+            `UPDATE public_contact_submissions
+             SET acknowledgement_status=$2,
+                 acknowledged_at=CASE WHEN $2='SENT' THEN now() ELSE NULL END,
+                 acknowledgement_finalized_at=now()
+             WHERE id=$1 AND acknowledgement_status='QUEUED'`,
+            [row.contactSubmissionId, status],
+          );
+        }
       }
       return true;
     },

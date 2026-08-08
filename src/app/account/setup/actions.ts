@@ -16,6 +16,8 @@ export type AccountSetupInspectionState =
     recipientName: string;
     recipientEmail: string;
     companyName: string;
+    role: string;
+    jobTitle?: string;
     expiresAt: string;
     locale: SupportedLocale;
   }
@@ -23,7 +25,7 @@ export type AccountSetupInspectionState =
 
 export interface AccountSetupCompletionState {
   status: "idle" | "error" | "invalid";
-  code?: PasswordResetErrorCode;
+  code?: PasswordResetErrorCode | "policy_required";
 }
 
 /** Called from the client after the fragment has been removed from the URI. */
@@ -38,6 +40,8 @@ export async function inspectAccountSetupTokenAction(
         recipientName: invitation.recipientName,
         recipientEmail: invitation.recipientEmail,
         companyName: invitation.companyName,
+        role: invitation.role,
+        ...(invitation.jobTitle ? { jobTitle: invitation.jobTitle } : {}),
         expiresAt: invitation.expiresAt,
         locale: invitation.locale,
       }
@@ -54,15 +58,25 @@ export async function completeAccountSetupAction(
 ): Promise<AccountSetupCompletionState> {
   const password = String(formData.get("password") ?? "");
   const confirmation = String(formData.get("confirmPassword") ?? "");
+  const termsAccepted = formData.get("termsAccepted") === "on";
+  const privacyAccepted = formData.get("privacyAccepted") === "on";
   if (password !== confirmation) {
     return {
       status: "error",
       code: "password_mismatch",
     };
   }
+  if (!termsAccepted || !privacyAccepted) {
+    return { status: "error", code: "policy_required" };
+  }
 
   try {
-    await consumeAccountSetupToken(rawToken, password);
+    await consumeAccountSetupToken(rawToken, password, {
+      displayName: String(formData.get("displayName") ?? ""),
+      locale: String(formData.get("locale") ?? "en") as "en" | "ar" | "ms",
+      termsAccepted: true,
+      privacyAccepted: true,
+    });
   } catch (error) {
     if (error instanceof AccountSetupTokenError) {
       return {

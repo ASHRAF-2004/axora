@@ -20,7 +20,7 @@ import { z } from "zod";
 
 const userSchema = z.object({ email: z.email(), displayName: z.string().trim().min(2).max(200),
   role: z.custom<UserRole>((value) => isUserRole(value), "Choose an approved account role."),
-  companyId: z.uuid().optional(), branchId: z.uuid().optional(), supplierId: z.uuid().optional(),
+  companyId: z.uuid().optional(), branchId: z.uuid().optional(), departmentId: z.uuid().optional(), supplierId: z.uuid().optional(),
   jobTitle: z.string().trim().max(160).optional(),
   preferredLocale: z.enum(SUPPORTED_LOCALES) });
 
@@ -77,6 +77,7 @@ export async function createUserAction(formData: FormData) {
     role: readFormText(formData, "role"),
     companyId: readFormText(formData, "companyId") || undefined,
     branchId: readFormText(formData, "branchId") || undefined,
+    departmentId: readFormText(formData, "departmentId") || undefined,
     supplierId: readFormText(formData, "supplierId") || undefined,
     jobTitle: readFormText(formData, "jobTitle") || undefined,
     preferredLocale: readFormText(formData, "preferredLocale") || "en" });

@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
+import { companyLeadMessages } from "@/lib/company-leads-i18n";
+import { companyOnboardingMessages } from "@/lib/company-onboarding-i18n";
 import {
   COMPANY_LIFECYCLE_STATUSES,
   loadCompanyLifecycleWorkspace,
@@ -16,6 +18,7 @@ import {
   companyLifecycleText,
 } from "@/lib/company-lifecycle-i18n";
 import { COD_PAYMENT_METHOD } from "@/lib/types";
+import Link from "next/link";
 import {
   activateCompanyAction,
   assignCompanyManagerAction,
@@ -257,6 +260,7 @@ function CompanyCard({
   owner: boolean;
 }) {
   const copy = companyLifecycleMessages(locale);
+  const onboardingCopy = companyOnboardingMessages(locale);
   const percentage = company.onboarding.required
     ? Math.round((company.onboarding.passed / company.onboarding.required) * 100)
     : 0;
@@ -286,6 +290,11 @@ function CompanyCard({
         <strong>{copy.onboarding}</strong>
         <p>{companyLifecycleText(locale, "progress", { passed: company.onboarding.passed, required: company.onboarding.required })}</p>
         <progress value={company.onboarding.passed} max={Math.max(1, company.onboarding.required)} aria-label={copy.onboarding} style={{ inlineSize: "100%" }}>{percentage}%</progress>
+        <div className="form-actions">
+          <Link className="button button-secondary" href={`/companies/${company.id}/onboarding`}>
+            {onboardingCopy.openWorkspace}
+          </Link>
+        </div>
       </div>
 
       {company.activationBlockedReasons.length ? (
@@ -376,6 +385,7 @@ export default async function CompaniesPage({
   const actor = await requirePagePermission("manage_companies");
   const locale = actor.preferredLocale ?? "en";
   const copy = companyLifecycleMessages(locale);
+  const leadCopy = companyLeadMessages(locale);
   const [workspace, params] = await Promise.all([
     loadCompanyLifecycleWorkspace(actor),
     searchParams,
@@ -395,6 +405,7 @@ export default async function CompaniesPage({
   return (
     <>
       <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+      <section className="panel"><div className="panel-header"><div><h2>{leadCopy.queueTitle}</h2><p>{leadCopy.queueIntro}</p></div><Link className="button button-primary" href="/companies/leads">{leadCopy.queueTitle}</Link></div></section>
       {notice ? <section className="panel" role="status" aria-live="polite"><strong>{notice}</strong></section> : null}
 
       <section className="panel" style={{ marginBlockStart: 16 }}>

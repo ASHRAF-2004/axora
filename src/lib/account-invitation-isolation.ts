@@ -81,7 +81,7 @@ function creationMatches(
     && snapshot.scope.companyId === resolved.companyId
     && snapshot.scope.branchId === resolved.branchId
     && snapshot.scope.supplierId === resolved.supplierId
-    && snapshot.scope.departmentId === undefined;
+    && snapshot.scope.departmentId === resolved.departmentId;
 }
 
 export async function lockAuthorizedInvitationCreationScope(
@@ -116,7 +116,7 @@ export async function lockAuthorizedInvitationCreationScope(
           resolved.scopeType,
           resolved.companyId ?? null,
           resolved.branchId ?? null,
-          null,
+          resolved.departmentId ?? null,
           resolved.supplierId ?? null,
           capturedAt,
         ]);

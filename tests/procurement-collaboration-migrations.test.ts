@@ -290,7 +290,7 @@ describe("procurement collaboration data foundation", () => {
     ]));
     // Contact/security delivery remains separate from the workflow email
     // capability boundary introduced by migration 026.
-    expect(names.filter((name) => name.includes("email_outbox"))).toEqual([
+    expect(names.filter((name) => name.includes("email_outbox")).sort()).toEqual([
       "transactional_email_outbox",
       "workflow_email_outbox",
     ]);
