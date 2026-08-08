@@ -16,6 +16,7 @@ secrets
 # Production data, backups, exports, and generated credentials
 backups
 data
+data/uploads
 output
 tmp
 coverage
