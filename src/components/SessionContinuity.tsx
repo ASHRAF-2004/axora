@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { SupportedLocale } from "@/lib/i18n";
 import type { BrowserSessionScope } from "@/lib/browser-session-scope";
@@ -38,7 +38,6 @@ export function SessionContinuity({
   locale: SupportedLocale;
 }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [online, setOnline] = useState(true);
   const [restored, setRestored] = useState(false);
 
@@ -63,26 +62,42 @@ export function SessionContinuity({
   }, []);
 
   useEffect(() => {
-    const query = searchParams.toString();
-    const record = () => recordBrowserReturnPath(
-      `${pathname}${query ? `?${query}` : ""}${window.location.hash}`,
-    );
-    record();
-    window.addEventListener("hashchange", record);
-    window.addEventListener("pageshow", record);
-    return () => {
-      window.removeEventListener("hashchange", record);
-      window.removeEventListener("pageshow", record);
+    const handleLocation = () => {
+      recordBrowserReturnPath(
+        `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      );
+      if (new URLSearchParams(window.location.search).get("notice")
+        === "request-submitted") {
+        // The redirect proves the server transaction committed. Clearing before
+        // this point would lose a valid draft when a submission is interrupted.
+        clearRequestCart();
+        clearRequestDraft();
+      }
     };
-  }, [pathname, searchParams]);
 
-  useEffect(() => {
-    if (searchParams.get("notice") !== "request-submitted") return;
-    // The redirect proves the server transaction committed. Clearing before
-    // this point would lose a valid draft when a submission is interrupted.
-    clearRequestCart();
-    clearRequestDraft();
-  }, [searchParams]);
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+    window.history.pushState = function pushState(...args) {
+      originalPushState.apply(this, args);
+      handleLocation();
+    };
+    window.history.replaceState = function replaceState(...args) {
+      originalReplaceState.apply(this, args);
+      handleLocation();
+    };
+
+    handleLocation();
+    window.addEventListener("hashchange", handleLocation);
+    window.addEventListener("popstate", handleLocation);
+    window.addEventListener("pageshow", handleLocation);
+    return () => {
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
+      window.removeEventListener("hashchange", handleLocation);
+      window.removeEventListener("popstate", handleLocation);
+      window.removeEventListener("pageshow", handleLocation);
+    };
+  }, [pathname]);
 
   if (online && !restored) return null;
 
