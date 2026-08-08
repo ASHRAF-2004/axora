@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => {
     query: vi.fn(),
     appendWorkflowEvent: vi.fn(),
     notifyWorkflowUsers: vi.fn(),
+    lockInvitationCreation: vi.fn(),
+    lockInvitationTarget: vi.fn(),
     withAuditTransaction: vi.fn(
       async (_context: unknown, work: (client: typeof mocks.client) => unknown) =>
         work(mocks.client),
@@ -23,6 +25,11 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/workflow-repository", () => ({
   appendWorkflowEvent: mocks.appendWorkflowEvent,
   notifyWorkflowUsers: mocks.notifyWorkflowUsers,
+}));
+
+vi.mock("@/lib/account-invitation-isolation", () => ({
+  lockAuthorizedInvitationCreationScope: mocks.lockInvitationCreation,
+  lockAuthorizedInvitationTarget: mocks.lockInvitationTarget,
 }));
 
 import {

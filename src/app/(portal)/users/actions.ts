@@ -10,10 +10,7 @@ import {
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
 import { requirePermission, requireRecentStepUp } from "@/lib/auth";
-import {
-  lockAuthorizedUserTarget,
-  setAuthorizedUserActive,
-} from "@/lib/user-isolation";
+import { setAuthorizedUserActive } from "@/lib/user-isolation";
 import { isUserRole, type UserRole } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";

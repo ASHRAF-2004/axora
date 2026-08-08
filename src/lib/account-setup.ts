@@ -17,6 +17,10 @@ import {
   type ResolvedUserCreation,
   type UserCreationInput,
 } from "./users";
+import {
+  lockAuthorizedInvitationCreationScope,
+  lockAuthorizedInvitationTarget,
+} from "./account-invitation-isolation";
 
 const TOKEN_BYTES = 32;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -172,6 +176,7 @@ export async function createInvitedUser(
   const result = await withAuditTransaction(
     { userId: actor.id, reason: "Account invitation created" },
     async (client) => {
+      await lockAuthorizedInvitationCreationScope(client, actor, resolved);
       await enforceInvitationQuota(client, actor.id, resolved.companyId);
       const { userId, validated } = await createScopedUserInTransaction(client, resolved, {
         passwordHash: PENDING_ACCOUNT_PASSWORD_HASH,
@@ -381,6 +386,7 @@ export async function resendAccountSetupInvitation(
   const result = await withAuditTransaction(
     { userId: actor.id, reason: "Account invitation replaced" },
     async (client) => {
+      await lockAuthorizedInvitationTarget(client, actor, userId);
       const targetResult = await client.query<ExistingInvitationTarget>(
         `SELECT
            u.id::text AS "userId",u.display_name AS "recipientName",
