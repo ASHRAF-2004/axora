@@ -1,4 +1,5 @@
 import type { Product } from "@/lib/types";
+import { productPriceChanged } from "./procurement-rules";
 import {
   scopedBrowserStorageKey,
   type BrowserSessionScope,
@@ -19,6 +20,16 @@ export interface RequestCartProduct {
   unit: string;
   defaultSellPrice: number;
   minimumOrderQuantity: number;
+  maximumOrderQuantity?: number;
+  orderIncrement?: number;
+  packSize?: number;
+  packUnit?: string;
+  quantityRuleVersion?: number;
+  quantityRuleEffectiveFrom?: string;
+  priceRuleVersion?: number;
+  priceEffectiveFrom?: string;
+  priceChangedAt?: string;
+  priceCurrency?: string;
   deliverySlaDays: number;
   hasImage: boolean;
   imageAltText?: string;
@@ -33,7 +44,8 @@ export interface RequestCartItem {
 export function minimumCartQuantity(
   product: Pick<Product, "minimumOrderQuantity">,
 ) {
-  return Math.max(Math.ceil(product.minimumOrderQuantity), 1);
+  void product;
+  return 1;
 }
 
 function productSnapshot(product: Product): RequestCartProduct {
@@ -48,6 +60,16 @@ function productSnapshot(product: Product): RequestCartProduct {
     unit: product.unit,
     defaultSellPrice: product.defaultSellPrice,
     minimumOrderQuantity: product.minimumOrderQuantity,
+    maximumOrderQuantity: product.maximumOrderQuantity,
+    orderIncrement: product.orderIncrement,
+    packSize: product.packSize,
+    packUnit: product.packUnit,
+    quantityRuleVersion: product.quantityRuleVersion,
+    quantityRuleEffectiveFrom: product.quantityRuleEffectiveFrom,
+    priceRuleVersion: product.priceRuleVersion,
+    priceEffectiveFrom: product.priceEffectiveFrom,
+    priceChangedAt: product.priceChangedAt,
+    priceCurrency: product.priceCurrency,
     deliverySlaDays: product.deliverySlaDays,
     hasImage: product.hasImage,
     imageAltText: product.imageAltText,
@@ -180,4 +202,5 @@ export const requestCartInternals = {
   legacyStorageKey: LEGACY_REQUEST_CART_STORAGE_KEY,
   storagePrefix: REQUEST_CART_STORAGE_PREFIX,
   validItem,
+  productPriceChanged,
 };

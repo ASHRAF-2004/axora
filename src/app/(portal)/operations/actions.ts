@@ -27,7 +27,7 @@ import { actionFeedback, publicApprovalErrorCode, type ActionFeedbackCode } from
 import { requestLocaleDecision } from "@/lib/locale-server";
 
 const optionalDate = z.union([z.iso.date(), z.literal("")]).transform((value) => value || undefined);
-const optionalPositive = z.union([z.coerce.number().positive(), z.literal("")]).optional().transform((value) => value === "" ? undefined : value);
+const optionalPositive = z.union([z.coerce.number().int().positive(), z.literal("")]).optional().transform((value) => value === "" ? undefined : value);
 
 const quotationSchema = z.object({
   requestLineId: z.string().uuid(), supplierId: z.string().uuid(), quotationReference: z.string().trim().min(1).max(100),

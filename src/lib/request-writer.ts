@@ -23,6 +23,7 @@ import {
   notifyWorkflowAudience,
 } from "./workflow-repository";
 import { initializeRequestApproval } from "./request-approval";
+import { productQuantityRule, quantityMatchesProductRule } from "./procurement-rules";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -126,11 +127,21 @@ export async function createAuthorizedRequest(
     const selectedProducts = await client.query<{
       id: string;
       minimumOrderQuantity: number;
+      maximumOrderQuantity?: number;
+      orderIncrement?: number;
+      packSize?: number;
+      packUnit?: string;
+      quantityRuleVersion?: number;
+      unit: string;
       name: string;
     }>(
-      `SELECT id::text,name,
-         minimum_order_quantity::float8 AS "minimumOrderQuantity"
-       FROM products
+      `SELECT id::text,name,unit_of_measure AS unit,
+         minimum_order_quantity::float8 AS "minimumOrderQuantity",
+         maximum_order_quantity::float8 AS "maximumOrderQuantity",
+         order_increment::float8 AS "orderIncrement",
+         pack_size::float8 AS "packSize",pack_unit AS "packUnit",
+         quantity_rule_version AS "quantityRuleVersion"
+       FROM v_customer_catalog_products
        WHERE id=ANY($1::uuid[])
          AND active=true
          AND needs_review=false
@@ -148,10 +159,12 @@ export async function createAuthorizedRequest(
     );
     for (const line of input.lines) {
       const product = selectedById.get(line.productId);
-      if (!product || line.quantity < product.minimumOrderQuantity) {
+      if (!product || !quantityMatchesProductRule(line.quantity, product)) {
+        const rule = product ? productQuantityRule(product) : undefined;
         throw new Error(
-          `Order at least ${product?.minimumOrderQuantity
-            ?? "the catalog minimum"} for ${product?.name ?? "each product"}.`,
+          rule
+            ? `Use a whole quantity from ${rule.minimum}${rule.maximum === undefined ? "" : ` to ${rule.maximum}`} in increments of ${rule.increment} for ${product?.name ?? "this product"}.`
+            : "One or more product quantity rules are unavailable.",
         );
       }
     }
@@ -219,8 +232,8 @@ export async function createAuthorizedRequest(
         SELECT next_request_line_code(),$1,product.id,product.name,
           product.category,product.subcategory,$3,$4,product.unit_of_measure,
           lookup_id('supplier_confirmation','Pending'),
-          product.default_buy_price,product.default_sell_price
-        FROM products product
+          0,product.default_sell_price
+        FROM v_customer_catalog_products product
         WHERE product.id=$2
           AND product.active=true
           AND product.needs_review=false

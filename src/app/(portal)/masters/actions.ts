@@ -35,10 +35,13 @@ import { branchSchema, companySchema, productSchema, readFormText, supplierSchem
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { calculateCommercialSellingPrice } from "@/lib/procurement-rules";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
+const optionalNumber = (data: FormData, key: string) => data.get(key) === null || data.get(key) === "" ? "" : data.get(key);
 
 function productInput(formData: FormData) {
+  const defaultBuyPrice = Number(number(formData, "defaultBuyPrice"));
   return productSchema.parse({
     name: readFormText(formData, "name"),
     category: readFormText(formData, "category"),
@@ -48,9 +51,15 @@ function productInput(formData: FormData) {
     unit: readFormText(formData, "unit"),
     packaging: readFormText(formData, "packaging"),
     description: readFormText(formData, "description"),
-    defaultBuyPrice: number(formData, "defaultBuyPrice"),
-    defaultSellPrice: number(formData, "defaultSellPrice"),
+    defaultBuyPrice,
+    defaultSellPrice: calculateCommercialSellingPrice(defaultBuyPrice),
     minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1),
+    maximumOrderQuantity: optionalNumber(formData, "maximumOrderQuantity"),
+    orderIncrement: number(formData, "orderIncrement", 1),
+    packSize: number(formData, "packSize", 1),
+    packUnit: readFormText(formData, "packUnit"),
+    quantityRuleEffectiveFrom: readFormText(formData, "quantityRuleEffectiveFrom"),
+    quantityRuleReason: readFormText(formData, "quantityRuleReason") || "Catalog ordering rule configured",
     deliverySlaDays: number(formData, "deliverySlaDays", 1),
     preferredSupplierId: readFormText(formData, "preferredSupplierId") || undefined,
   });

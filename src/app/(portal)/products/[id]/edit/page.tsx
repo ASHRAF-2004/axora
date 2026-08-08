@@ -18,6 +18,9 @@ import {
 } from "../../../masters/actions";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { productEditorMessages } from "@/lib/product-editor-i18n";
+import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
+import { listProductCommercialHistory } from "@/lib/product-admin";
+import { formatCurrency } from "@/lib/domain";
 
 function optionsWithCurrent(options: readonly string[], current: string) {
   return options.includes(current) ? options : [current, ...options];
@@ -28,11 +31,13 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const locale = actor.preferredLocale ?? "en";
   const productCopy = corePortalMessages(locale).products;
   const copy = productEditorMessages(locale);
+  const rules = procurementRulesMessages(locale);
   const { id } = await params;
-  const [products, suppliers, images] = await Promise.all([
+  const [products, suppliers, images, commercialHistory] = await Promise.all([
     listProducts(actor),
     listSuppliers(actor),
     listProductImages(id, actor),
+    listProductCommercialHistory(id, actor),
   ]);
   const product = products.find((item) => item.id === id);
   if (!product) notFound();
@@ -64,9 +69,14 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           <label>{productCopy.unit}<select name="unit" defaultValue={product.unit}>{units.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
           <label>{productCopy.packaging}<input name="packaging" defaultValue={product.packaging} /></label>
           <label>{productCopy.buyCost}<input name="defaultBuyPrice" type="number" min="0" step="0.01" defaultValue={product.defaultBuyPrice} required /></label>
-          <label>{productCopy.sellPrice}<input name="defaultSellPrice" type="number" min="0.01" step="0.01" defaultValue={product.defaultSellPrice} required /></label>
-          <label>{productCopy.minimumOrder}<input name="minimumOrderQuantity" type="number" min="1" step="1" defaultValue={product.minimumOrderQuantity} required />
-            <small>{productCopy.minimumOrderHelp}</small></label>
+          <label>{rules.calculatedSellingPrice}<output>{formatCurrency(product.defaultSellPrice, locale)}</output><small>{rules.calculatedSellingHelp}</small></label>
+          <label>{rules.minimum}<input name="minimumOrderQuantity" type="number" min="1" step="1" defaultValue={product.minimumOrderQuantity} required /></label>
+          <label>{rules.maximum}<input name="maximumOrderQuantity" type="number" min="1" step="1" defaultValue={product.maximumOrderQuantity} placeholder={rules.noMaximum} /></label>
+          <label>{rules.increment}<input name="orderIncrement" type="number" min="1" step="1" defaultValue={product.orderIncrement ?? 1} required /></label>
+          <label>{rules.packSize}<input name="packSize" type="number" min="1" step="1" defaultValue={product.packSize ?? 1} required /></label>
+          <label>{rules.packUnit}<input name="packUnit" maxLength={80} defaultValue={product.packUnit ?? product.unit} /></label>
+          <label>{rules.effectiveFrom}<input name="quantityRuleEffectiveFrom" type="date" defaultValue={product.quantityRuleEffectiveFrom?.slice(0, 10)} /></label>
+          <label className="field-full">{rules.changeReason}<textarea name="quantityRuleReason" placeholder={rules.changeReasonPlaceholder} required /></label>
           <label>{productCopy.deliverySla}<input name="deliverySlaDays" type="number" min="0" step="1" defaultValue={product.deliverySlaDays} required /></label>
           <label className="field-full">{productCopy.supplier}<select name="preferredSupplierId" defaultValue={product.preferredSupplierId ?? ""}>
             <option value="">{productCopy.notAssigned}</option>
@@ -78,6 +88,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       </form>
 
       <div className="stack-lg">
+        <section className="panel">
+          <div className="panel-header"><div><h2>{rules.history}</h2><p>{rules.historyBody}</p></div></div>
+          {commercialHistory.length ? <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{rules.baseCost}</th><th>{rules.sellingPrice}</th><th>{rules.markup}</th><th>{rules.version}</th></tr></thead><tbody>{commercialHistory.slice(0, 20).map((entry) => <tr key={entry.id}><td>{formatCurrency(entry.baseCost, locale)}</td><td>{formatCurrency(entry.sellingPrice, locale)}</td><td>{entry.markupPercentage}%</td><td>{entry.pricingRuleVersion}<br /><span className="subtle">{new Date(entry.recordedAt).toLocaleDateString(locale)}</span></td></tr>)}</tbody></table></div> : <div className="empty-state"><strong>{rules.historyEmpty}</strong></div>}
+        </section>
+
         <form action={addProductImagesAction.bind(null, product.id)} className="panel form-panel">
           <div className="panel-header"><div><h2>{copy.slideshow}</h2><p>{copy.uploadCount(images.length, MAX_PRODUCT_IMAGES)}</p></div><ImagePlus aria-hidden="true" size={22} /></div>
           <div className="form-grid">

@@ -161,6 +161,18 @@ export interface Product {
   defaultBuyPrice: number;
   defaultSellPrice: number;
   minimumOrderQuantity: number;
+  maximumOrderQuantity?: number;
+  orderIncrement?: number;
+  packSize?: number;
+  packUnit?: string;
+  quantityRuleVersion?: number;
+  quantityRuleEffectiveFrom?: string;
+  quantityRuleEffectiveTo?: string;
+  quantityRuleReason?: string;
+  priceRuleVersion?: number;
+  priceEffectiveFrom?: string;
+  priceChangedAt?: string;
+  priceCurrency?: string;
   deliverySlaDays: number;
   preferredSupplierId?: string;
   preferredSupplierName?: string;

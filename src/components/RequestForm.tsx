@@ -30,6 +30,12 @@ import {
   type FormEvent,
 } from "react";
 import Link from "next/link";
+import {
+  productPriceChanged,
+  productQuantityRule,
+  quantityMatchesProductRule,
+} from "@/lib/procurement-rules";
+import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
 
 interface SelectedLine {
   productId: string;
@@ -42,13 +48,10 @@ type RequestField =
   | "department"
   | "neededByDate"
   | "products"
-  | "quantity";
+  | "quantity"
+  | "price";
 
 type FormErrors = Partial<Record<RequestField, string>>;
-
-function minimumWholeQuantity(product: Product) {
-  return Math.max(Math.ceil(product.minimumOrderQuantity), 1);
-}
 
 function localDateValue(date = new Date()) {
   const localDate = new Date(
@@ -79,6 +82,7 @@ export function RequestForm({
   const today = localDateValue();
   const { notify } = useUxFeedback();
   const copy = corePortalMessages(locale).requestForm;
+  const ruleCopy = procurementRulesMessages(locale);
   const draftCompanyId = actor.companyId ?? companies[0]?.id;
   const draftScope = useMemo(() => (
     draftCompanyId
@@ -122,7 +126,7 @@ export function RequestForm({
       ? [
           {
             productId: initialProduct.id,
-            quantity: minimumWholeQuantity(initialProduct),
+            quantity: 1,
             specification: "",
           },
         ]
@@ -140,6 +144,8 @@ export function RequestForm({
     return today;
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  const [priceChanges, setPriceChanges] = useState<string[]>([]);
+  const [pricesAcknowledged, setPricesAcknowledged] = useState(false);
 
   const formRef = useRef<HTMLFormElement | null>(null);
   const branchRef = useRef<HTMLSelectElement | null>(null);
@@ -232,6 +238,13 @@ export function RequestForm({
           products.map((product) => [product.id, product]),
         );
 
+        const changedPrices = products
+          .filter((product) => {
+            const saved = cartById.get(product.id);
+            return Boolean(saved && productPriceChanged(saved.product, product));
+          })
+          .map((product) => product.name);
+
         const lines = productIds.flatMap((productId) => {
           const product = authoritativeById.get(productId);
           if (!product) return [];
@@ -240,19 +253,15 @@ export function RequestForm({
 
           return [{
             productId,
-            quantity: Math.max(
-              Math.ceil(
-                saved?.quantity ??
-                  minimumWholeQuantity(product),
-              ),
-              minimumWholeQuantity(product),
-            ),
+            quantity: Math.max(Math.ceil(saved?.quantity ?? 1), 1),
             specification: saved?.specification ?? "",
           }];
         });
 
         setKnownProducts(products);
         setSelected(lines);
+        setPriceChanges(changedPrices);
+        setPricesAcknowledged(changedPrices.length === 0);
         setCartHydrated(true);
 
         const removedCount = productIds.length - products.length;
@@ -277,7 +286,7 @@ export function RequestForm({
           initialProduct
             ? [{
                 productId: initialProduct.id,
-                quantity: minimumWholeQuantity(initialProduct),
+                quantity: 1,
                 specification: "",
               }]
             : [],
@@ -319,6 +328,16 @@ export function RequestForm({
             unit: product.unit,
             defaultSellPrice: product.defaultSellPrice,
             minimumOrderQuantity: product.minimumOrderQuantity,
+            maximumOrderQuantity: product.maximumOrderQuantity,
+            orderIncrement: product.orderIncrement,
+            packSize: product.packSize,
+            packUnit: product.packUnit,
+            quantityRuleVersion: product.quantityRuleVersion,
+            quantityRuleEffectiveFrom: product.quantityRuleEffectiveFrom,
+            priceRuleVersion: product.priceRuleVersion,
+            priceEffectiveFrom: product.priceEffectiveFrom,
+            priceChangedAt: product.priceChangedAt,
+            priceCurrency: product.priceCurrency,
             deliverySlaDays: product.deliverySlaDays,
             hasImage: product.hasImage,
             imageAltText: product.imageAltText,
@@ -366,7 +385,7 @@ export function RequestForm({
         ...current,
         {
           productId: product.id,
-          quantity: minimumWholeQuantity(product),
+          quantity: 1,
           specification: "",
         },
       ];
@@ -456,15 +475,18 @@ export function RequestForm({
 
       if (!product) return true;
 
-      return (
-        !Number.isInteger(line.quantity) ||
-        line.quantity < minimumWholeQuantity(product)
-      );
+      return !quantityMatchesProductRule(line.quantity, product);
     });
 
     if (invalidQuantity) {
-      nextErrors.quantity =
-        locale === "ar" ? "أدخل كمية صحيحة تساوي الحد الأدنى للمنتج أو تتجاوزه." : locale === "ms" ? "Masukkan kuantiti nombor bulat yang memenuhi minimum produk." : "Enter a valid whole-number quantity that meets the product minimum.";
+      const product = productById.get(invalidQuantity.productId);
+      nextErrors.quantity = product
+        ? ruleCopy.quantityError(productQuantityRule(product))
+        : ruleCopy.quantityError({ minimum: 1, increment: 1, packSize: 1, packUnit: "unit", version: 0 });
+    }
+
+    if (priceChanges.length && !pricesAcknowledged) {
+      nextErrors.price = ruleCopy.acknowledgePricesError;
     }
 
     const firstError = Object.entries(nextErrors)[0] as
@@ -542,6 +564,24 @@ export function RequestForm({
               ))}
             </ul>
           </div>
+        </div>
+      ) : null}
+
+      {priceChanges.length ? (
+        <div className="callout" role="status" style={{ marginBlockEnd: 18 }}>
+          <strong>{ruleCopy.priceChangedTitle}</strong>
+          <p>{ruleCopy.priceChangedBody(priceChanges.length)}</p>
+          <label>
+            <input
+              type="checkbox"
+              checked={pricesAcknowledged}
+              onChange={(event) => {
+                setPricesAcknowledged(event.target.checked);
+                if (event.target.checked) clearError("price");
+              }}
+            />
+            {ruleCopy.acknowledgePrices}
+          </label>
         </div>
       ) : null}
 
@@ -789,6 +829,8 @@ export function RequestForm({
 
                 if (!product) return null;
 
+                const quantityRule = productQuantityRule(product);
+
                 return (
                   <article
                     key={line.productId}
@@ -816,8 +858,9 @@ export function RequestForm({
                       <input
                         name="quantity"
                         type="number"
-                        min={minimumWholeQuantity(product)}
-                        step="1"
+                        min={quantityRule.minimum}
+                        max={quantityRule.maximum}
+                        step={quantityRule.increment}
                         value={line.quantity}
                         className={
                           errors.quantity
@@ -832,7 +875,7 @@ export function RequestForm({
                         }
                       />
                       <small>
-                        {copy.minimum} {minimumWholeQuantity(product)}
+                        {ruleCopy.quantitySummary(quantityRule)}
                       </small>
                     </label>
 
