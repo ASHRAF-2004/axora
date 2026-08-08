@@ -58,7 +58,20 @@ test("an expired cookie resumes the exact prior route after login", async ({ pag
   await expect(page.getByLabel("Search requests")).toHaveValue("paper");
 });
 
-test("external and unauthorized return routes fall back safely", async ({ page }) => {
+test("stale, external, and unauthorized return routes fall back safely", async ({ page }) => {
+  await page.goto("/login");
+  await page.evaluate(() => {
+    window.sessionStorage.setItem(
+      "axora-session-return:v1",
+      "/users?tab=access#previous-user",
+    );
+  });
+  await page.reload();
+  await expect(page.locator('input[name="returnTo"]')).toHaveValue("/dashboard");
+  await completeDemoLogin(page);
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.context().clearCookies();
   await page.goto("/login?returnTo=https%3A%2F%2Fevil.example%2Fusers");
   await completeDemoLogin(page);
   await expect(page).toHaveURL(/\/dashboard$/);
