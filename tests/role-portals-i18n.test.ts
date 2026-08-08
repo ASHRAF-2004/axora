@@ -35,6 +35,7 @@ vi.mock("@/lib/permissions", () => ({ canAccess: mocks.canAccess }));
 import DriverPage from "@/app/(portal)/driver/page";
 import ReceivingPage from "@/app/(portal)/receiving/page";
 import SupplierPage from "@/app/(portal)/supplier/page";
+import { deliveryWorkflowMessages, deliveryWorkflowStatusLabel } from "@/lib/delivery-workflow-i18n";
 import {
   ROLE_PORTAL_MESSAGES,
   formatRolePortalDate,
@@ -129,7 +130,12 @@ describe("localized role portals", () => {
       expect(copy.driver.confirmDiscard).toBeTruthy();
       expect(copy.receiving.confirmReceipt).toBeTruthy();
       expect(Object.keys(copy.driver.eventLabels)).toHaveLength(10);
+      const deliveryCopy = deliveryWorkflowMessages(locale);
+      for (const key of ["accept", "reject", "startShopping", "outForDelivery", "arrived", "partial", "delivered", "completed", "reportIssue", "uploadProof"] as const) {
+        expect(deliveryCopy[key]).toBeTruthy();
+      }
     }
+    expect(deliveryWorkflowStatusLabel("OUT_FOR_DELIVERY", "ms")).toBe("Keluar untuk penghantaran");
   });
 
   it("renders the complete supplier workflow in Arabic", async () => {
@@ -153,14 +159,10 @@ describe("localized role portals", () => {
 
     expect(html).toContain("Ruang kerja pemandu");
     expect(html).toContain("Penghantaran ditugaskan");
-    expect(html).toContain("Dalam perjalanan");
-    expect(html).toContain("Buka navigasi");
-    expect(html).toContain("Rekod hasil serahan");
-    expect(html).toContain("Lapor isu");
-    expect(html).toContain("Tambah nota pemandu");
-    expect(html).toContain("Muat naik bukti pemandu");
-    expect(html).toContain('aria-label="Kemas kini DLV-1001"');
-    expect(html).not.toContain("No status recorded yet");
+    expect(html).toContain("Larian pemenuhan");
+    expect(html).toContain("Muat semula");
+    expect(html).toContain("Memuatkan ruang kerja penghantaran");
+    expect(html).not.toContain("Loading delivery workspace");
   });
 
   it("renders independent receiving controls and explanations in Malay", async () => {

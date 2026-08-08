@@ -6,7 +6,7 @@ const authenticatedRoutes = [
   { path: "/products", heading: "Products" },
   { path: "/requests", heading: "Purchase requests" },
   { path: "/sourcing", heading: "Sourcing and quotations" },
-  { path: "/deliveries", heading: "Deliveries" },
+  { path: "/deliveries", heading: "Delivery control tower" },
   { path: "/receiving", heading: "Confirm delivered quantities" },
   { path: "/finance", heading: "Invoices and COD payments" },
   { path: "/documents", heading: "Documents" },

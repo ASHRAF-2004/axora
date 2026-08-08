@@ -90,7 +90,7 @@ describe("session-revocation audit migration", () => {
     try {
       await createMigrationLedger(db);
       const applied = await applyMigrations(db);
-      expect(applied.at(-1)).toBe("062_budget_worker_claim_disambiguation.sql");
+      expect(applied.at(-1)).toBe("063_fulfilment_delivery_execution.sql");
       await markMigration(db, "032_user_session_revocation_audit.sql");
       await createSessionFixtures(db);
 

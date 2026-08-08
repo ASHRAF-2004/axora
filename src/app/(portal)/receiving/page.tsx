@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { ReceivingOtpPanel } from "@/components/role-portals/ReceivingOtpPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import styles from "@/components/role-portals/RolePortals.module.css";
 import { requirePagePermission } from "@/lib/auth";
@@ -81,6 +82,7 @@ export default async function ReceivingPage({
           ))}
         </div>
       )}
+      <ReceivingOtpPanel locale={locale} />
     </>
   );
 }
