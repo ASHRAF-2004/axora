@@ -1,6 +1,6 @@
 import { NavigationNotice } from "@/components/NavigationNotice";
 import { AppShell } from "@/components/app-shell/AppShell";
-import { requireAccountLifecycleSession } from "@/lib/auth";
+import { getAccountLifecycleSession } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
 import { canAccess } from "@/lib/permissions";
 import { requestLocaleDecision } from "@/lib/locale-server";
@@ -9,8 +9,14 @@ import { getMyProfile, myProfileMeetsRequiredOnboarding } from "@/lib/profile";
 import { listTutorialProgress } from "@/lib/onboarding";
 import { unreadNotificationCount } from "@/lib/notification-repository";
 import { landingPathForSession } from "@/lib/session-landing";
+import {
+  safeInternalReturnPath,
+  SESSION_RETURN_HEADER,
+} from "@/lib/session-return";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { portalMessages } from "@/lib/portal-i18n";
 import {
   DRAWER_NAVIGATION,
@@ -24,8 +30,32 @@ function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "AX";
 }
 
+function lifecycleRoute(path: string) {
+  try {
+    const pathname = new URL(path, "https://axora.management").pathname;
+    return ["/profile", "/account", "/help"].some((prefix) => (
+      pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ));
+  } catch {
+    return false;
+  }
+}
+
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireAccountLifecycleSession();
+  const requestHeaders = await headers();
+  const returnTo = safeInternalReturnPath(
+    requestHeaders.get(SESSION_RETURN_HEADER),
+    "/dashboard",
+  );
+  const user = await getAccountLifecycleSession();
+  if (!user) {
+    const params = new URLSearchParams({
+      reason: "required",
+      returnTo,
+    });
+    redirect(`/login?${params.toString()}`);
+  }
+
   const companyBrandPromise = user.companyId ? getActiveCompanyBrand(user.companyId) : Promise.resolve(null);
   const [localeDecision, profile] = await Promise.all([
     requestLocaleDecision(),
@@ -33,6 +63,14 @@ export default async function PortalLayout({ children }: { children: React.React
   ]);
   const locale = profile.preferredLocale ?? localeDecision.locale;
   const onboardingComplete = myProfileMeetsRequiredOnboarding(profile);
+  if (!onboardingComplete && !lifecycleRoute(returnTo)) {
+    const params = new URLSearchParams({
+      onboarding: "1",
+      returnTo,
+    });
+    redirect(`/profile?${params.toString()}`);
+  }
+
   const [companyBrand, tutorialSteps, unreadNotifications] = await Promise.all([
     companyBrandPromise,
     onboardingComplete ? listTutorialProgress(user, user.role, locale) : Promise.resolve([]),
@@ -76,7 +114,15 @@ export default async function PortalLayout({ children }: { children: React.React
       <NavigationNotice locale={locale} />
       <AppShell
         homeHref={onboardingComplete ? landingPathForSession(user) : "/profile?onboarding=1"}
-        user={{ name: user.name, email: user.email, roleLabel, initials: initials(user.name), avatarUrl: profile.avatarAvailable ? "/api/profile/avatar" : undefined }}
+        user={{
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          roleLabel,
+          initials: initials(user.name),
+          companyId: user.companyId,
+          avatarUrl: profile.avatarAvailable ? "/api/profile/avatar" : undefined,
+        }}
         primaryItems={primary}
         drawerItems={visiblePortalNavigation(DRAWER_NAVIGATION, user, messages)
           .filter((item) => onboardingComplete || item.href === "/help")
