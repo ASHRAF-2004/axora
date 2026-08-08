@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const copy = {
   en: {
@@ -26,9 +26,31 @@ const copy = {
 
 type Locale = keyof typeof copy;
 
-function documentLocale(): Locale {
+function onlineSnapshot() {
+  return window.navigator.onLine;
+}
+
+function subscribeOnline(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
+
+function localeSnapshot(): Locale {
   const value = document.documentElement.lang;
   return value === "ar" || value === "ms" ? value : "en";
+}
+
+function subscribeLocale(callback: () => void) {
+  const observer = new MutationObserver(callback);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["lang"],
+  });
+  return () => observer.disconnect();
 }
 
 export default function PortalError({
@@ -37,22 +59,18 @@ export default function PortalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [online, setOnline] = useState(true);
-  const [locale, setLocale] = useState<Locale>("en");
-
-  useEffect(() => {
-    setLocale(documentLocale());
-    const sync = () => setOnline(window.navigator.onLine);
-    sync();
-    window.addEventListener("online", sync);
-    window.addEventListener("offline", sync);
-    return () => {
-      window.removeEventListener("online", sync);
-      window.removeEventListener("offline", sync);
-    };
-  }, []);
-
+  const online = useSyncExternalStore(
+    subscribeOnline,
+    onlineSnapshot,
+    () => true,
+  );
+  const locale = useSyncExternalStore(
+    subscribeLocale,
+    localeSnapshot,
+    () => "en" as const,
+  );
   const messages = copy[locale];
+
   return (
     <main className="content-shell" role="alert" aria-live="assertive">
       <section className="panel form-panel" style={{ maxWidth: 720, margin: "48px auto" }}>
