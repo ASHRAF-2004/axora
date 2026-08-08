@@ -12,6 +12,6 @@ export default async function DeliveriesPage() {
       title={copy.supervisorTitle}
       description={copy.supervisorIntro}
     />
-    <DeliverySupervisorPanel />
+    <DeliverySupervisorPanel locale={actor.preferredLocale} />
   </>;
 }

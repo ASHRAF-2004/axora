@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { deliveryWorkflowMessages } from "@/lib/delivery-workflow-i18n";
+import { deliveryWorkflowMessages, deliveryWorkflowStatusLabel, type DeliveryWorkflowLocale } from "@/lib/delivery-workflow-i18n";
 import styles from "./DeliveryExecution.module.css";
 
 type Line = {
@@ -36,15 +36,9 @@ type LegacyQueue = {
 const MAX_QUEUE_ITEMS = 500;
 const MAX_QUEUE_BYTES = 2 * 1024 * 1024;
 
-function locale() {
-  if (typeof document === "undefined") return "en";
-  const value = document.documentElement.lang;
-  return value === "ar" || value === "ms" ? value : "en";
-}
-
-function formatDate(value: string | undefined, timeZone?: string) {
+function formatDate(value: string | undefined, locale: DeliveryWorkflowLocale, timeZone?: string) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat(locale(), {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium", timeStyle: "short", timeZone,
   }).format(new Date(value));
 }
@@ -84,7 +78,7 @@ function validLegacyEvent(value: unknown) {
     && typeof item.clientRecordedAt === "string";
 }
 
-function inspectLegacyQueue(raw: string, actorId: string): LegacyQueue {
+function inspectLegacyQueue(raw: string, actorId: string, copy: ReturnType<typeof deliveryWorkflowMessages>): LegacyQueue {
   try {
     const parsed: unknown = JSON.parse(raw);
     let events: unknown[];
@@ -95,7 +89,7 @@ function inspectLegacyQueue(raw: string, actorId: string): LegacyQueue {
         || envelope.version !== 1
         || envelope.driverId !== actorId
         || !Array.isArray(envelope.events)) {
-        return { raw, validCount: 0, totalCount: 0, needsAttention: true, message: "The saved data could not be read." };
+        return { raw, validCount: 0, totalCount: 0, needsAttention: true, message: copy.legacyUnreadable };
       }
       events = envelope.events;
     } else throw new Error("invalid queue");
@@ -103,12 +97,12 @@ function inspectLegacyQueue(raw: string, actorId: string): LegacyQueue {
     if (!events.length || validCount !== events.length) {
       return {
         raw, validCount, totalCount: events.length, needsAttention: true,
-        message: `${validCount} of ${events.length} saved items passed validation.`,
+        message: copy.legacyValidation.replace("{valid}", String(validCount)).replace("{total}", String(events.length)),
       };
     }
     return { raw, validCount, totalCount: events.length, needsAttention: false, message: "" };
   } catch {
-    return { raw, validCount: 0, totalCount: 0, needsAttention: true, message: "The saved data could not be read." };
+    return { raw, validCount: 0, totalCount: 0, needsAttention: true, message: copy.legacyUnreadable };
   }
 }
 
@@ -126,7 +120,7 @@ function availableEvents(job: Job) {
   }
 }
 
-export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { locale?: "en" | "ar" | "ms" }) {
+export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { locale?: DeliveryWorkflowLocale }) {
   const copy = deliveryWorkflowMessages(initialLocale);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [queue, setQueue] = useState<QueuedCommand[]>([]);
@@ -144,7 +138,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
     const next = await response.json() as Workspace;
     setWorkspace(next);
     const legacyRaw = localStorage.getItem(legacyStorageKey(next.actorId));
-    setLegacyQueue(legacyRaw ? inspectLegacyQueue(legacyRaw, next.actorId) : null);
+    setLegacyQueue(legacyRaw ? inspectLegacyQueue(legacyRaw, next.actorId, copy) : null);
     const raw = localStorage.getItem(storageKey(next.actorId));
     if (!raw) {
       setQueue([]);
@@ -163,25 +157,25 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
     } catch {
       setRecovery(raw);
     }
-  }, []);
+  }, [copy]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void refresh().catch(() => setError("Delivery workspace unavailable"));
+      void refresh().catch(() => setError(copy.workspaceUnavailable));
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [refresh]);
+  }, [copy.workspaceUnavailable, refresh]);
 
   const persist = useCallback((next: QueuedCommand[]) => {
     if (!workspace) return;
     const serialized = JSON.stringify(next);
     if (next.length > MAX_QUEUE_ITEMS || serialized.length > MAX_QUEUE_BYTES) {
-      setError("Offline command queue limit reached");
+      setError(copy.queueLimit);
       return;
     }
     localStorage.setItem(storageKey(workspace.actorId), serialized);
     setQueue(next);
-  }, [workspace]);
+  }, [copy.queueLimit, workspace]);
 
   const flush = useCallback(async (items = queue) => {
     if (!workspace || !navigator.onLine || !items.length || busy) return;
@@ -201,11 +195,11 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
       setNotice(copy.saved);
       await refresh();
     } catch {
-      setError("A retained command needs review against the current server version.");
+      setError(copy.retainedConflict);
     } finally {
       setBusy(false);
     }
-  }, [busy, copy.retrying, copy.saved, persist, queue, refresh, workspace]);
+  }, [busy, copy.retainedConflict, copy.retrying, copy.saved, persist, queue, refresh, workspace]);
 
   useEffect(() => {
     const online = () => { void flush(); };
@@ -221,7 +215,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
       metadata.issueCode = type === "REJECTED" ? undefined : "OTHER";
     } else if (type === "NOTE_ADDED" && note) metadata.note = note;
     if (type === "PARTIALLY_DELIVERED") {
-      metadata.receiverName = note || "Receiving representative";
+      metadata.receiverName = note || copy.recipientRepresentative;
       metadata.lineOutcomes = job.lines.map((line) => ({
         deliveryJobLineId: line.id,
         deliveredQuantity: Number((document.getElementById(`partial-${job.id}-${line.id}`) as HTMLInputElement | null)?.value ?? 0),
@@ -267,7 +261,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
       const response = await fetch("/api/driver/shopping", { method: "POST", body: form });
       if (!response.ok) throw new Error("shopping");
       setNotice(copy.saved); await refresh();
-    } catch { setError("Shopping record could not be committed."); }
+    } catch { setError(copy.shoppingError); }
     finally { setBusy(false); }
   };
 
@@ -281,7 +275,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
       const response = await fetch("/api/driver/proof", { method: "POST", body: form });
       if (!response.ok) throw new Error("proof");
       setNotice(copy.saved); await refresh();
-    } catch { setError("Delivery proof could not be committed."); }
+    } catch { setError(copy.proofError); }
     finally { setBusy(false); }
   };
 
@@ -294,7 +288,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
       }) });
       if (!response.ok || !(await response.json() as { verified: boolean }).verified) throw new Error("otp");
       setNotice(copy.saved); await refresh();
-    } catch { setError("Delivery confirmation code is invalid or unavailable."); }
+    } catch { setError(copy.otpError); }
     finally { setBusy(false); }
   };
 
@@ -307,27 +301,27 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
     {queue.length ? <p className={styles.notice} role="status">{copy.offline} ({queue.length})</p> : null}
     {legacyQueue && !legacyQueue.needsAttention ? <p className={styles.notice} role="status">{legacyQueue.validCount} update waiting</p> : null}
     {legacyQueue?.needsAttention ? <div className={styles.recovery} role="alert">
-      <h2>Saved delivery updates need attention</h2>
+      <h2>{copy.legacyTitle}</h2>
       <p>{legacyQueue.message}</p>
-      <p>Nothing was changed or deleted.</p>
+      <p>{copy.unchanged}</p>
       <div className={styles.actions}>
-        <button type="button" disabled>Sync now</button>
-        <button type="button" onClick={() => workspace && setLegacyQueue(inspectLegacyQueue(legacyQueue.raw, workspace.actorId))}>Retry validation</button>
+        <button type="button" disabled>{copy.syncNow}</button>
+        <button type="button" onClick={() => workspace && setLegacyQueue(inspectLegacyQueue(legacyQueue.raw, workspace.actorId, copy))}>{copy.retryValidation}</button>
         <button type="button" onClick={() => {
           const link = document.createElement("a");
           link.href = URL.createObjectURL(new Blob([legacyQueue.raw], { type: "application/json" }));
           link.download = `axora-delivery-queue-recovery-${new Date().toISOString().slice(0, 10)}.json`;
           link.click(); URL.revokeObjectURL(link.href);
-        }}>Download recovery file</button>
-        <button type="button" onClick={() => setConfirmLegacyDiscard(true)}>Discard local copy</button>
+        }}>{copy.downloadRecovery}</button>
+        <button type="button" onClick={() => setConfirmLegacyDiscard(true)}>{copy.discardLocal}</button>
       </div>
-      {confirmLegacyDiscard ? <div role="group" aria-label="Discard this saved copy?" className={styles.actions}>
-        <button type="button" onClick={() => setConfirmLegacyDiscard(false)}>Keep saved copy</button>
+      {confirmLegacyDiscard ? <div role="group" aria-label={copy.discardQuestion} className={styles.actions}>
+        <button type="button" onClick={() => setConfirmLegacyDiscard(false)}>{copy.keepSaved}</button>
         <button type="button" onClick={() => {
           if (workspace) localStorage.removeItem(legacyStorageKey(workspace.actorId));
           setLegacyQueue(null); setConfirmLegacyDiscard(false);
-          setNotice("Saved delivery updates were discarded after confirmation.");
-        }}>Confirm discard</button>
+          setNotice(copy.discarded);
+        }}>{copy.confirmDiscard}</button>
       </div> : null}
     </div> : null}
     {recovery ? <div className={styles.recovery} role="alert"><p>{copy.recover}</p><button type="button" onClick={() => {
@@ -337,15 +331,15 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
     }}>{copy.exportQueue}</button></div> : null}
     {notice ? <p className={styles.success} role="status">{notice}</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
-    {!workspace ? <p className={styles.notice}>Loading…</p> : jobs.length === 0
+    {!workspace ? <p className={styles.notice}>{copy.loading}</p> : jobs.length === 0
       ? <div className={styles.notice}><h2>{copy.noJobs}</h2></div>
       : <div className={styles.jobList}>{jobs.map((job) => <article className={styles.job} key={job.id}>
-        <header className={styles.jobHeader}><div><p>{job.requestNumber} · {job.branchName}</p><h2>{job.code}</h2></div><span className={styles.state}>{job.status.replaceAll("_", " ")}</span></header>
+        <header className={styles.jobHeader}><div><p>{job.requestNumber} · {job.branchName}</p><h2>{job.code}</h2></div><span className={styles.state}>{deliveryWorkflowStatusLabel(job.status, initialLocale)}</span></header>
         <div className={styles.jobBody}>
           <dl className={styles.facts}>
             <div className={styles.fact}><dt>{copy.schedule}</dt><dd>{job.scheduledLocalStart?.replace("T", " ")} – {job.scheduledLocalEnd?.slice(11, 16)}<br />{job.destinationTimezone}</dd></div>
-            <div className={styles.fact}><dt>{copy.deadline}</dt><dd>{formatDate(job.acceptanceDeadline, job.destinationTimezone)}</dd></div>
-            <div className={styles.fact}><dt>{copy.sla}</dt><dd>{formatDate(job.slaDueAt, job.destinationTimezone)}</dd></div>
+            <div className={styles.fact}><dt>{copy.deadline}</dt><dd>{formatDate(job.acceptanceDeadline, initialLocale, job.destinationTimezone)}</dd></div>
+            <div className={styles.fact}><dt>{copy.sla}</dt><dd>{formatDate(job.slaDueAt, initialLocale, job.destinationTimezone)}</dd></div>
             <div className={styles.fact}><dt>{copy.proof}</dt><dd>{job.proofPolicy.join(" + ")}<br />{job.proofSatisfied ? copy.proofReady : copy.proofMissing}</dd></div>
           </dl>
           <p>{job.address}</p>
@@ -359,14 +353,14 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
             FAILED: copy.reportIssue, NOTE_ADDED: copy.note,
           } as Record<string, string>)[type] ?? type}</button>)}</div>
           {["SHOPPING", "AWAITING_SUBSTITUTE_APPROVAL", "AWAITING_ADDITIONAL_APPROVAL"].includes(job.status) ? <details className={styles.details} open={job.status === "SHOPPING"}><summary>{copy.shopping}</summary><form className={styles.form} onSubmit={(event) => void submitShopping(event, job)}>
-            <div className={styles.formGrid}><label>Mode<select name="purchaseMode" defaultValue="FINAL"><option>FINAL</option><option>PARTIAL</option><option>REFUND</option></select></label><label>{copy.note}<input name="notes" minLength={3} maxLength={2000} required /></label><label>{copy.receipt}<input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required /></label></div>
-            {job.lines.map((line) => <div className={styles.lineEditor} key={line.id}><strong>{line.productName}<br />{line.quantity} {line.unitOfMeasure}</strong><label>Actual product<select name={`product-${line.id}`} defaultValue={line.productId}>{workspace.products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label><label>Supplier<select name={`supplier-${line.id}`} defaultValue={line.selectedSupplierId ?? ""} required><option value="" disabled>—</option>{workspace.suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label><label>Quantity<input name={`quantity-${line.id}`} type="number" min="0.001" step="0.001" defaultValue={line.quantity} required /></label><label>Buy price<input name={`price-${line.id}`} type="number" min="0" step="0.000001" required /></label><label>Tax %<input name={`tax-${line.id}`} type="number" min="0" max="100" step="0.01" defaultValue="0" /></label><label>Substitute reason<input name={`substitute-${line.id}`} maxLength={1000} /></label><label>Line note<input name={`line-note-${line.id}`} maxLength={2000} /></label></div>)}
+            <div className={styles.formGrid}><label>{copy.mode}<select name="purchaseMode" defaultValue="FINAL"><option value="FINAL">{copy.finalPurchase}</option><option value="PARTIAL">{copy.partialPurchase}</option><option value="REFUND">{copy.refund}</option></select></label><label>{copy.note}<input name="notes" minLength={3} maxLength={2000} required /></label><label>{copy.receipt}<input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required /></label></div>
+            {job.lines.map((line) => <div className={styles.lineEditor} key={line.id}><strong>{line.productName}<br />{line.quantity} {line.unitOfMeasure}</strong><label>{copy.actualProduct}<select name={`product-${line.id}`} defaultValue={line.productId}>{workspace.products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label><label>{copy.supplier}<select name={`supplier-${line.id}`} defaultValue={line.selectedSupplierId ?? ""} required><option value="" disabled>—</option>{workspace.suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label><label>{copy.quantity}<input name={`quantity-${line.id}`} type="number" min="0.001" step="0.001" defaultValue={line.quantity} required /></label><label>{copy.buyPrice}<input name={`price-${line.id}`} type="number" min="0" step="0.000001" required /></label><label>{copy.tax}<input name={`tax-${line.id}`} type="number" min="0" max="100" step="0.01" defaultValue="0" /></label><label>{copy.substituteReason}<input name={`substitute-${line.id}`} maxLength={1000} /></label><label>{copy.lineNote}<input name={`line-note-${line.id}`} maxLength={2000} /></label></div>)}
             <button className={styles.actionButton} data-primary="true" disabled={busy} type="submit">{copy.submitShopping}</button>
           </form></details> : null}
-          {job.events.length ? <details className={styles.details}><summary>{copy.uploadProof}</summary><form className={styles.form} onSubmit={(event) => void uploadProof(event, job)}><div className={styles.formGrid}><label>Event<select name="eventId" required>{[...job.events].reverse().map((item) => <option key={item.id} value={item.id}>{item.type}</option>)}</select></label><label>Type<select name="type" defaultValue="PHOTO"><option>PHOTO</option><option>SIGNATURE</option><option>DELIVERY_NOTE</option></select></label><label>File<input name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.recipient}<input name="recipientIdentity" maxLength={200} /></label><label><input name="consented" type="checkbox" /> {copy.consent}</label><label>Correct evidence<select name="supersedesEvidenceId" defaultValue=""><option value="">—</option>{job.evidence.map((item) => <option key={item.id} value={item.id}>{item.type} v{item.version}</option>)}</select></label></div><button className={styles.actionButton} type="submit">{copy.uploadProof}</button></form></details> : null}
-          {job.proofPolicy.includes("OTP") ? <details className={styles.details}><summary>{copy.verifyOtp}</summary><form className={styles.form} onSubmit={(event) => void verifyOtp(event, job)}><div className={styles.formGrid}><label>Challenge ID<input name="challengeId" required /></label><label>{copy.code}<input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label></div><button className={styles.actionButton} type="submit">{copy.verifyOtp}</button></form></details> : null}
+          {job.events.length ? <details className={styles.details}><summary>{copy.uploadProof}</summary><form className={styles.form} onSubmit={(event) => void uploadProof(event, job)}><div className={styles.formGrid}><label>{copy.event}<select name="eventId" required>{[...job.events].reverse().map((item) => <option key={item.id} value={item.id}>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</option>)}</select></label><label>{copy.evidenceType}<select name="type" defaultValue="PHOTO"><option>PHOTO</option><option>SIGNATURE</option><option>DELIVERY_NOTE</option></select></label><label>{copy.file}<input name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.recipient}<input name="recipientIdentity" maxLength={200} /></label><label><input name="consented" type="checkbox" /> {copy.consent}</label><label>{copy.correctEvidence}<select name="supersedesEvidenceId" defaultValue=""><option value="">—</option>{job.evidence.map((item) => <option key={item.id} value={item.id}>{item.type} v{item.version}</option>)}</select></label></div><button className={styles.actionButton} type="submit">{copy.uploadProof}</button></form></details> : null}
+          {job.proofPolicy.includes("OTP") ? <details className={styles.details}><summary>{copy.verifyOtp}</summary><form className={styles.form} onSubmit={(event) => void verifyOtp(event, job)}><div className={styles.formGrid}><label>{copy.challengeId}<input name="challengeId" required /></label><label>{copy.code}<input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label></div><button className={styles.actionButton} type="submit">{copy.verifyOtp}</button></form></details> : null}
           {job.evidence.length ? <ul>{job.evidence.map((item) => <li key={item.id}>{item.accessUrl ? <a href={item.accessUrl}>{item.type} · {item.fileName} · v{item.version}</a> : item.fileName}</li>)}</ul> : null}
-          <details className={styles.details}><summary>{copy.timeline}</summary><ol className={styles.timeline}>{job.events.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{item.type.replaceAll("_", " ")}</strong><time>{formatDate(item.receivedAt, job.destinationTimezone)}</time></li>)}</ol></details>
+          <details className={styles.details}><summary>{copy.timeline}</summary><ol className={styles.timeline}>{job.events.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</strong><time>{formatDate(item.receivedAt, initialLocale, job.destinationTimezone)}</time></li>)}</ol></details>
         </div>
       </article>)}</div>}
   </section>;

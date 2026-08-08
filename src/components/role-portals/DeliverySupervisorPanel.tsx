@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { deliveryWorkflowMessages } from "@/lib/delivery-workflow-i18n";
+import { deliveryWorkflowMessages, deliveryWorkflowStatusLabel, type DeliveryWorkflowLocale } from "@/lib/delivery-workflow-i18n";
 import styles from "./DeliveryExecution.module.css";
 
 type Agent = {
@@ -29,12 +29,6 @@ type Job = {
 type Workspace = { capturedAt: string; agents: Agent[]; requests: RequestOption[]; jobs: Job[] };
 type Filter = "ALL" | "TODAY" | "TOMORROW";
 
-function currentLocale() {
-  if (typeof document === "undefined") return "en";
-  return document.documentElement.lang === "ar" || document.documentElement.lang === "ms"
-    ? document.documentElement.lang : "en";
-}
-
 function localDate(timeZone: string, offsetDays = 0) {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() + offsetDays);
@@ -55,8 +49,8 @@ function localDateTimeInput(value: string | undefined, timeZone: string) {
   return `${item.year}-${item.month}-${item.day}T${item.hour}:${item.minute}`;
 }
 
-export function DeliverySupervisorPanel() {
-  const copy = deliveryWorkflowMessages(currentLocale());
+export function DeliverySupervisorPanel({ locale = "en" }: { locale?: DeliveryWorkflowLocale }) {
+  const copy = deliveryWorkflowMessages(locale);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [filter, setFilter] = useState<Filter>("ALL");
   const [notice, setNotice] = useState("");
@@ -70,10 +64,10 @@ export function DeliverySupervisorPanel() {
   }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void refresh().catch(() => setError("Delivery workspace unavailable"));
+      void refresh().catch(() => setError(copy.workspaceUnavailable));
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [refresh]);
+  }, [copy.workspaceUnavailable, refresh]);
 
   const post = async (url: string, body: Record<string, unknown>) => {
     setBusy(true); setError("");
@@ -84,7 +78,7 @@ export function DeliverySupervisorPanel() {
       });
       if (!response.ok) throw new Error("command");
       setNotice(copy.saved); await refresh();
-    } catch { setError("The delivery command conflicted with current server state."); }
+    } catch { setError(copy.commandConflict); }
     finally { setBusy(false); }
   };
 
@@ -140,19 +134,19 @@ export function DeliverySupervisorPanel() {
     {notice ? <p className={styles.success} role="status">{notice}</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
     <details className={styles.details} open><summary>{copy.createJob}</summary><form className={styles.form} onSubmit={createJob}>
-      <div className={styles.formGrid}><label>Approved request<select name="requestId" required><option value="" disabled>—</option>{workspace?.requests.map((request) => <option key={request.id} value={request.id}>{request.number} · {request.companyName} · {request.branchName} · {request.branchTimezone}</option>)}</select></label><label>Destination local start<input name="localStart" type="datetime-local" required /></label><label>Destination local end<input name="localEnd" type="datetime-local" required /></label><label>Instructions<textarea name="instructions" maxLength={2000} /></label></div>
+      <div className={styles.formGrid}><label>{copy.approvedRequest}<select name="requestId" required><option value="" disabled>—</option>{workspace?.requests.map((request) => <option key={request.id} value={request.id}>{request.number} · {request.companyName} · {request.branchName} · {request.branchTimezone}</option>)}</select></label><label>{copy.destinationStart}<input name="localStart" type="datetime-local" required /></label><label>{copy.destinationEnd}<input name="localEnd" type="datetime-local" required /></label><label>{copy.instructions}<textarea name="instructions" maxLength={2000} /></label></div>
       <button className={styles.actionButton} data-primary="true" disabled={busy} type="submit">{copy.createJob}</button>
     </form></details>
-    <div className={styles.metrics} aria-label={copy.workload}>{workspace?.agents.map((agent) => <div className={styles.metric} key={agent.roleAssignmentId}><span>{agent.name}</span><strong>{agent.activeJobs}</strong><small>{agent.overdueJobs} overdue · {agent.email}</small></div>)}</div>
-    {!workspace ? <p className={styles.notice}>Loading…</p> : jobs.length === 0 ? <p className={styles.notice}>{copy.noJobs}</p> : <div className={styles.jobList}>{jobs.map((job) => <article className={styles.job} key={job.id}>
-      <header className={styles.jobHeader}><div><p>{job.requestNumber} · {job.companyName} · {job.branchName}</p><h2>{job.code}</h2></div><span className={styles.state}>{job.status.replaceAll("_", " ")} · v{job.workflowVersion}</span></header>
+    <div className={styles.metrics} aria-label={copy.workload}>{workspace?.agents.map((agent) => <div className={styles.metric} key={agent.roleAssignmentId}><span>{agent.name}</span><strong>{agent.activeJobs}</strong><small>{agent.overdueJobs} {copy.overdue} · {agent.email}</small></div>)}</div>
+    {!workspace ? <p className={styles.notice}>{copy.loading}</p> : jobs.length === 0 ? <p className={styles.notice}>{copy.noJobs}</p> : <div className={styles.jobList}>{jobs.map((job) => <article className={styles.job} key={job.id}>
+      <header className={styles.jobHeader}><div><p>{job.requestNumber} · {job.companyName} · {job.branchName}</p><h2>{job.code}</h2></div><span className={styles.state}>{deliveryWorkflowStatusLabel(job.status, locale)} · v{job.workflowVersion}</span></header>
       <div className={styles.jobBody}>
         <dl className={styles.facts}><div className={styles.fact}><dt>{copy.schedule}</dt><dd>{job.scheduledLocalStart?.replace("T", " ")} – {job.scheduledLocalEnd?.slice(11, 16)}<br />{job.destinationTimezone}</dd></div><div className={styles.fact}><dt>{copy.deadline}</dt><dd>{job.acceptanceDeadline ?? "—"}</dd></div><div className={styles.fact}><dt>{copy.sla}</dt><dd>{job.slaDueAt ?? "—"}</dd></div><div className={styles.fact}><dt>{copy.proof}</dt><dd>{job.proofPolicy.join(" + ")} · {job.proofSatisfied ? copy.proofReady : copy.proofMissing}</dd></div></dl>
-        <details className={styles.details} open={!job.assignment}><summary>{copy.assign}</summary><form className={styles.form} onSubmit={(event) => assign(event, job)}><div className={styles.formGrid}><label>Agent<select name="driverRoleAssignmentId" defaultValue={job.assignment?.driverRoleAssignmentId ?? ""} required><option value="" disabled>—</option>{workspace.agents.map((agent) => <option key={agent.roleAssignmentId} value={agent.roleAssignmentId}>{agent.name} · {agent.activeJobs} active</option>)}</select></label><label>{copy.note}<input name="reason" minLength={3} maxLength={1000} required /></label><label>{copy.deadline}<input name="acceptanceDeadline" type="datetime-local" defaultValue={localDateTimeInput(job.acceptanceDeadline, job.destinationTimezone)} required /></label><label>Vehicle<input name="vehicle" maxLength={160} defaultValue={job.assignment?.vehicle} /></label><label>Shift<input name="shift" maxLength={160} defaultValue={job.assignment?.shift} /></label><label>Zone<input name="zone" maxLength={160} defaultValue={job.assignment?.zone} /></label></div><fieldset><legend>{copy.proof}</legend>{["PHOTO", "SIGNATURE", "OTP"].map((value) => <label key={value}><input name="proofPolicy" type="checkbox" value={value} defaultChecked={job.proofPolicy.includes(value)} /> {value}</label>)}</fieldset><button className={styles.actionButton} disabled={busy} type="submit">{copy.assign}</button></form></details>
+        <details className={styles.details} open={!job.assignment}><summary>{copy.assign}</summary><form className={styles.form} onSubmit={(event) => assign(event, job)}><div className={styles.formGrid}><label>{copy.agent}<select name="driverRoleAssignmentId" defaultValue={job.assignment?.driverRoleAssignmentId ?? ""} required><option value="" disabled>—</option>{workspace.agents.map((agent) => <option key={agent.roleAssignmentId} value={agent.roleAssignmentId}>{agent.name} · {agent.activeJobs} {copy.active}</option>)}</select></label><label>{copy.note}<input name="reason" minLength={3} maxLength={1000} required /></label><label>{copy.deadline}<input name="acceptanceDeadline" type="datetime-local" defaultValue={localDateTimeInput(job.acceptanceDeadline, job.destinationTimezone)} required /></label><label>{copy.vehicle}<input name="vehicle" maxLength={160} defaultValue={job.assignment?.vehicle} /></label><label>{copy.shift}<input name="shift" maxLength={160} defaultValue={job.assignment?.shift} /></label><label>{copy.zone}<input name="zone" maxLength={160} defaultValue={job.assignment?.zone} /></label></div><fieldset><legend>{copy.proof}</legend>{["PHOTO", "SIGNATURE", "OTP"].map((value) => <label key={value}><input name="proofPolicy" type="checkbox" value={value} defaultChecked={job.proofPolicy.includes(value)} /> {value}</label>)}</fieldset><button className={styles.actionButton} disabled={busy} type="submit">{copy.assign}</button></form></details>
         {!['OUT_FOR_DELIVERY','ARRIVED','PARTIALLY_DELIVERED','DELIVERED','COMPLETED','CANCELLED'].includes(job.status) ? <details className={styles.details}><summary>{copy.cancel}</summary><form className={styles.form} onSubmit={(event) => manage(event, job, "CANCEL")}><label>{copy.note}<input name="reason" minLength={3} maxLength={1000} required /></label><button className={styles.actionButton} disabled={busy} type="submit">{copy.cancel}</button></form></details> : null}
-        {!['DELIVERED','COMPLETED','CANCELLED'].includes(job.status) ? <details className={styles.details}><summary>{copy.reschedule}</summary><form className={styles.form} onSubmit={(event) => manage(event, job, "RESCHEDULE")}><div className={styles.formGrid}><label>{copy.note}<input name="reason" minLength={3} maxLength={1000} required /></label><label>Destination local start<input name="localStart" type="datetime-local" required /></label><label>Destination local end<input name="localEnd" type="datetime-local" required /></label></div><button className={styles.actionButton} disabled={busy} type="submit">{copy.reschedule}</button></form></details> : null}
+        {!['DELIVERED','COMPLETED','CANCELLED'].includes(job.status) ? <details className={styles.details}><summary>{copy.reschedule}</summary><form className={styles.form} onSubmit={(event) => manage(event, job, "RESCHEDULE")}><div className={styles.formGrid}><label>{copy.note}<input name="reason" minLength={3} maxLength={1000} required /></label><label>{copy.destinationStart}<input name="localStart" type="datetime-local" required /></label><label>{copy.destinationEnd}<input name="localEnd" type="datetime-local" required /></label></div><button className={styles.actionButton} disabled={busy} type="submit">{copy.reschedule}</button></form></details> : null}
         {['DELIVERED','PARTIALLY_DELIVERED'].includes(job.status) && !job.proofSatisfied ? <details className={styles.details}><summary>{copy.exception}</summary><form className={styles.form} onSubmit={(event) => manage(event, job, "PROOF_EXCEPTION")}><label>{copy.note}<input name="reason" minLength={3} maxLength={1000} required /></label><button className={styles.actionButton} disabled={busy} type="submit">{copy.exception}</button></form></details> : null}
-        {job.history.length ? <details className={styles.details}><summary>Assignment history</summary><ol className={styles.timeline}>{job.history.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{item.driverName} · {item.status}</strong><span>{item.reason}</span><time>{item.assignedAt}</time></li>)}</ol></details> : null}
+        {job.history.length ? <details className={styles.details}><summary>{copy.assignmentHistory}</summary><ol className={styles.timeline}>{job.history.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{item.driverName} · {deliveryWorkflowStatusLabel(item.status, locale)}</strong><span>{item.reason}</span><time>{item.assignedAt}</time></li>)}</ol></details> : null}
       </div>
     </article>)}</div>}
   </section>;

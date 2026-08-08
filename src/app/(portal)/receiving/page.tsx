@@ -82,7 +82,7 @@ export default async function ReceivingPage({
           ))}
         </div>
       )}
-      <ReceivingOtpPanel />
+      <ReceivingOtpPanel locale={locale} />
     </>
   );
 }

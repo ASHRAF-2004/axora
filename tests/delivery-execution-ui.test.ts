@@ -12,7 +12,8 @@ describe("delivery execution role interfaces", () => {
     ]);
     expect(driver).toContain("expectedVersion");
     expect(driver).toContain("commandId");
-    expect(driver).toContain("Offline command queue limit reached");
+    expect(driver).toContain("copy.queueLimit");
+    expect(copy).toContain('queueLimit: "Offline command queue limit reached.\"');
     expect(driver).toContain("axora-delivery-command-recovery.json");
     expect(driver).toContain("/api/driver/shopping");
     expect(driver).toContain("/api/driver/proof");
