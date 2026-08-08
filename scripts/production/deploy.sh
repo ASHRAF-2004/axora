@@ -102,6 +102,36 @@ ensure_budget_worker_for_release() {
     || die "Production budget-worker is not healthy (status: $health)."
 }
 
+ensure_document_worker_for_release() {
+  local release="$1"
+  local expected_image="$2"
+  local expected_image_id="$3"
+  local container
+  local health
+
+  if ! release_has_document_worker "$release"; then
+    remove_document_worker_if_release_lacks_it "$release"
+    return
+  fi
+
+  if ! container="$(find_service_container document-worker)"; then
+    [[ "$(docker image inspect --format '{{.Id}}' "$expected_image")" == "$expected_image_id" ]] \
+      || die "Recorded application image no longer resolves to its recorded content digest."
+    log "Production document-worker is missing; reconciling only that ephemeral service from the recorded image."
+    export AXORA_IMAGE="$expected_image"
+    compose_release "$release" up -d --no-deps --no-build --wait \
+      --wait-timeout "$AXORA_DEPLOY_TIMEOUT_SECONDS" document-worker
+    container="$(find_service_container document-worker)" \
+      || die "Expected one running production document-worker container after reconciliation."
+  fi
+
+  [[ "$(docker inspect --format '{{.Image}}' "$container")" == "$expected_image_id" ]] \
+    || die "Running document-worker image differs from the recorded content digest."
+  health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container")"
+  [[ "$health" == "healthy" ]] \
+    || die "Production document-worker is not healthy (status: $health)."
+}
+
 automatic_revert() {
   if ! "$swapped" || ! valid_image_reference "$old_image" || [[ ! -d "$old_release" ]]; then
     return
@@ -115,6 +145,11 @@ automatic_revert() {
   else
     remove_ephemeral_budget_worker
   fi
+  if release_has_document_worker "$old_release"; then
+    services+=(document-worker)
+  else
+    remove_ephemeral_document_worker
+  fi
   if release_has_email_sender "$old_release"; then
     services+=(email-sender)
   fi
@@ -127,6 +162,7 @@ automatic_revert() {
     if "$SCRIPT_DIR/health-check.sh" --local; then
       remove_email_sender_if_release_lacks_it "$old_release"
       remove_budget_worker_if_release_lacks_it "$old_release"
+      remove_document_worker_if_release_lacks_it "$old_release"
     else
       warn "The automatic app-only rollback also failed its local health gate."
     fi
@@ -173,6 +209,7 @@ if [[ "$current_sha" == "$target_sha" ]]; then
   [[ "$(docker inspect --format '{{.Image}}' "$current_app_container")" == "$recorded_image_id" ]] \
     || die "Running application image differs from the recorded content digest."
   ensure_budget_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
+  ensure_document_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
   log "Commit $target_sha is already deployed; running health gates only."
   "$SCRIPT_DIR/health-check.sh" --local
   if bool_is_true "$AXORA_REQUIRE_EXTERNAL"; then
@@ -431,7 +468,7 @@ if [[ "$deployment_mode" == "bootstrap" ]]; then
   fi
 fi
 
-services=(app budget-worker email-sender caddy)
+services=(app budget-worker document-worker email-sender caddy)
 if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
   services+=(cloudflared)
 fi

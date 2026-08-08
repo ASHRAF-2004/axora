@@ -86,4 +86,19 @@ export async function readPersistentUpload(relativePath: string, rootOverride?: 
   }
 }
 
+export async function readPersistentGeneratedDocument(relativePath: string, rootOverride?: string) {
+  if (!/^generated-documents\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.pdf$/.test(relativePath)
+    || /(^|\/)\.\.?(\/|$)/.test(relativePath)) return null;
+  const root = storageRoot(rootOverride);
+  const target = path.resolve(/* turbopackIgnore: true */ root, relativePath);
+  if (!target.startsWith(`${root}${path.sep}`)) return null;
+  try {
+    const info = await lstat(/* turbopackIgnore: true */ target);
+    if (!info.isFile() || info.isSymbolicLink() || info.size < 100 || info.size > 25 * 1024 * 1024) return null;
+    return await readFile(/* turbopackIgnore: true */ target);
+  } catch {
+    return null;
+  }
+}
+
 export const persistentFileLimits = { maximumBytes: MAX_UPLOAD_BYTES };

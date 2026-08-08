@@ -8,7 +8,7 @@ describe("P0-09 provider-neutral email migration", () => {
   beforeAll(async () => {
     db = new PGlite();
     const applied = await applyMigrations(db);
-    expect(applied.at(-1)).toBe("063_fulfilment_delivery_execution.sql");
+    expect(applied.at(-1)).toBe("064_versioned_generated_documents.sql");
   }, 30_000);
 
   afterAll(async () => db.close());

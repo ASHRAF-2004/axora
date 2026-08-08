@@ -2,13 +2,13 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("production deployment reconciliation", () => {
-  it("starts a newly introduced budget worker without replacing stateful services", async () => {
+  it("starts newly introduced isolated workers without replacing stateful services", async () => {
     const deploy = await readFile(
       new URL("../scripts/production/deploy.sh", import.meta.url),
       "utf8",
     );
     const functionStart = deploy.indexOf("ensure_budget_worker_for_release() {");
-    const functionEnd = deploy.indexOf("\n}\n\nautomatic_revert()", functionStart);
+    const functionEnd = deploy.indexOf("\n}\n\nensure_document_worker_for_release()", functionStart);
     const sameRevisionStart = deploy.indexOf(
       'if [[ "$current_sha" == "$target_sha" ]]; then',
     );
@@ -50,6 +50,25 @@ describe("production deployment reconciliation", () => {
     expect(sameRevision).toContain('release="$(release_path_for_sha "$target_sha")"');
     expect(sameRevision).toContain(
       'ensure_budget_worker_for_release "$release" "$recorded_image" "$recorded_image_id"',
+    );
+    const documentFunctionStart = deploy.indexOf("ensure_document_worker_for_release() {");
+    const documentFunctionEnd = deploy.indexOf("\n}\n\nautomatic_revert()", documentFunctionStart);
+    expect(documentFunctionStart).toBeGreaterThan(functionEnd);
+    expect(documentFunctionEnd).toBeGreaterThan(documentFunctionStart);
+    const documentReconciliation = deploy.slice(documentFunctionStart, documentFunctionEnd);
+    expect(documentReconciliation).toContain('release_has_document_worker "$release"');
+    expect(documentReconciliation).toContain(
+      'remove_document_worker_if_release_lacks_it "$release"',
+    );
+    expect(documentReconciliation).toContain(
+      'if ! container="$(find_service_container document-worker)"; then',
+    );
+    expect(documentReconciliation).toMatch(
+      /compose_release "\$release" up -d --no-deps --no-build --wait[\s\S]*document-worker/,
+    );
+    expect(documentReconciliation).not.toMatch(/\bdown\b|--remove-orphans|docker volume|\s-v(?:\s|$)/);
+    expect(sameRevision).toContain(
+      'ensure_document_worker_for_release "$release" "$recorded_image" "$recorded_image_id"',
     );
   });
 });
