@@ -58,11 +58,12 @@ describe("P0-02 active isolation coverage", () => {
   });
 
   it("uses exact-assignment user and organization administration", async () => {
-    const [users, userActions, userRuntime, newRequest, settingsAction] =
-      await Promise.all([
+    const [users, userActions, userRuntime, accountSetup, newRequest,
+      settingsAction] = await Promise.all([
         source("src/app/(portal)/users/page.tsx"),
         source("src/app/(portal)/users/actions.ts"),
         source("src/lib/user-isolation.ts"),
+        source("src/lib/account-setup.ts"),
         source("src/app/(portal)/requests/new/page.tsx"),
         source("src/app/(portal)/settings/actions.ts"),
       ]);
@@ -73,7 +74,15 @@ describe("P0-02 active isolation coverage", () => {
     expect(users).not.toContain("listCompanies(actor)");
     expect(users).not.toContain("listBranches(actor)");
     expect(userActions).toContain("setAuthorizedUserActive");
-    expect(userActions).toContain("lockAuthorizedUserTarget");
+    expect(userActions).toContain(
+      "resendAccountSetupInvitation(safeUserId, actor)",
+    );
+    expect(accountSetup).toContain(
+      "lockAuthorizedInvitationCreationScope(client, actor, resolved)",
+    );
+    expect(accountSetup).toContain(
+      "lockAuthorizedInvitationTarget(client, actor, userId)",
+    );
     expect(userRuntime).toContain("axora_user_directory_rows");
     expect(userRuntime).toContain("axora_lock_user_target_access");
     expect(newRequest).toContain("loadOrganizationDirectory(actor)");

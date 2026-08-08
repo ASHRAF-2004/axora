@@ -389,6 +389,9 @@ describe("account setup transactional lifecycle", () => {
 
   it("revokes an earlier link before creating a replacement", async () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes("SELECT") && sql.includes("setupCompleted")) {
         return { rowCount: 1, rows: [{
           userId: "user-id",
@@ -441,6 +444,9 @@ describe("account setup transactional lifecycle", () => {
   it("replaces a supplier invitation without inventing company scope", async () => {
     const supplierId = "30000000-0000-4000-8000-000000000001";
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes("SELECT") && sql.includes("setupCompleted")) {
         return { rowCount: 1, rows: [{
           userId: "supplier-user-id",
@@ -496,6 +502,9 @@ describe("account setup transactional lifecycle", () => {
 
   it("rate-limits repeated resend attempts before revoking the current link", async () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes("SELECT") && sql.includes("setupCompleted")) {
         return { rowCount: 1, rows: [{
           userId: "user-id",
@@ -532,6 +541,9 @@ describe("account setup transactional lifecycle", () => {
 
   it("applies the actor and company quotas to resend exposure", async () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
+      if (sql.includes("pg_advisory_xact_lock")) {
+        return { rowCount: 1, rows: [{}] };
+      }
       if (sql.includes("SELECT") && sql.includes("setupCompleted")) {
         return { rowCount: 1, rows: [{
           userId: "user-id",

@@ -445,17 +445,17 @@ describe("P0-02 isolation closure migration", () => {
         SET active=false,revoked_at=now(),revoked_by=$2,
             revoke_reason='Isolation closure revocation test'
         WHERE id=$1
-      `, [ids.companyAssignmentA, ids.owner]);
+      `, [ids.branchAssignmentA, ids.owner]);
       expect(await operationRows(
         db,
-        ids.companyAdminA,
-        ids.companyAssignmentA,
+        ids.branchAdminA,
+        ids.branchAssignmentA,
         "request.approval_queue.view",
       )).toEqual([]);
       expect(await userIds(
         db,
-        ids.companyAdminA,
-        ids.companyAssignmentA,
+        ids.branchAdminA,
+        ids.branchAssignmentA,
       )).toEqual([]);
     } finally {
       await db.close();

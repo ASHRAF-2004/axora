@@ -331,7 +331,7 @@ AS $$
 DECLARE
   actor_snapshot jsonb;
   actor_role_id uuid;
-  target_role_id uuid;
+  resolved_target_role_id uuid;
   target_account_kind text;
   target_is_owner boolean:=false;
   organization_name text:='Axora';
@@ -367,11 +367,11 @@ BEGIN
   );
   IF actor_snapshot IS NULL THEN RETURN NULL; END IF;
 
-  SELECT role.id INTO target_role_id
+  SELECT role.id INTO resolved_target_role_id
   FROM public.roles role
   WHERE role.role_key=p_target_role_key
   FOR KEY SHARE OF role;
-  IF target_role_id IS NULL THEN RETURN NULL; END IF;
+  IF resolved_target_role_id IS NULL THEN RETURN NULL; END IF;
 
   target_account_kind:=CASE
     WHEN p_target_role_key IN (
@@ -393,7 +393,7 @@ BEGIN
     SELECT 1
     FROM public.role_assignment_management_rules rule
     WHERE rule.manager_role_id=actor_role_id
-      AND rule.target_role_id=target_role_id
+      AND rule.target_role_id=resolved_target_role_id
       AND rule.scope_type=p_scope_type
   ) OR NOT public.axora_snapshot_has_permission(
     actor_snapshot,'user.create',p_scope_type,
@@ -475,7 +475,7 @@ BEGIN
 
   RETURN jsonb_strip_nulls(jsonb_build_object(
     'capturedAt',p_at,
-    'roleId',target_role_id,
+    'roleId',resolved_target_role_id,
     'role',p_target_role_key,
     'accountKind',target_account_kind,
     'isOwner',target_is_owner,
