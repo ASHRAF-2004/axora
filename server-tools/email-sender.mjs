@@ -13,6 +13,8 @@ import { renderTransactionalEmail } from "./transactional-email.mjs";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const CLOUDFLARE_ENDPOINT = "https://api.cloudflare.com/client/v4";
+const ZEPTOMAIL_ENDPOINT = "https://api.zeptomail.com/v1.1/email";
+const ZEPTOMAIL_MAX_MESSAGE_BYTES = 12 * 1024 * 1024;
 const ACCOUNT_ID_PATTERN = /^[a-f0-9]{32}$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -25,6 +27,18 @@ const SERVICE_REPLAY_WINDOW_SECONDS = 5 * 60;
 const DELIVERY_CACHE_TTL_SECONDS = 24 * 60 * 60;
 const DELIVERY_CACHE_MAX_ENTRIES = 1_000;
 const OUTBOX_POLL_INTERVAL_MS = 10_000;
+const PROVIDER_AGENTS = [
+  "axora-auth", "axora-procurement", "axora-budget", "axora-delivery",
+  "axora-documents", "axora-platform",
+];
+const ZEPTOMAIL_AGENT_TOKEN_ENV = {
+  "axora-auth": "ZEPTOMAIL_AUTH_SEND_TOKEN_FILE",
+  "axora-procurement": "ZEPTOMAIL_PROCUREMENT_SEND_TOKEN_FILE",
+  "axora-budget": "ZEPTOMAIL_BUDGET_SEND_TOKEN_FILE",
+  "axora-delivery": "ZEPTOMAIL_DELIVERY_SEND_TOKEN_FILE",
+  "axora-documents": "ZEPTOMAIL_DOCUMENTS_SEND_TOKEN_FILE",
+  "axora-platform": "ZEPTOMAIL_PLATFORM_SEND_TOKEN_FILE",
+};
 const INLINE_ASSETS = [
   ["axora-logo", "axora-email.png", new URL("../public/brand/axora-email.png", import.meta.url)],
   ["account-envelope", "account-envelope.png", new URL("../public/email/account-setup/account-envelope.png", import.meta.url)],
@@ -95,8 +109,27 @@ async function readBoundedSecret(filename, {
   }
 }
 
-export function apiToken({ env = process.env, readFileImpl = readFile } = {}) {
-  return readBoundedSecret(String(env.CLOUDFLARE_EMAIL_API_TOKEN_FILE ?? "").trim(), {
+export function apiToken({
+  env = process.env,
+  readFileImpl = readFile,
+  provider = String(env.AXORA_EMAIL_PROVIDER ?? "cloudflare-email-service").trim(),
+  providerAgent = "axora-auth",
+} = {}) {
+  let filename;
+  if (provider === "zeptomail") {
+    if (!PROVIDER_AGENTS.includes(providerAgent)) throw new Error("email_not_configured");
+    const activeSlot = String(env.AXORA_ZEPTOMAIL_TOKEN_SLOT ?? "primary").trim();
+    if (!["primary", "next"].includes(activeSlot)) throw new Error("email_not_configured");
+    const agentKey = ZEPTOMAIL_AGENT_TOKEN_ENV[providerAgent];
+    filename = activeSlot === "next"
+      ? String(env[`${agentKey}_NEXT`] ?? env.ZEPTOMAIL_SEND_TOKEN_NEXT_FILE ?? "").trim()
+      : String(env[agentKey] ?? env.ZEPTOMAIL_SEND_TOKEN_FILE ?? "").trim();
+  } else if (provider === "cloudflare-email-service") {
+    filename = String(env.CLOUDFLARE_EMAIL_API_TOKEN_FILE ?? "").trim();
+  } else {
+    throw new Error("email_not_configured");
+  }
+  return readBoundedSecret(filename, {
     readFileImpl,
     minimumLength: MIN_API_TOKEN_LENGTH,
   });
@@ -150,9 +183,11 @@ export function senderConfiguration(env = process.env) {
   const supportEmail = String(env.AXORA_EMAIL_REPLY_TO ?? "").trim().toLowerCase();
   const appBaseUrl = String(env.APP_BASE_URL ?? "https://axora.management").trim();
   const provider = String(env.AXORA_EMAIL_PROVIDER ?? "cloudflare-email-service").trim();
-  if (!ACCOUNT_ID_PATTERN.test(accountId) || !EMAIL_PATTERN.test(fromAddress)
+  if ((provider === "cloudflare-email-service" && !ACCOUNT_ID_PATTERN.test(accountId))
+    || !["cloudflare-email-service", "zeptomail"].includes(provider)
+    || !EMAIL_PATTERN.test(fromAddress)
     || !EMAIL_PATTERN.test(supportEmail) || !fromName || fromName.length > 100
-    || /[\r\n]/.test(fromName) || provider !== "cloudflare-email-service") {
+    || /[\r\n]/.test(fromName)) {
     throw new Error("email_not_configured");
   }
 
@@ -321,10 +356,114 @@ export function createCloudflareEmailProvider({
   };
 }
 
+function zeptoMailAddress(address, name) {
+  if (typeof address !== "string" || address.length > 254 || !EMAIL_PATTERN.test(address)
+    || /[\r\n]/.test(address) || typeof name !== "string" || !name.trim()
+    || name.length > 200 || /[\r\n]/.test(name)) {
+    throw emailError("provider_rejected", undefined, "failed");
+  }
+  return { address: address.toLowerCase(), name: name.trim() };
+}
+
+function zeptoMailBody(message) {
+  if (!UUID_PATTERN.test(String(message.deliveryId ?? ""))
+    || !PROVIDER_AGENTS.includes(message.providerAgent)
+    || typeof message.subject !== "string" || !message.subject.trim()
+    || message.subject.length > 500 || /[\r\n]/.test(message.subject)
+    || typeof message.html !== "string" || !message.html
+    || typeof message.text !== "string" || !message.text) {
+    throw emailError("provider_rejected", undefined, "failed");
+  }
+  const body = {
+    from: zeptoMailAddress(message.from?.address, message.from?.name),
+    to: [{ email_address: zeptoMailAddress(message.to, message.recipientName) }],
+    reply_to: [zeptoMailAddress(message.reply_to?.address, message.reply_to?.name)],
+    subject: message.subject,
+    htmlbody: message.html,
+    textbody: message.text,
+    client_reference: message.deliveryId,
+    mime_headers: message.headers ?? {},
+    track_clicks: false,
+    track_opens: false,
+    attachments: (message.attachments ?? [])
+      .filter((attachment) => attachment.disposition !== "inline")
+      .map((attachment) => ({
+        content: attachment.content,
+        mime_type: attachment.type,
+        name: attachment.filename,
+      })),
+    inline_images: (message.attachments ?? [])
+      .filter((attachment) => attachment.disposition === "inline")
+      .map((attachment) => ({
+        content: attachment.content,
+        mime_type: attachment.type,
+        cid: attachment.content_id,
+      })),
+  };
+  const serialized = JSON.stringify(body);
+  if (Buffer.byteLength(serialized, "utf8") > ZEPTOMAIL_MAX_MESSAGE_BYTES) {
+    throw emailError("provider_content_too_large", 413, "failed");
+  }
+  return serialized;
+}
+
+export function parseZeptoMailRequestId(provider) {
+  const requestId = provider?.request_id;
+  if (typeof requestId !== "string" || !requestId.trim()
+    || requestId.length > 255 || /[\r\n]/.test(requestId)) {
+    throw emailError("provider_rejected", undefined, "uncertain");
+  }
+  return requestId.trim();
+}
+
+export function createZeptoMailProvider({ token, fetchImpl = globalThis.fetch } = {}) {
+  if (!token) throw new Error("email_not_configured");
+  return {
+    name: "zeptomail",
+    async send(message) {
+      const response = await fetchWithRetry(ZEPTOMAIL_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Zoho-enczapikey ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: zeptoMailBody(message),
+      }, { fetchImpl });
+      let providerResponse;
+      try {
+        providerResponse = await response.json();
+      } catch {
+        providerResponse = undefined;
+      }
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw emailError("provider_rate_limited", response.status, "retry");
+        }
+        if ([401, 402, 403].includes(response.status)) {
+          throw emailError(
+            "provider_configuration_incident",
+            response.status,
+            "configuration",
+          );
+        }
+        if (response.status >= 500) {
+          throw emailError("provider_unavailable", response.status, "retry");
+        }
+        throw emailError("provider_rejected", response.status, "failed");
+      }
+      return {
+        status: "submitted",
+        messageId: parseZeptoMailRequestId(providerResponse),
+      };
+    },
+  };
+}
+
 export function resolveEmailProvider(name, dependencies) {
   if (name === "cloudflare-email-service") {
     return createCloudflareEmailProvider(dependencies);
   }
+  if (name === "zeptomail") return createZeptoMailProvider(dependencies);
   throw new Error("email_not_configured");
 }
 
@@ -333,10 +472,17 @@ export async function readinessStatus({ env = process.env, readFileImpl = readFi
     if (!emailDeliveryEnabled(env)) {
       return { statusCode: 200, body: { status: "disabled" } };
     }
-    senderConfiguration(env);
+    const configuration = senderConfiguration(env);
     outboxConfiguration(env);
+    const agents = configuration.provider === "zeptomail"
+      ? PROVIDER_AGENTS : ["axora-auth"];
     await Promise.all([
-      apiToken({ env, readFileImpl }),
+      ...agents.map((providerAgent) => apiToken({
+        env,
+        readFileImpl,
+        provider: configuration.provider,
+        providerAgent,
+      })),
       serviceAuthSecret({ env, readFileImpl }),
       loadInlineAttachments({ readFileImpl }),
     ]);
@@ -363,22 +509,36 @@ export async function sendAccountSetup(payload, {
     : await loadInlineAttachments({ readFileImpl });
   const selectedProvider = provider ?? resolveEmailProvider(configuration.provider, {
     configuration,
-    token: await apiToken({ env, readFileImpl }),
+    token: await apiToken({
+      env,
+      readFileImpl,
+      provider: configuration.provider,
+      providerAgent: "axora-auth",
+    }),
     fetchImpl,
   });
   const result = await selectedProvider.send({
+    deliveryId: payload.deliveryId,
+    providerAgent: "axora-auth",
     to: rendered.recipientEmail,
+    recipientName: rendered.recipientName,
     from: { address: configuration.fromAddress, name: configuration.fromName },
     reply_to: { address: rendered.supportEmail, name: "Axora support" },
     subject: rendered.subject,
     html: rendered.html,
     text: rendered.text,
     attachments,
-    headers: { "X-Axora-Template": "account-setup-v1" },
+    headers: {
+      "X-Axora-Template": payload.role === "COMPANY_ADMIN"
+        ? "company-admin-invitation-v1" : "internal-user-invitation-v1",
+    },
   });
   return {
     succeeded: true,
     status: result.status,
+    ...(selectedProvider.name === "zeptomail"
+      ? { providerName: selectedProvider.name, providerAgent: "axora-auth" }
+      : {}),
     ...(result.messageId === undefined ? {} : { messageId: result.messageId }),
   };
 }
@@ -400,24 +560,38 @@ export async function sendTransactionalEmail(payload, {
       attachment.content_id === "axora-logo"
     ))
     : await loadInlineAttachments({ readFileImpl, contentIds: ["axora-logo"] });
+  const providerAgent = PROVIDER_AGENTS.includes(payload.providerAgent)
+    ? payload.providerAgent : rendered.providerAgent;
+  if (!PROVIDER_AGENTS.includes(providerAgent)) throw new Error("email_not_configured");
   const selectedProvider = provider ?? resolveEmailProvider(configuration.provider, {
     configuration,
-    token: await apiToken({ env, readFileImpl }),
+    token: await apiToken({
+      env,
+      readFileImpl,
+      provider: configuration.provider,
+      providerAgent,
+    }),
     fetchImpl,
   });
   const result = await selectedProvider.send({
+    deliveryId: payload.deliveryId,
+    providerAgent,
     to: rendered.recipientEmail,
+    recipientName: rendered.recipientName,
     from: { address: configuration.fromAddress, name: configuration.fromName },
     reply_to: { address: rendered.replyToEmail, name: rendered.replyToName },
     subject: rendered.subject,
     html: rendered.html,
     text: rendered.text,
     attachments,
-    headers: { "X-Axora-Template": rendered.templateKey },
+    headers: { "X-Axora-Template": `${rendered.templateKey}-v${rendered.templateVersion}` },
   });
   return {
     succeeded: true,
     status: result.status,
+    ...(selectedProvider.name === "zeptomail"
+      ? { providerName: selectedProvider.name, providerAgent }
+      : {}),
     ...(result.messageId === undefined ? {} : { messageId: result.messageId }),
   };
 }
@@ -638,12 +812,38 @@ async function internalOutboxRequest(body, {
 
 function providerFailureOutcome(error) {
   if (error?.disposition === "retry") {
-    return { outcome: "retry", errorCode: "provider_rate_limited" };
+    return {
+      outcome: "retry",
+      errorCode: error?.message === "provider_rate_limited"
+        ? "provider_rate_limited" : "provider_unavailable",
+      ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+    };
+  }
+  if (error?.disposition === "configuration") {
+    return {
+      outcome: "paused",
+      errorCode: "provider_configuration_incident",
+      ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+    };
   }
   if (error?.disposition === "uncertain") {
-    return { outcome: "uncertain", errorCode: "provider_outcome_uncertain" };
+    return {
+      outcome: "uncertain",
+      errorCode: "provider_outcome_uncertain",
+      ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+    };
   }
-  return { outcome: "failed", errorCode: "provider_rejected" };
+  return {
+    outcome: "failed",
+    errorCode: "provider_rejected",
+    ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+  };
+}
+
+function completionProviderName(env) {
+  const value = String(env?.AXORA_EMAIL_PROVIDER ?? "unconfigured").trim();
+  return ["zeptomail", "cloudflare-email-service", "test"].includes(value)
+    ? value : "unconfigured";
 }
 
 export async function pollTransactionalEmailOutboxOnce(dependencies = {}) {
@@ -664,9 +864,15 @@ export async function pollTransactionalEmailOutboxOnce(dependencies = {}) {
     completion = {
       outcome: "sent",
       ...(result.messageId ? { providerMessageId: result.messageId } : {}),
+      providerName: result.providerName,
+      providerAgent: result.providerAgent,
     };
   } catch (error) {
-    completion = providerFailureOutcome(error);
+    completion = {
+      ...providerFailureOutcome(error),
+      providerName: completionProviderName(dependencies.env ?? process.env),
+      providerAgent: job.providerAgent,
+    };
   }
   await internalOutboxRequest({
     action: "complete",
@@ -697,9 +903,15 @@ export async function pollWorkflowEmailOutboxOnce(dependencies = {}) {
     completion = {
       outcome: "sent",
       ...(result.messageId ? { providerMessageId: result.messageId } : {}),
+      providerName: result.providerName,
+      providerAgent: result.providerAgent,
     };
   } catch (error) {
-    completion = providerFailureOutcome(error);
+    completion = {
+      ...providerFailureOutcome(error),
+      providerName: completionProviderName(dependencies.env ?? process.env),
+      providerAgent: job.providerAgent,
+    };
   }
   await internalOutboxRequest({
     action: "complete",

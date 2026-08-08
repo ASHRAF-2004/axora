@@ -269,7 +269,7 @@ describe("transactional notification delivery", () => {
     const message = provider.send.mock.calls[0][0];
     expect(message.to).toBe("aisha@example.test");
     expect(message.reply_to.address).toBe("support@axora.management");
-    expect(message.headers).toEqual({ "X-Axora-Template": "password-reset" });
+    expect(message.headers).toEqual({ "X-Axora-Template": "password-reset-v1" });
     expect(message.attachments).toHaveLength(1);
     expect(message.attachments[0]).toMatchObject({
       content_id: "axora-logo",
@@ -306,7 +306,9 @@ describe("transactional notification delivery", () => {
       address: "aisha@example.test",
       name: "Aisha Rahman",
     });
-    expect(message.headers).toEqual({ "X-Axora-Template": "contact-notification" });
+    expect(message.headers).toEqual({
+      "X-Axora-Template": "contact-notification-v1",
+    });
   });
 
   it("claims, sends, and acknowledges the transactional queue", async () => {

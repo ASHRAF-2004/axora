@@ -51,7 +51,7 @@ describe("workflow email sender", () => {
     expect(message.subject).not.toContain("Approval required");
     expect(message.to).toBe("person@example.test");
     expect(message.reply_to.address).toBe("support@axora.management");
-    expect(message.headers).toEqual({ "X-Axora-Template": "workflow-update" });
+    expect(message.headers).toEqual({ "X-Axora-Template": "workflow-update-v1" });
     expect(message.attachments).toHaveLength(1);
   });
 

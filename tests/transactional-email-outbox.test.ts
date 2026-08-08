@@ -193,7 +193,7 @@ describe("generic transactional email outbox", () => {
       "sent",
       { providerMessageId: "provider-message-1" },
     )).resolves.toBe(true);
-    const contactUpdate = mocks.client.query.mock.calls[1];
+    const contactUpdate = mocks.client.query.mock.calls[2];
     expect(String(contactUpdate[0])).toContain("UPDATE public_contact_submissions");
     expect(contactUpdate[1]).toEqual([sourceId, "NOTIFIED"]);
 
@@ -208,7 +208,10 @@ describe("generic transactional email outbox", () => {
       "retry",
       { errorCode: "provider_rate_limited" },
     )).resolves.toBe(true);
-    expect(mocks.client.query).toHaveBeenCalledOnce();
+    expect(mocks.client.query).toHaveBeenCalledTimes(2);
+    expect(String(mocks.client.query.mock.calls[1]?.[0])).toContain(
+      "INSERT INTO email_delivery_attempts",
+    );
 
     vi.clearAllMocks();
     mocks.client.query
@@ -224,10 +227,10 @@ describe("generic transactional email outbox", () => {
       "failed",
       { errorCode: "provider_unavailable" },
     )).resolves.toBe(true);
-    expect(String(mocks.client.query.mock.calls[1][0])).toContain(
+    expect(String(mocks.client.query.mock.calls[2][0])).toContain(
       "acknowledgement_status=$2",
     );
-    expect(mocks.client.query.mock.calls[1][1]).toEqual([sourceId, "FAILED"]);
+    expect(mocks.client.query.mock.calls[2][1]).toEqual([sourceId, "FAILED"]);
   });
 
   it("leaves contact work unclaimed until a private monitored inbox is configured", async () => {
