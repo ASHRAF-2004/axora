@@ -1206,11 +1206,19 @@ export async function loadAttachmentFile(id: string) {
   const record = result.rows[0];
   if (!record) return null;
   if (record.fileContent) return { fileName: record.fileName, contentType: record.contentType, bytes: record.fileContent };
-  const uploadRoot = path.resolve(process.cwd(), "data", "uploads");
-  const source = path.resolve(uploadRoot, record.storagePath);
+  const uploadRoot = path.resolve(
+    /* turbopackIgnore: true */ process.cwd(),
+    "data",
+    "uploads",
+  );
+  const source = path.resolve(/* turbopackIgnore: true */ uploadRoot, record.storagePath);
   if (!source.startsWith(`${uploadRoot}${path.sep}`)) throw new Error("Invalid stored attachment path.");
   try {
-    return { fileName: record.fileName, contentType: record.contentType, bytes: await readFile(source) };
+    return {
+      fileName: record.fileName,
+      contentType: record.contentType,
+      bytes: await readFile(/* turbopackIgnore: true */ source),
+    };
   } catch {
     return null;
   }

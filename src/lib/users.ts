@@ -175,8 +175,17 @@ async function validateUserCreation(
   let branchName: string | undefined;
   if (input.accountKind === "COMPANY") {
     const company = await client.query<{ name: string }>(
-      "SELECT name FROM companies WHERE id=$1 AND active=true FOR KEY SHARE",
-      [input.companyId],
+      `SELECT name FROM companies
+       WHERE id=$1 AND (
+         active=true OR (
+           $2='COMPANY_ADMIN'
+           AND lifecycle_status IN (
+             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED'
+           )
+         )
+       )
+       FOR KEY SHARE`,
+      [input.companyId, input.role],
     );
     if (!company.rowCount) throw new Error("The selected company is not active.");
     organizationName = company.rows[0].name;

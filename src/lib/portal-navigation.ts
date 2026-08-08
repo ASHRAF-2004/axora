@@ -30,7 +30,7 @@ export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/supplier", label: "Supplier RFQs", description: "Assigned RFQs, quotations and documents", permission: "view_supplier_portal", group: "workspace" },
   { href: "/driver", label: "Driver assignments", description: "Offline-safe status and delivery evidence", permission: "view_delivery_portal", group: "workspace" },
   { href: "/receiving", label: "Receiving", description: "Independent line-by-line receipt confirmation", permission: "view_receiving", group: "workspace" },
-  { href: "/companies", label: "Companies", description: "Onboarding and tenant health", permission: "manage_companies", ownerOnly: true, group: "administration" },
+  { href: "/companies", label: "Companies", description: "Onboarding and tenant health", permission: "manage_companies", group: "administration" },
   { href: "/products", label: "Global catalog", description: "Products and customer-facing images", permission: "manage_catalog", group: "administration" },
   { href: "/branches", label: "Branches & budgets", description: "Company structure and controls", permission: "view_branches", group: "administration" },
   { href: "/suppliers", label: "Suppliers", description: "Private supplier organizations", permission: "manage_suppliers", group: "administration" },

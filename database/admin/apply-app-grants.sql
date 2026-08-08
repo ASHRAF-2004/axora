@@ -262,6 +262,42 @@ BEGIN
   END IF;
 
   IF to_regprocedure(
+    'public.axora_company_lifecycle_workspace(uuid,uuid,timestamptz)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.company_status_history,public.company_assignments,public.company_onboarding_items,public.company_duplicate_candidates,public.company_publication_history FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_default_inserted_company_lifecycle() FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_seed_legacy_company_lifecycle() FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_normalize_company_identity(text) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_normalize_company_phone(text) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_email_domain(text) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_status_rank(text) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_snapshot_role_permission(jsonb,text) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_actor_is_owner(jsonb) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_assignment_is_active(uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_actor_can_view(jsonb,uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_actor_has_permission(jsonb,uuid,uuid,text,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_actor_can_create(jsonb,text) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_activation_blockers(uuid) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_apply_company_status(uuid,text,uuid,text,timestamptz,jsonb) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_notification_recipient_ids(uuid,boolean,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_lifecycle_record(uuid,jsonb,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_mutation_payload(uuid,jsonb,uuid,timestamptz,text,boolean,uuid[]) FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_role_assignment_target_is_ready(uuid,uuid,text,uuid,uuid,uuid,uuid) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_company_lifecycle_workspace(uuid,uuid,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_create_company_lead(uuid,uuid,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text,text,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_mark_company_brand_ready(uuid,uuid,uuid,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_assign_company_manager(uuid,uuid,uuid,uuid,text,timestamptz,timestamptz,text,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_transition_company_lifecycle(uuid,uuid,uuid,text,text,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_resolve_company_duplicate(uuid,uuid,uuid,text,text,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_sync_company_administrator(uuid,uuid,uuid,text,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_activate_company(uuid,uuid,uuid,text,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_suspend_company(uuid,uuid,uuid,text,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_set_company_publication(uuid,uuid,uuid,boolean,text,timestamptz) TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_public_company_listing_rows() TO axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_lock_company_admin_invitation_scope(uuid,uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+
+  IF to_regprocedure(
     'public.axora_protect_request_submission_identity()'
   ) IS NOT NULL THEN
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_protect_request_submission_identity() FROM axora_app';

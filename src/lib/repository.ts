@@ -1011,9 +1011,10 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
 export type MasterEntity = "companies" | "branches" | "products" | "suppliers";
 
 export async function setMasterActive(entity: MasterEntity, id: string, active: boolean, actor: SessionUser) {
-  const requiredPermission = entity === "companies"
-    ? "manage_companies"
-    : entity === "branches"
+  if (entity === "companies") {
+    throw new Error("Company activation is controlled by the onboarding lifecycle.");
+  }
+  const requiredPermission = entity === "branches"
       ? "manage_branches"
       : entity === "products"
         ? "manage_catalog"

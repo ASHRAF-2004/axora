@@ -4,6 +4,13 @@ import { isDemoMode, withAuditTransaction } from "./db";
 export const NOTIFICATION_EVENT_KEYS = [
   "invitation.sent",
   "invitation.accepted",
+  "company.lead.created",
+  "company.assigned",
+  "company.reassigned",
+  "company.information_requested",
+  "company.administrator_activated",
+  "company.activated",
+  "company.suspended",
   "request.submitted",
   "approval.needed",
   "request.approved",

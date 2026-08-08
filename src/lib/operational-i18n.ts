@@ -81,7 +81,7 @@ export function operationalNumber(locale: SupportedLocale, value: number, option
   return new Intl.NumberFormat(locale === "ar" ? "ar-MY" : locale === "ms" ? "ms-MY" : "en-MY", options).format(value);
 }
 
-export const notificationEventKeys = ["invitation.sent","invitation.accepted","request.submitted","approval.needed","request.approved","request.rejected","quotation.requested","quotation.received","supplier.selected","supplier.order_selected","supplier.rfq_acknowledged","supplier.order_acknowledged","delivery.scheduled","driver.assigned","driver.assignment_rejected","delivery.accepted","delivery.arrived","delivery.attempted","delivery.partially_delivered","delivery.issue_reported","delivery.note_added","delivery.delayed","delivery.completed","receipt.required","discrepancy.opened","invoice.issued","payment.status_changed","order.confirmed","preparation.started","delivery.out_for_delivery","delivery.evidence_recorded","delivery.partial_evidence_recorded","delivery.failed","receipt.confirmed","three_way_match.completed","three_way_match.exception","request.completed","request.cancelled","request.on_hold"] as const;
+export const notificationEventKeys = ["invitation.sent","invitation.accepted","company.lead.created","company.assigned","company.reassigned","company.information_requested","company.administrator_activated","company.activated","company.suspended","request.submitted","approval.needed","request.approved","request.rejected","quotation.requested","quotation.received","supplier.selected","supplier.order_selected","supplier.rfq_acknowledged","supplier.order_acknowledged","delivery.scheduled","driver.assigned","driver.assignment_rejected","delivery.accepted","delivery.arrived","delivery.attempted","delivery.partially_delivered","delivery.issue_reported","delivery.note_added","delivery.delayed","delivery.completed","receipt.required","discrepancy.opened","invoice.issued","payment.status_changed","order.confirmed","preparation.started","delivery.out_for_delivery","delivery.evidence_recorded","delivery.partial_evidence_recorded","delivery.failed","receipt.confirmed","three_way_match.completed","three_way_match.exception","request.completed","request.cancelled","request.on_hold"] as const;
 
 const eventLabels: Record<SupportedLocale, Record<string, string>> = {
   en: Object.fromEntries(notificationEventKeys.map((key) => [key, key.replaceAll(".", " ").replaceAll("_", " ")])),
@@ -93,11 +93,25 @@ export function operationalEventLabel(locale: SupportedLocale, eventKey: string)
   if (locale === "en") return eventKey.split(/[._]/).map((part, index) => index ? part : part[0]?.toUpperCase() + part.slice(1)).join(" ");
   const supplierEvents: Record<"ar" | "ms", Record<string, string>> = {
     ar: {
+      "company.lead.created": "أُنشئ عميل محتمل جديد",
+      "company.assigned": "أُسندت الشركة",
+      "company.reassigned": "أُعيد إسناد الشركة",
+      "company.information_requested": "طُلبت معلومات الشركة",
+      "company.administrator_activated": "تم تفعيل مدير الشركة",
+      "company.activated": "تم تفعيل الشركة",
+      "company.suspended": "تم تعليق الشركة",
       "supplier.rfq_acknowledged": "أكد المورد طلب عرض السعر",
       "supplier.order_acknowledged": "أكد المورد الطلب المختار",
       "supplier.order_selected": "تم اختيار طلب المورد",
     },
     ms: {
+      "company.lead.created": "Prospek syarikat dicipta",
+      "company.assigned": "Syarikat ditugaskan",
+      "company.reassigned": "Syarikat ditugaskan semula",
+      "company.information_requested": "Maklumat syarikat diminta",
+      "company.administrator_activated": "Pentadbir Syarikat diaktifkan",
+      "company.activated": "Syarikat diaktifkan",
+      "company.suspended": "Syarikat digantung",
       "supplier.rfq_acknowledged": "Pembekal mengakui RFQ",
       "supplier.order_acknowledged": "Pembekal mengakui pesanan terpilih",
       "supplier.order_selected": "Pesanan pembekal dipilih",

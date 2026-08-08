@@ -95,21 +95,31 @@ export async function lockAuthorizedInvitationCreationScope(
   }
 
   try {
-    const result = await client.query<SnapshotRow>(`
-      SELECT public.axora_lock_user_creation_scope(
-        $1,$2,$3,$4,$5,$6,$7,$8,$9
-      ) AS snapshot
-    `, [
-      actor.id,
-      requireAssignment(actor),
-      resolved.role,
-      resolved.scopeType,
-      resolved.companyId ?? null,
-      resolved.branchId ?? null,
-      null,
-      resolved.supplierId ?? null,
-      capturedAt,
-    ]);
+    const onboardingCompanyAdministrator = actor.isOwner
+      && resolved.role === "COMPANY_ADMIN"
+      && resolved.scopeType === "COMPANY"
+      && resolved.companyId;
+    const result = onboardingCompanyAdministrator
+      ? await client.query<SnapshotRow>(`
+          SELECT public.axora_lock_company_admin_invitation_scope(
+            $1,$2,$3,$4
+          ) AS snapshot
+        `, [actor.id, requireAssignment(actor), resolved.companyId, capturedAt])
+      : await client.query<SnapshotRow>(`
+          SELECT public.axora_lock_user_creation_scope(
+            $1,$2,$3,$4,$5,$6,$7,$8,$9
+          ) AS snapshot
+        `, [
+          actor.id,
+          requireAssignment(actor),
+          resolved.role,
+          resolved.scopeType,
+          resolved.companyId ?? null,
+          resolved.branchId ?? null,
+          null,
+          resolved.supplierId ?? null,
+          capturedAt,
+        ]);
     const parsed = creationScopeSchema.safeParse(result.rows[0]?.snapshot);
     if (!parsed.success
       || parsed.data.capturedAt.getTime() !== capturedAt.getTime()
