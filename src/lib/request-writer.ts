@@ -23,6 +23,8 @@ import {
   notifyWorkflowAudience,
 } from "./workflow-repository";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function assertUniqueProducts(input: NewRequestInput) {
   if (new Set(input.lines.map((line) => line.productId)).size
     !== input.lines.length) {
@@ -34,11 +36,17 @@ function actorDepartmentId(actor: AuthenticatedSessionUser) {
   return actor.scopeType === "DEPARTMENT" ? actor.departmentId : undefined;
 }
 
+function validSubmissionKey(value: string) {
+  return UUID_PATTERN.test(value);
+}
+
 export async function createAuthorizedRequest(
   input: NewRequestInput,
   actor: AuthenticatedSessionUser,
+  submissionKey: string,
 ) {
-  if (!canAccess(actor, "create_requests")) {
+  if (!canAccess(actor, "create_requests")
+    || !validSubmissionKey(submissionKey)) {
     throw new RequestAccessUnavailableError();
   }
   assertUniqueProducts(input);
@@ -50,10 +58,32 @@ export async function createAuthorizedRequest(
       branchId: input.branchId,
       departmentId,
     });
-    return createLegacyRequest(input, actor);
+    const existing = getDemoStore().requests.find((request) => (
+      request.createdById === actor.id
+      && request.clientSubmissionKey === submissionKey
+    ));
+    if (existing) return existing.id;
+    const requestId = await createLegacyRequest(input, actor);
+    const created = getDemoStore().requests.find((request) => (
+      request.id === requestId
+    ));
+    if (created) created.clientSubmissionKey = submissionKey;
+    return requestId;
   }
 
-  return withAuditTransaction({ userId: actor.id }, async (client: PoolClient) => {
+  return withAuditTransaction({
+    userId: actor.id,
+    reason: "Submitted a retry-safe purchase request",
+  }, async (client: PoolClient) => {
+    const existing = await client.query<{ id: string }>(
+      `SELECT id::text
+       FROM requests
+       WHERE created_by=$1 AND client_submission_key=$2
+       LIMIT 1`,
+      [actor.id, submissionKey],
+    );
+    if (existing.rows[0]?.id) return existing.rows[0].id;
+
     const context = await lockRequestCreationScope(client, actor, {
       companyId: input.companyId,
       branchId: input.branchId,
@@ -98,12 +128,15 @@ export async function createAuthorizedRequest(
         order_code,request_date,request_type_id,company_id,branch_id,
         department_id,department,requested_by,requester_contact,
         needed_by_date,urgency_id,status_id,notes,created_by,
-        estimated_delivery_fee,tax_rate
+        estimated_delivery_fee,tax_rate,client_submission_key
       ) VALUES (
         next_order_code(),CURRENT_DATE,lookup_id('request_type',$1),
         $2,$3,$4,$5,$6,$7,$8,lookup_id('urgency',$9),
-        lookup_id('request_status','New Request'),$10,$11,$12,$13
+        lookup_id('request_status','New Request'),$10,$11,$12,$13,$14
       )
+      ON CONFLICT(created_by,client_submission_key)
+        WHERE created_by IS NOT NULL AND client_submission_key IS NOT NULL
+      DO NOTHING
       RETURNING id::text`,
       [
         input.requestType,
@@ -119,10 +152,22 @@ export async function createAuthorizedRequest(
         actor.id,
         roundMoney(context.estimatedDeliveryFee),
         roundMoney(context.taxRate),
+        submissionKey,
       ],
     );
-    const requestId = requestResult.rows[0]?.id;
-    if (!requestId) throw new RequestAccessUnavailableError();
+    let requestId = requestResult.rows[0]?.id;
+    if (!requestId) {
+      const concurrent = await client.query<{ id: string }>(
+        `SELECT id::text
+         FROM requests
+         WHERE created_by=$1 AND client_submission_key=$2
+         LIMIT 1`,
+        [actor.id, submissionKey],
+      );
+      requestId = concurrent.rows[0]?.id;
+      if (requestId) return requestId;
+      throw new RequestAccessUnavailableError();
+    }
 
     for (const item of input.lines) {
       const insertedLine = await client.query(
@@ -430,3 +475,7 @@ export async function updateAuthorizedRequestStatus(
     });
   });
 }
+
+export const requestWriterInternals = {
+  validSubmissionKey,
+};
