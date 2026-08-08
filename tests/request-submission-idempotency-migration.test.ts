@@ -10,6 +10,7 @@ const migrationUrl = new URL(
 
 const keyOne = "10000000-0000-4000-8000-000000000050";
 const keyTwo = "20000000-0000-4000-8000-000000000050";
+const creatorId = "30000000-0000-4000-8000-000000000050";
 
 async function fixture() {
   const db = new PGlite();
@@ -18,28 +19,26 @@ async function fixture() {
   });
   await applyDemoSeed(db);
 
-  // Historical demo requests predate normalized request ownership. Assign one
-  // deterministic active account to a single template row so this migration
-  // test exercises creator-scoped uniqueness rather than depending on seed
-  // implementation details.
-  await db.exec(`
-    WITH actor AS (
-      SELECT id
-      FROM users
-      WHERE active AND account_status='ACTIVE'
-      ORDER BY is_owner DESC,id
-      LIMIT 1
-    ), template AS (
-      SELECT id
-      FROM requests
-      ORDER BY id
-      LIMIT 1
+  // Historical demo requests predate normalized request ownership. Create a
+  // deterministic active account and attach exactly one template row so this
+  // migration test exercises creator-scoped uniqueness without depending on
+  // whichever identity fixtures another test or seed happens to install.
+  await db.query(`
+    INSERT INTO users(
+      id,email,display_name,password_hash,role_id,is_owner,
+      account_setup_completed_at,account_kind,account_status,active
     )
+    SELECT
+      $1,'idempotency-050@example.test','Idempotency fixture 050',
+      'not-a-real-hash',role.id,true,now(),'PLATFORM','ACTIVE',true
+    FROM roles role
+    WHERE role.role_key='PLATFORM_OWNER'
+  `, [creatorId]);
+  await db.query(`
     UPDATE requests request
-    SET created_by=actor.id
-    FROM actor,template
-    WHERE request.id=template.id;
-  `);
+    SET created_by=$1
+    WHERE request.id=(SELECT id FROM requests ORDER BY id LIMIT 1)
+  `, [creatorId]);
 
   const before = await db.query<{ count: number }>(
     "SELECT count(*)::int AS count FROM requests",
@@ -64,11 +63,11 @@ async function cloneRequest(db: PGlite, submissionKey: string) {
       template.status_id,template.notes,template.created_by,
       template.estimated_delivery_fee,template.tax_rate,$1
     FROM requests template
-    WHERE template.created_by IS NOT NULL
+    WHERE template.created_by=$2
     ORDER BY template.id
     LIMIT 1
     RETURNING id::text,created_by::text AS "createdBy"
-  `, [submissionKey]);
+  `, [submissionKey, creatorId]);
 }
 
 describe("request submission idempotency migration", () => {
@@ -109,8 +108,8 @@ describe("request submission idempotency migration", () => {
     try {
       const first = await cloneRequest(db, keyOne);
       expect(first.rows).toHaveLength(1);
-      const creatorId = first.rows[0]?.createdBy;
-      expect(creatorId).toBeTruthy();
+      const selectedCreator = first.rows[0]?.createdBy;
+      expect(selectedCreator).toBe(creatorId);
 
       await expect(cloneRequest(db, keyOne)).rejects.toThrow();
       await expect(cloneRequest(db, keyTwo)).resolves.toMatchObject({
