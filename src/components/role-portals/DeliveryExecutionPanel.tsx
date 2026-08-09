@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { deliveryWorkflowMessages, deliveryWorkflowStatusLabel, type DeliveryWorkflowLocale } from "@/lib/delivery-workflow-i18n";
+import { DriverTrackingPanel } from "./DeliveryTrackingPanels";
 import styles from "./DeliveryExecution.module.css";
 
 type Line = {
@@ -331,6 +332,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
     }}>{copy.exportQueue}</button></div> : null}
     {notice ? <p className={styles.success} role="status">{notice}</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
+    {workspace ? <DriverTrackingPanel actorId={workspace.actorId} locale={initialLocale} /> : null}
     {!workspace ? <p className={styles.notice}>{copy.loading}</p> : jobs.length === 0
       ? <div className={styles.notice}><h2>{copy.noJobs}</h2></div>
       : <div className={styles.jobList}>{jobs.map((job) => <article className={styles.job} key={job.id}>

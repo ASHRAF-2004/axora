@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { deliveryWorkflowMessages, deliveryWorkflowStatusLabel, type DeliveryWorkflowLocale } from "@/lib/delivery-workflow-i18n";
 import styles from "./DeliveryExecution.module.css";
 import { UserAvatar } from "@/components/UserAvatar";
+import { DeliveryTrackingBoard } from "./DeliveryTrackingPanels";
 
 type Agent = {
   userId: string; roleAssignmentId: string; name: string; email: string;
@@ -134,6 +135,7 @@ export function DeliverySupervisorPanel({ locale = "en" }: { locale?: DeliveryWo
     </div>
     {notice ? <p className={styles.success} role="status">{notice}</p> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
+    <DeliveryTrackingBoard audience="supervisor" locale={locale} />
     <details className={styles.details} open><summary>{copy.createJob}</summary><form className={styles.form} onSubmit={createJob}>
       <div className={styles.formGrid}><label>{copy.approvedRequest}<select name="requestId" required><option value="" disabled>—</option>{workspace?.requests.map((request) => <option key={request.id} value={request.id}>{request.number} · {request.companyName} · {request.branchName} · {request.branchTimezone}</option>)}</select></label><label>{copy.destinationStart}<input name="localStart" type="datetime-local" required /></label><label>{copy.destinationEnd}<input name="localEnd" type="datetime-local" required /></label><label>{copy.instructions}<textarea name="instructions" maxLength={2000} /></label></div>
       <button className={styles.actionButton} data-primary="true" disabled={busy} type="submit">{copy.createJob}</button>

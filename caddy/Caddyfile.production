@@ -43,7 +43,7 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "no-referrer"
-		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(self)"
 		Cross-Origin-Opener-Policy "same-origin"
 		Strict-Transport-Security "max-age=15552000"
 		X-Permitted-Cross-Domain-Policies "none"
