@@ -17,12 +17,12 @@ describe("request resource isolation integration", () => {
         source("src/app/api/export/requests/route.ts"),
       ]);
 
-    expect(listPage).toContain("listAuthorizedRequests(actor)");
+    expect(listPage).toContain("searchAuthorizedRequests(actor");
     expect(detailPage).toContain("getAuthorizedRequest(actor, id)");
     expect(detailPage).toContain("listAuthorizedRequestWorkflowEvents");
     expect(dashboard).toContain("getAuthorizedDashboardData(actor)");
     expect(reports).toContain("getAuthorizedDashboardData(actor)");
-    expect(exportRoute).toContain("listAuthorizedRequests(user)");
+    expect(exportRoute).toContain("listAuthorizedFilteredRequests(user,filters)");
     for (const text of [listPage, detailPage, dashboard, reports, exportRoute]) {
       expect(text).not.toMatch(/\b(listRequests|getRequest)\s*\(/);
     }

@@ -4,49 +4,24 @@ import { getDemoStore } from "./demo-data";
 import { canAccess } from "./permissions";
 import type { Product } from "./types";
 import { withDemoCommercialDefaults } from "./procurement-rules";
+import {
+  CATALOG_SORTS,
+  type CatalogFacetOption,
+  type CatalogSearchInput,
+  type CatalogSearchResult,
+  type CatalogSort,
+  type ShopCategorySummary,
+} from "./catalog-contracts";
 
-export type CatalogSort =
-  | "relevance"
-  | "name-asc"
-  | "price-asc"
-  | "price-desc"
-  | "delivery-asc"
-  | "moq-asc";
-
-export interface CatalogSearchInput {
-  query?: string;
-  categories?: string[];
-  subcategories?: string[];
-  brands?: string[];
-  units?: string[];
-  minPrice?: number;
-  maxPrice?: number;
-  maxDeliveryDays?: number;
-  sort?: CatalogSort;
-  page?: number;
-  limit?: number;
-}
-
-export interface CatalogFacetOption {
-  value: string;
-  count: number;
-}
-
-export interface CatalogSearchResult {
-  products: Product[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-  facets: {
-    categories: CatalogFacetOption[];
-    subcategories: CatalogFacetOption[];
-    brands: CatalogFacetOption[];
-    units: CatalogFacetOption[];
-    minimumPrice: number;
-    maximumPrice: number;
-  };
-}
+export { CATALOG_SORTS };
+export type {
+  CatalogFacetOption,
+  CatalogSearchInput,
+  CatalogSearchResult,
+  CatalogSort,
+  ShopCategorySummary,
+  ShopSubcategorySummary,
+} from "./catalog-contracts";
 
 const DEFAULT_LIMIT = 24;
 const MAX_LIMIT = 48;
@@ -85,11 +60,15 @@ function normalizeInput(input: CatalogSearchInput) {
       Number(input.maxDeliveryDays) >= 0
         ? Math.floor(Number(input.maxDeliveryDays))
         : undefined,
-    sort: input.sort ?? "relevance",
+    sort: CATALOG_SORTS.includes(input.sort as CatalogSort)
+      ? input.sort!
+      : "relevance",
     page,
     limit,
   };
 }
+
+export const catalogInternals = { normalizeInput };
 
 function searchableProductText(product: Product) {
   return [
@@ -742,19 +721,6 @@ export async function getCatalogProductsByIds(
   return ids
     .map((id) => byId.get(id))
     .filter((product): product is Product => Boolean(product));
-}
-
-export interface ShopSubcategorySummary {
-  name: string;
-  count: number;
-  sampleProduct: Product;
-}
-
-export interface ShopCategorySummary {
-  name: string;
-  count: number;
-  sampleProduct: Product;
-  subcategories: ShopSubcategorySummary[];
 }
 
 function shopSafeProduct(product: Product): Product {
