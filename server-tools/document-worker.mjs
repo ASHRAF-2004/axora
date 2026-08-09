@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { Pool } from "pg";
@@ -67,6 +67,7 @@ export async function writeGeneratedDocument({ job, bytes, rootOverride }) {
   const temporary = `${target}.${randomUUID()}.tmp`;
   try {
     await writeFile(temporary, bytes, { flag: "wx", mode: 0o640 });
+    await chmod(temporary, 0o640);
     await rename(temporary, target);
   } catch (error) {
     await rm(temporary, { force: true });

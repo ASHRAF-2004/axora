@@ -48,22 +48,27 @@ function job(overrides = {}) {
 describe("private generated-document worker", () => {
   it("writes only validated PDFs below the immutable tenant/request/job path", async () => {
     const rootOverride = await temporaryRoot();
-    const output = await writeGeneratedDocument({ job: job(), bytes: pdf, rootOverride });
-    expect(output.relativePath).toBe(
-      `generated-documents/${ids.company}/${ids.request}/${ids.job}.pdf`,
-    );
-    expect(output.fileName).toBe("approved-request-REQ-001.pdf");
-    expect(output.fileSize).toBe(pdf.length);
-    expect((await readFile(path.join(rootOverride, ...output.relativePath.split("/")))).equals(pdf)).toBe(true);
-    expect((await stat(path.join(rootOverride, ...output.relativePath.split("/")))).mode & 0o777).toBe(0o640);
+    const previousUmask = process.umask(0o077);
+    try {
+      const output = await writeGeneratedDocument({ job: job(), bytes: pdf, rootOverride });
+      expect(output.relativePath).toBe(
+        `generated-documents/${ids.company}/${ids.request}/${ids.job}.pdf`,
+      );
+      expect(output.fileName).toBe("approved-request-REQ-001.pdf");
+      expect(output.fileSize).toBe(pdf.length);
+      expect((await readFile(path.join(rootOverride, ...output.relativePath.split("/")))).equals(pdf)).toBe(true);
+      expect((await stat(path.join(rootOverride, ...output.relativePath.split("/")))).mode & 0o777).toBe(0o640);
 
-    await expect(writeGeneratedDocument({
-      job: job({ company_id: "../another-tenant" }),
-      bytes: pdf,
-      rootOverride,
-    })).rejects.toThrow(/scope/i);
-    await expect(writeGeneratedDocument({ job: job(), bytes: Buffer.from("not a pdf"), rootOverride }))
-      .rejects.toThrow(/invalid/i);
+      await expect(writeGeneratedDocument({
+        job: job({ company_id: "../another-tenant" }),
+        bytes: pdf,
+        rootOverride,
+      })).rejects.toThrow(/scope/i);
+      await expect(writeGeneratedDocument({ job: job(), bytes: Buffer.from("not a pdf"), rootOverride }))
+        .rejects.toThrow(/invalid/i);
+    } finally {
+      process.umask(previousUmask);
+    }
   });
 
   it("records completion without coupling document failure to the procurement transaction", async () => {
