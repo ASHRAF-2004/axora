@@ -1209,6 +1209,186 @@ html[data-ux-navigating="true"] .ux-navigation-progress {
   background: var(--tenant-muted, var(--slate-50));
 }
 
+.dashboard-period-panel {
+  margin-bottom: 18px;
+  overflow: visible;
+  border-color: color-mix(in srgb, var(--tenant-accent, var(--blue-600)) 22%, var(--slate-200));
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--tenant-accent, var(--blue-600)) 9%, transparent) 0, transparent 34%),
+    var(--tenant-surface, #fff);
+}
+
+.dashboard-period-heading {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) minmax(280px, auto);
+  gap: 14px;
+  align-items: center;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--tenant-border, var(--slate-100));
+}
+
+.dashboard-period-heading h2 {
+  margin: 0;
+  color: var(--navy-900);
+  font-size: 17px;
+}
+
+.dashboard-period-heading p {
+  margin: 4px 0 0;
+  color: var(--slate-500);
+  font-size: 12px;
+}
+
+.dashboard-period-heading-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--tenant-link, var(--blue-700));
+  background: var(--tenant-muted, var(--blue-100));
+}
+
+.dashboard-period-summary {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  text-align: end;
+}
+
+.dashboard-period-summary strong {
+  color: var(--navy-900);
+  font-size: 12px;
+}
+
+.dashboard-period-summary span {
+  color: var(--slate-500);
+  font-size: 11px;
+}
+
+.dashboard-period-alert {
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  border-inline-start: 3px solid var(--orange-500);
+  border-radius: 8px;
+  color: var(--navy-900);
+  background: var(--orange-50, #fff7ed);
+  font-size: 12px;
+}
+
+.dashboard-period-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 13px;
+  align-items: end;
+  padding: 16px 20px 10px;
+}
+
+.dashboard-period-form > label:not(.dashboard-period-checkbox) {
+  display: grid;
+  gap: 6px;
+  color: var(--slate-600);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.dashboard-period-form select,
+.dashboard-period-form input[type="date"] {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--tenant-border, var(--slate-200));
+  border-radius: 9px;
+  color: var(--navy-900);
+  background: var(--tenant-surface, #fff);
+  padding: 8px 10px;
+}
+
+.dashboard-period-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  color: var(--slate-700);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dashboard-period-checkbox input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--tenant-accent, var(--blue-600));
+}
+
+.dashboard-period-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.dashboard-period-actions .button {
+  min-height: 40px;
+}
+
+.dashboard-period-rule {
+  margin: 0;
+  padding: 0 20px 16px;
+  color: var(--slate-500);
+  font-size: 11px;
+}
+
+.dashboard-period-metrics {
+  scroll-margin-top: 96px;
+}
+
+@media (max-width: 980px) {
+  .dashboard-period-heading {
+    grid-template-columns: auto 1fr;
+  }
+
+  .dashboard-period-summary {
+    grid-column: 1 / -1;
+    justify-items: start;
+    text-align: start;
+  }
+
+  .dashboard-period-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-period-heading,
+  .dashboard-period-form {
+    grid-template-columns: 1fr;
+    padding-inline: 15px;
+  }
+
+  .dashboard-period-heading-icon {
+    display: none;
+  }
+
+  .dashboard-period-summary,
+  .dashboard-period-actions {
+    grid-column: auto;
+  }
+
+  .dashboard-period-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-period-actions .button {
+    width: 100%;
+  }
+
+  .dashboard-period-alert,
+  .dashboard-period-rule {
+    margin-inline: 15px;
+    padding-inline: 0;
+  }
+}
+
 @media (max-width: 1250px) {
   .app-primary-nav a:nth-last-child(-n+2) { display: none; }
   .app-profile-copy { display: none; }
