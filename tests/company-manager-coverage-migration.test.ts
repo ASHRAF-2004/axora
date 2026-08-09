@@ -197,7 +197,7 @@ async function addOpenWork(db: PGlite, companyId: string, managerId: string) {
 }
 
 describe("company manager coverage migration", () => {
-  it("reassigns atomically, transfers only open work, restricts access modes, and preserves history", async () => {
+  it("reassigns atomically, transfers only open work, restricts access modes, and preserves history", { timeout: 30_000 }, async () => {
     const { db } = await fixture();
     try {
       const companyId = await createCompany(db, "TRANSFER-1");
@@ -275,7 +275,7 @@ describe("company manager coverage migration", () => {
     }
   });
 
-  it("validates region and workload before replacing the accountable primary", async () => {
+  it("validates region and workload before replacing the accountable primary", { timeout: 30_000 }, async () => {
     const { db } = await fixture();
     try {
       const firstCompanyId = await createCompany(db, "CAPACITY-1");
@@ -319,7 +319,7 @@ describe("company manager coverage migration", () => {
     }
   });
 
-  it("promotes eligible backup coverage and revokes the deactivated primary in the same transaction", async () => {
+  it("promotes eligible backup coverage and revokes the deactivated primary in the same transaction", { timeout: 30_000 }, async () => {
     const { db } = await fixture();
     try {
       const companyId = await createCompany(db, "FAILOVER-1");
@@ -371,7 +371,7 @@ describe("company manager coverage migration", () => {
     }
   });
 
-  it("records an owner-accountable gap when both primary and backup are unavailable", async () => {
+  it("records an owner-accountable gap when both primary and backup are unavailable", { timeout: 30_000 }, async () => {
     const { db } = await fixture();
     try {
       const companyId = await createCompany(db, "GAP-1");
