@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { PERMISSION_CATALOG } from "@/lib/authorization-policy";
+import { FOUNDATION_PERMISSION_CATALOG } from "@/lib/authorization-policy";
 import {
   applyDemoSeed,
   applyMigrations,
@@ -47,7 +47,7 @@ describe("P0-01 authorization policy foundation migration", () => {
         ORDER BY permission_code
       `);
       expect(permissions.rows.map((row) => row.code)).toEqual(
-        PERMISSION_CATALOG.map((entry) => entry.code).sort(),
+        FOUNDATION_PERMISSION_CATALOG.map((entry) => entry.code).sort(),
       );
 
       const defaults = await db.query<{

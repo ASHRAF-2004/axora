@@ -1,4 +1,5 @@
 import { emailProviderEventsEnabled } from "@/lib/email-provider-events";
+import { recordEmailWebhookProcessingFailure } from "@/lib/email-operations";
 import {
   normalizeZeptoMailWebhookEvent,
   parseZeptoMailWebhookForm,
@@ -60,6 +61,10 @@ export async function POST(request: Request) {
     const result = await recordZeptoMailProviderEvent(event);
     return noStoreJson({ accepted: true, ...result });
   } catch {
+    await recordEmailWebhookProcessingFailure(
+      "zeptomail",
+      "processing_failed",
+    ).catch(() => undefined);
     return noStoreJson({ error: "service_unavailable" }, 503);
   }
 }

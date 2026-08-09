@@ -22,7 +22,7 @@ describe("procurement discovery migration",() => {
     const db=new PGlite();
     try {
       const applied=await applyMigrations(db);
-      expect(applied.at(-1)).toBe("069_company_manager_coverage.sql");
+      expect(applied.at(-1)).toBe("070_transactional_email_operations.sql");
     } finally { await db.close(); }
   },30_000);
 });

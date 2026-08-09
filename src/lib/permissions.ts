@@ -34,6 +34,8 @@ export type Permission =
   | "manage_settings"
   | "manage_commercial_pricing"
   | "view_system_diagnostics"
+  | "view_email_operations"
+  | "manage_email_operations"
   | "view_supplier_portal"
   | "respond_to_rfqs"
   | "view_delivery_portal"
@@ -77,6 +79,8 @@ const platformOwnerPermissions: readonly Permission[] = [
   "manage_settings",
   "manage_commercial_pricing",
   "view_system_diagnostics",
+  "view_email_operations",
+  "manage_email_operations",
   "view_receiving",
   "review_three_way_matches",
 ];
@@ -158,13 +162,14 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   CLIENT_ACCOUNT_MANAGER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
     "view_branches", "manage_companies", "view_documents", "view_reports",
-    "manage_users",
+    "manage_users", "view_email_operations",
   ],
   PLATFORM_OPERATIONS: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
     "view_branches", "manage_catalog", "manage_suppliers",
     "manage_sourcing", "manage_deliveries", "view_documents",
     "manage_documents", "view_reports", "view_receiving",
+    "view_email_operations", "manage_email_operations",
   ],
   COMPANY_ADMIN: companyAdminPermissions,
   DEPARTMENT_ADMIN: [

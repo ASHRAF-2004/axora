@@ -6,7 +6,7 @@ import {
   type UserRole,
 } from "./types";
 
-export const PERMISSION_CATALOG = [
+export const FOUNDATION_PERMISSION_CATALOG = [
   {
     "code": "dashboard.view",
     "group": "Navigation",
@@ -590,6 +590,21 @@ export const PERMISSION_CATALOG = [
   }
 ] as const;
 
+export const ADDITIVE_PERMISSION_CATALOG = [
+  {
+    "code": "email.operations.manage",
+    "group": "Email",
+    "label": "Manage email operations",
+    "description": "Retry, cancel, suppress, reconcile, and control transactional email delivery.",
+    "highRisk": true
+  }
+] as const;
+
+export const PERMISSION_CATALOG = [
+  ...FOUNDATION_PERMISSION_CATALOG,
+  ...ADDITIVE_PERMISSION_CATALOG,
+] as const;
+
 export type PermissionCode = (typeof PERMISSION_CATALOG)[number]["code"];
 export type PermissionRisk = "NORMAL" | "HIGH";
 export type AuthorizationAccountStatus =
@@ -747,6 +762,7 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "analytics.platform.view",
     "analytics.company.view",
     "email.operations.view",
+    "email.operations.manage",
     "audit.view",
     "settings.manage",
     "system.diagnostics.view"
@@ -768,7 +784,9 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "document.generate",
     "document.download",
     "document.dispatch.supplier",
-    "report.view"
+    "report.view",
+    "email.operations.view",
+    "email.operations.manage"
   ],
   "CLIENT_ACCOUNT_MANAGER": [
     "dashboard.view",
@@ -796,7 +814,8 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "document.download",
     "report.view",
     "analytics.company.view",
-    "audit.view"
+    "audit.view",
+    "email.operations.view"
   ],
   "TECHNICAL_SUPPORT": [
     "system.diagnostics.view"

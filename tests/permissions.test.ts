@@ -28,6 +28,8 @@ const allPermissions: Permission[] = [
   "manage_settings",
   "manage_commercial_pricing",
   "view_system_diagnostics",
+  "view_email_operations",
+  "manage_email_operations",
   "view_supplier_portal",
   "respond_to_rfqs",
   "view_delivery_portal",
@@ -100,7 +102,7 @@ describe("normalized least-privilege permissions", () => {
         accountKind: "PLATFORM",
         scopeType: "PLATFORM",
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_companies", "manage_catalog", "manage_suppliers", "manage_branches", "manage_sourcing", "manage_deliveries", "view_approvals", "view_budgets", "view_invoices", "manage_finance", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_commercial_pricing", "view_system_diagnostics", "view_receiving", "review_three_way_matches"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_companies", "manage_catalog", "manage_suppliers", "manage_branches", "manage_sourcing", "manage_deliveries", "view_approvals", "view_budgets", "view_invoices", "manage_finance", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_commercial_pricing", "view_system_diagnostics", "view_email_operations", "manage_email_operations", "view_receiving", "review_three_way_matches"],
     },
     {
       subject: {
@@ -109,7 +111,7 @@ describe("normalized least-privilege permissions", () => {
         accountKind: "PLATFORM",
         scopeType: "PLATFORM",
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_catalog", "manage_suppliers", "manage_sourcing", "manage_deliveries", "view_documents", "manage_documents", "view_reports", "view_receiving"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_catalog", "manage_suppliers", "manage_sourcing", "manage_deliveries", "view_documents", "manage_documents", "view_reports", "view_receiving", "view_email_operations", "manage_email_operations"],
     },
     {
       subject: {
@@ -259,6 +261,7 @@ describe("new canonical role compatibility permissions", () => {
       "view_documents",
       "view_reports",
       "manage_users",
+      "view_email_operations",
     ]);
   });
 
