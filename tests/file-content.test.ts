@@ -7,7 +7,9 @@ describe("uploaded file content validation", () => {
     expect(uploadedContentMatchesMime("image/jpeg", Buffer.from([0xff, 0xd8, 0xff, 0xd9]))).toBe(true);
     expect(uploadedContentMatchesMime("image/png", Buffer.concat([
       Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-      Buffer.from("00000000IEND00000000"),
+      Buffer.from([0, 0, 0, 0]),
+      Buffer.from("IEND"),
+      Buffer.from([0xae, 0x42, 0x60, 0x82]),
     ]))).toBe(true);
     expect(uploadedContentMatchesMime("text/csv", Buffer.from("item,quantity\nPaper,2\n"))).toBe(true);
   });
