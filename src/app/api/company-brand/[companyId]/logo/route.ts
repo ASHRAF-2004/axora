@@ -1,36 +1,43 @@
 import { getAccountLifecycleSession } from "@/lib/auth";
-import { isDemoMode, query } from "@/lib/db";
+import { getCompanyBrandLogo } from "@/lib/tenant-branding";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+function notFound() {
+  return new Response("Not found", { status: 404 });
+}
+
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ companyId: string }> },
 ) {
   const actor = await getAccountLifecycleSession();
-  if (!actor) return new Response("Not found", { status: 404 });
+  if (!actor) return notFound();
   const { companyId: rawCompanyId } = await context.params;
-  const parsed = z.uuid().safeParse(rawCompanyId);
-  if (!parsed.success || (!actor.isOwner && actor.companyId !== parsed.data)) {
-    return new Response("Not found", { status: 404 });
+  const parsedCompanyId = z.uuid().safeParse(rawCompanyId);
+  const rawThemeId = new URL(request.url).searchParams.get("theme");
+  const parsedThemeId = rawThemeId === null
+    ? { success: true as const, data: null }
+    : z.uuid().safeParse(rawThemeId);
+  if (!parsedCompanyId.success || !parsedThemeId.success) return notFound();
+  try {
+    const logo = await getCompanyBrandLogo(
+      parsedCompanyId.data,
+      parsedThemeId.data,
+      actor,
+    );
+    if (!logo) return notFound();
+    return new Response(new Uint8Array(logo.bytes), {
+      headers: {
+        "Cache-Control": "private, max-age=3600, must-revalidate",
+        "Content-Type": logo.contentType,
+        "Content-Disposition": "inline",
+        ETag: "\"" + logo.sha256 + "\"",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch {
+    return notFound();
   }
-  if (isDemoMode()) return new Response("Not found", { status: 404 });
-  const result = await query<{ bytes: Buffer; contentType: string; sha256: string }>(`
-    SELECT logo.logo_content AS bytes,logo.content_type AS "contentType",logo.sha256
-    FROM company_logos logo
-    WHERE logo.company_id=$1 AND logo.active=true
-    LIMIT 1
-  `, [parsed.data]);
-  const logo = result.rows[0];
-  if (!logo) return new Response("Not found", { status: 404 });
-  return new Response(new Uint8Array(logo.bytes), {
-    headers: {
-      "Cache-Control": "private, max-age=3600, must-revalidate",
-      "Content-Type": logo.contentType,
-      "Content-Disposition": "inline",
-      ETag: `"${logo.sha256}"`,
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
 }

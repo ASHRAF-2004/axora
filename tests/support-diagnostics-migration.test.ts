@@ -118,7 +118,7 @@ describe("support diagnostics migration and SQL contract", () => {
     db = new PGlite();
     await createMigrationLedger(db);
     const applied = await applyMigrations(db);
-    expect(applied.at(-1)).toBe("066_private_profile_image_lifecycle.sql");
+    expect(applied.at(-1)).toBe("067_reviewed_company_branding.sql");
     await markMigration(db, "032_user_session_revocation_audit.sql");
     await createSupportFixtures(db);
   }, 30_000);

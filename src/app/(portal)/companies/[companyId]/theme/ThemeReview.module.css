@@ -1,0 +1,145 @@
+.layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(16rem, .7fr);
+  gap: 1rem;
+}
+
+.metadata {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+  margin: 0;
+}
+
+.metadata div {
+  min-inline-size: 0;
+  padding: .75rem;
+  border: 1px solid var(--tenant-border, #d7dee8);
+  border-radius: .7rem;
+}
+
+.metadata dt {
+  color: #5f6b7a;
+  font-size: .75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.metadata dd {
+  margin: .25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .5rem;
+}
+
+.swatch {
+  min-block-size: 4.5rem;
+  display: grid;
+  align-content: end;
+  padding: .55rem;
+  color: var(--swatch-foreground);
+  background: var(--swatch-color);
+  border: 1px solid var(--tenant-border, #d7dee8);
+  border-radius: .65rem;
+  font-size: .72rem;
+  font-weight: 850;
+}
+
+.decisionGrid,
+.editorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.contrastList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contrastList li {
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .65rem;
+  border: 1px solid var(--tenant-border, #d7dee8);
+  border-inline-start: .3rem solid var(--tenant-success, #187a50);
+  border-radius: .55rem;
+}
+
+.contrastList li[data-pass="false"] {
+  border-inline-start-color: var(--tenant-danger, #b4232c);
+}
+
+.timeline {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.timeline li {
+  margin-block: .75rem;
+  padding-inline-start: .25rem;
+}
+
+.versionList {
+  display: grid;
+  gap: .75rem;
+}
+
+.version {
+  padding: .8rem;
+  border: 1px solid var(--tenant-border, #d7dee8);
+  border-radius: .7rem;
+}
+
+.versionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.hash {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: .75rem;
+}
+
+@media (max-width: 840px) {
+  .overview,
+  .decisionGrid,
+  .editorGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .metadata,
+  .contrastList,
+  .swatches {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layout *,
+  .layout *::before,
+  .layout *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .001ms !important;
+    animation-duration: .001ms !important;
+  }
+}

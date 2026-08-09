@@ -60,7 +60,9 @@ export default async function PortalLayout({ children }: { children: React.React
     redirect(`/login?${params.toString()}`);
   }
 
-  const companyBrandPromise = user.companyId ? getActiveCompanyBrand(user.companyId) : Promise.resolve(null);
+  const companyBrandPromise = user.companyId
+    ? getActiveCompanyBrand(user.companyId, user)
+    : Promise.resolve(null);
   const [localeDecision, profile] = await Promise.all([
     requestLocaleDecision(),
     getMyProfile(user),
@@ -82,18 +84,24 @@ export default async function PortalLayout({ children }: { children: React.React
   ]);
   const theme = companyBrand?.tokens;
   const messages = portalMessages(locale);
+  const darkTheme = companyBrand?.themePreference === "DARK";
   const themeStyle = theme ? ({
     "--tenant-primary": theme.primary,
+    "--tenant-primary-hover": theme.primaryHover,
+    "--tenant-primary-active": theme.primaryActive,
     "--tenant-primary-foreground": theme.primaryForeground,
     "--tenant-secondary": theme.secondary,
     "--tenant-secondary-foreground": theme.secondaryForeground,
     "--tenant-accent": theme.accent,
-    "--tenant-page": theme.pageBackground,
-    "--tenant-surface": theme.surface,
+    "--tenant-page": darkTheme ? theme.darkPageBackground : theme.pageBackground,
+    "--tenant-surface": darkTheme ? theme.darkSurface : theme.surface,
     "--tenant-muted": theme.mutedSurface,
-    "--tenant-border": theme.border,
+    "--tenant-border": darkTheme ? theme.darkBorder : theme.border,
+    "--tenant-text": darkTheme ? theme.textInverse : theme.text,
+    "--tenant-icon": darkTheme ? theme.iconInverse : theme.icon,
     "--tenant-focus": theme.focusRing,
     "--tenant-link": theme.link,
+    color: darkTheme ? theme.textInverse : theme.text,
   } as CSSProperties) : undefined;
   const roleLabel = user.isOwner
     ? messages.roles.PLATFORM_OWNER
@@ -144,6 +152,8 @@ export default async function PortalLayout({ children }: { children: React.React
           logoUrl: companyBrand ? `/api/company-brand/${companyBrand.companyId}/logo?v=${companyBrand.themeVersion}` : "/brand/axora-logo.png",
           tenant: Boolean(companyBrand),
           themeVersion: companyBrand?.themeVersion,
+          logoVariant: companyBrand?.logoVariant,
+          logoPlacement: companyBrand?.logoPlacement,
           style: themeStyle,
         }}
         environmentLabel={isDemoMode() ? messages.environment.sample : messages.environment.production}

@@ -3,6 +3,8 @@ import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   analyzeLogoPixels,
+  brandContrastSummary,
+  buildBrandThemeTokens,
   contrastRatio,
   themeCssVariables,
 } from "@/lib/brand-colors";
@@ -21,6 +23,8 @@ describe("deterministic tenant branding", () => {
     expect(result.usedFallback).toBe(false);
     expect(result.tokens.primary).toMatch(/^#[0-9A-F]{6}$/);
     expect(result.tokens.accent).toMatch(/^#[0-9A-F]{6}$/);
+    expect(result.tokens.primaryHover).toMatch(/^#[0-9A-F]{6}$/);
+    expect(result.tokens.primaryActive).toMatch(/^#[0-9A-F]{6}$/);
     expect(contrastRatio(result.tokens.primary, result.tokens.primaryForeground)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(result.tokens.link, result.tokens.surface)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(result.tokens.focusRing, result.tokens.surface)).toBeGreaterThanOrEqual(3);
@@ -44,7 +48,19 @@ describe("deterministic tenant branding", () => {
     const result = analyzeLogoPixels(new Uint8Array([11, 45, 82, 255]), 4);
     const css = themeCssVariables(result.tokens);
     expect(css).toContain("--tenant-primary:#0B2D52");
+    expect(css).toContain("--tenant-primary-hover:");
+    expect(css).toContain("--tenant-page-dark:#0A1624");
     expect(css).not.toMatch(/[{}<>]/);
+  });
+
+  it("blocks unsafe reviewed text while retaining bounded colors", () => {
+    const tokens = buildBrandThemeTokens({
+      pageBackground: "#FFFFFF",
+      text: "#FFFFFF",
+    });
+    const contrast = brandContrastSummary(tokens);
+    expect(contrast.textOnBackground).toBe(1);
+    expect(contrast.passes).toBe(false);
   });
 
   it("normalizes a validated logo and rejects a MIME mismatch", async () => {
@@ -55,6 +71,7 @@ describe("deterministic tenant branding", () => {
     expect(processed.contentType).toBe("image/png");
     expect(processed.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(processed.width).toBe(48);
+    expect(processed.qualityWarnings).toContain("LOW_RESOLUTION");
     await expect(processCompanyLogo(logo, "tenant-logo.jpg", "image/jpeg")).rejects.toThrow(
       "does not match",
     );

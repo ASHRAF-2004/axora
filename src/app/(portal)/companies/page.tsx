@@ -3,6 +3,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { companyLeadMessages } from "@/lib/company-leads-i18n";
 import { companyOnboardingMessages } from "@/lib/company-onboarding-i18n";
+import { companyBrandingMessages } from "@/lib/company-branding-i18n";
 import {
   COMPANY_LIFECYCLE_STATUSES,
   loadCompanyLifecycleWorkspace,
@@ -24,7 +25,6 @@ import {
   assignCompanyManagerAction,
   createCompanyAction,
   inviteCompanyAdministratorAction,
-  regenerateCompanyBrandAction,
   resolveCompanyDuplicateAction,
   setCompanyPublicationAction,
   suspendCompanyAction,
@@ -233,14 +233,10 @@ function CompanyActions({
         </details>
       ) : null}
 
-      {owner ? (
-        <details>
-          <summary>{copy.replaceLogo}</summary>
-          <form action={regenerateCompanyBrandAction.bind(null, company.id)} className="table-action-stack">
-            <label><span className="sr-only">{copy.replaceLogo}: {company.name}</span><input name="logo" type="file" accept="image/png,image/jpeg,image/webp" required /></label>
-            <button className="button button-secondary" type="submit">{copy.regenerate}</button>
-          </form>
-        </details>
+      {owner || company.isAssignedToActor ? (
+        <Link className="button button-secondary" href={"/companies/" + company.id + "/theme"}>
+          {companyBrandingMessages(locale).openReview}
+        </Link>
       ) : null}
     </div>
   );
