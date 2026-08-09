@@ -290,7 +290,8 @@ export async function regenerateCompanyBrandAction(companyId: string, formData: 
   );
   revalidatePath("/companies");
   revalidatePath("/dashboard");
-  redirect("/companies?notice=company-brand-regenerated");
+  revalidatePath("/companies/" + companyId + "/theme");
+  redirect("/companies/" + encodeURIComponent(companyId) + "/theme?notice=draft-generated");
 }
 
 export async function createBranchAction(formData: FormData) {
