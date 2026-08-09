@@ -42,6 +42,7 @@ describe("complete forward migration chain", () => {
         "066_private_profile_image_lifecycle.sql",
         "067_reviewed_company_branding.sql",
         "068_live_delivery_tracking.sql",
+        "069_company_manager_coverage.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)

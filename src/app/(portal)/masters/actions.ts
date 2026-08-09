@@ -12,6 +12,9 @@ import {
   activateCompany,
   assignCompanyManager,
   COMPANY_LIFECYCLE_STATUSES,
+  COMPANY_MANAGER_ACCESS_MODES,
+  COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS,
+  COMPANY_MANAGER_DOCUMENT_VISIBILITIES,
   resolveCompanyDuplicate,
   setCompanyPublication,
   suspendCompany,
@@ -106,6 +109,11 @@ const assignmentSchema = z.object({
   assignmentType: z.enum(["PRIMARY", "BACKUP"]),
   coverageStartsAt: z.coerce.date().optional(),
   coverageEndsAt: z.coerce.date().optional(),
+  accessMode: z.enum(COMPANY_MANAGER_ACCESS_MODES),
+  specificPermissionCodes: z.array(z.enum(COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS)).max(20),
+  documentVisibility: z.enum(COMPANY_MANAGER_DOCUMENT_VISIBILITIES),
+  handoverNotes: z.string().trim().max(5000).optional(),
+  handoverChecklist: z.array(z.string().trim().min(2).max(240)).max(20),
   reason: z.string().trim().min(3).max(1000),
 });
 
@@ -126,6 +134,15 @@ export async function assignCompanyManagerAction(formData: FormData) {
     assignmentType: readFormText(formData, "assignmentType"),
     coverageStartsAt: startValue || undefined,
     coverageEndsAt: endValue || undefined,
+    accessMode: readFormText(formData, "accessMode"),
+    specificPermissionCodes: formData.getAll("specificPermissionCodes")
+      .filter((value): value is string => typeof value === "string"),
+    documentVisibility: readFormText(formData, "documentVisibility"),
+    handoverNotes: readFormText(formData, "handoverNotes") || undefined,
+    handoverChecklist: readFormText(formData, "handoverChecklist")
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean),
     reason: readFormText(formData, "reason"),
   });
   await assignCompanyManager(actor, input);

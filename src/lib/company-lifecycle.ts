@@ -54,19 +54,81 @@ export const COMPANY_LIFECYCLE_ACTIONS = [
 export type CompanyLifecycleAction = typeof COMPANY_LIFECYCLE_ACTIONS[number];
 export type CompanyAssignmentType = "PRIMARY" | "BACKUP";
 
+export const COMPANY_MANAGER_ACCESS_MODES = [
+  "NORMAL",
+  "TEMPORARY",
+  "READ_ONLY",
+  "SPECIFIC_PERMISSIONS",
+] as const;
+export const COMPANY_MANAGER_DOCUMENT_VISIBILITIES = [
+  "STANDARD",
+  "COMPANY_SHARED_ONLY",
+  "NONE",
+] as const;
+export const COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS = [
+  "company.view.assigned",
+  "company.edit",
+  "user.view",
+  "organization.branch.view",
+  "request.view",
+  "document.view",
+  "report.view",
+] as const;
+
+export type CompanyManagerAccessMode = typeof COMPANY_MANAGER_ACCESS_MODES[number];
+export type CompanyManagerDocumentVisibility = typeof COMPANY_MANAGER_DOCUMENT_VISIBILITIES[number];
+
 const uuid = z.string().uuid();
 const optionalDate = z.coerce.date().nullable();
 
-const managerSchema = z.object({
+const managerIdentitySchema = z.object({
   id: uuid,
   name: z.string().trim().min(1).max(300),
   email: z.string().trim().min(3).max(320),
 }).strict();
 
-const assignedManagerSchema = managerSchema.extend({
+const managerSchema = managerIdentitySchema.extend({
+  serviceRegionCode: z.string().regex(/^[A-Z][A-Z0-9_-]{1,39}$/),
+  availabilityStatus: z.enum(["AVAILABLE", "LIMITED", "UNAVAILABLE"]),
+  activePrimaryAssignments: z.coerce.number().int().nonnegative(),
+  maxPrimaryAssignments: z.coerce.number().int().positive(),
+  availableForPrimary: z.boolean(),
+  availableForBackup: z.boolean(),
+}).strict();
+
+const assignedManagerSchema = managerIdentitySchema.extend({
+  assignmentId: uuid,
   assignedAt: optionalDate.optional(),
   coverageStartsAt: optionalDate.optional(),
   coverageEndsAt: optionalDate.optional(),
+  accessMode: z.enum(COMPANY_MANAGER_ACCESS_MODES),
+  specificPermissionCodes: z.array(z.string().regex(/^[a-z][a-z0-9_.-]{1,119}$/)),
+  documentVisibility: z.enum(COMPANY_MANAGER_DOCUMENT_VISIBILITIES),
+  coverageReason: z.string().trim().min(3).max(1000),
+  assignedByName: z.string().trim().min(1).max(300),
+  handoverNotes: z.string().max(5000).nullable(),
+  handoverChecklist: z.array(z.string().trim().min(2).max(240)).max(20),
+}).strict();
+
+const assignmentHistorySchema = z.object({
+  assignmentId: uuid,
+  managerId: uuid,
+  managerName: z.string().trim().min(1).max(300),
+  assignmentType: z.enum(["PRIMARY", "BACKUP"]),
+  status: z.enum(["ACTIVE", "ENDED"]),
+  accessMode: z.enum(COMPANY_MANAGER_ACCESS_MODES),
+  specificPermissionCodes: z.array(z.string().regex(/^[a-z][a-z0-9_.-]{1,119}$/)),
+  documentVisibility: z.enum(COMPANY_MANAGER_DOCUMENT_VISIBILITIES),
+  coverageStartsAt: z.coerce.date(),
+  coverageEndsAt: optionalDate,
+  coverageReason: z.string().trim().min(3).max(1000),
+  assignedByName: z.string().trim().min(1).max(300),
+  assignedAt: z.coerce.date(),
+  endedByName: z.string().trim().min(1).max(300).nullable(),
+  endedAt: optionalDate,
+  endReason: z.string().max(1000).nullable(),
+  handoverNotes: z.string().max(5000).nullable(),
+  handoverChecklist: z.array(z.string().trim().min(2).max(240)).max(20),
 }).strict();
 
 const onboardingItemSchema = z.object({
@@ -137,9 +199,21 @@ export const companyLifecycleRecordSchema = z.object({
   activatedAt: optionalDate,
   suspendedAt: optionalDate,
   suspensionReason: z.string().max(1000).nullable(),
+  serviceRegionCode: z.string().regex(/^[A-Z][A-Z0-9_-]{1,39}$/),
   isAssignedToActor: z.boolean(),
   primaryManager: assignedManagerSchema.nullable(),
   backupManager: assignedManagerSchema.nullable(),
+  assignmentHistory: z.array(assignmentHistorySchema),
+  openManagerWork: z.object({
+    onboardingItems: z.coerce.number().int().nonnegative(),
+    reminders: z.coerce.number().int().nonnegative(),
+    leadTasks: z.coerce.number().int().nonnegative(),
+  }).strict(),
+  managerCoverage: z.object({
+    status: z.enum(["COVERED", "GAP"]),
+    reason: z.string().max(1000).nullable(),
+    lastChangedAt: optionalDate,
+  }).strict(),
   onboarding: z.object({
     required: z.coerce.number().int().nonnegative(),
     passed: z.coerce.number().int().nonnegative(),
@@ -165,6 +239,7 @@ const mutationSchema = z.object({
   companyName: z.string().trim().min(1).max(300),
   companyVersion: z.coerce.number().int().positive(),
   eventKey: z.string().regex(/^[a-z][a-z0-9_.-]{1,119}$/),
+  eventSequence: uuid.optional(),
   notificationRecipientIds: z.array(uuid),
   blockedReasons: z.array(z.string()).optional(),
 }).strict();
@@ -250,9 +325,13 @@ function demoWorkspace(actor: AuthenticatedSessionUser): CompanyLifecycleWorkspa
       activatedAt: company.status === "Active" ? capturedAt : null,
       suspendedAt: null,
       suspensionReason: null,
+      serviceRegionCode: "GLOBAL",
       isAssignedToActor: false,
       primaryManager: null,
       backupManager: null,
+      assignmentHistory: [],
+      openManagerWork: { onboardingItems: 0, reminders: 0, leadTasks: 0 },
+      managerCoverage: { status: "GAP", reason: null, lastChangedAt: null },
       onboarding: { required: 8, passed: company.status === "Active" ? 8 : 3, items: [] },
       duplicateCandidates: [],
       history: [],
@@ -355,7 +434,7 @@ export async function notifyCompanyLifecycleMutation(
     aggregateType: "company",
     aggregateId: mutation.companyId,
     eventKey: mutation.eventKey,
-    stableKey: `${mutation.eventKey}:${mutation.companyVersion}`,
+    stableKey: `${mutation.eventKey}:${mutation.eventSequence ?? mutation.companyVersion}`,
     actor,
     newState: mutation.company?.status,
     source: "WEB",
@@ -392,14 +471,19 @@ export function assignCompanyManager(
     assignmentType: CompanyAssignmentType;
     coverageStartsAt?: Date;
     coverageEndsAt?: Date;
+    accessMode: CompanyManagerAccessMode;
+    specificPermissionCodes: Array<typeof COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS[number]>;
+    documentVisibility: CompanyManagerDocumentVisibility;
+    handoverNotes?: string;
+    handoverChecklist: string[];
     reason: string;
   },
 ) {
   return mutate(
     actor,
     input.assignmentType === "PRIMARY" ? "Company primary manager assigned" : "Company backup manager assigned",
-    `SELECT public.axora_assign_company_manager(
-       $1,$2,$3,$4,$5,$6,$7,$8,$9
+    `SELECT public.axora_manage_company_assignment(
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15
      ) AS snapshot`,
     [
       actor.id,
@@ -409,7 +493,13 @@ export function assignCompanyManager(
       input.assignmentType,
       input.coverageStartsAt ?? null,
       input.coverageEndsAt ?? null,
+      input.accessMode,
+      input.specificPermissionCodes,
+      input.documentVisibility,
+      input.handoverNotes ?? null,
+      input.handoverChecklist,
       input.reason,
+      false,
       new Date(),
     ],
   );
