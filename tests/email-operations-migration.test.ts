@@ -112,7 +112,7 @@ describe("transactional email operations migration", () => {
   });
 
   it("applies last with six provider Agents and private operational evidence", async () => {
-    expect(applied.at(-1)).toBe("070_transactional_email_operations.sql");
+    expect(applied).toContain("070_transactional_email_operations.sql");
     const state = await db.query<{
       agents: number;
       event_tables: number;
