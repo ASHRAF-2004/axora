@@ -101,15 +101,15 @@ export default async function CompanyThemeReviewPage({
     string
   > = {
     primaryForeground: copy.primary,
-    primaryHoverForeground: copy.primary + " hover",
-    primaryActiveForeground: copy.primary + " active",
+    primaryHoverForeground: copy.primary + " · " + copy.hover,
+    primaryActiveForeground: copy.primary + " · " + copy.activeState,
     secondaryForeground: copy.secondary,
     textOnBackground: copy.text,
     textInverseOnDark: copy.inverseText,
     iconOnBackground: copy.icon,
     iconInverseOnDark: copy.inverseIcon,
-    linkOnBackground: "Link",
-    focusOnBackground: "Focus",
+    linkOnBackground: copy.link,
+    focusOnBackground: copy.focus,
     passes: copy.pass,
   };
   const contrastEntries = displayed
@@ -158,8 +158,16 @@ export default async function CompanyThemeReviewPage({
             <dl className={styles.metadata}>
               <div><dt>{copy.algorithm}</dt><dd>{displayed.algorithmVersion}</dd></div>
               <div><dt>{copy.sourceHash}</dt><dd className={styles.hash}>{displayed.sourceLogoHash}</dd></div>
-              <div><dt>{copy.logoVariant}</dt><dd>{displayed.logoVariant}</dd></div>
-              <div><dt>{copy.preferredAppearance}</dt><dd>{displayed.themePreference}</dd></div>
+              <div><dt>{copy.logoVariant}</dt><dd>{
+                displayed.logoVariant === "MONOCHROME"
+                  ? copy.monochrome
+                  : displayed.logoVariant === "INVERTED"
+                    ? copy.inverted
+                    : copy.original
+              }</dd></div>
+              <div><dt>{copy.preferredAppearance}</dt><dd>{
+                displayed.themePreference === "DARK" ? copy.dark : copy.light
+              }</dd></div>
             </dl>
           </div>
           <div className={styles.swatches} aria-label={copy.palette}>
@@ -462,7 +470,9 @@ export default async function CompanyThemeReviewPage({
         <ol className={styles.timeline}>
           {workspace.events.map((event) => (
             <li key={event.id}>
-              <strong>{event.status.replaceAll("_", " ")}</strong>
+              <strong>{copy.eventStatus[
+                event.status as keyof typeof copy.eventStatus
+              ] ?? event.status}</strong>
               <br />
               <span>{event.reason}</span>
               <br />

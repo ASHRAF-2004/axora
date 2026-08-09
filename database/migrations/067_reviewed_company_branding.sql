@@ -229,15 +229,30 @@ INSERT INTO public.company_brand_theme_events(
   action,reason,actor_id,created_at
 )
 SELECT theme.id,theme.company_id,theme.source_logo_id,1,NULL,
-  CASE WHEN theme.active THEN 'PUBLISHED' ELSE 'SUPERSEDED' END,
+  'PUBLISHED',
   'MIGRATION_BACKFILL',
-  'Preserved existing company branding during reviewed workflow migration',
+  'Preserved previously published company branding during workflow migration',
   theme.created_by,theme.created_at
 FROM public.company_brand_themes theme
 WHERE NOT EXISTS (
   SELECT 1 FROM public.company_brand_theme_events event
   WHERE event.theme_id=theme.id
 );
+
+INSERT INTO public.company_brand_theme_events(
+  theme_id,company_id,source_logo_id,event_version,from_status,status,
+  action,reason,actor_id,created_at
+)
+SELECT theme.id,theme.company_id,theme.source_logo_id,2,'PUBLISHED',
+  'SUPERSEDED','MIGRATION_BACKFILL',
+  'Preserved historical retirement of a previously published company theme',
+  theme.created_by,theme.created_at
+FROM public.company_brand_themes theme
+WHERE NOT theme.active
+  AND NOT EXISTS (
+    SELECT 1 FROM public.company_brand_theme_events event
+    WHERE event.theme_id=theme.id AND event.status='SUPERSEDED'
+  );
 
 CREATE OR REPLACE FUNCTION public.protect_company_brand_theme()
 RETURNS trigger

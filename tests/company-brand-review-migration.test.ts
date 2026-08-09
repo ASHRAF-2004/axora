@@ -10,7 +10,7 @@ describe("reviewed company branding migration", () => {
   it("adds an explicit human workflow and preserves existing publication", async () => {
     const sql = await readFile(migrationPath, "utf8");
     expect(sql).toMatch(/REVIEW_REQUIRED[^;]+APPROVED[^;]+PUBLISHED/is);
-    expect(sql).toMatch(/Preserved existing company branding/i);
+    expect(sql).toMatch(/Preserved previously published company branding/i);
     expect(sql).toMatch(/company_brand_theme_events/i);
     expect(sql).toMatch(/append-only/i);
   });

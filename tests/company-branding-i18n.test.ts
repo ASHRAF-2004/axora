@@ -10,6 +10,8 @@ describe("company branding localization", () => {
       expect(copy.previewTitle).toBeTruthy();
       expect(copy.contrastTitle).toBeTruthy();
       expect(copy.rollback).toBeTruthy();
+      expect(copy.hover).toBeTruthy();
+      expect(copy.eventStatus.LOGO_UPLOADED).toBeTruthy();
       expect(Object.keys(copy.status).sort()).toEqual([
         "APPROVED",
         "PUBLISHED",

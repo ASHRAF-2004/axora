@@ -20,6 +20,8 @@ test("owner previews reviewed company branding across device, Arabic, and reduce
     .toBeVisible();
   await expect(page.getByText("WCAG contrast evidence")).toBeVisible();
 
+  await page.getByLabel("Tablet").check();
+  await expect(page.locator('section[data-device="tablet"]')).toBeVisible();
   await page.getByLabel("Mobile").check();
   await page.getByLabel("العربية").check();
   const preview = page.locator('section[lang="ar"][dir="rtl"]');

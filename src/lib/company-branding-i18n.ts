@@ -27,6 +27,10 @@ export interface CompanyBrandingMessages {
   previewLanguage: string;
   device: string;
   appearance: string;
+  hover: string;
+  activeState: string;
+  link: string;
+  focus: string;
   replaceTitle: string;
   replaceHelp: string;
   chooseLogo: string;
@@ -80,8 +84,15 @@ export interface CompanyBrandingMessages {
   by: string;
   system: string;
   status: Record<CompanyBrandWorkflowStatus, string>;
+  eventStatus: Record<CompanyBrandEventStatus, string>;
   notices: Record<string, string>;
 }
+
+export type CompanyBrandEventStatus =
+  | "LOGO_UPLOADED"
+  | "ANALYSIS_QUEUED"
+  | "DRAFT_GENERATED"
+  | CompanyBrandWorkflowStatus;
 
 export interface CompanyBrandPreviewCopy {
   navigation: string[];
@@ -121,6 +132,10 @@ const en: CompanyBrandingMessages = {
   previewLanguage: "Preview language",
   device: "Preview device",
   appearance: "Preview appearance",
+  hover: "Hover",
+  activeState: "Active",
+  link: "Link",
+  focus: "Focus indicator",
   replaceTitle: "Replace logo and regenerate",
   replaceHelp: "The current published theme remains unchanged while the replacement draft is reviewed.",
   chooseLogo: "Choose approved logo",
@@ -185,6 +200,16 @@ const en: CompanyBrandingMessages = {
     REJECTED: "Rejected",
     SUPERSEDED: "Superseded",
   },
+  eventStatus: {
+    LOGO_UPLOADED: "Logo uploaded",
+    ANALYSIS_QUEUED: "Analysis queued",
+    DRAFT_GENERATED: "Draft generated",
+    REVIEW_REQUIRED: "Review required",
+    APPROVED: "Approved",
+    PUBLISHED: "Published",
+    REJECTED: "Rejected",
+    SUPERSEDED: "Superseded",
+  },
   notices: {
     "draft-generated": "A new unpublished review draft was generated.",
     "alternative-generated": "The controlled alternative was saved as a new review draft.",
@@ -221,6 +246,10 @@ const ar: CompanyBrandingMessages = {
   previewLanguage: "لغة المعاينة",
   device: "جهاز المعاينة",
   appearance: "مظهر المعاينة",
+  hover: "التحويم",
+  activeState: "النشط",
+  link: "الرابط",
+  focus: "مؤشر التركيز",
   replaceTitle: "استبدال الشعار وإعادة التوليد",
   replaceHelp: "تبقى السمة المنشورة الحالية دون تغيير أثناء مراجعة المسودة البديلة.",
   chooseLogo: "اختيار الشعار المعتمد",
@@ -285,6 +314,16 @@ const ar: CompanyBrandingMessages = {
     REJECTED: "مرفوض",
     SUPERSEDED: "مستبدل",
   },
+  eventStatus: {
+    LOGO_UPLOADED: "تم رفع الشعار",
+    ANALYSIS_QUEUED: "التحليل في قائمة الانتظار",
+    DRAFT_GENERATED: "تم توليد المسودة",
+    REVIEW_REQUIRED: "المراجعة مطلوبة",
+    APPROVED: "معتمد",
+    PUBLISHED: "منشور",
+    REJECTED: "مرفوض",
+    SUPERSEDED: "مستبدل",
+  },
   notices: {
     "draft-generated": "تم توليد مسودة مراجعة جديدة غير منشورة.",
     "alternative-generated": "حفظ البديل المنضبط كمسودة مراجعة جديدة.",
@@ -321,6 +360,10 @@ const ms: CompanyBrandingMessages = {
   previewLanguage: "Bahasa pratonton",
   device: "Peranti pratonton",
   appearance: "Penampilan pratonton",
+  hover: "Tuding",
+  activeState: "Aktif",
+  link: "Pautan",
+  focus: "Penunjuk fokus",
   replaceTitle: "Ganti logo dan jana semula",
   replaceHelp: "Tema semasa yang diterbitkan kekal tanpa perubahan semasa draf gantian disemak.",
   chooseLogo: "Pilih logo diluluskan",
@@ -379,6 +422,16 @@ const ms: CompanyBrandingMessages = {
   by: "oleh",
   system: "Sistem",
   status: {
+    REVIEW_REQUIRED: "Semakan diperlukan",
+    APPROVED: "Diluluskan",
+    PUBLISHED: "Diterbitkan",
+    REJECTED: "Ditolak",
+    SUPERSEDED: "Diganti",
+  },
+  eventStatus: {
+    LOGO_UPLOADED: "Logo dimuat naik",
+    ANALYSIS_QUEUED: "Analisis dibariskan",
+    DRAFT_GENERATED: "Draf dijana",
     REVIEW_REQUIRED: "Semakan diperlukan",
     APPROVED: "Diluluskan",
     PUBLISHED: "Diterbitkan",
