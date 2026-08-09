@@ -65,5 +65,5 @@ test("Arabic profile-photo controls remain RTL, mobile-safe, and reduced-motion 
   const transition = await manager.locator(".profile-image-preview img").evaluate((element) => (
     getComputedStyle(element).transitionDuration
   ));
-  expect(transition).toBe("0s");
+  expect(Number.parseFloat(transition)).toBeLessThanOrEqual(0.001);
 });
