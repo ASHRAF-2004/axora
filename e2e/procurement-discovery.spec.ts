@@ -23,6 +23,25 @@ test("request filters and matching export retain the same authorized URL state",
   await expect(page).toHaveURL(/\/requests\?q=paper&status=open&sort=amount-desc$/);
 });
 
+test("request option failures preserve state and expose a real retry",async ({page}) => {
+  let failed=false;
+  await page.route("**/api/requests/filter-options?*",async (route) => {
+    if (!failed) {
+      failed=true;
+      await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Unavailable"})});
+      return;
+    }
+    await route.continue();
+  });
+  await signInAsDemoOwner(page);
+  await page.goto("/requests");
+  await page.getByLabel("Request category").fill("office");
+  const optionError=page.locator(".request-filter-options .form-alert");
+  await expect(optionError).toContainText("Authorized options could not be loaded");
+  await optionError.getByRole("button",{name:"Retry"}).click();
+  await expect(optionError).toHaveCount(0);
+});
+
 test("company catalogue exposes a bookmarkable complete view without platform pricing",async ({page}) => {
   await signInAsDemoRole(page,companyAdmin);
   await page.goto("/products");

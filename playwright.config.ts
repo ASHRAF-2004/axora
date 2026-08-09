@@ -39,6 +39,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
+      APP_BASE_URL: baseURL,
       DEMO_MODE: "true",
       DEMO_EMAIL: "owner@axora.e2e",
       DEMO_PASSWORD: "public-e2e-fixture-password",

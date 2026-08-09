@@ -9,6 +9,8 @@ const messages = {
     request: "Request", type: "Type", supplier: "Supplier", version: "Version",
     status: "Status", generatedAt: "Generated", file: "File", attempts: "Attempts",
     retry: "Retry information", actions: "Actions", download: "Secure download",
+    pending: "Working...", refreshing: "Refreshing document job status...", reference: "Job reference",
+    jobStatuses: { PENDING: "Queued", PROCESSING: "Processing", RETRY: "Retry scheduled", COMPLETED: "Completed", FAILED: "Failed", CANCELLED: "Cancelled" },
     noDocuments: "No generated documents are available in your current scope.",
     noJobs: "No document jobs are visible in your current scope.",
     noOrders: "No supplier purchase orders are visible in your current scope.",
@@ -32,6 +34,8 @@ const messages = {
     request: "الطلب", type: "النوع", supplier: "المورد", version: "الإصدار",
     status: "الحالة", generatedAt: "تاريخ الإنشاء", file: "الملف", attempts: "المحاولات",
     retry: "معلومات إعادة المحاولة", actions: "الإجراءات", download: "تنزيل آمن",
+    pending: "جارٍ التنفيذ...", refreshing: "جارٍ تحديث حالة مهمة المستند...", reference: "مرجع المهمة",
+    jobStatuses: { PENDING: "في قائمة الانتظار", PROCESSING: "قيد المعالجة", RETRY: "إعادة المحاولة مجدولة", COMPLETED: "مكتملة", FAILED: "فشلت", CANCELLED: "ملغاة" },
     noDocuments: "لا توجد مستندات منشأة ضمن نطاقك الحالي.",
     noJobs: "لا توجد مهام مستندات ظاهرة ضمن نطاقك الحالي.",
     noOrders: "لا توجد أوامر شراء موردين ظاهرة ضمن نطاقك الحالي.",
@@ -55,6 +59,8 @@ const messages = {
     request: "Permintaan", type: "Jenis", supplier: "Pembekal", version: "Versi",
     status: "Status", generatedAt: "Dijana", file: "Fail", attempts: "Percubaan",
     retry: "Maklumat cuba semula", actions: "Tindakan", download: "Muat turun selamat",
+    pending: "Sedang diproses...", refreshing: "Menyegarkan status tugas dokumen...", reference: "Rujukan tugas",
+    jobStatuses: { PENDING: "Dalam giliran", PROCESSING: "Sedang diproses", RETRY: "Cuba semula dijadualkan", COMPLETED: "Selesai", FAILED: "Gagal", CANCELLED: "Dibatalkan" },
     noDocuments: "Tiada dokumen dijana tersedia dalam skop semasa anda.",
     noJobs: "Tiada tugas dokumen kelihatan dalam skop semasa anda.",
     noOrders: "Tiada pesanan pembelian pembekal kelihatan dalam skop semasa anda.",
@@ -74,6 +80,14 @@ const messages = {
 
 export function generatedDocumentMessages(locale: SupportedLocale | undefined) {
   return messages[locale ?? "en"] ?? messages.en;
+}
+
+export function localizedGeneratedDocumentJobStatus(
+  status: string,
+  locale: SupportedLocale | undefined,
+) {
+  const copy = generatedDocumentMessages(locale).jobStatuses as Record<string, string>;
+  return copy[status] ?? status;
 }
 
 export function formatGeneratedDocumentDate(value: string, locale: SupportedLocale, timezone?: string) {

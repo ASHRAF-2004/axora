@@ -4,6 +4,7 @@ import {
   formatGeneratedDocumentDate,
   formatGeneratedDocumentNumber,
   generatedDocumentMessages,
+  localizedGeneratedDocumentJobStatus,
 } from "@/lib/generated-documents-i18n";
 import { getGeneratedDocumentWorkspace } from "@/lib/generated-documents";
 import {
@@ -11,6 +12,10 @@ import {
   regenerateGeneratedDocumentAction,
 } from "@/lib/generated-document-actions";
 import { StatusBadge } from "./StatusBadge";
+import {
+  GeneratedDocumentStatusPoller,
+  GeneratedDocumentSubmitButton,
+} from "./GeneratedDocumentAsyncControls";
 
 function operationFor(state: string) {
   if (state === "DRAFT") return "MARK_READY";
@@ -36,8 +41,12 @@ export async function GeneratedDocumentsPanel({
     ? workspace.documents.filter((document) => document.type === "SUPPLIER_PURCHASE_ORDER")
     : workspace.documents;
   const orders = workspace.purchaseOrders;
+  const activeJobs = workspace.jobs.some((job) => (
+    ["PENDING", "PROCESSING", "RETRY"].includes(job.status)
+  ));
   return (
     <section style={{ marginTop: 24 }} aria-labelledby={`generated-documents-${mode}`}>
+      <GeneratedDocumentStatusPoller active={activeJobs} label={copy.refreshing} />
       <header className="section-intro">
         <p className="eyebrow">{copy.eyebrow}</p>
         <h2 id={`generated-documents-${mode}`}>{copy.title}</h2>
@@ -61,8 +70,8 @@ export async function GeneratedDocumentsPanel({
                 <input type="hidden" name="commandId" value={randomUUID()} />
                 <label>{copy.reason}<textarea name="reason" required minLength={3} maxLength={500} /></label>
                 <div className="button-row">
-                  <button className="button button-secondary" name="operation" value="REGENERATE" type="submit">{copy.regenerate}</button>
-                  <button className="button button-secondary" name="operation" value="CORRECT" type="submit">{copy.correct}</button>
+                  <GeneratedDocumentSubmitButton label={copy.regenerate} pendingLabel={copy.pending} name="operation" value="REGENERATE" />
+                  <GeneratedDocumentSubmitButton label={copy.correct} pendingLabel={copy.pending} name="operation" value="CORRECT" />
                 </div>
               </form>
             </details> : "—"}</td>
@@ -74,8 +83,8 @@ export async function GeneratedDocumentsPanel({
         <div className="panel-header"><div><h2>{copy.generation}</h2><p>{copy.retry}</p></div></div>
         <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{copy.request}</th><th>{copy.type}</th><th>{copy.status}</th><th>{copy.attempts}</th><th>{copy.retry}</th></tr></thead>
           <tbody>{workspace.jobs.length ? workspace.jobs.map((job) => <tr key={job.id}>
-            <td>{job.requestReference}{job.supplierName ? <><br /><span className="subtle">{job.supplierName}</span></> : null}</td>
-            <td>{job.type.replaceAll("_", " ")}</td><td><StatusBadge>{job.status}</StatusBadge></td>
+            <td>{job.requestReference}{job.supplierName ? <><br /><span className="subtle">{job.supplierName}</span></> : null}<br /><span className="subtle">{copy.reference}: {job.id}</span></td>
+            <td>{job.type.replaceAll("_", " ")}</td><td><StatusBadge>{localizedGeneratedDocumentJobStatus(job.status, locale)}</StatusBadge></td>
             <td>{formatGeneratedDocumentNumber(job.attempts, locale)} / {formatGeneratedDocumentNumber(job.maximumAttempts, locale)}</td>
             <td>{job.lastError || formatGeneratedDocumentDate(job.availableAt, locale, actor.timezone)}</td>
           </tr>) : <tr><td colSpan={5}>{copy.noJobs}</td></tr>}</tbody>
@@ -95,17 +104,17 @@ export async function GeneratedDocumentsPanel({
               <td><a href={order.downloadUrl}>{copy.download}</a></td>
               <td>{order.canAcknowledge ? <form action={manageSupplierPurchaseOrderAction}>
                 <input type="hidden" name="documentId" value={order.documentId} /><input type="hidden" name="expectedVersion" value={order.version} /><input type="hidden" name="operation" value="ACKNOWLEDGE" /><input type="hidden" name="commandId" value={randomUUID()} /><input type="hidden" name="returnPath" value="/supplier" />
-                <button className="button button-primary" type="submit">{copy.acknowledge}</button>
+                <GeneratedDocumentSubmitButton className="button button-primary" label={copy.acknowledge} pendingLabel={copy.pending} />
               </form> : order.canDispatch ? <details><summary>{copy.actions}</summary>
                 <form action={manageSupplierPurchaseOrderAction} className="stack-form" style={{ marginTop: 12 }}>
                   <input type="hidden" name="documentId" value={order.documentId} /><input type="hidden" name="expectedVersion" value={order.version} /><input type="hidden" name="commandId" value={randomUUID()} /><input type="hidden" name="returnPath" value="/documents" />
                   {primaryOperation === "APPROVE" ? <label>{copy.contacts}<select name="recipientUserId" required defaultValue=""><option value="" disabled>{copy.contacts}</option>{contacts.map((contact) => <option key={contact.userId} value={contact.userId}>{contact.name} · {contact.email}</option>)}</select></label> : null}
                   {!contacts.length && primaryOperation === "APPROVE" ? <p className="form-error" role="alert">{copy.noContact}</p> : null}
                   <label>{copy.reason}<textarea name="reason" maxLength={500} required={["AMEND", "CANCEL"].includes(primaryOperation)} /></label>
-                  {primaryOperation ? <button className="button button-primary" name="operation" value={primaryOperation} type="submit" disabled={primaryOperation === "APPROVE" && !contacts.length}>{primaryOperation === "MARK_READY" ? copy.ready : primaryOperation === "APPROVE" ? copy.approve : copy.dispatch}</button> : null}
-                  {["DISPATCHED_TO_SUPPLIER", "ACKNOWLEDGED"].includes(order.state) ? <button className="button button-secondary" name="operation" value="RESEND" type="submit">{copy.resend}</button> : null}
-                  {["READY_FOR_SALES_REVIEW", "APPROVED_FOR_DISPATCH", "DISPATCHED_TO_SUPPLIER", "ACKNOWLEDGED"].includes(order.state) ? <button className="button button-secondary" name="operation" value="AMEND" type="submit">{copy.amend}</button> : null}
-                  {!['AMENDED', 'CANCELLED'].includes(order.state) ? <button className="button button-secondary" name="operation" value="CANCEL" type="submit">{copy.cancel}</button> : null}
+                  {primaryOperation ? <GeneratedDocumentSubmitButton className="button button-primary" disabled={primaryOperation === "APPROVE" && !contacts.length} label={primaryOperation === "MARK_READY" ? copy.ready : primaryOperation === "APPROVE" ? copy.approve : copy.dispatch} pendingLabel={copy.pending} name="operation" value={primaryOperation} /> : null}
+                  {["DISPATCHED_TO_SUPPLIER", "ACKNOWLEDGED"].includes(order.state) ? <GeneratedDocumentSubmitButton label={copy.resend} pendingLabel={copy.pending} name="operation" value="RESEND" /> : null}
+                  {["READY_FOR_SALES_REVIEW", "APPROVED_FOR_DISPATCH", "DISPATCHED_TO_SUPPLIER", "ACKNOWLEDGED"].includes(order.state) ? <GeneratedDocumentSubmitButton label={copy.amend} pendingLabel={copy.pending} name="operation" value="AMEND" /> : null}
+                  {!['AMENDED', 'CANCELLED'].includes(order.state) ? <GeneratedDocumentSubmitButton label={copy.cancel} pendingLabel={copy.pending} name="operation" value="CANCEL" /> : null}
                 </form>
               </details> : "—"}</td>
             </tr>;

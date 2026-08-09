@@ -41,6 +41,8 @@ interface RequestFilterMessages {
   find: (label: string) => string;
   selectedValue: string;
   loading: string;
+  loadError: string;
+  retry: string;
   noOptions: string;
   optionCount: (count: number) => string;
   resultCount: (total: number) => string;
@@ -94,6 +96,8 @@ const en: RequestFilterMessages = {
   find: (label) => `Find ${label}`,
   selectedValue: "Selected authorized value",
   loading: "Loading authorized options...",
+  loadError: "Authorized options could not be loaded. Existing selections were preserved.",
+  retry: "Retry",
   noOptions: "No authorized options found.",
   optionCount: (count) => `${count.toLocaleString()} requests`,
   resultCount: (total) => `${total.toLocaleString()} authorized requests`,
@@ -155,6 +159,8 @@ const ar: RequestFilterMessages = {
   find: (label) => `البحث عن ${label}`,
   selectedValue: "قيمة مصرح بها محددة",
   loading: "جارٍ تحميل الخيارات المصرح بها...",
+  loadError: "تعذر تحميل الخيارات المصرح بها. تم الاحتفاظ بالتحديدات الحالية.",
+  retry: "إعادة المحاولة",
   noOptions: "لا توجد خيارات مصرح بها.",
   optionCount: (count) => `${count.toLocaleString("ar-MY")} طلبات`,
   resultCount: (total) => `${total.toLocaleString("ar-MY")} طلبات مصرح بها`,
@@ -216,6 +222,8 @@ const ms: RequestFilterMessages = {
   find: (label) => `Cari ${label}`,
   selectedValue: "Nilai dibenarkan yang dipilih",
   loading: "Memuatkan pilihan yang dibenarkan...",
+  loadError: "Pilihan yang dibenarkan tidak dapat dimuatkan. Pilihan sedia ada dikekalkan.",
+  retry: "Cuba semula",
   noOptions: "Tiada pilihan dibenarkan ditemui.",
   optionCount: (count) => `${count.toLocaleString("ms-MY")} permintaan`,
   resultCount: (total) => `${total.toLocaleString("ms-MY")} permintaan dibenarkan`,

@@ -48,6 +48,9 @@ function ScopedFilter({
   const [options, setOptions] = useState<FilterOption[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string>();
+  const [retryToken, setRetryToken] = useState(0);
 
   if (selectedInitialKey !== initialKey) {
     setSelectedInitialKey(initialKey);
@@ -66,28 +69,38 @@ function ScopedFilter({
     void fetch(`/api/requests/filter-options?${params}`, {
       credentials: "same-origin",
       signal: controller.signal,
-    }).then((response) => response.ok ? response.json() : { options: [] })
+    }).then((response) => response.ok ? response.json() : Promise.reject(new Error("Options unavailable")))
       .then((payload: { options?: FilterOption[] }) => {
-        if (!controller.signal.aborted) setSelected(payload.options ?? []);
-      }).catch(() => undefined);
+        if (!controller.signal.aborted) {
+          setSelected(payload.options ?? []);
+          setLoadError(undefined);
+        }
+      }).catch(() => {
+        if (!controller.signal.aborted) setLoadError(copy.loadError);
+      });
     return () => controller.abort();
-  }, [dimension, normalizedInitial]);
+  }, [copy.loadError, dimension, normalizedInitial, retryToken]);
 
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
+    // This timer debounces a real scoped network query; it never controls completion.
     const timer = window.setTimeout(() => {
       setLoading(true);
+      setLoadError(undefined);
       const params = new URLSearchParams({ dimension });
       if (query.trim()) params.set("q", query.trim());
       void fetch(`/api/requests/filter-options?${params}`, {
         credentials: "same-origin",
         signal: controller.signal,
-      }).then((response) => response.ok ? response.json() : { options: [] })
+      }).then((response) => response.ok ? response.json() : Promise.reject(new Error("Options unavailable")))
         .then((payload: { options?: FilterOption[] }) => {
-          if (!controller.signal.aborted) setOptions(payload.options ?? []);
+          if (!controller.signal.aborted) {
+            setOptions(payload.options ?? []);
+            setLoaded(true);
+          }
         }).catch(() => {
-          if (!controller.signal.aborted) setOptions([]);
+          if (!controller.signal.aborted) setLoadError(copy.loadError);
         }).finally(() => {
           if (!controller.signal.aborted) setLoading(false);
         });
@@ -96,7 +109,7 @@ function ScopedFilter({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [dimension, open, query]);
+  }, [copy.loadError, dimension, open, query, retryToken]);
 
   const selectedValues = new Set(selected.map((option) => option.value));
   const available = options.filter((option) => !selectedValues.has(option.value));
@@ -139,9 +152,14 @@ function ScopedFilter({
         />
       </div>
       {open ? (
-        <div className="request-filter-options" id={`${listId}-options`} role="listbox">
-          {loading ? <p>{copy.loading}</p> : null}
-          {!loading && !available.length ? <p>{copy.noOptions}</p> : null}
+        <div className="request-filter-options" id={`${listId}-options`} role="listbox" aria-busy={loading}>
+          {loading ? <p role="status">{copy.loading}</p> : null}
+          {loadError ? <p className="form-alert" role="alert">{loadError} <button
+            className="text-button" type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => setRetryToken((current) => current + 1)}
+          >{copy.retry}</button></p> : null}
+          {!loading && !loadError && loaded && !available.length ? <p>{copy.noOptions}</p> : null}
           {available.map((option) => (
             <button
               type="button"
