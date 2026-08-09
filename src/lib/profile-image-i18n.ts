@@ -7,7 +7,13 @@ export interface ProfileImageMessages {
   choose: string;
   replace: string;
   save: string;
+  retry: string;
+  cancel: string;
   remove: string;
+  removing: string;
+  cancelled: string;
+  uncertain: string;
+  reference: (value: string) => string;
   horizontal: string;
   vertical: string;
   zoom: string;
@@ -37,7 +43,13 @@ const en: ProfileImageMessages = {
   choose: "Choose photo",
   replace: "Replace photo",
   save: "Crop and save",
+  retry: "Retry upload",
+  cancel: "Cancel upload",
   remove: "Remove photo",
+  removing: "Removing the profile photo...",
+  cancelled: "Upload cancelled before processing began.",
+  uncertain: "The response was lost or timed out. The photo may have changed; verify it before retrying.",
+  reference: (value) => `Reference: ${value}`,
   horizontal: "Horizontal position",
   vertical: "Vertical position",
   zoom: "Zoom",
@@ -78,7 +90,13 @@ const ar: ProfileImageMessages = {
   choose: "اختيار صورة",
   replace: "استبدال الصورة",
   save: "اقتصاص وحفظ",
+  retry: "إعادة محاولة الرفع",
+  cancel: "إلغاء الرفع",
   remove: "إزالة الصورة",
+  removing: "جارٍ إزالة صورة الملف الشخصي...",
+  cancelled: "أُلغي الرفع قبل بدء المعالجة.",
+  uncertain: "فُقد الرد أو انتهت المهلة. ربما تغيرت الصورة؛ تحقق منها قبل إعادة المحاولة.",
+  reference: (value) => `المرجع: ${value}`,
   horizontal: "الموضع الأفقي",
   vertical: "الموضع العمودي",
   zoom: "التكبير",
@@ -119,7 +137,13 @@ const ms: ProfileImageMessages = {
   choose: "Pilih foto",
   replace: "Ganti foto",
   save: "Pangkas dan simpan",
+  retry: "Cuba semula muat naik",
+  cancel: "Batalkan muat naik",
   remove: "Buang foto",
+  removing: "Membuang foto profil...",
+  cancelled: "Muat naik dibatalkan sebelum pemprosesan bermula.",
+  uncertain: "Respons hilang atau tamat masa. Foto mungkin telah berubah; sahkan sebelum mencuba semula.",
+  reference: (value) => `Rujukan: ${value}`,
   horizontal: "Kedudukan mendatar",
   vertical: "Kedudukan menegak",
   zoom: "Zum",
