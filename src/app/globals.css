@@ -1495,7 +1495,7 @@ html[data-ux-navigating="true"] .ux-navigation-progress::after {
 }
 
 @media (max-width: 470px) {
-  .app-active-brand { width: 105px; }
+  .app-active-brand { width: auto; min-width: 72px; max-width: 105px; flex: 1 1 105px; }
   .app-active-brand img { max-height: 35px; }
   .app-notification-button { display: grid; }
   .app-profile-menu { position: fixed; top: 66px; inset-inline: 12px; width: auto; }
