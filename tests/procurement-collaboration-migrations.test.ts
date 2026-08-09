@@ -362,23 +362,21 @@ describe("procurement collaboration data foundation", () => {
         SELECT supplier_id::text FROM supplier_rfqs ORDER BY supplier_id
       `);
       expect(visible.rows).toEqual([{ supplier_id: ids.supplier }]);
-      const notifications = await db.query<{ count: number }>(`
+      await expect(db.query(`
         SELECT count(*)::int AS count FROM in_app_notifications
-      `);
-      expect(notifications.rows[0].count).toBe(1);
-      await db.query(`
+      `)).rejects.toThrow();
+      await expect(db.query(`
         INSERT INTO notification_preferences(user_id,event_key,in_app_enabled,email_enabled)
         VALUES ($1,'supplier.rfq.issued',true,false)
-      `, [ids.supplierUser]);
+      `, [ids.supplierUser])).rejects.toThrow();
       await expect(db.query(`
         INSERT INTO notification_preferences(user_id,event_key)
         VALUES ($1,'supplier.rfq.issued')
       `, [ids.competitorUser])).rejects.toThrow();
       await db.query("SELECT set_config('axora.user_id',$1,false)", [ids.competitorUser]);
-      const competitorNotifications = await db.query<{ count: number }>(`
+      await expect(db.query(`
         SELECT count(*)::int AS count FROM in_app_notifications
-      `);
-      expect(competitorNotifications.rows[0].count).toBe(0);
+      `)).rejects.toThrow();
     } finally {
       await db.exec("RESET ROLE");
       await db.query("SELECT set_config('axora.user_id','',false)");

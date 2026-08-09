@@ -86,7 +86,7 @@ describe("server-authoritative onboarding policy", () => {
       preferredLocale: "en",
       timezone: "Asia/Kuala_Lumpur",
       emailNotifications: true,
-      inAppNotifications: true,
+      inAppNotifications: false,
       policyAccepted: true,
       // Deliberately simulate an extra field supplied by a forged form.
       policyVersion: "browser-forged-version",
@@ -95,6 +95,7 @@ describe("server-authoritative onboarding policy", () => {
     const [profileSql, profileValues] = mocks.client.query.mock.calls[0];
     expect(String(profileSql)).toContain("required_policy_version=$9");
     expect(String(profileSql)).toContain("required_policy_version IS DISTINCT FROM $9");
+    expect(profileValues[7]).toBe(true);
     expect(profileValues[8]).toBe(REQUIRED_POLICY_VERSION);
     expect(profileValues).not.toContain("browser-forged-version");
   });

@@ -382,10 +382,9 @@ describe("workflow email delivery migration security", () => {
 
   it("exposes only an actor-bound effective preference capability across self-only RLS", async () => {
     await assumeAppUser(ids.companyActor);
-    const direct = await db.query(`
+    await expect(db.query(`
       SELECT email_enabled FROM notification_preferences WHERE user_id=$1
-    `, [ids.companyNonActor]);
-    expect(direct.rows).toHaveLength(0);
+    `, [ids.companyNonActor])).rejects.toThrow();
 
     const effective = await db.query<{
       global_in_app_enabled: boolean;

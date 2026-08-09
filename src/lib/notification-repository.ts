@@ -1,165 +1,319 @@
+import { z } from "zod";
 import type { SessionUser } from "./auth";
 import { isDemoMode, withAuditTransaction } from "./db";
+import {
+  NOTIFICATION_EVENT_POLICIES,
+  type NotificationCategory,
+  type NotificationDigestMode,
+  type NotificationPriority,
+} from "./notifications";
 
-export const NOTIFICATION_EVENT_KEYS = [
-  "invitation.sent",
-  "invitation.accepted",
-  "company.lead.created",
-  "company.lead.submitted",
-  "company.lead.assigned",
-  "company.lead.reassigned",
-  "company.lead.contacted",
-  "company.lead.information_requested",
-  "company.lead.qualified",
-  "company.lead.duplicate_cleared",
-  "company.lead.duplicate_confirmed",
-  "company.lead.note_added",
-  "company.lead.task_added",
-  "company.lead.task_completed",
-  "company.lead.converted",
-  "company.lead.rejected",
-  "company.lead.archived",
-  "company.lead.anonymized",
-  "company.lead.sla_overdue",
-  "company.assigned",
-  "company.reassigned",
-  "company.information_requested",
-  "company.administrator_activated",
-  "company.activated",
-  "company.suspended",
-  "request.submitted",
-  "approval.needed",
-  "approval.department_required",
-  "approval.company_required",
-  "approval.axora_required",
-  "approval.additional_actual_required",
-  "request.approved",
-  "request.rejected",
-  "request.returned",
-  "budget.low",
-  "budget.zero",
-  "budget.refreshed",
-  "budget.refresh_failed",
-  "quotation.requested",
-  "quotation.received",
-  "supplier.selected",
-  "supplier.order_selected",
-  "supplier.rfq_acknowledged",
-  "supplier.order_acknowledged",
-  "delivery.scheduled",
-  "driver.assigned",
-  "delivery.accepted",
-  "delivery.arrived",
-  "delivery.note_added",
-  "delivery.delayed",
-  "delivery.completed",
-  "receipt.required",
-  "discrepancy.opened",
-  "invoice.issued",
-  "payment.status_changed",
-  "order.confirmed",
-  "preparation.started",
-  "delivery.out_for_delivery",
-  "delivery.evidence_recorded",
-  "delivery.partial_evidence_recorded",
-  "delivery.failed",
-  "receipt.confirmed",
-  "three_way_match.completed",
-  "three_way_match.exception",
-  "request.completed",
-  "request.cancelled",
-  "request.on_hold",
-] as const;
+const uuid = z.uuid();
+const statusFilterSchema = z.enum(["ALL", "UNREAD", "READ", "ARCHIVED"]);
+const categorySchema = z.enum([
+  "ACCOUNT", "LEAD", "APPROVAL", "BUDGET", "SOURCING",
+  "DELIVERY", "FINANCE", "EMAIL", "WORKFLOW",
+]);
+const notificationSchema = z.object({
+  id: uuid,
+  eventKey: z.string().min(2).max(120),
+  category: categorySchema,
+  title: z.string().min(1).max(180),
+  body: z.string().min(1).max(2_000),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]),
+  routePath: z.string().max(500).nullable().optional(),
+  createdAt: z.coerce.date().transform((value) => value.toISOString()),
+  deliveredAt: z.coerce.date().transform((value) => value.toISOString()).nullable().optional(),
+  readAt: z.coerce.date().transform((value) => value.toISOString()).nullable().optional(),
+  archivedAt: z.coerce.date().transform((value) => value.toISOString()).nullable().optional(),
+  expiresAt: z.coerce.date().transform((value) => value.toISOString()),
+  stateVersion: z.coerce.number().int().positive(),
+  reminderOfNotificationId: uuid.nullable().optional(),
+  emailDeliveryRelated: z.boolean(),
+}).transform((value) => ({
+  ...value,
+  ...(value.routePath ? { routePath: value.routePath } : {}),
+  ...(value.deliveredAt ? { deliveredAt: value.deliveredAt } : {}),
+  ...(value.readAt ? { readAt: value.readAt } : {}),
+  ...(value.archivedAt ? { archivedAt: value.archivedAt } : {}),
+  ...(value.reminderOfNotificationId
+    ? { reminderOfNotificationId: value.reminderOfNotificationId }
+    : {}),
+}));
+const preferenceSchema = z.object({
+  eventKey: z.string().min(2).max(120),
+  category: categorySchema,
+  mandatoryEmail: z.boolean(),
+  emailEnabled: z.boolean(),
+  deliverySchedule: z.enum(["IMMEDIATE", "DAILY", "WEEKLY"]),
+  reminderHours: z.coerce.number().int().min(0).max(720).nullable().optional(),
+  companyEmailEnabled: z.boolean().nullable().optional(),
+  companyDeliverySchedule: z.enum(["IMMEDIATE", "DAILY", "WEEKLY"]).nullable().optional(),
+  companyReminderHours: z.coerce.number().int().min(0).max(720).nullable().optional(),
+  companyConfigurable: z.boolean(),
+}).transform((value) => ({
+  ...value,
+  reminderHours: value.reminderHours ?? null,
+  companyEmailEnabled: value.companyEmailEnabled ?? null,
+  companyDeliverySchedule: value.companyDeliverySchedule ?? null,
+  companyReminderHours: value.companyReminderHours ?? null,
+}));
+const summarySchema = z.object({
+  capturedAt: z.coerce.date().transform((value) => value.toISOString()),
+  unreadCount: z.coerce.number().int().nonnegative(),
+  versionToken: z.string().regex(/^[0-9a-f]{32}$/),
+});
+const snapshotSchema = summarySchema.extend({
+  filters: z.object({
+    status: statusFilterSchema,
+    category: z.union([z.literal("ALL"), categorySchema]),
+  }),
+  totalCount: z.coerce.number().int().nonnegative(),
+  canManageCompanyPreferences: z.boolean(),
+  companyId: uuid.nullable().optional(),
+  notifications: z.array(notificationSchema),
+  preferences: z.array(preferenceSchema),
+}).transform((value) => ({
+  ...value,
+  ...(value.companyId ? { companyId: value.companyId } : {}),
+}));
+const commandResultSchema = z.object({
+  changed: z.boolean(),
+}).passthrough();
 
-export interface MyNotification {
-  id: string;
-  eventKey: string;
-  title: string;
-  body: string;
-  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
-  routePath?: string;
-  createdAt: string;
-  readAt?: string;
+export type NotificationStatusFilter = z.infer<typeof statusFilterSchema>;
+export type NotificationCenterCategoryFilter = "ALL" | NotificationCategory;
+export type NotificationCenterItem = z.infer<typeof notificationSchema>;
+export type NotificationPreferenceRecord = z.infer<typeof preferenceSchema>;
+export type NotificationCenterSnapshot = z.infer<typeof snapshotSchema>;
+export type NotificationSummary = z.infer<typeof summarySchema>;
+
+export interface NotificationCenterFilters {
+  status?: NotificationStatusFilter;
+  category?: NotificationCenterCategoryFilter;
+  limit?: number;
 }
 
-export interface MyNotificationPreference {
-  eventKey: string;
-  inAppEnabled: boolean;
-  emailEnabled: boolean;
-  digestMode: "IMMEDIATE" | "DAILY" | "WEEKLY";
+function requiredAssignment(actor: SessionUser) {
+  const parsed = uuid.safeParse(actor.roleAssignmentId);
+  if (!parsed.success) throw new Error("Notifications are unavailable.");
+  return parsed.data;
 }
 
-export async function listMyNotifications(actor: SessionUser, limit = 100): Promise<MyNotification[]> {
-  if (isDemoMode()) return [];
-  const safeLimit = Math.min(200, Math.max(1, Math.trunc(limit)));
-  return withAuditTransaction({ actor, reason: "Viewed personal notifications" }, async (client) => {
-    const result = await client.query<MyNotification>(`
-      SELECT id::text,event_key AS "eventKey",title,body,priority,
-        route_path AS "routePath",created_at::text AS "createdAt",read_at::text AS "readAt"
-      FROM in_app_notifications
-      WHERE recipient_user_id=$1 AND archived_at IS NULL
-      ORDER BY created_at DESC,id DESC
-      LIMIT $2
-    `, [actor.id, safeLimit]);
-    return result.rows;
+function demoPreferences(): NotificationPreferenceRecord[] {
+  return NOTIFICATION_EVENT_POLICIES.map((policy) => ({
+    eventKey: policy.eventKey,
+    category: policy.category,
+    mandatoryEmail: policy.emailMandatory,
+    emailEnabled: true,
+    deliverySchedule: "IMMEDIATE" as const,
+    reminderHours: "defaultReminderHours" in policy
+      ? policy.defaultReminderHours ?? null
+      : null,
+    companyEmailEnabled: null,
+    companyDeliverySchedule: null,
+    companyReminderHours: null,
+    companyConfigurable: policy.companyConfigurable,
+  }));
+}
+
+export async function notificationSummary(
+  actor: SessionUser,
+): Promise<NotificationSummary> {
+  if (isDemoMode()) {
+    return {
+      capturedAt: new Date().toISOString(),
+      unreadCount: 0,
+      versionToken: "00000000000000000000000000000000",
+    };
+  }
+  return withAuditTransaction(
+    { actor, reason: "Viewed notification summary" },
+    async (client) => {
+      const result = await client.query<{ snapshot: unknown }>(`
+        SELECT public.axora_notification_summary($1,$2,$3) AS snapshot
+      `, [actor.id, requiredAssignment(actor), new Date()]);
+      const parsed = summarySchema.safeParse(result.rows[0]?.snapshot);
+      if (!parsed.success) throw new Error("Notifications are unavailable.");
+      return parsed.data;
+    },
+  );
+}
+
+export async function notificationCenterSnapshot(
+  actor: SessionUser,
+  filters: NotificationCenterFilters = {},
+): Promise<NotificationCenterSnapshot> {
+  const normalizedFilters = {
+    status: statusFilterSchema.catch("ALL").parse(filters.status ?? "ALL"),
+    category: z.union([z.literal("ALL"), categorySchema])
+      .catch("ALL").parse(filters.category ?? "ALL"),
+    limit: Math.min(Math.max(Math.trunc(filters.limit ?? 100), 1), 200),
+  };
+  if (isDemoMode()) {
+    return {
+      capturedAt: new Date().toISOString(),
+      unreadCount: 0,
+      versionToken: "00000000000000000000000000000000",
+      filters: {
+        status: normalizedFilters.status,
+        category: normalizedFilters.category,
+      },
+      totalCount: 0,
+      canManageCompanyPreferences: actor.role === "COMPANY_ADMIN",
+      ...(actor.companyId ? { companyId: actor.companyId } : {}),
+      notifications: [],
+      preferences: demoPreferences(),
+    };
+  }
+  return withAuditTransaction(
+    { actor, reason: "Viewed authorized notification centre" },
+    async (client) => {
+      const result = await client.query<{ snapshot: unknown }>(`
+        SELECT public.axora_notification_center_snapshot(
+          $1,$2,$3::jsonb,$4
+        ) AS snapshot
+      `, [
+        actor.id,
+        requiredAssignment(actor),
+        JSON.stringify(normalizedFilters),
+        new Date(),
+      ]);
+      const parsed = snapshotSchema.safeParse(result.rows[0]?.snapshot);
+      if (!parsed.success) throw new Error("Notifications are unavailable.");
+      return parsed.data;
+    },
+  );
+}
+
+type NotificationCommandAction =
+  | "MARK_READ"
+  | "MARK_ALL_READ"
+  | "ARCHIVE"
+  | "SAVE_USER_PREFERENCE"
+  | "SAVE_COMPANY_PREFERENCE";
+
+async function executeNotificationCommand(
+  actor: SessionUser,
+  input: {
+    commandId: string;
+    action: NotificationCommandAction;
+    payload?: Record<string, unknown>;
+  },
+) {
+  const commandId = uuid.parse(input.commandId);
+  if (isDemoMode()) return { changed: false };
+  return withAuditTransaction(
+    {
+      actor,
+      reason: `Notification ${input.action.toLowerCase().replaceAll("_", " ")}`,
+      commandId,
+    },
+    async (client) => {
+      const result = await client.query<{ result: unknown }>(`
+        SELECT public.axora_notification_command(
+          $1,$2,$3,$4,$5::jsonb,$6
+        ) AS result
+      `, [
+        actor.id,
+        requiredAssignment(actor),
+        commandId,
+        input.action,
+        JSON.stringify(input.payload ?? {}),
+        new Date(),
+      ]);
+      const parsed = commandResultSchema.safeParse(result.rows[0]?.result);
+      if (!parsed.success) throw new Error("Notification action is unavailable.");
+      return parsed.data;
+    },
+  );
+}
+
+export function markMyNotificationRead(
+  actor: SessionUser,
+  notificationId: string,
+  commandId: string,
+  stateVersion?: number,
+) {
+  return executeNotificationCommand(actor, {
+    commandId,
+    action: "MARK_READ",
+    payload: {
+      notificationId: uuid.parse(notificationId),
+      ...(stateVersion ? { stateVersion } : {}),
+    },
   });
 }
 
+export function markAllMyNotificationsRead(actor: SessionUser, commandId: string) {
+  return executeNotificationCommand(actor, { commandId, action: "MARK_ALL_READ" });
+}
+
+export function archiveMyNotification(
+  actor: SessionUser,
+  notificationId: string,
+  commandId: string,
+) {
+  return executeNotificationCommand(actor, {
+    commandId,
+    action: "ARCHIVE",
+    payload: { notificationId: uuid.parse(notificationId) },
+  });
+}
+
+export function saveMyNotificationPreference(
+  actor: SessionUser,
+  input: {
+    commandId: string;
+    scope: "USER" | "COMPANY";
+    eventKey: string;
+    emailEnabled: boolean;
+    deliverySchedule: NotificationDigestMode;
+    reminderHours: number;
+    companyId?: string;
+  },
+) {
+  const policy = NOTIFICATION_EVENT_POLICIES.find(
+    (item) => item.eventKey === input.eventKey,
+  );
+  if (!policy) throw new Error("Notification preference is unavailable.");
+  if (!Number.isInteger(input.reminderHours)
+    || input.reminderHours < 0 || input.reminderHours > 720) {
+    throw new Error("Notification preference is unavailable.");
+  }
+  return executeNotificationCommand(actor, {
+    commandId: input.commandId,
+    action: input.scope === "COMPANY"
+      ? "SAVE_COMPANY_PREFERENCE"
+      : "SAVE_USER_PREFERENCE",
+    payload: {
+      eventKey: input.eventKey,
+      emailEnabled: policy.emailMandatory ? true : input.emailEnabled,
+      deliverySchedule: policy.emailMandatory
+        ? "IMMEDIATE"
+        : input.deliverySchedule,
+      reminderHours: input.reminderHours,
+      ...(input.scope === "COMPANY"
+        ? { companyId: uuid.parse(input.companyId) }
+        : {}),
+    },
+  });
+}
+
+// Compatibility exports keep existing server callers stable while all access
+// still crosses the new PostgreSQL capability boundary.
 export async function unreadNotificationCount(actor: SessionUser) {
-  if (isDemoMode()) return 0;
-  return withAuditTransaction({ actor, reason: "Checked unread notification count" }, async (client) => {
-    const result = await client.query<{ count: string }>(`
-      SELECT count(*)::text AS count FROM in_app_notifications
-      WHERE recipient_user_id=$1 AND read_at IS NULL AND archived_at IS NULL
-    `, [actor.id]);
-    return Number(result.rows[0]?.count ?? 0);
-  });
+  return (await notificationSummary(actor)).unreadCount;
 }
 
-export async function markMyNotificationRead(actor: SessionUser, notificationId: string) {
-  if (isDemoMode()) return;
-  await withAuditTransaction({ actor, reason: "Marked personal notification read" }, async (client) => {
-    await client.query(`
-      UPDATE in_app_notifications SET read_at=COALESCE(read_at,now())
-      WHERE id=$1 AND recipient_user_id=$2 AND archived_at IS NULL
-    `, [notificationId, actor.id]);
-  });
+export async function listMyNotifications(actor: SessionUser) {
+  return (await notificationCenterSnapshot(actor)).notifications;
 }
 
-export async function markAllMyNotificationsRead(actor: SessionUser) {
-  if (isDemoMode()) return;
-  await withAuditTransaction({ actor, reason: "Marked all personal notifications read" }, async (client) => {
-    await client.query(`
-      UPDATE in_app_notifications SET read_at=COALESCE(read_at,now())
-      WHERE recipient_user_id=$1 AND archived_at IS NULL AND read_at IS NULL
-    `, [actor.id]);
-  });
+export async function listMyNotificationPreferences(actor: SessionUser) {
+  return (await notificationCenterSnapshot(actor)).preferences;
 }
 
-export async function listMyNotificationPreferences(actor: SessionUser): Promise<MyNotificationPreference[]> {
-  if (isDemoMode()) return NOTIFICATION_EVENT_KEYS.map((eventKey) => ({ eventKey, inAppEnabled: true, emailEnabled: true, digestMode: "IMMEDIATE" }));
-  return withAuditTransaction({ actor, reason: "Viewed personal notification preferences" }, async (client) => {
-    const result = await client.query<MyNotificationPreference>(`
-      SELECT event_key AS "eventKey",in_app_enabled AS "inAppEnabled",
-        email_enabled AS "emailEnabled",digest_mode AS "digestMode"
-      FROM notification_preferences WHERE user_id=$1
-    `, [actor.id]);
-    const saved = new Map(result.rows.map((row) => [row.eventKey, row]));
-    return NOTIFICATION_EVENT_KEYS.map((eventKey) => saved.get(eventKey) ?? ({ eventKey, inAppEnabled: true, emailEnabled: true, digestMode: "IMMEDIATE" }));
-  });
-}
-
-export async function saveMyNotificationPreference(actor: SessionUser, input: MyNotificationPreference) {
-  if (!(NOTIFICATION_EVENT_KEYS as readonly string[]).includes(input.eventKey)) throw new Error("Unsupported notification event.");
-  if (!["IMMEDIATE", "DAILY", "WEEKLY"].includes(input.digestMode)) throw new Error("Unsupported notification schedule.");
-  if (isDemoMode()) return;
-  await withAuditTransaction({ actor, reason: "Updated personal notification preference" }, async (client) => {
-    await client.query(`
-      INSERT INTO notification_preferences(user_id,event_key,in_app_enabled,email_enabled,digest_mode,updated_at)
-      VALUES ($1,$2,$3,$4,$5,now())
-      ON CONFLICT(user_id,event_key) DO UPDATE SET
-        in_app_enabled=EXCLUDED.in_app_enabled,email_enabled=EXCLUDED.email_enabled,
-        digest_mode=EXCLUDED.digest_mode,updated_at=now()
-    `, [actor.id, input.eventKey, input.inAppEnabled, input.emailEnabled, input.digestMode]);
-  });
-}
+export type InAppNotificationRecord = NotificationCenterItem & {
+  priority: NotificationPriority;
+};

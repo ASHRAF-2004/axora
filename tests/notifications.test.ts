@@ -33,10 +33,32 @@ describe("in-app notification records", () => {
       new Date("2026-08-02T08:00:00.000Z"),
     );
     expect(result).toEqual({
-      inAppEnabled: false,
+      inAppEnabled: true,
       emailEnabled: false,
+      emailMandatory: false,
       digestMode: "DAILY",
       muted: true,
+    });
+  });
+
+  it("keeps mandatory workflow email immediate and in-app evidence authoritative", () => {
+    const result = resolveNotificationPreference(
+      { inAppEnabled: false, emailEnabled: false },
+      {
+        eventKey: "approval.needed",
+        inAppEnabled: false,
+        emailEnabled: false,
+        digestMode: "WEEKLY",
+        mutedUntil: "2099-08-03T00:00:00.000Z",
+      },
+      new Date("2026-08-02T08:00:00.000Z"),
+    );
+    expect(result).toEqual({
+      inAppEnabled: true,
+      emailEnabled: true,
+      emailMandatory: true,
+      digestMode: "IMMEDIATE",
+      muted: false,
     });
   });
 
