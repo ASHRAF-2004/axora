@@ -16,8 +16,10 @@ import {
   Truck,
   UserRoundCog,
 } from "lucide-react";
-import { updateCompanyPricingAction } from "./actions";
+import { updateCompanyPricingAction, updateProfileImagePolicyAction } from "./actions";
 import { operationalMessage, type OperationalMessageKey } from "@/lib/operational-i18n";
+import { getProfileImagePolicy } from "@/lib/profile-images";
+import { profileImageMessages } from "@/lib/profile-image-i18n";
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requireSession();
@@ -26,13 +28,28 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const m = (key: OperationalMessageKey) => operationalMessage(locale, key);
   const mayManageCommercialSettings = canAccess(actor, "manage_commercial_pricing");
   const mayViewDiagnostics = canAccess(actor, "view_system_diagnostics");
-  const companies = mayManageCommercialSettings ? await listCompanies(actor) : [];
+  const mayManageProfileImages = canAccess(actor, "manage_settings");
+  const platformWorkspace = actor.accountKind === "PLATFORM" || actor.isOwner;
+  const companies = mayManageCommercialSettings || (mayManageProfileImages && platformWorkspace)
+    ? await listCompanies(actor)
+    : [];
+  const imageCopy = profileImageMessages(locale);
+  const profilePolicyCompanyIds = mayManageProfileImages
+    ? actor.accountKind === "COMPANY" && actor.companyId
+      ? [actor.companyId]
+      : companies.map((company) => company.id)
+    : [];
+  const [globalProfilePolicy, companyProfilePolicies] = await Promise.all([
+    mayManageProfileImages && platformWorkspace ? getProfileImagePolicy(actor) : Promise.resolve(null),
+    Promise.all(profilePolicyCompanyIds.map((companyId) => getProfileImagePolicy(actor, companyId))),
+  ]);
   const workspace = actor.accountKind === "PLATFORM" || actor.isOwner
     ? m("settings.platform")
     : companies[0]?.name ?? m("settings.assigned");
 
   return <><PageHeader eyebrow={m("settings.eyebrow")} title={m("settings.title")} description={m("settings.description")} />
     {notice === "pricing-updated" ? <div className="callout" role="status">{m("settings.updated")}</div> : null}
+    {notice === "profile-image-policy-updated" ? <div className="callout" role="status">{imageCopy.policySaved}</div> : null}
     <section className="dashboard-grid"><article className="panel"><div className="panel-header"><div><h2>{m("settings.workspaceConfig")}</h2><p>{m("settings.defaults")}</p></div></div><div className="panel-body readiness-list">
       <div className="readiness-item"><Building2 /><div><strong>{m("settings.workspace")}</strong><p>{workspace}</p></div></div>
       <div className="readiness-item"><Clock3 /><div><strong>{m("settings.timezone")}</strong><p>{actor.timezone ?? "Asia/Kuala_Lumpur"}</p></div></div>
@@ -120,6 +137,24 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <p>{m("settings.noCompanyBody")}</p>
           </div>
         )}
+      </div>
+    </section> : null}
+
+    {mayManageProfileImages ? <section className="panel profile-policy-panel" style={{ marginTop: 17 }}>
+      <div className="panel-header"><div><h3>{imageCopy.settingsTitle}</h3><p>{imageCopy.settingsBody}</p></div></div>
+      <div className="panel-body profile-policy-grid">
+        {globalProfilePolicy ? <form action={updateProfileImagePolicyAction} className="settings-pricing-card">
+          <input type="hidden" name="scope" value="global" />
+          <label className="policy-confirmation"><input name="deliveryAgentPhotoRequired" type="checkbox" defaultChecked={globalProfilePolicy.deliveryAgentPhotoRequired} /><span><ShieldCheck size={18} /><span><strong>{imageCopy.deliveryRequired}</strong><small>{imageCopy.deliveryRequiredHelp}</small></span></span></label>
+          <button className="button button-primary" type="submit">{imageCopy.savePolicy}</button>
+        </form> : null}
+        {companyProfilePolicies.map((policy) => policy.companyId ? <form action={updateProfileImagePolicyAction} className="settings-pricing-card" key={policy.companyId}>
+          <input type="hidden" name="scope" value="company" />
+          <input type="hidden" name="companyId" value={policy.companyId} />
+          <strong>{policy.companyName}</strong>
+          <label className="policy-confirmation"><input name="companyPhotoDisplayEnabled" type="checkbox" defaultChecked={policy.companyPhotoDisplayEnabled} /><span><UserRoundCog size={18} /><span><strong>{imageCopy.companyDisplay}</strong><small>{imageCopy.companyDisplayHelp}</small></span></span></label>
+          <button className="button button-primary" type="submit">{imageCopy.savePolicy}</button>
+        </form> : null)}
       </div>
     </section> : null}
 

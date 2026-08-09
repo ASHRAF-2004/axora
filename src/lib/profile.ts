@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-import sharp from "sharp";
 import { z } from "zod";
 import type { SessionUser } from "./auth";
 import { isDemoMode, query, withAuditTransaction } from "./db";
@@ -8,8 +6,7 @@ import {
   hasCompletedRequiredProfile,
   REQUIRED_POLICY_VERSION,
 } from "./onboarding-policy";
-
-const PROFILE_IMAGE_MAX_BYTES = 1024 * 1024;
+import { demoProfileImageState } from "./profile-images";
 
 const profileSchema = z.object({
   displayName: z.string().trim().min(2).max(200),
@@ -31,6 +28,7 @@ export interface MyProfile {
   preferredLocale: SupportedLocale;
   timezone: string;
   avatarAvailable: boolean;
+  avatarVersion?: string;
   emailNotifications: boolean;
   inAppNotifications: boolean;
   profileCompletedAt?: string;
@@ -49,7 +47,8 @@ export async function getMyProfile(actor: SessionUser): Promise<MyProfile> {
       phone: "",
       preferredLocale: actor.preferredLocale ?? "en",
       timezone: actor.timezone ?? "Asia/Kuala_Lumpur",
-      avatarAvailable: false,
+      avatarAvailable: demoProfileImageState(actor.id).available,
+      avatarVersion: demoProfileImageState(actor.id).versionId,
       emailNotifications: true,
       inAppNotifications: true,
       profileCompletedAt: new Date().toISOString(),
@@ -62,7 +61,9 @@ export async function getMyProfile(actor: SessionUser): Promise<MyProfile> {
     SELECT account.id::text AS "userId",account.email,
       profile.display_name AS "displayName",profile.job_title AS "jobTitle",
       profile.phone,profile.preferred_locale AS "preferredLocale",
-      profile.timezone,(profile.avatar_content IS NOT NULL) AS "avatarAvailable",
+      profile.timezone,
+      (profile.avatar_content IS NOT NULL OR profile.active_avatar_version_id IS NOT NULL) AS "avatarAvailable",
+      profile.active_avatar_version_id::text AS "avatarVersion",
       profile.notification_email_enabled AS "emailNotifications",
       profile.notification_in_app_enabled AS "inAppNotifications",
       profile.profile_completed_at::text AS "profileCompletedAt",
@@ -128,34 +129,7 @@ export async function completeMyProfile(input: z.input<typeof profileSchema>, ac
   });
 }
 
-export async function saveMyProfileImage(file: File, actor: SessionUser) {
-  if (file.size < 1 || file.size > PROFILE_IMAGE_MAX_BYTES) throw new Error("Profile images must be smaller than 1 MB.");
-  const source = Buffer.from(await file.arrayBuffer());
-  const image = sharp(source, { animated: false, failOn: "warning", limitInputPixels: 8_388_608 });
-  const metadata = await image.metadata();
-  if (!metadata.format || !["jpeg", "png", "webp"].includes(metadata.format) || (metadata.pages ?? 1) !== 1) {
-    throw new Error("Use a PNG, JPEG, or WebP profile image.");
-  }
-  const output = await image.rotate().resize(256, 256, { fit: "cover" }).webp({ quality: 82 }).toBuffer();
-  const sha256 = createHash("sha256").update(output).digest("hex");
-  if (isDemoMode()) return;
-  await withAuditTransaction({ actor, reason: "Profile image updated" }, (client) => client.query(`
-    UPDATE user_profiles SET
-      avatar_file_name='profile.webp',avatar_content_type='image/webp',
-      avatar_content=$2,avatar_sha256=$3
-    WHERE user_id=$1
-  `, [actor.id, output, sha256]));
-}
-
-export async function removeMyProfileImage(actor: SessionUser) {
-  if (isDemoMode()) return;
-  await withAuditTransaction({ actor, reason: "Profile image removed" }, (client) => client.query(`
-    UPDATE user_profiles SET
-      avatar_file_name=NULL,avatar_content_type=NULL,avatar_content=NULL,avatar_sha256=NULL,
-      updated_at=now()
-    WHERE user_id=$1
-  `, [actor.id]));
-}
+export { saveMyProfileImage, removeMyProfileImage } from "./profile-images";
 
 export async function updateMyPreferredLocale(locale: SupportedLocale, actor: SessionUser) {
   if (!isSupportedLocale(locale)) throw new Error("Choose a supported language.");

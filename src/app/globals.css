@@ -3833,3 +3833,47 @@ bdi[dir="auto"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* Private, scoped profile images */
+.user-avatar {
+  --avatar-size: 40px;
+  align-items: center;
+  background: color-mix(in srgb, var(--tenant-primary, #173f35) 12%, white);
+  border: 1px solid var(--tenant-border, #d8ddd9);
+  border-radius: 999px;
+  color: var(--tenant-primary, #173f35);
+  display: inline-flex;
+  flex: 0 0 var(--avatar-size);
+  font-size: calc(var(--avatar-size) * .3);
+  font-weight: 750;
+  height: var(--avatar-size);
+  justify-content: center;
+  overflow: hidden;
+  width: var(--avatar-size);
+}
+.user-avatar img { height: 100%; object-fit: cover; width: 100%; }
+.profile-user-cell,.delivery-agent-identity { align-items: center; display: flex; gap: .75rem; min-width: 13rem; }
+.delivery-agent-identity { background: var(--tenant-muted, #f4f6f4); border-radius: .8rem; margin-block: .8rem; padding: .7rem; }
+.delivery-agent-identity div { display: grid; gap: .1rem; }
+.delivery-agent-identity span { color: var(--text-muted, #64706a); font-size: .78rem; }
+.profile-image-manager { gap: .8rem; }
+.profile-image-preview { background: var(--tenant-muted, #f4f6f4); border-radius: 999px; height: 128px; isolation: isolate; overflow: hidden; position: relative; width: 128px; }
+.profile-image-preview > .user-avatar { position: absolute; inset: 0; }
+.profile-image-preview img { transition: transform 160ms ease, object-position 160ms ease; }
+.profile-image-heading { display: grid; gap: .65rem; text-align: center; }
+.profile-image-heading > div { display: grid; gap: .2rem; }
+.profile-image-heading span { color: var(--text-muted, #64706a); font-size: .8rem; }
+.profile-image-form,.profile-image-crop-controls { display: grid; gap: .7rem; width: 100%; }
+.profile-image-crop-controls label { display: grid; font-size: .8rem; gap: .25rem; text-align: start; }
+.profile-image-picker { cursor: pointer; justify-content: center; }
+.profile-image-progress { display: grid; font-size: .78rem; gap: .35rem; }
+.profile-image-progress progress { inline-size: 100%; }
+.profile-policy-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit,minmax(min(100%,20rem),1fr)); }
+.profile-policy-panel .policy-confirmation { margin: 0; }
+@media (max-width: 700px) {
+  .profile-user-cell { min-width: 11rem; }
+  .profile-image-manager { position: static; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-image-preview img { transition: none; }
+}

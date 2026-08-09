@@ -11,6 +11,7 @@ import {
 } from "@/lib/account-setup";
 import { requirePermission, requireRecentStepUp } from "@/lib/auth";
 import { setAuthorizedUserActive } from "@/lib/user-isolation";
+import { deactivateAuthorizedProfileImage } from "@/lib/profile-images";
 import { isUserRole, type UserRole } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
@@ -124,5 +125,12 @@ export async function setUserActiveAction(id: string, active: boolean) {
     z.boolean().parse(active),
     actor,
   );
+  revalidatePath("/users");
+}
+
+export async function deactivateUserProfileImageAction(id: string) {
+  const actor = await requirePermission("manage_users");
+  await requireRecentStepUp(actor, "/users");
+  await deactivateAuthorizedProfileImage(z.uuid().parse(id), actor);
   revalidatePath("/users");
 }

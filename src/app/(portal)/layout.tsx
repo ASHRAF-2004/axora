@@ -125,7 +125,9 @@ export default async function PortalLayout({ children }: { children: React.React
           roleLabel,
           initials: initials(user.name),
           companyId: user.companyId,
-          avatarUrl: profile.avatarAvailable ? "/api/profile/avatar" : undefined,
+          avatarUrl: profile.avatarAvailable
+            ? `/api/profile/avatar?v=${encodeURIComponent(profile.avatarVersion ?? "legacy")}`
+            : undefined,
         }}
         primaryItems={primary}
         drawerItems={visiblePortalNavigation(DRAWER_NAVIGATION, user, messages)

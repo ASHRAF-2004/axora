@@ -8,6 +8,8 @@ import {
 } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { updateProfileImagePolicy } from "@/lib/profile-images";
+import { z } from "zod";
 
 function numberValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -43,4 +45,25 @@ export async function updateCompanyPricingAction(
   revalidatePath("/products");
 
   redirect("/settings?notice=pricing-updated");
+}
+
+export async function updateProfileImagePolicyAction(formData: FormData) {
+  const actor = await requirePermission("manage_settings");
+  await requireRecentStepUp(actor, "/settings");
+  const scope = z.enum(["global", "company"]).parse(readFormText(formData, "scope"));
+  const companyId = readFormText(formData, "companyId");
+  if (scope === "company") {
+    await updateProfileImagePolicy({
+      companyId: z.uuid().parse(companyId),
+      companyPhotoDisplayEnabled: formData.get("companyPhotoDisplayEnabled") === "on",
+    }, actor);
+  } else {
+    await updateProfileImagePolicy({
+      deliveryAgentPhotoRequired: formData.get("deliveryAgentPhotoRequired") === "on",
+    }, actor);
+  }
+  revalidatePath("/settings");
+  revalidatePath("/profile");
+  revalidatePath("/receiving");
+  redirect("/settings?notice=profile-image-policy-updated");
 }

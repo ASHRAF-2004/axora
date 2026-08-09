@@ -11,7 +11,7 @@ describe("complete forward migration chain", () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-28)).toEqual([
+      expect(available.slice(-29)).toEqual([
         "038_canonical_session_scopes.sql",
         "039_scoped_permission_management.sql",
         "040_approval_limit_management.sql",
@@ -40,6 +40,7 @@ describe("complete forward migration chain", () => {
       "063_fulfilment_delivery_execution.sql",
       "064_versioned_generated_documents.sql",
       "065_permission_scoped_procurement_discovery.sql",
+      "066_private_profile_image_lifecycle.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
