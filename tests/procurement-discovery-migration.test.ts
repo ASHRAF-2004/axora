@@ -22,7 +22,7 @@ describe("procurement discovery migration",() => {
     const db=new PGlite();
     try {
       const applied=await applyMigrations(db);
-      expect(applied.at(-1)).toBe("065_permission_scoped_procurement_discovery.sql");
+      expect(applied.at(-1)).toBe("066_private_profile_image_lifecycle.sql");
     } finally { await db.close(); }
   },30_000);
 });

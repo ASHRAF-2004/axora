@@ -28,7 +28,7 @@ export function uploadedContentMatchesMime(contentType: string, bytes: Buffer) {
   if (contentType === "image/png") {
     return bytes.length >= 20
       && bytes.subarray(0, 8).equals(PNG_SIGNATURE)
-      && bytes.subarray(bytes.length - 12, bytes.length - 8).toString("ascii") === "IEND";
+      && bytes.subarray(bytes.length - 8, bytes.length - 4).toString("ascii") === "IEND";
   }
   if (contentType === "image/webp") {
     return bytes.length >= 12

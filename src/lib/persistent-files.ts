@@ -4,6 +4,7 @@ import path from "node:path";
 import { uploadedContentMatchesMime } from "./file-content";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_PROFILE_VARIANT_BYTES = 512 * 1024;
 const MIME_EXTENSIONS: Record<string, string> = {
   "application/pdf": ".pdf",
   "image/jpeg": ".jpg",
@@ -72,6 +73,72 @@ export async function removePersistentUpload(relativePath: string, rootOverride?
   }
 }
 
+export async function storePersistentProfileImageVariant(input: {
+  userId: string;
+  versionId: string;
+  bytes: Buffer;
+  rootOverride?: string;
+}) {
+  if (!input.bytes.length || input.bytes.length > MAX_PROFILE_VARIANT_BYTES
+    || !uploadedContentMatchesMime("image/webp", input.bytes)) {
+    throw new Error("The processed profile image is unavailable.");
+  }
+  const root = storageRoot(input.rootOverride);
+  const rootInfo = await lstat(/* turbopackIgnore: true */ root);
+  if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink()) {
+    throw new Error("Persistent upload storage is unavailable.");
+  }
+  const verifiedRoot = await realpath(/* turbopackIgnore: true */ root);
+  const userId = safeSegment(input.userId);
+  const versionId = safeSegment(input.versionId);
+  const directory = path.join(
+    /* turbopackIgnore: true */ verifiedRoot,
+    "profile-images",
+    userId,
+    versionId,
+  );
+  await mkdir(/* turbopackIgnore: true */ directory, { recursive: true, mode: 0o750 });
+  const verifiedDirectory = await realpath(/* turbopackIgnore: true */ directory);
+  if (!verifiedDirectory.startsWith(`${verifiedRoot}${path.sep}`)) {
+    throw new Error("Persistent upload scope is invalid.");
+  }
+  const relativePath = path.posix.join(
+    "profile-images",
+    userId,
+    versionId,
+    `${randomUUID()}.webp`,
+  );
+  const target = path.join(
+    /* turbopackIgnore: true */ verifiedRoot,
+    ...relativePath.split("/"),
+  );
+  await writeFile(/* turbopackIgnore: true */ target, input.bytes, {
+    flag: "wx",
+    mode: 0o640,
+  });
+  return relativePath;
+}
+
+export async function readPersistentProfileImage(
+  relativePath: string,
+  rootOverride?: string,
+) {
+  if (!/^profile-images\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.webp$/.test(relativePath)
+    || /(^|\/)\.\.?(\/|$)/.test(relativePath)) return null;
+  const root = storageRoot(rootOverride);
+  const target = path.resolve(/* turbopackIgnore: true */ root, relativePath);
+  if (!target.startsWith(`${root}${path.sep}`)) return null;
+  try {
+    const info = await lstat(/* turbopackIgnore: true */ target);
+    if (!info.isFile() || info.isSymbolicLink()
+      || info.size < 1 || info.size > MAX_PROFILE_VARIANT_BYTES) return null;
+    const bytes = await readFile(/* turbopackIgnore: true */ target);
+    return uploadedContentMatchesMime("image/webp", bytes) ? bytes : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function readPersistentUpload(relativePath: string, rootOverride?: string) {
   if (!/^(supplier-portal|delivery-evidence)\/[A-Za-z0-9._/-]+$/.test(relativePath) || /(^|\/)\.\.?(\/|$)/.test(relativePath)) return null;
   const root = storageRoot(rootOverride);
@@ -101,4 +168,7 @@ export async function readPersistentGeneratedDocument(relativePath: string, root
   }
 }
 
-export const persistentFileLimits = { maximumBytes: MAX_UPLOAD_BYTES };
+export const persistentFileLimits = {
+  maximumBytes: MAX_UPLOAD_BYTES,
+  maximumProfileVariantBytes: MAX_PROFILE_VARIANT_BYTES,
+};

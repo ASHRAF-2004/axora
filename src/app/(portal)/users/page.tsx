@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserCreateForm } from "@/components/UserCreateForm";
+import { UserAvatar } from "@/components/UserAvatar";
 import { accessAdministrationMessages } from "@/lib/access-administration-i18n";
 import { requirePagePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/domain";
@@ -13,10 +14,12 @@ import { loadOrganizationStructureWorkspace } from "@/lib/organization-structure
 import { listSuppliers } from "@/lib/repository";
 import { COD_PAYMENT_METHOD, type Branch, type Company } from "@/lib/types";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
+import { profileImageMessages } from "@/lib/profile-image-i18n";
 import Link from "next/link";
 import {
   resendAccountSetupInvitationAction,
   setUserActiveAction,
+  deactivateUserProfileImageAction,
 } from "./actions";
 
 function invitationStatus(user: Awaited<ReturnType<typeof listAuthorizedUsers>>[number]) {
@@ -58,6 +61,7 @@ export default async function UsersPage() {
   const copy = corePortalMessages(locale).users;
   const common = corePortalMessages(locale).common;
   const accessCopy = accessAdministrationMessages(locale);
+  const imageCopy = profileImageMessages(locale);
   const [users, organization, structure, suppliers] = await Promise.all([
     listAuthorizedUsers(actor),
     loadOrganizationDirectory(actor),
@@ -137,7 +141,7 @@ export default async function UsersPage() {
           : user.departmentName ?? user.supplierName ?? user.branchName
             ?? user.companyName ?? copy.companyWide;
       return <tr key={user.id}>
-        <td><strong>{user.displayName}</strong>{user.jobTitle ? ` · ${user.jobTitle}` : ""}<br /><span className="subtle">{user.email}</span></td>
+        <td><div className="profile-user-cell"><UserAvatar name={user.displayName} size={40} userId={user.avatarAvailable ? user.id : undefined} /><div><strong>{user.displayName}</strong>{user.jobTitle ? ` · ${user.jobTitle}` : ""}<br /><span className="subtle">{user.email}</span></div></div></td>
         {showOrganization ? <td>{organizationName}</td> : null}
         <td>{localizedAccountRole(user.role, locale)?.label ?? accountRoleLabel(user.role)}</td>
         <td>{scope}</td>
@@ -157,6 +161,9 @@ export default async function UsersPage() {
             <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
               <button className="button button-secondary" type="submit">{user.active ? copy.deactivate : copy.reactivate}</button>
             </form>
+            {user.avatarAvailable ? <form action={deactivateUserProfileImageAction.bind(null, user.id)}>
+              <button className="text-button" type="submit" aria-label={imageCopy.removeFor(user.displayName)}>{imageCopy.remove}</button>
+            </form> : null}
           </>}
         </div></td>
       </tr>;

@@ -8,7 +8,9 @@ const roots: string[] = [];
 const initialUploadsDirectory = process.env.AXORA_UPLOADS_CONTAINER_DIR;
 const pngBytes = Buffer.concat([
   Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-  Buffer.from("00000000IEND00000000"),
+  Buffer.from([0, 0, 0, 0]),
+  Buffer.from("IEND"),
+  Buffer.from([0xae, 0x42, 0x60, 0x82]),
 ]);
 afterEach(async () => {
   if (initialUploadsDirectory === undefined) delete process.env.AXORA_UPLOADS_CONTAINER_DIR;

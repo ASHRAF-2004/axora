@@ -817,6 +817,8 @@ export interface ReceivingJobWorkspaceItem {
   branchName: string;
   deliveredAt?: string;
   driverEventType?: "DELIVERED" | "PARTIALLY_DELIVERED";
+  driverUserId?: string;
+  driverName?: string;
   /** Driver-entered handover evidence; never the authenticated receipt confirmer. */
   driverReportedReceiverName?: string;
   receiptId?: string;
@@ -847,6 +849,7 @@ export async function getReceivingWorkspace(actor: SessionUser): Promise<Receivi
         job.job_code AS "jobCode",branch.name AS "branchName",
         latest.client_recorded_at::text AS "deliveredAt",latest.event_type AS "driverEventType",
         latest.metadata AS "driverMetadata",receipt.id::text AS "receiptId",
+        assigned.driver_user_id::text AS "driverUserId",assigned.driver_name AS "driverName",
         COALESCE(jsonb_agg(jsonb_build_object(
           'id',job_line.id::text,'requestLineId',line.id::text,
           'productName',line.product_name_snapshot,'plannedQuantity',job_line.quantity_to_deliver::float8,
@@ -867,10 +870,19 @@ export async function getReceivingWorkspace(actor: SessionUser): Promise<Receivi
           AND event.event_type IN ('PARTIALLY_DELIVERED','DELIVERED')
         ORDER BY event.received_at DESC,event.id DESC LIMIT 1
       ) latest ON true
+      LEFT JOIN LATERAL (
+        SELECT assignment.driver_user_id,profile.display_name AS driver_name
+        FROM delivery_job_assignments assignment
+        JOIN user_profiles profile ON profile.user_id=assignment.driver_user_id
+        WHERE assignment.delivery_job_id=job.id
+          AND assignment.status IN ('ASSIGNED','ACCEPTED')
+          AND assignment.ended_at IS NULL
+        ORDER BY assignment.assigned_at DESC,assignment.id DESC LIMIT 1
+      ) assigned ON true
       WHERE latest.received_at IS NOT NULL
         AND ($1::uuid IS NULL OR job.company_id=$1)
         AND ($2::uuid IS NULL OR job.branch_id=$2)
-      GROUP BY job.id,branch.name,latest.client_recorded_at,latest.received_at,latest.event_type,latest.metadata,receipt.id
+      GROUP BY job.id,branch.name,latest.client_recorded_at,latest.received_at,latest.event_type,latest.metadata,receipt.id,assigned.driver_user_id,assigned.driver_name
       ORDER BY (receipt.id IS NULL) DESC,latest.received_at DESC
     `, [companyId ?? null, branchId ?? null]);
     return result.rows.map((job) => {

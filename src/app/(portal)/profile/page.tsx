@@ -1,10 +1,11 @@
 import { PageHeader } from "@/components/PageHeader";
+import { ProfileImageManager } from "@/components/ProfileImageManager";
 import { requireAccountLifecycleSession } from "@/lib/auth";
 import { LOCALE_NAMES, SUPPORTED_LOCALES } from "@/lib/i18n";
 import { getMyProfile, myProfileMeetsRequiredOnboarding } from "@/lib/profile";
+import { getProfileImagePolicy } from "@/lib/profile-images";
 import { safeInternalReturnPath } from "@/lib/session-return";
-import { BellRing, Camera, CheckCircle2, Languages, ShieldCheck, UserRound } from "lucide-react";
-import Image from "next/image";
+import { BellRing, CheckCircle2, Languages, ShieldCheck, UserRound } from "lucide-react";
 import {
   removeProfileImageAction,
   saveProfileAction,
@@ -83,7 +84,15 @@ export default async function ProfilePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const actor = await requireAccountLifecycleSession();
-  const profile = await getMyProfile(actor);
+  const [profile, imagePolicy] = await Promise.all([
+    getMyProfile(actor),
+    actor.accountKind === "DELIVERY"
+      ? getProfileImagePolicy(actor)
+      : Promise.resolve({
+          deliveryAgentPhotoRequired: false,
+          retiredVersionRetentionDays: 30,
+        }),
+  ]);
   const copy = profileCopy[profile.preferredLocale];
   const search = await searchParams;
   const onboarding = !myProfileMeetsRequiredOnboarding(profile) || search.onboarding === "1";
@@ -108,26 +117,15 @@ export default async function ProfilePage({
     />
 
     {saved ? <div className="form-success profile-feedback" role="status"><CheckCircle2 size={18} />{copy.saved}</div> : null}
-    {error ? <div className="form-alert profile-feedback" role="alert">{error === "invalid-image"
-      ? copy.invalidImage
-      : copy.invalid}</div> : null}
+    {error && !error.startsWith("image-") ? <div className="form-alert profile-feedback" role="alert">{copy.invalid}</div> : null}
 
     <div className="profile-layout">
-      <aside className="profile-identity" aria-label={copy.profileImage}>
-        <div className="profile-avatar-large">
-          {profile.avatarAvailable
-            ? <Image src="/api/profile/avatar" width={128} height={128} alt={copy.imageAlt(profile.displayName)} unoptimized />
-            : <span aria-hidden="true">{profile.displayName.trim().split(/\s+/).slice(0, 2).map((name) => name[0]).join("").toUpperCase()}</span>}
-        </div>
-        <div><strong>{profile.displayName}</strong><span>{profile.email}</span></div>
-        <form action={uploadProfileImageAction} className="avatar-upload-form">
-          {continuityFields}
-          <label className="button button-secondary"><Camera size={16} />{copy.choosePhoto}<input className="sr-only" name="avatar" type="file" accept="image/png,image/jpeg,image/webp" required /></label>
-          <button className="button button-primary" type="submit">{copy.upload}</button>
-        </form>
-        {profile.avatarAvailable ? <form action={removeProfileImageAction}>{continuityFields}<button className="text-button" type="submit">{copy.removePhoto}</button></form> : null}
-        <small>{copy.imageHelp}</small>
-      </aside>
+      <ProfileImageManager available={profile.avatarAvailable} email={profile.email} errorCode={error}
+        locale={profile.preferredLocale} name={profile.displayName} onboarding={onboarding}
+        removeAction={removeProfileImageAction}
+        required={actor.accountKind === "DELIVERY" && imagePolicy.deliveryAgentPhotoRequired}
+        returnTo={returnTo} savedState={saved} uploadAction={uploadProfileImageAction}
+        version={profile.avatarVersion} />
 
       <form action={saveProfileAction} className="profile-form" aria-label={copy.formLabel}>
         {continuityFields}

@@ -342,6 +342,7 @@ export interface AttachmentRecord {
 
 export interface UserRecord {
   id: string; email: string; displayName: string; role: UserRole; active: boolean; isOwner: boolean;
+  avatarAvailable?: boolean;
   companyId?: string; companyName?: string; branchId?: string; branchName?: string;
   departmentId?: string; departmentName?: string;
   supplierId?: string; supplierName?: string; jobTitle?: string;

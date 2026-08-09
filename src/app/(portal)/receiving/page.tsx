@@ -12,6 +12,8 @@ import {
   rolePortalMessages,
 } from "@/lib/role-portals-i18n";
 import { confirmReceiptAction } from "./actions";
+import { UserAvatar } from "@/components/UserAvatar";
+import { profileImageMessages } from "@/lib/profile-image-i18n";
 
 export default async function ReceivingPage({
   searchParams,
@@ -22,6 +24,7 @@ export default async function ReceivingPage({
   const [jobs, params] = await Promise.all([getReceivingWorkspace(actor), searchParams]);
   const locale = actor.preferredLocale ?? "en";
   const copy = rolePortalMessages(locale).receiving;
+  const imageCopy = profileImageMessages(locale);
   const canConfirm = canAccess(actor, "confirm_receipts");
   const open = jobs.filter((job) => !job.receiptId);
   return (
@@ -45,6 +48,7 @@ export default async function ReceivingPage({
                 <div><span className={styles.reference}>{job.jobCode}</span><h2>{job.branchName}</h2></div>
                 <StatusBadge>{formatRolePortalStatus(job.receiptId ? "CONFIRMED" : "AWAITING_CONFIRMATION", locale)}</StatusBadge>
               </header>
+              {job.driverUserId && job.driverName ? <div className="delivery-agent-identity"><UserAvatar deliveryJobId={job.id} name={job.driverName} size={48} userId={job.driverUserId} /><div><span>{imageCopy.assignedAgent}</span><strong>{job.driverName}</strong></div></div> : null}
               <p className={styles.deliveryTime}>{copy.driverRecorded} <strong>{formatRolePortalStatus(job.driverEventType, locale)} · {formatRolePortalDateTime(job.deliveredAt, locale, copy.awaitingDriverEvent, actor.timezone)}</strong></p>
               {job.driverReportedReceiverName ? <div className={styles.driverEvidence}><strong>{copy.driverReportedReceiver}: {job.driverReportedReceiverName}</strong><span>{copy.driverEvidenceOnly}</span></div> : null}
               {job.receiptId ? (

@@ -34,6 +34,7 @@ const userDirectoryRowSchema = z.object({
   displayName: z.string().trim().min(1).max(300),
   role: z.string().refine(isUserRole, "Unknown account role"),
   active: z.boolean(),
+  avatarAvailable: z.boolean(),
   isOwner: z.boolean(),
   accountKind: z.string().refine(isAccountKind, "Unknown account kind"),
   accountStatus: z.enum(["INVITED", "ACTIVE", "SUSPENDED", "CLOSED"]),
@@ -91,6 +92,7 @@ interface UserDirectoryRow extends QueryResultRow {
   displayName: string;
   role: string;
   active: boolean;
+  avatarAvailable: boolean;
   isOwner: boolean;
   accountKind: string;
   accountStatus: string;
@@ -143,6 +145,7 @@ function toUserRecord(row: UserDirectoryRow): UserRecord {
     displayName: value.displayName,
     role: value.role,
     active: value.active,
+    avatarAvailable: value.avatarAvailable,
     isOwner: value.isOwner,
     companyId: value.companyId,
     companyName: value.companyName,
@@ -184,6 +187,7 @@ export async function listAuthorizedUsers(
         display_name AS "displayName",
         role_key AS role,
         active,
+        public.axora_profile_image_available($1,$2,user_id,$3) AS "avatarAvailable",
         is_owner AS "isOwner",
         account_kind AS "accountKind",
         account_status AS "accountStatus",

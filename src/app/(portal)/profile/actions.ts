@@ -6,6 +6,7 @@ import {
   removeMyProfileImage,
   saveMyProfileImage,
 } from "@/lib/profile";
+import { ProfileImageError } from "@/lib/profile-images";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
@@ -84,9 +85,14 @@ export async function uploadProfileImageAction(formData: FormData) {
   const file = formData.get("avatar");
   try {
     if (!(file instanceof File)) throw new Error("Choose an image.");
-    await saveMyProfileImage(file, actor);
-  } catch {
-    redirect(profileStatePath(formData, { error: "invalid-image" }));
+    await saveMyProfileImage(file, actor, {
+      focalX: formData.get("focalX") ?? 50,
+      focalY: formData.get("focalY") ?? 50,
+      zoom: formData.get("zoom") ?? 1,
+    });
+  } catch (error) {
+    const code = error instanceof ProfileImageError ? error.code : "unavailable";
+    redirect(profileStatePath(formData, { error: `image-${code}` }));
   }
   revalidatePath("/profile");
   redirect(profileStatePath(formData, { saved: "image" }));
