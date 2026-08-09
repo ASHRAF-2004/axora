@@ -379,7 +379,12 @@ export default async function DashboardPage({
             </div>
             <Link className="table-link" href="/requests">{copy.viewAll}</Link>
           </div>
-          <div className="data-table-wrap">
+          <div
+            className="data-table-wrap"
+            role="region"
+            aria-label={copy.attentionTitle}
+            tabIndex={0}
+          >
             <table className="data-table">
               <thead>
                 <tr>
