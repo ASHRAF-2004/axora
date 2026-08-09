@@ -84,7 +84,7 @@ export function ProfileImageManager({
       /> : <UserAvatar alt={copy.preview} name={name} size={128} />}
     </div>
     <div className="profile-image-heading">
-      <div><strong id="profile-image-title">{copy.title}</strong><span>{required ? copy.required : copy.optional}</span></div>
+      <div><h2 id="profile-image-title">{copy.title}</h2><span>{required ? copy.required : copy.optional}</span></div>
       <div><strong>{name}</strong><span>{email}</span></div>
     </div>
     {savedState === "image" ? <p className="form-success" role="status">{copy.saved}</p> : null}

@@ -4042,6 +4042,7 @@ bdi[dir="auto"] {
 .profile-image-preview img { transition: transform 160ms ease, object-position 160ms ease; }
 .profile-image-heading { display: grid; gap: .65rem; text-align: center; }
 .profile-image-heading > div { display: grid; gap: .2rem; }
+.profile-image-heading h2 { font-size: 1rem; margin: 0; }
 .profile-image-heading span { color: var(--text-muted, #64706a); font-size: .8rem; }
 .profile-image-form,.profile-image-crop-controls { display: grid; gap: .7rem; width: 100%; }
 .profile-image-crop-controls label { display: grid; font-size: .8rem; gap: .25rem; text-align: start; }
