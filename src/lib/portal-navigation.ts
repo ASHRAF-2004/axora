@@ -40,6 +40,7 @@ export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/documents", label: "Documents", description: "Permitted evidence and records", permission: "view_documents", group: "workspace" },
   { href: "/reports", label: "Reports", description: "Operational and company insights", permission: "view_reports", group: "insight" },
   { href: "/audit", label: "Audit history", description: "Read-only evidence trail", permission: "view_audit", group: "insight" },
+  { href: "/email-operations", label: "Email operations", description: "Delivery, suppression and provider health", permission: "view_email_operations", group: "support" },
   { href: "/support", label: "Support diagnostics", description: "Audited system and account checks", permission: "view_system_diagnostics", group: "support" },
   { href: "/settings", label: "Settings", description: "Personal and permitted administration", group: "support" },
   { href: "/help", label: "Help & tutorial", description: "Guidance for your role", group: "support" },

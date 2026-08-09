@@ -778,6 +778,7 @@ export async function authorizeAccountSetupDelivery(
            AND account.active=true
            AND account.account_status='INVITED'
            AND account.account_setup_completed_at IS NULL
+           AND NOT axora_email_agent_is_paused('axora-auth')
            AND NOT axora_email_recipient_is_suppressed(account.email)
          RETURNING invitation.id`,
         [invitationId, hashAccountSetupToken(rawToken)],

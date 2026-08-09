@@ -1,0 +1,61 @@
+.workspace { display: grid; gap: 22px; }
+.boundary { border-inline-start: 4px solid var(--teal-600); }
+.filterGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.filterActions { display: flex; align-items: end; gap: 10px; grid-column: 1 / -1; }
+.metricGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.metric { min-height: 118px; padding: 17px; border: 1px solid var(--slate-200); border-radius: 16px; background: linear-gradient(145deg, #fff 0%, var(--slate-50) 100%); }
+.metric span { display: block; color: var(--slate-500); font-size: 12px; font-weight: 750; }
+.metric strong { display: block; margin-top: 10px; color: var(--navy-900); font-size: clamp(22px, 3vw, 34px); }
+.metric small { display: block; margin-top: 5px; color: var(--slate-500); overflow-wrap: anywhere; }
+.agentGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.agent { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--slate-200); border-radius: 16px; background: #fff; }
+.agentHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.state { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 9px; border-radius: 999px; color: var(--teal-800); background: var(--teal-50); font-size: 11px; font-weight: 800; }
+.statePaused { color: #8a3d00; background: #fff3e7; }
+.agentMetrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.agentMetrics div { padding: 9px; border-radius: 10px; background: var(--slate-50); }
+.agentMetrics span { display: block; color: var(--slate-500); font-size: 10px; }
+.agentMetrics strong { font-size: 18px; }
+.agentForm { display: grid; gap: 9px; }
+.providerGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .9fr); gap: 16px; }
+.healthCard { display: grid; gap: 13px; padding: 18px; border-radius: 18px; color: #fff; background: radial-gradient(circle at 90% 0%, rgba(42, 210, 178, .3), transparent 36%), linear-gradient(135deg, #0a2437, #123f52); }
+.healthGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.healthGrid div { padding: 11px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; background: rgba(255,255,255,.06); }
+.healthGrid span { display: block; color: rgba(255,255,255,.68); font-size: 10px; }
+.healthGrid strong { display: block; margin-top: 4px; overflow-wrap: anywhere; }
+.providerForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.full { grid-column: 1 / -1; }
+.records { display: grid; gap: 12px; }
+.record { display: grid; grid-template-columns: minmax(210px, 1.1fr) minmax(180px, .8fr) minmax(220px, 1fr); gap: 16px; padding: 17px; border: 1px solid var(--slate-200); border-radius: 17px; background: #fff; }
+.record h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.recordMeta { display: grid; gap: 7px; color: var(--slate-600); font-size: 12px; }
+.recordMeta span { overflow-wrap: anywhere; }
+.recordActions { display: grid; align-content: start; gap: 10px; }
+.recordActions details { border: 1px solid var(--slate-200); border-radius: 12px; padding: 10px; }
+.recordActions summary { cursor: pointer; font-weight: 750; }
+.actionForm { display: grid; gap: 9px; margin-top: 10px; }
+.actionButtons { display: flex; flex-wrap: wrap; gap: 7px; }
+.actionButtons button { min-height: 40px; }
+.evidenceGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.evidenceList { display: grid; gap: 8px; }
+.evidenceRow { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 11px; border-radius: 11px; background: var(--slate-50); }
+.evidenceRow span, .evidenceRow small { overflow-wrap: anywhere; }
+.pagination { display: flex; justify-content: space-between; gap: 12px; }
+
+@media (max-width: 1050px) {
+  .filterGrid, .metricGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agentGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .providerGrid, .record { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .filterGrid, .metricGrid, .agentGrid, .providerForm, .evidenceGrid { grid-template-columns: 1fr; }
+  .filterActions, .full { grid-column: auto; }
+  .filterActions, .actionButtons, .pagination { align-items: stretch; flex-direction: column; }
+  .filterActions > *, .actionButtons > * { width: 100%; }
+  .record { padding: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace *, .workspace *::before, .workspace *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+}

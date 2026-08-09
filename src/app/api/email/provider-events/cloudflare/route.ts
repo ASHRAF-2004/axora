@@ -3,6 +3,7 @@ import {
   recordCloudflareEmailProviderEvent,
   verifyEmailProviderEventRequest,
 } from "@/lib/email-provider-events";
+import { recordEmailWebhookProcessingFailure } from "@/lib/email-operations";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -102,6 +103,10 @@ export async function POST(request: Request) {
   try {
     event = eventSchema.parse(JSON.parse(rawBody));
   } catch {
+    await recordEmailWebhookProcessingFailure(
+      "cloudflare-email-service",
+      "invalid_payload",
+    ).catch(() => undefined);
     return noStoreJson({ error: "invalid_request" }, 400);
   }
 
@@ -111,6 +116,10 @@ export async function POST(request: Request) {
     // 2xx lets the Queue acknowledge it without changing suppression counts.
     return noStoreJson({ accepted: true, ...result });
   } catch {
+    await recordEmailWebhookProcessingFailure(
+      "cloudflare-email-service",
+      "processing_failed",
+    ).catch(() => undefined);
     return noStoreJson({ error: "service_unavailable" }, 503);
   }
 }

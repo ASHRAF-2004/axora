@@ -105,6 +105,35 @@ describe("role-specific portal navigation boundaries", () => {
     expect(profileActions).toContain("landingPathForSession(actor)");
   });
 
+  it("exposes email operations only to the authorized platform operations boundary", () => {
+    const owner: AccessSubject = {
+      role: "PLATFORM_OWNER", isOwner: true, accountKind: "PLATFORM",
+      scopeType: "PLATFORM",
+    };
+    const operations: AccessSubject = {
+      role: "PLATFORM_OPERATIONS", isOwner: false, accountKind: "PLATFORM",
+      scopeType: "PLATFORM",
+    };
+    const manager: AccessSubject = {
+      role: "CLIENT_ACCOUNT_MANAGER", isOwner: false, accountKind: "PLATFORM",
+      scopeType: "COMPANY", companyId,
+    };
+    const companyAdmin: AccessSubject = {
+      role: "COMPANY_ADMIN", isOwner: false, accountKind: "COMPANY",
+      scopeType: "COMPANY", companyId,
+    };
+
+    for (const subject of [owner, operations, manager]) {
+      expect(hrefs(DRAWER_NAVIGATION, subject)).toContain("/email-operations");
+      expect(canAccess(subject, "view_email_operations")).toBe(true);
+    }
+    expect(canAccess(owner, "manage_email_operations")).toBe(true);
+    expect(canAccess(operations, "manage_email_operations")).toBe(true);
+    expect(canAccess(manager, "manage_email_operations")).toBe(false);
+    expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).not.toContain("/email-operations");
+    expect(canAccess(companyAdmin, "view_email_operations")).toBe(false);
+  });
+
   it("fails navigation closed for a forged owner flag", () => {
     const forged: AccessSubject = {
       role: "COMPANY_ADMIN",
