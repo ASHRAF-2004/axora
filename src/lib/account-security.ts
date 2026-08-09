@@ -94,16 +94,15 @@ export async function getAccountSecurityOverview(
           profile.timezone,
           profile.notification_email_enabled AS "emailNotifications",
           profile.notification_in_app_enabled AS "inAppNotifications",
-          (SELECT count(*)::text FROM in_app_notifications notification
-            WHERE notification.recipient_user_id=account.id
-              AND notification.read_at IS NULL
-              AND notification.archived_at IS NULL) AS "unreadNotifications"
+          COALESCE(public.axora_notification_summary($1,$2,now())
+            ->>'unreadCount','0')
+            AS "unreadNotifications"
         FROM users account
         JOIN user_profiles profile ON profile.user_id=account.id
         JOIN account_credentials credential ON credential.user_id=account.id
         WHERE account.id=$1 AND account.active=true
           AND account.account_status='ACTIVE'
-      `, [actor.id]);
+      `, [actor.id, actor.roleAssignmentId ?? null]);
       const account = summary.rows[0];
       if (!account) throw new Error("Account security information is unavailable.");
 

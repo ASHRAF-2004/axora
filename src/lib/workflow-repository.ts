@@ -299,18 +299,14 @@ export async function notifyWorkflowUsers(
       routePath: input.routePath,
       priority: input.priority,
     });
-    if (effective.inAppEnabled) {
-      const result = await client.query(`
-        INSERT INTO in_app_notifications(
-          id,company_id,recipient_user_id,workflow_event_id,event_key,dedupe_key,
-          title,body,priority,route_path,created_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-        ON CONFLICT(company_id,recipient_user_id,dedupe_key) DO NOTHING
-      `, [draft.id,draft.companyId,draft.recipientUserId,draft.workflowEventId,
-        draft.eventKey,draft.dedupeKey,draft.title,draft.body,draft.priority,
-        draft.routePath ?? null,draft.createdAt]);
-      inserted += result.rowCount ?? 0;
-    }
+    const result = await client.query<{ created: boolean }>(`
+      SELECT created FROM public.axora_insert_in_app_notification(
+        $1,$2,$3,$4,NULL,$5,$6,$7,$8,$9,$10,$11
+      )
+    `, [draft.id,draft.companyId,draft.recipientUserId,draft.workflowEventId,
+      draft.eventKey,draft.dedupeKey,draft.title,draft.body,draft.priority,
+      draft.routePath ?? null,draft.createdAt]);
+    inserted += result.rows[0]?.created ? 1 : 0;
     if (effective.emailEnabled) {
       await enqueueWorkflowEmail(client, {
         companyId: draft.companyId,

@@ -46,8 +46,8 @@ function clientWithPreference(input: {
         rows: [{ id: "00000000-0000-4000-8000-000000000055" }],
       };
     }
-    if (sql.includes("INSERT INTO in_app_notifications")) {
-      return { rowCount: 1, rows: [] };
+    if (sql.includes("axora_insert_in_app_notification")) {
+      return { rowCount: 1, rows: [{ created: true }] };
     }
     throw new Error(`Unexpected query: ${sql}`);
   });
@@ -55,7 +55,7 @@ function clientWithPreference(input: {
 }
 
 describe("independent workflow notification preferences", () => {
-  it("queues email when in-app is disabled", async () => {
+  it("keeps authoritative in-app evidence when a legacy preference disables it", async () => {
     const client = clientWithPreference({
       globalInAppEnabled: true,
       globalEmailEnabled: true,
@@ -69,10 +69,10 @@ describe("independent workflow notification preferences", () => {
       routePath: `/requests/${event.requestId}`,
     });
 
-    expect(inserted).toBe(0);
+    expect(inserted).toBe(1);
     const calls = vi.mocked(client.query).mock.calls.map(([sql]) => String(sql));
     expect(calls.some((sql) => sql.includes("axora_enqueue_workflow_email"))).toBe(true);
-    expect(calls.some((sql) => sql.includes("INSERT INTO in_app_notifications"))).toBe(false);
+    expect(calls.some((sql) => sql.includes("axora_insert_in_app_notification"))).toBe(true);
   });
 
   it("creates in-app notification when email is disabled", async () => {
@@ -89,11 +89,11 @@ describe("independent workflow notification preferences", () => {
 
     expect(inserted).toBe(1);
     const calls = vi.mocked(client.query).mock.calls.map(([sql]) => String(sql));
-    expect(calls.some((sql) => sql.includes("INSERT INTO in_app_notifications"))).toBe(true);
+    expect(calls.some((sql) => sql.includes("axora_insert_in_app_notification"))).toBe(true);
     expect(calls.some((sql) => sql.includes("axora_enqueue_workflow_email"))).toBe(false);
   });
 
-  it("honors a temporary mute for both channels", async () => {
+  it("honors a temporary mute only for optional email", async () => {
     const client = clientWithPreference({
       globalInAppEnabled: true,
       globalEmailEnabled: true,
@@ -104,8 +104,10 @@ describe("independent workflow notification preferences", () => {
     await expect(notifyWorkflowUsers(client, event, {
       recipientUserIds: [recipientUserId],
       message: { key: "request_approved" },
-    })).resolves.toBe(0);
-    expect(vi.mocked(client.query)).toHaveBeenCalledOnce();
+    })).resolves.toBe(1);
+    const calls = vi.mocked(client.query).mock.calls.map(([sql]) => String(sql));
+    expect(calls.some((sql) => sql.includes("axora_insert_in_app_notification"))).toBe(true);
+    expect(calls.some((sql) => sql.includes("axora_enqueue_workflow_email"))).toBe(false);
   });
 
   it("renders stored and emailed content in the recipient's saved locale", async () => {
@@ -122,7 +124,7 @@ describe("independent workflow notification preferences", () => {
     });
 
     const calls = vi.mocked(client.query).mock.calls;
-    const inApp = calls.find(([sql]) => String(sql).includes("INSERT INTO in_app_notifications"));
+    const inApp = calls.find(([sql]) => String(sql).includes("axora_insert_in_app_notification"));
     const email = calls.find(([sql]) => String(sql).includes("axora_enqueue_workflow_email"));
     expect(inApp?.[1]).toEqual(expect.arrayContaining([
       "تم اعتماد طلب الشراء",

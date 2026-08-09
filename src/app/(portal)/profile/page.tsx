@@ -34,8 +34,8 @@ const profileCopy = {
     displayName: "Display name", jobTitle: "Job title", jobExample: "For example, Branch manager", phone: "Phone", accountEmail: "Account email",
     emailHelp: "Contact an authorized administrator to change the sign-in email.", languageTime: "Language and time", languageHelp: "Dates, email, and guidance use these personal preferences.",
     preferredLanguage: "Preferred language", timeZone: "Time zone", notifications: "Notifications",
-    notificationsHelp: "Choose where Axora sends relevant work updates. Individual event preferences remain available in Account.",
-    inApp: "In-app notifications", inAppHelp: "Show assignments, decisions, delivery events, and exceptions in Axora.",
+    notificationsHelp: "In-app workflow evidence is always available. Optional email and reminder choices are managed in Notifications.",
+    inApp: "In-app notifications", inAppHelp: "Always on so assignments, decisions, delivery events, and exceptions remain available.",
     email: "Email notifications", emailNotificationsHelp: "Send important transactional updates to your account email.",
     policy: "I confirm these details and accept the required Axora policies.", policyHelp: "Do not share your account, password, session, or invitation links.",
     next: "Next: a short tutorial for your role", audit: "Changes are recorded in the audit trail.", saveContinue: "Save and continue", save: "Save profile",
@@ -52,8 +52,8 @@ const profileCopy = {
     displayName: "اسم العرض", jobTitle: "المسمى الوظيفي", jobExample: "مثال: مدير فرع", phone: "الهاتف", accountEmail: "بريد الحساب",
     emailHelp: "تواصل مع مدير مخوّل لتغيير بريد تسجيل الدخول.", languageTime: "اللغة والوقت", languageHelp: "تستخدم التواريخ والرسائل والإرشادات هذه التفضيلات.",
     preferredLanguage: "اللغة المفضلة", timeZone: "المنطقة الزمنية", notifications: "الإشعارات",
-    notificationsHelp: "اختر أين ترسل Axora تحديثات العمل المهمة. تتوفر تفضيلات الأحداث المنفردة في الحساب.",
-    inApp: "إشعارات داخل التطبيق", inAppHelp: "إظهار المهام والقرارات وأحداث التسليم والاستثناءات في Axora.",
+    notificationsHelp: "تبقى أدلة سير العمل داخل التطبيق متاحة دائماً. تُدار خيارات البريد والتذكير الاختيارية في الإشعارات.",
+    inApp: "إشعارات داخل التطبيق", inAppHelp: "مفعّلة دائماً حتى تبقى المهام والقرارات وأحداث التسليم والاستثناءات متاحة.",
     email: "إشعارات البريد الإلكتروني", emailNotificationsHelp: "إرسال التحديثات المهمة إلى بريد حسابك.",
     policy: "أؤكد صحة هذه البيانات وأوافق على سياسات Axora المطلوبة.", policyHelp: "لا تشارك حسابك أو كلمة مرورك أو جلستك أو روابط الدعوة.",
     next: "التالي: دليل قصير مخصص لدورك", audit: "تُسجل التغييرات في سجل التدقيق.", saveContinue: "حفظ ومتابعة", save: "حفظ الملف",
@@ -70,8 +70,8 @@ const profileCopy = {
     displayName: "Nama paparan", jobTitle: "Jawatan", jobExample: "Contohnya, Pengurus cawangan", phone: "Telefon", accountEmail: "E-mel akaun",
     emailHelp: "Hubungi pentadbir yang dibenarkan untuk menukar e-mel log masuk.", languageTime: "Bahasa dan masa", languageHelp: "Tarikh, e-mel dan panduan menggunakan pilihan peribadi ini.",
     preferredLanguage: "Bahasa pilihan", timeZone: "Zon waktu", notifications: "Pemberitahuan",
-    notificationsHelp: "Pilih tempat Axora menghantar kemas kini kerja yang berkaitan. Pilihan acara individu tersedia dalam Akaun.",
-    inApp: "Pemberitahuan dalam aplikasi", inAppHelp: "Paparkan tugasan, keputusan, acara penghantaran dan pengecualian dalam Axora.",
+    notificationsHelp: "Bukti aliran kerja dalam aplikasi sentiasa tersedia. Pilihan e-mel dan peringatan diurus dalam Pemberitahuan.",
+    inApp: "Pemberitahuan dalam aplikasi", inAppHelp: "Sentiasa aktif supaya tugasan, keputusan, penghantaran dan pengecualian kekal tersedia.",
     email: "Pemberitahuan e-mel", emailNotificationsHelp: "Hantar kemas kini transaksi penting ke e-mel akaun anda.",
     policy: "Saya mengesahkan butiran ini dan menerima dasar Axora yang diperlukan.", policyHelp: "Jangan kongsi akaun, kata laluan, sesi atau pautan jemputan anda.",
     next: "Seterusnya: tutorial ringkas untuk peranan anda", audit: "Perubahan direkodkan dalam jejak audit.", saveContinue: "Simpan dan teruskan", save: "Simpan profil",
@@ -145,7 +145,7 @@ export default async function ProfilePage({
 
         <header><BellRing size={21} /><div><h2>{copy.notifications}</h2><p>{copy.notificationsHelp}</p></div></header>
         <div className="preference-list">
-          <label><input name="inAppNotifications" type="checkbox" defaultChecked={profile.inAppNotifications} /><span><strong>{copy.inApp}</strong><small>{copy.inAppHelp}</small></span></label>
+          <label><input name="inAppNotifications" type="checkbox" checked disabled aria-describedby="profile-in-app-help" /><span><strong>{copy.inApp}</strong><small id="profile-in-app-help">{copy.inAppHelp}</small></span></label>
           <label><input name="emailNotifications" type="checkbox" defaultChecked={profile.emailNotifications} /><span><strong>{copy.email}</strong><small>{copy.emailNotificationsHelp}</small></span></label>
         </div>
 

@@ -3,6 +3,75 @@ import { workflowIdempotencyKey } from "./workflow-events";
 
 export type NotificationPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 export type NotificationDigestMode = "IMMEDIATE" | "DAILY" | "WEEKLY";
+export type NotificationCategory =
+  | "ACCOUNT"
+  | "LEAD"
+  | "APPROVAL"
+  | "BUDGET"
+  | "SOURCING"
+  | "DELIVERY"
+  | "FINANCE"
+  | "EMAIL"
+  | "WORKFLOW";
+
+export interface NotificationEventPolicy {
+  eventKey: string;
+  category: NotificationCategory;
+  emailMandatory: boolean;
+  defaultReminderHours?: number;
+  companyConfigurable: boolean;
+}
+
+export const NOTIFICATION_EVENT_POLICIES = [
+  { eventKey: "invitation.sent", category: "ACCOUNT", emailMandatory: true, companyConfigurable: false },
+  { eventKey: "invitation.accepted", category: "ACCOUNT", emailMandatory: true, companyConfigurable: false },
+  { eventKey: "password.changed", category: "ACCOUNT", emailMandatory: true, companyConfigurable: false },
+  { eventKey: "email.verification", category: "ACCOUNT", emailMandatory: true, companyConfigurable: false },
+  { eventKey: "company.lead.created", category: "LEAD", emailMandatory: false, defaultReminderHours: 24, companyConfigurable: false },
+  { eventKey: "company.lead.submitted", category: "LEAD", emailMandatory: false, defaultReminderHours: 24, companyConfigurable: false },
+  { eventKey: "company.lead.assigned", category: "LEAD", emailMandatory: false, defaultReminderHours: 24, companyConfigurable: false },
+  { eventKey: "company.lead.reassigned", category: "LEAD", emailMandatory: false, companyConfigurable: false },
+  { eventKey: "company.lead.contacted", category: "LEAD", emailMandatory: false, companyConfigurable: false },
+  { eventKey: "company.lead.information_requested", category: "LEAD", emailMandatory: false, defaultReminderHours: 24, companyConfigurable: false },
+  { eventKey: "company.lead.qualified", category: "LEAD", emailMandatory: false, companyConfigurable: false },
+  { eventKey: "company.lead.converted", category: "LEAD", emailMandatory: false, companyConfigurable: false },
+  { eventKey: "company.lead.rejected", category: "LEAD", emailMandatory: false, companyConfigurable: false },
+  { eventKey: "company.lead.archived", category: "LEAD", emailMandatory: false, companyConfigurable: false },
+  { eventKey: "company.lead.sla_overdue", category: "LEAD", emailMandatory: true, defaultReminderHours: 12, companyConfigurable: false },
+  { eventKey: "request.submitted", category: "WORKFLOW", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "request.status_changed", category: "WORKFLOW", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "request.approved", category: "APPROVAL", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "request.rejected", category: "APPROVAL", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "approval.needed", category: "APPROVAL", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
+  { eventKey: "approval.company_required", category: "APPROVAL", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
+  { eventKey: "budget.low", category: "BUDGET", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "budget.zero", category: "BUDGET", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
+  { eventKey: "budget.refreshed", category: "BUDGET", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "budget.refresh_failed", category: "BUDGET", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
+  { eventKey: "quotation.requested", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "quotation.received", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "supplier.selected", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "supplier.order_selected", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "supplier.order_acknowledged", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "supplier.rfq_acknowledged", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "delivery.scheduled", category: "DELIVERY", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "driver.assigned", category: "DELIVERY", emailMandatory: false, defaultReminderHours: 12, companyConfigurable: true },
+  { eventKey: "delivery.out_for_delivery", category: "DELIVERY", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "delivery.arrived", category: "DELIVERY", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "delivery.completed", category: "DELIVERY", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "receipt.required", category: "DELIVERY", emailMandatory: true, defaultReminderHours: 12, companyConfigurable: true },
+  { eventKey: "receipt.confirmed", category: "DELIVERY", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "discrepancy.opened", category: "DELIVERY", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
+  { eventKey: "invoice.issued", category: "FINANCE", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "payment.status_changed", category: "FINANCE", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "three_way_match.completed", category: "FINANCE", emailMandatory: false, companyConfigurable: true },
+  { eventKey: "three_way_match.exception", category: "FINANCE", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
+  { eventKey: "email.hard_bounce", category: "EMAIL", emailMandatory: true, companyConfigurable: false },
+] as const satisfies readonly NotificationEventPolicy[];
+
+export const NOTIFICATION_EVENT_KEYS = NOTIFICATION_EVENT_POLICIES.map(
+  (policy) => policy.eventKey,
+);
 
 export interface GlobalNotificationPreference {
   inAppEnabled: boolean;
@@ -20,6 +89,7 @@ export interface EventNotificationPreference {
 export interface EffectiveNotificationPreference {
   inAppEnabled: boolean;
   emailEnabled: boolean;
+  emailMandatory: boolean;
   digestMode: NotificationDigestMode;
   muted: boolean;
 }
@@ -71,17 +141,56 @@ export function resolveNotificationPreference(
   const mutedUntil = eventPreference?.mutedUntil
     ? validDate(eventPreference.mutedUntil, "Notification mute time")
     : null;
-  const muted = Boolean(mutedUntil && mutedUntil.getTime() > now.getTime());
+  const policy = eventPreference
+    ? NOTIFICATION_EVENT_POLICIES.find((item) => item.eventKey === eventPreference.eventKey)
+    : undefined;
+  const emailMandatory = policy?.emailMandatory ?? false;
+  const muted = !emailMandatory
+    && Boolean(mutedUntil && mutedUntil.getTime() > now.getTime());
   return {
-    inAppEnabled: globalPreference.inAppEnabled
-      && (eventPreference?.inAppEnabled ?? true)
-      && !muted,
-    emailEnabled: globalPreference.emailEnabled
+    // In-app evidence is authoritative and cannot be suppressed by either a
+    // legacy profile value, an event preference, or a temporary email mute.
+    inAppEnabled: true,
+    emailEnabled: emailMandatory || (globalPreference.emailEnabled
       && (eventPreference?.emailEnabled ?? true)
-      && !muted,
-    digestMode: eventPreference?.digestMode ?? "IMMEDIATE",
+      && !muted),
+    emailMandatory,
+    digestMode: emailMandatory
+      ? "IMMEDIATE"
+      : eventPreference?.digestMode ?? "IMMEDIATE",
     muted,
   };
+}
+
+export function notificationPolicyForEvent(eventKey: string): NotificationEventPolicy {
+  const configured = NOTIFICATION_EVENT_POLICIES.find(
+    (policy) => policy.eventKey === eventKey,
+  );
+  if (configured) return configured;
+  const category: NotificationCategory = eventKey.startsWith("company.lead.")
+    ? "LEAD"
+    : eventKey.startsWith("approval.") || eventKey.startsWith("request.approv")
+      || eventKey.startsWith("request.reject")
+      ? "APPROVAL"
+      : eventKey.startsWith("budget.")
+        ? "BUDGET"
+        : eventKey.startsWith("quotation.") || eventKey.startsWith("supplier.")
+          ? "SOURCING"
+          : eventKey.startsWith("delivery.") || eventKey.startsWith("driver.")
+            || eventKey.startsWith("receipt.") || eventKey.startsWith("discrepancy.")
+            ? "DELIVERY"
+            : eventKey.startsWith("invoice.") || eventKey.startsWith("payment.")
+              || eventKey.startsWith("three_way_match.")
+              ? "FINANCE"
+              : eventKey.startsWith("invitation.") || eventKey.startsWith("password.")
+                || eventKey.startsWith("account.")
+                ? "ACCOUNT"
+                : eventKey.startsWith("email.") ? "EMAIL" : "WORKFLOW";
+  return { eventKey, category, emailMandatory: false, companyConfigurable: true };
+}
+
+export function notificationEmailIsMandatory(eventKey: string) {
+  return notificationPolicyForEvent(eventKey).emailMandatory;
 }
 
 export function notificationDedupeKey(input: Pick<

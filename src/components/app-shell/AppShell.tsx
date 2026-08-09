@@ -114,6 +114,12 @@ export function AppShell({
   const profileControlRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [polledNotifications, setPolledNotifications] = useState<{
+    userId: string;
+    serverCount: number;
+    unreadCount: number;
+  } | null>(null);
+  const notificationEtag = useRef<string | undefined>(undefined);
   const [languagePending, startLanguageTransition] = useTransition();
   const messages = portalMessages(locale);
   const browserScope = {
@@ -124,6 +130,70 @@ export function AppShell({
   useEffect(() => {
     persistBrowserLocale(locale);
   }, [locale]);
+
+  const notificationUnreadCount = polledNotifications?.userId === user.id
+    && polledNotifications.serverCount === unreadNotifications
+    ? polledNotifications.unreadCount
+    : unreadNotifications;
+
+  useEffect(() => {
+    if (profileRequired) return;
+    let stopped = false;
+    const controller = new AbortController();
+    async function pollNotifications() {
+      if (stopped || document.visibilityState === "hidden" || !navigator.onLine) return;
+      try {
+        const response = await fetch("/api/notifications/summary", {
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: notificationEtag.current
+            ? { "If-None-Match": notificationEtag.current }
+            : undefined,
+          signal: controller.signal,
+        });
+        if (response.status === 304 || !response.ok) return;
+        const result = await response.json() as {
+          unreadCount?: unknown;
+          versionToken?: unknown;
+        };
+        if (!Number.isInteger(result.unreadCount)
+          || Number(result.unreadCount) < 0
+          || typeof result.versionToken !== "string") return;
+        const etag = response.headers.get("etag");
+        if (etag) notificationEtag.current = etag;
+        setPolledNotifications({
+          userId: user.id,
+          serverCount: unreadNotifications,
+          unreadCount: Number(result.unreadCount),
+        });
+        window.dispatchEvent(new CustomEvent("axora:notification-summary", {
+          detail: {
+            unreadCount: Number(result.unreadCount),
+            versionToken: result.versionToken,
+          },
+        }));
+      } catch {
+        // Polling is opportunistic. The server-rendered count remains valid
+        // and the next visible interval retries without surfacing private data.
+      }
+    }
+    const interval = window.setInterval(pollNotifications, 30_000);
+    function pollWhenVisible() {
+      if (document.visibilityState === "visible") void pollNotifications();
+    }
+    window.addEventListener("online", pollWhenVisible);
+    window.addEventListener("focus", pollWhenVisible);
+    document.addEventListener("visibilitychange", pollWhenVisible);
+    void pollNotifications();
+    return () => {
+      stopped = true;
+      controller.abort();
+      window.clearInterval(interval);
+      window.removeEventListener("online", pollWhenVisible);
+      window.removeEventListener("focus", pollWhenVisible);
+      document.removeEventListener("visibilitychange", pollWhenVisible);
+    };
+  }, [profileRequired, unreadNotifications, user.id]);
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -212,8 +282,8 @@ export function AppShell({
         <div className="app-topbar-actions">
           {quickAction ? <Link className="button app-quick-action" href={quickAction.href}>{quickAction.label}</Link> : null}
           {!profileRequired ? (
-            <Link className="app-notification-button" href="/notifications" aria-label={messages.shell.notifications(unreadNotifications)}>
-              <Bell size={19} aria-hidden="true" /><span className="app-notification-count">{unreadNotifications > 99 ? "99+" : unreadNotifications}</span>
+            <Link className="app-notification-button" href="/notifications" aria-label={messages.shell.notifications(notificationUnreadCount)}>
+              <Bell size={19} aria-hidden="true" /><span className="app-notification-count" aria-hidden="true">{notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}</span>
             </Link>
           ) : null}
           <div className="app-profile-control" ref={profileControlRef}>

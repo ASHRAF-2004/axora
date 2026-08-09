@@ -111,7 +111,8 @@ describe("P0-02 active isolation coverage", () => {
     expect(catalog).toContain('"Cache-Control": "private, no-store"');
     expect(cart).toContain("getCatalogProductsByIds");
     expect(cart).toContain('"Cache-Control": "private, no-store"');
-    expect(notifications).toContain("recipient_user_id=$1");
+    expect(notifications).toContain("axora_notification_center_snapshot");
+    expect(notifications).not.toMatch(/FROM\s+(?:public\.)?in_app_notifications\b/i);
     expect(rolePortals).toContain("activeSupplierScope");
     expect(rolePortals).toContain("activeDriverScope");
     expect(rolePortals).toContain("delivery_job_assignments");

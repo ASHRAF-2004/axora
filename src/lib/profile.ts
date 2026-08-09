@@ -115,7 +115,7 @@ export async function completeMyProfile(input: z.input<typeof profileSchema>, ac
       safe.preferredLocale,
       safe.timezone,
       safe.emailNotifications,
-      safe.inAppNotifications,
+      true,
       REQUIRED_POLICY_VERSION,
     ]);
     await client.query("UPDATE users SET display_name=$2 WHERE id=$1", [actor.id, safe.displayName]);

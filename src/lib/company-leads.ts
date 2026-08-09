@@ -250,11 +250,9 @@ async function notifyCompanyLeadMutation(
     const content = notificationCopy[recipient.locale][mutation.event.eventKey]?.(mutation.leadCode)
       ?? genericNotification(recipient.locale, mutation.leadCode);
     await client.query(`
-      INSERT INTO in_app_notifications(
-        id,company_id,recipient_user_id,workflow_event_id,lead_event_id,
-        event_key,dedupe_key,title,body,priority,route_path,created_at
-      ) VALUES ($1,NULL,$2,NULL,$3,$4,$5,$6,$7,$8,$9,$10)
-      ON CONFLICT DO NOTHING
+      SELECT created FROM public.axora_insert_in_app_notification(
+        $1,NULL,$2,NULL,$3,$4,$5,$6,$7,$8,$9,$10
+      )
     `, [
       randomUUID(), recipient.id, mutation.event.id, mutation.event.eventKey,
       `company-lead:${mutation.event.id}`, content.title, content.body,

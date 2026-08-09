@@ -51,7 +51,7 @@ export async function saveProfileAction(formData: FormData) {
       preferredLocale,
       timezone: String(formData.get("timezone") ?? "Asia/Kuala_Lumpur"),
       emailNotifications: checked(formData, "emailNotifications"),
-      inAppNotifications: checked(formData, "inAppNotifications"),
+      inAppNotifications: true,
       policyAccepted: true,
     }, actor);
   } catch {
