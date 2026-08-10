@@ -341,13 +341,14 @@ async function loadCharts(
   includeActivity: boolean,
   platformAnalytics: boolean,
 ) {
+  const cohortParameters = parameters.slice(0, 7);
   const byStatusResult = await client.query<ChartRow>(
     COHORT_CTE + `
     SELECT status_label AS label,count(*)::int AS value
     FROM cohort
     GROUP BY status_label
     ORDER BY count(*) DESC,status_label`,
-    parameters,
+    cohortParameters,
   );
   const activity = includeActivity
     ? (await client.query<ChartRow>(
@@ -371,7 +372,7 @@ async function loadCharts(
       GROUP BY line.product_name_snapshot
       ORDER BY sum(line.quantity) DESC,line.product_name_snapshot
       LIMIT 5`,
-      parameters,
+      cohortParameters,
     )).rows
     : [];
   return {
@@ -465,7 +466,7 @@ async function loadAttention(
     ORDER BY (request_row.urgency_label='Urgent') DESC,
       request_row.needed_by_date,request_record.order_code
     LIMIT 6`,
-    parameters,
+    parameters.slice(0, 8),
   );
   return result.rows;
 }
