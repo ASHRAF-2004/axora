@@ -217,6 +217,11 @@ describe("database-bound sessions", () => {
     expect(String(liveSql)).toContain("FROM user_sessions live_session");
     expect(String(liveSql)).toContain("live_session.revoked_at IS NULL");
     expect(String(liveSql)).toContain("live_session.expires_at > now()");
+    expect(String(liveSql)).toContain(
+      "public.axora_auth_department_scope(\n      account.id,assignment.id",
+    );
+    expect(String(liveSql)).not.toContain("JOIN departments");
+    expect(String(liveSql)).not.toContain("JOIN department_assignments");
     expect(liveValues).toEqual([userId, expectedHash]);
     expect(String(mocks.query.mock.calls[1][0])).toContain("last_seen_at=now()");
   });

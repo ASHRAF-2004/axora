@@ -196,6 +196,14 @@ BEGIN
   END IF;
 
   IF to_regprocedure(
+    'public.axora_auth_department_scope(uuid,uuid)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_auth_department_scope(uuid,uuid) FROM PUBLIC';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_auth_department_scope(uuid,uuid) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_auth_department_scope(uuid,uuid) TO axora_app';
+  END IF;
+
+  IF to_regprocedure(
     'public.axora_organization_directory_snapshot(uuid,uuid,timestamptz)'
   ) IS NOT NULL THEN
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_live_authorization_snapshot(uuid,uuid,timestamptz) FROM axora_app';
