@@ -257,11 +257,15 @@ const identityRowsSql = `
     scope_branch.active AS "scopeBranchActive",
     scope_branch_assignment.status AS "branchAssignmentStatus",
     scope_branch_assignment.is_primary AS "branchAssignmentPrimary",
-    scope_department.active AS "scopeDepartmentActive",
-    scope_department.branch_id::text AS "scopeDepartmentBranchId",
-    scope_department_branch.active AS "scopeDepartmentBranchActive",
-    scope_department_assignment.status AS "departmentAssignmentStatus",
-    scope_department_assignment.is_primary AS "departmentAssignmentPrimary",
+    (department_scope.snapshot->>'departmentActive')::boolean
+      AS "scopeDepartmentActive",
+    department_scope.snapshot->>'branchId' AS "scopeDepartmentBranchId",
+    (department_scope.snapshot->>'branchActive')::boolean
+      AS "scopeDepartmentBranchActive",
+    department_scope.snapshot->>'assignmentStatus'
+      AS "departmentAssignmentStatus",
+    (department_scope.snapshot->>'assignmentPrimary')::boolean
+      AS "departmentAssignmentPrimary",
     scope_supplier.active AS "scopeSupplierActive",
     scope_supplier_membership.status AS "supplierMembershipStatus",
     delivery_profile.active AS "deliveryProfileActive"
@@ -292,16 +296,11 @@ const identityRowsSql = `
     ON scope_branch_assignment.user_id=account.id
    AND scope_branch_assignment.company_id=assignment.company_id
    AND scope_branch_assignment.branch_id=assignment.branch_id
-  LEFT JOIN departments scope_department
-    ON scope_department.id=assignment.department_id
-   AND scope_department.company_id=assignment.company_id
-  LEFT JOIN branches scope_department_branch
-    ON scope_department_branch.id=scope_department.branch_id
-   AND scope_department_branch.company_id=scope_department.company_id
-  LEFT JOIN department_assignments scope_department_assignment
-    ON scope_department_assignment.user_id=account.id
-   AND scope_department_assignment.company_id=assignment.company_id
-   AND scope_department_assignment.department_id=assignment.department_id
+  LEFT JOIN LATERAL (
+    SELECT public.axora_auth_department_scope(
+      account.id,assignment.id
+    ) AS snapshot
+  ) department_scope ON assignment.department_id IS NOT NULL
   LEFT JOIN suppliers scope_supplier ON scope_supplier.id=assignment.supplier_id
   LEFT JOIN supplier_memberships scope_supplier_membership
     ON scope_supplier_membership.user_id=account.id
