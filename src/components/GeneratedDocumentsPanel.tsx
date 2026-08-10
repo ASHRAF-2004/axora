@@ -26,34 +26,29 @@ function operationFor(state: string) {
 
 export async function GeneratedDocumentsPanel({
   actor,
-  mode,
   notice,
 }: {
   actor: AuthenticatedSessionUser;
-  mode: "documents" | "supplier";
   notice?: string;
 }) {
   const workspace = await getGeneratedDocumentWorkspace(actor);
   const locale = actor.preferredLocale ?? "en";
   const copy = generatedDocumentMessages(locale);
-  const supplierMode = mode === "supplier";
-  const documents = supplierMode
-    ? workspace.documents.filter((document) => document.type === "SUPPLIER_PURCHASE_ORDER")
-    : workspace.documents;
+  const documents = workspace.documents;
   const orders = workspace.purchaseOrders;
   const activeJobs = workspace.jobs.some((job) => (
     ["PENDING", "PROCESSING", "RETRY"].includes(job.status)
   ));
   return (
-    <section style={{ marginTop: 24 }} aria-labelledby={`generated-documents-${mode}`}>
+    <section style={{ marginTop: 24 }} aria-labelledby="generated-documents">
       <GeneratedDocumentStatusPoller active={activeJobs} label={copy.refreshing} />
       <header className="section-intro">
         <p className="eyebrow">{copy.eyebrow}</p>
-        <h2 id={`generated-documents-${mode}`}>{copy.title}</h2>
+        <h2 id="generated-documents">{copy.title}</h2>
         <p>{copy.intro}</p>
       </header>
       {notice && copy.notices[notice] ? <p className="form-success" role="status">{copy.notices[notice]}</p> : null}
-      {!supplierMode ? <section className="panel" style={{ marginBottom: 17 }}>
+      <section className="panel" style={{ marginBottom: 17 }}>
         <div className="panel-header"><div><h3>{copy.generated}</h3><p>{copy.history}</p></div></div>
         <div className="data-table-wrap"><table className="data-table">
           <thead><tr><th>{copy.request}</th><th>{copy.type}</th><th>{copy.version}</th><th>{copy.file}</th><th>{copy.status}</th><th>{copy.actions}</th></tr></thead>
@@ -77,9 +72,9 @@ export async function GeneratedDocumentsPanel({
             </details> : "—"}</td>
           </tr>) : <tr><td colSpan={6}>{copy.noDocuments}</td></tr>}</tbody>
         </table></div>
-      </section> : null}
+      </section>
 
-      {!supplierMode ? <section className="panel" style={{ marginBottom: 17 }}>
+      <section className="panel" style={{ marginBottom: 17 }}>
         <div className="panel-header"><div><h2>{copy.generation}</h2><p>{copy.retry}</p></div></div>
         <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{copy.request}</th><th>{copy.type}</th><th>{copy.status}</th><th>{copy.attempts}</th><th>{copy.retry}</th></tr></thead>
           <tbody>{workspace.jobs.length ? workspace.jobs.map((job) => <tr key={job.id}>
@@ -89,7 +84,7 @@ export async function GeneratedDocumentsPanel({
             <td>{job.lastError || formatGeneratedDocumentDate(job.availableAt, locale, actor.timezone)}</td>
           </tr>) : <tr><td colSpan={5}>{copy.noJobs}</td></tr>}</tbody>
         </table></div>
-      </section> : null}
+      </section>
 
       <section className="panel" style={{ marginBottom: 17 }}>
         <div className="panel-header"><div><h2>{copy.purchaseOrders}</h2><p>{copy.history}</p></div></div>
@@ -102,10 +97,7 @@ export async function GeneratedDocumentsPanel({
               <td>{formatGeneratedDocumentNumber(order.revision, locale)}</td>
               <td><StatusBadge>{order.state}</StatusBadge>{order.recipientEmail ? <><br /><span className="subtle">{order.recipientEmail}</span></> : null}{order.warnings?.length ? <><br /><span className="subtle">{copy.warnings}: {order.warnings.join(", ")}</span></> : null}</td>
               <td><a href={order.downloadUrl}>{copy.download}</a></td>
-              <td>{order.canAcknowledge ? <form action={manageSupplierPurchaseOrderAction}>
-                <input type="hidden" name="documentId" value={order.documentId} /><input type="hidden" name="expectedVersion" value={order.version} /><input type="hidden" name="operation" value="ACKNOWLEDGE" /><input type="hidden" name="commandId" value={randomUUID()} /><input type="hidden" name="returnPath" value="/supplier" />
-                <GeneratedDocumentSubmitButton className="button button-primary" label={copy.acknowledge} pendingLabel={copy.pending} />
-              </form> : order.canDispatch ? <details><summary>{copy.actions}</summary>
+              <td>{order.canDispatch ? <details><summary>{copy.actions}</summary>
                 <form action={manageSupplierPurchaseOrderAction} className="stack-form" style={{ marginTop: 12 }}>
                   <input type="hidden" name="documentId" value={order.documentId} /><input type="hidden" name="expectedVersion" value={order.version} /><input type="hidden" name="commandId" value={randomUUID()} /><input type="hidden" name="returnPath" value="/documents" />
                   {primaryOperation === "APPROVE" ? <label>{copy.contacts}<select name="recipientUserId" required defaultValue=""><option value="" disabled>{copy.contacts}</option>{contacts.map((contact) => <option key={contact.userId} value={contact.userId}>{contact.name} · {contact.email}</option>)}</select></label> : null}
@@ -122,7 +114,7 @@ export async function GeneratedDocumentsPanel({
         </table></div>
       </section>
 
-      {!supplierMode && workspace.enqueueFailures.length ? <section className="panel">
+      {workspace.enqueueFailures.length ? <section className="panel">
         <div className="panel-header"><div><h2>{copy.failure}</h2><p>{copy.retry}</p></div></div>
         <ul>{workspace.enqueueFailures.map((failure) => <li key={failure.id}><strong>{failure.requestReference}</strong>: {failure.errorCode} · {failure.errorSummary}</li>)}</ul>
       </section> : null}

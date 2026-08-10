@@ -36,8 +36,6 @@ export type Permission =
   | "view_system_diagnostics"
   | "view_email_operations"
   | "manage_email_operations"
-  | "view_supplier_portal"
-  | "respond_to_rfqs"
   | "view_delivery_portal"
   | "update_assigned_deliveries"
   | "view_receiving"
@@ -195,7 +193,6 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
     "view_branches", "view_budgets", "view_invoices", "view_documents", "view_reports", "view_audit",
   ],
   TECHNICAL_SUPPORT: ["view_system_diagnostics"],
-  SUPPLIER_USER: ["view_supplier_portal", "respond_to_rfqs"],
   DELIVERY_TEAM_SUPERVISOR: [
     "view_dashboard", "view_deliveries", "manage_deliveries", "view_reports",
     "view_delivery_portal", "update_assigned_deliveries",
@@ -270,12 +267,6 @@ function canonicalSubjectIsValid(subject: AccessSubject) {
         validCompanyScope(subject, ["COMPANY", "BRANCH"])
         || validDepartmentScope(subject)
       );
-    case "SUPPLIER_USER":
-      return !subject.isOwner
-        && subject.accountKind === "SUPPLIER"
-        && subject.scopeType === "SUPPLIER"
-        && Boolean(subject.supplierId)
-        && !subject.companyId && !subject.branchId;
     case "DELIVERY_TEAM_SUPERVISOR":
     case "DELIVERY_AGENT":
     case "DELIVERY_DRIVER":

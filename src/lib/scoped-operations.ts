@@ -23,7 +23,6 @@ import {
 import {
   appendWorkflowEvent,
   notifyWorkflowAudience,
-  notifyWorkflowUsers,
 } from "./workflow-repository";
 
 const uuidSchema = z.string().uuid();
@@ -316,22 +315,6 @@ export async function issueScopedSupplierRfq(
       message: { key: "quotation_requested" },
       routePath: `/requests/${eligible.requestId}`,
     });
-    const supplierUsers = await client.query<{ id: string }>(`
-      SELECT DISTINCT account.id::text AS id
-      FROM public.supplier_memberships membership
-      JOIN public.users account ON account.id=membership.user_id
-      WHERE membership.supplier_id=$1
-        AND membership.status='ACTIVE'
-        AND account.active
-        AND account.account_status='ACTIVE'
-        AND account.account_kind='SUPPLIER'
-    `, [eligible.supplierId]);
-    await notifyWorkflowUsers(client, event, {
-      recipientUserIds: supplierUsers.rows.map((row) => row.id),
-      message: { key: "supplier_rfq_issued", reference },
-      routePath: `/supplier#rfq-${rfqId}`,
-      priority: "HIGH",
-    });
     return rfqId;
   });
 }
@@ -584,18 +567,8 @@ export async function selectScopedQuotation(
       routePath: `/requests/${access.requestId}`,
     });
 
-    const supplierUsers = await client.query<{ id: string }>(`
-      SELECT DISTINCT account.id::text AS id
-      FROM public.supplier_memberships membership
-      JOIN public.users account ON account.id=membership.user_id
-      WHERE membership.supplier_id=$1
-        AND membership.status='ACTIVE'
-        AND account.active
-        AND account.account_status='ACTIVE'
-        AND account.account_kind='SUPPLIER'
-    `, [selected.supplierId]);
     if (selectedRfq.rows[0]) {
-      const supplierEvent = await appendWorkflowEvent(client, {
+      await appendWorkflowEvent(client, {
         companyId: access.companyId,
         branchId: access.branchId,
         requestId: access.requestId,
@@ -607,12 +580,6 @@ export async function selectScopedQuotation(
         newState: "Supplier order selected",
         source: "WEB",
         metadata: { requestLineId: selected.requestLineId },
-      });
-      await notifyWorkflowUsers(client, supplierEvent, {
-        recipientUserIds: supplierUsers.rows.map((row) => row.id),
-        message: { key: "supplier_order_selected" },
-        routePath: `/supplier#rfq-${selectedRfq.rows[0].id}`,
-        priority: "HIGH",
       });
     }
   });

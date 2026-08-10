@@ -180,21 +180,16 @@ describe("secure account setup primitives", () => {
     }, owner).companyId).toBeUndefined();
   });
 
-  it("derives every external account kind and rejects organization spoofing", () => {
+  it("derives delivery accounts and rejects the removed supplier actor", () => {
     const supplierId = "30000000-0000-4000-8000-000000000001";
-    expect(resolveUserCreation({
+    expect(() => resolveUserCreation({
       email: "supplier@example.test",
       displayName: "Supplier User",
       role: "SUPPLIER_USER",
       supplierId,
       companyId: companyA,
       branchId: branchA,
-    }, owner)).toMatchObject({
-      role: "SUPPLIER_USER",
-      accountKind: "SUPPLIER",
-      scopeType: "SUPPLIER",
-      supplierId,
-    });
+    }, owner)).toThrow(/cannot create this role/i);
     expect(resolveUserCreation({
       email: "driver@example.test",
       displayName: "Delivery Driver",
@@ -211,17 +206,6 @@ describe("secure account setup primitives", () => {
       jobTitle: undefined,
       preferredLocale: "en",
     });
-    expect(() => resolveUserCreation({
-      email: "supplier@example.test",
-      displayName: "Supplier User",
-      role: "SUPPLIER_USER",
-    }, owner)).toThrow(/select the supplier/i);
-    expect(() => resolveUserCreation({
-      email: "supplier@example.test",
-      displayName: "Supplier User",
-      role: "SUPPLIER_USER",
-      supplierId,
-    }, companyAdmin)).toThrow(/cannot create this role/i);
   });
 
   it("limits a branch administrator to the exact branch-safe role catalog", () => {

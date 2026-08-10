@@ -254,12 +254,6 @@ describe("account setup transactional lifecycle", () => {
       supplierId: undefined,
     },
     {
-      role: "SUPPLIER_USER" as const,
-      accountKind: "SUPPLIER" as const,
-      scopeType: "SUPPLIER" as const,
-      supplierId: "30000000-0000-4000-8000-000000000001",
-    },
-    {
       role: "DELIVERY_DRIVER" as const,
       accountKind: "DELIVERY" as const,
       scopeType: "DELIVERY" as const,
@@ -329,7 +323,7 @@ describe("account setup transactional lifecycle", () => {
     expect(mocks.client.query.mock.calls.some(([sql]) =>
       String(sql).includes("INSERT INTO company_memberships"))).toBe(false);
     expect(mocks.client.query.mock.calls.some(([sql]) =>
-      String(sql).includes("INSERT INTO supplier_memberships"))).toBe(accountKind === "SUPPLIER");
+      String(sql).includes("INSERT INTO supplier_memberships"))).toBe(false);
     expect(mocks.client.query.mock.calls.some(([sql]) =>
       String(sql).includes("INSERT INTO delivery_agent_profiles"))).toBe(accountKind === "DELIVERY");
   });
@@ -444,65 +438,6 @@ describe("account setup transactional lifecycle", () => {
     expect(JSON.stringify(mocks.client.query.mock.calls)).not.toContain(result.rawToken);
   });
 
-  it("replaces a supplier invitation without inventing company scope", async () => {
-    const supplierId = "30000000-0000-4000-8000-000000000001";
-    mocks.client.query.mockImplementation(async (sql: string) => {
-      if (sql.includes("pg_advisory_xact_lock")) {
-        return { rowCount: 1, rows: [{}] };
-      }
-      if (sql.includes("SELECT") && sql.includes("setupCompleted")) {
-        return { rowCount: 1, rows: [{
-          userId: "supplier-user-id",
-          recipientName: "Supplier User",
-          recipientEmail: "supplier@example.test",
-          role: "SUPPLIER_USER",
-          roleId: "supplier-role-id",
-          accountKind: "SUPPLIER",
-          scopeType: "SUPPLIER",
-          supplierId,
-          companyName: "Example Supplier",
-          active: true,
-          setupCompleted: false,
-          organizationActive: true,
-          membershipReady: true,
-          preferredLocale: "ms",
-        }] };
-      }
-      if (sql.includes('AS "actorId"')) {
-        return { rowCount: 1, rows: [{ actorId: platformOwner.id }] };
-      }
-      if (sql.includes('AS "actorCount"')) {
-        return { rowCount: 1, rows: [{ actorCount: 0, companyCount: 0 }] };
-      }
-      if (sql.includes('AS "tooSoon"')) {
-        return { rowCount: 1, rows: [{ tooSoon: false, lastHour: 1 }] };
-      }
-      if (sql.includes("UPDATE account_setup_invitations")) {
-        return { rowCount: 1, rows: [] };
-      }
-      if (sql.includes("INSERT INTO account_setup_invitations")) {
-        return { rowCount: 1, rows: [{
-          id: "supplier-replacement-id",
-          expiresAt: "2026-08-03T00:00:00Z",
-        }] };
-      }
-      throw new Error(`Unexpected SQL: ${sql}`);
-    });
-
-    const result = await resendAccountSetupInvitation("supplier-user-id", platformOwner);
-    expect(result).toMatchObject({
-      role: "SUPPLIER_USER",
-      companyName: "Example Supplier",
-    });
-    const invitation = mocks.client.query.mock.calls.find(([sql]) =>
-      String(sql).includes("INSERT INTO account_setup_invitations"));
-    expect(invitation?.[1]?.[1]).toBeNull();
-    expect(invitation?.[1]?.[6]).toBe("ms");
-    expect(invitation?.[1]?.[8]).toBeNull();
-    expect(invitation?.[1]?.[9]).toBeNull();
-    expect(invitation?.[1]?.[10]).toBe("SUPPLIER");
-    expect(invitation?.[1]?.[11]).toBe(supplierId);
-  });
 
   it("rate-limits repeated resend attempts before revoking the current link", async () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
@@ -692,67 +627,5 @@ describe("account setup transactional lifecycle", () => {
     );
   });
 
-  it("consumes a supplier invitation into its canonical supplier session", async () => {
-    const rawToken = "B".repeat(43);
-    const supplierId = "30000000-0000-4000-8000-000000000001";
-    mocks.query.mockResolvedValue({ rows: [{
-      recipientName: "Supplier User",
-      recipientEmail: "supplier@example.test",
-      companyName: "Example Supplier",
-      expiresAt: "2026-08-03T00:00:00Z",
-      locale: "ms",
-    }] });
-    mocks.client.query.mockImplementation(async (sql: string) => {
-      if (sql.includes('SELECT i.id::text AS "invitationId"')) {
-        return { rowCount: 1, rows: [{
-          invitationId: "supplier-invitation-id",
-          userId: "supplier-user-id",
-          email: "supplier@example.test",
-          displayName: "Supplier User",
-          role: "SUPPLIER_USER",
-          roleAssignmentId: "supplier-assignment-id",
-          accountKind: "SUPPLIER",
-          scopeType: "SUPPLIER",
-          supplierId,
-          createdBy: platformOwner.id,
-          isOwner: false,
-        }] };
-      }
-      if (sql.includes("UPDATE users")) {
-        return { rowCount: 1, rows: [{ authVersion: 3 }] };
-      }
-      if (sql.includes("set_config('axora.user_id'")) {
-        return { rowCount: 1, rows: [] };
-      }
-      if (sql.includes("INSERT INTO account_credentials")
-        || sql.includes("INSERT INTO user_profiles")
-        || sql.includes("INSERT INTO supplier_memberships")
-        || sql.includes("INSERT INTO onboarding_progress")
-        || sql.includes("UPDATE account_setup_invitations")) {
-        return { rowCount: 1, rows: [] };
-      }
-      throw new Error(`Unexpected SQL: ${sql}`);
-    });
 
-    await expect(consumeAccountSetupToken(
-      rawToken,
-      "supplier creates a private password",
-      { displayName: "Supplier User", locale: "ms", termsAccepted: true, privacyAccepted: true },
-    )).resolves.toMatchObject({
-      id: "supplier-user-id",
-      role: "SUPPLIER_USER",
-      accountKind: "SUPPLIER",
-      scopeType: "SUPPLIER",
-      supplierId,
-      roleAssignmentId: "supplier-assignment-id",
-      authVersion: 3,
-    });
-    expect(mocks.client.query.mock.calls.some(([sql, parameters]) =>
-      String(sql).includes("INSERT INTO supplier_memberships")
-      && parameters?.[1] === supplierId)).toBe(true);
-    expect(mocks.client.query.mock.calls.some(([sql]) =>
-      String(sql).includes("INSERT INTO company_memberships"))).toBe(false);
-    expect(mocks.appendWorkflowEvent).not.toHaveBeenCalled();
-    expect(mocks.notifyWorkflowUsers).not.toHaveBeenCalled();
-  });
 });

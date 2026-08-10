@@ -9,7 +9,6 @@ import {
 const companyOne = "10000000-0000-4000-8000-000000000001";
 const companyTwo = "10000000-0000-4000-8000-000000000002";
 const branchOne = "20000000-0000-4000-8000-000000000001";
-const supplierOne = "30000000-0000-4000-8000-000000000001";
 
 function companyCandidate(
   overrides: Partial<IdentityCandidateRow> = {},
@@ -106,7 +105,7 @@ describe("active normalized identity resolution", () => {
     ])).toBeNull();
   });
 
-  it("supports a supplier account with no legacy company and exact membership", () => {
+  it("rejects the removed supplier actor even with an exact active membership", () => {
     const supplier = companyCandidate({
       legacyRole: "VIEWER",
       accountKind: "SUPPLIER",
@@ -118,22 +117,11 @@ describe("active normalized identity resolution", () => {
       companyId: undefined,
       scopeCompanyActive: undefined,
       companyMembershipStatus: undefined,
-      supplierId: supplierOne,
+      supplierId: "30000000-0000-4000-8000-000000000001",
       scopeSupplierActive: true,
       supplierMembershipStatus: "ACTIVE",
     });
-    expect(resolveActiveIdentityCandidates([supplier])).toMatchObject({
-      role: "SUPPLIER_USER",
-      accountKind: "SUPPLIER",
-      scopeType: "SUPPLIER",
-      supplierId: supplierOne,
-    });
-    expect(resolveActiveIdentityCandidates([
-      { ...supplier, supplierMembershipStatus: "SUSPENDED" },
-    ])).toBeNull();
-    expect(resolveActiveIdentityCandidates([
-      { ...supplier, companyId: companyOne },
-    ])).toBeNull();
+    expect(resolveActiveIdentityCandidates([supplier])).toBeNull();
   });
 
   it("supports only active delivery profiles for company-less driver accounts", () => {

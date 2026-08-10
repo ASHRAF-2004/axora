@@ -120,28 +120,15 @@ describe("account invitation actions", () => {
     });
   });
 
-  it("passes only structured organization scope and optional profile fields", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
+  it("rejects the removed supplier actor before creating an account", async () => {
     const form = new FormData();
     form.set("email", "supplier.user@example.test");
     form.set("displayName", "Supplier User");
     form.set("role", "SUPPLIER_USER");
     form.set("supplierId", "30000000-0000-4000-8000-000000000001");
-    form.set("jobTitle", "Quotation specialist");
     form.set("preferredLocale", "ms");
-    form.set("password", "must still be ignored");
-
-    await expect(createUserAction(form)).rejects.toThrow(
-      "REDIRECT:/users?notice=user-invited",
-    );
-    expect(mocks.createInvitedUser).toHaveBeenCalledWith(expect.objectContaining({
-      email: "supplier.user@example.test",
-      displayName: "Supplier User",
-      role: "SUPPLIER_USER",
-      supplierId: "30000000-0000-4000-8000-000000000001",
-      jobTitle: "Quotation specialist",
-      preferredLocale: "ms",
-    }), actor);
+    await expect(createUserAction(form)).rejects.toThrow();
+    expect(mocks.createInvitedUser).not.toHaveBeenCalled();
   });
 
   it("rejects an unsupported invitation language before creating an account", async () => {

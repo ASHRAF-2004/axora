@@ -57,14 +57,14 @@ describe("locale selection and public dictionaries", () => {
     const requiredRoles = [
       "PLATFORM_OWNER", "PLATFORM_OPERATIONS", "COMPANY_ADMIN", "BRANCH_ADMIN",
       "BRANCH_APPROVER", "COMPANY_APPROVER", "REQUESTER", "FINANCE_REVIEWER",
-      "AUDITOR", "TECHNICAL_SUPPORT", "SUPPLIER_USER", "DELIVERY_DRIVER",
+      "AUDITOR", "TECHNICAL_SUPPORT", "DELIVERY_DRIVER",
       "RECEIVING_USER",
     ];
     const requiredRoutes = [
       "/dashboard", "/products", "/requests", "/approvals", "/sourcing",
       "/deliveries", "/finance", "/companies", "/branches", "/suppliers",
       "/users", "/documents", "/reports", "/audit", "/support", "/settings", "/help",
-      "/supplier", "/driver", "/receiving",
+      "/driver", "/receiving",
     ];
     for (const locale of SUPPORTED_LOCALES) {
       const dictionary = PORTAL_MESSAGES[locale];

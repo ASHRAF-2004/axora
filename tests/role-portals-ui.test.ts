@@ -37,14 +37,13 @@ const queued: DriverOfflineEvent = {
 };
 
 describe("role-aware portal landing", () => {
-  it("routes each canonical external role to its dedicated workspace", () => {
-    expect(landingPathForSession({ role: "SUPPLIER_USER", accountKind: "SUPPLIER", isOwner: false })).toBe("/supplier");
+  it("routes each supported external role to its dedicated workspace", () => {
     expect(landingPathForSession({ role: "DELIVERY_DRIVER", accountKind: "DELIVERY", isOwner: false })).toBe("/driver");
     expect(landingPathForSession({ role: "RECEIVING_USER", accountKind: "COMPANY", isOwner: false })).toBe("/receiving");
     expect(landingPathForSession({ role: "TECHNICAL_SUPPORT", accountKind: "PLATFORM", isOwner: false })).toBe("/support");
   });
 
-  it("does not route a role with a mismatched account kind into a privileged portal", () => {
+  it("does not route removed or mismatched roles into a privileged portal", () => {
     expect(landingPathForSession({ role: "SUPPLIER_USER", accountKind: "COMPANY", isOwner: false })).toBe("/dashboard");
     expect(landingPathForSession({ role: "DELIVERY_DRIVER", accountKind: "SUPPLIER", isOwner: false })).toBe("/dashboard");
   });

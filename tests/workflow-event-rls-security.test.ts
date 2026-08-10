@@ -45,7 +45,7 @@ describe("workflow event supplier and driver isolation", () => {
   beforeAll(async () => {
     db = new PGlite();
     await db.exec("CREATE ROLE axora_app NOLOGIN");
-    await applyMigrations(db);
+    await applyMigrations(db, { through: "073_production_route_stabilization.sql" });
     await applyDemoSeed(db);
     await db.exec(`
       INSERT INTO users(

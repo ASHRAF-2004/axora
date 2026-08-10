@@ -11,7 +11,6 @@ import { localizedAccountRole } from "@/lib/user-form-i18n";
 import { creatableAccountRoles, accountRoleLabel } from "@/lib/role-catalog";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { loadOrganizationStructureWorkspace } from "@/lib/organization-structure";
-import { listSuppliers } from "@/lib/repository";
 import { COD_PAYMENT_METHOD, type Branch, type Company } from "@/lib/types";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { profileImageMessages } from "@/lib/profile-image-i18n";
@@ -62,11 +61,10 @@ export default async function UsersPage() {
   const common = corePortalMessages(locale).common;
   const accessCopy = accessAdministrationMessages(locale);
   const imageCopy = profileImageMessages(locale);
-  const [users, organization, structure, suppliers] = await Promise.all([
+  const [users, organization, structure] = await Promise.all([
     listAuthorizedUsers(actor),
     loadOrganizationDirectory(actor),
     loadOrganizationStructureWorkspace(actor),
-    actor.isOwner ? listSuppliers(actor) : Promise.resolve([]),
   ]);
   const companies: Company[] = organization.companies.map((company) => ({
     ...company,
@@ -101,7 +99,6 @@ export default async function UsersPage() {
           branches={branches}
           companies={companies}
           departments={structure.departments}
-          suppliers={suppliers}
           roleOptions={availableRoles.map((role) => ({
             value: role.key,
             label: role.label,

@@ -25,7 +25,6 @@ const RETURN_RULES: readonly ReturnRule[] = [
   { pattern: /^\/products\/[^/]+\/edit(?:\/|$)/, permission: "manage_catalog" },
   { pattern: /^\/requests\/new(?:\/|$)/, permission: "create_requests" },
   { pattern: /^\/dashboard(?:\/|$)/, permission: "view_dashboard" },
-  { pattern: /^\/supplier(?:\/|$)/, permission: "view_supplier_portal" },
   { pattern: /^\/driver(?:\/|$)/, permission: "view_delivery_portal" },
   { pattern: /^\/receiving(?:\/|$)/, permission: "view_receiving" },
   { pattern: /^\/companies(?:\/|$)/, permission: "manage_companies" },

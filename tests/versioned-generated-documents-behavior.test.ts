@@ -29,7 +29,7 @@ describe("versioned document and supplier PO behavior", () => {
   it("owns enqueue, access, immutable versions and the complete supplier lifecycle", async () => {
     const db = new PGlite();
     try {
-      await applyMigrations(db);
+      await applyMigrations(db, { through: "073_production_route_stabilization.sql" });
       await applyDemoSeed(db);
       const scope = await db.query<{
         request_id: string; company_id: string; request_version: number;

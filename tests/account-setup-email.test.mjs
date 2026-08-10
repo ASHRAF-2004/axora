@@ -79,7 +79,7 @@ describe("account setup email", () => {
     const roles = [
       "PLATFORM_OWNER", "PLATFORM_OPERATIONS", "COMPANY_ADMIN",
       "BRANCH_ADMIN", "BRANCH_APPROVER", "COMPANY_APPROVER", "REQUESTER",
-      "FINANCE_REVIEWER", "AUDITOR", "TECHNICAL_SUPPORT", "SUPPLIER_USER",
+      "FINANCE_REVIEWER", "AUDITOR", "TECHNICAL_SUPPORT",
       "DELIVERY_DRIVER", "RECEIVING_USER",
     ];
     for (const role of roles) {

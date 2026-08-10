@@ -36,7 +36,7 @@
     {"route":"/support","accountRole":"PLATFORM_OWNER","companyScope":"platform","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"read-only","apis":[],"expectedFinalUrl":"/support","landmark":"main h1"},
     {"route":"/receiving","accountRole":"PLATFORM_OWNER","companyScope":"resource-filtered","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mutating","apis":["/api/receiving/delivery-otp","/api/receiving/delivery-tracking"],"expectedFinalUrl":"/receiving","landmark":"main h1"},
     {"route":"/driver","accountRole":"DELIVERY_ACTOR","companyScope":"assigned-delivery","expectedAccess":[],"expectedDenial":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mutating","apis":["/api/driver/workspace","/api/driver/workflow","/api/driver/tracking","/api/driver/evidence","/api/driver/events","/api/driver/otp","/api/driver/proof","/api/driver/shopping"],"expectedFinalUrl":"/access-denied","landmark":"main"},
-    {"route":"/supplier","accountRole":"REMOVED_SUPPLIER_ACTOR","companyScope":"none","expectedAccess":[],"expectedDenial":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"removed","apis":["/api/supplier/documents/[id]"],"expectedFinalUrl":"/access-denied","landmark":"main"}
+    {"route":"/supplier","accountRole":"REMOVED_SUPPLIER_ACTOR","companyScope":"none","expectedAccess":[],"expectedDenial":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"removed","apis":["/api/supplier/documents/[id]"],"expectedFinalUrl":"/supplier","landmark":"body"}
   ],
   "apiRoutes": [
     {"route":"/api/health/live","authentication":"public-health","scope":"none","mode":"read-only"},

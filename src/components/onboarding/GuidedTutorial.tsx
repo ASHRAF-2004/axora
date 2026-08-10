@@ -29,7 +29,6 @@ const targetRoutes: Record<string, string> = {
   finance: "/finance",
   help: "/help",
   receiving: "/receiving",
-  "supplier-queue": "/supplier",
   "driver-today": "/driver",
   "system-health": "/support",
   "support-boundary": "/support",
