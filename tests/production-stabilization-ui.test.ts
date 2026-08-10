@@ -11,6 +11,8 @@ describe("authenticated production route stabilization", () => {
       source.indexOf("export default async function OrganizationPage"),
     );
     expect(source).toContain("<StatusForm copy={copy}");
+    expect(source).not.toContain("style={{");
+    expect(source).toContain("data-depth={depth(");
   });
 
   it("serves a read-only company delivery view without granting supervisor controls", async () => {

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SESSION_RETURN_HEADER = "x-axora-return-to";
+const NEXT_NOT_FOUND_STYLE_HASH = "'sha256-Z5XTK23DFuEMs0PwnyZDO9SWxemQ5HxcpVaBNuUJyWY='";
 
 export function buildContentSecurityPolicy(nonce: string, development = false) {
   const directives = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com`,
-    `style-src-elem 'self' 'nonce-${nonce}'`,
+    `style-src-elem 'self' 'nonce-${nonce}' ${NEXT_NOT_FOUND_STYLE_HASH}`,
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",

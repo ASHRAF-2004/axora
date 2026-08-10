@@ -159,6 +159,31 @@ test("company administrator manages the tenant without Axora catalog or supplier
   await expect(page).toHaveURL(/\/access-denied$/);
 });
 
+test("company organization structure hydrates on direct load and reload", async ({ page }) => {
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /hydrat|minified react error #418/i.test(message.text())) {
+      hydrationErrors.push(message.text());
+    }
+  });
+  page.on("pageerror", (error) => {
+    if (/hydrat|minified react error #418/i.test(error.message)) {
+      hydrationErrors.push(error.message);
+    }
+  });
+
+  await signInAsDemoRole(page, principals.companyAdmin);
+  await page.goto("/branches/organization");
+  await expect(page).toHaveURL(/\/branches\/organization$/);
+  await expect(page.locator("main.app-content")).toBeVisible();
+  await expect(page.getByText("This page could not be restored")).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.locator("main.app-content")).toBeVisible();
+  await expect(page.getByText("This page could not be restored")).toHaveCount(0);
+  expect(hydrationErrors).toEqual([]);
+});
+
 test("branch administrator receives branch-scoped workspaces", async ({ page }) => {
   await signInAsDemoRole(page, principals.branchAdmin);
   await page.goto("/branches");
