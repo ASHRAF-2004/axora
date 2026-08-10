@@ -15,6 +15,16 @@ describe("authenticated production route stabilization", () => {
     expect(source).toContain("data-depth={depth(");
     expect(source).toContain('className="detail-grid organization-branch-actions"');
     expect(source).not.toContain("<td><details><summary>{copy.edit}</summary>");
+    expect(source).toContain("<DeferredOrganizationActions label={copy.update}><form");
+    expect(source).toContain("<DeferredOrganizationActions label={copy.update}><section");
+
+    const deferredSource = await readFile(new URL(
+      "../src/components/DeferredOrganizationActions.tsx",
+      import.meta.url,
+    ), "utf8");
+    expect(deferredSource).toContain('"use client"');
+    expect(deferredSource).toContain("useSyncExternalStore");
+    expect(deferredSource).toContain("if (!ready)");
   });
 
   it("serves a read-only company delivery view without granting supervisor controls", async () => {
