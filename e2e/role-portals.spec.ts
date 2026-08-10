@@ -4,15 +4,6 @@ import { signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
 const companyId = "11111111-1111-4111-8111-111111111111";
 
 const principals = {
-  supplier: {
-    id: "22222222-2222-4222-8222-222222222222",
-    email: "supplier.fixture@axora.invalid",
-    name: "Supplier fixture",
-    role: "SUPPLIER_USER",
-    accountKind: "SUPPLIER",
-    scopeType: "SUPPLIER",
-    supplierId: "33333333-3333-4333-8333-333333333333",
-  },
   driver: {
     id: "44444444-4444-4444-8444-444444444444",
     email: "driver.fixture@axora.invalid",
@@ -121,18 +112,6 @@ async function expectOperationalShell(page: Parameters<typeof signInAsDemoRole>[
   expect(launcherBox!.y + launcherBox!.height).toBeLessThanOrEqual(contentBox!.y + 1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
 }
-
-test("supplier receives only the dedicated RFQ workspace", async ({ page }) => {
-  await signInAsDemoRole(page, principals.supplier);
-  await page.goto("/supplier");
-
-  await expect(page.getByRole("heading", { level: 1, name: "Supplier workspace" })).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2, name: "No quotation requests" })).toBeVisible();
-  await expectOperationalShell(page);
-
-  await page.goto("/driver");
-  await expect(page).toHaveURL(/\/access-denied$/);
-});
 
 test("driver receives the mobile-safe assignment workspace only", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -267,6 +246,24 @@ test("platform operations can source and deliver without owner-only company cont
 
   await page.goto("/companies");
   await expect(page).toHaveURL(/\/access-denied$/);
+});
+
+test("supplier actor routes are removed while internal supplier management remains", async ({ page }) => {
+  await signInAsDemoRole(page, principals.operations);
+  await page.goto("/suppliers");
+  await expect(page).toHaveURL(/\/suppliers$/);
+  await expect(page.locator("main.app-content")).toBeVisible();
+
+  await page.goto("/supplier");
+  await expect(page.getByRole("heading", { level: 1, name: "404" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This page could not be found." }))
+    .toBeVisible();
+  await expect(page.getByRole("heading", { name: "Supplier workspace" })).toHaveCount(0);
+
+  const apiResponse = await page.request.get(
+    "/api/supplier/documents/30000000-0000-4000-8000-000000000001",
+  );
+  expect(apiResponse.status()).toBe(404);
 });
 
 test("Arabic authenticated shell preserves RTL, mixed content, mobile flow, and reduced motion", async ({ page }) => {

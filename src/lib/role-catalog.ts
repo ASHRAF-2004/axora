@@ -7,7 +7,7 @@ export interface AccountRoleDefinition {
   description: string;
   accountKind: AccountKind;
   allowedScopes: readonly RoleScopeType[];
-  category: "Axora" | "Company" | "Supplier" | "Delivery";
+  category: "Axora" | "Company" | "Delivery";
   availableForCreation?: boolean;
 }
 
@@ -25,7 +25,6 @@ export const ACCOUNT_ROLE_CATALOG: readonly AccountRoleDefinition[] = [
   { key: "FINANCE_REVIEWER", label: "Finance reviewer", description: "Customer invoices, COD status, matching, and finance exceptions.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company" },
   { key: "AUDITOR", label: "Read-only auditor", description: "Read-only evidence and audit history within the assigned scope.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company" },
   { key: "RECEIVING_USER", label: "Receiving user", description: "Independent delivery inspection and receipt confirmation.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company" },
-  { key: "SUPPLIER_USER", label: "Supplier user", description: "RFQs, quotations, documents, and assigned supplier work only.", accountKind: "SUPPLIER", allowedScopes: ["SUPPLIER"], category: "Supplier" },
   { key: "DELIVERY_TEAM_SUPERVISOR", label: "Delivery team supervisor", description: "Assigns and supervises delivery work without platform or company authority.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
   { key: "DELIVERY_AGENT", label: "Delivery agent", description: "Purchases, transports, and delivers only assigned work.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
   { key: "DELIVERY_DRIVER", label: "Delivery driver", description: "Compatibility role for existing assigned mobile delivery jobs.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery" },

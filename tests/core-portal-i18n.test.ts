@@ -64,7 +64,6 @@ describe("core portal internationalization", () => {
       branches: [],
       companies: [],
       departments: [],
-      suppliers: [],
       defaultLocale: "ar",
       roleOptions: [{ value: "REQUESTER", label: "Purchase requester", description: "Canonical fallback", category: "Company", accountKind: "COMPANY", allowedScopes: ["BRANCH"] }],
     }));

@@ -10,7 +10,7 @@ import { canAccess, type Permission } from "./permissions";
 import { COD_PAYMENT_METHOD } from "./types";
 import { roundMoney } from "./domain";
 import type { ApprovalRecord, AttachmentRecord, AuditRecord, DeliveryRecord, DeliveryStatus, InvoiceRecord, InvoiceStatus, PaymentRecord, QuotationRecord, UserRole } from "./types";
-import { appendWorkflowEvent, notifyWorkflowAudience, notifyWorkflowUsers } from "./workflow-repository";
+import { appendWorkflowEvent, notifyWorkflowAudience } from "./workflow-repository";
 import { uploadedContentMatchesMime } from "./file-content";
 import {
   auditRecordMatchesFilters,
@@ -244,19 +244,6 @@ export async function issueSupplierRfq(input: NewSupplierRfqInput, actor: Operat
       message: { key: "quotation_requested" },
       routePath: `/requests/${eligible.requestId}`,
     });
-    const supplierUsers = await client.query<{ id: string }>(`
-      SELECT DISTINCT account.id::text AS id
-      FROM supplier_memberships membership
-      JOIN users account ON account.id=membership.user_id
-      WHERE membership.supplier_id=$1 AND membership.status='ACTIVE'
-        AND account.active AND account.account_status='ACTIVE' AND account.account_kind='SUPPLIER'
-    `, [eligible.supplierId]);
-    await notifyWorkflowUsers(client, event, {
-      recipientUserIds: supplierUsers.rows.map((row) => row.id),
-      message: { key: "supplier_rfq_issued", reference },
-      routePath: `/supplier#rfq-${rfqId}`,
-      priority: "HIGH",
-    });
     return rfqId;
   });
 }
@@ -446,15 +433,8 @@ export async function selectQuotation(id: string, reason: string, actor: Operati
       message: { key: "supplier_selected" },
       routePath: `/requests/${q.requestId}`,
     });
-    const selectedSupplierUsers = await client.query<{ id: string }>(`
-      SELECT DISTINCT account.id::text AS id
-      FROM supplier_memberships membership
-      JOIN users account ON account.id=membership.user_id
-      WHERE membership.supplier_id=$1 AND membership.status='ACTIVE'
-        AND account.active AND account.account_status='ACTIVE' AND account.account_kind='SUPPLIER'
-    `, [q.supplierId]);
     if (selectedRfq.rows[0]) {
-      const supplierEvent = await appendWorkflowEvent(client, {
+      await appendWorkflowEvent(client, {
         companyId: q.companyId,
         branchId: q.branchId,
         requestId: q.requestId,
@@ -466,12 +446,6 @@ export async function selectQuotation(id: string, reason: string, actor: Operati
         newState: "Supplier order selected",
         source: "WEB",
         metadata: { requestLineId: q.requestLineId },
-      });
-      await notifyWorkflowUsers(client, supplierEvent, {
-        recipientUserIds: selectedSupplierUsers.rows.map((row) => row.id),
-        message: { key: "supplier_order_selected" },
-        routePath: `/supplier#rfq-${selectedRfq.rows[0].id}`,
-        priority: "HIGH",
       });
     }
   });

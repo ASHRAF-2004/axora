@@ -8,7 +8,6 @@ const files = {
   domain: new URL("../src/lib/generated-documents.ts", import.meta.url),
   route: new URL("../src/app/api/generated-documents/[id]/route.ts", import.meta.url),
   documentsLayout: new URL("../src/app/(portal)/documents/layout.tsx", import.meta.url),
-  supplierLayout: new URL("../src/app/(portal)/supplier/layout.tsx", import.meta.url),
 };
 
 describe("generated document portal surfaces", () => {
@@ -19,7 +18,6 @@ describe("generated document portal surfaces", () => {
     expect(source).toContain("ms:");
     expect(source).toContain("Ready for sales review");
     expect(source).toContain("Dispatch secure link");
-    expect(source).toContain("Acknowledge purchase order");
     expect(source).toMatch(/[\u0600-\u06ff]/);
     expect(source).toContain("Pesanan pembelian");
   });
@@ -27,7 +25,7 @@ describe("generated document portal surfaces", () => {
   it("keeps one page heading and exposes version, retry, correction and PO controls", async () => {
     const source = await readFile(files.panel, "utf8");
     expect(source).not.toContain("PageHeader");
-    expect(source).toContain("generated-documents-${mode}");
+    expect(source).toContain('id="generated-documents"');
     expect(source).toContain("regenerateGeneratedDocumentAction");
     expect(source).toContain("manageSupplierPurchaseOrderAction");
     expect(source).toContain("recipientUserId");
@@ -63,16 +61,9 @@ describe("generated document portal surfaces", () => {
     expect(source).not.toContain("sendFile(");
   });
 
-  it("adds role-specific panels without replacing either established portal", async () => {
-    const [documents, supplier] = await Promise.all([
-      readFile(files.documentsLayout, "utf8"),
-      readFile(files.supplierLayout, "utf8"),
-    ]);
-    expect(documents).toContain('mode="documents"');
+  it("adds the internal panel without replacing the established portal", async () => {
+    const documents = await readFile(files.documentsLayout, "utf8");
     expect(documents).toContain('requirePagePermission("view_documents")');
-    expect(supplier).toContain('mode="supplier"');
-    expect(supplier).toContain('requirePagePermission("view_supplier_portal")');
     expect(documents).toContain("{children}");
-    expect(supplier).toContain("{children}");
   });
 });

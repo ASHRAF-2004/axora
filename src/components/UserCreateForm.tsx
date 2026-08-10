@@ -6,7 +6,6 @@ import type {
   Branch,
   Company,
   RoleScopeType,
-  Supplier,
   UserRole,
 } from "@/lib/types";
 import { useMemo, useState } from "react";
@@ -20,7 +19,7 @@ export interface UserRoleOption {
   label: string;
   value: UserRole;
   description: string;
-  category: "Axora" | "Company" | "Supplier" | "Delivery";
+  category: "Axora" | "Company" | "Delivery";
   accountKind: AccountKind;
   allowedScopes: readonly RoleScopeType[];
 }
@@ -51,7 +50,6 @@ export function UserCreateForm({
   companies,
   departments,
   roleOptions,
-  suppliers,
   defaultLocale,
 }: {
   actorBranchId?: string;
@@ -62,7 +60,6 @@ export function UserCreateForm({
   companies: Company[];
   departments: OrganizationDepartment[];
   roleOptions: UserRoleOption[];
-  suppliers: Supplier[];
   defaultLocale: SupportedLocale;
 }) {
   const preferredRole = roleOptions.find((option) => option.value === "COMPANY_ADMIN")
@@ -74,9 +71,6 @@ export function UserCreateForm({
     ?? companies.find((company) => company.status === "Active")?.id
     ?? "";
   const [companyId, setCompanyId] = useState(initialCompanyId);
-  const [supplierId, setSupplierId] = useState(
-    suppliers.find((supplier) => supplier.status === "Active")?.id ?? "",
-  );
   const availableBranches = useMemo(
     () => branches.filter((branch) => branch.status === "Active" && branch.companyId === companyId),
     [branches, companyId],
@@ -88,7 +82,6 @@ export function UserCreateForm({
   const localizedSelectedRole = selectedRole ? copy.roles[selectedRole.value] : undefined;
 
   const isCompanyAccount = selectedRole?.accountKind === "COMPANY";
-  const isSupplierAccount = selectedRole?.accountKind === "SUPPLIER";
   const allowsBranch = Boolean(selectedRole?.allowedScopes.includes("BRANCH"));
   const allowsDepartment = Boolean(selectedRole?.allowedScopes.includes("DEPARTMENT"));
   const allowsCompany = Boolean(selectedRole?.allowedScopes.includes("COMPANY"));
@@ -150,8 +143,7 @@ export function UserCreateForm({
 
   const missingRequiredScope = (isCompanyAccount && !companyId)
     || (requiresDepartment && !selectedDepartmentId)
-    || (requiresNarrowScope && !effectiveBranchId && !selectedDepartmentId)
-    || (isSupplierAccount && !supplierId);
+    || (requiresNarrowScope && !effectiveBranchId && !selectedDepartmentId);
 
   return (
     <form action={createUserAction}>
@@ -248,22 +240,6 @@ export function UserCreateForm({
         ) : null}
         {isCompanyAccount && !allowsBranch && effectiveBranchId ? (
           <input type="hidden" name="branchId" value={effectiveBranchId} />
-        ) : null}
-
-        {isSupplierAccount ? (
-          <label>{copy.supplier}
-            <select
-              name="supplierId"
-              required
-              value={supplierId}
-              onChange={(event) => setSupplierId(event.target.value)}
-            >
-              <option value="" disabled>{copy.selectSupplier}</option>
-              {suppliers.filter((supplier) => supplier.status === "Active").map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-              ))}
-            </select>
-          </label>
         ) : null}
 
         <div className="callout field-full" role="note">

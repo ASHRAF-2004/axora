@@ -1001,12 +1001,6 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "document.view",
     "document.download"
   ],
-  "SUPPLIER_USER": [
-    "supplier.portal.view",
-    "supplier.rfq.respond",
-    "document.view",
-    "document.download"
-  ],
   "DELIVERY_TEAM_SUPERVISOR": [
     "dashboard.view",
     "user.view",
@@ -1151,8 +1145,6 @@ function roleScopeContract(role: AuthorizationRole) {
         accountKind: "COMPANY" as const,
         scopes: ["COMPANY", "BRANCH", "DEPARTMENT"] as const,
       };
-    case "SUPPLIER_USER":
-      return { accountKind: "SUPPLIER" as const, scopes: ["SUPPLIER"] as const };
     case "DELIVERY_TEAM_SUPERVISOR":
     case "DELIVERY_AGENT":
     case "DELIVERY_DRIVER":

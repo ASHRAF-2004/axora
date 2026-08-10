@@ -11,7 +11,6 @@ import { canAccess, type AccessSubject } from "@/lib/permissions";
 const messages = portalMessages("en");
 const companyId = "10000000-0000-4000-8000-000000000001";
 const branchId = "20000000-0000-4000-8000-000000000001";
-const supplierId = "30000000-0000-4000-8000-000000000001";
 
 function hrefs(
   items: Parameters<typeof visiblePortalNavigation>[0],
@@ -41,18 +40,14 @@ describe("role-specific portal navigation boundaries", () => {
     expect(canAccess(companyAdmin, "manage_commercial_pricing")).toBe(false);
   });
 
-  it("keeps supplier and delivery accounts inside their minimal workspaces", () => {
-    const supplier: AccessSubject = {
-      role: "SUPPLIER_USER", isOwner: false, accountKind: "SUPPLIER",
-      scopeType: "SUPPLIER", supplierId,
-    };
+  it("removes supplier navigation while keeping delivery accounts scoped", () => {
     const driver: AccessSubject = {
       role: "DELIVERY_DRIVER", isOwner: false, accountKind: "DELIVERY",
       scopeType: "DELIVERY",
     };
 
-    expect(hrefs(PRIMARY_NAVIGATION, supplier)).toEqual(["/supplier"]);
-    expect(hrefs(DRAWER_NAVIGATION, supplier)).toEqual(["/supplier", "/settings", "/help"]);
+    expect(PRIMARY_NAVIGATION.some((item) => item.href === "/supplier")).toBe(false);
+    expect(DRAWER_NAVIGATION.some((item) => item.href === "/supplier")).toBe(false);
     expect(hrefs(PRIMARY_NAVIGATION, driver)).toEqual(["/driver"]);
     expect(hrefs(DRAWER_NAVIGATION, driver)).toEqual(["/driver", "/settings", "/help"]);
   });

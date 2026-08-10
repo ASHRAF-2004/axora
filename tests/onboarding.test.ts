@@ -15,7 +15,6 @@ const principalRoles = [
   "FINANCE_REVIEWER",
   "AUDITOR",
   "TECHNICAL_SUPPORT",
-  "SUPPLIER_USER",
   "DELIVERY_DRIVER",
   "RECEIVING_USER",
 ] as const;

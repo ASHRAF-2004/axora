@@ -278,7 +278,6 @@
       "Purchase Requester": "REQUESTER",
       "Read-Only Auditor": "AUDITOR",
       "Receiving User": "RECEIVING_USER",
-      "Supplier User": "SUPPLIER_USER",
       "Technical Support": "TECHNICAL_SUPPORT"
     },
     "scope_by_role": {
@@ -293,7 +292,6 @@
       "PLATFORM_OWNER": "PLATFORM",
       "RECEIVING_USER": "BRANCH",
       "REQUESTER": "BRANCH",
-      "SUPPLIER_USER": "SUPPLIER",
       "TECHNICAL_SUPPORT": "PLATFORM"
     }
   }

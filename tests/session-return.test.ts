@@ -24,14 +24,6 @@ const requester: AccessSubject = {
   isOwner: false,
 };
 
-const supplier: AccessSubject = {
-  role: "SUPPLIER_USER",
-  accountKind: "SUPPLIER",
-  scopeType: "SUPPLIER",
-  supplierId: "30000000-0000-4000-8000-000000000001",
-  isOwner: false,
-};
-
 describe("session return paths", () => {
   it("preserves a recognized path, query, and fragment", () => {
     expect(safeInternalReturnPath(
@@ -83,16 +75,7 @@ describe("session return paths", () => {
       "/users",
       "/dashboard",
     )).toBe("/dashboard");
-    expect(authorizedSessionReturnPath(
-      supplier,
-      "/requests",
-      "/supplier",
-    )).toBe("/supplier");
-    expect(authorizedSessionReturnPath(
-      supplier,
-      "/supplier?status=open#rfqs",
-      "/supplier",
-    )).toBe("/supplier?status=open#rfqs");
+    expect(isRecognizedProtectedPath("/supplier")).toBe(false);
   });
 
   it("restores a fragment only when path and query match", () => {

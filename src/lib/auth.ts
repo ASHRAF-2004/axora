@@ -490,9 +490,7 @@ function roleFitsAccountScope(
     if (scopeType === "BRANCH") return branchScopeRoles.has(role);
     return scopeType === "DEPARTMENT" && departmentScopeRoles.has(role);
   }
-  if (accountKind === "SUPPLIER") {
-    return scopeType === "SUPPLIER" && role === "SUPPLIER_USER";
-  }
+  if (accountKind === "SUPPLIER") return false;
   return scopeType === "DELIVERY" && deliveryScopeRoles.has(role);
 }
 

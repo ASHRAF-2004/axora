@@ -52,7 +52,6 @@ describe("pre-onboarding route allowlist", () => {
       "src/app/api/products/[id]/image/route.ts",
       "src/app/api/products/[id]/images/[imageId]/route.ts",
       "src/app/api/products/[id]/images/route.ts",
-      "src/app/api/supplier/documents/[id]/route.ts",
     ];
 
     for (const route of protectedApiRoutes) {

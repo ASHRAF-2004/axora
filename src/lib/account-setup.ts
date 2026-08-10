@@ -350,15 +350,6 @@ async function initializeInvitedIdentity(
       [userId, input.companyId, input.departmentId, actorId],
     );
   }
-  if (input.accountKind === "SUPPLIER") {
-    await client.query(
-      `INSERT INTO supplier_memberships(user_id,supplier_id,status,created_by)
-       VALUES ($1,$2,'INVITED',$3)
-       ON CONFLICT(user_id,supplier_id) DO UPDATE
-       SET status='INVITED',ended_at=NULL`,
-      [userId, input.supplierId, actorId],
-    );
-  }
   if (input.accountKind === "DELIVERY") {
     await client.query(
       `INSERT INTO delivery_agent_profiles(user_id,agent_code,active)
@@ -895,10 +886,6 @@ export async function inspectAccountSetupToken(
            AND intended_role.role_key IN (
              'DEPARTMENT_ADMIN','REQUESTER','FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
            ))
-         OR (i.intended_scope_type='SUPPLIER'
-           AND u.account_kind='SUPPLIER' AND u.is_owner=false
-           AND supplier.active=true AND supplier_membership.status='INVITED'
-           AND intended_role.role_key='SUPPLIER_USER')
          OR (i.intended_scope_type='DELIVERY'
            AND u.account_kind='DELIVERY' AND u.is_owner=false
            AND driver.active=true
@@ -1040,10 +1027,6 @@ export async function consumeAccountSetupToken(
                AND intended_role.role_key IN (
                  'DEPARTMENT_ADMIN','REQUESTER','FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
                ))
-             OR (i.intended_scope_type='SUPPLIER'
-               AND u.account_kind='SUPPLIER' AND u.is_owner=false
-               AND supplier.active=true AND supplier_membership.status='INVITED'
-               AND intended_role.role_key='SUPPLIER_USER')
              OR (i.intended_scope_type='DELIVERY'
                AND u.account_kind='DELIVERY' AND u.is_owner=false
                AND driver.active=true
@@ -1107,15 +1090,6 @@ export async function consumeAccountSetupToken(
            SET status='ACTIVE',joined_at=COALESCE(company_memberships.joined_at,now()),
                ended_at=NULL`,
           [invitation.userId, invitation.companyId],
-        );
-      }
-      if (invitation.supplierId) {
-        await client.query(
-          `INSERT INTO supplier_memberships(user_id,supplier_id,status)
-           VALUES ($1,$2,'ACTIVE')
-           ON CONFLICT(user_id,supplier_id) DO UPDATE
-           SET status='ACTIVE',ended_at=NULL`,
-          [invitation.userId, invitation.supplierId],
         );
       }
       if (invitation.branchId) {

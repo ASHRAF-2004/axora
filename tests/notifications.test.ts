@@ -12,10 +12,10 @@ const base = {
   companyId: "10000000-0000-4000-8000-000000000001",
   recipientUserId: "20000000-0000-4000-8000-000000000001",
   workflowEventId: "30000000-0000-4000-8000-000000000001",
-  eventKey: "supplier.rfq.issued",
-  title: "New RFQ",
-  body: "A quotation response is requested.",
-  routePath: "/supplier/rfqs/30000000-0000-4000-8000-000000000001",
+  eventKey: "request.status.changed",
+  title: "Request updated",
+  body: "A purchase request status changed.",
+  routePath: "/requests/30000000-0000-4000-8000-000000000001",
   createdAt: "2026-08-02T08:00:00.000Z",
 };
 

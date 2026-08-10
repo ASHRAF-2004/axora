@@ -59,7 +59,6 @@ export interface SupplierPurchaseOrderSummary {
   generatedAt: string;
   downloadUrl: string;
   canDispatch: boolean;
-  canAcknowledge: boolean;
 }
 
 export interface GeneratedDocumentWorkspace {
@@ -154,7 +153,7 @@ export async function manageSupplierPurchaseOrder(
     documentId: uuid,
     expectedVersion: z.coerce.number().int().positive(),
     operation: z.enum([
-      "MARK_READY", "APPROVE", "DISPATCH", "RESEND", "AMEND", "CANCEL", "ACKNOWLEDGE",
+      "MARK_READY", "APPROVE", "DISPATCH", "RESEND", "AMEND", "CANCEL",
     ]),
     recipientUserId: z.union([uuid, z.literal("")]).optional().default(""),
     reason: z.string().trim().max(500).optional().default(""),

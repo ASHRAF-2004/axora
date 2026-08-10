@@ -9,10 +9,6 @@ function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-function returnPath(formData: FormData) {
-  return text(formData, "returnPath") === "/supplier" ? "/supplier" : "/documents";
-}
-
 export async function regenerateGeneratedDocumentAction(formData: FormData) {
   const actor = await requireSession();
   await requestGeneratedDocumentVersion(actor, {
@@ -28,7 +24,6 @@ export async function regenerateGeneratedDocumentAction(formData: FormData) {
 
 export async function manageSupplierPurchaseOrderAction(formData: FormData) {
   const actor = await requireSession();
-  const path = returnPath(formData);
   await manageSupplierPurchaseOrder(actor, {
     documentId: text(formData, "documentId"),
     expectedVersion: text(formData, "expectedVersion"),
@@ -38,6 +33,5 @@ export async function manageSupplierPurchaseOrderAction(formData: FormData) {
     commandId: text(formData, "commandId"),
   });
   revalidatePath("/documents");
-  revalidatePath("/supplier");
-  redirect(`${path}?notice=po-updated`);
+  redirect("/documents?notice=po-updated");
 }

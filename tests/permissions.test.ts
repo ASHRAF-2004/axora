@@ -30,8 +30,6 @@ const allPermissions: Permission[] = [
   "view_system_diagnostics",
   "view_email_operations",
   "manage_email_operations",
-  "view_supplier_portal",
-  "respond_to_rfqs",
   "view_delivery_portal",
   "update_assigned_deliveries",
   "view_receiving",
@@ -172,16 +170,6 @@ describe("normalized least-privilege permissions", () => {
         scopeType: "PLATFORM",
       },
       allowed: ["view_system_diagnostics"],
-    },
-    {
-      subject: {
-        role: "SUPPLIER_USER",
-        isOwner: false,
-        accountKind: "SUPPLIER",
-        scopeType: "SUPPLIER",
-        supplierId,
-      },
-      allowed: ["view_supplier_portal", "respond_to_rfqs"],
     },
     {
       subject: {

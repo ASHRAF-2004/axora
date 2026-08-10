@@ -15,7 +15,6 @@ interface NavigationDefinition extends PortalNavigationItem {
 
 export const PRIMARY_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/dashboard", label: "Dashboard", permission: "view_dashboard" },
-  { href: "/supplier", label: "RFQs", permission: "view_supplier_portal" },
   { href: "/driver", label: "Driver", permission: "view_delivery_portal" },
   { href: "/receiving", label: "Receiving", permission: "view_receiving" },
   { href: "/products", label: "Shop", permission: "view_catalog" },
@@ -28,7 +27,6 @@ export const PRIMARY_NAVIGATION: readonly NavigationDefinition[] = [
 ];
 
 export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
-  { href: "/supplier", label: "Supplier RFQs", description: "Assigned RFQs, quotations and documents", permission: "view_supplier_portal", group: "workspace" },
   { href: "/driver", label: "Driver assignments", description: "Offline-safe status and delivery evidence", permission: "view_delivery_portal", group: "workspace" },
   { href: "/receiving", label: "Receiving", description: "Independent line-by-line receipt confirmation", permission: "view_receiving", group: "workspace" },
   { href: "/companies", label: "Companies", description: "Onboarding and tenant health", permission: "manage_companies", group: "administration" },

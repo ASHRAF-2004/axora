@@ -6,15 +6,13 @@ const mocks = vi.hoisted(() => ({
     id: "00000000-0000-4000-8000-000000000001",
     email: "portal@example.test",
     name: "Portal user",
-    role: "SUPPLIER_USER",
-    accountKind: "SUPPLIER",
-    scopeType: "SUPPLIER",
-    supplierId: "10000000-0000-4000-8000-000000000001",
+    role: "DELIVERY_DRIVER",
+    accountKind: "DELIVERY",
+    scopeType: "DELIVERY",
     isOwner: false,
     authVersion: 1,
     preferredLocale: "en",
   } as Record<string, unknown>,
-  getSupplierWorkspace: vi.fn(),
   getReceivingWorkspace: vi.fn(),
   getDriverWorkspace: vi.fn(),
   canAccess: vi.fn(),
@@ -25,7 +23,6 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/role-portals-repository", () => ({
-  getSupplierWorkspace: mocks.getSupplierWorkspace,
   getReceivingWorkspace: mocks.getReceivingWorkspace,
   getDriverWorkspace: mocks.getDriverWorkspace,
 }));
@@ -34,7 +31,6 @@ vi.mock("@/lib/permissions", () => ({ canAccess: mocks.canAccess }));
 
 import DriverPage from "@/app/(portal)/driver/page";
 import ReceivingPage from "@/app/(portal)/receiving/page";
-import SupplierPage from "@/app/(portal)/supplier/page";
 import { deliveryWorkflowMessages, deliveryWorkflowStatusLabel } from "@/lib/delivery-workflow-i18n";
 import {
   ROLE_PORTAL_MESSAGES,
@@ -42,28 +38,6 @@ import {
   formatRolePortalMoney,
   formatRolePortalStatus,
 } from "@/lib/role-portals-i18n";
-
-const supplierWorkspace = {
-  supplierName: "Pembekal Contoh",
-  rfqs: [{
-    id: "20000000-0000-4000-8000-000000000001",
-    companyId: "30000000-0000-4000-8000-000000000001",
-    reference: "RFQ-1001",
-    status: "ACKNOWLEDGED",
-    respondBy: "2026-08-12T09:00:00.000Z",
-    productName: "Safety gloves",
-    specification: "Powder-free",
-    quantity: 12.5,
-    unit: "box",
-    documents: [{
-      id: "40000000-0000-4000-8000-000000000001",
-      fileName: "request.pdf",
-      documentKind: "RFQ",
-      documentVersion: 1,
-      createdAt: "2026-08-01T09:00:00.000Z",
-    }],
-  }],
-};
 
 const deliveryJob = {
   id: "50000000-0000-4000-8000-000000000001",
@@ -109,7 +83,6 @@ describe("localized role portals", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.actor.preferredLocale = "en";
-    mocks.getSupplierWorkspace.mockResolvedValue(supplierWorkspace);
     mocks.getDriverWorkspace.mockResolvedValue([deliveryJob]);
     mocks.getReceivingWorkspace.mockResolvedValue([receivingJob]);
     mocks.canAccess.mockReturnValue(true);
@@ -123,7 +96,6 @@ describe("localized role portals", () => {
     expect(formatRolePortalMoney(1250.5, "ms")).toContain("1,250.50");
     for (const locale of ["en", "ar", "ms"] as const) {
       const copy = ROLE_PORTAL_MESSAGES[locale];
-      expect(copy.supplier.submitVersioned).toBeTruthy();
       expect(copy.driver.evidenceHint).toBeTruthy();
       expect(copy.driver.queueRecoveryTitle).toBeTruthy();
       expect(copy.driver.exportQueueRecovery).toBeTruthy();
@@ -136,21 +108,6 @@ describe("localized role portals", () => {
       }
     }
     expect(deliveryWorkflowStatusLabel("OUT_FOR_DELIVERY", "ms")).toBe("Keluar untuk penghantaran");
-  });
-
-  it("renders the complete supplier workflow in Arabic", async () => {
-    mocks.actor.preferredLocale = "ar";
-    const html = renderToStaticMarkup(await SupplierPage({
-      searchParams: Promise.resolve({ notice: "acknowledgement-recorded" }),
-    }));
-
-    expect(html).toContain("مساحة عمل المورد");
-    expect(html).toContain("تم تسجيل ردك على طلب عرض السعر");
-    expect(html).toContain("تأكيد الطلب أو طلب استيضاح");
-    expect(html).toContain("تقديم عرض سعر");
-    expect(html).toContain("رفع مستند عرض السعر");
-    expect(html).not.toContain("Acknowledge or query RFQ");
-    expect(html).not.toContain("Submit versioned quotation");
   });
 
   it("renders the mobile driver workflow in Malay", async () => {

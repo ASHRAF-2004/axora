@@ -91,12 +91,6 @@ const definitions: Record<string, TutorialStepDefinition[]> = {
     { key: "support-audit", title: "Elevated actions are visible", body: "Use only approved support actions and provide a reason for the audit record.", target: "[data-tour='support-actions']" },
     sharedHelp,
   ],
-  SUPPLIER_USER: [
-    { key: "supplier-queue", title: "See only your assigned requests", body: "Your supplier organization receives a focused list of quotation and fulfilment work.", target: "[data-tour='supplier-queue']" },
-    { key: "quotation", title: "Submit complete quotation terms", body: "Add price, MOQ, lead time, validity, availability, delivery charge, and the approved document.", target: "[data-tour='quotation']" },
-    { key: "supplier-privacy", title: "Other suppliers stay private", body: "You cannot see competitors, their quotations, Axora margin, or unrelated customer records.", target: "[data-tour='supplier-status']" },
-    sharedHelp,
-  ],
   DELIVERY_DRIVER: [
     { key: "today-deliveries", title: "Today's deliveries are first", body: "The next assigned stop shows the approved address, contact action, package summary, window, and instructions.", target: "[data-tour='driver-today']" },
     { key: "delivery-actions", title: "Record each real event", body: "Accept, start, arrive, deliver, or report an issue. Offline events stay queued until safely synchronized.", target: "[data-tour='driver-actions']" },

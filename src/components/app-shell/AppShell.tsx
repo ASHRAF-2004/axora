@@ -83,7 +83,6 @@ function tourName(href: string) {
     "/users": "people",
     "/audit": "audit",
     "/help": "help",
-    "/supplier": "supplier-queue",
     "/driver": "driver-today",
     "/receiving": "receiving",
   };

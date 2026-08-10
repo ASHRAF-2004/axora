@@ -33,15 +33,10 @@ import type { SessionUser } from "@/lib/auth";
 import {
   confirmReceipt,
   getReceivingWorkspace,
-  loadSupplierDocument,
   recordDriverEvent,
-  submitSupplierQuotation,
 } from "@/lib/role-portals-repository";
 
 const ids = {
-  supplierUser: "10000000-0000-4000-8000-000000000001",
-  supplier: "11000000-0000-4000-8000-000000000001",
-  membership: "12000000-0000-4000-8000-000000000001",
   receiver: "20000000-0000-4000-8000-000000000001",
   driver: "30000000-0000-4000-8000-000000000001",
   company: "40000000-0000-4000-8000-000000000001",
@@ -49,25 +44,12 @@ const ids = {
   branch: "50000000-0000-4000-8000-000000000001",
   request: "60000000-0000-4000-8000-000000000001",
   requestLine: "61000000-0000-4000-8000-000000000001",
-  rfq: "62000000-0000-4000-8000-000000000001",
-  document: "63000000-0000-4000-8000-000000000001",
   job: "70000000-0000-4000-8000-000000000001",
   assignment: "71000000-0000-4000-8000-000000000001",
   device: "72000000-0000-4000-8000-000000000001",
   clientEvent: "73000000-0000-4000-8000-000000000001",
   serverEvent: "74000000-0000-4000-8000-000000000001",
   deliveryLine: "75000000-0000-4000-8000-000000000001",
-};
-
-const supplierActor: SessionUser = {
-  id: ids.supplierUser,
-  email: "supplier@example.test",
-  name: "Supplier User",
-  role: "SUPPLIER_USER",
-  accountKind: "SUPPLIER",
-  scopeType: "SUPPLIER",
-  supplierId: ids.supplier,
-  isOwner: false,
 };
 
 const receiverActor: SessionUser = {
@@ -108,17 +90,6 @@ describe("role portal repository boundaries", () => {
       created: true,
     });
     mocks.notifyWorkflowAudience.mockResolvedValue(1);
-  });
-
-  it("binds a supplier document lookup to the active supplier membership", async () => {
-    mocks.client.query
-      .mockResolvedValueOnce({ rows: [{ id: ids.membership, userId: ids.supplierUser, supplierId: ids.supplier, status: "ACTIVE" }] })
-      .mockResolvedValueOnce({ rows: [{ fileName: "quote.pdf", contentType: "application/pdf", storagePath: "supplier-portal/safe/quote.pdf" }] });
-    mocks.readPersistentUpload.mockResolvedValue(Buffer.from("pdf"));
-    await expect(loadSupplierDocument(supplierActor, ids.document)).resolves.toMatchObject({ fileName: "quote.pdf" });
-    const documentLookup = mocks.client.query.mock.calls[1];
-    expect(String(documentLookup[0])).toContain("WHERE id=$1 AND supplier_id=$2");
-    expect(documentLookup[1]).toEqual([ids.document, ids.supplier]);
   });
 
   it("filters receiver work by both company and branch scope", async () => {
@@ -327,54 +298,6 @@ describe("role portal repository boundaries", () => {
       eventKey: "delivery.partially_delivered",
       aggregateType: "delivery-job",
     }));
-  });
-
-  it("emits quotation receipt metadata without supplier identity or pricing", async () => {
-    mocks.client.query
-      .mockResolvedValueOnce({ rows: [{ id: ids.membership, userId: ids.supplierUser, supplierId: ids.supplier, status: "ACTIVE" }] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ companyId: ids.company, branchId: ids.branch, requestId: ids.request, requestLineId: ids.requestLine, nextVersion: 1 }] })
-      .mockResolvedValueOnce({ rows: [{ id: ids.serverEvent }], rowCount: 1 });
-    await submitSupplierQuotation(supplierActor, {
-      rfqId: ids.rfq,
-      quotationReference: "PRIVATE-QUOTE-1",
-      unitPrice: 123.45,
-      deliveryCharge: 10,
-      availability: "AVAILABLE",
-    });
-    const workflowInput = mocks.appendWorkflowEvent.mock.calls[0]?.[1];
-    expect(workflowInput).toMatchObject({
-      aggregateType: "supplier-rfq",
-      aggregateId: ids.rfq,
-      eventKey: "quotation.received",
-      metadata: { requestLineId: ids.requestLine },
-      source: "SUPPLIER_PORTAL",
-    });
-    const customerVisibleFields = JSON.stringify({
-      metadata: workflowInput.metadata,
-      newState: workflowInput.newState,
-      reason: workflowInput.reason,
-    });
-    expect(customerVisibleFields).not.toContain(ids.supplier);
-    expect(customerVisibleFields).not.toContain("PRIVATE-QUOTE-1");
-    expect(customerVisibleFields).not.toContain("123.45");
-  });
-
-  it("denies quotation submission when the RFQ does not belong to the active supplier", async () => {
-    mocks.client.query
-      .mockResolvedValueOnce({ rows: [{ id: ids.membership, userId: ids.supplierUser, supplierId: ids.supplier, status: "ACTIVE" }] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
-    await expect(submitSupplierQuotation(supplierActor, {
-      rfqId: ids.rfq,
-      quotationReference: "FORGED-QUOTE",
-      unitPrice: 1,
-      deliveryCharge: 0,
-      availability: "AVAILABLE",
-    })).rejects.toThrow("unavailable or expired");
-    const scopedLookup = mocks.client.query.mock.calls[2];
-    expect(String(scopedLookup[0])).toContain("rfq.supplier_id=$2");
-    expect(scopedLookup[1]).toEqual([ids.rfq, ids.supplier]);
   });
 
   it("opens a receipt discrepancy without treating driver evidence as confirmation", async () => {
