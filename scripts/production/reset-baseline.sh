@@ -10,11 +10,26 @@ load_config
 require_reset_database_allowed "$AXORA_DATABASE_NAME"
 
 mode=plan
-case "${1:-}" in
-  ""|--plan) mode=plan ;;
-  --apply) mode=apply ;;
-  *) die "Usage: $0 [--plan|--apply]" ;;
-esac
+retain_owner_id=""
+while (( "$#" > 0 )); do
+  case "$1" in
+    --plan) mode=plan ;;
+    --apply) mode=apply ;;
+    --retain-owner-id)
+      shift
+      retain_owner_id="${1:-}"
+      ;;
+    *) die "Usage: $0 [--plan|--apply] [--retain-owner-id UUID]" ;;
+  esac
+  shift
+done
+owner_retaining=false
+if [[ -n "$retain_owner_id" ]]; then
+  [[ "$retain_owner_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]] \
+    || die "--retain-owner-id must be a canonical UUID."
+  owner_retaining=true
+fi
+canonical_owner_email="owner@axora.management"
 
 if [[ "$mode" == "apply" ]]; then
   reset_authorization_is_exact \
@@ -60,6 +75,11 @@ valid_image_id "$current_image_id" || die "Current release image digest state is
   && -f "$release/database/admin/apply-app-grants.sql" \
   && -d "$release/database/migrations" ]] \
   || die "Current sealed release lacks required migration assets."
+if "$owner_retaining"; then
+  [[ -f "$SCRIPT_DIR/owner-retaining-reset.sql" \
+    && ! -L "$SCRIPT_DIR/owner-retaining-reset.sql" ]] \
+    || die "Owner-retaining reset SQL is missing or unsafe."
+fi
 
 db_container="$(find_service_container db)" \
   || die "Expected exactly one running Axora PostgreSQL container."
@@ -233,6 +253,94 @@ assert_migration_only_baseline() {
         ;;
     esac
   done < "$input"
+}
+
+assert_retained_owner_source() {
+  local database="$1"
+  local result
+
+  result="$(docker exec "$db_container" psql \
+    --username postgres \
+    --dbname "$database" \
+    --tuples-only \
+    --no-align \
+    --set=ON_ERROR_STOP=1 \
+    --set="retained_owner_id=$retain_owner_id" \
+    <<'SQL'
+SELECT concat_ws(':',
+  count(*) FILTER (
+    WHERE account.id=:'retained_owner_id'::uuid
+      AND account.active AND account.is_owner
+      AND account.company_id IS NULL AND account.branch_id IS NULL
+  ),
+  count(*) FILTER (
+    WHERE account.id=:'retained_owner_id'::uuid
+      AND credential.password_hash IS NOT NULL
+  ),
+  count(*) FILTER (
+    WHERE account.id=:'retained_owner_id'::uuid
+      AND profile.user_id IS NOT NULL
+  ),
+  count(*) FILTER (
+    WHERE account.id=:'retained_owner_id'::uuid
+      AND role.role_key='PLATFORM_OWNER'
+      AND assignment.active AND assignment.revoked_at IS NULL
+      AND assignment.scope_type='PLATFORM'
+      AND assignment.company_id IS NULL
+      AND assignment.branch_id IS NULL
+      AND assignment.department_id IS NULL
+      AND assignment.supplier_id IS NULL
+  )
+)
+FROM users account
+LEFT JOIN account_credentials credential ON credential.user_id=account.id
+LEFT JOIN user_profiles profile ON profile.user_id=account.id
+LEFT JOIN role_assignments assignment ON assignment.user_id=account.id
+LEFT JOIN roles role ON role.id=assignment.role_id;
+SQL
+  )"
+  result="$(printf '%s' "$result" | tr -d '[:space:]')"
+  [[ "$result" == "1:1:1:1" ]] \
+    || die "Retained Platform Owner identity is incomplete or ambiguous."
+}
+
+assert_owner_retaining_candidate() {
+  local database="$1"
+  local result
+
+  result="$(docker exec "$db_container" psql \
+    --username postgres \
+    --dbname "$database" \
+    --tuples-only \
+    --no-align \
+    --set=ON_ERROR_STOP=1 \
+    --set="retained_owner_id=$retain_owner_id" \
+    --set="canonical_email=$canonical_owner_email" \
+    <<'SQL'
+SELECT concat_ws(':',
+  (SELECT count(*) FROM users),
+  (SELECT count(*) FROM companies),
+  (SELECT count(*) FROM account_credentials),
+  (SELECT count(*) FROM user_profiles),
+  (SELECT count(*) FROM role_assignments assignment
+   JOIN roles role ON role.id=assignment.role_id
+   WHERE assignment.user_id=:'retained_owner_id'::uuid
+     AND role.role_key='PLATFORM_OWNER'
+     AND assignment.active AND assignment.revoked_at IS NULL
+     AND assignment.scope_type='PLATFORM'),
+  (SELECT count(*) FROM users
+   WHERE id=:'retained_owner_id'::uuid
+     AND email=:'canonical_email'
+     AND active AND is_owner
+     AND company_id IS NULL AND branch_id IS NULL),
+  (SELECT count(*) FROM user_sessions),
+  (SELECT count(*) FROM supplier_memberships)
+);
+SQL
+  )"
+  result="$(printf '%s' "$result" | tr -d '[:space:]')"
+  [[ "$result" == "1:0:1:1:1:1:0:0" ]] \
+    || die "Owner-retaining candidate postconditions failed."
 }
 
 capture_upload_state() {
@@ -487,18 +595,35 @@ upload_byte_count="$(find "$AXORA_UPLOADS_DIR" -type f -printf '%s\n' \
   | awk '{ total += $1 } END { print total + 0 }')"
 [[ "$upload_file_count" =~ ^[0-9]+$ && "$upload_byte_count" =~ ^[0-9]+$ ]] \
   || die "Unable to summarize persistent uploads."
+if "$owner_retaining"; then
+  assert_retained_owner_source "$AXORA_DATABASE_NAME"
+fi
 
-log "Baseline reset plan: database=$AXORA_DATABASE_NAME commit=$current_sha tables=$source_table_count rows=$source_row_count uploads=$upload_file_count files/$upload_byte_count bytes."
+if "$owner_retaining"; then
+  log "Owner-retaining reset plan: database=$AXORA_DATABASE_NAME commit=$current_sha tables=$source_table_count rows=$source_row_count uploads=$upload_file_count files/$upload_byte_count bytes retained_owner=$retain_owner_id."
+else
+  log "Baseline reset plan: database=$AXORA_DATABASE_NAME commit=$current_sha tables=$source_table_count rows=$source_row_count uploads=$upload_file_count files/$upload_byte_count bytes."
+fi
 if [[ "$mode" == "plan" ]]; then
   log "Plan only: no service, database, upload, backup, or Docker volume was changed."
   exit 0
 fi
 
-confirmation="$(reset_confirmation_phrase \
-  "$AXORA_DATABASE_NAME" "$source_row_count" "$source_table_count" "$current_sha")"
+if "$owner_retaining"; then
+  confirmation="RESET $AXORA_DATABASE_NAME KEEP OWNER $retain_owner_id REMOVE $source_row_count ROWS ACROSS $source_table_count TABLES AT $current_sha"
+else
+  confirmation="$(reset_confirmation_phrase \
+    "$AXORA_DATABASE_NAME" "$source_row_count" "$source_table_count" "$current_sha")"
+fi
 {
-  printf '\nThis replaces the active database with a migration-only baseline.\n'
-  printf 'No company, branch, user, owner, product, supplier, request, or demo row will be seeded.\n'
+  if "$owner_retaining"; then
+    printf '\nThis replaces the active database with a one-owner pre-launch baseline.\n'
+    printf 'The selected owner credential hash and global catalog/vendor data are retained.\n'
+    printf 'All companies, other users, sessions, operational rows, and active audit rows are omitted.\n'
+  else
+    printf '\nThis replaces the active database with a migration-only baseline.\n'
+    printf 'No company, branch, user, owner, product, supplier, request, or demo row will be seeded.\n'
+  fi
   printf 'The source database and upload tree will be quarantined, not deleted.\n\n'
   printf 'Type this exact phrase:\n%s\n> ' "$confirmation"
 } > /dev/tty
@@ -523,8 +648,19 @@ cp -- "$work_dir/source-uploads-files.list" "$audit_dir/uploads-files.list"
 cp -- "$work_dir/source-uploads.sha256" "$audit_dir/uploads.sha256"
 cp -- "$work_dir/source-uploads-directories.list" "$audit_dir/uploads-directories.list"
 chmod 0600 "$audit_dir"/*
+if "$owner_retaining"; then
+  seed_users=retained-owner-only
+  retained_owner_manifest="$retain_owner_id"
+  canonical_owner_manifest="$canonical_owner_email"
+  reset_format=axora-owner-retaining-reset-audit-v1
+else
+  seed_users=no
+  retained_owner_manifest=none
+  canonical_owner_manifest=none
+  reset_format=axora-baseline-reset-audit-v1
+fi
 cat > "$audit_dir/manifest.txt" <<EOF
-format=axora-baseline-reset-audit-v1
+format=$reset_format
 reset_id=$reset_id
 requested_utc=$(date -u --iso-8601=seconds)
 initiator_uid=$initiator_uid
@@ -537,8 +673,10 @@ source_upload_file_count=$upload_file_count
 source_upload_byte_count=$upload_byte_count
 authorization_flag=exact
 typed_confirmation=matched
-seed_users=no
+seed_users=$seed_users
 seed_demo=no
+retained_owner_id=$retained_owner_manifest
+canonical_owner_email=$canonical_owner_manifest
 docker_volumes_touched=no
 EOF
 chmod 0600 "$audit_dir/manifest.txt"
@@ -602,9 +740,13 @@ cmp --silent "$work_dir/frozen-uploads-directories.list" "$work_dir/post-backup-
 append_audit source_reverified_after_backup "sessions=0 drift=false"
 
 # The candidate name is internal and never replaces the configured production
-# name until every migration-only baseline check passes.
+# name until every selected baseline check passes.
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-candidate_database="axora_baseline_${stamp}_$$"
+if "$owner_retaining"; then
+  candidate_database="axora_owner_baseline_${stamp}_$$"
+else
+  candidate_database="axora_baseline_${stamp}_$$"
+fi
 candidate_database="${candidate_database:0:60}"
 archived_database="axora_pre_reset_${stamp}_$$"
 archived_database="${archived_database:0:60}"
@@ -613,49 +755,66 @@ valid_database_name "$archived_database" || die "Unsafe archive database name."
 database_exists "$candidate_database" && die "Candidate database already exists."
 database_exists "$archived_database" && die "Archive database already exists."
 
-docker exec "$db_container" createdb \
-  --username postgres \
-  --template template0 \
-  --encoding UTF8 \
-  "$candidate_database"
-candidate_created=true
-append_audit candidate_created "database=$candidate_database"
+if "$owner_retaining"; then
+  docker exec "$db_container" createdb \
+    --username postgres \
+    --template "$AXORA_DATABASE_NAME" \
+    "$candidate_database"
+  candidate_created=true
+  append_audit candidate_created "database=$candidate_database source=quiescent-production-clone"
+  log "Applying the owner-retaining transaction only to isolated candidate $candidate_database."
+  docker exec -i "$db_container" psql \
+    --username postgres \
+    --dbname "$candidate_database" \
+    --set=ON_ERROR_STOP=1 \
+    --set="retained_owner_id=$retain_owner_id" \
+    --set="canonical_email=$canonical_owner_email" \
+    < "$SCRIPT_DIR/owner-retaining-reset.sql"
+else
+  docker exec "$db_container" createdb \
+    --username postgres \
+    --template template0 \
+    --encoding UTF8 \
+    "$candidate_database"
+  candidate_created=true
+  append_audit candidate_created "database=$candidate_database"
 
-log "Applying migrations only from sealed release $current_sha."
-docker run \
-  --rm \
-  --label "axora.reset.migration=$reset_id" \
-  --network "$AXORA_BACKEND_NETWORK" \
-  --group-add 1000 \
-  --cpus 2 \
-  --memory 1g \
-  --pids-limit 128 \
-  --env POSTGRES_USER=postgres \
-  --env "POSTGRES_DB=$candidate_database" \
-  --env PGHOST=db \
-  --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
-  --mount "type=bind,source=$release/database/init,target=/database/init,readonly" \
-  --mount "type=bind,source=$release/database/migrations,target=/migrations,readonly" \
-  --entrypoint /bin/sh \
-  "$AXORA_POSTGRES_IMAGE" \
-  /database/init/01-run-migration.sh
+  log "Applying migrations only from sealed release $current_sha."
+  docker run \
+    --rm \
+    --label "axora.reset.migration=$reset_id" \
+    --network "$AXORA_BACKEND_NETWORK" \
+    --group-add 1000 \
+    --cpus 2 \
+    --memory 1g \
+    --pids-limit 128 \
+    --env POSTGRES_USER=postgres \
+    --env "POSTGRES_DB=$candidate_database" \
+    --env PGHOST=db \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
+    --mount "type=bind,source=$release/database/init,target=/database/init,readonly" \
+    --mount "type=bind,source=$release/database/migrations,target=/migrations,readonly" \
+    --entrypoint /bin/sh \
+    "$AXORA_POSTGRES_IMAGE" \
+    /database/init/01-run-migration.sh
 
-docker run \
-  --rm \
-  --label "axora.reset.grants=$reset_id" \
-  --network "$AXORA_BACKEND_NETWORK" \
-  --group-add 1000 \
-  --cpus 1 \
-  --memory 512m \
-  --pids-limit 64 \
-  --env "PGDATABASE=$candidate_database" \
-  --env PGHOST=db \
-  --env PGUSER=postgres \
-  --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
-  --mount "type=bind,source=$release/database/admin,target=/database/admin,readonly" \
-  --entrypoint /bin/sh \
-  "$AXORA_POSTGRES_IMAGE" \
-  -c 'export PGPASSWORD="$(cat /run/secrets/postgres_admin_password)"; exec psql --set=ON_ERROR_STOP=1 --file=/database/admin/apply-app-grants.sql'
+  docker run \
+    --rm \
+    --label "axora.reset.grants=$reset_id" \
+    --network "$AXORA_BACKEND_NETWORK" \
+    --group-add 1000 \
+    --cpus 1 \
+    --memory 512m \
+    --pids-limit 64 \
+    --env "PGDATABASE=$candidate_database" \
+    --env PGHOST=db \
+    --env PGUSER=postgres \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
+    --mount "type=bind,source=$release/database/admin,target=/database/admin,readonly" \
+    --entrypoint /bin/sh \
+    "$AXORA_POSTGRES_IMAGE" \
+    -c 'export PGPASSWORD="$(cat /run/secrets/postgres_admin_password)"; exec psql --set=ON_ERROR_STOP=1 --file=/database/admin/apply-app-grants.sql'
+fi
 
 capture_database_migrations "$candidate_database" "$work_dir/candidate-migrations.tsv"
 cmp --silent "$work_dir/release-migrations.tsv" "$work_dir/candidate-migrations.tsv" \
@@ -663,9 +822,15 @@ cmp --silent "$work_dir/release-migrations.tsv" "$work_dir/candidate-migrations.
 capture_table_counts "$candidate_database" "$work_dir/candidate-counts.tsv"
 IFS=$'\t' read -r candidate_table_count candidate_row_count \
   <<< "$(summarize_table_counts "$work_dir/candidate-counts.tsv")"
-assert_migration_only_baseline "$work_dir/candidate-counts.tsv"
-append_audit candidate_verified \
-  "tables=$candidate_table_count baseline_rows=$candidate_row_count business_rows=0"
+if "$owner_retaining"; then
+  assert_owner_retaining_candidate "$candidate_database"
+  append_audit candidate_verified \
+    "tables=$candidate_table_count rows=$candidate_row_count users=1 companies=0 owner_retained=true"
+else
+  assert_migration_only_baseline "$work_dir/candidate-counts.tsv"
+  append_audit candidate_verified \
+    "tables=$candidate_table_count baseline_rows=$candidate_row_count business_rows=0"
+fi
 
 [[ "$(stat -c '%d' "$AXORA_UPLOADS_DIR")" == "$(stat -c '%d' "$quarantine_dir")" ]] \
   || die "Upload quarantine must be on the same filesystem for a recoverable rename."
@@ -696,7 +861,11 @@ reset_committed=true
 append_audit reset_completed \
   "active=$AXORA_DATABASE_NAME preserved_source=$archived_database encrypted_backup=$(basename -- "$encrypted_backup")"
 atomic_write "$AXORA_LAST_RESET_FILE" "$audit_dir"
-log "Migration-only baseline is active; no user or demo account was seeded."
+if "$owner_retaining"; then
+  log "Owner-retaining baseline is active; one Platform Owner and global catalog/vendor data remain."
+else
+  log "Migration-only baseline is active; no user or demo account was seeded."
+fi
 log "Preserved source database: $archived_database"
 log "Recoverable upload quarantine: $quarantine_dir/uploads"
 log "Verified encrypted recovery point: $encrypted_backup"

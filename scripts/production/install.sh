@@ -45,6 +45,8 @@ done
 for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs; do
   [[ -f "$SOURCE_DIR/$source_file" ]] || fail "Missing source script: $source_file"
 done
+[[ -f "$SOURCE_DIR/owner-retaining-reset.sql" ]] \
+  || fail "Missing source file: owner-retaining-reset.sql"
 for unit_file in \
   axora-deploy.service axora-deploy.timer \
   axora-health.service axora-health.timer \
@@ -326,6 +328,8 @@ find "$UPLOADS_DIR" -type f -exec chmod 0660 {} +
 for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs; do
   install -o root -g root -m 0750 "$SOURCE_DIR/$source_file" "$LIBEXEC_DIR/$source_file"
 done
+install -o root -g root -m 0640 \
+  "$SOURCE_DIR/owner-retaining-reset.sql" "$LIBEXEC_DIR/owner-retaining-reset.sql"
 
 if [[ ! -f "$CONFIG_DIR/deploy.env" ]]; then
   install -o root -g root -m 0600 "$REPOSITORY_DIR/deploy/systemd/deploy.env.example" "$CONFIG_DIR/deploy.env"
