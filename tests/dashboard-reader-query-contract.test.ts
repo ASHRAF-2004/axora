@@ -93,8 +93,13 @@ function expectExactQueryBindings() {
       String(sql).matchAll(/\$(\d+)/g),
       (match) => Number(match[1]),
     );
+    const uniquePlaceholders = [...new Set(placeholders)]
+      .sort((left, right) => left - right);
     expect(placeholders.length).toBeGreaterThan(0);
-    expect(values).toHaveLength(Math.max(...placeholders));
+    expect(uniquePlaceholders).toEqual(
+      Array.from({ length: uniquePlaceholders.length }, (_, index) => index + 1),
+    );
+    expect(values).toHaveLength(uniquePlaceholders.length);
   }
 }
 
@@ -113,7 +118,7 @@ describe("dashboard database query binding contract", () => {
       .resolves.toMatchObject({ scope: "company" });
 
     expect(mocks.query.mock.calls.map(([, values]) => values.length))
-      .toEqual([9, 7, 9, 8]);
+      .toEqual([9, 7, 8, 8]);
     expectExactQueryBindings();
   });
 
@@ -125,7 +130,7 @@ describe("dashboard database query binding contract", () => {
     ).resolves.toMatchObject({ scope: "platform" });
 
     expect(mocks.query.mock.calls.map(([, values]) => values.length))
-      .toEqual([9, 7, 9, 7, 8]);
+      .toEqual([9, 7, 8, 7, 8]);
     expectExactQueryBindings();
   });
 });

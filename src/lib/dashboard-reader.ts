@@ -342,6 +342,7 @@ async function loadCharts(
   platformAnalytics: boolean,
 ) {
   const cohortParameters = parameters.slice(0, 7);
+  const activityParameters = [...cohortParameters, parameters[8]];
   const byStatusResult = await client.query<ChartRow>(
     COHORT_CTE + `
     SELECT status_label AS label,count(*)::int AS value
@@ -353,13 +354,13 @@ async function loadCharts(
   const activity = includeActivity
     ? (await client.query<ChartRow>(
       COHORT_CTE + `
-      SELECT CASE WHEN $9::boolean THEN company_name ELSE branch_name END AS label,
+      SELECT CASE WHEN $8::boolean THEN company_name ELSE branch_name END AS label,
         count(*)::int AS value
       FROM cohort
-      GROUP BY CASE WHEN $9::boolean THEN company_name ELSE branch_name END
+      GROUP BY CASE WHEN $8::boolean THEN company_name ELSE branch_name END
       ORDER BY count(*) DESC,label
       LIMIT 20`,
-      parameters,
+      activityParameters,
     )).rows
     : [];
   const topProducts = platformAnalytics
