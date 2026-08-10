@@ -22,6 +22,7 @@ describe("delivery tracking route boundaries", () => {
     expect(supervisor).toContain('canAccess(actor, "manage_deliveries")');
     expect(supervisor).toContain("24_576");
     expect(company).toContain('canAccess(actor, "view_receiving")');
+    expect(company).toContain('canAccess(actor, "view_deliveries")');
     for (const source of [driver, supervisor, company]) {
       expect(source).toContain('"Cache-Control": "private, no-store"');
       expect(source).not.toMatch(/console\.(log|error)|latitude.*error|longitude.*error/);

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const actor = await getSession();
   if (!actor) return Response.json({ error: "Authentication required" }, { status: 401 });
-  if (!canAccess(actor, "view_receiving")) {
+  if (!canAccess(actor, "view_receiving") && !canAccess(actor, "view_deliveries")) {
     return Response.json({ error: "Delivery tracking unavailable" }, { status: 403 });
   }
   try {

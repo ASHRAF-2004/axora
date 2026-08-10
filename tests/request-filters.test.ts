@@ -43,6 +43,8 @@ describe("permission-scoped procurement filters",() => {
     expect(spec.where).not.toContain("%' OR TRUE --");
     expect(spec.values).toContain("%' OR TRUE --");
     expect(requestReaderInternals.requestSearchFrom).toContain("axora_request_access_rows($1,$2,$3)");
+    expect(requestReaderInternals.requestSearchFrom).toContain("axora_request_escalation_rows($1,$2,$3)");
+    expect(requestReaderInternals.requestSearchFrom).not.toContain("public.request_approval_escalations");
   });
 
   it("rejects malformed option IDs and invalid catalogue sorts",() => {

@@ -8,6 +8,22 @@ import Link from "next/link";
 import { saveOrganizationNodeAction, setOrganizationNodeActiveAction } from "./actions";
 
 const TIMEZONES = ["Asia/Kuala_Lumpur", "Asia/Singapore", "Asia/Riyadh", "Asia/Dubai", "UTC"];
+type OrganizationCopy = ReturnType<typeof organizationStructureMessages>;
+
+function StatusForm({ nodeType, nodeId, active, copy }: {
+  nodeType: "BRANCH" | "DEPARTMENT" | "BUSINESS_UNIT" | "COST_CENTRE" | "DELIVERY_LOCATION";
+  nodeId: string;
+  active: boolean;
+  copy: OrganizationCopy;
+}) {
+  return <form action={setOrganizationNodeActiveAction} className="table-action-stack">
+    <input type="hidden" name="nodeType" value={nodeType} />
+    <input type="hidden" name="nodeId" value={nodeId} />
+    <input type="hidden" name="active" value={active ? "false" : "true"} />
+    <input name="reason" required minLength={3} maxLength={1000} placeholder={copy.reason} aria-label={copy.reason} />
+    <button className="button button-secondary" type="submit">{active ? copy.deactivate : copy.reactivate}</button>
+  </form>;
+}
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -39,16 +55,6 @@ export default async function OrganizationPage({
   const unitParents = new Map(workspace.businessUnits.map((item) => [item.id, item.parentBusinessUnitId]));
   const notice = first(query.notice) === "saved" ? copy.saved : undefined;
 
-  const StatusForm = ({ nodeType, nodeId, active }: {
-    nodeType: "BRANCH" | "DEPARTMENT" | "BUSINESS_UNIT" | "COST_CENTRE" | "DELIVERY_LOCATION";
-    nodeId: string;
-    active: boolean;
-  }) => <form action={setOrganizationNodeActiveAction} className="table-action-stack">
-    <input type="hidden" name="nodeType" value={nodeType} /><input type="hidden" name="nodeId" value={nodeId} /><input type="hidden" name="active" value={active ? "false" : "true"} />
-    <input name="reason" required minLength={3} maxLength={1000} placeholder={copy.reason} aria-label={copy.reason} />
-    <button className="button button-secondary" type="submit">{active ? copy.deactivate : copy.reactivate}</button>
-  </form>;
-
   const companyOptions = workspace.companies.filter((company) => company.status === "Active");
 
   return <>
@@ -57,12 +63,12 @@ export default async function OrganizationPage({
     {notice ? <section className="panel" role="status" aria-live="polite"><strong>{notice}</strong></section> : null}
 
     <section className="panel" style={{ marginBlockStart: 16 }}><div className="panel-header"><div><h2>{copy.hierarchy}</h2><p>{copy.hierarchyHelp}</p></div></div>
-      <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{copy.branches}</th><th>{copy.company}</th><th>{copy.timezone}</th><th>{copy.active}</th>{workspace.canManageBranches ? <th>{copy.update}</th> : null}</tr></thead><tbody>{workspace.branches.map((branch) => <tr key={branch.id}><td><strong>{branch.name}</strong><br /><span className="subtle">{branch.branchCode}</span></td><td>{branch.companyName}</td><td>{branch.timezone}</td><td><StatusBadge status={branch.status}>{branch.status === "Active" ? copy.active : copy.inactive}</StatusBadge></td>{workspace.canManageBranches ? <td><details><summary>{copy.edit}</summary><form action={saveOrganizationNodeAction} className="table-action-stack"><input type="hidden" name="nodeType" value="BRANCH" /><input type="hidden" name="nodeId" value={branch.id} /><input type="hidden" name="companyId" value={branch.companyId} /><input type="hidden" name="code" value={branch.branchCode} /><label>{copy.name}<input name="name" defaultValue={branch.name} required /></label><label>{copy.timezone}<select name="timezone" defaultValue={branch.timezone}>{TIMEZONES.map((zone) => <option key={zone}>{zone}</option>)}</select></label><label>{copy.reason}<input name="reason" required minLength={3} /></label><button className="button button-secondary" type="submit">{copy.update}</button></form></details><StatusForm nodeType="BRANCH" nodeId={branch.id} active={branch.status === "Active"} /></td> : null}</tr>)}</tbody></table></div>
+      <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{copy.branches}</th><th>{copy.company}</th><th>{copy.timezone}</th><th>{copy.active}</th>{workspace.canManageBranches ? <th>{copy.update}</th> : null}</tr></thead><tbody>{workspace.branches.map((branch) => <tr key={branch.id}><td><strong>{branch.name}</strong><br /><span className="subtle">{branch.branchCode}</span></td><td>{branch.companyName}</td><td>{branch.timezone}</td><td><StatusBadge status={branch.status}>{branch.status === "Active" ? copy.active : copy.inactive}</StatusBadge></td>{workspace.canManageBranches ? <td><details><summary>{copy.edit}</summary><form action={saveOrganizationNodeAction} className="table-action-stack"><input type="hidden" name="nodeType" value="BRANCH" /><input type="hidden" name="nodeId" value={branch.id} /><input type="hidden" name="companyId" value={branch.companyId} /><input type="hidden" name="code" value={branch.branchCode} /><label>{copy.name}<input name="name" defaultValue={branch.name} required /></label><label>{copy.timezone}<select name="timezone" defaultValue={branch.timezone}>{TIMEZONES.map((zone) => <option key={zone}>{zone}</option>)}</select></label><label>{copy.reason}<input name="reason" required minLength={3} /></label><button className="button button-secondary" type="submit">{copy.update}</button></form></details><StatusForm copy={copy} nodeType="BRANCH" nodeId={branch.id} active={branch.status === "Active"} /></td> : null}</tr>)}</tbody></table></div>
     </section>
 
     <section className="detail-grid" style={{ marginBlockStart: 17 }}>
-      <article className="panel"><h2>{copy.departments}</h2>{workspace.departments.length ? <ul className="list-reset">{workspace.departments.map((department) => <li key={department.id} className="callout" style={{ marginInlineStart: `${depth(department.id, departmentParents) * 18}px`, marginBlockEnd: 8 }}><div className="panel-header"><div><strong>{department.name}</strong><br /><span className="subtle">{department.code} · {branchName.get(department.branchId ?? "") ?? companyName.get(department.companyId)}</span></div><StatusBadge>{department.active ? copy.active : copy.inactive}</StatusBadge></div>{workspace.canManageDepartments ? <StatusForm nodeType="DEPARTMENT" nodeId={department.id} active={department.active} /> : null}</li>)}</ul> : <p className="subtle">{copy.noRecords}</p>}</article>
-      <article className="panel"><h2>{copy.businessUnits}</h2>{workspace.businessUnits.length ? <ul className="list-reset">{workspace.businessUnits.map((unit) => <li key={unit.id} className="callout" style={{ marginInlineStart: `${depth(unit.id, unitParents) * 18}px`, marginBlockEnd: 8 }}><div className="panel-header"><div><strong>{unit.name}</strong><br /><span className="subtle">{unit.code} · {companyName.get(unit.companyId)}</span></div><StatusBadge>{unit.active ? copy.active : copy.inactive}</StatusBadge></div>{workspace.canManageCostCentres ? <StatusForm nodeType="BUSINESS_UNIT" nodeId={unit.id} active={unit.active} /> : null}</li>)}</ul> : <p className="subtle">{copy.noRecords}</p>}</article>
+      <article className="panel"><h2>{copy.departments}</h2>{workspace.departments.length ? <ul className="list-reset">{workspace.departments.map((department) => <li key={department.id} className="callout" style={{ marginInlineStart: `${depth(department.id, departmentParents) * 18}px`, marginBlockEnd: 8 }}><div className="panel-header"><div><strong>{department.name}</strong><br /><span className="subtle">{department.code} · {branchName.get(department.branchId ?? "") ?? companyName.get(department.companyId)}</span></div><StatusBadge>{department.active ? copy.active : copy.inactive}</StatusBadge></div>{workspace.canManageDepartments ? <StatusForm copy={copy} nodeType="DEPARTMENT" nodeId={department.id} active={department.active} /> : null}</li>)}</ul> : <p className="subtle">{copy.noRecords}</p>}</article>
+      <article className="panel"><h2>{copy.businessUnits}</h2>{workspace.businessUnits.length ? <ul className="list-reset">{workspace.businessUnits.map((unit) => <li key={unit.id} className="callout" style={{ marginInlineStart: `${depth(unit.id, unitParents) * 18}px`, marginBlockEnd: 8 }}><div className="panel-header"><div><strong>{unit.name}</strong><br /><span className="subtle">{unit.code} · {companyName.get(unit.companyId)}</span></div><StatusBadge>{unit.active ? copy.active : copy.inactive}</StatusBadge></div>{workspace.canManageCostCentres ? <StatusForm copy={copy} nodeType="BUSINESS_UNIT" nodeId={unit.id} active={unit.active} /> : null}</li>)}</ul> : <p className="subtle">{copy.noRecords}</p>}</article>
     </section>
 
     {(workspace.canManageDepartments || workspace.canManageCostCentres || workspace.canManageDeliveryLocations) ? <section className="detail-grid" style={{ marginBlockStart: 17 }}>
@@ -73,8 +79,8 @@ export default async function OrganizationPage({
     </section> : null}
 
     <section className="detail-grid" style={{ marginBlockStart: 17 }}>
-      <article className="panel"><h2>{copy.costCentres}</h2>{workspace.costCentres.length ? <ul>{workspace.costCentres.map((centre) => <li key={centre.id}><strong>{centre.code} · {centre.name}</strong> · {centre.currency}<br /><span className="subtle">{businessUnitName.get(centre.businessUnitId ?? "") ?? branchName.get(centre.branchId ?? "") ?? companyName.get(centre.companyId)} · {departmentName.get(centre.departmentId ?? "") ?? ""}</span>{workspace.canManageCostCentres ? <StatusForm nodeType="COST_CENTRE" nodeId={centre.id} active={centre.active} /> : null}</li>)}</ul> : <p className="subtle">{copy.noRecords}</p>}</article>
-      <article className="panel"><h2>{copy.deliveryLocations}</h2>{workspace.deliveryLocations.length ? <ul>{workspace.deliveryLocations.map((location) => <li key={location.id}><strong>{location.code} · {location.name}</strong><br /><span className="subtle">{branchName.get(location.branchId)} · {location.city} · {location.address}</span>{workspace.canManageDeliveryLocations ? <StatusForm nodeType="DELIVERY_LOCATION" nodeId={location.id} active={location.active} /> : null}</li>)}</ul> : <p className="subtle">{copy.noRecords}</p>}</article>
+      <article className="panel"><h2>{copy.costCentres}</h2>{workspace.costCentres.length ? <ul>{workspace.costCentres.map((centre) => <li key={centre.id}><strong>{centre.code} · {centre.name}</strong> · {centre.currency}<br /><span className="subtle">{businessUnitName.get(centre.businessUnitId ?? "") ?? branchName.get(centre.branchId ?? "") ?? companyName.get(centre.companyId)} · {departmentName.get(centre.departmentId ?? "") ?? ""}</span>{workspace.canManageCostCentres ? <StatusForm copy={copy} nodeType="COST_CENTRE" nodeId={centre.id} active={centre.active} /> : null}</li>)}</ul> : <p className="subtle">{copy.noRecords}</p>}</article>
+      <article className="panel"><h2>{copy.deliveryLocations}</h2>{workspace.deliveryLocations.length ? <ul>{workspace.deliveryLocations.map((location) => <li key={location.id}><strong>{location.code} · {location.name}</strong><br /><span className="subtle">{branchName.get(location.branchId)} · {location.city} · {location.address}</span>{workspace.canManageDeliveryLocations ? <StatusForm copy={copy} nodeType="DELIVERY_LOCATION" nodeId={location.id} active={location.active} /> : null}</li>)}</ul> : <p className="subtle">{copy.noRecords}</p>}</article>
     </section>
 
     <section className="panel" style={{ marginBlockStart: 17 }}><div className="panel-header"><div><h2>{copy.history}</h2><p>{copy.hierarchyHelp}</p></div></div>{workspace.history.length ? <div className="data-table-wrap"><table className="data-table"><tbody>{workspace.history.map((entry) => <tr key={entry.id}><td>{entry.nodeType.replaceAll("_", " ")}</td><td><StatusBadge>{entry.changeType}</StatusBadge></td><td>{entry.reason}</td><td>{entry.changedByName ?? "-"}</td><td>{formatDateTime(entry.changedAt.toISOString(), locale, actor.timezone ?? "Asia/Kuala_Lumpur")}</td></tr>)}</tbody></table></div> : <div className="panel-body"><p className="subtle">{copy.noRecords}</p></div>}</section>

@@ -10,6 +10,117 @@ export function isDemoMode() {
   return process.env.DEMO_MODE !== "false";
 }
 
+export class PostgresQueryParameterContractError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PostgresQueryParameterContractError";
+  }
+}
+
+export function postgresParameterIndexes(text: string) {
+  const indexes = new Set<number>();
+  let index = 0;
+  let blockDepth = 0;
+  let dollarQuote: string | undefined;
+  let state: "sql" | "single" | "double" | "line" | "block" = "sql";
+  while (index < text.length) {
+    const current = text[index];
+    const next = text[index + 1];
+    if (dollarQuote) {
+      if (text.startsWith(dollarQuote, index)) {
+        index += dollarQuote.length;
+        dollarQuote = undefined;
+      } else index += 1;
+      continue;
+    }
+    if (state === "single") {
+      if (current === "'" && next === "'") index += 2;
+      else if (current === "'") { state = "sql"; index += 1; }
+      else index += 1;
+      continue;
+    }
+    if (state === "double") {
+      if (current === '"' && next === '"') index += 2;
+      else if (current === '"') { state = "sql"; index += 1; }
+      else index += 1;
+      continue;
+    }
+    if (state === "line") {
+      if (current === "\n") state = "sql";
+      index += 1;
+      continue;
+    }
+    if (state === "block") {
+      if (current === "/" && next === "*") { blockDepth += 1; index += 2; }
+      else if (current === "*" && next === "/") {
+        blockDepth -= 1;
+        index += 2;
+        if (blockDepth === 0) state = "sql";
+      } else index += 1;
+      continue;
+    }
+    if (current === "'") { state = "single"; index += 1; continue; }
+    if (current === '"') { state = "double"; index += 1; continue; }
+    if (current === "-" && next === "-") { state = "line"; index += 2; continue; }
+    if (current === "/" && next === "*") {
+      state = "block";
+      blockDepth = 1;
+      index += 2;
+      continue;
+    }
+    if (current === "$") {
+      const quote = text.slice(index).match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/)?.[0];
+      if (quote) { dollarQuote = quote; index += quote.length; continue; }
+      const parameter = text.slice(index + 1).match(/^\d+/)?.[0];
+      if (parameter) {
+        indexes.add(Number(parameter));
+        index += parameter.length + 1;
+        continue;
+      }
+    }
+    index += 1;
+  }
+  return [...indexes].sort((left, right) => left - right);
+}
+
+export function assertPostgresQueryParameterContract(
+  text: string,
+  values: readonly unknown[] = [],
+) {
+  const indexes = postgresParameterIndexes(text);
+  const maximum = indexes.at(-1) ?? 0;
+  const contiguous = indexes.every((value, offset) => value === offset + 1);
+  if (!contiguous || indexes.includes(0) || maximum !== values.length) {
+    throw new PostgresQueryParameterContractError(
+      `PostgreSQL parameter contract mismatch (indexes=${indexes.join(",") || "none"}; values=${values.length}).`,
+    );
+  }
+}
+
+const guardedClients = new WeakSet<PoolClient>();
+
+function guardClientQueries(client: PoolClient) {
+  if (guardedClients.has(client)) return;
+  const originalQuery = client.query;
+  client.query = (function guardedQuery(this: PoolClient, ...args: unknown[]) {
+    const specification = args[0];
+    const text = typeof specification === "string"
+      ? specification
+      : specification && typeof specification === "object" && "text" in specification
+        ? String(specification.text)
+        : undefined;
+    const configuredValues = specification && typeof specification === "object" && "values" in specification
+      ? specification.values
+      : undefined;
+    const values = Array.isArray(configuredValues)
+      ? configuredValues
+      : Array.isArray(args[1]) ? args[1] : [];
+    if (text) assertPostgresQueryParameterContract(text, values);
+    return Reflect.apply(originalQuery, this, args);
+  }) as PoolClient["query"];
+  guardedClients.add(client);
+}
+
 function readPassword() {
   if (process.env.DB_PASSWORD_FILE && fs.existsSync(process.env.DB_PASSWORD_FILE)) {
     return fs.readFileSync(process.env.DB_PASSWORD_FILE, "utf8").trim();
@@ -42,7 +153,7 @@ function buildSslConfig() {
 export function getPool() {
   if (isDemoMode()) throw new Error("Database access is disabled in demo mode.");
   if (!global.__axoraPool) {
-    global.__axoraPool = new Pool({
+    const pool = new Pool({
       connectionString: buildConnectionString(),
       connectionTimeoutMillis: Number(process.env.DATABASE_CONNECT_TIMEOUT_MS || 10_000),
       idleTimeoutMillis: 30_000,
@@ -51,6 +162,8 @@ export function getPool() {
       max: 10,
       ssl: buildSslConfig(),
     });
+    pool.on("connect", guardClientQueries);
+    global.__axoraPool = pool;
   }
   return global.__axoraPool;
 }
