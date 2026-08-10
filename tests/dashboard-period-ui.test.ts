@@ -34,4 +34,23 @@ describe("P1-15 dashboard period UI", () => {
     expect(styles).toContain("@media (max-width: 560px)");
     expect(styles).not.toMatch(/animation:|transition:/);
   });
+
+  it("refreshes the current route when the recovery boundary retries", async () => {
+    const source = await readFile(
+      new URL("../src/app/(portal)/error.tsx", import.meta.url),
+      "utf8",
+    );
+    const retryStart = source.indexOf("const retryPage");
+    const retry = source.slice(
+      retryStart,
+      source.indexOf("return (", retryStart),
+    );
+    expect(source).toContain('import { useRouter } from "next/navigation"');
+    expect(source).toContain("onClick={retryPage}");
+    expect(retry).toContain("reset();");
+    expect(retry).toContain("router.refresh();");
+    expect(retry.indexOf("reset();")).toBeLessThan(
+      retry.indexOf("router.refresh();"),
+    );
+  });
 });

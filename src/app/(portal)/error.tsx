@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
 
 const copy = {
@@ -59,6 +60,7 @@ export default function PortalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
   const online = useSyncExternalStore(
     subscribeOnline,
     onlineSnapshot,
@@ -70,6 +72,10 @@ export default function PortalError({
     () => "en" as const,
   );
   const messages = copy[locale];
+  const retryPage = () => {
+    reset();
+    router.refresh();
+  };
 
   return (
     <main className="content-shell" role="alert" aria-live="assertive">
@@ -88,7 +94,7 @@ export default function PortalError({
             className="button button-primary"
             type="button"
             disabled={!online}
-            onClick={reset}
+            onClick={retryPage}
           >
             <RefreshCw size={17} aria-hidden="true" />
             {messages.retry}
