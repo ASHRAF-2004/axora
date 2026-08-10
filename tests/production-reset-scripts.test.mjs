@@ -19,6 +19,7 @@ const productionScripts = join(repositoryRoot, "scripts", "production");
 const libPath = join(productionScripts, "lib.sh");
 const installPath = join(productionScripts, "install.sh");
 const resetPath = join(productionScripts, "reset-baseline.sh");
+const ownerRetainingResetPath = join(productionScripts, "owner-retaining-reset.sql");
 const encryptedBackupPath = join(productionScripts, "encrypted-reset-backup.sh");
 const verifyPath = join(productionScripts, "verify-encrypted-backup.sh");
 const deployEnvExample = join(repositoryRoot, "deploy", "systemd", "deploy.env.example");
@@ -514,5 +515,31 @@ describe("guarded production reset controls", () => {
     expect(logicalCommands).not.toContain("--remove-orphans");
     expect(logicalCommands).not.toMatch(/\b(?:docker|compose_release)\b[^\n]*\s-v(?:\s|$)/);
     expect(combined).not.toMatch(/create-admin|seed-(?:user|demo)|TRUNCATE|DROP DATABASE/i);
+  });
+
+  it("guards owner-retaining reset work inside an isolated candidate", () => {
+    const installSource = readFileSync(installPath, "utf8");
+    const resetSource = readFileSync(resetPath, "utf8");
+    const ownerResetSource = readFileSync(ownerRetainingResetPath, "utf8");
+
+    expect(resetSource).toContain("--retain-owner-id");
+    expect(resetSource).toMatch(/createdb[\s\S]*--template "\$AXORA_DATABASE_NAME"[\s\S]*"\$candidate_database"/);
+    expect(resetSource).toMatch(/--dbname "\$candidate_database"[\s\S]*owner-retaining-reset\.sql/);
+    expect(resetSource).toContain("assert_retained_owner_source");
+    expect(resetSource).toContain("assert_owner_retaining_candidate");
+    expect(resetSource).toContain("encrypted-reset-backup.sh\" --purpose baseline-reset");
+    expect(installSource).toContain("owner-retaining-reset.sql");
+    expect(installSource).toMatch(/-m 0640[\s\S]*owner-retaining-reset\.sql/);
+
+    expect(ownerResetSource).toMatch(/^\\set ON_ERROR_STOP on/m);
+    expect(ownerResetSource).toMatch(/BEGIN;[\s\S]*COMMIT;/);
+    expect(ownerResetSource).not.toContain("owner@axora.management");
+    expect(ownerResetSource).toContain(":'canonical_email'");
+    expect(ownerResetSource).toContain("TRUNCATE TABLE");
+    expect(ownerResetSource).toContain("reset_preserved_tables");
+    expect(ownerResetSource).toContain("'suppliers'");
+    expect(ownerResetSource).toContain("'product_suppliers'");
+    expect(ownerResetSource).toContain("PRODUCTION_BASELINE_RESET");
+    expect(ownerResetSource).not.toMatch(/DROP DATABASE|compose down|--remove-orphans|docker volume/i);
   });
 });

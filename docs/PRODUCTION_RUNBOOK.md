@@ -284,6 +284,25 @@ An ordinary backup service success does not prove that an encrypted reset
 artifact, separate passphrase escrow, or off-machine application recovery drill
 exists.
 
+For the separately approved pre-launch reset that retains exactly one existing
+Platform Owner, use the counts-only plan with the reviewed safe user UUID:
+
+```bash
+sudo /usr/local/libexec/axora-production/reset-baseline.sh \
+  --plan --retain-owner-id OWNER_UUID
+```
+
+This mode preserves the selected owner's existing password hash, canonicalizes
+the application identity to `owner@axora.management`, retains global catalog
+and internal vendor/source master data, and removes all companies, other users,
+sessions, tenant operations, queued notifications/email, and active audit rows
+from an isolated candidate database. The source database and upload tree remain
+quarantined as evidence and rollback material. `--apply` still requires the
+exact one-shot authorization, a real TTY confirmation containing live counts
+and release SHA, a newly encrypted recovery point, and a successful disposable
+restore. Do not run it until the owner has explicitly approved the final
+inventory and irreversible execution.
+
 ### Start and monitor a deployment
 
 ```bash
