@@ -13,8 +13,8 @@ describe("authenticated production route stabilization", () => {
     expect(source).toContain("<StatusForm copy={copy}");
     expect(source).not.toContain("style={{");
     expect(source).toContain("data-depth={depth(");
-    expect(source).toContain("<summary>{copy.edit}</summary><div><form");
-    expect(source).not.toContain("<summary>{copy.edit}</summary><form");
+    expect(source).toContain('className="detail-grid organization-branch-actions"');
+    expect(source).not.toContain("<td><details><summary>{copy.edit}</summary>");
   });
 
   it("serves a read-only company delivery view without granting supervisor controls", async () => {
