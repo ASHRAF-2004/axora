@@ -10,7 +10,10 @@ describe("content security policy", () => {
     expect(policy).toContain("form-action 'self'");
     expect(policy).toContain("upgrade-insecure-requests");
     expect(policy).toContain("style-src-attr 'unsafe-inline'");
-    expect(policy).toContain("style-src-elem 'self' 'nonce-known-nonce'");
+    expect(policy).toContain(
+      "style-src-elem 'self' 'nonce-known-nonce' 'sha256-Z5XTK23DFuEMs0PwnyZDO9SWxemQ5HxcpVaBNuUJyWY='",
+    );
+    expect(policy).not.toMatch(/style-src-elem[^;]*'unsafe-inline'/);
     expect(policy).not.toMatch(/script-src[^;]*'unsafe-inline'/);
     expect(policy).not.toContain("'unsafe-eval'");
   });

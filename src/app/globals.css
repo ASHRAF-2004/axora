@@ -139,6 +139,22 @@ textarea { min-height: 82px; resize: vertical; }
 .summary-box span { color: var(--slate-500); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; font-weight: 750; }
 .summary-box strong { display: block; margin-top: 6px; color: var(--navy-900); font-size: 14px; }
 .detail-grid { margin-top: 17px; display: grid; grid-template-columns: 1fr 320px; gap: 17px; }
+.organization-back-row { margin-block-end: 16px; }
+.organization-hierarchy-panel { margin-block-start: 16px; }
+.organization-history-panel { margin-block-start: 17px; }
+.organization-tree-node { margin-block-end: 8px; }
+.organization-tree-node[data-depth="1"] { margin-inline-start: 18px; }
+.organization-tree-node[data-depth="2"] { margin-inline-start: 36px; }
+.organization-tree-node[data-depth="3"] { margin-inline-start: 54px; }
+.organization-tree-node[data-depth="4"] { margin-inline-start: 72px; }
+.organization-tree-node[data-depth="5"] { margin-inline-start: 90px; }
+.organization-tree-node[data-depth="6"] { margin-inline-start: 108px; }
+.organization-tree-node[data-depth="7"] { margin-inline-start: 126px; }
+.organization-tree-node[data-depth="8"] { margin-inline-start: 144px; }
+.organization-tree-node[data-depth="9"] { margin-inline-start: 162px; }
+.organization-tree-node[data-depth="10"] { margin-inline-start: 180px; }
+.organization-tree-node[data-depth="11"] { margin-inline-start: 198px; }
+.organization-tree-node[data-depth="12"] { margin-inline-start: 216px; }
 .timeline { display: grid; gap: 0; }
 .timeline-item { display: grid; grid-template-columns: 24px 1fr; gap: 12px; min-height: 54px; }
 .timeline-dot { width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: var(--blue-600); box-shadow: 0 0 0 5px var(--blue-100); }

@@ -52,6 +52,10 @@ describe("acquisition and account access release UI", () => {
       new URL("../src/app/(portal)/branches/organization/page.tsx", import.meta.url),
       "utf8",
     );
+    const organizationStyles = readFileSync(
+      new URL("../src/app/globals.css", import.meta.url),
+      "utf8",
+    );
     for (const source of [onboardingCopy, organizationCopy]) {
       expect(source).toContain("const en");
       expect(source).toContain("const ar");
@@ -59,8 +63,10 @@ describe("acquisition and account access release UI", () => {
       expect(source).toMatch(/[\u0600-\u06ff]/);
     }
     expect(onboardingPage).toContain("repeat(auto-fit,minmax(min(100%,360px),1fr))");
-    expect(organizationPage).toContain("marginInlineStart");
-    expect(`${onboardingPage}\n${organizationPage}`).not.toMatch(/marginLeft|marginRight/);
+    expect(organizationPage).toContain("data-depth={depth(");
+    expect(organizationStyles).toContain("margin-inline-start");
+    expect(`${onboardingPage}\n${organizationPage}\n${organizationStyles}`)
+      .not.toMatch(/marginLeft|marginRight|margin-left|margin-right/);
   });
 
   it("carries immutable department scope through invitation creation and activation", () => {
