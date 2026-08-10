@@ -101,6 +101,7 @@ tar \
   --gzip \
   --no-same-owner \
   --no-same-permissions \
+  --mode='u+rwX,go-rwx' \
   --file "$partial_dir/uploads.tar.gz" \
   --directory "$upload_restore_dir"
 (

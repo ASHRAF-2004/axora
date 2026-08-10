@@ -231,6 +231,13 @@ BEGIN
   END IF;
 
   IF to_regprocedure(
+    'public.axora_request_escalation_rows(uuid,uuid,timestamptz)'
+  ) IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_request_escalation_rows(uuid,uuid,timestamptz) FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_request_escalation_rows(uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+
+  IF to_regprocedure(
     'public.axora_attachment_access_rows(uuid,uuid,timestamptz)'
   ) IS NOT NULL THEN
     EXECUTE 'REVOKE ALL ON TABLE public.attachments FROM axora_app';

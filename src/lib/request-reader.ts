@@ -321,10 +321,9 @@ LEFT JOIN LATERAL (
 ) request_total ON true
 LEFT JOIN LATERAL (
   SELECT escalation.id,escalation.escalation_type
-  FROM public.request_approval_escalations escalation
+  FROM public.axora_request_escalation_rows($1,$2,$3) escalation
   WHERE escalation.request_id=r.id
     AND escalation.request_version=r.request_version
-  ORDER BY escalation.created_at DESC,escalation.id DESC
   LIMIT 1
 ) latest_escalation ON true`;
 

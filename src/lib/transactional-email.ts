@@ -782,7 +782,7 @@ export async function completeTransactionalEmailOutbox(
                WHEN ($3='retry' AND delivery_attempt_count < $6) OR $3='paused'
                  THEN token_authentication_tag ELSE NULL END
          WHERE id=$1 AND delivery_status='SENDING' AND delivery_lease_id=$2
-           AND ($8::text IS NULL OR provider_agent=$8)
+           AND ($7::text IS NULL OR provider_agent=$7)
          RETURNING contact_submission_id::text AS "contactSubmissionId",
            delivery_status AS "deliveryStatus",message_kind AS "messageKind",
            delivery_attempt_count AS "attemptCount",template_key AS "templateKey",
@@ -795,7 +795,6 @@ export async function completeTransactionalEmailOutbox(
           providerMessageId,
           errorCode,
           OUTBOX_MAX_ATTEMPTS,
-          providerName,
           providerAgent,
         ],
       );
