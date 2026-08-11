@@ -333,13 +333,34 @@ SELECT concat_ws(':',
      AND email=:'canonical_email'
      AND active AND is_owner
      AND company_id IS NULL AND branch_id IS NULL),
+  (SELECT count(*) FROM user_scopes scope
+   JOIN role_assignments assignment
+     ON assignment.id=scope.source_reference
+    AND assignment.user_id=scope.user_id
+   WHERE scope.user_id=:'retained_owner_id'::uuid
+     AND scope.scope_type='PLATFORM'
+     AND scope.company_id IS NULL
+     AND scope.branch_id IS NULL
+     AND scope.department_id IS NULL
+     AND scope.supplier_id IS NULL
+     AND scope.source='ROLE_ASSIGNMENT'
+     AND scope.active AND scope.ends_at IS NULL),
+  (SELECT count(*) FROM role_assignments assignment
+   WHERE assignment.user_id=:'retained_owner_id'::uuid
+     AND assignment.active AND assignment.revoked_at IS NULL
+     AND public.axora_snapshot_has_permission(
+       public.axora_live_authorization_snapshot(
+         :'retained_owner_id'::uuid,assignment.id,now()
+       ),
+       'catalog.manage','PLATFORM',NULL,NULL,NULL,NULL
+     )),
   (SELECT count(*) FROM user_sessions),
   (SELECT count(*) FROM supplier_memberships)
 );
 SQL
   )"
   result="$(printf '%s' "$result" | tr -d '[:space:]')"
-  [[ "$result" == "1:0:1:1:1:1:0:0" ]] \
+  [[ "$result" == "1:0:1:1:1:1:1:1:0:0" ]] \
     || die "Owner-retaining candidate postconditions failed."
 }
 

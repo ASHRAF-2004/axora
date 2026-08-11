@@ -167,14 +167,22 @@ SET email=(SELECT canonical_email FROM reset_parameters),
     role_id=(SELECT id FROM reset_keep_roles WHERE role_key='PLATFORM_OWNER'),
     active=true,is_owner=true,company_id=NULL,branch_id=NULL,
     account_kind='PLATFORM',account_status='ACTIVE',
-    auth_version=auth_version+1,last_login_at=NULL,updated_at=now();
+    auth_version=auth_version+CASE
+      WHEN lower(email)<>lower((SELECT canonical_email FROM reset_parameters))
+        THEN 1 ELSE 0 END,
+    last_login_at=NULL,updated_at=now();
 
 CREATE TEMP TABLE reset_keep_credential ON COMMIT DROP AS
 SELECT * FROM account_credentials
 WHERE user_id=(SELECT retained_owner_id FROM reset_parameters);
 UPDATE reset_keep_credential
 SET failed_sign_in_count=0,first_failed_sign_in_at=NULL,locked_until=NULL,
-    credential_version=credential_version+1,updated_at=now();
+    credential_version=credential_version+CASE
+      WHEN lower((SELECT email FROM users
+        WHERE id=(SELECT retained_owner_id FROM reset_parameters)))
+        <>lower((SELECT canonical_email FROM reset_parameters))
+        THEN 1 ELSE 0 END,
+    updated_at=now();
 
 CREATE TEMP TABLE reset_keep_profile ON COMMIT DROP AS
 SELECT * FROM user_profiles
@@ -195,6 +203,47 @@ UPDATE reset_keep_assignment
 SET scope_type='PLATFORM',company_id=NULL,branch_id=NULL,department_id=NULL,
     supplier_id=NULL,active=true,revoked_at=NULL,revoked_by=NULL,
     revoke_reason=NULL,assigned_by=(SELECT retained_owner_id FROM reset_parameters);
+
+-- A live authorization snapshot is the assignment plus its canonical
+-- user_scopes row. Preserve that row when available. An interrupted or older
+-- owner-retaining baseline may contain the assignment without its trigger-
+-- generated scope because replay runs in replica mode; reconstruct only that
+-- exact platform scope so a guarded rerun repairs the baseline idempotently.
+CREATE TEMP TABLE reset_keep_scope ON COMMIT DROP AS
+SELECT scope.*
+FROM user_scopes scope
+JOIN reset_keep_assignment assignment
+  ON assignment.user_id=scope.user_id
+ AND assignment.id=scope.source_reference
+WHERE scope.scope_type='PLATFORM'
+  AND scope.company_id IS NULL
+  AND scope.branch_id IS NULL
+  AND scope.department_id IS NULL
+  AND scope.supplier_id IS NULL
+  AND scope.source='ROLE_ASSIGNMENT'
+  AND scope.active
+  AND scope.ends_at IS NULL
+ORDER BY scope.created_at,scope.id
+LIMIT 1;
+
+INSERT INTO reset_keep_scope(
+  id,user_id,scope_type,company_id,branch_id,department_id,supplier_id,
+  source,source_reference,starts_at,ends_at,active,assigned_by,created_at
+)
+SELECT
+  gen_random_uuid(),assignment.user_id,'PLATFORM',NULL,NULL,NULL,NULL,
+  'ROLE_ASSIGNMENT',assignment.id,assignment.assigned_at,NULL,true,
+  assignment.assigned_by,now()
+FROM reset_keep_assignment assignment
+WHERE NOT EXISTS (SELECT 1 FROM reset_keep_scope);
+
+UPDATE reset_keep_scope scope
+SET user_id=assignment.user_id,scope_type='PLATFORM',company_id=NULL,
+    branch_id=NULL,department_id=NULL,supplier_id=NULL,
+    source='ROLE_ASSIGNMENT',source_reference=assignment.id,
+    starts_at=assignment.assigned_at,ends_at=NULL,active=true,
+    assigned_by=(SELECT retained_owner_id FROM reset_parameters)
+FROM reset_keep_assignment assignment;
 
 -- Clear all public data in the isolated candidate only. The original database
 -- and upload tree remain quarantined by the controller as immutable pre-reset
@@ -240,6 +289,7 @@ SELECT set_config('axora.change_reason','Approved pre-launch owner-retaining pro
 INSERT INTO account_credentials SELECT * FROM reset_keep_credential;
 INSERT INTO user_profiles SELECT * FROM reset_keep_profile;
 INSERT INTO role_assignments SELECT * FROM reset_keep_assignment;
+INSERT INTO user_scopes SELECT * FROM reset_keep_scope;
 
 INSERT INTO products SELECT * FROM reset_keep_products;
 INSERT INTO suppliers SELECT * FROM reset_keep_suppliers;
@@ -354,6 +404,8 @@ DECLARE
   owner_count integer;
   company_count integer;
   assignment_count integer;
+  scope_count integer;
+  catalog_access boolean;
 BEGIN
   FOR preserved IN SELECT table_name,row_count FROM reset_preserved_counts ORDER BY table_name LOOP
     EXECUTE format('SELECT count(*) FROM public.%I',preserved.table_name)
@@ -377,7 +429,36 @@ BEGIN
     AND assignment.department_id IS NULL
     AND assignment.supplier_id IS NULL;
 
-  IF owner_count<>1 OR company_count<>0 OR assignment_count<>1 THEN
+  SELECT count(*) INTO scope_count
+  FROM user_scopes scope
+  JOIN role_assignments assignment
+    ON assignment.id=scope.source_reference
+   AND assignment.user_id=scope.user_id
+  JOIN reset_parameters parameter
+    ON parameter.retained_owner_id=scope.user_id
+  WHERE scope.scope_type='PLATFORM'
+    AND scope.company_id IS NULL
+    AND scope.branch_id IS NULL
+    AND scope.department_id IS NULL
+    AND scope.supplier_id IS NULL
+    AND scope.source='ROLE_ASSIGNMENT'
+    AND scope.active
+    AND scope.ends_at IS NULL;
+
+  SELECT public.axora_snapshot_has_permission(
+    public.axora_live_authorization_snapshot(
+      parameter.retained_owner_id,assignment.id,now()
+    ),
+    'catalog.manage','PLATFORM',NULL,NULL,NULL,NULL
+  ) INTO catalog_access
+  FROM reset_parameters parameter
+  JOIN role_assignments assignment
+    ON assignment.user_id=parameter.retained_owner_id
+   AND assignment.active
+   AND assignment.revoked_at IS NULL;
+
+  IF owner_count<>1 OR company_count<>0 OR assignment_count<>1
+    OR scope_count<>1 OR catalog_access IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'Owner-retaining reset postconditions failed';
   END IF;
   IF (SELECT count(*) FROM account_credentials)<>1

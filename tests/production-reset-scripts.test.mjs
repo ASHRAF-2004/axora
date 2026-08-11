@@ -531,6 +531,8 @@ describe("guarded production reset controls", () => {
     expect(resetSource).toMatch(/--dbname "\$candidate_database"[\s\S]*owner-retaining-reset\.sql/);
     expect(resetSource).toContain("assert_retained_owner_source");
     expect(resetSource).toContain("assert_owner_retaining_candidate");
+    expect(resetSource).toContain("FROM user_scopes scope");
+    expect(resetSource).toContain("'catalog.manage','PLATFORM'");
     expect(resetSource).toMatch(
       /assert_retained_owner_source\(\)[\s\S]*?docker exec -i "\$db_container" psql/,
     );
@@ -547,6 +549,10 @@ describe("guarded production reset controls", () => {
     expect(ownerResetSource).toContain(":'canonical_email'");
     expect(ownerResetSource).toContain("TRUNCATE TABLE");
     expect(ownerResetSource).toContain("reset_preserved_tables");
+    expect(ownerResetSource).toContain("CREATE TEMP TABLE reset_keep_scope");
+    expect(ownerResetSource).toContain("INSERT INTO user_scopes SELECT * FROM reset_keep_scope");
+    expect(ownerResetSource).toContain("axora_live_authorization_snapshot");
+    expect(ownerResetSource).toContain("'catalog.manage','PLATFORM'");
     expect(ownerResetSource).toContain("'suppliers'");
     expect(ownerResetSource).toContain("'product_suppliers'");
     expect(ownerResetSource).toContain("PRODUCTION_BASELINE_RESET");
