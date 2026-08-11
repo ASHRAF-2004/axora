@@ -39,6 +39,15 @@ function statusLabel(value: string, locale: "en" | "ar" | "ms") {
     ?? value.replaceAll("_", " ");
 }
 
+function readinessStateLabel(value: string, locale: "en" | "ar" | "ms") {
+  const labels = {
+    en: { DELIVERY_DISABLED: "Delivery disabled", WEBHOOK_BOOTSTRAP: "Webhook bootstrap", SIGNED_WEBHOOK_CONFIGURED: "Signed webhook configured", ACCOUNT_REVIEW_PENDING: "Account review pending", READY_FOR_CONTROLLED_SEND: "Ready for controlled send", FULLY_ENABLED: "Fully enabled", MISCONFIGURED: "Misconfigured" },
+    ar: { DELIVERY_DISABLED: "التسليم معطل", WEBHOOK_BOOTSTRAP: "تهيئة Webhook الأولية", SIGNED_WEBHOOK_CONFIGURED: "Webhook موقّع مهيأ", ACCOUNT_REVIEW_PENDING: "مراجعة الحساب معلقة", READY_FOR_CONTROLLED_SEND: "جاهز لإرسال مضبوط", FULLY_ENABLED: "مفعّل بالكامل", MISCONFIGURED: "تهيئة غير صحيحة" },
+    ms: { DELIVERY_DISABLED: "Penghantaran dilumpuhkan", WEBHOOK_BOOTSTRAP: "Bootstrap webhook", SIGNED_WEBHOOK_CONFIGURED: "Webhook bertandatangan dikonfigurasi", ACCOUNT_REVIEW_PENDING: "Semakan akaun belum selesai", READY_FOR_CONTROLLED_SEND: "Sedia untuk penghantaran terkawal", FULLY_ENABLED: "Didayakan sepenuhnya", MISCONFIGURED: "Salah konfigurasi" },
+  } as const;
+  return labels[locale][value as keyof (typeof labels)["en"]] ?? value.replaceAll("_", " ");
+}
+
 export default async function EmailOperationsPage({
   searchParams,
 }: {
@@ -128,6 +137,26 @@ export default async function EmailOperationsPage({
           <span>{label}</span><strong>{typeof value === "number" ? number.format(value) : value}</strong>
           {note ? <small>{note}</small> : null}
         </article>)}
+      </div>
+    </section>
+
+    <section className="panel" aria-labelledby="provider-runtime-title">
+      <div className="panel-header"><div><h2 id="provider-runtime-title">{messages.runtimeReadiness}</h2><p>{messages.runtimeReadinessBody}</p></div></div>
+      <div className={`panel-body ${styles.providerGrid}`}>
+        <article className={styles.healthCard}>
+          <MailCheck size={28} aria-hidden="true" />
+          <strong>{workspace.providerRuntime.providerName}</strong>
+          <div className={styles.healthGrid}>
+            <div><span>{messages.configState}</span><strong>{readinessStateLabel(workspace.providerRuntime.state, locale)}</strong></div>
+            <div><span>{messages.deliveryGate}</span><strong>{workspace.providerRuntime.deliveryEnabled ? messages.enabled : messages.disabled}</strong></div>
+            <div><span>{messages.eventsGate}</span><strong>{workspace.providerRuntime.eventsEnabled ? messages.enabled : messages.disabled}</strong></div>
+            <div><span>{messages.bootstrapGate}</span><strong>{workspace.providerRuntime.bootstrapEnabled ? messages.enabled : messages.disabled}</strong></div>
+            <div><span>{messages.accountReviewed}</span><strong>{workspace.providerRuntime.accountReviewed ? messages.enabled : messages.disabled}</strong></div>
+            <div><span>{messages.domainVerified}</span><strong>{workspace.providerRuntime.domainVerified ? messages.enabled : messages.disabled}</strong></div>
+            <div><span>{messages.creditsReady}</span><strong>{workspace.providerRuntime.creditsReady ? messages.enabled : messages.disabled}</strong></div>
+            <div><span>{messages.webhookVerified}</span><strong>{workspace.providerRuntime.webhookVerified ? messages.enabled : messages.disabled}</strong></div>
+          </div>
+        </article>
       </div>
     </section>
 

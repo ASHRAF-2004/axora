@@ -368,6 +368,13 @@ ensure_runtime_default() {
 }
 ensure_runtime_default AXORA_EMAIL_DELIVERY_ENABLED false
 ensure_runtime_default AXORA_EMAIL_EVENTS_ENABLED false
+ensure_runtime_default ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED false
+ensure_runtime_default AXORA_ZEPTOMAIL_TOKEN_SLOT primary
+ensure_runtime_default ZEPTOMAIL_MAIL_AGENT_KEY ""
+ensure_runtime_default ZEPTOMAIL_ACCOUNT_REVIEWED false
+ensure_runtime_default ZEPTOMAIL_DOMAIN_VERIFIED false
+ensure_runtime_default ZEPTOMAIL_CREDITS_READY false
+ensure_runtime_default ZEPTOMAIL_WEBHOOK_VERIFIED false
 ensure_runtime_default CLOUDFLARE_ACCOUNT_ID ""
 ensure_runtime_default CLOUDFLARE_ZONE_ID ""
 ensure_runtime_default AXORA_EMAIL_FROM_ADDRESS noreply@axora.management

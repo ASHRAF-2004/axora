@@ -22,6 +22,8 @@ describe("production Email Sending event wiring", () => {
       "/axora_email_events_webhook_secret\"",
     );
     expect(runtime).toContain("AXORA_EMAIL_EVENTS_ENABLED=false");
+    expect(runtime).toContain("ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED=false");
+    expect(runtime).toContain("ZEPTOMAIL_MAIL_AGENT_KEY=");
     expect(runtime).not.toContain("AXORA_EMAIL_EVENTS_WEBHOOK_SECRET=");
   });
 
@@ -46,8 +48,9 @@ describe("production Email Sending event wiring", () => {
   it("bounds the public event endpoint below the normal application body limit", async () => {
     const caddy = await source("caddy/Caddyfile.production");
     expect(caddy).toContain(
-      "@email_event_webhook path /api/email/provider-events/cloudflare",
+      "@cloudflare_email_event_webhook path /api/email/provider-events/cloudflare",
     );
-    expect(caddy).toMatch(/request_body @email_event_webhook \{\s+max_size 4KB/);
+    expect(caddy).toMatch(/request_body @cloudflare_email_event_webhook \{\s+max_size 4KB/);
+    expect(caddy).toMatch(/request_body @zeptomail_email_event_webhook \{\s+max_size 16KB/);
   });
 });
