@@ -218,6 +218,11 @@ set events to `true`, and accept a real signed provider test before setting
 The six `axora-*` names are internal delivery streams. They use one provider
 Agent when the shared Send Mail Token is configured, so production needs one
 `ZEPTOMAIL_MAIL_AGENT_KEY`, not six manufactured ZeptoMail Agents.
+Copy this value from the top-level `mailagent_key` in the selected Agent's
+Webhook data preview. It is an opaque, period-separated provider identifier,
+not the human-readable Agent display name or alias. Axora accepts only non-empty
+ASCII alphanumeric, underscore, or hyphen segments separated by single periods,
+with a maximum total length of 200 characters, and compares the value exactly.
 
 Before any email enablement or provider-side mutation, follow:
 

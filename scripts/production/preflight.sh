@@ -97,6 +97,7 @@ grep -Fqx "AXORA_UPLOADS_DIR=$AXORA_UPLOADS_DIR" "$AXORA_RUNTIME_ENV_FILE" \
 email_delivery_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_DELIVERY_ENABLED)"
 email_events_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_EVENTS_ENABLED)"
 zeptomail_webhook_bootstrap_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED)"
+zeptomail_mail_agent_key="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" ZEPTOMAIL_MAIL_AGENT_KEY)"
 cloudflare_account_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" CLOUDFLARE_ACCOUNT_ID)"
 cloudflare_zone_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" CLOUDFLARE_ZONE_ID)"
 email_from_address="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_FROM_ADDRESS)"
@@ -141,6 +142,12 @@ fi
   || die "AXORA_EMAIL_REPLY_TO must be a valid email address."
 [[ "$email_provider" == "cloudflare-email-service" || "$email_provider" == "zeptomail" ]] \
   || die "AXORA_EMAIL_PROVIDER must be cloudflare-email-service or zeptomail."
+if [[ -n "$zeptomail_mail_agent_key" ]]; then
+  (( "${#zeptomail_mail_agent_key}" <= 200 )) \
+    || die "ZEPTOMAIL_MAIL_AGENT_KEY exceeds 200 characters."
+  [[ "$zeptomail_mail_agent_key" =~ ^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$ ]] \
+    || die "ZEPTOMAIL_MAIL_AGENT_KEY must be the opaque period-separated webhook mailagent_key."
+fi
 if [[ "$email_provider" == "zeptomail" ]]; then
   "$SCRIPT_DIR/check-email-service.mjs" \
     --runtime-file "$AXORA_RUNTIME_ENV_FILE" \
