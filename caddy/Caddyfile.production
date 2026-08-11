@@ -9,9 +9,13 @@
 	# Most requests stay tightly bounded. Only authenticated upload surfaces get
 	# enough multipart headroom for their server-validated files (the product
 	# editor accepts up to eight 5 MB images in one request).
-	@email_event_webhook path /api/email/provider-events/cloudflare
-	request_body @email_event_webhook {
+	@cloudflare_email_event_webhook path /api/email/provider-events/cloudflare
+	request_body @cloudflare_email_event_webhook {
 		max_size 4KB
+	}
+	@zeptomail_email_event_webhook path /api/email/provider-events/zeptomail
+	request_body @zeptomail_email_event_webhook {
+		max_size 16KB
 	}
 	@driver_evidence_upload path /api/driver/evidence
 	request_body @driver_evidence_upload {
@@ -22,7 +26,7 @@
 	request_body @bounded_upload {
 		max_size 44MB
 	}
-	@standard_body not path /api/email/provider-events/cloudflare /api/driver/evidence /products* /supplier* /driver*
+	@standard_body not path /api/email/provider-events/cloudflare /api/email/provider-events/zeptomail /api/driver/evidence /products* /supplier* /driver*
 	request_body @standard_body {
 		max_size 4MB
 	}

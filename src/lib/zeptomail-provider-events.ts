@@ -7,7 +7,8 @@ const WEBHOOK_PATH = "/api/email/provider-events/zeptomail";
 const MAX_EVENT_BYTES = 16 * 1024;
 const WEBHOOK_WINDOW_MS = 5 * 60 * 1_000;
 const SECRET_MINIMUM_LENGTH = 32;
-const AGENT_ENV_KEYS = [
+const PROVIDER_AGENT_ENV_KEY = "ZEPTOMAIL_MAIL_AGENT_KEY";
+const LEGACY_AGENT_ENV_KEYS = [
   "ZEPTOMAIL_AUTH_AGENT_KEY",
   "ZEPTOMAIL_PROCUREMENT_AGENT_KEY",
   "ZEPTOMAIL_BUDGET_AGENT_KEY",
@@ -53,12 +54,53 @@ function providerUuid(value: string) {
 }
 
 function configuredAgentKeys(env = process.env) {
-  const values = AGENT_ENV_KEYS.map((key) => String(env[key] ?? "").trim()).filter(Boolean);
-  if (!values.length || new Set(values).size !== values.length
-    || values.some((value) => !/^[A-Za-z0-9_-]{1,200}$/.test(value))) {
+  const providerAgent = String(env[PROVIDER_AGENT_ENV_KEY] ?? "").trim();
+  const values = providerAgent
+    ? [providerAgent]
+    : LEGACY_AGENT_ENV_KEYS.map((key) => String(env[key] ?? "").trim()).filter(Boolean);
+  const uniqueValues = [...new Set(values)];
+  if (!uniqueValues.length
+    || uniqueValues.some((value) => !/^[A-Za-z0-9_-]{1,200}$/.test(value))) {
     throw new Error("The ZeptoMail Agent identity configuration is unavailable.");
   }
-  return new Set(values);
+  return new Set(uniqueValues);
+}
+
+export function zeptoMailWebhookBootstrapState(
+  env: NodeJS.ProcessEnv = process.env,
+): "disabled" | "enabled" | "invalid" {
+  if (env.ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED !== "true") return "disabled";
+  return env.AXORA_EMAIL_PROVIDER === "zeptomail"
+    && env.AXORA_EMAIL_DELIVERY_ENABLED === "false"
+    && env.AXORA_EMAIL_EVENTS_ENABLED === "false"
+    ? "enabled" : "invalid";
+}
+
+export function verifyZeptoMailWebhookBootstrapEvent(
+  event: Record<string, unknown>,
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  try {
+    if (zeptoMailWebhookBootstrapState(env) !== "enabled") return false;
+    const eventName = boundedString(event.event_name, 80)
+      ?.toLowerCase().replaceAll(/[^a-z]/g, "");
+    const mailAgentKey = boundedString(event.mailagent_key, 200);
+    const webhookId = boundedString(event.webhook_request_id, 255);
+    const message = event.event_message;
+    return Boolean(
+      eventName
+      && ["delivered", "softbounce", "softbounced", "hardbounce", "hardbounced",
+        "feedbackloop", "feedback"].includes(eventName)
+      && mailAgentKey
+      && configuredAgentKeys(env).has(mailAgentKey)
+      && webhookId
+      && message
+      && typeof message === "object"
+      && !Array.isArray(message),
+    );
+  } catch {
+    return false;
+  }
 }
 
 function webhookSecret(env = process.env) {
@@ -254,4 +296,8 @@ export function signZeptoMailWebhookEventForTest(
   return `ts=${timestamp};s=${encodeURIComponent(signature)};s-algorithm=HmacSHA256`;
 }
 
-export const zeptoMailProviderEventInternals = { providerUuid, webhookPath: WEBHOOK_PATH };
+export const zeptoMailProviderEventInternals = {
+  providerUuid,
+  webhookPath: WEBHOOK_PATH,
+  configuredAgentKeys,
+};

@@ -199,11 +199,24 @@ is disabled. A `disabled` sender readiness result is expected and healthy when
 sending domain, DNS, Queue subscription, Worker, webhook, monitored mailbox,
 or real email.
 
-Do not enable delivery by editing only one flag. Email delivery and provider
-events must be enabled together, and production preflight must pass with the
-dedicated secret files. The developer-only `email-preview` Mailpit profile is
+Do not enable delivery by editing only one flag. ZeptoMail signed provider
+events may run while delivery is disabled so the webhook can be proven first;
+delivery still requires signed events and every provider readiness gate. The
+developer-only `email-preview` Mailpit profile is
 not part of the production Compose invocation and must never be published
 through Caddy or the Tunnel.
+
+For ZeptoMail's initial URL reachability check only, set
+`ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED=true` while both delivery and events remain
+`false`. Bootstrap accepts only a bounded ZeptoMail-shaped form event for
+`ZEPTOMAIL_MAIL_AGENT_KEY`, returns HTTP 200, and records nothing. It must be
+disabled after the webhook exists. Configure the provider Authentication Key,
+set events to `true`, and accept a real signed provider test before setting
+`ZEPTOMAIL_WEBHOOK_VERIFIED=true`. Bootstrap and delivery can never coexist.
+
+The six `axora-*` names are internal delivery streams. They use one provider
+Agent when the shared Send Mail Token is configured, so production needs one
+`ZEPTOMAIL_MAIL_AGENT_KEY`, not six manufactured ZeptoMail Agents.
 
 Before any email enablement or provider-side mutation, follow:
 

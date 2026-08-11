@@ -109,6 +109,27 @@ export interface EmailProviderHealth {
   threshold: string;
 }
 
+export type EmailProviderRuntimeState =
+  | "DELIVERY_DISABLED"
+  | "WEBHOOK_BOOTSTRAP"
+  | "SIGNED_WEBHOOK_CONFIGURED"
+  | "ACCOUNT_REVIEW_PENDING"
+  | "READY_FOR_CONTROLLED_SEND"
+  | "FULLY_ENABLED"
+  | "MISCONFIGURED";
+
+export interface EmailProviderRuntimeReadiness {
+  providerName: string;
+  state: EmailProviderRuntimeState;
+  deliveryEnabled: boolean;
+  eventsEnabled: boolean;
+  bootstrapEnabled: boolean;
+  accountReviewed: boolean;
+  domainVerified: boolean;
+  creditsReady: boolean;
+  webhookVerified: boolean;
+}
+
 export interface EmailOperationsWorkspace {
   capturedAt: string;
   canManage: boolean;
@@ -135,6 +156,7 @@ export interface EmailOperationsWorkspace {
   records: EmailOperationsRecord[];
   agents: EmailAgentSummary[];
   dailyUsage: Array<{ day: string; recipientUnits: number; attempts: number }>;
+  providerRuntime: EmailProviderRuntimeReadiness;
   providerHealth?: EmailProviderHealth;
   webhooks: Array<{
     providerName: string;
@@ -250,6 +272,41 @@ export function maskEmailAddress(value: string) {
     return "private operations recipient";
   }
   return `${normalized.slice(0, Math.min(2, separator))}***${normalized.slice(separator)}`;
+}
+
+export function emailProviderRuntimeReadiness(
+  env: NodeJS.ProcessEnv = process.env,
+): EmailProviderRuntimeReadiness {
+  const providerName = env.AXORA_EMAIL_PROVIDER?.trim() || "unconfigured";
+  const deliveryEnabled = env.AXORA_EMAIL_DELIVERY_ENABLED === "true";
+  const eventsEnabled = env.AXORA_EMAIL_EVENTS_ENABLED === "true";
+  const bootstrapEnabled = env.ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED === "true";
+  const accountReviewed = env.ZEPTOMAIL_ACCOUNT_REVIEWED === "true";
+  const domainVerified = env.ZEPTOMAIL_DOMAIN_VERIFIED === "true";
+  const creditsReady = env.ZEPTOMAIL_CREDITS_READY === "true";
+  const webhookVerified = env.ZEPTOMAIL_WEBHOOK_VERIFIED === "true";
+  const allZeptoGates = accountReviewed && domainVerified && creditsReady && webhookVerified;
+  const invalid = bootstrapEnabled && (deliveryEnabled || eventsEnabled)
+    || deliveryEnabled && (!eventsEnabled || !allZeptoGates)
+    || webhookVerified && (bootstrapEnabled || !eventsEnabled);
+  let state: EmailProviderRuntimeState = "DELIVERY_DISABLED";
+  if (invalid) state = "MISCONFIGURED";
+  else if (bootstrapEnabled) state = "WEBHOOK_BOOTSTRAP";
+  else if (deliveryEnabled) state = "FULLY_ENABLED";
+  else if (eventsEnabled && !webhookVerified) state = "SIGNED_WEBHOOK_CONFIGURED";
+  else if (eventsEnabled && allZeptoGates) state = "READY_FOR_CONTROLLED_SEND";
+  else if (providerName === "zeptomail" && !accountReviewed) state = "ACCOUNT_REVIEW_PENDING";
+  return {
+    providerName,
+    state,
+    deliveryEnabled,
+    eventsEnabled,
+    bootstrapEnabled,
+    accountReviewed,
+    domainVerified,
+    creditsReady,
+    webhookVerified,
+  };
 }
 
 function requireView(actor: SessionUser) {
@@ -380,6 +437,7 @@ function demoWorkspace(actor: SessionUser, filters: EmailOperationsFilters): Ema
       failures: 0,
     })),
     dailyUsage: [{ day: now.toISOString(), recipientUnits: 18, attempts: 19 }],
+    providerRuntime: emailProviderRuntimeReadiness(),
     providerHealth: canManage ? {
       providerName: "zeptomail",
       source: "MANUAL",
@@ -420,7 +478,7 @@ export async function getEmailOperationsWorkspace(
   requireView(actor);
   const filters = normalizeEmailOperationsFilters(rawFilters);
   if (isDemoMode()) return demoWorkspace(actor, filters);
-  return withAuditTransaction(
+  const workspace = await withAuditTransaction(
     { actor, reason: "Email operations workspace viewed" },
     async (client) => {
       const query = await client.query<{ workspace: EmailOperationsWorkspace }>(
@@ -433,6 +491,7 @@ export async function getEmailOperationsWorkspace(
       return query.rows[0].workspace;
     },
   );
+  return { ...workspace, providerRuntime: emailProviderRuntimeReadiness() };
 }
 
 export async function executeEmailOperationsCommand(

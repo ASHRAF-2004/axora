@@ -4,6 +4,8 @@ import {
   parseZeptoMailWebhookForm,
   signZeptoMailWebhookEventForTest,
   verifyZeptoMailWebhookRequest,
+  verifyZeptoMailWebhookBootstrapEvent,
+  zeptoMailWebhookBootstrapState,
   zeptoMailProviderEventInternals,
 } from "@/lib/zeptomail-provider-events";
 
@@ -12,12 +14,11 @@ const now = Date.parse("2026-08-08T12:00:00.000Z");
 const env = {
   NODE_ENV: "test" as const,
   ZEPTOMAIL_WEBHOOK_AUTH_KEY: secret,
-  ZEPTOMAIL_AUTH_AGENT_KEY: "agent-auth",
-  ZEPTOMAIL_PROCUREMENT_AGENT_KEY: "agent-procurement",
-  ZEPTOMAIL_BUDGET_AGENT_KEY: "agent-budget",
-  ZEPTOMAIL_DELIVERY_AGENT_KEY: "agent-delivery",
-  ZEPTOMAIL_DOCUMENTS_AGENT_KEY: "agent-documents",
-  ZEPTOMAIL_PLATFORM_AGENT_KEY: "agent-platform",
+  AXORA_EMAIL_PROVIDER: "zeptomail",
+  AXORA_EMAIL_DELIVERY_ENABLED: "false",
+  AXORA_EMAIL_EVENTS_ENABLED: "true",
+  ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED: "false",
+  ZEPTOMAIL_MAIL_AGENT_KEY: "agent-auth",
 };
 
 function fixture(eventName = "hard bounce") {
@@ -106,5 +107,23 @@ describe("ZeptoMail signed provider events", () => {
       now,
       env,
     })).toBe(false);
+  });
+
+  it("accepts only a side-effect-free provider-shaped probe in explicit bootstrap mode", () => {
+    const bootstrapEnv = {
+      ...env,
+      AXORA_EMAIL_EVENTS_ENABLED: "false",
+      ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED: "true",
+    };
+    expect(zeptoMailWebhookBootstrapState(bootstrapEnv)).toBe("enabled");
+    expect(verifyZeptoMailWebhookBootstrapEvent(fixture("soft bounce"), bootstrapEnv)).toBe(true);
+    expect(verifyZeptoMailWebhookBootstrapEvent({
+      ...fixture("soft bounce"),
+      mailagent_key: "unknown-agent",
+    }, bootstrapEnv)).toBe(false);
+    expect(zeptoMailWebhookBootstrapState({
+      ...bootstrapEnv,
+      AXORA_EMAIL_DELIVERY_ENABLED: "true",
+    })).toBe("invalid");
   });
 });

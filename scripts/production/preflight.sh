@@ -96,6 +96,7 @@ grep -Fqx "AXORA_UPLOADS_DIR=$AXORA_UPLOADS_DIR" "$AXORA_RUNTIME_ENV_FILE" \
 
 email_delivery_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_DELIVERY_ENABLED)"
 email_events_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_EVENTS_ENABLED)"
+zeptomail_webhook_bootstrap_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED)"
 cloudflare_account_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" CLOUDFLARE_ACCOUNT_ID)"
 cloudflare_zone_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" CLOUDFLARE_ZONE_ID)"
 email_from_address="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_FROM_ADDRESS)"
@@ -111,11 +112,20 @@ turnstile_expected_hostname="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA
   || die "AXORA_EMAIL_DELIVERY_ENABLED must be exactly true or false."
 [[ "$email_events_enabled" == "true" || "$email_events_enabled" == "false" ]] \
   || die "AXORA_EMAIL_EVENTS_ENABLED must be exactly true or false."
+[[ "$zeptomail_webhook_bootstrap_enabled" == "true" || "$zeptomail_webhook_bootstrap_enabled" == "false" ]] \
+  || die "ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED must be exactly true or false."
 if [[ "$email_delivery_enabled" == "true" && "$email_events_enabled" != "true" ]]; then
   die "Email delivery requires the Email Sending event consumer and suppression endpoint."
 fi
-if [[ "$email_events_enabled" == "true" && "$email_delivery_enabled" != "true" ]]; then
+if [[ "$email_events_enabled" == "true" && "$email_delivery_enabled" != "true" \
+  && "$email_provider" != "zeptomail" ]]; then
   die "Email provider events cannot be enabled while email delivery is disabled."
+fi
+if [[ "$zeptomail_webhook_bootstrap_enabled" == "true" ]]; then
+  [[ "$email_provider" == "zeptomail" ]] \
+    || die "Webhook bootstrap is available only for ZeptoMail."
+  [[ "$email_delivery_enabled" == "false" && "$email_events_enabled" == "false" ]] \
+    || die "ZeptoMail webhook bootstrap requires delivery and provider events to remain disabled."
 fi
 if [[ -n "$cloudflare_account_id" && ! "$cloudflare_account_id" =~ ^[A-Fa-f0-9]{32}$ ]]; then
   die "CLOUDFLARE_ACCOUNT_ID must be empty or a 32-character Cloudflare identifier."
@@ -131,6 +141,11 @@ fi
   || die "AXORA_EMAIL_REPLY_TO must be a valid email address."
 [[ "$email_provider" == "cloudflare-email-service" || "$email_provider" == "zeptomail" ]] \
   || die "AXORA_EMAIL_PROVIDER must be cloudflare-email-service or zeptomail."
+if [[ "$email_provider" == "zeptomail" ]]; then
+  "$SCRIPT_DIR/check-email-service.mjs" \
+    --runtime-file "$AXORA_RUNTIME_ENV_FILE" \
+    --configuration-only
+fi
 if [[ ! "$account_setup_ttl" =~ ^[0-9]+$ ]] \
   || (( account_setup_ttl < 1 || account_setup_ttl > 168 )); then
   die "ACCOUNT_SETUP_TTL_HOURS must be a whole number from 1 to 168."
@@ -201,29 +216,6 @@ if [[ "$email_delivery_enabled" == "true" ]]; then
       || selected_email_token_path="$AXORA_SECRETS_DIR/zeptomail_send_token_next"
     [[ -s "$selected_email_token_path" ]] \
       || die "ZeptoMail delivery is enabled but the active Send Mail Token is empty."
-    for readiness_key in \
-      ZEPTOMAIL_ACCOUNT_REVIEWED \
-      ZEPTOMAIL_DOMAIN_VERIFIED \
-      ZEPTOMAIL_CREDITS_READY \
-      ZEPTOMAIL_WEBHOOK_VERIFIED; do
-      [[ "$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" "$readiness_key")" == "true" ]] \
-        || die "$readiness_key must be true before ZeptoMail delivery is enabled."
-    done
-    zeptomail_agent_keys=""
-    for agent_key_name in \
-      ZEPTOMAIL_AUTH_AGENT_KEY \
-      ZEPTOMAIL_PROCUREMENT_AGENT_KEY \
-      ZEPTOMAIL_BUDGET_AGENT_KEY \
-      ZEPTOMAIL_DELIVERY_AGENT_KEY \
-      ZEPTOMAIL_DOCUMENTS_AGENT_KEY \
-      ZEPTOMAIL_PLATFORM_AGENT_KEY; do
-      agent_key="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" "$agent_key_name")"
-      [[ "$agent_key" =~ ^[A-Za-z0-9_-]{1,200}$ ]] \
-        || die "$agent_key_name is malformed."
-      [[ " $zeptomail_agent_keys " != *" $agent_key "* ]] \
-        || die "ZeptoMail Agent keys must be unique."
-      zeptomail_agent_keys="$zeptomail_agent_keys $agent_key"
-    done
   fi
   if [[ "$check_mode" != "local" ]]; then
     "$SCRIPT_DIR/check-email-service.mjs" \
