@@ -527,6 +527,12 @@ describe("guarded production reset controls", () => {
     expect(resetSource).toMatch(/--dbname "\$candidate_database"[\s\S]*owner-retaining-reset\.sql/);
     expect(resetSource).toContain("assert_retained_owner_source");
     expect(resetSource).toContain("assert_owner_retaining_candidate");
+    expect(resetSource).toMatch(
+      /assert_retained_owner_source\(\)[\s\S]*?docker exec -i "\$db_container" psql/,
+    );
+    expect(resetSource).toMatch(
+      /assert_owner_retaining_candidate\(\)[\s\S]*?docker exec -i "\$db_container" psql/,
+    );
     expect(resetSource).toContain("encrypted-reset-backup.sh\" --purpose baseline-reset");
     expect(installSource).toContain("owner-retaining-reset.sql");
     expect(installSource).toMatch(/-m 0640[\s\S]*owner-retaining-reset\.sql/);
