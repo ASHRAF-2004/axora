@@ -2,7 +2,7 @@ import { emailProviderEventsEnabled } from "@/lib/email-provider-events";
 import { recordEmailWebhookProcessingFailure } from "@/lib/email-operations";
 import {
   normalizeZeptoMailWebhookEvent,
-  parseZeptoMailWebhookForm,
+  parseZeptoMailWebhookPayload,
   recordZeptoMailProviderEvent,
   verifyZeptoMailWebhookBootstrapEvent,
   verifyZeptoMailWebhookRequest,
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     return noStoreJson({ error: "service_unavailable" }, 503);
   }
   const mediaType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
-  if (mediaType !== "application/x-www-form-urlencoded") {
+  if (mediaType !== "application/json" && mediaType !== "application/x-www-form-urlencoded") {
     return noStoreJson({ error: "unsupported_media_type" }, 415);
   }
   const declaredLength = request.headers.get("content-length");
@@ -46,9 +46,9 @@ export async function POST(request: Request) {
   if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
     return noStoreJson({ error: "request_too_large" }, 413);
   }
-  let parsed: ReturnType<typeof parseZeptoMailWebhookForm>;
+  let parsed: ReturnType<typeof parseZeptoMailWebhookPayload>;
   try {
-    parsed = parseZeptoMailWebhookForm(rawBody);
+    parsed = parseZeptoMailWebhookPayload(rawBody, mediaType);
   } catch {
     return noStoreJson({ error: "invalid_request" }, 400);
   }
