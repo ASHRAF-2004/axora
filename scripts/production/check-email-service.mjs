@@ -7,6 +7,15 @@ import { pathToFileURL } from "node:url";
 const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
 const IDENTIFIER_PATTERN = /^[a-f0-9]{32}$/i;
 const MAX_RESPONSE_BYTES = 1_000_000;
+const ZEPTOMAIL_PROVIDER_AGENT_KEY_MAXIMUM_LENGTH = 200;
+const ZEPTOMAIL_PROVIDER_AGENT_KEY_PATTERN = /^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$/;
+
+export function isZeptoMailProviderAgentKey(value) {
+  return typeof value === "string"
+    && value.length >= 1
+    && value.length <= ZEPTOMAIL_PROVIDER_AGENT_KEY_MAXIMUM_LENGTH
+    && ZEPTOMAIL_PROVIDER_AGENT_KEY_PATTERN.test(value);
+}
 
 function argument(name) {
   const index = process.argv.indexOf(name);
@@ -34,10 +43,15 @@ export function optionalRuntimeValue(source, key) {
   if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
     throw new Error("Invalid production runtime configuration key.");
   }
+  if (source.includes("\r") || source.split("\n").some((line) => line
+    && !line.startsWith("#")
+    && !/^[A-Z][A-Z0-9_]*=/.test(line))) {
+    throw new Error("Production runtime configuration contains an invalid line.");
+  }
   const values = source
     .split(/\r?\n/)
     .filter((line) => line.startsWith(`${key}=`))
-    .map((line) => line.slice(key.length + 1).trim());
+    .map((line) => line.slice(key.length + 1));
   if (values.length !== 1) {
     throw new Error(`Production runtime configuration must contain exactly one ${key}.`);
   }
@@ -66,7 +80,7 @@ export function inspectZeptoMailRuntimeState({ runtimeSource }) {
     "ZEPTOMAIL_WEBHOOK_VERIFIED",
   ].map((key) => [key, runtimeBoolean(runtimeSource, key)]));
   const providerAgentKey = optionalRuntimeValue(runtimeSource, "ZEPTOMAIL_MAIL_AGENT_KEY");
-  const providerAgentConfigured = /^[A-Za-z0-9_-]{1,200}$/.test(providerAgentKey);
+  const providerAgentConfigured = isZeptoMailProviderAgentKey(providerAgentKey);
 
   if (bootstrapEnabled && (deliveryEnabled || eventsEnabled)) {
     throw new Error(
@@ -77,7 +91,9 @@ export function inspectZeptoMailRuntimeState({ runtimeSource }) {
     throw new Error("ZeptoMail delivery requires signed provider events to be enabled.");
   }
   if ((bootstrapEnabled || eventsEnabled || deliveryEnabled) && !providerAgentConfigured) {
-    throw new Error("ZEPTOMAIL_MAIL_AGENT_KEY must identify the configured provider Agent.");
+    throw new Error(
+      "ZEPTOMAIL_MAIL_AGENT_KEY must be the opaque ZeptoMail webhook mailagent_key, not an Agent display name.",
+    );
   }
   if (gates.ZEPTOMAIL_WEBHOOK_VERIFIED && (bootstrapEnabled || !eventsEnabled)) {
     throw new Error(

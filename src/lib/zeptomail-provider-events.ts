@@ -8,6 +8,8 @@ const MAX_EVENT_BYTES = 16 * 1024;
 const WEBHOOK_WINDOW_MS = 5 * 60 * 1_000;
 const SECRET_MINIMUM_LENGTH = 32;
 const PROVIDER_AGENT_ENV_KEY = "ZEPTOMAIL_MAIL_AGENT_KEY";
+const PROVIDER_AGENT_KEY_MAXIMUM_LENGTH = 200;
+const PROVIDER_AGENT_KEY_PATTERN = /^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$/;
 const LEGACY_AGENT_ENV_KEYS = [
   "ZEPTOMAIL_AUTH_AGENT_KEY",
   "ZEPTOMAIL_PROCUREMENT_AGENT_KEY",
@@ -55,6 +57,13 @@ function boundedString(value: unknown, maximum = 255) {
   return normalized;
 }
 
+export function isZeptoMailProviderAgentKey(value: unknown): value is string {
+  return typeof value === "string"
+    && value.length >= 1
+    && value.length <= PROVIDER_AGENT_KEY_MAXIMUM_LENGTH
+    && PROVIDER_AGENT_KEY_PATTERN.test(value);
+}
+
 function singleString(value: unknown, maximum: number) {
   const item = Array.isArray(value)
     ? value.length === 1 ? value[0] : undefined
@@ -95,10 +104,11 @@ export function normalizeZeptoMailWebhookEnvelope(
   const emailInfo = singleObject(eventMessage.email_info);
   const eventData = singleObject(eventMessage.event_data, true);
   const details = singleObject(eventData.details, true);
-  const mailAgentKey = boundedString(event.mailagent_key, 200);
+  const mailAgentKey = event.mailagent_key;
   const webhookRequestId = boundedString(event.webhook_request_id, 255);
   const requestId = boundedString(eventMessage.request_id ?? event.request_id, 255);
-  if (!eventName || !mailAgentKey || !webhookRequestId || !requestId) {
+  if (!eventName || !isZeptoMailProviderAgentKey(mailAgentKey)
+    || !webhookRequestId || !requestId) {
     throw new Error("The ZeptoMail webhook identity is invalid.");
   }
   validateRecipientShape(emailInfo);
@@ -123,13 +133,13 @@ function providerUuid(value: string) {
 }
 
 function configuredAgentKeys(env = process.env) {
-  const providerAgent = String(env[PROVIDER_AGENT_ENV_KEY] ?? "").trim();
+  const providerAgent = String(env[PROVIDER_AGENT_ENV_KEY] ?? "");
   const values = providerAgent
     ? [providerAgent]
-    : LEGACY_AGENT_ENV_KEYS.map((key) => String(env[key] ?? "").trim()).filter(Boolean);
+    : LEGACY_AGENT_ENV_KEYS.map((key) => String(env[key] ?? "")).filter(Boolean);
   const uniqueValues = [...new Set(values)];
   if (!uniqueValues.length
-    || uniqueValues.some((value) => !/^[A-Za-z0-9_-]{1,200}$/.test(value))) {
+    || uniqueValues.some((value) => !isZeptoMailProviderAgentKey(value))) {
     throw new Error("The ZeptoMail Agent identity configuration is unavailable.");
   }
   return new Set(uniqueValues);

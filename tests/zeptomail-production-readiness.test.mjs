@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   inspectZeptoMailRuntimeState,
+  isZeptoMailProviderAgentKey,
   verifyZeptoMailConfiguration,
 } from "../scripts/production/check-email-service.mjs";
+
+const providerAgentKey = "2d6f.2f584a3cd668e3a6.synthetic_agent-key";
 
 function runtime(overrides = {}) {
   const values = {
@@ -11,7 +14,7 @@ function runtime(overrides = {}) {
     AXORA_EMAIL_DELIVERY_ENABLED: "false",
     AXORA_EMAIL_EVENTS_ENABLED: "false",
     ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED: "false",
-    ZEPTOMAIL_MAIL_AGENT_KEY: "agent_1",
+    ZEPTOMAIL_MAIL_AGENT_KEY: providerAgentKey,
     ZEPTOMAIL_ACCOUNT_REVIEWED: "false",
     ZEPTOMAIL_DOMAIN_VERIFIED: "true",
     ZEPTOMAIL_CREDITS_READY: "true",
@@ -59,7 +62,35 @@ describe("ZeptoMail production readiness states", () => {
         AXORA_EMAIL_EVENTS_ENABLED: "true",
         ZEPTOMAIL_MAIL_AGENT_KEY: "",
       }),
-    })).toThrow("must identify the configured provider Agent");
+    })).toThrow("must be the opaque ZeptoMail webhook mailagent_key");
+  });
+
+  it.each([
+    "segment..segment",
+    ".segment",
+    "segment.",
+    "segment/segment",
+    "segment segment",
+    "segment\nsegment",
+    "segment;segment",
+    "segment:segment",
+    "segment$segment",
+    "x".repeat(201),
+  ])("rejects malformed provider Agent configuration", (value) => {
+    expect(isZeptoMailProviderAgentKey(value)).toBe(false);
+    expect(() => inspectZeptoMailRuntimeState({
+      runtimeSource: runtime({
+        ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED: "true",
+        ZEPTOMAIL_MAIL_AGENT_KEY: value,
+      }),
+    })).toThrow();
+  });
+
+  it("accepts the bounded current period-separated provider format", () => {
+    expect(isZeptoMailProviderAgentKey(providerAgentKey)).toBe(true);
+    expect(inspectZeptoMailRuntimeState({
+      runtimeSource: runtime({ ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED: "true" }),
+    }).providerAgentConfigured).toBe(true);
   });
 
   it("accepts fully evidenced delivery with one Agent rather than six logical-stream keys", () => {

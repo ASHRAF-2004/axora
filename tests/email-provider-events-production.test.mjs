@@ -42,6 +42,12 @@ describe("production Email Sending event wiring", () => {
     expect(preflight).toContain(
       'email_events_key_path="$AXORA_SECRETS_DIR/axora_email_events_webhook_secret"',
     );
+    expect(preflight).toContain(
+      'zeptomail_mail_agent_key="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" ZEPTOMAIL_MAIL_AGENT_KEY)"',
+    );
+    expect(preflight).toContain(
+      "ZEPTOMAIL_MAIL_AGENT_KEY must be the opaque period-separated webhook mailagent_key.",
+    );
     expect(preflight).toContain("0:1000");
   });
 

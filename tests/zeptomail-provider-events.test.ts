@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   normalizeZeptoMailWebhookEvent,
   normalizeZeptoMailWebhookEnvelope,
+  isZeptoMailProviderAgentKey,
   parseZeptoMailWebhookForm,
   parseZeptoMailWebhookPayload,
   signZeptoMailWebhookEventForTest,
@@ -13,6 +14,7 @@ import {
 
 const secret = "zeptomail-webhook-authentication-key-for-tests";
 const now = Date.parse("2026-08-08T12:00:00.000Z");
+const providerAgentKey = "2d6f.2f584a3cd668e3a6.synthetic_agent-key";
 const env = {
   NODE_ENV: "test" as const,
   ZEPTOMAIL_WEBHOOK_AUTH_KEY: secret,
@@ -20,13 +22,13 @@ const env = {
   AXORA_EMAIL_DELIVERY_ENABLED: "false",
   AXORA_EMAIL_EVENTS_ENABLED: "true",
   ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED: "false",
-  ZEPTOMAIL_MAIL_AGENT_KEY: "agent-auth",
+  ZEPTOMAIL_MAIL_AGENT_KEY: providerAgentKey,
 };
 
 function fixture(eventName = "hardbounce") {
   return {
     event_name: [eventName],
-    mailagent_key: "agent-auth",
+    mailagent_key: providerAgentKey,
     webhook_request_id: `webhook-${eventName.replaceAll(" ", "-")}`,
     event_message: [{
       request_id: "zeptomail-request-1901",
@@ -124,7 +126,7 @@ describe("ZeptoMail signed provider events", () => {
   it("strictly normalizes the current nested arrays and the documented legacy representation", () => {
     expect(normalizeZeptoMailWebhookEnvelope(fixture("softbounce"))).toMatchObject({
       eventName: "softbounce",
-      mailAgentKey: "agent-auth",
+      mailAgentKey: providerAgentKey,
       requestId: "zeptomail-request-1901",
     });
     expect(normalizeZeptoMailWebhookEvent(legacyFixture("hard bounce"))).toMatchObject({
@@ -164,6 +166,30 @@ describe("ZeptoMail signed provider events", () => {
       now,
       env,
     })).toBe(false);
+  });
+
+  it.each([
+    "2d6f..synthetic",
+    ".2d6f.synthetic",
+    "2d6f.synthetic.",
+    "2d6f/synthetic",
+    "2d6f synthetic",
+    "2d6f\nsynthetic",
+    "2d6f;synthetic",
+    "2d6f:synthetic",
+    "2d6f$synthetic",
+    "x".repeat(201),
+  ])("rejects malformed or unsafe provider Agent keys", (value) => {
+    expect(isZeptoMailProviderAgentKey(value)).toBe(false);
+    expect(() => zeptoMailProviderEventInternals.configuredAgentKeys({
+      ...env,
+      ZEPTOMAIL_MAIL_AGENT_KEY: value,
+    })).toThrow("Agent identity configuration is unavailable");
+  });
+
+  it("accepts only bounded period-separated opaque provider Agent keys", () => {
+    expect(isZeptoMailProviderAgentKey(providerAgentKey)).toBe(true);
+    expect(isZeptoMailProviderAgentKey("segment_with-compatibility")).toBe(true);
   });
 
   it("accepts only a side-effect-free provider-shaped probe in explicit bootstrap mode", () => {
