@@ -335,6 +335,8 @@ describe("guarded production reset controls", () => {
       const backupDir = join(stagingRoot, backupName);
       mkdirSync(backupDir, { recursive: true, mode: 0o700 });
       writeFileSync(join(backupDir, "database.dump"), "fake-custom-format-dump\n", { mode: 0o600 });
+      writeFileSync(join(backupDir, "database.restore-list.txt"), "fake full restore list\n", { mode: 0o600 });
+      writeFileSync(join(backupDir, "database.restore-list.filtered.txt"), "fake filtered restore list\n", { mode: 0o600 });
       writeFileSync(join(backupDir, "migrations.tsv"), `001_initial.sql\t${"b".repeat(64)}\n`, { mode: 0o600 });
       writeFileSync(join(backupDir, "uploads-files.list"), Buffer.alloc(0), { mode: 0o600 });
       writeFileSync(join(backupDir, "uploads.sha256"), Buffer.alloc(0), { mode: 0o600 });
@@ -370,6 +372,8 @@ describe("guarded production reset controls", () => {
 
       const checksumFiles = [
         "database.dump",
+        "database.restore-list.txt",
+        "database.restore-list.filtered.txt",
         "uploads.tar.gz",
         "uploads-files.list",
         "uploads.sha256",
