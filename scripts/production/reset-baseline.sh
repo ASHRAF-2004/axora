@@ -259,7 +259,7 @@ assert_retained_owner_source() {
   local database="$1"
   local result
 
-  result="$(docker exec "$db_container" psql \
+  result="$(docker exec -i "$db_container" psql \
     --username postgres \
     --dbname "$database" \
     --tuples-only \
@@ -308,7 +308,7 @@ assert_owner_retaining_candidate() {
   local database="$1"
   local result
 
-  result="$(docker exec "$db_container" psql \
+  result="$(docker exec -i "$db_container" psql \
     --username postgres \
     --dbname "$database" \
     --tuples-only \
