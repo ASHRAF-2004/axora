@@ -177,6 +177,8 @@ fi
 cat > "$work_dir/expected-files.list" <<'EOF'
 checksums.sha256
 database.dump
+database.restore-list.filtered.txt
+database.restore-list.txt
 manifest.txt
 migrations.tsv
 uploads-directories.list
