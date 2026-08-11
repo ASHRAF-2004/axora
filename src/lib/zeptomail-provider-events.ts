@@ -18,6 +18,16 @@ const LEGACY_AGENT_ENV_KEYS = [
 ] as const;
 
 type HeaderSource = Headers | Record<string, string | string[] | undefined>;
+type ZeptoMailWebhookEnvelope = {
+  eventName: string;
+  eventMessage: Record<string, unknown>;
+  eventData: Record<string, unknown>;
+  details: Record<string, unknown>;
+  emailInfo: Record<string, unknown>;
+  mailAgentKey: string;
+  webhookRequestId: string;
+  requestId: string;
+};
 type NormalizedEvent = {
   schemaVersion: 1;
   eventId: string;
@@ -43,6 +53,65 @@ function boundedString(value: unknown, maximum = 255) {
     return undefined;
   }
   return normalized;
+}
+
+function singleString(value: unknown, maximum: number) {
+  const item = Array.isArray(value)
+    ? value.length === 1 ? value[0] : undefined
+    : value;
+  return boundedString(item, maximum);
+}
+
+function singleObject(value: unknown, optional = false): Record<string, unknown> {
+  if ((value === undefined || value === null) && optional) return {};
+  const item = Array.isArray(value)
+    ? value.length === 1 ? value[0] : undefined
+    : value;
+  if (!item || typeof item !== "object" || Array.isArray(item)) {
+    throw new Error("The ZeptoMail webhook payload is invalid.");
+  }
+  return item as Record<string, unknown>;
+}
+
+function validateRecipientShape(emailInfo: Record<string, unknown>) {
+  const recipients = emailInfo.to;
+  if (!Array.isArray(recipients) || recipients.length < 1 || recipients.length > 100
+    || recipients.some((recipient) => {
+      if (!recipient || typeof recipient !== "object" || Array.isArray(recipient)) return true;
+      const address = (recipient as Record<string, unknown>).email_address;
+      return address !== undefined
+        && (!address || typeof address !== "object" || Array.isArray(address));
+    })) {
+    throw new Error("The ZeptoMail webhook recipient is invalid.");
+  }
+}
+
+export function normalizeZeptoMailWebhookEnvelope(
+  event: Record<string, unknown>,
+): ZeptoMailWebhookEnvelope {
+  const eventName = singleString(event.event_name, 80)
+    ?.toLowerCase().replaceAll(/[^a-z]/g, "");
+  const eventMessage = singleObject(event.event_message);
+  const emailInfo = singleObject(eventMessage.email_info);
+  const eventData = singleObject(eventMessage.event_data, true);
+  const details = singleObject(eventData.details, true);
+  const mailAgentKey = boundedString(event.mailagent_key, 200);
+  const webhookRequestId = boundedString(event.webhook_request_id, 255);
+  const requestId = boundedString(eventMessage.request_id ?? event.request_id, 255);
+  if (!eventName || !mailAgentKey || !webhookRequestId || !requestId) {
+    throw new Error("The ZeptoMail webhook identity is invalid.");
+  }
+  validateRecipientShape(emailInfo);
+  return {
+    eventName,
+    eventMessage,
+    eventData,
+    details,
+    emailInfo,
+    mailAgentKey,
+    webhookRequestId,
+    requestId,
+  };
 }
 
 function providerUuid(value: string) {
@@ -82,21 +151,11 @@ export function verifyZeptoMailWebhookBootstrapEvent(
 ) {
   try {
     if (zeptoMailWebhookBootstrapState(env) !== "enabled") return false;
-    const eventName = boundedString(event.event_name, 80)
-      ?.toLowerCase().replaceAll(/[^a-z]/g, "");
-    const mailAgentKey = boundedString(event.mailagent_key, 200);
-    const webhookId = boundedString(event.webhook_request_id, 255);
-    const message = event.event_message;
+    const normalized = normalizeZeptoMailWebhookEnvelope(event);
     return Boolean(
-      eventName
-      && ["delivered", "softbounce", "softbounced", "hardbounce", "hardbounced",
-        "feedbackloop", "feedback"].includes(eventName)
-      && mailAgentKey
-      && configuredAgentKeys(env).has(mailAgentKey)
-      && webhookId
-      && message
-      && typeof message === "object"
-      && !Array.isArray(message),
+      ["delivered", "softbounce", "softbounced", "hardbounce", "hardbounced",
+        "feedbackloop", "feedback"].includes(normalized.eventName)
+      && configuredAgentKeys(env).has(normalized.mailAgentKey),
     );
   } catch {
     return false;
@@ -147,6 +206,26 @@ export function parseZeptoMailWebhookForm(rawBody: string) {
   return { eventRaw, event: event as Record<string, unknown> };
 }
 
+export function parseZeptoMailWebhookPayload(rawBody: string, mediaType: string) {
+  if (mediaType === "application/x-www-form-urlencoded") {
+    return parseZeptoMailWebhookForm(rawBody);
+  }
+  if (mediaType !== "application/json" || !rawBody
+    || Buffer.byteLength(rawBody, "utf8") > MAX_EVENT_BYTES) {
+    throw new Error("The ZeptoMail webhook body is invalid.");
+  }
+  let event: unknown;
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    throw new Error("The ZeptoMail webhook event is invalid.");
+  }
+  if (!event || typeof event !== "object" || Array.isArray(event)) {
+    throw new Error("The ZeptoMail webhook event is invalid.");
+  }
+  return { eventRaw: rawBody, event: event as Record<string, unknown> };
+}
+
 function signatureParts(value: string) {
   const entries = value.split(";").map((part) => part.split("=", 2));
   if (entries.length !== 3 || entries.some(([key, item]) => !key || item === undefined)) return undefined;
@@ -173,8 +252,8 @@ export function verifyZeptoMailWebhookRequest(input: {
 }) {
   try {
     if (input.method.toUpperCase() !== "POST" || input.pathname !== WEBHOOK_PATH) return false;
-    const mailAgentKey = boundedString(input.event.mailagent_key, 200);
-    if (!mailAgentKey || !configuredAgentKeys(input.env).has(mailAgentKey)) return false;
+    const normalized = normalizeZeptoMailWebhookEnvelope(input.event);
+    if (!configuredAgentKeys(input.env).has(normalized.mailAgentKey)) return false;
     const parts = signatureParts(headerValue(input.headers, "producer-signature"));
     const now = input.now ?? Date.now();
     if (!parts || !Number.isSafeInteger(parts.timestamp)
@@ -216,25 +295,14 @@ export function normalizeZeptoMailWebhookEvent(
   event: Record<string, unknown>,
   options: { signatureTimestamp?: number } = {},
 ): NormalizedEvent {
-  const eventName = boundedString(event.event_name, 80)?.toLowerCase().replaceAll(/[^a-z]/g, "");
-  const message = event.event_message;
-  if (!message || typeof message !== "object" || Array.isArray(message)) {
-    throw new Error("The ZeptoMail webhook payload is invalid.");
-  }
-  const eventMessage = message as Record<string, unknown>;
-  const infoValue = eventMessage.email_info;
-  const dataValue = eventMessage.event_data;
-  if (!infoValue || typeof infoValue !== "object" || Array.isArray(infoValue)) {
-    throw new Error("The ZeptoMail webhook payload is invalid.");
-  }
-  const emailInfo = infoValue as Record<string, unknown>;
-  const eventData = dataValue && typeof dataValue === "object" && !Array.isArray(dataValue)
-    ? dataValue as Record<string, unknown> : {};
-  const details = eventData.details && typeof eventData.details === "object"
-    && !Array.isArray(eventData.details) ? eventData.details as Record<string, unknown> : {};
-  const requestId = boundedString(eventMessage.request_id ?? event.request_id, 255);
-  const webhookId = boundedString(event.webhook_request_id, 255);
-  if (!requestId || !webhookId) throw new Error("The ZeptoMail webhook identity is invalid.");
+  const normalizedEnvelope = normalizeZeptoMailWebhookEnvelope(event);
+  const {
+    eventName,
+    emailInfo,
+    details,
+    requestId,
+    webhookRequestId,
+  } = normalizedEnvelope;
 
   let eventType: NormalizedEvent["eventType"];
   let bounceType: "HARD" | "SOFT" | undefined;
@@ -256,7 +324,7 @@ export function normalizeZeptoMailWebhookEvent(
   );
   const normalized: NormalizedEvent = {
     schemaVersion: 1,
-    eventId: providerUuid(`${webhookId}:${eventName}`),
+    eventId: providerUuid(`${webhookRequestId}:${eventName}`),
     eventType,
     recipientFingerprint: emailRecipientFingerprint(recipientAddress(emailInfo)),
     messageFingerprint: createHash("sha256").update(requestId, "utf8").digest("hex"),

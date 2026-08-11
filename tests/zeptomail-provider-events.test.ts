@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   normalizeZeptoMailWebhookEvent,
+  normalizeZeptoMailWebhookEnvelope,
   parseZeptoMailWebhookForm,
+  parseZeptoMailWebhookPayload,
   signZeptoMailWebhookEventForTest,
   verifyZeptoMailWebhookRequest,
   verifyZeptoMailWebhookBootstrapEvent,
@@ -21,27 +23,42 @@ const env = {
   ZEPTOMAIL_MAIL_AGENT_KEY: "agent-auth",
 };
 
-function fixture(eventName = "hard bounce") {
+function fixture(eventName = "hardbounce") {
   return {
-    event_name: eventName,
+    event_name: [eventName],
     mailagent_key: "agent-auth",
     webhook_request_id: `webhook-${eventName.replaceAll(" ", "-")}`,
-    event_message: {
+    event_message: [{
       request_id: "zeptomail-request-1901",
       email_info: {
         client_reference: "30000000-0000-4000-8000-000000000901",
         processed_time: "2026-08-08T11:58:00.000Z",
         to: [{ email_address: { address: "Person@Example.test", name: "Person" } }],
       },
-      event_data: { details: { time: "2026-08-08T11:59:00.000Z" } },
+      event_data: [{ details: [{ time: "2026-08-08T11:59:00.000Z" }] }],
+    }],
+  };
+}
+
+function legacyFixture(eventName = "hard bounce") {
+  const current = fixture(eventName);
+  const message = current.event_message[0];
+  const data = message.event_data[0];
+  return {
+    ...current,
+    event_name: eventName,
+    event_message: {
+      ...message,
+      event_data: { ...data, details: data.details[0] },
     },
   };
 }
 
 describe("ZeptoMail signed provider events", () => {
-  it("verifies the producer signature over the decoded form event", () => {
+  it("verifies the producer signature over exact direct JSON and decoded form event bytes", () => {
     const eventRaw = JSON.stringify(fixture());
-    const parsed = parseZeptoMailWebhookForm(new URLSearchParams({ event: eventRaw }).toString());
+    const parsed = parseZeptoMailWebhookPayload(eventRaw, "application/json");
+    const formParsed = parseZeptoMailWebhookForm(new URLSearchParams({ event: eventRaw }).toString());
     const headers = {
       "producer-signature": signZeptoMailWebhookEventForTest(eventRaw, secret, now),
     };
@@ -54,12 +71,22 @@ describe("ZeptoMail signed provider events", () => {
       now,
       env,
     })).toBe(true);
+    expect(formParsed.eventRaw).toBe(eventRaw);
     expect(verifyZeptoMailWebhookRequest({
       method: "POST",
       pathname: zeptoMailProviderEventInternals.webhookPath,
       eventRaw: `${parsed.eventRaw} `,
       event: parsed.event,
       headers,
+      now,
+      env,
+    })).toBe(false);
+    expect(verifyZeptoMailWebhookRequest({
+      method: "POST",
+      pathname: zeptoMailProviderEventInternals.webhookPath,
+      eventRaw: parsed.eventRaw,
+      event: parsed.event,
+      headers: { "producer-signature": signZeptoMailWebhookEventForTest(eventRaw, "wrong-secret", now) },
       now,
       env,
     })).toBe(false);
@@ -76,9 +103,9 @@ describe("ZeptoMail signed provider events", () => {
 
   it.each([
     ["delivered", "MESSAGE_DELIVERED", undefined],
-    ["soft bounce", "MESSAGE_BOUNCED", "SOFT"],
-    ["hard bounce", "MESSAGE_BOUNCED", "HARD"],
-    ["feedback loop", "MESSAGE_COMPLAINED", undefined],
+    ["softbounce", "MESSAGE_BOUNCED", "SOFT"],
+    ["hardbounce", "MESSAGE_BOUNCED", "HARD"],
+    ["feedbackloop", "MESSAGE_COMPLAINED", undefined],
   ])("normalizes %s without retaining sensitive content", (name, type, bounceType) => {
     const normalized = normalizeZeptoMailWebhookEvent(fixture(name), {
       signatureTimestamp: now,
@@ -92,6 +119,36 @@ describe("ZeptoMail signed provider events", () => {
     expect(normalized.messageFingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.stringify(normalized)).not.toContain("Person@Example.test");
     expect(JSON.stringify(normalized)).not.toContain("client_reference");
+  });
+
+  it("strictly normalizes the current nested arrays and the documented legacy representation", () => {
+    expect(normalizeZeptoMailWebhookEnvelope(fixture("softbounce"))).toMatchObject({
+      eventName: "softbounce",
+      mailAgentKey: "agent-auth",
+      requestId: "zeptomail-request-1901",
+    });
+    expect(normalizeZeptoMailWebhookEvent(legacyFixture("hard bounce"))).toMatchObject({
+      eventType: "MESSAGE_BOUNCED",
+      bounceType: "HARD",
+    });
+  });
+
+  it.each([
+    ["empty event names", { event_name: [] }],
+    ["multiple event names", { event_name: ["softbounce", "hardbounce"] }],
+    ["empty messages", { event_message: [] }],
+    ["multiple messages", { event_message: [{}, {}] }],
+    ["empty event data", { event_message: [{ ...fixture().event_message[0], event_data: [] }] }],
+    ["multiple details", {
+      event_message: [{
+        ...fixture().event_message[0],
+        event_data: [{ details: [{}, {}] }],
+      }],
+    }],
+  ])("rejects malformed current schema: %s", (_name, replacement) => {
+    expect(() => normalizeZeptoMailWebhookEnvelope({ ...fixture(), ...replacement })).toThrow(
+      "The ZeptoMail webhook",
+    );
   });
 
   it("rejects duplicate form fields and an unknown Agent before persistence", () => {
@@ -116,14 +173,21 @@ describe("ZeptoMail signed provider events", () => {
       ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED: "true",
     };
     expect(zeptoMailWebhookBootstrapState(bootstrapEnv)).toBe("enabled");
-    expect(verifyZeptoMailWebhookBootstrapEvent(fixture("soft bounce"), bootstrapEnv)).toBe(true);
+    expect(verifyZeptoMailWebhookBootstrapEvent(fixture("softbounce"), bootstrapEnv)).toBe(true);
     expect(verifyZeptoMailWebhookBootstrapEvent({
-      ...fixture("soft bounce"),
+      ...fixture("softbounce"),
       mailagent_key: "unknown-agent",
     }, bootstrapEnv)).toBe(false);
     expect(zeptoMailWebhookBootstrapState({
       ...bootstrapEnv,
       AXORA_EMAIL_DELIVERY_ENABLED: "true",
     })).toBe("invalid");
+  });
+
+  it("rejects oversized direct JSON without disclosing payload content", () => {
+    expect(() => parseZeptoMailWebhookPayload(
+      JSON.stringify({ marker: "sensitive@example.test", padding: "x".repeat(16 * 1024) }),
+      "application/json",
+    )).toThrow("The ZeptoMail webhook body is invalid.");
   });
 });

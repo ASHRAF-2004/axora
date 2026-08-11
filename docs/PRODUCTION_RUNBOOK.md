@@ -208,7 +208,8 @@ through Caddy or the Tunnel.
 
 For ZeptoMail's initial URL reachability check only, set
 `ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED=true` while both delivery and events remain
-`false`. Bootstrap accepts only a bounded ZeptoMail-shaped form event for
+`false`. Bootstrap accepts only a bounded ZeptoMail direct-JSON event (or the
+legacy form transport) with exactly one event and message for
 `ZEPTOMAIL_MAIL_AGENT_KEY`, returns HTTP 200, and records nothing. It must be
 disabled after the webhook exists. Configure the provider Authentication Key,
 set events to `true`, and accept a real signed provider test before setting
