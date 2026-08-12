@@ -3,13 +3,14 @@
 import { sendAccountSetupEmail } from "@/lib/account-email";
 import {
   AccountSetupInvitationQuotaError,
+  AccountSetupResendEligibilityError,
   AccountSetupResendRateLimitError,
   createInvitedUser,
   recordAccountSetupDelivery,
   resendAccountSetupInvitation,
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { setAuthorizedUserActive } from "@/lib/user-isolation";
 import { deactivateAuthorizedProfileImage } from "@/lib/profile-images";
 import { isUserRole, type UserRole } from "@/lib/types";
@@ -73,7 +74,6 @@ function invitationQuotaNotice(error: AccountSetupInvitationQuotaError) {
 
 export async function createUserAction(formData: FormData) {
   const actor = await requirePermission("manage_users");
-  await requireRecentStepUp(actor, "/users");
   const input = userSchema.parse({ email: readFormText(formData, "email"), displayName: readFormText(formData, "displayName"),
     role: readFormText(formData, "role"),
     companyId: readFormText(formData, "companyId") || undefined,
@@ -96,30 +96,44 @@ export async function createUserAction(formData: FormData) {
   redirect(`/users?notice=${invitationNotice(delivery, "created")}`);
 }
 
-export async function resendAccountSetupInvitationAction(userId: string) {
+export type InvitationResendActionState = {
+  status: "idle" | "success" | "error";
+  code?: "sent" | "disabled" | "failed" | "unconfirmed" | "pending"
+    | "delivered" | "cooldown" | "hourly" | "quota" | "ineligible";
+};
+
+export async function resendAccountSetupInvitationAction(
+  _previous: InvitationResendActionState,
+  formData: FormData,
+): Promise<InvitationResendActionState> {
   const actor = await requirePermission("manage_users");
-  await requireRecentStepUp(actor, "/users");
-  const safeUserId = z.uuid().parse(userId);
+  const parsedUserId = z.uuid().safeParse(readFormText(formData, "userId"));
+  if (!parsedUserId.success) return { status: "error", code: "ineligible" };
   let invitation: AccountSetupInvitationResult;
   try {
-    invitation = await resendAccountSetupInvitation(safeUserId, actor);
+    invitation = await resendAccountSetupInvitation(parsedUserId.data, actor);
   } catch (error) {
     if (error instanceof AccountSetupInvitationQuotaError) {
-      redirect(`/users?notice=${invitationQuotaNotice(error)}`);
+      return { status: "error", code: "quota" };
     }
     if (error instanceof AccountSetupResendRateLimitError) {
-      redirect(`/users?notice=user-resend-${error.reason}`);
+      return { status: "error", code: error.reason };
     }
-    throw error;
+    if (error instanceof AccountSetupResendEligibilityError) {
+      return { status: "error", code: error.reason };
+    }
+    return { status: "error", code: "ineligible" };
   }
   const delivery = await deliverInvitation(invitation);
   revalidatePath("/users");
-  redirect(`/users?notice=${invitationNotice(delivery, "resent")}`);
+  return {
+    status: delivery === "sent" ? "success" : "error",
+    code: delivery,
+  };
 }
 
 export async function setUserActiveAction(id: string, active: boolean) {
   const actor = await requirePermission("manage_users");
-  await requireRecentStepUp(actor, "/users");
   await setAuthorizedUserActive(
     z.uuid().parse(id),
     z.boolean().parse(active),
@@ -130,7 +144,6 @@ export async function setUserActiveAction(id: string, active: boolean) {
 
 export async function deactivateUserProfileImageAction(id: string) {
   const actor = await requirePermission("manage_users");
-  await requireRecentStepUp(actor, "/users");
   await deactivateAuthorizedProfileImage(z.uuid().parse(id), actor);
   revalidatePath("/users");
 }

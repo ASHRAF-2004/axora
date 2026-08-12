@@ -71,16 +71,11 @@ tutorial marker without discarding existing query parameters or the fragment.
 The existing session remains an HTTP-only, secure production cookie backed by a
 hashed token in `user_sessions` and the live account authorization version.
 
-Sensitive password reauthentication rotates the base session before minting the
-short-lived step-up token:
-
-1. verify the password;
-2. revoke and clear the previous session;
-3. create a new base session token;
-4. mint the step-up token bound to that new session; and
-5. return to the validated sensitive route.
-
-All tabs share the browser cookie jar and therefore converge on the new token.
+Routine authenticated actions no longer redirect through a blanket current-
+password challenge. They continue to revalidate the live session, permission,
+scope and database write authority. Password changes remain exceptional and
+verify the current password before rotating the authorization version and
+session. All tabs share the browser cookie jar and converge on the new token.
 Explicit logout clears the server session and only the current user/company
 browser cart, draft, and route marker.
 
@@ -125,6 +120,17 @@ stored.
 The draft and cart are cleared only after the server redirects with
 `notice=request-submitted`, proving that the transaction committed. An
 interrupted request or lost redirect therefore retains the draft safely.
+
+### Shared portal form drafts
+
+Suitable authenticated forms also use a shared session-storage draft manager.
+Its namespace includes schema version, user, live role/scope assignment, route
+and form signature. It stores only bounded text/select/checkbox values, expires
+records after seven days, restores after refresh or route recovery, and clears
+only after a successful action signal. Passwords, bearer/setup/reset tokens,
+cookies, credentials, API/webhook/private keys, payment secrets and file bytes
+are excluded. File selection is represented only by a reminder to reselect the
+file. A different account or tenant scope cannot resolve another draft key.
 
 ## Retry-safe request submission
 
@@ -189,7 +195,7 @@ Release is blocked unless all of the following pass:
 - path, query, fragment, filter, and pagination preservation;
 - missing and expired session recovery;
 - onboarding destination preservation;
-- base-session rotation before step-up;
+- current-password verification and session rotation for password changes;
 - per-user and per-company cart and draft separation;
 - legacy unscoped cart removal;
 - request draft restoration and successful-submission cleanup;

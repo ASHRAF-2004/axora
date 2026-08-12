@@ -6,7 +6,7 @@ import {
   updateCompanyOnboardingItem,
   verifyCompanyOnboarding,
 } from "@/lib/company-onboarding";
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
 import { readFormText } from "@/lib/validation";
 import { parseZonedDateTime } from "@/lib/zoned-date-time";
@@ -97,7 +97,6 @@ export async function saveCompanyOnboardingAction(formData: FormData) {
 export async function updateCompanyOnboardingItemAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
   const status = readFormText(formData, "status");
-  if (status === "WAIVED") await requireRecentStepUp(actor, path(readFormText(formData, "companyId")));
   const dueValue = readFormText(formData, "dueAt");
   const expiryValue = readFormText(formData, "exceptionExpiresAt");
   const input = itemSchema.parse({
@@ -124,7 +123,6 @@ export async function updateCompanyOnboardingItemAction(formData: FormData) {
 export async function verifyCompanyOnboardingAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
   const companyId = z.uuid().parse(readFormText(formData, "companyId"));
-  await requireRecentStepUp(actor, path(companyId));
   const expectedVersion = z.coerce.number().int().positive().parse(
     readFormText(formData, "expectedVersion"),
   );

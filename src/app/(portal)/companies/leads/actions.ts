@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   addCompanyLeadNote,
   addCompanyLeadTask,
@@ -22,7 +22,6 @@ function value(formData: FormData, key: string) {
 
 async function actor() {
   const current = await requirePermission("manage_companies");
-  await requireRecentStepUp(current, "/companies/leads");
   return current;
 }
 

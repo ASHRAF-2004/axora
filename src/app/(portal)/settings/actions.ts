@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { updateAuthorizedCompanyPricingConfiguration } from "@/lib/company-settings-isolation";
 import {
   companyPricingSchema,
@@ -20,7 +20,6 @@ export async function updateCompanyPricingAction(
   formData: FormData,
 ) {
   const actor = await requirePermission("manage_commercial_pricing");
-  await requireRecentStepUp(actor, "/settings");
 
   const input = companyPricingSchema.parse({
     companyId: readFormText(formData, "companyId"),
@@ -49,7 +48,6 @@ export async function updateCompanyPricingAction(
 
 export async function updateProfileImagePolicyAction(formData: FormData) {
   const actor = await requirePermission("manage_settings");
-  await requireRecentStepUp(actor, "/settings");
   const scope = z.enum(["global", "company"]).parse(readFormText(formData, "scope"));
   const companyId = readFormText(formData, "companyId");
   if (scope === "company") {

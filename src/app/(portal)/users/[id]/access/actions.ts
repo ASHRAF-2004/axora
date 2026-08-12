@@ -11,7 +11,7 @@ import {
   type AuthorizationScope,
   type PermissionCode,
 } from "@/lib/authorization-policy";
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { ROLE_SCOPE_TYPES } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
 import { parseZonedDateTime } from "@/lib/zoned-date-time";
@@ -109,8 +109,6 @@ export async function setPermissionOverrideAction(
   formData: FormData,
 ) {
   const actor = await requirePermission("manage_users");
-  const next = accessPath(targetUserId, targetRoleAssignmentId);
-  await requireRecentStepUp(actor, next);
 
   let parsed: z.output<typeof changeSchema>;
   try {
@@ -178,8 +176,6 @@ export async function removePermissionOverrideAction(
   formData: FormData,
 ) {
   const actor = await requirePermission("manage_users");
-  const next = accessPath(targetUserId, targetRoleAssignmentId);
-  await requireRecentStepUp(actor, next);
 
   let parsed: z.output<typeof removeSchema>;
   try {

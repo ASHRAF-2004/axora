@@ -75,13 +75,13 @@ describe("P0-02 active isolation coverage", () => {
     expect(users).not.toContain("listBranches(actor)");
     expect(userActions).toContain("setAuthorizedUserActive");
     expect(userActions).toContain(
-      "resendAccountSetupInvitation(safeUserId, actor)",
+      "resendAccountSetupInvitation(parsedUserId.data, actor)",
     );
     expect(accountSetup).toContain(
       "lockAuthorizedInvitationCreationScope(client, actor, resolved)",
     );
     expect(accountSetup).toContain(
-      "lockAuthorizedInvitationTarget(client, actor, userId)",
+      "lockAuthorizedInvitationResendTarget(",
     );
     expect(userRuntime).toContain("axora_user_directory_rows");
     expect(userRuntime).toContain("axora_lock_user_target_access");

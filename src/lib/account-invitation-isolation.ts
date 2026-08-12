@@ -53,6 +53,37 @@ const targetSchema = z.object({
   scope: scopeSchema,
 }).strict();
 
+const resendTargetSchema = z.object({
+  userId: uuidSchema,
+  recipientName: z.string().trim().min(1).max(300),
+  recipientEmail: z.email(),
+  role: z.string().refine(isUserRole),
+  roleId: uuidSchema,
+  accountKind: z.string().refine(isAccountKind),
+  scopeType: z.string().refine(isRoleScopeType),
+  companyId: optionalUuid,
+  companyName: z.string().trim().min(1).max(300),
+  branchId: optionalUuid,
+  branchName: optionalText,
+  departmentId: optionalUuid,
+  departmentName: optionalText,
+  supplierId: optionalUuid,
+  active: z.boolean(),
+  setupCompleted: z.boolean(),
+  organizationActive: z.boolean(),
+  membershipReady: z.boolean(),
+  preferredLocale: z.enum(["en", "ar", "ms"]),
+  latestInvitationId: uuidSchema,
+  latestDeliveryStatus: z.enum([
+    "PENDING", "SENDING", "SENT", "FAILED", "DISABLED",
+    "UNCERTAIN", "CANCELLED",
+  ]),
+  latestInvitationCreatedAt: z.coerce.date(),
+  latestInvitationExpiresAt: z.coerce.date(),
+  latestInvitationSentAt: z.coerce.date().optional(),
+  latestProviderMessagePresent: z.boolean(),
+}).strict();
+
 interface SnapshotRow extends QueryResultRow {
   snapshot: unknown;
 }
@@ -163,8 +194,34 @@ export async function lockAuthorizedInvitationTarget(
   }
 }
 
+export async function lockAuthorizedInvitationResendTarget(
+  client: PoolClient,
+  actor: SessionUser,
+  targetUserId: string,
+  capturedAt = new Date(),
+) {
+  if (!uuidSchema.safeParse(targetUserId).success
+    || !Number.isFinite(capturedAt.getTime())) {
+    throw new AccountInvitationAccessUnavailableError();
+  }
+  try {
+    const result = await client.query<SnapshotRow>(`
+      SELECT public.axora_account_setup_resend_target($1,$2,$3,$4) AS snapshot
+    `, [actor.id, requireAssignment(actor), targetUserId, capturedAt]);
+    const parsed = resendTargetSchema.safeParse(result.rows[0]?.snapshot);
+    if (!parsed.success || parsed.data.userId !== targetUserId) {
+      throw new AccountInvitationAccessUnavailableError();
+    }
+    return parsed.data;
+  } catch (error) {
+    if (error instanceof AccountInvitationAccessUnavailableError) throw error;
+    throw new AccountInvitationAccessUnavailableError();
+  }
+}
+
 export const accountInvitationIsolationInternals = {
   creationMatches,
   creationScopeSchema,
   targetSchema,
+  resendTargetSchema,
 };

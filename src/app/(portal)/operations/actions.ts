@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   createScopedInvoice,
   createScopedQuotation,
@@ -50,7 +50,6 @@ const supplierRfqSchema = z.object({
 
 export async function issueSupplierRfqAction(formData: FormData) {
   const user = await requirePermission("manage_sourcing");
-  await requireRecentStepUp(user, "/sourcing");
   const input = supplierRfqSchema.parse(Object.fromEntries(formData));
   const respondBy = new Date(input.respondBy);
   if (Number.isNaN(respondBy.getTime())) throw new Error("RFQ response deadline is invalid.");
@@ -63,7 +62,6 @@ export async function issueSupplierRfqAction(formData: FormData) {
 
 export async function createQuotationAction(formData: FormData) {
   const user = await requirePermission("manage_sourcing");
-  await requireRecentStepUp(user, "/sourcing");
   const input = quotationSchema.parse(Object.fromEntries(formData));
   await createScopedQuotation(input, user);
   revalidatePath("/sourcing"); revalidatePath("/requests");
@@ -71,7 +69,6 @@ export async function createQuotationAction(formData: FormData) {
 
 export async function selectQuotationAction(id: string, formData: FormData) {
   const user = await requirePermission("manage_sourcing");
-  await requireRecentStepUp(user, "/sourcing");
   await selectScopedQuotation(z.string().uuid().parse(id), readFormText(formData, "reason"), user);
   revalidatePath("/sourcing"); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
@@ -101,7 +98,6 @@ export async function recordApprovalAction(
   let locale = (await requestLocaleDecision()).locale;
   try {
     const user = await requirePermission("approve_requests");
-    await requireRecentStepUp(user, "/approvals");
     locale = user.preferredLocale ?? locale;
     const input = approvalSchema.parse(Object.fromEntries(formData));
     await recordScopedApproval({ ...input, approvalType: "Company approval" }, user);
@@ -151,7 +147,6 @@ const deliverySchema = z.object({ requestLineId: z.string().uuid(), expectedDate
 
 export async function recordDeliveryAction(formData: FormData) {
   const user = await requirePermission("manage_deliveries");
-  await requireRecentStepUp(user, "/deliveries");
   await recordScopedDelivery(deliverySchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/deliveries"); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
@@ -162,7 +157,6 @@ const invoiceSchema = z.object({ direction: z.literal("SUPPLIER"), requestId: z.
 
 export async function createInvoiceAction(formData: FormData) {
   const user = await requirePermission("manage_finance");
-  await requireRecentStepUp(user, "/finance");
   await createScopedInvoice(invoiceSchema.parse(Object.fromEntries(formData)), user);
   revalidatePath("/finance"); revalidatePath("/dashboard"); revalidatePath("/reports");
 }
@@ -172,7 +166,6 @@ const paymentSchema = z.object({ invoiceId: z.string().uuid(), paymentDate: z.is
 
 export async function recordPaymentAction(formData: FormData) {
   const user = await requirePermission("manage_finance");
-  await requireRecentStepUp(user, "/finance");
   await recordScopedPayment({
     ...paymentSchema.parse(Object.fromEntries(formData)),
     method: INTERNAL_PAYMENT_STRATEGY,
@@ -182,7 +175,6 @@ export async function recordPaymentAction(formData: FormData) {
 
 export async function evaluateCustomerMatchAction(formData: FormData) {
   const user = await requirePermission("review_three_way_matches");
-  await requireRecentStepUp(user, "/finance");
   try {
     await evaluateAuthorizedCustomerMatch(user, {
       requestLineId: readFormText(formData, "requestLineId"),
@@ -200,7 +192,6 @@ export async function evaluateCustomerMatchAction(formData: FormData) {
 
 export async function overrideCustomerMatchAction(formData: FormData) {
   const user = await requirePermission("review_three_way_matches");
-  await requireRecentStepUp(user, "/finance");
   try {
     await overrideAuthorizedCustomerMatch(
       user,
@@ -216,7 +207,6 @@ export async function overrideCustomerMatchAction(formData: FormData) {
 
 export async function uploadAttachmentAction(formData: FormData) {
   const user = await requirePermission("manage_documents");
-  await requireRecentStepUp(user, "/documents");
   const entityType = z.enum(["request", "invoice", "delivery"]).parse(readFormText(formData, "entityType"));
   const recordId = documentRecordIdSchema.parse(readFormText(formData, "recordId"));
   const visibility = z.enum(["CUSTOMER", "INTERNAL"]).parse(readFormText(formData, "visibility") || "CUSTOMER");
@@ -238,7 +228,6 @@ const fulfilmentAssignmentSchema = z.object({
 
 export async function assignFulfilmentPurchaseAction(formData: FormData) {
   const actor = await requirePermission("manage_sourcing");
-  await requireRecentStepUp(actor, "/sourcing");
   const input = fulfilmentAssignmentSchema.parse(Object.fromEntries(formData));
   const [assignedUserId, assignedRoleAssignmentId] = input.assignee.split("|");
   await assignFulfilmentPurchase({
@@ -272,7 +261,6 @@ const actualLineSchema = z.object({
 
 export async function submitRequestActualAction(formData: FormData) {
   const actor = await requirePermission("manage_sourcing");
-  await requireRecentStepUp(actor, "/sourcing");
   const requestId = z.string().uuid().parse(readFormText(formData, "requestId"));
   const purchaseMode = z.enum(["PARTIAL","FINAL","REFUND"])
     .parse(readFormText(formData, "purchaseMode"));

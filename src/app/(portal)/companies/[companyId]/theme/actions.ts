@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   COMPANY_LOGO_PLACEMENTS,
   COMPANY_LOGO_VARIANTS,
@@ -30,9 +30,8 @@ function finish(companyId: string, notice: string) {
   redirect(themePath(companyId) + "?notice=" + encodeURIComponent(notice));
 }
 
-async function reviewer(companyId: string) {
+async function reviewer() {
   const actor = await requirePermission("manage_companies");
-  await requireRecentStepUp(actor, themePath(companyId));
   return actor;
 }
 
@@ -40,7 +39,7 @@ export async function uploadCompanyBrandDraftAction(
   companyId: string,
   formData: FormData,
 ) {
-  const actor = await reviewer(companyId);
+  const actor = await reviewer();
   const logo = formData.get("logo");
   if (!(logo instanceof File) || logo.size < 1) {
     redirect(themePath(companyId) + "?notice=logo-required");
@@ -59,7 +58,7 @@ export async function createCompanyBrandAlternativeAction(
   companyId: string,
   formData: FormData,
 ) {
-  const actor = await reviewer(companyId);
+  const actor = await reviewer();
   const input = z.object({
     baseThemeId: z.uuid(),
     paletteChoice: z.enum(["REVERSED", "VIVID", "AXORA_DEFAULT"]),
@@ -80,7 +79,7 @@ export async function createCompanyBrandCustomDraftAction(
   companyId: string,
   formData: FormData,
 ) {
-  const actor = await reviewer(companyId);
+  const actor = await reviewer();
   const input = z.object({
     baseThemeId: z.uuid(),
     primary: hexSchema,
@@ -125,7 +124,7 @@ export async function transitionCompanyBrandThemeAction(
   companyId: string,
   formData: FormData,
 ) {
-  const actor = await reviewer(companyId);
+  const actor = await reviewer();
   const input = z.object({
     themeId: z.uuid(),
     action: z.enum(["APPROVE", "REJECT", "PUBLISH"]),
@@ -154,7 +153,7 @@ export async function rollbackCompanyBrandThemeAction(
   companyId: string,
   formData: FormData,
 ) {
-  const actor = await reviewer(companyId);
+  const actor = await reviewer();
   const input = z.object({
     themeId: z.uuid(),
     reason: reasonSchema,

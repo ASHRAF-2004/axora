@@ -46,11 +46,11 @@ describe("access administration UI contract", () => {
     expect(copy).toContain("Penafian jelas");
   });
 
-  it("binds mutation scope on the server, requires recent step-up, and exposes only async server actions", async () => {
+  it("binds mutation scope on the server without routine password step-up and exposes only async server actions", async () => {
     const actions = await readFile(actionsUrl, "utf8");
     expect(actions).toContain('"use server"');
     expect(actions).toContain('requirePermission("manage_users")');
-    expect(actions).toContain("requireRecentStepUp(actor, next)");
+    expect(actions).not.toContain("requireRecentStepUp");
     expect(actions).toContain("setUserPermissionOverride(actor");
     expect(actions).toContain("removeUserPermissionOverride(actor");
     expect(actions).toContain("scopeType: string");

@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => {
   return {
     AccessManagementUnavailableError,
     requirePermission: vi.fn(),
-    requireRecentStepUp: vi.fn(),
     setUserPermissionOverride: vi.fn(),
     removeUserPermissionOverride: vi.fn(),
     revalidatePath: vi.fn(),
@@ -22,7 +21,6 @@ vi.mock("@/lib/access-management", () => ({
 }));
 vi.mock("@/lib/auth", () => ({
   requirePermission: mocks.requirePermission,
-  requireRecentStepUp: mocks.requireRecentStepUp,
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
@@ -70,7 +68,6 @@ describe("access administration server actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requirePermission.mockResolvedValue(actor);
-    mocks.requireRecentStepUp.mockResolvedValue(undefined);
     mocks.setUserPermissionOverride.mockResolvedValue({
       overrideId: ids.override,
       authVersion: 5,
@@ -85,7 +82,7 @@ describe("access administration server actions", () => {
     });
   });
 
-  it("requires step-up and submits the selected server-bound scope", async () => {
+  it("uses the live session and submits the selected server-bound scope", async () => {
     await expect(setPermissionOverrideAction(
       ids.target,
       ids.targetAssignment,
@@ -100,10 +97,6 @@ describe("access administration server actions", () => {
     );
 
     expect(mocks.requirePermission).toHaveBeenCalledWith("manage_users");
-    expect(mocks.requireRecentStepUp).toHaveBeenCalledWith(
-      actor,
-      `/users/${ids.target}/access?assignment=${ids.targetAssignment}`,
-    );
     expect(mocks.setUserPermissionOverride).toHaveBeenCalledWith(actor, {
       targetUserId: ids.target,
       targetRoleAssignmentId: ids.targetAssignment,

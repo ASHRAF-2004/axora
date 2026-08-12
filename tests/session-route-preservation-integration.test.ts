@@ -43,14 +43,12 @@ describe("P0-03 route and session integration", () => {
     expect(form).toContain('reason === "expired"');
   });
 
-  it("rotates the base token before granting sensitive step-up authority", async () => {
+  it("keeps credential changes protected without routine password step-up", async () => {
     const action = await source("src/app/(portal)/account/actions.ts");
-    const clear = action.indexOf("await clearSession();");
-    const rotate = action.indexOf("await setSession(verified);");
-    const elevate = action.indexOf("await setStepUpAfterPassword(verified, next);");
-    expect(clear).toBeGreaterThan(0);
-    expect(rotate).toBeGreaterThan(clear);
-    expect(elevate).toBeGreaterThan(rotate);
+    expect(action).toContain("changeOwnPassword");
+    expect(action).toContain("currentPassword");
+    expect(action).not.toContain("reauthenticateSensitiveAction");
+    expect(action).not.toContain("setStepUpAfterPassword");
   });
 
   it("preserves the original route through mandatory profile onboarding", async () => {
