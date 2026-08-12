@@ -17,6 +17,10 @@
 	request_body @zeptomail_email_event_webhook {
 		max_size 16KB
 	}
+	@resend_email_event_webhook path /api/email/provider-events/resend
+	request_body @resend_email_event_webhook {
+		max_size 16KB
+	}
 	@driver_evidence_upload path /api/driver/evidence
 	request_body @driver_evidence_upload {
 		# One server-validated 5 MB proof file plus multipart fields.
@@ -26,7 +30,7 @@
 	request_body @bounded_upload {
 		max_size 44MB
 	}
-	@standard_body not path /api/email/provider-events/cloudflare /api/email/provider-events/zeptomail /api/driver/evidence /products* /supplier* /driver*
+	@standard_body not path /api/email/provider-events/cloudflare /api/email/provider-events/zeptomail /api/email/provider-events/resend /api/driver/evidence /products* /supplier* /driver*
 	request_body @standard_body {
 		max_size 4MB
 	}

@@ -126,6 +126,42 @@ export function inspectZeptoMailRuntimeState({ runtimeSource }) {
   };
 }
 
+export function inspectResendRuntimeState({ runtimeSource }) {
+  if (runtimeValue(runtimeSource, "AXORA_EMAIL_PROVIDER") !== "resend") {
+    throw new Error("Resend runtime inspection requires AXORA_EMAIL_PROVIDER=resend.");
+  }
+  const deliveryEnabled = runtimeBoolean(runtimeSource, "AXORA_EMAIL_DELIVERY_ENABLED");
+  const eventsEnabled = runtimeBoolean(runtimeSource, "AXORA_EMAIL_EVENTS_ENABLED");
+  const gates = {
+    RESEND_DOMAIN_VERIFIED: runtimeBoolean(runtimeSource, "RESEND_DOMAIN_VERIFIED"),
+    RESEND_WEBHOOK_VERIFIED: runtimeBoolean(runtimeSource, "RESEND_WEBHOOK_VERIFIED"),
+  };
+  if (deliveryEnabled && !eventsEnabled) {
+    throw new Error("Resend delivery requires signed provider events to be enabled.");
+  }
+  if (gates.RESEND_WEBHOOK_VERIFIED && !eventsEnabled) {
+    throw new Error("RESEND_WEBHOOK_VERIFIED requires signed provider events to be enabled.");
+  }
+  const blockers = Object.entries(gates)
+    .filter(([, ready]) => !ready)
+    .map(([key]) => key);
+  if (deliveryEnabled && blockers.length) {
+    throw new Error(`${blockers.join(", ")} must be true before Resend delivery is enabled.`);
+  }
+  let state = "DELIVERY_DISABLED";
+  if (deliveryEnabled) state = "FULLY_ENABLED";
+  else if (eventsEnabled && !gates.RESEND_WEBHOOK_VERIFIED) state = "SIGNED_WEBHOOK_CONFIGURED";
+  else if (eventsEnabled && blockers.length === 0) state = "READY_FOR_CONTROLLED_SEND";
+  return {
+    provider: "resend",
+    state,
+    deliveryEnabled,
+    eventsEnabled,
+    gates,
+    blockers,
+  };
+}
+
 async function cloudflareGet(path, token, label, fetchImpl) {
   const response = await fetchImpl(`${CLOUDFLARE_API}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -226,10 +262,42 @@ export function verifyZeptoMailConfiguration({ runtimeSource, tokenSource }) {
   return { provider: "zeptomail", senderDomain, agentCount: 1 };
 }
 
+export function verifyResendConfiguration({ runtimeSource, tokenSource }) {
+  const readiness = inspectResendRuntimeState({ runtimeSource });
+  if (!readiness.deliveryEnabled || readiness.state !== "FULLY_ENABLED") {
+    throw new Error("Resend is not fully enabled for production sending.");
+  }
+  const fromAddress = runtimeValue(runtimeSource, "AXORA_EMAIL_FROM_ADDRESS").toLowerCase();
+  const senderDomain = fromAddress.split("@")[1];
+  const token = tokenSource.trim();
+  if (!/^[^\s@]+@[^\s@]+$/.test(fromAddress) || !senderDomain
+    || (senderDomain !== "axora.management"
+      && !senderDomain.endsWith(".axora.management"))) {
+    throw new Error("Axora sender domain is invalid.");
+  }
+  if (token.length < 23 || token.length > 4096
+    || !/^re_[A-Za-z0-9_-]+$/.test(token)) {
+    throw new Error("The Resend API key is malformed.");
+  }
+  return { provider: "resend", senderDomain };
+}
+
 async function verifyEmailService() {
   const runtimeFile = argument("--runtime-file");
   const runtimeSource = await readFile(runtimeFile, "utf8");
   const provider = runtimeValue(runtimeSource, "AXORA_EMAIL_PROVIDER");
+  if (provider === "resend") {
+    const readiness = inspectResendRuntimeState({ runtimeSource });
+    if (process.argv.includes("--configuration-only")) {
+      const blockers = readiness.blockers.length ? readiness.blockers.join(", ") : "none";
+      process.stdout.write(`Resend state: ${readiness.state}; blockers: ${blockers}.\n`);
+      return;
+    }
+    const tokenSource = await readFile(argument("--token-file"), "utf8");
+    const { senderDomain } = verifyResendConfiguration({ runtimeSource, tokenSource });
+    process.stdout.write(`Resend launch evidence is configured for ${senderDomain}.\n`);
+    return;
+  }
   if (provider === "zeptomail") {
     const readiness = inspectZeptoMailRuntimeState({ runtimeSource });
     if (process.argv.includes("--configuration-only")) {

@@ -212,6 +212,8 @@ secrets:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/cloudflare_tunnel_token"
   cloudflare_email_api_token:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/cloudflare_email_api_token"
+  resend_api_key:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/resend_api_key"
   zeptomail_send_token:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/zeptomail_send_token"
   zeptomail_send_token_next:
@@ -220,6 +222,8 @@ secrets:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_email_service_auth_key"
   axora_email_events_webhook_secret:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_email_events_webhook_secret"
+  resend_webhook_secret:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/resend_webhook_secret"
   turnstile_secret:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/turnstile_secret"
 

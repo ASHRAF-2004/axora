@@ -74,6 +74,7 @@
     {"route":"/api/supplier/documents/[id]","authentication":"removed","scope":"none","mode":"removed"},
     {"route":"/api/email/provider-events/cloudflare","authentication":"signed-provider-event","scope":"provider","mode":"mutating"},
     {"route":"/api/email/provider-events/zeptomail","authentication":"signed-provider-event","scope":"provider","mode":"mutating"},
+    {"route":"/api/email/provider-events/resend","authentication":"signed-provider-event","scope":"provider","mode":"mutating"},
     {"route":"/api/public/visitor-choice","authentication":"public-bounded","scope":"anonymous","mode":"mutating"},
     {"route":"/account/email-outbox","authentication":"signed-account-link","scope":"self","mode":"mutating"},
     {"route":"/companies/leads/[leadId]/export","authentication":"manage_companies","scope":"assigned-or-platform","mode":"read-only"}

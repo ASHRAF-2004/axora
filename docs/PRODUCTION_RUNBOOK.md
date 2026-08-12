@@ -206,6 +206,12 @@ developer-only `email-preview` Mailpit profile is
 not part of the production Compose invocation and must never be published
 through Caddy or the Tunnel.
 
+Resend uses the same provider-neutral queues but its own domain and signed
+webhook evidence. Follow [RESEND_TRANSACTIONAL_EMAIL.md](./RESEND_TRANSACTIONAL_EMAIL.md);
+the Resend API key stays sender-only, the Svix signing secret stays app-only,
+and no allowance value is inferred when the provider has no supported balance
+API.
+
 For ZeptoMail's initial URL reachability check only, set
 `ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED=true` while both delivery and events remain
 `false`. Bootstrap accepts only a bounded ZeptoMail direct-JSON event (or the

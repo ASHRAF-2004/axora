@@ -157,6 +157,8 @@ for secret in \
   tailscale_db_auth_key \
   cloudflare_tunnel_token \
   cloudflare_email_api_token \
+  resend_api_key \
+  resend_webhook_secret \
   axora_email_service_auth_key \
   turnstile_secret; do
   touch "$secrets_dir/$secret"
@@ -216,6 +218,8 @@ jq --exit-status \
     and .services["email-sender"].environment.AXORA_EMAIL_PROVIDER == "cloudflare-email-service"
     and .services["email-sender"].environment.ZEPTOMAIL_SEND_TOKEN_FILE == "/run/secrets/zeptomail_send_token"
     and .services["email-sender"].environment.ZEPTOMAIL_SEND_TOKEN_NEXT_FILE == "/run/secrets/zeptomail_send_token_next"
+    and .services["email-sender"].environment.RESEND_API_KEY_FILE == "/run/secrets/resend_api_key"
+    and .services.app.environment.RESEND_WEBHOOK_SECRET_FILE == "/run/secrets/resend_webhook_secret"
     and .services["email-sender"].environment.AXORA_EMAIL_OUTBOX_URL == "http://app:3000/account/email-outbox"
     and .services["email-sender"].environment.AXORA_EMAIL_SERVICE_AUTH_KEY_FILE == "/run/secrets/axora_email_service_auth_key"
     and .services["budget-worker"].environment.DB_NAME == "axora_hybrid"
@@ -235,9 +239,10 @@ jq --exit-status \
     and (.services["budget-worker"].ports // []) == []
     and (.services["document-worker"].ports // []) == []
     and ([.services.app.secrets[].source] | index("axora_email_service_auth_key")) != null
+    and ([.services.app.secrets[].source] | index("resend_webhook_secret")) != null
     and ([.services.app.secrets[].source] | index("turnstile_secret")) != null
     and ([.services["email-sender"].secrets[].source] | sort) ==
-      ["axora_email_service_auth_key","cloudflare_email_api_token","zeptomail_send_token","zeptomail_send_token_next"]
+      ["axora_email_service_auth_key","cloudflare_email_api_token","resend_api_key","zeptomail_send_token","zeptomail_send_token_next"]
     and ([.services["budget-worker"].secrets[].source] | sort) ==
       ["axora_app_password"]
     and ([.services["document-worker"].secrets[].source] | sort) ==
@@ -291,6 +296,8 @@ jq --exit-status \
     and (.secrets.tailscale_db_auth_key.file == ($secrets + "/tailscale_db_auth_key"))
     and (.secrets.cloudflare_tunnel_token.file == ($secrets + "/cloudflare_tunnel_token"))
     and (.secrets.cloudflare_email_api_token.file == ($secrets + "/cloudflare_email_api_token"))
+    and (.secrets.resend_api_key.file == ($secrets + "/resend_api_key"))
+    and (.secrets.resend_webhook_secret.file == ($secrets + "/resend_webhook_secret"))
     and (.secrets.zeptomail_send_token.file == ($secrets + "/zeptomail_send_token"))
     and (.secrets.zeptomail_send_token_next.file == ($secrets + "/zeptomail_send_token_next"))
     and (.secrets.axora_email_service_auth_key.file == ($secrets + "/axora_email_service_auth_key"))
