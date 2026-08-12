@@ -6,9 +6,13 @@ const read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), 
 describe("Resend production assets", () => {
   it("initializes protected files only after the secret directory and preserves existing bytes", async () => {
     const installer = await read("scripts/production/install.sh");
+    const secretsVariableIndex = installer.indexOf('SECRETS_DIR="/etc/axora-production/secrets"');
+    const runtimeGroupIndex = installer.indexOf("RUNTIME_GID=1000");
     const directoryIndex = installer.indexOf('install -d -o root -g "$RUNTIME_GID" -m 0710 "$SECRETS_DIR"');
     const blockIndex = installer.indexOf("for resend_secret_name in resend_api_key resend_webhook_secret");
-    expect(directoryIndex).toBeGreaterThan(0);
+    expect(secretsVariableIndex).toBeGreaterThan(0);
+    expect(runtimeGroupIndex).toBeGreaterThan(secretsVariableIndex);
+    expect(directoryIndex).toBeGreaterThan(runtimeGroupIndex);
     expect(blockIndex).toBeGreaterThan(directoryIndex);
     const block = installer.slice(blockIndex, installer.indexOf("done", blockIndex) + 4);
     expect(block).toContain('if [[ ! -e "$resend_secret_file" ]]');
@@ -16,6 +20,17 @@ describe("Resend production assets", () => {
     expect(block).toContain('chown root:"$RUNTIME_GID" "$resend_secret_file"');
     expect(block).toContain('chmod 0640 "$resend_secret_file"');
     expect(block.match(/\/dev\/null/g)).toHaveLength(1);
+    expect(block).not.toMatch(/(?:>|truncate|tee)\s*"?\$resend_secret_file/);
+  });
+
+  it("adds fail-closed Resend readiness defaults only after the runtime helper exists", async () => {
+    const installer = await read("scripts/production/install.sh");
+    const helperIndex = installer.indexOf("ensure_runtime_default() {");
+    const domainIndex = installer.indexOf("ensure_runtime_default RESEND_DOMAIN_VERIFIED false");
+    const webhookIndex = installer.indexOf("ensure_runtime_default RESEND_WEBHOOK_VERIFIED false");
+    expect(helperIndex).toBeGreaterThan(0);
+    expect(domainIndex).toBeGreaterThan(helperIndex);
+    expect(webhookIndex).toBeGreaterThan(domainIndex);
   });
 
   it("mounts each Resend secret only into the service that needs it", async () => {

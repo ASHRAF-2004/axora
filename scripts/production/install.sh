@@ -394,6 +394,8 @@ ensure_runtime_default ZEPTOMAIL_ACCOUNT_REVIEWED false
 ensure_runtime_default ZEPTOMAIL_DOMAIN_VERIFIED false
 ensure_runtime_default ZEPTOMAIL_CREDITS_READY false
 ensure_runtime_default ZEPTOMAIL_WEBHOOK_VERIFIED false
+ensure_runtime_default RESEND_DOMAIN_VERIFIED false
+ensure_runtime_default RESEND_WEBHOOK_VERIFIED false
 ensure_runtime_default CLOUDFLARE_ACCOUNT_ID ""
 ensure_runtime_default CLOUDFLARE_ZONE_ID ""
 ensure_runtime_default AXORA_EMAIL_FROM_ADDRESS noreply@axora.management
