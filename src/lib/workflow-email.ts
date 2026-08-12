@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg";
 import { isDemoMode, withAuditTransaction } from "./db";
+import { normalizeEmailCompletionProviderName } from "./email-completion-provider";
 import type { TransactionalEmailOutcome } from "./transactional-email";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -192,11 +193,10 @@ function safeProviderMessageId(value: string | undefined) {
 }
 
 function safeProviderName(value: string | undefined) {
-  const normalized = value?.trim() || "unconfigured";
-  if (!["zeptomail", "cloudflare-email-service", "test", "unconfigured"].includes(normalized)) {
-    throw new Error("The workflow email provider is invalid.");
-  }
-  return normalized;
+  return normalizeEmailCompletionProviderName(
+    value,
+    "The workflow email provider is invalid.",
+  );
 }
 
 function safeProviderAgent(value: string | undefined) {

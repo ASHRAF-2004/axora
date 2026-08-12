@@ -1,4 +1,5 @@
 import { verifyEmailServiceRequest } from "@/lib/account-email";
+import { EMAIL_COMPLETION_PROVIDER_NAMES } from "@/lib/email-completion-provider";
 import {
   claimTransactionalEmailOutbox,
   completeTransactionalEmailOutbox,
@@ -13,13 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_INTERNAL_BODY_BYTES = 8 * 1024;
-const providerNameSchema = z.enum([
-  "resend",
-  "zeptomail",
-  "cloudflare-email-service",
-  "test",
-  "unconfigured",
-]);
+const providerNameSchema = z.enum(EMAIL_COMPLETION_PROVIDER_NAMES);
 const transactionalClaimSchema = z.object({
   action: z.literal("claim"),
   queue: z.literal("transactional"),

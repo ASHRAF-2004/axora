@@ -9,6 +9,7 @@ import {
 import { readFileSync } from "node:fs";
 import type { PoolClient } from "pg";
 import { isDemoMode, withAuditTransaction } from "./db";
+import { normalizeEmailCompletionProviderName } from "./email-completion-provider";
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
@@ -684,11 +685,10 @@ function safeProviderMessageId(value: string | undefined) {
 }
 
 function safeProviderName(value: string | undefined) {
-  const normalized = value?.trim() || "unconfigured";
-  if (!["zeptomail", "cloudflare-email-service", "test", "unconfigured"].includes(normalized)) {
-    throw new Error("The email provider name is invalid.");
-  }
-  return normalized;
+  return normalizeEmailCompletionProviderName(
+    value,
+    "The email provider name is invalid.",
+  );
 }
 
 function safeProviderAgent(value: string | undefined) {
