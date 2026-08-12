@@ -18,6 +18,7 @@ import {
   type ResolvedUserCreation,
   type UserCreationInput,
 } from "./users";
+import { replaceUserPermissionSetInTransaction } from "./access-management";
 import {
   lockAuthorizedInvitationCreationScope,
   lockAuthorizedInvitationResendTarget,
@@ -227,12 +228,20 @@ export async function createInvitedUser(
         passwordHash: PENDING_ACCOUNT_PASSWORD_HASH,
         setupCompleted: false,
       });
-      const intendedRoleId = await initializeInvitedIdentity(
+      const invitedIdentity = await initializeInvitedIdentity(
         client,
         userId,
         resolved,
         actor.id,
       );
+      if (resolved.permissions) {
+        await replaceUserPermissionSetInTransaction(client, actor, {
+          targetUserId: userId,
+          targetRoleAssignmentId: invitedIdentity.roleAssignmentId,
+          permissions: resolved.permissions,
+          reason: "Initial permissions selected during account invitation",
+        });
+      }
       const invitation = await client.query<{ id: string; expiresAt: string }>(
         `INSERT INTO account_setup_invitations(
            user_id,company_id,token_hash,expires_at,created_by,id,
@@ -249,7 +258,7 @@ export async function createInvitedUser(
           actor.id,
           invitationId,
           resolved.preferredLocale,
-          intendedRoleId,
+          invitedIdentity.roleId,
           resolved.branchId ?? null,
           resolved.departmentId ?? null,
           resolved.scopeType,
@@ -343,7 +352,7 @@ async function initializeInvitedIdentity(
       [userId],
     );
   }
-  await client.query(
+  const assignment = await client.query<{ id: string }>(
     `INSERT INTO role_assignments(
        user_id,role_id,scope_type,company_id,branch_id,department_id,
        supplier_id,active,assigned_by
@@ -355,7 +364,8 @@ async function initializeInvitedIdentity(
        CASE WHEN $3='SUPPLIER' THEN $7::uuid ELSE NULL END,
        true,$8
      )
-     ON CONFLICT DO NOTHING`,
+     ON CONFLICT DO NOTHING
+     RETURNING id::text`,
     [
       userId,
       role.rows[0].id,
@@ -367,6 +377,7 @@ async function initializeInvitedIdentity(
       actorId,
     ],
   );
+  if (!assignment.rowCount) throw new Error("The invited role assignment could not be created.");
   await client.query(
     `INSERT INTO onboarding_progress(user_id,profile_stage_status)
      VALUES ($1,'NOT_STARTED')
@@ -374,7 +385,7 @@ async function initializeInvitedIdentity(
     [userId],
   );
 
-  return role.rows[0].id;
+  return { roleId: role.rows[0].id, roleAssignmentId: assignment.rows[0].id };
 }
 
 function assertCanResendInvitation(

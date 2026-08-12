@@ -26,12 +26,35 @@ function isPlatformProcurementActor(actor: SessionUser) {
     && ["PLATFORM_OWNER", "PLATFORM_OPERATIONS", "ADMIN"].includes(actor.role));
 }
 
+function hasPlatformWideCompanyVisibility(actor: SessionUser) {
+  return actor.isOwner || canAccess(actor, "view_all_companies");
+}
+
 function tenantClause(actor: SessionUser, column: string) {
-  return isPlatformProcurementActor(actor) ? { sql: "", values: [] as unknown[] } : { sql: ` WHERE ${column} = $1`, values: [actor.companyId] };
+  if (actor.isOwner || canAccess(actor, "view_all_companies")) {
+    return { sql: "", values: [] as unknown[] };
+  }
+  if (actor.accountKind === "PLATFORM") {
+    if (!actor.roleAssignmentId) return { sql: " WHERE false", values: [] as unknown[] };
+    return {
+      sql: ` WHERE public.axora_actor_company_accessible($1,$2,${column},now())`,
+      values: [actor.id, actor.roleAssignmentId],
+    };
+  }
+  return { sql: ` WHERE ${column} = $1`, values: [actor.companyId] };
 }
 
 function tenantAndBranchClause(actor: SessionUser, companyColumn: string, branchColumn: string) {
-  if (isPlatformProcurementActor(actor)) return { sql: "", values: [] as unknown[] };
+  if (actor.isOwner || canAccess(actor, "view_all_companies")) {
+    return { sql: "", values: [] as unknown[] };
+  }
+  if (actor.accountKind === "PLATFORM") {
+    if (!actor.roleAssignmentId) return { sql: " WHERE false", values: [] as unknown[] };
+    return {
+      sql: ` WHERE public.axora_actor_company_accessible($1,$2,${companyColumn},now())`,
+      values: [actor.id, actor.roleAssignmentId],
+    };
+  }
   if (actor.branchId) {
     return { sql: ` WHERE ${companyColumn} = $1 AND ${branchColumn} = $2`, values: [actor.companyId, actor.branchId] };
   }
@@ -43,7 +66,16 @@ function isSelfScopedRequester(actor: Pick<SessionUser, "isOwner" | "role">) {
 }
 
 function requestVisibilityScope(actor: SessionUser, alias: string, startIndex = 1) {
-  if (isPlatformProcurementActor(actor)) return { sql: "", values: [] as unknown[] };
+  if (actor.isOwner || canAccess(actor, "view_all_companies")) {
+    return { sql: "", values: [] as unknown[] };
+  }
+  if (actor.accountKind === "PLATFORM") {
+    if (!actor.roleAssignmentId) return { sql: "false", values: [] as unknown[] };
+    return {
+      sql: `public.axora_actor_company_accessible($${startIndex},$${startIndex + 1},${alias}.company_id,now())`,
+      values: [actor.id, actor.roleAssignmentId],
+    };
+  }
   const conditions = [`${alias}.company_id=$${startIndex}`];
   const values: unknown[] = [actor.companyId];
   if (actor.branchId) {
@@ -75,7 +107,9 @@ function requireCompany(actor: SessionUser, requestedCompanyId?: string) {
 
 export async function listCompanies(providedActor?: SessionUser): Promise<Company[]> {
   const actor = await actorOrSession(providedActor);
-  if (isDemoMode()) return isPlatformProcurementActor(actor) ? getDemoStore().companies : getDemoStore().companies.filter((item) => item.id === actor.companyId);
+  if (isDemoMode()) return hasPlatformWideCompanyVisibility(actor)
+    ? getDemoStore().companies
+    : getDemoStore().companies.filter((item) => item.id === actor.companyId);
   const scope = tenantClause(actor, "id");
   const result = await query<Company>(`SELECT id::text, company_code AS code, name, industry,
     main_contact_name AS "mainContactName", main_contact_email AS "mainContactEmail", main_contact_phone AS "mainContactPhone",
@@ -91,7 +125,7 @@ export async function listBranches(providedActor?: SessionUser): Promise<Branch[
   const actor = await actorOrSession(providedActor);
   if (!canAccess(actor, "view_branches")) throw new Error("Your account cannot view branch information.");
   if (isDemoMode()) {
-    return isPlatformProcurementActor(actor)
+    return hasPlatformWideCompanyVisibility(actor)
       ? getDemoStore().branches
       : getDemoStore().branches.filter((item) =>
           item.companyId === actor.companyId && (!actor.branchId || item.id === actor.branchId),
@@ -381,10 +415,12 @@ export async function listRequests(providedActor?: SessionUser): Promise<Procure
   const actor = await actorOrSession(providedActor);
   if (!canAccess(actor, "view_requests")) throw new Error("Your account cannot view purchase requests.");
   if (isDemoMode()) {
-    const requests = isPlatformProcurementActor(actor)
+    const requests = hasPlatformWideCompanyVisibility(actor)
       ? getDemoStore().requests
       : getDemoStore().requests.filter((item) => demoRequestVisibleToActor(item, actor));
-    return isPlatformProcurementActor(actor) ? requests : hideAxoraCommercialData(requests, canAccess(actor, "view_invoices"));
+    return canAccess(actor, "view_internal_cost")
+      ? requests
+      : hideAxoraCommercialData(requests, canAccess(actor, "view_invoices"));
   }
   const scope = requestVisibilityScope(actor, "r");
   const result = await withAuditTransaction(
@@ -395,7 +431,9 @@ export async function listRequests(providedActor?: SessionUser): Promise<Procure
     ),
   );
   const requests = groupRequestRows(result.rows);
-  return isPlatformProcurementActor(actor) ? requests : hideAxoraCommercialData(requests, canAccess(actor, "view_invoices"));
+  return canAccess(actor, "view_internal_cost")
+    ? requests
+    : hideAxoraCommercialData(requests, canAccess(actor, "view_invoices"));
 }
 
 export async function getRequest(id: string, providedActor?: SessionUser) {
@@ -406,7 +444,7 @@ export async function getRequest(id: string, providedActor?: SessionUser) {
       item.id === id
       && demoRequestVisibleToActor(item, actor),
     );
-    if (!request || isPlatformProcurementActor(actor)) return request;
+    if (!request || canAccess(actor, "view_internal_cost")) return request;
     return hideAxoraCommercialData([request], canAccess(actor, "view_invoices"))[0];
   }
   const scope = requestVisibilityScope(actor, "r", 2);
@@ -418,7 +456,7 @@ export async function getRequest(id: string, providedActor?: SessionUser) {
     ),
   );
   const request = groupRequestRows(result.rows)[0];
-  if (!request || isPlatformProcurementActor(actor)) return request;
+  if (!request || canAccess(actor, "view_internal_cost")) return request;
   return hideAxoraCommercialData([request], canAccess(actor, "view_invoices"))[0];
 }
 
@@ -538,11 +576,14 @@ export async function updateCompanyPricingConfiguration(
            estimated_delivery_fee=$3,
            updated_at=now()
          WHERE id=$1
-           AND active=true`,
+           AND active=true
+           AND public.axora_actor_company_accessible($4,$5,id,now())`,
         [
           resolvedCompanyId,
           roundMoney(input.taxRate),
           roundMoney(input.estimatedDeliveryFee),
+          actor.id,
+          actor.roleAssignmentId,
         ],
       );
 
@@ -571,8 +612,10 @@ export async function createBranch(input: Omit<Branch, "id" | "code" | "companyN
   }
   await withAuditTransaction({ actor }, async (client) => {
     const result = await client.query(`INSERT INTO branches (branch_code_id, company_id, name, branch_code, delivery_address, city, contact_name, contact_phone, contact_email, delivery_instructions, notes)
-      SELECT next_branch_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10 FROM companies WHERE id=$1 AND active=true`,
-    [companyId, input.name, input.branchCode, input.deliveryAddress, input.city, input.contactName, input.contactPhone, input.contactEmail, input.deliveryInstructions ?? null, input.notes ?? null]);
+      SELECT next_branch_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10 FROM companies
+      WHERE id=$1 AND active=true
+        AND public.axora_actor_company_accessible($11,$12,id,now())`,
+    [companyId, input.name, input.branchCode, input.deliveryAddress, input.city, input.contactName, input.contactPhone, input.contactEmail, input.deliveryInstructions ?? null, input.notes ?? null, actor.id, actor.roleAssignmentId]);
     if (!result.rowCount) throw new Error("The selected company is not active.");
   });
 }
@@ -756,8 +799,9 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
         estimated_delivery_fee::float8 AS "estimatedDeliveryFee"
        FROM companies
        WHERE id=$1 AND active=true
+         AND public.axora_actor_company_accessible($2,$3,id,now())
        FOR SHARE`,
-      [companyId],
+      [companyId, actor.id, actor.roleAssignmentId],
     );
 
     if (!company.rowCount) {

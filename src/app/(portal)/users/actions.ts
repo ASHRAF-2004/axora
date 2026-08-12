@@ -19,12 +19,15 @@ import { SUPPORTED_LOCALES } from "@/lib/i18n";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { isPermissionCode, type PermissionCode } from "@/lib/authorization-policy";
 
 const userSchema = z.object({ email: z.email(), displayName: z.string().trim().min(2).max(200),
   role: z.custom<UserRole>((value) => isUserRole(value), "Choose an approved account role."),
   companyId: z.uuid().optional(), branchId: z.uuid().optional(), departmentId: z.uuid().optional(), supplierId: z.uuid().optional(),
   jobTitle: z.string().trim().max(160).optional(),
-  preferredLocale: z.enum(SUPPORTED_LOCALES) });
+  preferredLocale: z.enum(SUPPORTED_LOCALES),
+  permissions: z.array(z.string().refine(isPermissionCode).transform((value) => value as PermissionCode)).max(120),
+});
 
 type InvitationDelivery = "sent" | "disabled" | "failed" | "unconfirmed";
 
@@ -81,7 +84,9 @@ export async function createUserAction(formData: FormData) {
     departmentId: readFormText(formData, "departmentId") || undefined,
     supplierId: readFormText(formData, "supplierId") || undefined,
     jobTitle: readFormText(formData, "jobTitle") || undefined,
-    preferredLocale: readFormText(formData, "preferredLocale") || "en" });
+    preferredLocale: readFormText(formData, "preferredLocale") || "en",
+    permissions: formData.getAll("permissions").filter((value): value is string => typeof value === "string"),
+  });
   let invitation: AccountSetupInvitationResult;
   try {
     invitation = await createInvitedUser(input, actor);

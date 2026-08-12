@@ -153,3 +153,31 @@ tracking, and customer receipt continue through their own state machines after
 payment. The internal payment-completion boundary is replaceable: a future bank,
 card, FPX, or reviewed manual-confirmation integration can produce the same
 trusted paid event without rewriting invoice finalization or email delivery.
+
+### Effective access, scoped administration, and saved progress
+
+Axora authorizes each account with a live effective-access model: a role supplies
+reviewed defaults, explicit grants and denies tailor those defaults, scope limits
+where they apply, and approval limits remain separate financial authority. User
+creation and access editing expose grouped permission checkboxes; non-owner
+administrators can delegate only permissions they possess.
+
+Axora-internal user administration, customer-company user administration, and
+delivery-user administration are independent permissions. Creating or managing
+customer users never grants authority to create Axora employees. Customer
+companies are visible to the Platform Owner, explicitly assigned account
+managers, and users inside their own authorized company scope. An assigned
+administrator cannot enumerate another manager's companies through portal pages,
+APIs, analytics, exports, or generated-document capabilities. Revenue, profit,
+buying cost, pricing, and company budgets are independently permissioned, and
+restricted commercial fields are redacted by PostgreSQL before they reach the
+application.
+
+Routine authenticated portal work does not require a second password challenge.
+Login, live session validation, CSRF protection, permission checks, RLS, tenant
+scope, password-change verification, and audit evidence remain enforced. Safe
+portal form fields are autosaved in session-scoped browser storage and restored
+after refresh or route recovery. Draft keys include the signed-in user, tenant
+scope, route, form identifier, and schema version; drafts expire, can be
+discarded, and never persist passwords, tokens, credentials, payment secrets, or
+file contents.

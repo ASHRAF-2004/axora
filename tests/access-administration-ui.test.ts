@@ -53,12 +53,13 @@ describe("access administration UI contract", () => {
     expect(actions).not.toContain("requireRecentStepUp");
     expect(actions).toContain("setUserPermissionOverride(actor");
     expect(actions).toContain("removeUserPermissionOverride(actor");
+    expect(actions).toContain("replaceUserPermissionSet(actor");
     expect(actions).toContain("scopeType: string");
     expect(actions).toContain("companyId: string | undefined");
     expect(actions).toContain("targetRoleAssignmentId: string");
     expect(actions).not.toContain("user_permission_overrides");
     expect(actions).not.toMatch(/^export\s+(const|let|var|class)\s/m);
-    expect(actions.match(/^export\s+async\s+function\s/gm)).toHaveLength(2);
+    expect(actions.match(/^export\s+async\s+function\s/gm)).toHaveLength(3);
   });
 
   it("links established user rows to access administration without replacing protected-account controls", async () => {

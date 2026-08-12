@@ -20,7 +20,9 @@ import { notFound } from "next/navigation";
 import {
   removePermissionOverrideAction,
   setPermissionOverrideAction,
+  replacePermissionSetAction,
 } from "./actions";
+import { PermissionEditorForm } from "@/components/PermissionEditorForm";
 
 type Scope = AccessAdministrationSnapshot["selectedScope"];
 type PermissionOption = AccessAdministrationSnapshot["permissionOptions"][number];
@@ -243,6 +245,30 @@ export default async function UserAccessPage({
           ))}
         </div>
       </section>
+
+      {snapshot.canManagePermissions ? (
+        <section style={{ marginBlockStart: 17 }}>
+          <div className="panel-header"><div><h2>{copy.applyOverride}</h2><p>{copy.applyOverrideDescription}</p></div></div>
+          <PermissionEditorForm
+            locale={locale}
+            action={replacePermissionSetAction.bind(
+              null,
+              snapshot.identity.id,
+              snapshot.selectedAssignmentId,
+            )}
+            options={snapshot.permissionOptions.map((permission) => ({
+              code: permission.code,
+              group: permission.group,
+              label: permission.label,
+              description: permission.description,
+              highRisk: permission.highRisk,
+            }))}
+            initialPermissions={snapshot.permissionOptions
+              .filter((permission) => permission.effective)
+              .map((permission) => permission.code)}
+          />
+        </section>
+      ) : null}
 
       <section style={{ marginBlockStart: 17 }}>
         <div className="panel-header"><div><h2>{copy.applyOverride}</h2><p>{copy.applyOverrideDescription}</p></div></div>

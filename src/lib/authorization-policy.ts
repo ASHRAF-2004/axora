@@ -592,6 +592,42 @@ export const FOUNDATION_PERMISSION_CATALOG = [
 
 export const ADDITIVE_PERMISSION_CATALOG = [
   {
+    "code": "company.create",
+    "group": "Companies",
+    "label": "Create companies",
+    "description": "Create a customer company and become its accountable manager unless platform-wide visibility applies.",
+    "highRisk": true
+  },
+  {
+    "code": "company.view.all",
+    "group": "Companies",
+    "label": "View all companies",
+    "description": "View every customer company regardless of manager assignment.",
+    "highRisk": true
+  },
+  { "code": "platform_user.view", "group": "Platform people", "label": "View Axora users", "description": "View Axora internal accounts.", "highRisk": true },
+  { "code": "platform_user.create", "group": "Platform people", "label": "Create Axora users", "description": "Create Axora internal accounts.", "highRisk": true },
+  { "code": "platform_user.invite", "group": "Platform people", "label": "Invite Axora users", "description": "Issue or resend Axora internal invitations.", "highRisk": true },
+  { "code": "platform_user.edit", "group": "Platform people", "label": "Edit Axora users", "description": "Edit Axora internal accounts.", "highRisk": true },
+  { "code": "platform_user.deactivate", "group": "Platform people", "label": "Deactivate Axora users", "description": "Deactivate or reactivate Axora internal accounts.", "highRisk": true },
+  { "code": "platform_user.permission.manage", "group": "Platform people", "label": "Manage Axora user permissions", "description": "Configure Axora internal permissions within delegation authority.", "highRisk": true },
+  { "code": "company_user.view", "group": "Company people", "label": "View company users", "description": "View customer-company accounts in assigned scope.", "highRisk": false },
+  { "code": "company_user.create", "group": "Company people", "label": "Create company users", "description": "Create customer-company accounts in assigned scope.", "highRisk": true },
+  { "code": "company_user.invite", "group": "Company people", "label": "Invite company users", "description": "Issue or resend customer-company invitations.", "highRisk": true },
+  { "code": "company_user.edit", "group": "Company people", "label": "Edit company users", "description": "Edit customer-company accounts in assigned scope.", "highRisk": true },
+  { "code": "company_user.deactivate", "group": "Company people", "label": "Deactivate company users", "description": "Deactivate or reactivate customer-company accounts in assigned scope.", "highRisk": true },
+  { "code": "company_user.permission.manage", "group": "Company people", "label": "Manage company user permissions", "description": "Configure customer-company permissions within delegation authority.", "highRisk": true },
+  { "code": "delivery_user.view", "group": "Delivery people", "label": "View delivery users", "description": "View delivery-network accounts.", "highRisk": true },
+  { "code": "delivery_user.create", "group": "Delivery people", "label": "Create delivery users", "description": "Create delivery-network accounts.", "highRisk": true },
+  { "code": "delivery_user.invite", "group": "Delivery people", "label": "Invite delivery users", "description": "Issue or resend delivery-network invitations.", "highRisk": true },
+  { "code": "delivery_user.edit", "group": "Delivery people", "label": "Edit delivery users", "description": "Edit delivery-network accounts.", "highRisk": true },
+  { "code": "delivery_user.deactivate", "group": "Delivery people", "label": "Deactivate delivery users", "description": "Deactivate or reactivate delivery-network accounts.", "highRisk": true },
+  { "code": "delivery_user.permission.manage", "group": "Delivery people", "label": "Manage delivery user permissions", "description": "Configure delivery-network permissions within delegation authority.", "highRisk": true },
+  { "code": "product.manage", "group": "Catalogue", "label": "Create and edit products", "description": "Create and edit product catalogue records without automatically granting financial reporting.", "highRisk": true },
+  { "code": "product.archive", "group": "Catalogue", "label": "Archive products", "description": "Activate, deactivate, or archive product records.", "highRisk": true },
+  { "code": "category.manage", "group": "Catalogue", "label": "Manage categories", "description": "Manage product category classifications.", "highRisk": true },
+  { "code": "analytics.revenue.view", "group": "Financial visibility", "label": "View revenue", "description": "View Axora revenue totals and revenue reporting.", "highRisk": true },
+  {
     "code": "email.operations.manage",
     "group": "Email",
     "label": "Manage email operations",
@@ -599,6 +635,34 @@ export const ADDITIVE_PERMISSION_CATALOG = [
     "highRisk": true
   }
 ] as const;
+
+const GRANULAR_ROLE_DEFAULT_PERMISSIONS: Readonly<Partial<Record<KnownUserRole, readonly string[]>>> = {
+  PLATFORM_OPERATIONS: [
+    "product.manage", "product.archive", "category.manage",
+    "commercial.cost.view", "commercial.pricing.manage",
+  ],
+  CLIENT_ACCOUNT_MANAGER: [
+    "company.create", "company.view.assigned",
+    "company_user.view", "company_user.create", "company_user.invite",
+    "company_user.edit", "company_user.deactivate",
+  ],
+  COMPANY_ADMIN: [
+    "company_user.view", "company_user.create", "company_user.invite",
+    "company_user.edit", "company_user.deactivate", "company_user.permission.manage",
+  ],
+  BRANCH_ADMIN: [
+    "company_user.view", "company_user.create", "company_user.invite",
+    "company_user.edit", "company_user.deactivate", "company_user.permission.manage",
+  ],
+  DEPARTMENT_ADMIN: [
+    "company_user.view", "company_user.create", "company_user.invite",
+    "company_user.edit", "company_user.deactivate", "company_user.permission.manage",
+  ],
+  DELIVERY_TEAM_SUPERVISOR: [
+    "delivery_user.view", "delivery_user.create", "delivery_user.invite",
+    "delivery_user.edit", "delivery_user.deactivate", "delivery_user.permission.manage",
+  ],
+};
 
 export const PERMISSION_CATALOG = [
   ...FOUNDATION_PERMISSION_CATALOG,
@@ -1089,7 +1153,14 @@ export function defaultPermissionsForRole(
   isOwner = false,
 ): readonly PermissionCode[] {
   const canonical = canonicalRoleForAuthorization(role, scopeType, isOwner);
-  return canonical ? ROLE_DEFAULT_PERMISSIONS[canonical] ?? [] : [];
+  if (!canonical) return [];
+  if (canonical === "PLATFORM_OWNER") {
+    return PERMISSION_CATALOG.map((permission) => permission.code);
+  }
+  return [...new Set([
+    ...(ROLE_DEFAULT_PERMISSIONS[canonical] ?? []),
+    ...(GRANULAR_ROLE_DEFAULT_PERMISSIONS[canonical] ?? []).filter(isPermissionCode),
+  ])];
 }
 
 function scopeIsStructurallyValid(scope: AuthorizationScope) {

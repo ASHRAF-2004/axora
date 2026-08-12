@@ -15,6 +15,8 @@ import { loadOrganizationStructureWorkspace } from "@/lib/organization-structure
 import { STANDARD_BILLING_TERMS, type Branch, type Company } from "@/lib/types";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { profileImageMessages } from "@/lib/profile-image-i18n";
+import { defaultPermissionsForRole } from "@/lib/authorization-policy";
+import { listGrantablePermissionOptions } from "@/lib/route-authorization";
 import Link from "next/link";
 import {
   setUserActiveAction,
@@ -61,10 +63,12 @@ export default async function UsersPage() {
   const common = corePortalMessages(locale).common;
   const accessCopy = accessAdministrationMessages(locale);
   const imageCopy = profileImageMessages(locale);
-  const [users, organization, structure] = await Promise.all([
+  const availableRoles = creatableAccountRoles(actor);
+  const [users, organization, structure, permissionOptions] = await Promise.all([
     listAuthorizedUsers(actor),
     loadOrganizationDirectory(actor),
     loadOrganizationStructureWorkspace(actor),
+    listGrantablePermissionOptions(actor),
   ]);
   const companies: Company[] = organization.companies.map((company) => ({
     ...company,
@@ -84,7 +88,6 @@ export default async function UsersPage() {
   const activePlatformOwners = users.filter((user) => user.active
     && Boolean(user.accountSetupCompletedAt)
     && (user.isOwner || user.role === "PLATFORM_OWNER")).length;
-  const availableRoles = creatableAccountRoles(actor);
   const showOrganization = actor.accountKind === "PLATFORM" || actor.isOwner;
 
   return <><PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
@@ -99,6 +102,7 @@ export default async function UsersPage() {
           branches={branches}
           companies={companies}
           departments={structure.departments}
+          permissionOptions={permissionOptions}
           roleOptions={availableRoles.map((role) => ({
             value: role.key,
             label: role.label,
@@ -106,6 +110,11 @@ export default async function UsersPage() {
             category: role.category,
             accountKind: role.accountKind,
             allowedScopes: role.allowedScopes,
+            defaultPermissions: defaultPermissionsForRole(
+              role.key,
+              role.allowedScopes[0],
+              role.key === "PLATFORM_OWNER",
+            ),
           }))}
         />
       </article>

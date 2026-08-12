@@ -129,13 +129,21 @@ describe("account setup transactional lifecycle", () => {
       if (sql.includes("SELECT id::text FROM roles")) {
         return { rowCount: 1, rows: [{ id: "normalized-role-id" }] };
       }
+      if (sql.includes("INSERT INTO role_assignments")) {
+        return { rowCount: 1, rows: [{ id: "role-assignment-id" }] };
+      }
       if (sql.includes("UPDATE users SET account_status='INVITED'")
         || sql.includes("INSERT INTO user_profiles")
         || sql.includes("INSERT INTO account_credentials")
         || sql.includes("INSERT INTO company_memberships")
         || sql.includes("INSERT INTO role_assignments")
         || sql.includes("INSERT INTO onboarding_progress")) {
-        return { rowCount: 1, rows: [] };
+        return {
+          rowCount: 1,
+          rows: sql.includes("INSERT INTO role_assignments")
+            ? [{ id: "role-assignment-id" }]
+            : [],
+        };
       }
       if (sql.includes("INSERT INTO account_setup_invitations")) {
         return {
@@ -233,6 +241,9 @@ describe("account setup transactional lifecycle", () => {
       if (sql.includes("SELECT id::text FROM roles")) {
         return { rowCount: 1, rows: [{ id: "branch-role-id" }] };
       }
+      if (sql.includes("INSERT INTO role_assignments")) {
+        return { rowCount: 1, rows: [{ id: "branch-role-assignment-id" }] };
+      }
       if (sql.includes("UPDATE users SET account_status='INVITED'")
         || sql.includes("INSERT INTO user_profiles")
         || sql.includes("INSERT INTO account_credentials")
@@ -240,7 +251,12 @@ describe("account setup transactional lifecycle", () => {
         || sql.includes("INSERT INTO branch_assignments")
         || sql.includes("INSERT INTO role_assignments")
         || sql.includes("INSERT INTO onboarding_progress")) {
-        return { rowCount: 1, rows: [] };
+        return {
+          rowCount: 1,
+          rows: sql.includes("INSERT INTO role_assignments")
+            ? [{ id: "branch-role-assignment-id" }]
+            : [],
+        };
       }
       if (sql.includes("INSERT INTO account_setup_invitations")) {
         return {
@@ -313,6 +329,9 @@ describe("account setup transactional lifecycle", () => {
       if (sql.includes("SELECT id::text FROM roles")) {
         return { rowCount: 1, rows: [{ id: `${accountKind.toLowerCase()}-role-id` }] };
       }
+      if (sql.includes("INSERT INTO role_assignments")) {
+        return { rowCount: 1, rows: [{ id: `${accountKind.toLowerCase()}-role-assignment-id` }] };
+      }
       if (sql.includes("UPDATE users SET account_status='INVITED'")
         || sql.includes("INSERT INTO user_profiles")
         || sql.includes("INSERT INTO account_credentials")
@@ -320,7 +339,12 @@ describe("account setup transactional lifecycle", () => {
         || sql.includes("INSERT INTO delivery_agent_profiles")
         || sql.includes("INSERT INTO role_assignments")
         || sql.includes("INSERT INTO onboarding_progress")) {
-        return { rowCount: 1, rows: [] };
+        return {
+          rowCount: 1,
+          rows: sql.includes("INSERT INTO role_assignments")
+            ? [{ id: `${accountKind.toLowerCase()}-role-assignment-id` }]
+            : [],
+        };
       }
       if (sql.includes("INSERT INTO account_setup_invitations")) {
         return {

@@ -47,6 +47,9 @@ export default async function ProductsPage() {
     listProducts(actor),
     listSuppliers(actor),
   ]);
+  const canViewCost = canAccess(actor, "view_internal_cost");
+  const canViewSuppliers = canAccess(actor, "manage_suppliers");
+  const canManagePricing = canAccess(actor, "manage_commercial_pricing");
   return <><PageHeader eyebrow={copy.operationsEyebrow} title={copy.title}
     description={copy.operationsDescription} />
 
@@ -54,17 +57,17 @@ export default async function ProductsPage() {
       <article className="panel">
         <div className="panel-header"><div><h2>{copy.management}</h2><p>{copy.count(products.length, products.filter((item) => item.duplicateWarning).length)}</p></div></div>
         <div className="data-table-wrap"><table className="data-table"><thead><tr>
-          <th>{copy.image}</th><th>{copy.product}</th><th>{copy.category}</th><th>{copy.unitMoq}</th><th>{copy.supplier}</th><th>{copy.prices}</th><th>{common.status}</th><th>{common.actions}</th>
+          <th>{copy.image}</th><th>{copy.product}</th><th>{copy.category}</th><th>{copy.unitMoq}</th>{canViewSuppliers ? <th>{copy.supplier}</th> : null}<th>{copy.prices}</th><th>{common.status}</th><th>{common.actions}</th>
         </tr></thead><tbody>{products.map((product) => <tr key={product.id}>
           <td style={{ minWidth: 145 }}><ProductImage product={product} showControls={false} locale={locale} style={{ border: "1px solid var(--slate-200)", borderRadius: 10, width: 135 }} /></td>
           <td><strong>{product.name}</strong><br /><span className="subtle">{product.code}</span></td>
           <td>{product.category}<br /><span className="subtle">{product.subcategory}</span></td>
           <td>{product.unit}<br /><span className="subtle">{rules.quantitySummary(productQuantityRule(product))}</span></td>
-          <td>{product.preferredSupplierName || copy.notAssigned}</td>
-          <td>{formatCurrency(product.defaultBuyPrice, locale)}<br /><span className="subtle">{copy.customer} {formatCurrency(product.defaultSellPrice, locale)}</span></td>
+          {canViewSuppliers ? <td>{product.preferredSupplierName || copy.notAssigned}</td> : null}
+          <td>{canViewCost ? <>{formatCurrency(product.defaultBuyPrice, locale)}<br /></> : null}<span className="subtle">{copy.customer} {formatCurrency(product.defaultSellPrice, locale)}</span></td>
           <td><StatusBadge status={product.status}>{localizedStatus(product.status, locale)}</StatusBadge></td>
           <td style={{ minWidth: 165 }}>
-            <Link className="button button-secondary" href={`/products/${product.id}/edit`}>{copy.edit}</Link>
+            {canManagePricing ? <Link className="button button-secondary" href={`/products/${product.id}/edit`}>{copy.edit}</Link> : null}
             <form action={setMasterActiveAction.bind(null, "products", product.id, product.status === "Inactive")} style={{ marginBlockStart: 8 }}>
               <button className="button button-secondary" type="submit">{product.status === "Active" ? common.deactivate : product.status === "Needs Review" ? copy.rejectDuplicate : common.activate}</button>
             </form>
@@ -73,7 +76,7 @@ export default async function ProductsPage() {
         </tr>)}</tbody></table></div>
       </article>
 
-      <form action={createProductAction} className="panel form-panel">
+      {canManagePricing ? <form action={createProductAction} className="panel form-panel" data-draft-id="create-product">
         <h2>{copy.createTitle}</h2>
         <p>{copy.createBody}</p>
         <div className="form-grid">
@@ -103,7 +106,7 @@ export default async function ProductsPage() {
             <small>{copy.altHelp}</small></label>
         </div>
         <div className="form-actions"><button className="button button-primary" type="submit">{copy.create}</button></div>
-      </form>
+      </form> : null}
     </section>
   </>;
 }
