@@ -12,7 +12,7 @@ interface JsonRow<T> extends QueryResultRow { value: T | null }
 
 export interface GeneratedDocumentSummary {
   id: string;
-  type: "APPROVED_REQUEST" | "FINAL_FULFILMENT_DELIVERY" | "SUPPLIER_PURCHASE_ORDER";
+  type: "APPROVED_REQUEST" | "FINAL_FULFILMENT_DELIVERY" | "SUPPLIER_PURCHASE_ORDER" | "FINAL_INVOICE";
   requestId: string;
   requestReference: string;
   supplierId?: string;

@@ -11,6 +11,7 @@ import type { RequestStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { completePayment } from "@/lib/payment-checkout";
 
 const requestSubmissionKeySchema = z.string().uuid();
 
@@ -60,4 +61,17 @@ export async function updateStatusAction(id: string, formData: FormData) {
   revalidatePath(`/requests/${id}`);
   revalidatePath("/requests");
   revalidatePath("/dashboard");
+}
+
+export async function payRequestAction(id: string, formData: FormData) {
+  const actor = await requirePermission("create_requests");
+  const idempotencyKey = requestSubmissionKeySchema.parse(
+    readFormText(formData, "idempotencyKey"),
+  );
+  await completePayment(actor, z.string().uuid().parse(id), idempotencyKey);
+  revalidatePath(`/requests/${id}`);
+  revalidatePath("/requests");
+  revalidatePath("/dashboard");
+  revalidatePath("/documents");
+  redirect(`/requests/${id}?notice=payment-completed`);
 }

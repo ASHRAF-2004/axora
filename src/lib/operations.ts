@@ -7,8 +7,7 @@ import { isDemoMode, query, withAuditTransaction } from "./db";
 import { requirePermission } from "./auth";
 import type { SessionUser } from "./auth";
 import { canAccess, type Permission } from "./permissions";
-import { COD_PAYMENT_METHOD } from "./types";
-import { roundMoney } from "./domain";
+import { INTERNAL_PAYMENT_STRATEGY } from "./types";
 import type { ApprovalRecord, AttachmentRecord, AuditRecord, DeliveryRecord, DeliveryStatus, InvoiceRecord, InvoiceStatus, PaymentRecord, QuotationRecord, UserRole } from "./types";
 import { appendWorkflowEvent, notifyWorkflowAudience } from "./workflow-repository";
 import { uploadedContentMatchesMime } from "./file-content";
@@ -676,6 +675,7 @@ export async function listInvoices(): Promise<InvoiceRecord[]> {
 
 export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER"; requestId: string; supplierId?: string; invoiceNumber: string; invoiceDate: string; dueDate?: string; amount: number; status: InvoiceStatus }, actor: OperationActor) {
   if (!operationActorCanAccess(actor, "manage_finance")) throw new Error("Only authorized Axora finance users can create invoices.");
+  if (input.direction !== "SUPPLIER") throw new Error("Customer invoices are finalized by checkout.");
   if (input.direction === "SUPPLIER" && !isPlatformScopedActor(actor)) {
     throw new Error("Supplier invoices are private Axora finance records.");
   }
@@ -695,24 +695,10 @@ export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER";
     if (input.direction === "SUPPLIER" && (!supplier || !request.lines.some((line) => line.supplierId === supplier.id))) {
       throw new Error("The supplier must be selected on this request.");
     }
-    if (input.direction === "CUSTOMER") {
-      const authorizedTotal = request.lines.reduce((sum, line) => sum + roundMoney(line.quantity * line.unitSellPrice), 0);
-      const invoicedTotal = getDemoOperations().invoices
-        .filter((invoice) => invoice.requestId === request.id && invoice.direction === "CUSTOMER" && invoice.status !== "Cancelled")
-        .reduce((sum, invoice) => sum + invoice.amount, 0);
-      if (invoicedTotal + input.amount > authorizedTotal + 0.001) {
-        throw new Error("Customer invoices cannot exceed the total approved by the company.");
-      }
-    }
     getDemoOperations().invoices.unshift({ id: randomUUID(), direction: input.direction, requestId: request.id, orderCode: request.orderCode,
-      counterparty: input.direction === "CUSTOMER" ? request.companyName : supplier?.name ?? "Unknown supplier", invoiceNumber: input.invoiceNumber,
+      counterparty: supplier?.name ?? "Unknown supplier", invoiceNumber: input.invoiceNumber,
       invoiceDate: input.invoiceDate, dueDate: input.dueDate, amount: input.amount, status: "Issued", paidAmount: 0,
-      outstandingAmount: input.amount, paymentStatus: "Unpaid", requestStatus: input.direction === "CUSTOMER" ? "Invoice Issued" : request.status });
-    if (input.direction === "CUSTOMER") {
-      request.status = "Invoice Issued";
-      request.invoiceStatus = "Issued";
-      request.invoiceNumber = input.invoiceNumber;
-    }
+      outstandingAmount: input.amount, paymentStatus: "Unpaid", requestStatus: request.status });
     addDemoAudit("invoices", request.id, "INSERT", actor.name, input.invoiceNumber);
     return;
   }
@@ -748,48 +734,10 @@ export async function createInvoice(input: { direction: "CUSTOMER" | "SUPPLIER";
       );
       if (!supplier.rowCount) throw new Error("The supplier must be selected on this request.");
     }
-    if (input.direction === "CUSTOMER") {
-      const totals = await client.query<{ authorizedTotal: number; invoicedTotal: number }>(
-        `SELECT
-           COALESCE((SELECT sum(round(l.quantity*l.unit_sell_price,2)) FROM request_lines l WHERE l.request_id=$1),0)::float8 AS "authorizedTotal",
-           COALESCE((SELECT sum(i.amount) FROM invoices i JOIN lookup_values invoice_status ON invoice_status.id=i.status_id
-             WHERE i.request_id=$1 AND i.direction='CUSTOMER' AND invoice_status.label<>'Cancelled'),0)::float8 AS "invoicedTotal"`,
-        [input.requestId],
-      );
-      if (totals.rows[0].invoicedTotal + input.amount > totals.rows[0].authorizedTotal + 0.001) {
-        throw new Error("Customer invoices cannot exceed the total approved by the company.");
-      }
-    }
-    const inserted = await client.query<{ id: string }>(`INSERT INTO invoices (direction,request_id,company_id,supplier_id,invoice_number,invoice_date,due_date,amount,status_id)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,lookup_id('invoice_status',$9)) RETURNING id::text`, [input.direction, input.requestId,
-        input.direction === "CUSTOMER" ? request.rows[0].companyId : null, input.direction === "SUPPLIER" ? input.supplierId : null,
+    await client.query(`INSERT INTO invoices (direction,request_id,company_id,supplier_id,invoice_number,invoice_date,due_date,amount,status_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,lookup_id('invoice_status',$9))`, [input.direction, input.requestId,
+        null, input.supplierId,
         input.invoiceNumber, input.invoiceDate, input.dueDate || null, input.amount, input.status]);
-    if (input.direction === "CUSTOMER" && request.rows[0].status === "Delivered") {
-      await client.query(
-        "UPDATE requests SET status_id=lookup_id('request_status','Invoice Issued') WHERE id=$1",
-        [input.requestId],
-      );
-    }
-    if (input.direction === "CUSTOMER") {
-      const event = await appendWorkflowEvent(client, {
-        companyId: request.rows[0].companyId,
-        branchId: request.rows[0].branchId,
-        requestId: input.requestId,
-        aggregateType: "request",
-        aggregateId: input.requestId,
-        eventKey: "invoice.issued",
-        stableKey: inserted.rows[0].id,
-        actor: actor as SessionUser,
-        newState: "Invoice issued",
-        source: "WEB",
-      });
-      await notifyWorkflowAudience(client, event, {
-        actorUserId: actor.id,
-        audiences: ["REQUEST_CREATOR", "COMPANY_FINANCE"],
-        message: { key: "invoice_issued" },
-        routePath: "/finance",
-      });
-    }
   });
 }
 
@@ -817,13 +765,14 @@ export async function listPayments(): Promise<PaymentRecord[]> {
 
 export async function recordPayment(input: { invoiceId: string; paymentDate: string; amount: number; method: string; reference?: string }, actor: OperationActor) {
   if (!operationActorCanAccess(actor, "manage_finance")) throw new Error("Only authorized Axora finance users can record payments.");
-  if (input.method !== COD_PAYMENT_METHOD) throw new Error(`Only ${COD_PAYMENT_METHOD} is currently supported.`);
+  if (input.method !== INTERNAL_PAYMENT_STRATEGY) throw new Error(`Only ${INTERNAL_PAYMENT_STRATEGY} is currently supported.`);
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("Enter a positive payment amount.");
   const reference = input.reference?.trim();
   if (!reference) throw new Error("Enter the numbered receipt or collection reference.");
   if (isDemoMode()) {
     const invoice = getDemoOperations().invoices.find((item) => item.id === input.invoiceId);
     if (!invoice) throw new Error("Invoice not found.");
+    if (invoice.direction !== "SUPPLIER") throw new Error("The invoice is unavailable.");
     if (invoice.direction === "SUPPLIER" && !isPlatformScopedActor(actor)) {
       throw new Error("Supplier payments are private Axora finance records.");
     }
@@ -832,11 +781,11 @@ export async function recordPayment(input: { invoiceId: string; paymentDate: str
         || !request
         || !["Delivered", "Invoice Issued", "Completed"].includes(request.status)
         || request.lines.some((line) => line.quantityReceived < line.quantity)) {
-      throw new Error("Record COD only against an issued invoice after delivery.");
+      throw new Error("Record payment only against an issued invoice after delivery.");
     }
     if (input.amount > invoice.outstandingAmount) throw new Error("Payment cannot exceed the outstanding invoice amount.");
     getDemoOperations().payments.unshift({ id: randomUUID(), invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, paymentDate: input.paymentDate,
-      amount: input.amount, method: COD_PAYMENT_METHOD, reference, recordedByName: actor.name });
+      amount: input.amount, method: INTERNAL_PAYMENT_STRATEGY, reference, recordedByName: actor.name });
     invoice.paidAmount += input.amount; invoice.outstandingAmount -= input.amount; invoice.paymentStatus = invoice.outstandingAmount === 0 ? "Paid" : "Partial";
     addDemoAudit("payments", invoice.id, "INSERT", actor.name, reference);
     return;
@@ -861,34 +810,15 @@ export async function recordPayment(input: { invoiceId: string; paymentDate: str
        FOR UPDATE`,
       [input.invoiceId],
     );
-    if (!invoice.rows[0]) throw new Error("Record COD only against an issued invoice after delivery.");
+    if (!invoice.rows[0]) throw new Error("Record payment only against an issued invoice after delivery.");
+    if (invoice.rows[0].direction !== "SUPPLIER") throw new Error("The invoice is unavailable.");
     if (invoice.rows[0].direction === "SUPPLIER" && !isPlatformScopedActor(actor)) {
       throw new Error("Supplier payments are private Axora finance records.");
     }
     const paid = await client.query<{ total: number }>("SELECT COALESCE(sum(amount),0)::float8 AS total FROM payments WHERE invoice_id=$1", [input.invoiceId]);
     if (input.amount > invoice.rows[0].amount - paid.rows[0].total) throw new Error("Payment cannot exceed the outstanding invoice amount.");
-    const inserted = await client.query<{ id: string }>("INSERT INTO payments (invoice_id,payment_date,amount,method,reference,recorded_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id::text",
-      [input.invoiceId, input.paymentDate, input.amount, COD_PAYMENT_METHOD, reference, actor.id]);
-    if (invoice.rows[0].direction === "CUSTOMER") {
-      const event = await appendWorkflowEvent(client, {
-        companyId: invoice.rows[0].companyId,
-        branchId: invoice.rows[0].branchId,
-        requestId: invoice.rows[0].requestId,
-        aggregateType: "request",
-        aggregateId: invoice.rows[0].requestId,
-        eventKey: "payment.status_changed",
-        stableKey: inserted.rows[0].id,
-        actor: actor as SessionUser,
-        newState: "COD payment recorded",
-        source: "WEB",
-      });
-      await notifyWorkflowAudience(client, event, {
-        actorUserId: actor.id,
-        audiences: ["REQUEST_CREATOR", "COMPANY_FINANCE"],
-        message: { key: "payment_status_changed" },
-        routePath: "/finance",
-      });
-    }
+    await client.query("INSERT INTO payments (invoice_id,payment_date,amount,method,reference,recorded_by) VALUES ($1,$2,$3,$4,$5,$6)",
+      [input.invoiceId, input.paymentDate, input.amount, INTERNAL_PAYMENT_STRATEGY, reference, actor.id]);
   });
 }
 

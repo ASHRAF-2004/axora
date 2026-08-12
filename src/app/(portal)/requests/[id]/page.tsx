@@ -18,6 +18,9 @@ import { CircleDollarSign, PackageCheck, Route, UserRound, WalletCards } from "l
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateStatusAction } from "../actions";
+import { payRequestAction } from "../actions";
+import { getFinalInvoiceSummary } from "@/lib/payment-checkout";
+import { randomUUID } from "node:crypto";
 
 export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -33,7 +36,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     || request.paymentStatus !== undefined
     || request.invoiceNumber !== undefined;
 
-  const [branchBudget, workflowTimeline, approvalTimeline] = await Promise.all([
+  const [branchBudget, workflowTimeline, approvalTimeline, finalInvoice] = await Promise.all([
     actor.accountKind === "PLATFORM"
       ? Promise.resolve(undefined)
       : loadOrganizationDirectory(actor).then(({ branches }) => (
@@ -41,6 +44,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         )),
     listAuthorizedRequestWorkflowEvents(actor, request.id),
     getRequestApprovalTimeline(actor, request.id),
+    platformView ? Promise.resolve(null) : getFinalInvoiceSummary(actor, request.id),
   ]);
   const totals = request.lines.reduce((sum, line) => {
     const current = calculateLineAmounts(line);
@@ -57,6 +61,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const canMoveRequest = canAccess(actor, "manage_sourcing")
     && nextStatuses.length > 0
     && !(request.status === "New Request" && request.approvalStatus !== "Approved");
+  const payAction = payRequestAction.bind(null, id);
+  const canPay = !platformView && canAccess(actor, "create_requests")
+    && request.approvalStatus === "Approved" && !finalInvoice;
 
   return (
     <>
@@ -181,6 +188,17 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             {request.approvalStatus === "Pending" && canAccess(actor, "approve_requests")
               ? <div className="form-actions"><Link className="button button-primary" href="/approvals">{detail.reviewApproval}</Link></div>
               : null}
+            {canPay ? <form action={payAction} style={{ marginBlockStart: 20 }}>
+              <input type="hidden" name="idempotencyKey" value={randomUUID()} />
+              <div className="callout"><strong>{detail.readyToPay}</strong><p>{detail.payBody(formatCurrency(request.estimatedTotal, locale))}</p></div>
+              <div className="form-actions"><button className="button button-primary" type="submit">{detail.pay}</button></div>
+            </form> : null}
+            {finalInvoice ? <div className="callout" style={{ marginBlockStart: 20 }}>
+              <strong>{detail.paid}</strong>
+              <p>{finalInvoice.invoiceNumber} · {formatCurrency(Number(finalInvoice.amount), locale)} · {formatDateTime(finalInvoice.paidAt, locale, timeZone)}</p>
+              <p>{detail.invoiceEmailStatus(finalInvoice.emailStatus ?? "PENDING")}</p>
+              {finalInvoice.downloadUrl ? <div className="form-actions"><Link className="button button-secondary" href={finalInvoice.downloadUrl}>{detail.downloadInvoice}</Link></div> : <p>{detail.invoicePreparing}</p>}
+            </div> : null}
           </>}
 
           <h3 className="section-title">{detail.timeline}</h3>

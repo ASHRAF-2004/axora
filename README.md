@@ -4,7 +4,7 @@ Axora is a self-hosted, secure multi-company procurement platform. It gives
 company requesters and approvers, Axora operations, suppliers, delivery teams,
 receivers, finance reviewers, auditors, and support staff focused workspaces
 while preserving one tenant-scoped, append-only lifecycle from need through
-receipt, invoice, and COD evidence.
+payment, fulfilment, receipt, invoice, and delivery evidence.
 
 ![Axora logo](public/brand/axora-logo.png)
 
@@ -32,10 +32,11 @@ authorized Axora platform owner explicitly approves decommissioning.
   passwords, live sessions, profile onboarding, and role tutorials.
 - Automatically derived accessible company branding from validated logos;
   company users receive no color/theme editor.
-- Dedicated supplier, mobile delivery-driver, and independent receiver flows,
-  customer three-way matching, workflow timelines, and in-app/email outboxes.
+- Internal supplier sourcing, mobile delivery-driver, and independent receiver
+  flows, customer three-way matching, workflow timelines, and in-app/email
+  outboxes. Axora has no supplier account or supplier-facing portal.
 - Optional sanitized demonstration data for isolated local development only.
-- PostgreSQL 18 forward migrations through the refactor target `032`, guarded
+- PostgreSQL 18 forward migrations through `076`, guarded
   workflow transitions, financial views, audit triggers, relationship
   constraints, and optional development seed. Production never seeds a demo
   account or default password. This target is not evidence that production has
@@ -94,22 +95,20 @@ Protected `main` changes pass GitHub verification before the Ubuntu deployment
 manager backs up production, deploys the exact approved commit, runs migrations
 and health checks, and keeps rollback available.
 
-## MVP payment rule
+## Payment and invoice rule
 
-The approved MVP has one payment method only: **cash on delivery (COD)**. This
-applies to the three authorized pilot companies. Do not accept cards, FPX,
-DuitNow, bank transfers, credit terms, buy-now-pay-later, or any other payment
-method during the pilot. This is a safety boundary for the MVP, not Axora's
-final product vision; any additional payment method must be evaluated later as
-a separately approved security, compliance, and operations project.
+Axora does not use Cash on Delivery.
 
-The seller or its authorized delivery representative may collect cash only
-after delivery and accepted quantity are confirmed, and must issue a numbered
-receipt. Axora does not receive, hold, or settle the cash. An authorized Finance
-user records the evidence using the fixed method name `Cash on delivery (COD)`.
-The form, service layer, and database reject other methods, but a reviewer must
-still check the delivery evidence, amount, and receipt. Follow
-[MVP_COD_OPERATING_RULES.md](MVP_COD_OPERATING_RULES.md) before live use.
+An authorised customer selects **Pay** after approval. Axora recalculates the
+approved server-side snapshot, records the payment as paid, finalizes one
+permanent invoice, generates its PDF, and queues one invoice email with the PDF
+attached. Customers are not shown an implementation strategy or provider.
+
+The current testing-stage strategy does not use an online gateway. It is
+isolated behind the payment-completion boundary so a future verified provider
+or reviewed manual-confirmation flow can replace it without changing invoice,
+document, email, fulfilment, or delivery semantics. Follow
+[PAYMENT_AND_INVOICE_OPERATING_RULES.md](PAYMENT_AND_INVOICE_OPERATING_RULES.md).
 
 ## Verification
 
@@ -130,8 +129,21 @@ Ubuntu server as described in the production runbook.
   volumes.
 - Keep delivery fees separate from sales and margin until Finance approves the
   accounting treatment.
-- Use cash on delivery (COD) as the only MVP payment method. Retain the delivery
-  evidence and numbered receipt for every payment, and reconcile them daily.
+- Keep payment, invoice, email delivery, fulfilment, and physical delivery as
+  independent auditable states.
 - A backup on the same SSD is not sufficient; copy verified backup folders to a
   separate USB drive or NAS.
   See `THIRD_PARTY_NOTICES.md`.
+
+## Checkout, payment, and invoices
+
+Axora's customer checkout presents one clear **Pay** action. During the current
+testing stage, the server recalculates the immutable approved total, records the
+payment as paid, finalizes a permanent invoice, generates its PDF, and queues one
+polished transactional email with that PDF attached through Resend.
+
+Payment and physical delivery are independent states. Fulfilment, delivery
+tracking, and customer receipt continue through their own state machines after
+payment. The internal payment-completion boundary is replaceable: a future bank,
+card, FPX, or reviewed manual-confirmation integration can produce the same
+trusted paid event without rewriting invoice finalization or email delivery.

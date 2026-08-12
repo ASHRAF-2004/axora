@@ -81,7 +81,7 @@ export function assertSafeDocumentSnapshot(snapshot) {
     throw new Error("The document snapshot is invalid.");
   }
   const type = snapshot.documentType;
-  if (!["APPROVED_REQUEST", "FINAL_FULFILMENT_DELIVERY", "SUPPLIER_PURCHASE_ORDER"].includes(type)) {
+  if (!["APPROVED_REQUEST", "FINAL_FULFILMENT_DELIVERY", "SUPPLIER_PURCHASE_ORDER", "FINAL_INVOICE"].includes(type)) {
     throw new Error("The document type is invalid.");
   }
   const forbidden = new Set([
@@ -173,6 +173,46 @@ export function buildDocumentSections(snapshotInput) {
         ], copy.noValue) },
         ...(snapshot.warnings?.length ? [{ kind: "list", title: copy.warnings, rows: snapshot.warnings }] : []),
         { kind: "paragraph", title: copy.status, text: snapshot.terms },
+      ],
+    };
+  }
+  if (snapshot.documentType === "FINAL_INVOICE") {
+    const labels = {
+      en: { title: "Final invoice", invoice: "Invoice", issued: "Issued", paid: "Paid", customer: "Customer", reference: "Reference", items: "Invoice items", sku: "SKU", name: "Item", quantity: "Quantity", unit: "Unit", price: "Unit price", total: "Total", subtotal: "Subtotal", discount: "Discount", tax: "Tax", delivery: "Delivery", amount: "Amount paid", status: "Payment status", footer: "This is the finalized Axora invoice for your records." },
+      ar: { title: "الفاتورة النهائية", invoice: "الفاتورة", issued: "تاريخ الإصدار", paid: "مدفوع", customer: "العميل", reference: "المرجع", items: "بنود الفاتورة", sku: "الرمز", name: "البند", quantity: "الكمية", unit: "الوحدة", price: "سعر الوحدة", total: "الإجمالي", subtotal: "المجموع الفرعي", discount: "الخصم", tax: "الضريبة", delivery: "التوصيل", amount: "المبلغ المدفوع", status: "حالة الدفع", footer: "هذه فاتورة Axora النهائية لسجلاتك." },
+      ms: { title: "Invois muktamad", invoice: "Invois", issued: "Dikeluarkan", paid: "Dibayar", customer: "Pelanggan", reference: "Rujukan", items: "Item invois", sku: "SKU", name: "Item", quantity: "Kuantiti", unit: "Unit", price: "Harga unit", total: "Jumlah", subtotal: "Subjumlah", discount: "Diskaun", tax: "Cukai", delivery: "Penghantaran", amount: "Jumlah dibayar", status: "Status bayaran", footer: "Ini ialah invois Axora muktamad untuk rekod anda." },
+    }[locale];
+    const invoice = snapshot.invoice ?? {};
+    const request = snapshot.request ?? {};
+    const company = snapshot.company ?? {};
+    return {
+      locale, rtl, copy, timezone, title: labels.title,
+      subtitle: `${labels.invoice}: ${display(invoice.number, copy.noValue)} · ${labels.status}: ${labels.paid}`,
+      sections: [
+        { kind: "facts", title: labels.invoice, rows: [
+          [labels.invoice, invoice.number],
+          [labels.issued, formatDate(invoice.issuedAt, locale, timezone, copy.noValue)],
+          [labels.status, labels.paid],
+          [labels.amount, formatNumber(invoice.amount, locale, invoice.currency)],
+          [labels.customer, company.companyName],
+          [labels.reference, request.reference],
+        ] },
+        { kind: "table", title: labels.items, columns: [
+          { key: "sku", label: labels.sku, width: 70 },
+          { key: "name", label: labels.name, width: 180 },
+          { key: "quantity", label: labels.quantity, width: 62 },
+          { key: "unitOfMeasure", label: labels.unit, width: 60 },
+          { key: "unitPrice", label: labels.price, width: 90, money: true },
+          { key: "lineTotal", label: labels.total, width: 88, money: true },
+        ], rows: snapshot.lines ?? [], currency: invoice.currency },
+        { kind: "facts", title: labels.total, rows: [
+          [labels.subtotal, formatNumber(snapshot.totals?.subtotal, locale, invoice.currency)],
+          [labels.discount, formatNumber(snapshot.totals?.discount, locale, invoice.currency)],
+          [labels.tax, formatNumber(snapshot.totals?.tax, locale, invoice.currency)],
+          [labels.delivery, formatNumber(snapshot.totals?.delivery, locale, invoice.currency)],
+          [labels.amount, formatNumber(snapshot.totals?.total, locale, invoice.currency)],
+        ] },
+        { kind: "paragraph", title: labels.status, text: labels.footer },
       ],
     };
   }

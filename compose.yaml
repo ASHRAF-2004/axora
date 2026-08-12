@@ -102,9 +102,9 @@ services:
       ZEPTOMAIL_PLATFORM_AGENT_KEY: "${ZEPTOMAIL_PLATFORM_AGENT_KEY:-}"
       ACCOUNT_SETUP_TTL_HOURS: "${ACCOUNT_SETUP_TTL_HOURS:-24}"
       AXORA_EMAIL_REPLY_TO: "${AXORA_EMAIL_REPLY_TO:-support@axora.management}"
+      AXORA_UPLOADS_CONTAINER_DIR: /app/data/uploads
       # Server-only monitored inbox; never expose this as NEXT_PUBLIC_*.
       AXORA_CONTACT_NOTIFICATION_TO: "${AXORA_CONTACT_NOTIFICATION_TO:-}"
-      AXORA_UPLOADS_CONTAINER_DIR: /app/data/uploads
       TURNSTILE_SITE_KEY: "${TURNSTILE_SITE_KEY:-}"
       TURNSTILE_SECRET_FILE: /run/secrets/turnstile_secret
       TURNSTILE_HOSTNAMES: "${TURNSTILE_HOSTNAMES:-axora.management}"
@@ -172,6 +172,8 @@ services:
       - axora_email_service_auth_key
     expose:
       - "3100"
+    volumes:
+      - ./data/uploads:/app/data/uploads:ro
     networks:
       mail: {}
       # Compose selects the highest gw_priority as the default route. Keep

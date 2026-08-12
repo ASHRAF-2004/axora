@@ -6,7 +6,7 @@ import { requirePagePermission } from "@/lib/auth";
 import { getCatalogProductById } from "@/lib/catalog";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
-import { COD_PAYMENT_METHOD, type Branch, type Company } from "@/lib/types";
+import { STANDARD_BILLING_TERMS, type Branch, type Company } from "@/lib/types";
 
 export default async function NewRequestPage({
   searchParams,
@@ -27,7 +27,7 @@ export default async function NewRequestPage({
   ]);
   const companies: Company[] = organization.companies.map((company) => ({
     ...company,
-    paymentTerms: COD_PAYMENT_METHOD,
+    paymentTerms: STANDARD_BILLING_TERMS,
   }));
   const branches: Branch[] = organization.branches.map((branch) => ({
     ...branch,

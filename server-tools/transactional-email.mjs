@@ -166,6 +166,33 @@ const COPY = {
   },
 };
 
+const INVOICE_COPY = {
+  en: {
+    eyebrow: "Invoice", title: "Payment confirmed",
+    intro: "Your payment has been recorded successfully. Your finalized invoice is attached for your records.",
+    subject: "Your Axora invoice",
+    labels: { invoice: "Invoice", reference: "Reference", status: "Status", amount: "Amount paid", paidAt: "Paid" },
+    paid: "Paid", security: "The attached PDF is the finalized invoice for this payment.",
+    help: "Keep this email and attachment for your records.", footer: "Finalized invoice notification.",
+  },
+  ar: {
+    eyebrow: "الفاتورة", title: "تم تأكيد الدفع",
+    intro: "تم تسجيل دفعتك بنجاح. الفاتورة النهائية مرفقة لسجلاتك.",
+    subject: "فاتورة Axora الخاصة بك",
+    labels: { invoice: "الفاتورة", reference: "المرجع", status: "الحالة", amount: "المبلغ المدفوع", paidAt: "وقت الدفع" },
+    paid: "مدفوع", security: "ملف PDF المرفق هو الفاتورة النهائية لهذا الدفع.",
+    help: "احتفظ بهذه الرسالة والمرفق لسجلاتك.", footer: "إشعار الفاتورة النهائية.",
+  },
+  ms: {
+    eyebrow: "Invois", title: "Bayaran disahkan",
+    intro: "Bayaran anda telah direkodkan. Invois muktamad dilampirkan untuk rekod anda.",
+    subject: "Invois Axora anda",
+    labels: { invoice: "Invois", reference: "Rujukan", status: "Status", amount: "Jumlah dibayar", paidAt: "Dibayar" },
+    paid: "Dibayar", security: "PDF yang dilampirkan ialah invois muktamad untuk bayaran ini.",
+    help: "Simpan e-mel dan lampiran ini untuk rekod anda.", footer: "Pemberitahuan invois muktamad.",
+  },
+};
+
 let templatePromise;
 
 function templateSource() {
@@ -343,6 +370,24 @@ export async function renderTransactionalEmail(input, options = {}) {
     replyToName = name;
     helpText = `${kindCopy.help} ${copy.supportLabel}: ${supportEmail}`;
     text = `${kindCopy.title}\n\n${kindCopy.labels.name}: ${name}\n${kindCopy.labels.email}: ${email}\n${kindCopy.labels.company}: ${company}${phone ? `\n${kindCopy.labels.phone}: ${phone}` : ""}\n${kindCopy.labels.subject}: ${enquirySubject}\n${kindCopy.labels.submitted}: ${submitted}\n\n${kindCopy.message}:\n${message}\n\n${kindCopy.security}\n${helpText}`;
+  } else if (input.messageKind === "INVOICE_FINALIZED") {
+    const invoice = input.invoice ?? {};
+    const invoiceNumber = boundedText(invoice.invoiceNumber, "Invoice number", 100);
+    const requestReference = boundedText(invoice.requestReference, "Request reference", 100);
+    const amount = boundedText(`${invoice.currency} ${invoice.amount}`, "Invoice amount", 80);
+    const paidAt = formatDate(invoice.paidAt, copy.locale);
+    kindCopy = INVOICE_COPY[locale];
+    subject = `${kindCopy.subject} ${invoiceNumber}`;
+    preheader = kindCopy.intro;
+    details = detailRows([
+      [kindCopy.labels.invoice, invoiceNumber],
+      [kindCopy.labels.reference, requestReference],
+      [kindCopy.labels.status, kindCopy.paid],
+      [kindCopy.labels.amount, amount],
+      [kindCopy.labels.paidAt, paidAt],
+    ], copy.align);
+    helpText = `${kindCopy.help} ${copy.supportLabel}: ${supportEmail}`;
+    text = `${kindCopy.title}\n\n${kindCopy.intro}\n\n${kindCopy.labels.invoice}: ${invoiceNumber}\n${kindCopy.labels.reference}: ${requestReference}\n${kindCopy.labels.status}: ${kindCopy.paid}\n${kindCopy.labels.amount}: ${amount}\n${kindCopy.labels.paidAt}: ${paidAt}\n\n${kindCopy.security}\n${helpText}`;
   } else if (input.messageKind === "PASSWORD_CHANGED") {
     kindCopy = copy.passwordChanged;
     subject = kindCopy.subject;
@@ -385,7 +430,9 @@ export async function renderTransactionalEmail(input, options = {}) {
     throw new Error("Transactional email kind is invalid.");
   }
 
-  subject = templateDefinition.subjects[locale];
+  if (input.messageKind !== "INVOICE_FINALIZED") {
+    subject = templateDefinition.subjects[locale];
+  }
 
   const template = options.template ?? await templateSource();
   const html = applyPlaceholders(template, {

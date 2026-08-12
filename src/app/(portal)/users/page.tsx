@@ -11,7 +11,7 @@ import { localizedAccountRole } from "@/lib/user-form-i18n";
 import { creatableAccountRoles, accountRoleLabel } from "@/lib/role-catalog";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { loadOrganizationStructureWorkspace } from "@/lib/organization-structure";
-import { COD_PAYMENT_METHOD, type Branch, type Company } from "@/lib/types";
+import { STANDARD_BILLING_TERMS, type Branch, type Company } from "@/lib/types";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { profileImageMessages } from "@/lib/profile-image-i18n";
 import Link from "next/link";
@@ -68,7 +68,7 @@ export default async function UsersPage() {
   ]);
   const companies: Company[] = organization.companies.map((company) => ({
     ...company,
-    paymentTerms: COD_PAYMENT_METHOD,
+    paymentTerms: STANDARD_BILLING_TERMS,
   }));
   const branches: Branch[] = organization.branches.map((branch) => ({
     ...branch,

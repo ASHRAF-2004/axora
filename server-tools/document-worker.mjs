@@ -45,7 +45,8 @@ function fileNameFor(job) {
   ).normalize("NFKD").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 90);
   const prefix = job.document_type === "APPROVED_REQUEST" ? "approved-request"
     : job.document_type === "FINAL_FULFILMENT_DELIVERY" ? "final-delivery"
-      : "supplier-purchase-order";
+      : job.document_type === "FINAL_INVOICE" ? "Axora-Invoice"
+        : "supplier-purchase-order";
   return `${prefix}-${reference || job.request_id}.pdf`;
 }
 
@@ -104,8 +105,11 @@ export function createDocumentJobStore(pool) {
       return result.rows[0] ?? null;
     },
     async complete(job, output, pageCount, now) {
+      const capability = job.document_type === "FINAL_INVOICE"
+        ? "axora_complete_final_invoice_document_job"
+        : "axora_complete_document_generation_job";
       const result = await workerQuery(pool,
-        "SELECT public.axora_complete_document_generation_job($1,$2,$3,$4,$5,$6,$7,$8) AS value",
+        `SELECT public.${capability}($1,$2,$3,$4,$5,$6,$7,$8) AS value`,
         [job.job_id, job.lease_id, output.fileName, output.relativePath,
           output.checksum, pageCount, output.fileSize, now]);
       return result.rows[0]?.value;

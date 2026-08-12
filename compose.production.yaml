@@ -124,6 +124,13 @@ services:
     mem_limit: 512m
     pids_limit: 128
     stop_grace_period: 20s
+    volumes: !override
+      - type: bind
+        source: "${AXORA_UPLOADS_DIR:?Set AXORA_UPLOADS_DIR to the persistent uploads directory}"
+        target: /app/data/uploads
+        read_only: true
+        bind:
+          create_host_path: false
 
   budget-worker:
     image: "${AXORA_IMAGE:?Set AXORA_IMAGE to an immutable Axora image reference}"

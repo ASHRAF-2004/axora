@@ -45,7 +45,7 @@ describe("production manual publication", () => {
     const source = readFileSync(join(root, "scripts", "manuals", "generate_user_manuals.py"), "utf8");
     expect(source).toContain("one-time invitation link");
     expect(source).toContain("Self-approval is blocked");
-    expect(source).toContain("Supplier User");
+    expect(source).not.toContain("Supplier User");
     expect(source).toContain("Delivery Driver");
     expect(source).toContain("Receiving User");
     expect(source).toContain("three-way matching");

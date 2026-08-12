@@ -4,17 +4,17 @@
   "checks": [
     {
       "page": "finance",
-      "value": "Cash on delivery (COD)",
+      "value": "paid checkout",
       "readOnly": true
     },
     {
       "page": "companies",
-      "value": "Cash on delivery (COD)",
+      "value": "paid checkout",
       "readOnly": true
     },
     {
       "page": "suppliers",
-      "value": "Cash on delivery (COD)",
+      "value": "paid checkout",
       "readOnly": true
     }
   ]

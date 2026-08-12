@@ -10,7 +10,7 @@
 /.superdesign/tmp/
 /assets/
 __pycache__/
-*.py[cod]
+*.py[payment]
 *.tsbuildinfo
 
 # local secrets and runtime data

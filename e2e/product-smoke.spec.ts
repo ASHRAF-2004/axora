@@ -8,7 +8,7 @@ const authenticatedRoutes = [
   { path: "/sourcing", heading: "Sourcing and quotations" },
   { path: "/deliveries", heading: "Delivery control tower" },
   { path: "/receiving", heading: "Confirm delivered quantities" },
-  { path: "/finance", heading: "Invoices and COD payments" },
+  { path: "/finance", heading: "Invoices and payments" },
   { path: "/documents", heading: "Documents" },
   { path: "/companies", heading: "Company lifecycle" },
   { path: "/branches", heading: "Branches & monthly budgets" },

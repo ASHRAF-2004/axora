@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getDemoOperations } from "@/lib/demo-operations";
 import { getDemoStore } from "@/lib/demo-data";
-import { COD_PAYMENT_METHOD } from "@/lib/types";
+import { INTERNAL_PAYMENT_STRATEGY, STANDARD_BILLING_TERMS } from "@/lib/types";
 import { companySchema, supplierSchema } from "@/lib/validation";
 import {
   createInvoice,
@@ -26,6 +26,22 @@ const requesterActor = {
   ...companyActor,
   email: "company-admin@youruni.example",
 };
+
+function getSupplierPaymentInvoice() {
+  const operations = getDemoOperations();
+  const existing = operations.invoices.find((item) => item.id === "supplier-payment-validation");
+  if (existing) return existing;
+  const source = operations.invoices.find((item) => item.outstandingAmount > 0);
+  if (!source) throw new Error("Supplier payment validation fixture is unavailable.");
+  const invoice = {
+    ...source,
+    id: "supplier-payment-validation",
+    direction: "SUPPLIER" as const,
+    invoiceNumber: "SINV-PAYMENT-VALIDATION",
+  };
+  operations.invoices.unshift(invoice);
+  return invoice;
+}
 
 describe("operational validation helpers", () => {
   it("requires a reason before a quotation can be selected", async () => {
@@ -125,51 +141,48 @@ describe("operational validation helpers", () => {
   });
 
   it("does not allow payment above the outstanding invoice amount", async () => {
-    const invoice = getDemoOperations().invoices.find((item) => item.outstandingAmount > 0);
-    expect(invoice).toBeDefined();
+    const invoice = getSupplierPaymentInvoice();
 
     await expect(recordPayment({
-      invoiceId: invoice!.id,
+      invoiceId: invoice.id,
       paymentDate: "2026-07-22",
-      amount: invoice!.outstandingAmount + 1,
-      method: COD_PAYMENT_METHOD,
+      amount: invoice.outstandingAmount + 1,
+      method: INTERNAL_PAYMENT_STRATEGY,
       reference: "RECEIPT-OVERPAY-TEST",
     }, actor)).rejects.toThrow("Payment cannot exceed the outstanding invoice amount.");
   });
 
-  it("rejects every non-COD payment method", async () => {
-    const invoice = getDemoOperations().invoices.find((item) => item.outstandingAmount > 0);
+  it("rejects every non-payment payment method", async () => {
+    const invoice = getSupplierPaymentInvoice();
     const paymentCount = getDemoOperations().payments.length;
-    expect(invoice).toBeDefined();
 
     await expect(recordPayment({
-      invoiceId: invoice!.id,
+      invoiceId: invoice.id,
       paymentDate: "2026-07-22",
       amount: 1,
       method: "Bank transfer",
-    }, actor)).rejects.toThrow(`Only ${COD_PAYMENT_METHOD} is currently supported.`);
+    }, actor)).rejects.toThrow(`Only ${INTERNAL_PAYMENT_STRATEGY} is currently supported.`);
     expect(getDemoOperations().payments).toHaveLength(paymentCount);
   });
 
-  it("requires a numbered receipt reference for COD evidence", async () => {
-    const invoice = getDemoOperations().invoices.find((item) => item.outstandingAmount > 0);
-    expect(invoice).toBeDefined();
+  it("requires a numbered receipt reference for payment evidence", async () => {
+    const invoice = getSupplierPaymentInvoice();
     await expect(recordPayment({
-      invoiceId: invoice!.id,
+      invoiceId: invoice.id,
       paymentDate: "2026-07-22",
       amount: 1,
-      method: COD_PAYMENT_METHOD,
+      method: INTERNAL_PAYMENT_STRATEGY,
     }, actor)).rejects.toThrow("numbered receipt");
   });
 
-  it("uses only the canonical COD method in demo payment records", () => {
+  it("uses only the canonical payment method in demo payment records", () => {
     expect(getDemoOperations().payments.length).toBeGreaterThan(0);
-    expect(getDemoOperations().payments.every((payment) => payment.method === COD_PAYMENT_METHOD)).toBe(true);
+    expect(getDemoOperations().payments.every((payment) => payment.method === INTERNAL_PAYMENT_STRATEGY)).toBe(true);
   });
 
-  it("rejects non-COD company and supplier settlement terms", () => {
-    expect(companySchema.shape.paymentTerms.safeParse(COD_PAYMENT_METHOD).success).toBe(true);
-    expect(supplierSchema.shape.paymentTerms.safeParse(COD_PAYMENT_METHOD).success).toBe(true);
+  it("rejects non-payment company and supplier settlement terms", () => {
+    expect(companySchema.shape.paymentTerms.safeParse(STANDARD_BILLING_TERMS).success).toBe(true);
+    expect(supplierSchema.shape.paymentTerms.safeParse(STANDARD_BILLING_TERMS).success).toBe(true);
     expect(companySchema.shape.paymentTerms.safeParse("30 days").success).toBe(false);
     expect(supplierSchema.shape.paymentTerms.safeParse("Bank transfer").success).toBe(false);
   });
@@ -185,7 +198,7 @@ describe("operational validation helpers", () => {
     }, actor)).rejects.toThrow("Select the supplier for a supplier invoice.");
   });
 
-  it("blocks invoices before delivery and above the company-approved total", async () => {
+  it("reserves customer invoice finalization for checkout", async () => {
     const request = getDemoStore().requests.find((item) => !item.invoiceNumber && item.lines.every((line) => line.quantityReceived === 0));
     expect(request).toBeDefined();
     await expect(createInvoice({
@@ -195,29 +208,7 @@ describe("operational validation helpers", () => {
       invoiceDate: "2026-07-22",
       amount: 1,
       status: "Issued",
-    }, actor)).rejects.toThrow("fully delivered");
-
-    const originalStatus = request!.status;
-    const originalApproval = request!.approvalStatus;
-    const originalReceived = request!.lines.map((line) => line.quantityReceived);
-    request!.status = "Delivered";
-    request!.approvalStatus = "Approved";
-    request!.lines.forEach((line) => { line.quantityReceived = line.quantity; });
-    const approvedTotal = request!.lines.reduce((sum, line) => sum + line.quantity * line.unitSellPrice, 0);
-    try {
-      await expect(createInvoice({
-        direction: "CUSTOMER",
-        requestId: request!.id,
-        invoiceNumber: "CINV-OVER-APPROVAL",
-        invoiceDate: "2026-07-22",
-        amount: approvedTotal + 0.01,
-        status: "Issued",
-      }, actor)).rejects.toThrow("cannot exceed the total approved");
-    } finally {
-      request!.status = originalStatus;
-      request!.approvalStatus = originalApproval;
-      request!.lines.forEach((line, index) => { line.quantityReceived = originalReceived[index]; });
-    }
+    }, actor)).rejects.toThrow("Customer invoices are finalized by checkout.");
   });
 
   it("rejects a supplier invoice for a vendor not sourced on the request", async () => {
@@ -353,7 +344,7 @@ describe("operational validation helpers", () => {
       invoiceId: invoice.id,
       paymentDate: "2026-07-22",
       amount: 1,
-      method: COD_PAYMENT_METHOD,
+      method: INTERNAL_PAYMENT_STRATEGY,
     }, companyActor)).rejects.toThrow("Only authorized Axora finance users can record payments.");
   });
 

@@ -463,6 +463,20 @@ BEGIN
   END IF;
 END $$;
 
+-- Paid checkout and final-invoice capabilities. Payment evidence, invoice
+-- payload assembly and queue triggers remain private to SECURITY DEFINER
+-- boundaries; the runtime receives only the three required entry points.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.payment_accountability_events') IS NOT NULL
+  THEN
+    EXECUTE 'REVOKE ALL ON TABLE public.payment_accountability_events FROM axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_invoice_email_payload(uuid),public.axora_invoice_email_ready(uuid),public.axora_invoice_email_recipient_suppressed(uuid),public.axora_queue_final_invoice_email(),public.axora_protect_invoice_email_identity(),public.validate_new_invoice_workflow(),public.prevent_invoice_overpayment() FROM axora_app';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_complete_payment(uuid,uuid,uuid,text,text,timestamptz),public.axora_final_invoice_summary(uuid,uuid,uuid,timestamptz),public.axora_complete_final_invoice_document_job(uuid,uuid,text,text,text,integer,bigint,timestamptz) TO axora_app';
+  END IF;
+END $$;
+
 -- P0-10 immutable accountability closure. The application can use only the
 -- scope-enforcing read/access capabilities; audit evidence and chain heads are
 -- never directly readable or mutable by the runtime role.

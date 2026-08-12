@@ -45,7 +45,7 @@ treated as authorization.
 | Company approver | Company | Eligible company-wide approval queue, budget/evidence context, reports | No self-approval; no sourcing, supplier selection, or user administration |
 | Branch approver | Branch | Eligible branch approval queue, budget/evidence context, reports | No self-approval; no other branch; no sourcing or supplier selection |
 | Purchase requester | Branch | Shop, create and track own requests, permitted documents/delivery status | Cannot approve, source, manage users, or see other users' private work |
-| Finance reviewer | Company or branch | Permitted invoices, COD evidence, customer three-way matching, exceptions/reports | No request approval, sourcing, or private Axora supplier-cost view outside granted finance records |
+| Finance reviewer | Company or branch | Permitted invoices, payment evidence, customer three-way matching, exceptions/reports | No request approval, sourcing, or private Axora supplier-cost view outside granted finance records |
 | Read-only auditor | Company or branch | Read-only requests, deliveries, invoices, documents, reports; company-wide audit when safe | No mutations; branch-scoped audit remains denied where history cannot be safely narrowed |
 | Receiving user | Company or branch | Independently inspect and confirm assigned receipts | Cannot alter driver evidence, approve requests, or administer invoices |
 | Supplier user | Supplier | Assigned RFQs, own quotation terms/documents, acknowledgement and fulfilment updates | No competitors, Axora margin, unrelated customers, private selection notes, or self-selection |

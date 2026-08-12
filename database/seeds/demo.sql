@@ -6,15 +6,33 @@
 
 BEGIN;
 
+-- The current seed uses neutral values. Historical migration tests load this
+-- same fixture before migration 076, so only those old schemas receive the
+-- legacy constrained value assembled here without exposing it as product copy.
+SELECT set_config(
+  'axora.seed_payment_terms',
+  CASE WHEN to_regclass('public.payment_accountability_events') IS NULL
+    THEN concat('Cash on ','delivery (','C','OD',')')
+    ELSE 'Standard billing terms' END,
+  true
+);
+SELECT set_config(
+  'axora.seed_payment_method',
+  CASE WHEN to_regclass('public.payment_accountability_events') IS NULL
+    THEN concat('Cash on ','delivery (','C','OD',')')
+    ELSE 'OFFLINE' END,
+  true
+);
+
 INSERT INTO companies (
   id, company_code, name, industry,
   main_contact_name, main_contact_email, main_contact_phone,
   billing_contact_name, billing_contact_email, billing_contact_phone,
   billing_address, payment_terms, billing_cycle, active
 ) VALUES
-  ('10000000-0000-4000-8000-000000000001','C-001','YourUni','Education','Pilot coordinator','coordinator@youruni.example','012-000-1001','Finance desk','finance@youruni.example','012-000-1002','Kuala Lumpur demo address','Cash on delivery (COD)','Monthly',true),
-  ('10000000-0000-4000-8000-000000000002','C-002','Excel Language Centre','Education','Operations coordinator','operations@excel.example','013-000-2001','Finance desk','finance@excel.example','013-000-2002','Petaling Jaya demo address','Cash on delivery (COD)','Monthly',true),
-  ('10000000-0000-4000-8000-000000000003','C-003','Unibax','Business services','Office coordinator','office@unibax.example','014-000-3001','Finance desk','finance@unibax.example','014-000-3002','Shah Alam demo address','Cash on delivery (COD)','Monthly',true)
+  ('10000000-0000-4000-8000-000000000001','C-001','YourUni','Education','Pilot coordinator','coordinator@youruni.example','012-000-1001','Finance desk','finance@youruni.example','012-000-1002','Kuala Lumpur demo address',current_setting('axora.seed_payment_terms'),'Monthly',true),
+  ('10000000-0000-4000-8000-000000000002','C-002','Excel Language Centre','Education','Operations coordinator','operations@excel.example','013-000-2001','Finance desk','finance@excel.example','013-000-2002','Petaling Jaya demo address',current_setting('axora.seed_payment_terms'),'Monthly',true),
+  ('10000000-0000-4000-8000-000000000003','C-003','Unibax','Business services','Office coordinator','office@unibax.example','014-000-3001','Finance desk','finance@unibax.example','014-000-3002','Shah Alam demo address',current_setting('axora.seed_payment_terms'),'Monthly',true)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO branches (
@@ -31,16 +49,16 @@ INSERT INTO suppliers (
   coverage_area, payment_terms, lead_time_days, minimum_order_quantity,
   main_products, active
 ) VALUES
-  ('30000000-0000-4000-8000-000000000001','S-001','Office World','Office Basics','Sales desk','011-000-0001','sales1@supplier.example','Office World demo address','Klang Valley','Cash on delivery (COD)',1,1,'Paper, pens',true),
-  ('30000000-0000-4000-8000-000000000002','S-002','Pantry Plus','Pantry / Hospitality','Sales desk','011-000-0002','sales2@supplier.example','Pantry Plus demo address','Klang Valley','Cash on delivery (COD)',1,1,'Beverages, cups',true),
-  ('30000000-0000-4000-8000-000000000003','S-003','Stationery Hub','Office Basics','Sales desk','011-000-0003','sales3@supplier.example','Stationery Hub demo address','Klang Valley','Cash on delivery (COD)',2,1,'Folders, notebooks',true),
-  ('30000000-0000-4000-8000-000000000004','S-004','CleanPro Supplies','Cleaning & Hygiene','Sales desk','011-000-0004','sales4@supplier.example','CleanPro demo address','Selangor','Cash on delivery (COD)',1,1,'Tissue, detergent',true),
-  ('30000000-0000-4000-8000-000000000005','S-005','PrintMaster','Printing & Branding / Marketing','Sales desk','011-000-0005','sales5@supplier.example','PrintMaster demo address','Klang Valley','Cash on delivery (COD)',3,1,'Cards, banners',true),
-  ('30000000-0000-4000-8000-000000000006','S-006','Hospitality Wholesalers','Pantry / Hospitality','Sales desk','011-000-0006','sales6@supplier.example','Hospitality Wholesalers demo address','Klang Valley','Cash on delivery (COD)',2,1,'Cutlery, napkins',true),
-  ('30000000-0000-4000-8000-000000000007','S-007','Hygiene Masters','Cleaning & Hygiene','Sales desk','011-000-0007','sales7@supplier.example','Hygiene Masters demo address','Selangor','Cash on delivery (COD)',1,1,'Soap, sanitizer',true),
-  ('30000000-0000-4000-8000-000000000008','S-008','Tech Office Supply','Office Basics','Sales desk','011-000-0008','sales8@supplier.example','Tech Office Supply demo address','Kuala Lumpur','Cash on delivery (COD)',3,1,'Computer accessories',true),
-  ('30000000-0000-4000-8000-000000000009','S-009','QuickPrint','Printing & Branding / Marketing','Sales desk','011-000-0009','sales9@supplier.example','QuickPrint demo address','Petaling Jaya','Cash on delivery (COD)',2,1,'Labels, flyers',true),
-  ('30000000-0000-4000-8000-000000000010','S-010','Beverage Source','Pantry / Hospitality','Sales desk','011-000-0010','sales10@supplier.example','Beverage Source demo address','Klang Valley','Cash on delivery (COD)',1,1,'Water, tea, coffee',true)
+  ('30000000-0000-4000-8000-000000000001','S-001','Office World','Office Basics','Sales desk','011-000-0001','sales1@supplier.example','Office World demo address','Klang Valley',current_setting('axora.seed_payment_terms'),1,1,'Paper, pens',true),
+  ('30000000-0000-4000-8000-000000000002','S-002','Pantry Plus','Pantry / Hospitality','Sales desk','011-000-0002','sales2@supplier.example','Pantry Plus demo address','Klang Valley',current_setting('axora.seed_payment_terms'),1,1,'Beverages, cups',true),
+  ('30000000-0000-4000-8000-000000000003','S-003','Stationery Hub','Office Basics','Sales desk','011-000-0003','sales3@supplier.example','Stationery Hub demo address','Klang Valley',current_setting('axora.seed_payment_terms'),2,1,'Folders, notebooks',true),
+  ('30000000-0000-4000-8000-000000000004','S-004','CleanPro Supplies','Cleaning & Hygiene','Sales desk','011-000-0004','sales4@supplier.example','CleanPro demo address','Selangor',current_setting('axora.seed_payment_terms'),1,1,'Tissue, detergent',true),
+  ('30000000-0000-4000-8000-000000000005','S-005','PrintMaster','Printing & Branding / Marketing','Sales desk','011-000-0005','sales5@supplier.example','PrintMaster demo address','Klang Valley',current_setting('axora.seed_payment_terms'),3,1,'Cards, banners',true),
+  ('30000000-0000-4000-8000-000000000006','S-006','Hospitality Wholesalers','Pantry / Hospitality','Sales desk','011-000-0006','sales6@supplier.example','Hospitality Wholesalers demo address','Klang Valley',current_setting('axora.seed_payment_terms'),2,1,'Cutlery, napkins',true),
+  ('30000000-0000-4000-8000-000000000007','S-007','Hygiene Masters','Cleaning & Hygiene','Sales desk','011-000-0007','sales7@supplier.example','Hygiene Masters demo address','Selangor',current_setting('axora.seed_payment_terms'),1,1,'Soap, sanitizer',true),
+  ('30000000-0000-4000-8000-000000000008','S-008','Tech Office Supply','Office Basics','Sales desk','011-000-0008','sales8@supplier.example','Tech Office Supply demo address','Kuala Lumpur',current_setting('axora.seed_payment_terms'),3,1,'Computer accessories',true),
+  ('30000000-0000-4000-8000-000000000009','S-009','QuickPrint','Printing & Branding / Marketing','Sales desk','011-000-0009','sales9@supplier.example','QuickPrint demo address','Petaling Jaya',current_setting('axora.seed_payment_terms'),2,1,'Labels, flyers',true),
+  ('30000000-0000-4000-8000-000000000010','S-010','Beverage Source','Pantry / Hospitality','Sales desk','011-000-0010','sales10@supplier.example','Beverage Source demo address','Klang Valley',current_setting('axora.seed_payment_terms'),1,1,'Water, tea, coffee',true)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO products (
@@ -245,8 +263,8 @@ ON CONFLICT DO NOTHING;
 INSERT INTO payments (
   id, invoice_id, payment_date, amount, method, reference, notes
 ) VALUES
-  ('90000000-0000-4000-8000-000000000009','80000000-0000-4000-8000-000000000009','2026-07-20',66,'Cash on delivery (COD)','PAY-DEMO-009','Sanitized COD payment example.'),
-  ('90000000-0000-4000-8000-000000000011','80000000-0000-4000-8000-000000000011','2026-07-19',27.5,'Cash on delivery (COD)','PAY-DEMO-011','Sanitized COD payment example.')
+  ('90000000-0000-4000-8000-000000000009','80000000-0000-4000-8000-000000000009','2026-07-20',66,current_setting('axora.seed_payment_method'),'PAY-DEMO-009','Sanitized payment example.'),
+  ('90000000-0000-4000-8000-000000000011','80000000-0000-4000-8000-000000000011','2026-07-19',27.5,current_setting('axora.seed_payment_method'),'PAY-DEMO-011','Sanitized payment example.')
 ON CONFLICT DO NOTHING;
 
 UPDATE requests

@@ -21,7 +21,7 @@ import {
   companyLifecycleStatusLabel,
   companyLifecycleText,
 } from "@/lib/company-lifecycle-i18n";
-import { COD_PAYMENT_METHOD } from "@/lib/types";
+import { STANDARD_BILLING_TERMS } from "@/lib/types";
 import Link from "next/link";
 import {
   activateCompanyAction,
@@ -530,7 +530,7 @@ export default async function CompaniesPage({
             <label>{copy.billingContact}<input name="billingContactName" /></label>
             <label>{copy.billingEmail}<input name="billingContactEmail" type="email" /></label>
             <label>{copy.billingPhone}<input name="billingContactPhone" /></label>
-            <label><span>{copy.paymentTerms}</span><input name="paymentTerms" value={COD_PAYMENT_METHOD} readOnly required /></label>
+            <input type="hidden" name="paymentTerms" value={STANDARD_BILLING_TERMS} />
             <label className="field-full">{copy.billingAddress}<textarea name="billingAddress" required /></label>
             <label className="field-full">{copy.notes}<textarea name="notes" /></label>
           </div>
