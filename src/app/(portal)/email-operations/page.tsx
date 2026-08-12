@@ -151,9 +151,9 @@ export default async function EmailOperationsPage({
             <div><span>{messages.deliveryGate}</span><strong>{workspace.providerRuntime.deliveryEnabled ? messages.enabled : messages.disabled}</strong></div>
             <div><span>{messages.eventsGate}</span><strong>{workspace.providerRuntime.eventsEnabled ? messages.enabled : messages.disabled}</strong></div>
             <div><span>{messages.bootstrapGate}</span><strong>{workspace.providerRuntime.bootstrapEnabled ? messages.enabled : messages.disabled}</strong></div>
-            <div><span>{messages.accountReviewed}</span><strong>{workspace.providerRuntime.accountReviewed ? messages.enabled : messages.disabled}</strong></div>
+            <div><span>{messages.accountReviewed}</span><strong>{workspace.providerRuntime.accountReviewed === undefined ? "-" : workspace.providerRuntime.accountReviewed ? messages.enabled : messages.disabled}</strong></div>
             <div><span>{messages.domainVerified}</span><strong>{workspace.providerRuntime.domainVerified ? messages.enabled : messages.disabled}</strong></div>
-            <div><span>{messages.creditsReady}</span><strong>{workspace.providerRuntime.creditsReady ? messages.enabled : messages.disabled}</strong></div>
+            <div><span>{messages.creditsReady}</span><strong>{workspace.providerRuntime.creditsReady === undefined ? "-" : workspace.providerRuntime.creditsReady ? messages.enabled : messages.disabled}</strong></div>
             <div><span>{messages.webhookVerified}</span><strong>{workspace.providerRuntime.webhookVerified ? messages.enabled : messages.disabled}</strong></div>
           </div>
         </article>
@@ -204,7 +204,7 @@ export default async function EmailOperationsPage({
         {workspace.canManage ? <form action={performEmailOperationAction} className={styles.providerForm}>
           <input type="hidden" name="commandId" value={randomUUID()} />
           <input type="hidden" name="source" value="MANUAL" />
-          <label>{messages.source}<select name="providerName" defaultValue="zeptomail"><option value="zeptomail">ZeptoMail</option><option value="cloudflare-email-service">Cloudflare Email Service</option></select></label>
+          <label>{messages.source}<select name="providerName" defaultValue="resend"><option value="resend">Resend</option><option value="zeptomail">ZeptoMail</option><option value="cloudflare-email-service">Cloudflare Email Service</option></select></label>
           <label>{messages.remaining}<input name="remainingRecipientUnits" type="number" min="0" step="1" inputMode="numeric" /></label>
           <label>{messages.renews}<input name="allowanceRenewsAt" type="date" /></label>
           <label>{messages.expires}<input name="creditExpiresAt" type="date" /></label>

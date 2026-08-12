@@ -34,6 +34,7 @@ command -v jq >/dev/null 2>&1 || fail "jq is required for the one-time active se
 for required_command in cmp cp find getent gpg grep mktemp node sha256sum sort stat tail useradd xargs; do
   command -v "$required_command" >/dev/null 2>&1 || fail "$required_command is required."
 done
+
 LC_ALL=C gpg --version | grep -Eq '^Cipher:.*[,[:space:]]AES256([,[:space:]]|$)' \
   || fail "GPG must support AES256 for guarded reset recovery points."
 [[ -d /srv/axora && ! -L /srv/axora ]] || fail "/srv/axora must be an existing regular directory."
@@ -227,6 +228,24 @@ for zeptomail_token_name in zeptomail_send_token zeptomail_send_token_next; do
       || fail "ZeptoMail token path must be a regular file: $zeptomail_token_name"
     chown root:"$RUNTIME_GID" "$zeptomail_token_file"
     chmod 0640 "$zeptomail_token_file"
+  fi
+done
+
+# Resend credentials are provider-specific protected files. The API key may
+# already be installed; the webhook secret remains an empty fail-closed
+# placeholder until the production endpoint is registered in Resend. Existing
+# regular files are never rewritten or truncated.
+for resend_secret_name in resend_api_key resend_webhook_secret; do
+  resend_secret_file="$SECRETS_DIR/$resend_secret_name"
+  [[ ! -L "$resend_secret_file" ]] \
+    || fail "Resend secret must not be a symlink: $resend_secret_name"
+  if [[ ! -e "$resend_secret_file" ]]; then
+    install -o root -g "$RUNTIME_GID" -m 0640 /dev/null "$resend_secret_file"
+  else
+    [[ -f "$resend_secret_file" ]] \
+      || fail "Resend secret path must be a regular file: $resend_secret_name"
+    chown root:"$RUNTIME_GID" "$resend_secret_file"
+    chmod 0640 "$resend_secret_file"
   fi
 done
 

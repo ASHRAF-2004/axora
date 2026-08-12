@@ -124,9 +124,9 @@ export interface EmailProviderRuntimeReadiness {
   deliveryEnabled: boolean;
   eventsEnabled: boolean;
   bootstrapEnabled: boolean;
-  accountReviewed: boolean;
+  accountReviewed?: boolean;
   domainVerified: boolean;
-  creditsReady: boolean;
+  creditsReady?: boolean;
   webhookVerified: boolean;
 }
 
@@ -280,21 +280,31 @@ export function emailProviderRuntimeReadiness(
   const providerName = env.AXORA_EMAIL_PROVIDER?.trim() || "unconfigured";
   const deliveryEnabled = env.AXORA_EMAIL_DELIVERY_ENABLED === "true";
   const eventsEnabled = env.AXORA_EMAIL_EVENTS_ENABLED === "true";
-  const bootstrapEnabled = env.ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED === "true";
-  const accountReviewed = env.ZEPTOMAIL_ACCOUNT_REVIEWED === "true";
-  const domainVerified = env.ZEPTOMAIL_DOMAIN_VERIFIED === "true";
-  const creditsReady = env.ZEPTOMAIL_CREDITS_READY === "true";
-  const webhookVerified = env.ZEPTOMAIL_WEBHOOK_VERIFIED === "true";
-  const allZeptoGates = accountReviewed && domainVerified && creditsReady && webhookVerified;
+  const isResend = providerName === "resend";
+  const bootstrapEnabled = !isResend
+    && env.ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED === "true";
+  const accountReviewed = isResend
+    ? undefined : env.ZEPTOMAIL_ACCOUNT_REVIEWED === "true";
+  const domainVerified = isResend
+    ? env.RESEND_DOMAIN_VERIFIED === "true"
+    : env.ZEPTOMAIL_DOMAIN_VERIFIED === "true";
+  const creditsReady = isResend
+    ? undefined : env.ZEPTOMAIL_CREDITS_READY === "true";
+  const webhookVerified = isResend
+    ? env.RESEND_WEBHOOK_VERIFIED === "true"
+    : env.ZEPTOMAIL_WEBHOOK_VERIFIED === "true";
+  const allProviderGates = (accountReviewed ?? true) && domainVerified
+    && (creditsReady ?? true) && webhookVerified;
   const invalid = bootstrapEnabled && (deliveryEnabled || eventsEnabled)
-    || deliveryEnabled && (!eventsEnabled || !allZeptoGates)
-    || webhookVerified && (bootstrapEnabled || !eventsEnabled);
+    || deliveryEnabled && (!eventsEnabled || !allProviderGates)
+    || webhookVerified && !eventsEnabled
+    || !["resend", "zeptomail", "cloudflare-email-service"].includes(providerName);
   let state: EmailProviderRuntimeState = "DELIVERY_DISABLED";
   if (invalid) state = "MISCONFIGURED";
   else if (bootstrapEnabled) state = "WEBHOOK_BOOTSTRAP";
   else if (deliveryEnabled) state = "FULLY_ENABLED";
   else if (eventsEnabled && !webhookVerified) state = "SIGNED_WEBHOOK_CONFIGURED";
-  else if (eventsEnabled && allZeptoGates) state = "READY_FOR_CONTROLLED_SEND";
+  else if (eventsEnabled && allProviderGates) state = "READY_FOR_CONTROLLED_SEND";
   else if (providerName === "zeptomail" && !accountReviewed) state = "ACCOUNT_REVIEW_PENDING";
   return {
     providerName,
@@ -543,7 +553,7 @@ export async function executeEmailOperationsCommand(
 }
 
 export async function recordEmailWebhookProcessingFailure(
-  providerName: "zeptomail" | "cloudflare-email-service",
+  providerName: "resend" | "zeptomail" | "cloudflare-email-service",
   errorCode: "invalid_payload" | "processing_failed",
 ) {
   if (isDemoMode()) return;

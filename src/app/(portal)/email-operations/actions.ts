@@ -49,7 +49,7 @@ function commandDetails(formData: FormData, action: EmailOperationsCommandAction
   }
   if (action === "RECONCILE" || action === "RECORD_PROVIDER_HEALTH") {
     return {
-      providerName: textValue(formData, "providerName") || "zeptomail",
+      providerName: textValue(formData, "providerName") || "resend",
       source: textValue(formData, "source") || "MANUAL",
       remainingRecipientUnits: optionalText(formData, "remainingRecipientUnits"),
       allowanceRenewsAt: optionalText(formData, "allowanceRenewsAt"),

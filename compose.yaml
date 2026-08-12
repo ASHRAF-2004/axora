@@ -91,6 +91,9 @@ services:
       ZEPTOMAIL_DOMAIN_VERIFIED: "${ZEPTOMAIL_DOMAIN_VERIFIED:-false}"
       ZEPTOMAIL_CREDITS_READY: "${ZEPTOMAIL_CREDITS_READY:-false}"
       ZEPTOMAIL_WEBHOOK_VERIFIED: "${ZEPTOMAIL_WEBHOOK_VERIFIED:-false}"
+      RESEND_DOMAIN_VERIFIED: "${RESEND_DOMAIN_VERIFIED:-false}"
+      RESEND_WEBHOOK_VERIFIED: "${RESEND_WEBHOOK_VERIFIED:-false}"
+      RESEND_WEBHOOK_SECRET_FILE: /run/secrets/resend_webhook_secret
       ZEPTOMAIL_AUTH_AGENT_KEY: "${ZEPTOMAIL_AUTH_AGENT_KEY:-}"
       ZEPTOMAIL_PROCUREMENT_AGENT_KEY: "${ZEPTOMAIL_PROCUREMENT_AGENT_KEY:-}"
       ZEPTOMAIL_BUDGET_AGENT_KEY: "${ZEPTOMAIL_BUDGET_AGENT_KEY:-}"
@@ -111,6 +114,7 @@ services:
       - session_secret
       - axora_email_service_auth_key
       - axora_email_events_webhook_secret
+      - resend_webhook_secret
       - turnstile_secret
     depends_on:
       migrate:
@@ -150,6 +154,7 @@ services:
       APP_BASE_URL: "https://${AXORA_HOST:?Set AXORA_HOST in .env}"
       CLOUDFLARE_ACCOUNT_ID: "${CLOUDFLARE_ACCOUNT_ID:-}"
       CLOUDFLARE_EMAIL_API_TOKEN_FILE: /run/secrets/cloudflare_email_api_token
+      RESEND_API_KEY_FILE: /run/secrets/resend_api_key
       ZEPTOMAIL_SEND_TOKEN_FILE: /run/secrets/zeptomail_send_token
       ZEPTOMAIL_SEND_TOKEN_NEXT_FILE: /run/secrets/zeptomail_send_token_next
       AXORA_ZEPTOMAIL_TOKEN_SLOT: "${AXORA_ZEPTOMAIL_TOKEN_SLOT:-primary}"
@@ -161,6 +166,7 @@ services:
       AXORA_EMAIL_REPLY_TO: "${AXORA_EMAIL_REPLY_TO:-support@axora.management}"
     secrets:
       - cloudflare_email_api_token
+      - resend_api_key
       - zeptomail_send_token
       - zeptomail_send_token_next
       - axora_email_service_auth_key
@@ -362,6 +368,8 @@ secrets:
     file: ./secrets/session_secret
   cloudflare_email_api_token:
     file: ./secrets/cloudflare_email_api_token
+  resend_api_key:
+    file: ./secrets/resend_api_key
   zeptomail_send_token:
     file: ./secrets/zeptomail_send_token
   zeptomail_send_token_next:
@@ -370,5 +378,7 @@ secrets:
     file: ./secrets/axora_email_service_auth_key
   axora_email_events_webhook_secret:
     file: ./secrets/axora_email_events_webhook_secret
+  resend_webhook_secret:
+    file: ./secrets/resend_webhook_secret
   turnstile_secret:
     file: ./secrets/turnstile_secret

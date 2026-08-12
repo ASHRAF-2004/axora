@@ -54,10 +54,10 @@ tokens are a separate design and remain temporarily encrypted in the durable
 transactional outbox until their terminal lifecycle state.
 
 The current code in [`email-sender.mjs`](../../server-tools/email-sender.mjs)
-accepts only `cloudflare-email-service` and calls Cloudflare's account-scoped
-Email Sending REST endpoint. A move to another provider is therefore a code,
-test, configuration, runbook, and operational change—not an environment-value
-alias.
+supports provider-specific adapters behind the same durable Axora queues.
+Cloudflare Email Service, ZeptoMail, and Resend remain explicit implementations;
+changing providers is a code, configuration, readiness, and operational change,
+not an environment-value alias.
 
 The `email-preview` Compose profile is deliberately separate from this
 boundary. It runs a pinned Mailpit container on host loopback and accepts fixed
