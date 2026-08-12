@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { compare } from "bcryptjs";
+import { readFileSync } from "node:fs";
 import {
   accountSetupTtlHours,
   generateAccountSetupToken,
@@ -230,5 +231,24 @@ describe("secure account setup primitives", () => {
         branchId: branchA,
       }, branchAdmin)).toThrow(/cannot create this role/i);
     }
+  });
+
+  it("validates department setup scope through the least-privilege capability", () => {
+    const source = readFileSync(
+      new URL("../src/lib/account-setup.ts", import.meta.url),
+      "utf8",
+    );
+
+    expect(source.match(
+      /axora_auth_department_scope\(\s*u\.id,intended_assignment\.id\s*\)/g,
+    )).toHaveLength(2);
+    expect(source).toContain(
+      "department_scope.snapshot->>'departmentActive'",
+    );
+    expect(source).toContain(
+      "department_scope.snapshot->>'assignmentStatus'",
+    );
+    expect(source).not.toMatch(/JOIN departments department/);
+    expect(source).not.toMatch(/JOIN department_assignments department_assignment/);
   });
 });
