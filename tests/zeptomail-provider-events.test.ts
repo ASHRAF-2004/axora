@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  inspectZeptoMailWebhookBootstrapEvent,
   normalizeZeptoMailWebhookEvent,
   normalizeZeptoMailWebhookEnvelope,
   isZeptoMailProviderAgentKey,
@@ -200,10 +201,36 @@ describe("ZeptoMail signed provider events", () => {
     };
     expect(zeptoMailWebhookBootstrapState(bootstrapEnv)).toBe("enabled");
     expect(verifyZeptoMailWebhookBootstrapEvent(fixture("softbounce"), bootstrapEnv)).toBe(true);
-    expect(verifyZeptoMailWebhookBootstrapEvent({
+    const wrongAgent = {
       ...fixture("softbounce"),
       mailagent_key: "unknown-agent",
-    }, bootstrapEnv)).toBe(false);
+    };
+    expect(verifyZeptoMailWebhookBootstrapEvent(wrongAgent, bootstrapEnv)).toBe(false);
+    expect(inspectZeptoMailWebhookBootstrapEvent(
+      fixture("softbounce"),
+      bootstrapEnv,
+    )).toEqual({ accepted: true, stage: "accepted", agentMatched: true });
+    expect(inspectZeptoMailWebhookBootstrapEvent(wrongAgent, bootstrapEnv)).toEqual({
+      accepted: false,
+      stage: "mailagent_key",
+      agentMatched: false,
+    });
+    expect(inspectZeptoMailWebhookBootstrapEvent({
+      ...fixture("softbounce"),
+      event_message: [],
+    }, bootstrapEnv)).toEqual({
+      accepted: false,
+      stage: "event_message",
+      agentMatched: true,
+    });
+    expect(inspectZeptoMailWebhookBootstrapEvent({
+      ...fixture("softbounce"),
+      event_name: ["unsupported"],
+    }, bootstrapEnv)).toEqual({
+      accepted: false,
+      stage: "allowed_bootstrap_event_type",
+      agentMatched: true,
+    });
     expect(zeptoMailWebhookBootstrapState({
       ...bootstrapEnv,
       AXORA_EMAIL_DELIVERY_ENABLED: "true",
