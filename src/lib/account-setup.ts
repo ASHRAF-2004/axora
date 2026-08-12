@@ -23,6 +23,7 @@ import {
   lockAuthorizedInvitationCreationScope,
   lockAuthorizedInvitationResendTarget,
 } from "./account-invitation-isolation";
+import { accountSetupInvitationReplacementBlocker } from "./account-invitation-eligibility";
 
 const TOKEN_BYTES = 32;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -422,17 +423,12 @@ function assertInvitationMayBeReplaced(
   target: Awaited<ReturnType<typeof lockAuthorizedInvitationResendTarget>>,
   now = new Date(),
 ) {
-  if (target.latestInvitationExpiresAt.getTime() <= now.getTime()) return;
-  if (["FAILED", "DISABLED", "UNCERTAIN", "CANCELLED"].includes(
-    target.latestDeliveryStatus,
-  )) return;
-  if (["PENDING", "SENDING"].includes(target.latestDeliveryStatus)) {
-    throw new AccountSetupResendEligibilityError("pending");
-  }
-  if (target.latestDeliveryStatus === "SENT") {
-    throw new AccountSetupResendEligibilityError("delivered");
-  }
-  throw new AccountSetupResendEligibilityError("ineligible");
+  const blocker = accountSetupInvitationReplacementBlocker({
+    currentInvitationPresent: target.currentInvitationPresent,
+    deliveryStatus: target.latestDeliveryStatus,
+    expiresAt: target.latestInvitationExpiresAt,
+  }, now);
+  if (blocker) throw new AccountSetupResendEligibilityError(blocker);
 }
 
 export async function resendAccountSetupInvitation(
