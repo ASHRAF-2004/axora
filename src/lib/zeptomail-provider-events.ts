@@ -30,6 +30,24 @@ type ZeptoMailWebhookEnvelope = {
   webhookRequestId: string;
   requestId: string;
 };
+export type ZeptoMailWebhookValidationStage =
+  | "accepted"
+  | "bootstrap_state"
+  | "event_name"
+  | "event_message"
+  | "email_info"
+  | "recipients"
+  | "event_data_details"
+  | "mailagent_key"
+  | "webhook_request_id"
+  | "request_id"
+  | "allowed_bootstrap_event_type"
+  | "other";
+export type ZeptoMailWebhookBootstrapInspection = {
+  accepted: boolean;
+  stage: ZeptoMailWebhookValidationStage;
+  agentMatched: boolean;
+};
 type NormalizedEvent = {
   schemaVersion: 1;
   eventId: string;
@@ -40,6 +58,12 @@ type NormalizedEvent = {
   bounceType?: "HARD" | "SOFT";
   occurredAt: string;
 };
+
+class ZeptoMailWebhookValidationError extends Error {
+  constructor(readonly stage: ZeptoMailWebhookValidationStage) {
+    super("The ZeptoMail webhook payload is invalid.");
+  }
+}
 
 function headerValue(headers: HeaderSource, name: string) {
   if (headers instanceof Headers) return headers.get(name) ?? "";
@@ -100,18 +124,42 @@ export function normalizeZeptoMailWebhookEnvelope(
 ): ZeptoMailWebhookEnvelope {
   const eventName = singleString(event.event_name, 80)
     ?.toLowerCase().replaceAll(/[^a-z]/g, "");
-  const eventMessage = singleObject(event.event_message);
-  const emailInfo = singleObject(eventMessage.email_info);
-  const eventData = singleObject(eventMessage.event_data, true);
-  const details = singleObject(eventData.details, true);
+  if (!eventName) throw new ZeptoMailWebhookValidationError("event_name");
+  let eventMessage: Record<string, unknown>;
+  let emailInfo: Record<string, unknown>;
+  let eventData: Record<string, unknown>;
+  let details: Record<string, unknown>;
+  try {
+    eventMessage = singleObject(event.event_message);
+  } catch {
+    throw new ZeptoMailWebhookValidationError("event_message");
+  }
+  try {
+    emailInfo = singleObject(eventMessage.email_info);
+  } catch {
+    throw new ZeptoMailWebhookValidationError("email_info");
+  }
+  try {
+    eventData = singleObject(eventMessage.event_data, true);
+    details = singleObject(eventData.details, true);
+  } catch {
+    throw new ZeptoMailWebhookValidationError("event_data_details");
+  }
   const mailAgentKey = event.mailagent_key;
   const webhookRequestId = boundedString(event.webhook_request_id, 255);
   const requestId = boundedString(eventMessage.request_id ?? event.request_id, 255);
-  if (!eventName || !isZeptoMailProviderAgentKey(mailAgentKey)
-    || !webhookRequestId || !requestId) {
-    throw new Error("The ZeptoMail webhook identity is invalid.");
+  if (!isZeptoMailProviderAgentKey(mailAgentKey)) {
+    throw new ZeptoMailWebhookValidationError("mailagent_key");
   }
-  validateRecipientShape(emailInfo);
+  if (!webhookRequestId) {
+    throw new ZeptoMailWebhookValidationError("webhook_request_id");
+  }
+  if (!requestId) throw new ZeptoMailWebhookValidationError("request_id");
+  try {
+    validateRecipientShape(emailInfo);
+  } catch {
+    throw new ZeptoMailWebhookValidationError("recipients");
+  }
   return {
     eventName,
     eventMessage,
@@ -159,16 +207,40 @@ export function verifyZeptoMailWebhookBootstrapEvent(
   event: Record<string, unknown>,
   env: NodeJS.ProcessEnv = process.env,
 ) {
+  return inspectZeptoMailWebhookBootstrapEvent(event, env).accepted;
+}
+
+export function inspectZeptoMailWebhookBootstrapEvent(
+  event: Record<string, unknown>,
+  env: NodeJS.ProcessEnv = process.env,
+): ZeptoMailWebhookBootstrapInspection {
+  if (zeptoMailWebhookBootstrapState(env) !== "enabled") {
+    return { accepted: false, stage: "bootstrap_state", agentMatched: false };
+  }
+  let agentMatched = false;
   try {
-    if (zeptoMailWebhookBootstrapState(env) !== "enabled") return false;
+    const candidate = event.mailagent_key;
+    agentMatched = isZeptoMailProviderAgentKey(candidate)
+      && configuredAgentKeys(env).has(candidate);
     const normalized = normalizeZeptoMailWebhookEnvelope(event);
-    return Boolean(
-      ["delivered", "softbounce", "softbounced", "hardbounce", "hardbounced",
-        "feedbackloop", "feedback"].includes(normalized.eventName)
-      && configuredAgentKeys(env).has(normalized.mailAgentKey),
-    );
-  } catch {
-    return false;
+    if (!agentMatched) {
+      return { accepted: false, stage: "mailagent_key", agentMatched: false };
+    }
+    if (!["delivered", "softbounce", "softbounced", "hardbounce", "hardbounced",
+      "feedbackloop", "feedback"].includes(normalized.eventName)) {
+      return {
+        accepted: false,
+        stage: "allowed_bootstrap_event_type",
+        agentMatched: true,
+      };
+    }
+    return { accepted: true, stage: "accepted", agentMatched: true };
+  } catch (error) {
+    return {
+      accepted: false,
+      stage: error instanceof ZeptoMailWebhookValidationError ? error.stage : "other",
+      agentMatched,
+    };
   }
 }
 

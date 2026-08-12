@@ -1,12 +1,13 @@
 import { emailProviderEventsEnabled } from "@/lib/email-provider-events";
 import { recordEmailWebhookProcessingFailure } from "@/lib/email-operations";
 import {
+  inspectZeptoMailWebhookBootstrapEvent,
   normalizeZeptoMailWebhookEvent,
   parseZeptoMailWebhookPayload,
   recordZeptoMailProviderEvent,
-  verifyZeptoMailWebhookBootstrapEvent,
   verifyZeptoMailWebhookRequest,
   zeptoMailWebhookBootstrapState,
+  type ZeptoMailWebhookValidationStage,
 } from "@/lib/zeptomail-provider-events";
 
 export const runtime = "nodejs";
@@ -25,6 +26,23 @@ function noStoreJson(body: unknown, status = 200) {
   });
 }
 
+function logBootstrapValidation(input: {
+  stage: ZeptoMailWebhookValidationStage | "transport_media_type" | "body_size" | "json_parse";
+  agentMatched: boolean | null;
+  mediaType: string;
+  bodyBytes: number | null;
+}) {
+  console.info(JSON.stringify({
+    event: "zeptomail_webhook_bootstrap_validation",
+    stage: input.stage,
+    agentMatch: input.agentMatched === null
+      ? "UNKNOWN"
+      : input.agentMatched ? "MATCH" : "DOES_NOT_MATCH",
+    mediaType: input.mediaType,
+    bodyBytes: input.bodyBytes,
+  }));
+}
+
 export async function POST(request: Request) {
   const eventsEnabled = emailProviderEventsEnabled();
   const bootstrapState = zeptoMailWebhookBootstrapState();
@@ -33,27 +51,67 @@ export async function POST(request: Request) {
   }
   const mediaType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
   if (mediaType !== "application/json" && mediaType !== "application/x-www-form-urlencoded") {
+    if (bootstrapState === "enabled") {
+      logBootstrapValidation({
+        stage: "transport_media_type",
+        agentMatched: null,
+        mediaType: mediaType ?? "missing",
+        bodyBytes: null,
+      });
+    }
     return noStoreJson({ error: "unsupported_media_type" }, 415);
   }
   const declaredLength = request.headers.get("content-length");
   if (declaredLength) {
     const length = Number(declaredLength);
     if (!Number.isSafeInteger(length) || length < 0 || length > MAX_BODY_BYTES) {
+      if (bootstrapState === "enabled") {
+        logBootstrapValidation({
+          stage: "body_size",
+          agentMatched: null,
+          mediaType,
+          bodyBytes: Number.isSafeInteger(length) && length >= 0 ? length : null,
+        });
+      }
       return noStoreJson({ error: "request_too_large" }, 413);
     }
   }
   const rawBody = await request.text();
-  if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) {
+  const bodyBytes = Buffer.byteLength(rawBody, "utf8");
+  if (bodyBytes > MAX_BODY_BYTES) {
+    if (bootstrapState === "enabled") {
+      logBootstrapValidation({
+        stage: "body_size",
+        agentMatched: null,
+        mediaType,
+        bodyBytes,
+      });
+    }
     return noStoreJson({ error: "request_too_large" }, 413);
   }
   let parsed: ReturnType<typeof parseZeptoMailWebhookPayload>;
   try {
     parsed = parseZeptoMailWebhookPayload(rawBody, mediaType);
   } catch {
+    if (bootstrapState === "enabled") {
+      logBootstrapValidation({
+        stage: "json_parse",
+        agentMatched: null,
+        mediaType,
+        bodyBytes,
+      });
+    }
     return noStoreJson({ error: "invalid_request" }, 400);
   }
   if (bootstrapState === "enabled") {
-    if (!verifyZeptoMailWebhookBootstrapEvent(parsed.event)) {
+    const inspection = inspectZeptoMailWebhookBootstrapEvent(parsed.event);
+    logBootstrapValidation({
+      stage: inspection.stage,
+      agentMatched: inspection.agentMatched,
+      mediaType,
+      bodyBytes,
+    });
+    if (!inspection.accepted) {
       return noStoreJson({ error: "unauthorized" }, 401);
     }
     return noStoreJson({ accepted: false, bootstrap: true });

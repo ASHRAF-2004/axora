@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   eventsEnabled: vi.fn(),
   bootstrapState: vi.fn(),
-  bootstrapVerify: vi.fn(),
+  bootstrapInspect: vi.fn(),
   verify: vi.fn(),
   parsePayload: vi.fn(),
   normalize: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("@/lib/email-operations", () => ({
 }));
 vi.mock("@/lib/zeptomail-provider-events", () => ({
   zeptoMailWebhookBootstrapState: mocks.bootstrapState,
-  verifyZeptoMailWebhookBootstrapEvent: mocks.bootstrapVerify,
+  inspectZeptoMailWebhookBootstrapEvent: mocks.bootstrapInspect,
   verifyZeptoMailWebhookRequest: mocks.verify,
   parseZeptoMailWebhookPayload: mocks.parsePayload,
   normalizeZeptoMailWebhookEvent: mocks.normalize,
@@ -53,7 +53,11 @@ describe("ZeptoMail provider event route", () => {
     vi.clearAllMocks();
     mocks.eventsEnabled.mockReturnValue(false);
     mocks.bootstrapState.mockReturnValue("disabled");
-    mocks.bootstrapVerify.mockReturnValue(true);
+    mocks.bootstrapInspect.mockReturnValue({
+      accepted: true,
+      stage: "accepted",
+      agentMatched: true,
+    });
     mocks.verify.mockReturnValue(true);
     mocks.parsePayload.mockReturnValue(parsed);
     mocks.normalize.mockReturnValue({ eventType: "MESSAGE_BOUNCED", bounceType: "SOFT" });
@@ -62,24 +66,40 @@ describe("ZeptoMail provider event route", () => {
 
   it("returns 200 for bootstrap without persistence, normalization or failure evidence", async () => {
     mocks.bootstrapState.mockReturnValue("enabled");
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
     const response = await POST(request());
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ accepted: false, bootstrap: true });
     expect(mocks.parsePayload).toHaveBeenCalledWith(rawEvent, "application/json");
-    expect(mocks.bootstrapVerify).toHaveBeenCalledWith(parsed.event);
+    expect(mocks.bootstrapInspect).toHaveBeenCalledWith(parsed.event);
     expect(mocks.verify).not.toHaveBeenCalled();
     expect(mocks.normalize).not.toHaveBeenCalled();
     expect(mocks.record).not.toHaveBeenCalled();
     expect(mocks.recordFailure).not.toHaveBeenCalled();
+    expect(consoleInfo).toHaveBeenCalledOnce();
+    const diagnostic = String(consoleInfo.mock.calls[0]?.[0]);
+    expect(diagnostic).toContain('"stage":"accepted"');
+    expect(diagnostic).toContain('"agentMatch":"MATCH"');
+    expect(diagnostic).not.toContain("synthetic@example.test");
+    expect(diagnostic).not.toContain("agent_1");
+    consoleInfo.mockRestore();
   });
 
   it("rejects invalid bootstrap probes and unsafe bootstrap configuration", async () => {
     mocks.bootstrapState.mockReturnValueOnce("enabled");
-    mocks.bootstrapVerify.mockReturnValueOnce(false);
+    mocks.bootstrapInspect.mockReturnValueOnce({
+      accepted: false,
+      stage: "event_message",
+      agentMatched: true,
+    });
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
     expect((await POST(request())).status).toBe(401);
+    expect(String(consoleInfo.mock.calls[0]?.[0])).toContain('"stage":"event_message"');
+    expect(String(consoleInfo.mock.calls[0]?.[0])).toContain('"agentMatch":"MATCH"');
     mocks.bootstrapState.mockReturnValueOnce("invalid");
     expect((await POST(request())).status).toBe(503);
     expect(mocks.record).not.toHaveBeenCalled();
+    consoleInfo.mockRestore();
   });
 
   it("keeps unsigned operational events rejected and records signed lifecycle events", async () => {
@@ -105,6 +125,7 @@ describe("ZeptoMail provider event route", () => {
   it("accepts legacy form transport and retains strict media and 16 KiB limits without logging payloads", async () => {
     mocks.eventsEnabled.mockReturnValue(true);
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => undefined);
     const formBody = new URLSearchParams({ event: rawEvent }).toString();
     expect((await POST(request(formBody, "application/x-www-form-urlencoded"))).status).toBe(200);
     expect((await POST(new Request(
@@ -114,5 +135,6 @@ describe("ZeptoMail provider event route", () => {
     expect((await POST(request("x".repeat(16 * 1024 + 1)))).status).toBe(413);
     expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
+    consoleInfo.mockRestore();
   });
 });
