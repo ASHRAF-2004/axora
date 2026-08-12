@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import {
   changePasswordAction,
-  reauthenticateSensitiveAction,
   resendEmailVerificationAction,
   revokeAllOtherSessionsAction,
   revokeSessionAction,
@@ -35,10 +34,6 @@ export default async function AccountPage({
   ]);
   const locale = overview.preferredLocale;
   const copy = accountLifecycleMessages(locale).account;
-  const reauthRequested = search.reauth === "1";
-  const reauthError = search.reauth === "invalid" || search.reauth === "missing";
-  const reauthSuccess = search.reauth === "ok";
-  const reauthNext = typeof search.next === "string" ? search.next : "/account";
   const formatDate = (value: string) => formatAccountDateTime(value, locale, overview.timezone);
   const key = typeof search.security === "string" ? search.security : "";
   const message = copy.feedback[key];
@@ -60,42 +55,6 @@ export default async function AccountPage({
         {message.message}
       </div>
     ) : null}
-    {reauthRequested ? (
-      <section className={styles.card} aria-labelledby="reauth-title">
-        <header className={styles.cardHeader}>
-          <ShieldCheck size={22} />
-          <div>
-            <h2 id="reauth-title">{copy.reauthorize}</h2>
-            <p>{copy.reauthorizeBody}</p>
-          </div>
-        </header>
-        {reauthError ? (
-          <p className={`${styles.helper} ${styles.notice}`} role="alert">
-            {copy.reauthorizeError}
-          </p>
-        ) : null}
-        {reauthSuccess ? (
-          <p className={styles.helper} role="status">{copy.reauthorizeSuccess}</p>
-        ) : null}
-        <form action={reauthenticateSensitiveAction} className={styles.form} data-ux-silent="true">
-          <input type="hidden" name="next" value={reauthNext} />
-          <PasswordField
-            id="account-reauth-password"
-            name="currentPassword"
-            label={copy.currentPassword}
-            showLabel={copy.showPassword}
-            hideLabel={copy.hidePassword}
-            autoComplete="current-password"
-            describedBy="account-reauth-help"
-          />
-          <div className={styles.formActions}>
-            <span id="account-reauth-help" className={styles.helper}>{copy.reauthorizeHelp}</span>
-            <SecuritySubmitButton label={copy.reauthorizeButton} pendingLabel={copy.reauthorizing} />
-          </div>
-        </form>
-      </section>
-    ) : null}
-
     <section className={styles.overviewGrid} aria-label={copy.overviewLabel}>
       <article className={`${styles.card} ${styles.summaryCard}`}>
         <span className={styles.summaryIcon}><MailCheck size={20} /></span>

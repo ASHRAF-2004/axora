@@ -1,4 +1,5 @@
 import { NavigationNotice } from "@/components/NavigationNotice";
+import { PortalDraftManager } from "@/components/PortalDraftManager";
 import { AppShell } from "@/components/app-shell/AppShell";
 import { getAccountLifecycleSession } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
@@ -123,6 +124,15 @@ export default async function PortalLayout({ children }: { children: React.React
       : undefined;
   return (
     <>
+      <PortalDraftManager
+        userId={user.id}
+        scopeKey={[
+          user.roleAssignmentId ?? "none", user.accountKind, user.scopeType,
+          user.companyId ?? "none", user.branchId ?? "none",
+          user.departmentId ?? "none", user.supplierId ?? "none",
+        ].join(":")}
+        locale={locale}
+      />
       <NavigationNotice locale={locale} />
       <AppShell
         homeHref={onboardingComplete ? landingPathForSession(user) : "/profile?onboarding=1"}

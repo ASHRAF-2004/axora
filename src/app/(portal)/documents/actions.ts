@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   createAuthorizedAttachment,
   documentRecordIdSchema,
@@ -18,7 +18,6 @@ const attachmentInputSchema = z.object({
 
 export async function uploadAttachmentAction(formData: FormData) {
   const actor = await requirePermission("manage_documents");
-  await requireRecentStepUp(actor, "/documents");
 
   const input = attachmentInputSchema.parse({
     entityType: readFormText(formData, "entityType"),

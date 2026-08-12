@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserCreateForm } from "@/components/UserCreateForm";
 import { UserAvatar } from "@/components/UserAvatar";
+import { InvitationResendForm } from "@/components/InvitationResendForm";
 import { accessAdministrationMessages } from "@/lib/access-administration-i18n";
 import { requirePagePermission } from "@/lib/auth";
 import { formatDateTime } from "@/lib/domain";
@@ -16,7 +17,6 @@ import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { profileImageMessages } from "@/lib/profile-image-i18n";
 import Link from "next/link";
 import {
-  resendAccountSetupInvitationAction,
   setUserActiveAction,
   deactivateUserProfileImageAction,
 } from "./actions";
@@ -147,14 +147,8 @@ export default async function UsersPage() {
         <td><div className="action-row">
           {canOpenAccess ? <Link className="button button-secondary" href={`/users/${user.id}/access`}>{accessCopy.openAccess}</Link> : null}
           {protectedLabel ? <span className="subtle">{protectedLabel}</span> : <>
-            {canResend ? <form action={resendAccountSetupInvitationAction.bind(null, user.id)}>
-              <button
-                className="button button-secondary"
-                type="submit"
-                data-feedback-label={copy.resending}
-                aria-label={`Resend account setup link to ${user.displayName}`}
-              >{copy.resend}</button>
-            </form> : null}
+            {canResend ? <InvitationResendForm userId={user.id}
+              userName={user.displayName} locale={locale} /> : null}
             <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
               <button className="button button-secondary" type="submit">{user.active ? copy.deactivate : copy.reactivate}</button>
             </form>

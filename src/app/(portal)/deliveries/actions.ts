@@ -1,13 +1,12 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { assignDeliveryDriver, createDeliveryJob } from "@/lib/delivery-admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function createDeliveryJobAction(formData: FormData) {
   const actor = await requirePermission("manage_deliveries");
-  await requireRecentStepUp(actor, "/deliveries");
   try {
     await createDeliveryJob(actor, {
       requestId: String(formData.get("requestId") ?? ""),
@@ -25,7 +24,6 @@ export async function createDeliveryJobAction(formData: FormData) {
 
 export async function assignDeliveryDriverAction(formData: FormData) {
   const actor = await requirePermission("manage_deliveries");
-  await requireRecentStepUp(actor, "/deliveries");
   try {
     await assignDeliveryDriver(actor, {
       deliveryJobId: String(formData.get("deliveryJobId") ?? ""),

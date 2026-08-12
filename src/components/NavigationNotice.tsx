@@ -92,7 +92,13 @@ export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }
       clearRequestCart();
     }
 
-    if (feedback) notify(feedback.message, feedback.tone ?? "success");
+    if (feedback) {
+      const tone = feedback.tone ?? "success";
+      notify(feedback.message, tone);
+      window.dispatchEvent(new CustomEvent("axora:form-action-outcome", {
+        detail: { outcome: tone === "success" ? "success" : "error" },
+      }));
+    }
 
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.delete("notice");

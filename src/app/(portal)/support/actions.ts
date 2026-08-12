@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   diagnoseSupportAccount,
   revokeSupportTargetSessions,
@@ -19,7 +19,6 @@ export async function diagnoseSupportAccountAction(
   formData: FormData,
 ): Promise<SupportDiagnosticActionState> {
   const actor = await requirePermission("view_system_diagnostics");
-  await requireRecentStepUp(actor, "/support");
   try {
     const diagnostic = await diagnoseSupportAccount(
       actor,
@@ -43,7 +42,6 @@ export async function revokeSupportSessionsAction(
   formData: FormData,
 ) {
   const actor = await requirePermission("view_system_diagnostics");
-  await requireRecentStepUp(actor, "/support");
   try {
     const count = await revokeSupportTargetSessions(
       actor,

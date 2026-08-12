@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   EMAIL_PROVIDER_AGENTS,
   executeEmailOperationsCommand,
@@ -66,7 +66,6 @@ function commandDetails(formData: FormData, action: EmailOperationsCommandAction
 
 export async function performEmailOperationAction(formData: FormData) {
   const actor = await requirePermission("manage_email_operations");
-  await requireRecentStepUp(actor, "/email-operations");
   const parsed = commandSchema.safeParse({
     commandId: textValue(formData, "commandId"),
     action: textValue(formData, "action"),
@@ -103,7 +102,6 @@ export async function revealEmailRecipientAction(
   formData: FormData,
 ): Promise<RecipientRevealState> {
   const actor = await requirePermission("manage_email_operations");
-  await requireRecentStepUp(actor, "/email-operations");
   const parsed = revealSchema.safeParse({
     commandId: textValue(formData, "commandId"),
     deliveryKind: textValue(formData, "deliveryKind"),

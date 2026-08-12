@@ -20,7 +20,7 @@ import {
 } from "./users";
 import {
   lockAuthorizedInvitationCreationScope,
-  lockAuthorizedInvitationTarget,
+  lockAuthorizedInvitationResendTarget,
 } from "./account-invitation-isolation";
 
 const TOKEN_BYTES = 32;
@@ -83,6 +83,13 @@ export class AccountSetupResendRateLimitError extends Error {
       ? "Wait one minute before replacing this invitation again."
       : "This account has reached the invitation resend limit. Try again later.");
     this.name = "AccountSetupResendRateLimitError";
+  }
+}
+
+export class AccountSetupResendEligibilityError extends Error {
+  constructor(public readonly reason: "pending" | "delivered" | "ineligible") {
+    super("The account setup invitation cannot be replaced in its current state.");
+    this.name = "AccountSetupResendEligibilityError";
   }
 }
 
@@ -268,28 +275,6 @@ export async function createInvitedUser(
   return { ...result, rawToken };
 }
 
-interface ExistingInvitationTarget {
-  userId: string;
-  recipientName: string;
-  recipientEmail: string;
-  role: UserRole;
-  roleId: string;
-  accountKind: AccountKind;
-  scopeType: RoleScopeType;
-  companyId?: string;
-  companyName: string;
-  branchId?: string;
-  branchName?: string;
-  departmentId?: string;
-  departmentName?: string;
-  supplierId?: string;
-  active: boolean;
-  setupCompleted: boolean;
-  organizationActive: boolean;
-  membershipReady: boolean;
-  preferredLocale: SupportedLocale;
-}
-
 async function initializeInvitedIdentity(
   client: PoolClient,
   userId: string,
@@ -393,7 +378,7 @@ async function initializeInvitedIdentity(
 }
 
 function assertCanResendInvitation(
-  target: ExistingInvitationTarget | undefined,
+  target: Awaited<ReturnType<typeof lockAuthorizedInvitationResendTarget>> | undefined,
   actor: SessionUser,
 ) {
   if (!target || target.setupCompleted || !target.active
@@ -422,6 +407,23 @@ function assertCanResendInvitation(
   throw new Error("Your account cannot resend this invitation.");
 }
 
+function assertInvitationMayBeReplaced(
+  target: Awaited<ReturnType<typeof lockAuthorizedInvitationResendTarget>>,
+  now = new Date(),
+) {
+  if (target.latestInvitationExpiresAt.getTime() <= now.getTime()) return;
+  if (["FAILED", "DISABLED", "UNCERTAIN", "CANCELLED"].includes(
+    target.latestDeliveryStatus,
+  )) return;
+  if (["PENDING", "SENDING"].includes(target.latestDeliveryStatus)) {
+    throw new AccountSetupResendEligibilityError("pending");
+  }
+  if (target.latestDeliveryStatus === "SENT") {
+    throw new AccountSetupResendEligibilityError("delivered");
+  }
+  throw new AccountSetupResendEligibilityError("ineligible");
+}
+
 export async function resendAccountSetupInvitation(
   userId: string,
   actor: SessionUser,
@@ -438,98 +440,11 @@ export async function resendAccountSetupInvitation(
   const result = await withAuditTransaction(
     { actor, reason: "Account invitation replaced" },
     async (client) => {
-      await lockAuthorizedInvitationTarget(client, actor, userId);
-      const targetResult = await client.query<ExistingInvitationTarget>(
-        `SELECT
-           u.id::text AS "userId",u.display_name AS "recipientName",
-           u.email AS "recipientEmail",role.role_key AS role,
-           role.id::text AS "roleId",u.account_kind AS "accountKind",
-           assignment.scope_type AS "scopeType",
-           assignment.company_id::text AS "companyId",
-           COALESCE(c.name,supplier.name,
-             CASE WHEN u.account_kind='DELIVERY' THEN 'Axora delivery network' ELSE 'Axora' END
-           ) AS "companyName",
-           assignment.branch_id::text AS "branchId",b.name AS "branchName",
-           assignment.department_id::text AS "departmentId",
-           department.name AS "departmentName",
-           assignment.supplier_id::text AS "supplierId",u.active,
-           profile.preferred_locale AS "preferredLocale",
-           (u.account_setup_completed_at IS NOT NULL) AS "setupCompleted",
-           CASE
-             WHEN assignment.scope_type IN ('COMPANY','BRANCH','DEPARTMENT')
-               THEN COALESCE(c.active,false) AND COALESCE(b.active,true)
-                 AND COALESCE(department.active,true)
-             WHEN assignment.scope_type='SUPPLIER' THEN COALESCE(supplier.active,false)
-             ELSE true
-           END AS "organizationActive",
-           CASE
-             WHEN assignment.scope_type IN ('COMPANY','BRANCH','DEPARTMENT')
-               THEN company_membership.status='INVITED'
-                 AND (assignment.scope_type NOT IN ('BRANCH','DEPARTMENT')
-                   OR assignment.branch_id IS NULL OR branch_assignment.status='ACTIVE')
-                 AND (assignment.scope_type<>'DEPARTMENT'
-                   OR department_assignment.status='ACTIVE')
-             WHEN assignment.scope_type='SUPPLIER'
-               THEN supplier_membership.status='INVITED'
-             WHEN assignment.scope_type='DELIVERY'
-               THEN COALESCE(driver.active,false)
-             ELSE true
-           END AS "membershipReady"
-         FROM users u
-         JOIN LATERAL (
-           SELECT prior.intended_role_id AS role_id,
-             prior.intended_scope_type AS scope_type,
-             prior.company_id,prior.intended_branch_id AS branch_id,
-             prior.intended_department_id AS department_id,
-             prior.intended_supplier_id AS supplier_id
-           FROM account_setup_invitations prior
-           WHERE prior.user_id=u.id
-           ORDER BY prior.created_at DESC,prior.id
-           LIMIT 1
-         ) invitation_scope ON true
-         JOIN role_assignments assignment
-           ON assignment.user_id=u.id
-          AND assignment.role_id=invitation_scope.role_id
-          AND assignment.scope_type=invitation_scope.scope_type
-          AND assignment.company_id IS NOT DISTINCT FROM invitation_scope.company_id
-          AND assignment.branch_id IS NOT DISTINCT FROM invitation_scope.branch_id
-          AND assignment.department_id IS NOT DISTINCT FROM invitation_scope.department_id
-          AND assignment.supplier_id IS NOT DISTINCT FROM invitation_scope.supplier_id
-          AND assignment.active=true
-         JOIN roles role ON role.id=assignment.role_id
-         JOIN account_credentials credential
-           ON credential.user_id=u.id AND credential.password_hash IS NULL
-         JOIN user_profiles profile ON profile.user_id=u.id
-         LEFT JOIN companies c ON c.id=assignment.company_id
-         LEFT JOIN company_memberships company_membership
-           ON company_membership.user_id=u.id
-          AND company_membership.company_id=assignment.company_id
-         LEFT JOIN branches b ON b.id=assignment.branch_id
-           AND b.company_id=assignment.company_id
-         LEFT JOIN departments department ON department.id=assignment.department_id
-           AND department.company_id=assignment.company_id
-         LEFT JOIN branch_assignments branch_assignment
-           ON branch_assignment.user_id=u.id
-          AND branch_assignment.company_id=assignment.company_id
-           AND branch_assignment.branch_id=assignment.branch_id
-         LEFT JOIN department_assignments department_assignment
-           ON department_assignment.user_id=u.id
-          AND department_assignment.company_id=assignment.company_id
-          AND department_assignment.department_id=assignment.department_id
-         LEFT JOIN suppliers supplier ON supplier.id=assignment.supplier_id
-         LEFT JOIN supplier_memberships supplier_membership
-           ON supplier_membership.user_id=u.id
-          AND supplier_membership.supplier_id=assignment.supplier_id
-         LEFT JOIN delivery_agent_profiles driver ON driver.user_id=u.id
-         WHERE u.id=$1 AND u.account_status='INVITED'
-           AND u.account_setup_completed_at IS NULL AND u.active=true
-           AND u.company_id IS NOT DISTINCT FROM assignment.company_id
-           AND u.branch_id IS NOT DISTINCT FROM assignment.branch_id
-         FOR UPDATE OF u`,
-        [userId],
+      const target = await lockAuthorizedInvitationResendTarget(
+        client, actor, userId,
       );
-      const target = targetResult.rows[0];
       assertCanResendInvitation(target, actor);
+      assertInvitationMayBeReplaced(target);
       await enforceInvitationQuota(
         client,
         actor.id,

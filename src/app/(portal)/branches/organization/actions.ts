@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission, requireRecentStepUp } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   ORGANIZATION_NODE_TYPES,
   saveOrganizationNode,
@@ -115,7 +115,6 @@ export async function saveOrganizationNodeAction(formData: FormData) {
 
 export async function setOrganizationNodeActiveAction(formData: FormData) {
   const actor = await requirePermission("view_branches");
-  await requireRecentStepUp(actor, route);
   const nodeType = z.enum(ORGANIZATION_NODE_TYPES).parse(readFormText(formData, "nodeType"));
   const nodeId = z.uuid().parse(readFormText(formData, "nodeId"));
   const active = z.enum(["true", "false"]).transform((value) => value === "true")

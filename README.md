@@ -30,6 +30,12 @@ authorized Axora platform owner explicitly approves decommissioning.
   notifications, and language control; no permanent left sidebar.
 - Canonical account/role/scope assignments, one-time invitations, Argon2id
   passwords, live sessions, profile onboarding, and role tutorials.
+- Routine authenticated work uses the live session, explicit permission,
+  tenant scope, CSRF and audited database boundaries without a disruptive
+  second password prompt. Credential changes still verify the current password.
+- Safe non-secret portal form fields autosave in a user-, scope-, route- and
+  form-specific browser-session draft. Refresh and route recovery restore the
+  draft; passwords, tokens, secrets and file contents are never persisted.
 - Automatically derived accessible company branding from validated logos;
   company users receive no color/theme editor.
 - Internal supplier sourcing, mobile delivery-driver, and independent receiver

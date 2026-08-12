@@ -138,14 +138,14 @@ target controls until an approved release is deployed and verified.
 
 ## Open security risks
 
-### SEC-01 — High — phishing-resistant step-up is partially implemented
+### SEC-01 — High — phishing-resistant authentication is not implemented
 
 Password-only authentication can still create a platform-owner session, and
-phishing-resistant second-factor controls are still not implemented. Sensitive
-administrative operations now require explicit short-lived current-password step-up
-before execution. Before a broad production rollout, add a reviewed phishing-resistant
-second factor, owner enrollment audit, and recovery flow (or approve an equivalent
-risk treatment) before reducing controls further.
+phishing-resistant second-factor controls are not implemented. Routine portal
+work intentionally does not use a disruptive password-only step-up because it
+caused state loss without providing a distinct factor. Before broad rollout,
+add a reviewed phishing-resistant second factor, owner enrollment audit and
+recovery flow for genuinely exceptional operations.
 Until then, keep the owner roster minimal, use password-manager-generated unique
 credentials, review sessions/audit, and apply approved edge restrictions without
 weakening normal authentication.

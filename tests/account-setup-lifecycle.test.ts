@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
     notifyWorkflowUsers: vi.fn(),
     lockInvitationCreation: vi.fn(),
     lockInvitationTarget: vi.fn(),
+    lockInvitationResendTarget: vi.fn(),
     withAuditTransaction: vi.fn(
       async (_context: unknown, work: (client: typeof mocks.client) => unknown) =>
         work(mocks.client),
@@ -30,6 +31,7 @@ vi.mock("@/lib/workflow-repository", () => ({
 vi.mock("@/lib/account-invitation-isolation", () => ({
   lockAuthorizedInvitationCreationScope: mocks.lockInvitationCreation,
   lockAuthorizedInvitationTarget: mocks.lockInvitationTarget,
+  lockAuthorizedInvitationResendTarget: mocks.lockInvitationResendTarget,
 }));
 
 import {
@@ -75,6 +77,33 @@ describe("account setup transactional lifecycle", () => {
       created: true,
     });
     mocks.notifyWorkflowUsers.mockResolvedValue(1);
+    mocks.lockInvitationResendTarget.mockResolvedValue({
+      userId: "user-id",
+      recipientName: "Pending User",
+      recipientEmail: "pending@example.test",
+      role: "AUDITOR",
+      roleId: "normalized-role-id",
+      accountKind: "COMPANY",
+      scopeType: "COMPANY",
+      companyId: actor.companyId,
+      companyName: "Example Company",
+      branchId: undefined,
+      branchName: undefined,
+      departmentId: undefined,
+      departmentName: undefined,
+      supplierId: undefined,
+      active: true,
+      setupCompleted: false,
+      organizationActive: true,
+      membershipReady: true,
+      preferredLocale: "en",
+      latestInvitationId: "b23dc2c4-0371-49d8-9826-80901174bb71",
+      latestDeliveryStatus: "FAILED",
+      latestInvitationCreatedAt: new Date("2026-08-03T00:00:00Z"),
+      latestInvitationExpiresAt: new Date("2026-08-04T00:00:00Z"),
+      latestInvitationSentAt: undefined,
+      latestProviderMessagePresent: false,
+    });
     delete process.env.ACCOUNT_SETUP_TTL_HOURS;
     process.env.AXORA_EMAIL_SERVICE_AUTH_KEY =
       "test-only-account-email-service-key-abcdefghijklmnopqrstuvwxyz";

@@ -26,7 +26,7 @@ describe("account invitation isolation integration", () => {
     );
     const transaction = accountSetup.indexOf("withAuditTransaction(", resend);
     const targetLock = accountSetup.indexOf(
-      "lockAuthorizedInvitationTarget(client, actor, userId)",
+      "lockAuthorizedInvitationResendTarget(",
       resend,
     );
     const revoke = accountSetup.indexOf(
@@ -43,7 +43,7 @@ describe("account invitation isolation integration", () => {
     const actions = await source("src/app/(portal)/users/actions.ts");
     expect(actions).not.toContain("lockAuthorizedUserTarget(");
     expect(actions).toContain(
-      "resendAccountSetupInvitation(safeUserId, actor)",
+      "resendAccountSetupInvitation(parsedUserId.data, actor)",
     );
   });
 });

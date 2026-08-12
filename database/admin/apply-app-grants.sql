@@ -338,6 +338,20 @@ BEGIN
   END IF;
 END $$;
 
+-- Account invitation replacement reads an authorized, locked target snapshot
+-- through one capability. The runtime never receives direct department or
+-- invitation-table access merely to resend a setup link.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regprocedure(
+      'public.axora_account_setup_resend_target(uuid,uuid,uuid,timestamp with time zone)'
+    ) IS NOT NULL
+  THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_account_setup_resend_target(uuid,uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+END $$;
+
 -- P1-11/P1-12 generated documents. Raw snapshots, private storage metadata,
 -- supplier dispatch evidence and append-only events remain capability-only.
 DO $$

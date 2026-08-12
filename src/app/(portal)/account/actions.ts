@@ -6,15 +6,10 @@ import {
   revokeOtherSession,
 } from "@/lib/account-security";
 import {
-  authenticate,
-  clearSession,
-  clearStepUpSessionCookie,
   requireAccountLifecycleSession,
   setSession,
-  setStepUpAfterPassword,
 } from "@/lib/auth";
 import { PasswordPolicyError } from "@/lib/password-policy";
-import { safeInternalReturnPath } from "@/lib/session-return";
 import { requestEmailVerification } from "@/lib/security-notifications";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -27,56 +22,6 @@ function requestNetworkIdentifier(requestHeaders: Headers) {
   return candidate.length <= 128 && !/[\u0000-\u001F\u007F]/.test(candidate)
     ? candidate
     : "network-unavailable";
-}
-
-function withReauthSuccess(rawNext: string) {
-  const next = safeInternalReturnPath(rawNext, "/account");
-  try {
-    const parsed = new URL(next, "https://axora.management");
-    parsed.searchParams.set("reauth", "ok");
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return "/account?reauth=ok";
-  }
-}
-
-export async function reauthenticateSensitiveAction(formData: FormData) {
-  const actor = await requireAccountLifecycleSession();
-  const currentPassword = String(formData.get("currentPassword") ?? "");
-  const next = safeInternalReturnPath(
-    String(formData.get("next") ?? ""),
-    "/account",
-  );
-  const requestHeaders = await headers();
-  if (!currentPassword) {
-    await clearStepUpSessionCookie();
-    redirect(`/account?reauth=1&reauth=invalid&next=${encodeURIComponent(next)}`);
-  }
-
-  const verified = await authenticate(actor.email, currentPassword, {
-    networkIdentifier: requestNetworkIdentifier(requestHeaders),
-  });
-  if (!verified || verified.id !== actor.id) {
-    await clearStepUpSessionCookie();
-    redirect(`/account?reauth=1&reauth=invalid&next=${encodeURIComponent(next)}`);
-  }
-
-  // Privilege elevation receives a fresh base-session token. Revoking the old
-  // token first is fail-closed; the browser cookie jar then shares the new
-  // token consistently with every open tab.
-  await clearSession();
-  try {
-    await setSession(verified);
-  } catch {
-    const params = new URLSearchParams({
-      reason: "expired",
-      returnTo: next,
-    });
-    redirect(`/login?${params.toString()}`);
-  }
-  await setStepUpAfterPassword(verified, next);
-  revalidatePath("/account");
-  redirect(withReauthSuccess(next));
 }
 
 export async function changePasswordAction(formData: FormData) {

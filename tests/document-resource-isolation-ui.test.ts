@@ -21,12 +21,12 @@ describe("document resource isolation route integration", () => {
     expect(page).not.toContain("listAttachments(");
   });
 
-  it("requires step-up and delegates uploads to the canonical document service", async () => {
+  it("requires live permission and delegates uploads to the canonical document service", async () => {
     const action = await repositoryFile(
       "src/app/(portal)/documents/actions.ts",
     );
     expect(action).toContain('requirePermission("manage_documents")');
-    expect(action).toContain('requireRecentStepUp(actor, "/documents")');
+    expect(action).not.toContain("requireRecentStepUp");
     expect(action).toContain("recordId: documentRecordIdSchema");
     expect(action).toContain("createAuthorizedAttachment(actor");
     expect(action).not.toContain("saveAttachment(");

@@ -11,8 +11,12 @@ const mocks = vi.hoisted(() => ({
       super(reason);
     }
   },
+  ResendEligibilityError: class ResendEligibilityError extends Error {
+    constructor(public readonly reason: "pending" | "delivered" | "ineligible") {
+      super(reason);
+    }
+  },
   requirePermission: vi.fn(),
-  requireRecentStepUp: vi.fn(),
   createInvitedUser: vi.fn(),
   resendInvitation: vi.fn(),
   recordDelivery: vi.fn(),
@@ -26,12 +30,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({
   requirePermission: mocks.requirePermission,
-  requireRecentStepUp: mocks.requireRecentStepUp,
 }));
 
 vi.mock("@/lib/account-setup", () => ({
   AccountSetupInvitationQuotaError: mocks.InvitationQuotaError,
   AccountSetupResendRateLimitError: mocks.ResendRateLimitError,
+  AccountSetupResendEligibilityError: mocks.ResendEligibilityError,
   createInvitedUser: mocks.createInvitedUser,
   resendAccountSetupInvitation: mocks.resendInvitation,
   recordAccountSetupDelivery: mocks.recordDelivery,
@@ -87,11 +91,16 @@ function userForm() {
   return form;
 }
 
+function resendForm() {
+  const form = new FormData();
+  form.set("userId", invitation.userId);
+  return form;
+}
+
 describe("account invitation actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requirePermission.mockResolvedValue(actor);
-    mocks.requireRecentStepUp.mockResolvedValue(undefined);
     mocks.createInvitedUser.mockResolvedValue(invitation);
     mocks.resendInvitation.mockResolvedValue(invitation);
     mocks.recordDelivery.mockResolvedValue(true);
@@ -174,9 +183,9 @@ describe("account invitation actions", () => {
   it("delegates exact target authorization to the resend transaction", async () => {
     mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
 
-    await expect(
-      resendAccountSetupInvitationAction(invitation.userId),
-    ).rejects.toThrow("REDIRECT:/users?notice=user-invitation-resent");
+    await expect(resendAccountSetupInvitationAction(
+      { status: "idle" }, resendForm(),
+    )).resolves.toEqual({ status: "success", code: "sent" });
 
     expect(mocks.resendInvitation).toHaveBeenCalledWith(invitation.userId, actor);
     expect(mocks.sendEmail).toHaveBeenCalledWith(invitation);
@@ -185,18 +194,18 @@ describe("account invitation actions", () => {
   it("shows a safe notice when invitations are resent too quickly", async () => {
     mocks.resendInvitation.mockRejectedValue(new mocks.ResendRateLimitError("cooldown"));
 
-    await expect(
-      resendAccountSetupInvitationAction(invitation.userId),
-    ).rejects.toThrow("REDIRECT:/users?notice=user-resend-cooldown");
+    await expect(resendAccountSetupInvitationAction(
+      { status: "idle" }, resendForm(),
+    )).resolves.toEqual({ status: "error", code: "cooldown" });
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
 
   it("reports the company-wide invitation quota during resend", async () => {
     mocks.resendInvitation.mockRejectedValue(new mocks.InvitationQuotaError("company"));
 
-    await expect(
-      resendAccountSetupInvitationAction(invitation.userId),
-    ).rejects.toThrow("REDIRECT:/users?notice=user-invitation-quota-company");
+    await expect(resendAccountSetupInvitationAction(
+      { status: "idle" }, resendForm(),
+    )).resolves.toEqual({ status: "error", code: "quota" });
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
 });
