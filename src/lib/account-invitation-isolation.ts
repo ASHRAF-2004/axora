@@ -7,6 +7,7 @@ import {
   isUserRole,
 } from "./types";
 import type { ResolvedUserCreation } from "./users";
+import { accountSetupDeliveryStatuses } from "./account-invitation-eligibility";
 
 const uuidSchema = z.string().uuid();
 const optionalUuid = z.preprocess(
@@ -16,6 +17,10 @@ const optionalUuid = z.preprocess(
 const optionalText = z.preprocess(
   (value) => value === null || value === "" ? undefined : value,
   z.string().trim().min(1).max(300).optional(),
+);
+const optionalDate = z.preprocess(
+  (value) => value === null || value === "" ? undefined : value,
+  z.coerce.date().optional(),
 );
 
 const scopeSchema = z.object({
@@ -73,16 +78,35 @@ const resendTargetSchema = z.object({
   organizationActive: z.boolean(),
   membershipReady: z.boolean(),
   preferredLocale: z.enum(["en", "ar", "ms"]),
-  latestInvitationId: uuidSchema,
-  latestDeliveryStatus: z.enum([
-    "PENDING", "SENDING", "SENT", "FAILED", "DISABLED",
-    "UNCERTAIN", "CANCELLED",
-  ]),
-  latestInvitationCreatedAt: z.coerce.date(),
-  latestInvitationExpiresAt: z.coerce.date(),
-  latestInvitationSentAt: z.coerce.date().optional(),
+  currentInvitationPresent: z.boolean(),
+  latestInvitationId: uuidSchema.optional(),
+  latestDeliveryStatus: z.enum(accountSetupDeliveryStatuses).optional(),
+  latestInvitationCreatedAt: optionalDate,
+  latestInvitationExpiresAt: optionalDate,
+  latestInvitationSentAt: optionalDate,
   latestProviderMessagePresent: z.boolean(),
-}).strict();
+}).strict().superRefine((target, context) => {
+  const currentFields = [
+    target.latestInvitationId,
+    target.latestDeliveryStatus,
+    target.latestInvitationCreatedAt,
+    target.latestInvitationExpiresAt,
+  ];
+  if (target.currentInvitationPresent
+    && currentFields.some((value) => value === undefined)) {
+    context.addIssue({
+      code: "custom",
+      message: "The current invitation snapshot is incomplete.",
+    });
+  }
+  if (!target.currentInvitationPresent
+    && currentFields.some((value) => value !== undefined)) {
+    context.addIssue({
+      code: "custom",
+      message: "The invitation snapshot is inconsistent.",
+    });
+  }
+});
 
 interface SnapshotRow extends QueryResultRow {
   snapshot: unknown;

@@ -208,4 +208,23 @@ describe("account invitation actions", () => {
     )).resolves.toEqual({ status: "error", code: "quota" });
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
+
+  it("queues one logical email when concurrent stale resends race", async () => {
+    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
+    mocks.resendInvitation
+      .mockResolvedValueOnce(invitation)
+      .mockRejectedValueOnce(new mocks.ResendEligibilityError("pending"));
+
+    const results = await Promise.all([
+      resendAccountSetupInvitationAction({ status: "idle" }, resendForm()),
+      resendAccountSetupInvitationAction({ status: "idle" }, resendForm()),
+    ]);
+
+    expect(results).toEqual(expect.arrayContaining([
+      { status: "success", code: "sent" },
+      { status: "error", code: "pending" },
+    ]));
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+    expect(mocks.recordDelivery).toHaveBeenCalledTimes(1);
+  });
 });
