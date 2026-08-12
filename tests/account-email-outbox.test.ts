@@ -130,6 +130,16 @@ describe("one-shot account setup email delivery", () => {
       newState: "SENT",
       source: "SYSTEM",
     });
+    const [contextSql] = mocks.client.query.mock.calls[1];
+    expect(String(contextSql)).toContain(
+      'creator_role.role_key AS "creatorRole"',
+    );
+    expect(String(contextSql)).toContain(
+      "JOIN roles creator_role ON creator_role.id=creator.role_id",
+    );
+    expect(String(contextSql)).not.toContain(
+      'creator.role AS "creatorRole"',
+    );
     expect(mocks.client.query).toHaveBeenNthCalledWith(
       3,
       "SELECT set_config('axora.user_id',$1,true)",

@@ -553,13 +553,14 @@ async function recordCompanyInvitationSent(
     `SELECT invitation.company_id::text AS "companyId",
        invitation.intended_branch_id::text AS "branchId",
        invitation.created_by::text AS "createdBy",
-       creator.role AS "creatorRole",
+       creator_role.role_key AS "creatorRole",
        creator.account_kind AS "creatorAccountKind",
        creator.is_owner AS "creatorIsOwner",
        creator.company_id::text AS "creatorCompanyId",
        creator.branch_id::text AS "creatorBranchId"
      FROM account_setup_invitations invitation
      JOIN users creator ON creator.id=invitation.created_by
+     JOIN roles creator_role ON creator_role.id=creator.role_id
      WHERE invitation.id=$1`,
     [invitationId],
   );
