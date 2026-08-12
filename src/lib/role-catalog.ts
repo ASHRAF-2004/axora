@@ -1,4 +1,5 @@
 import type { SessionUser } from "./auth";
+import { canAccess } from "./permissions";
 import type { AccountKind, RoleScopeType, UserRole } from "./types";
 
 export interface AccountRoleDefinition {
@@ -57,17 +58,34 @@ export function creatableAccountRoles(actor: SessionUser) {
   if (actor.isOwner && actor.accountKind !== "COMPANY") {
     return ACCOUNT_ROLE_CATALOG.filter((role) => role.availableForCreation !== false);
   }
-  if (actor.role === "ADMIN" || actor.role === "COMPANY_ADMIN") {
-    return ACCOUNT_ROLE_CATALOG.filter((role) => (
-      role.category === "Company" && role.availableForCreation !== false
-    ));
+  // Expand/contract compatibility for tests, demo mode, and a retained session
+  // created before effective permissions were attached. Live portal sessions
+  // always carry effectivePermissions and take the granular path below.
+  if (!actor.effectivePermissions) {
+    if (actor.role === "ADMIN" || actor.role === "COMPANY_ADMIN") {
+      return ACCOUNT_ROLE_CATALOG.filter((role) => (
+        role.category === "Company" && role.availableForCreation !== false
+      ));
+    }
+    if (actor.role === "BRANCH_ADMIN") {
+      return ACCOUNT_ROLE_CATALOG.filter((role) => [
+        "BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER",
+      ].includes(role.key));
+    }
   }
-  if (actor.role === "BRANCH_ADMIN") {
-    return ACCOUNT_ROLE_CATALOG.filter((role) => [
-      "BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER",
-    ].includes(role.key));
-  }
-  return [];
+  return ACCOUNT_ROLE_CATALOG.filter((role) => {
+    if (role.availableForCreation === false || role.key === "PLATFORM_OWNER") return false;
+    if (role.category === "Axora") return canAccess(actor, "create_platform_users");
+    if (role.category === "Delivery") return canAccess(actor, "create_delivery_users");
+    if (!canAccess(actor, "create_company_users")) return false;
+    if (actor.role === "BRANCH_ADMIN") {
+      return ["BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER"].includes(role.key);
+    }
+    if (actor.role === "DEPARTMENT_ADMIN") {
+      return ["REQUESTER", "RECEIVING_USER"].includes(role.key);
+    }
+    return true;
+  });
 }
 
 export function accountRoleLabel(role: UserRole) {

@@ -145,3 +145,26 @@ credentials are prohibited from these records.
 4. Add the effective-access editor and read-only matrix.
 5. Remove compatibility paths only after all routes and background jobs use the
    canonical authorization service.
+
+## Granular effective access and company assignment
+
+Role names are templates, not the final authority. Runtime authorization combines
+role grants, explicit grants and denies, resource scope, active delegation,
+approval limits, and entity policy. Explicit denies win. A non-owner may grant
+only a subset of their own effective authority, cannot edit their own protected
+permissions, and cannot delegate platform authority into a customer or delivery
+account.
+
+Platform-user, company-user, and delivery-user administration use distinct
+permission families. Company creation and platform-wide company visibility are
+also separate: company.create does not imply company.view.all. Non-owner platform
+actors must have an active company_assignments relationship for every
+customer-company query unless the Platform Owner explicitly grants
+company.view.all. Company creators with company.create receive a primary
+assignment transactionally; companies.created_by remains audit evidence only.
+
+Commercial visibility is independent from operational administration. Revenue,
+platform margin/profit, buying cost, markup, pricing, and company budget rights
+are evaluated separately. Database capabilities redact buying cost and private
+supplier identity before returning a product-administration payload when the
+corresponding permission is absent.

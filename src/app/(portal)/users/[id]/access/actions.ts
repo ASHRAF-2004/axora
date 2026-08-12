@@ -4,6 +4,7 @@ import {
   AccessManagementUnavailableError,
   removeUserPermissionOverride,
   setUserPermissionOverride,
+  replaceUserPermissionSet,
 } from "@/lib/access-management";
 import {
   authorizationPolicyInternals,
@@ -212,4 +213,26 @@ export async function removePermissionOverrideAction(
     parsed.targetRoleAssignmentId,
     "override-removed",
   ));
+}
+
+export async function replacePermissionSetAction(
+  targetUserId: string,
+  targetRoleAssignmentId: string,
+  formData: FormData,
+) {
+  const actor = await requirePermission("manage_users");
+  try {
+    await replaceUserPermissionSet(actor, {
+      targetUserId,
+      targetRoleAssignmentId,
+      permissions: formData.getAll("permissions")
+        .filter((value): value is string => typeof value === "string"),
+      reason: readFormText(formData, "reason"),
+    });
+  } catch {
+    redirect(accessPath(targetUserId, targetRoleAssignmentId, "change-unavailable"));
+  }
+  revalidatePath(`/users/${targetUserId}/access`);
+  revalidatePath("/users");
+  redirect(accessPath(targetUserId, targetRoleAssignmentId, "override-applied"));
 }

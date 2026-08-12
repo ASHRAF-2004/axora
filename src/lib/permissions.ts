@@ -40,7 +40,14 @@ export type Permission =
   | "update_assigned_deliveries"
   | "view_receiving"
   | "confirm_receipts"
-  | "review_three_way_matches";
+  | "review_three_way_matches"
+  | "view_platform_revenue"
+  | "view_platform_profit"
+  | "view_internal_cost"
+  | "create_platform_users"
+  | "create_company_users"
+  | "create_delivery_users"
+  | "view_all_companies";
 
 export interface AccessSubject {
   role: UserRole | string;
@@ -51,6 +58,8 @@ export interface AccessSubject {
   branchId?: string;
   departmentId?: string;
   supplierId?: string;
+  /** Live database-derived route permissions. Never persist these in the JWT. */
+  effectivePermissions?: readonly Permission[];
 }
 
 const platformOwnerPermissions: readonly Permission[] = [
@@ -81,6 +90,13 @@ const platformOwnerPermissions: readonly Permission[] = [
   "manage_email_operations",
   "view_receiving",
   "review_three_way_matches",
+  "view_platform_revenue",
+  "view_platform_profit",
+  "view_internal_cost",
+  "create_platform_users",
+  "create_company_users",
+  "create_delivery_users",
+  "view_all_companies",
 ];
 
 const legacyCompanyAdminPermissions: readonly Permission[] = [
@@ -308,6 +324,9 @@ export function canAccess(subject: AccessSubject, permission: Permission) {
   if (subject.isOwner) {
     if (subject.role !== "ADMIN" && subject.role !== "PLATFORM_OWNER") return false;
     return platformOwnerPermissions.includes(permission);
+  }
+  if (subject.effectivePermissions) {
+    return subject.effectivePermissions.includes(permission);
   }
   if (permission === "view_audit"
     && (subject.scopeType === "BRANCH" || subject.scopeType === "DEPARTMENT")) {

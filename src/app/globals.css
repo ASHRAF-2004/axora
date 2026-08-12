@@ -4148,3 +4148,35 @@ bdi[dir="auto"] {
 @media (prefers-reduced-motion: reduce) {
   .profile-image-preview img { transition: none; }
 }
+.permission-editor {
+  border: 1px solid var(--slate-200);
+  border-radius: 16px;
+  padding: clamp(14px, 2vw, 22px);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 94%, var(--brand-soft)), var(--surface));
+}
+
+.permission-checklist { display: grid; gap: 16px; }
+.permission-group { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+.permission-group legend { font-weight: 800; margin-block-end: 8px; }
+.permission-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.permission-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--slate-200);
+  border-radius: 12px;
+  padding: 11px;
+  background: var(--surface);
+}
+.permission-option input { margin-block-start: 4px; }
+.permission-option span, .permission-option small { display: block; }
+.permission-risk-high { color: var(--danger); font-weight: 700; }
+
+@media (max-width: 720px) {
+  .permission-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .permission-option { scroll-behavior: auto; }
+}

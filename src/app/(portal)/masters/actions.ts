@@ -39,6 +39,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { calculateCommercialSellingPrice } from "@/lib/procurement-rules";
+import { canAccess } from "@/lib/permissions";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 const optionalNumber = (data: FormData, key: string) => data.get(key) === null || data.get(key) === "" ? "" : data.get(key);
@@ -325,6 +326,9 @@ export async function createSupplierAction(formData: FormData) {
 
 export async function createProductAction(formData: FormData) {
   const user = await requirePermission("manage_catalog");
+  if (!canAccess(user, "manage_commercial_pricing")) {
+    throw new Error("Commercial pricing permission is required to create a priced product.");
+  }
   const selectedFiles = [...files(formData, "images"), ...files(formData, "image")];
   const preparedImages = await prepareProductImages(selectedFiles);
   const productId = await createProduct(productInput(formData), user);
@@ -341,6 +345,9 @@ export async function createProductAction(formData: FormData) {
 
 export async function updateProductAction(productId: string, formData: FormData) {
   const user = await requirePermission("manage_catalog");
+  if (!canAccess(user, "manage_commercial_pricing")) {
+    throw new Error("Commercial pricing permission is required to change a priced product.");
+  }
   await updateProduct(productId, productInput(formData), user);
   revalidateProduct(productId);
   redirect("/products?notice=product-updated");

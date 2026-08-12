@@ -14,6 +14,11 @@ import { LOCALE_NAMES, SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18
 import { userFormMessages } from "@/lib/user-form-i18n";
 import type { OrganizationDepartment } from "@/lib/organization-structure";
 import { organizationStructureMessages } from "@/lib/organization-structure-i18n";
+import {
+  PermissionChecklist,
+  type PermissionChecklistOption,
+} from "@/components/PermissionChecklist";
+import type { PermissionCode } from "@/lib/authorization-policy";
 
 export interface UserRoleOption {
   label: string;
@@ -22,6 +27,7 @@ export interface UserRoleOption {
   category: "Axora" | "Company" | "Delivery";
   accountKind: AccountKind;
   allowedScopes: readonly RoleScopeType[];
+  defaultPermissions?: readonly PermissionCode[];
 }
 
 function CreateAccountButton({ disabled, locale }: { disabled: boolean; locale: SupportedLocale }) {
@@ -50,6 +56,7 @@ export function UserCreateForm({
   companies,
   departments,
   roleOptions,
+  permissionOptions = [],
   defaultLocale,
 }: {
   actorBranchId?: string;
@@ -60,6 +67,7 @@ export function UserCreateForm({
   companies: Company[];
   departments: OrganizationDepartment[];
   roleOptions: UserRoleOption[];
+  permissionOptions?: PermissionChecklistOption[];
   defaultLocale: SupportedLocale;
 }) {
   const preferredRole = roleOptions.find((option) => option.value === "COMPANY_ADMIN")
@@ -77,6 +85,16 @@ export function UserCreateForm({
   );
   const [branchId, setBranchId] = useState(actorBranchId ?? "");
   const [departmentId, setDepartmentId] = useState(actorDepartmentId ?? "");
+  const allowedPermissionCodes = useMemo(
+    () => new Set(permissionOptions.map((permission) => permission.code)),
+    [permissionOptions],
+  );
+  const roleDefaults = (selectedRole?.defaultPermissions ?? [])
+    .filter((permission) => allowedPermissionCodes.has(permission));
+  const [permissions, setPermissions] = useState<Set<PermissionCode>>(
+    () => new Set(roleDefaults),
+  );
+  const [permissionsCustomized, setPermissionsCustomized] = useState(false);
   const copy = userFormMessages(defaultLocale);
   const organizationCopy = organizationStructureMessages(defaultLocale);
   const localizedSelectedRole = selectedRole ? copy.roles[selectedRole.value] : undefined;
@@ -123,6 +141,12 @@ export function UserCreateForm({
   function changeRole(nextRole: UserRole) {
     const nextDefinition = roleOptions.find((option) => option.value === nextRole);
     setRole(nextRole);
+    if (!permissionsCustomized) {
+      setPermissions(new Set(
+        (nextDefinition?.defaultPermissions ?? [])
+          .filter((permission) => allowedPermissionCodes.has(permission)),
+      ));
+    }
     if (!nextDefinition?.allowedScopes.includes("BRANCH")) {
       setBranchId("");
     } else if (!nextDefinition.allowedScopes.includes("COMPANY")) {
@@ -133,6 +157,16 @@ export function UserCreateForm({
     if (!nextDefinition?.allowedScopes.includes("DEPARTMENT")) {
       setDepartmentId("");
     }
+  }
+
+  function changePermissions(next: Set<PermissionCode>) {
+    setPermissions(next);
+    setPermissionsCustomized(true);
+  }
+
+  function resetPermissions() {
+    setPermissions(new Set(roleDefaults));
+    setPermissionsCustomized(false);
   }
 
   function changeDepartment(nextDepartmentId: string) {
@@ -146,7 +180,7 @@ export function UserCreateForm({
     || (requiresNarrowScope && !effectiveBranchId && !selectedDepartmentId);
 
   return (
-    <form action={createUserAction}>
+    <form action={createUserAction} data-draft-id="create-user">
       <div className="form-grid">
         <label>{copy.fullName}<input name="displayName" required autoComplete="name" /></label>
         <label>{copy.workEmail}<input name="email" type="email" required autoComplete="username" /></label>
@@ -176,7 +210,7 @@ export function UserCreateForm({
           <small>{localizedSelectedRole?.description ?? selectedRole?.description}</small>
         </label>
 
-        {isCompanyAccount && actorIsOwner ? (
+        {isCompanyAccount && (actorIsOwner || !actorCompanyId) ? (
           <label>{copy.customerCompany}
             <select
               name="companyId"
@@ -241,6 +275,33 @@ export function UserCreateForm({
         {isCompanyAccount && !allowsBranch && effectiveBranchId ? (
           <input type="hidden" name="branchId" value={effectiveBranchId} />
         ) : null}
+
+        <section className="field-full permission-editor" aria-labelledby="create-permissions-title">
+          <div className="panel-header">
+            <div>
+              <h3 id="create-permissions-title">
+                {defaultLocale === "ar" ? "الصلاحيات الفعلية" : defaultLocale === "ms" ? "Akses berkesan" : "Effective access"}
+              </h3>
+              <p>{defaultLocale === "ar"
+                ? "الدور قالب بداية. عدّل الصلاحيات ضمن نطاق تفويضك."
+                : defaultLocale === "ms"
+                  ? "Peranan ialah templat permulaan. Laraskan kebenaran dalam kuasa delegasi anda."
+                  : "The role is a starting template. Adjust permissions within your delegation authority."}</p>
+            </div>
+            <button className="button button-secondary" type="button" onClick={resetPermissions}>
+              {defaultLocale === "ar" ? "إعادة ضبط قالب الدور" : defaultLocale === "ms" ? "Tetapkan semula templat peranan" : "Reset to role defaults"}
+            </button>
+          </div>
+          {permissionsCustomized ? <div className="callout" role="status">
+            {defaultLocale === "ar" ? "تم الاحتفاظ بتخصيصاتك عند تغيير الدور." : defaultLocale === "ms" ? "Pilihan tersuai anda dikekalkan apabila peranan berubah." : "Your custom choices are preserved when the role changes."}
+          </div> : null}
+          <PermissionChecklist
+            locale={defaultLocale}
+            options={permissionOptions}
+            selected={permissions}
+            onChange={changePermissions}
+          />
+        </section>
 
         <div className="callout field-full" role="note">
           <strong>{copy.secureSetup}</strong>

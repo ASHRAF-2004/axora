@@ -27,6 +27,8 @@ interface OperationActor {
   accountKind?: SessionUser["accountKind"];
   scopeType?: SessionUser["scopeType"];
   isOwner?: boolean;
+  roleAssignmentId?: string;
+  effectivePermissions?: SessionUser["effectivePermissions"];
 }
 
 function operationActorCanAccess(actor: OperationActor, permission: Permission) {
@@ -40,6 +42,7 @@ function operationActorCanAccess(actor: OperationActor, permission: Permission) 
       companyId: actor.companyId,
       branchId: actor.branchId,
       supplierId: actor.supplierId,
+      effectivePermissions: actor.effectivePermissions,
     }, permission),
   );
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AuthenticatedSessionUser } from "./auth";
+import type { AuthenticatedSessionUser, SessionUser } from "./auth";
 import {
   authorizationPolicyInternals,
   isPermissionCode,
@@ -7,6 +7,7 @@ import {
   type PermissionCode,
 } from "./authorization-policy";
 import { query } from "./db";
+import type { PoolClient } from "pg";
 
 const uuidSchema = z.string().uuid();
 const reasonSchema = z.string().trim().min(3).max(500);
@@ -63,6 +64,20 @@ const setPermissionOverrideSchema = z.object({
 const removePermissionOverrideSchema = z.object({
   overrideId: uuidSchema,
   reason: reasonSchema,
+}).strict();
+
+const replacePermissionSetSchema = z.object({
+  targetUserId: uuidSchema,
+  targetRoleAssignmentId: uuidSchema,
+  permissions: z.array(permissionSchema).max(120),
+  reason: reasonSchema,
+}).strict();
+
+const permissionSetResultSchema = z.object({
+  changed: z.boolean(),
+  overrideCount: z.coerce.number().int().nonnegative(),
+  revokedSessions: z.coerce.number().int().nonnegative(),
+  authVersion: z.coerce.number().int().positive(),
 }).strict();
 
 interface PermissionChangeRow {
@@ -187,9 +202,62 @@ export async function removeUserPermissionOverride(
   }
 }
 
+export async function replaceUserPermissionSetInTransaction(
+  client: PoolClient,
+  actor: SessionUser,
+  input: z.input<typeof replacePermissionSetSchema>,
+) {
+  if (!actor.roleAssignmentId) throw new AccessManagementUnavailableError();
+  const parsed = replacePermissionSetSchema.parse(input);
+  const result = await client.query<{ payload: unknown }>(
+    `SELECT public.axora_replace_user_permission_set(
+       $1,$2,$3,$4,$5::text[],$6,now()
+     ) AS payload`,
+    [
+      actor.id,
+      actor.roleAssignmentId,
+      parsed.targetUserId,
+      parsed.targetRoleAssignmentId,
+      [...new Set(parsed.permissions)].sort(),
+      parsed.reason,
+    ],
+  );
+  return permissionSetResultSchema.parse(result.rows[0]?.payload);
+}
+
+export async function replaceUserPermissionSet(
+  actor: AuthenticatedSessionUser,
+  input: z.input<typeof replacePermissionSetSchema>,
+) {
+  if (!actor.roleAssignmentId || input.targetUserId === actor.id) {
+    throw new AccessManagementUnavailableError();
+  }
+  try {
+    const parsed = replacePermissionSetSchema.parse(input);
+    const result = await query<{ payload: unknown }>(
+      `SELECT public.axora_replace_user_permission_set(
+         $1,$2,$3,$4,$5::text[],$6,now()
+       ) AS payload`,
+      [
+        actor.id,
+        actor.roleAssignmentId,
+        parsed.targetUserId,
+        parsed.targetRoleAssignmentId,
+        [...new Set(parsed.permissions)].sort(),
+        parsed.reason,
+      ],
+    );
+    return permissionSetResultSchema.parse(result.rows[0]?.payload);
+  } catch (error) {
+    if (error instanceof AccessManagementUnavailableError) throw error;
+    throw new AccessManagementUnavailableError();
+  }
+}
+
 export const accessManagementInternals = {
   normalizeResult,
   removePermissionOverrideSchema,
   scopeArguments,
   setPermissionOverrideSchema,
+  replacePermissionSetSchema,
 };

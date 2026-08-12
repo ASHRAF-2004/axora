@@ -33,6 +33,9 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("next/headers", () => ({ cookies: mocks.cookies }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("@/lib/route-authorization", () => ({
+  resolveEffectiveRoutePermissions: vi.fn(async () => []),
+}));
 
 import {
   clearSession,

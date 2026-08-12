@@ -10,6 +10,7 @@ import {
 } from "./role-catalog";
 import type { AccountKind, RoleScopeType, UserRecord, UserRole } from "./types";
 import type { SupportedLocale } from "./i18n";
+import { isPermissionCode, type PermissionCode } from "./authorization-policy";
 
 declare global {
   var __axoraDemoUsers: UserRecord[] | undefined;
@@ -94,6 +95,7 @@ export interface UserCreationInput {
   supplierId?: string;
   jobTitle?: string;
   preferredLocale?: SupportedLocale;
+  permissions?: PermissionCode[];
 }
 
 export interface ResolvedUserCreation {
@@ -108,6 +110,7 @@ export interface ResolvedUserCreation {
   supplierId?: string;
   jobTitle?: string;
   preferredLocale: SupportedLocale;
+  permissions?: PermissionCode[];
 }
 
 export interface ValidatedUserCreation extends ResolvedUserCreation {
@@ -140,19 +143,25 @@ export function resolveUserCreation(
   const jobTitle = input.jobTitle?.trim() || undefined;
   if (jobTitle && jobTitle.length > 160) throw new Error("Job title cannot exceed 160 characters.");
   const preferredLocale = input.preferredLocale ?? actor.preferredLocale ?? "en";
+  const permissions = input.permissions
+    ? [...new Set(input.permissions.filter(isPermissionCode))].sort()
+    : undefined;
+  if (input.permissions && permissions?.length !== input.permissions.length) {
+    throw new Error("One or more selected permissions are unavailable.");
+  }
 
   if (definition.accountKind === "PLATFORM") {
-    return { email, displayName, role, accountKind: "PLATFORM", scopeType: "PLATFORM", jobTitle, preferredLocale };
+    return { email, displayName, role, accountKind: "PLATFORM", scopeType: "PLATFORM", jobTitle, preferredLocale, permissions };
   }
   if (definition.accountKind === "SUPPLIER") {
     if (!actor.isOwner || !input.supplierId) throw new Error("Select the supplier organization for this user.");
-    return { email, displayName, role, accountKind: "SUPPLIER", scopeType: "SUPPLIER", supplierId: input.supplierId, jobTitle, preferredLocale };
+    return { email, displayName, role, accountKind: "SUPPLIER", scopeType: "SUPPLIER", supplierId: input.supplierId, jobTitle, preferredLocale, permissions };
   }
   if (definition.accountKind === "DELIVERY") {
-    return { email, displayName, role, accountKind: "DELIVERY", scopeType: "DELIVERY", jobTitle, preferredLocale };
+    return { email, displayName, role, accountKind: "DELIVERY", scopeType: "DELIVERY", jobTitle, preferredLocale, permissions };
   }
 
-  const companyId = actor.isOwner ? input.companyId : actor.companyId;
+  const companyId = actor.accountKind === "PLATFORM" ? input.companyId : actor.companyId;
   if (!companyId) throw new Error("Select the approved customer company for this user.");
   const requestedBranchId = actor.branchId ?? input.branchId;
   const requestedDepartmentId = actor.departmentId ?? input.departmentId;
@@ -176,7 +185,7 @@ export function resolveUserCreation(
     throw new Error("A department administrator can create users only in their assigned department.");
   }
 
-  return { email, displayName, role, accountKind: "COMPANY", scopeType, companyId, branchId, departmentId, jobTitle, preferredLocale };
+  return { email, displayName, role, accountKind: "COMPANY", scopeType, companyId, branchId, departmentId, jobTitle, preferredLocale, permissions };
 }
 
 /** Lock and validate the tenant records used by a new account transaction. */

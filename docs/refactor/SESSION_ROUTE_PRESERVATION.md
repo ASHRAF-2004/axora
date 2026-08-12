@@ -208,3 +208,19 @@ Release is blocked unless all of the following pass:
 - lint, TypeScript, full unit/integration/security tests, production build,
   desktop/mobile browser journeys, visitor recovery, deployment assets, and
   production container verification.
+
+## Routine actions and form progress
+
+Routine authenticated portal actions no longer invoke blanket password step-up.
+The primary login, live database session check, auth-version revocation, CSRF
+controls, route permission checks, RLS, scope capabilities, and immutable audit
+trail remain mandatory. Current-password verification remains limited to
+credential changes and password recovery.
+
+The shared portal draft manager stores only allowlisted, non-sensitive form
+values in sessionStorage. Keys bind the draft to user, company/branch/department
+scope, route, form identifier, and schema version. Drafts expire after seven days,
+restore after refresh or recovery, clear after successful submission, and expose
+a discard action. Passwords, tokens, cookies, API/webhook keys, payment secrets,
+private material, and file contents are always excluded; file controls require
+reselection.

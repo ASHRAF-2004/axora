@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { canAccess, type Permission } from "./permissions";
+import { resolveEffectiveRoutePermissions } from "./route-authorization";
 import {
   hashPassword,
   passwordHashNeedsUpgrade,
@@ -44,6 +45,8 @@ export interface SessionUser {
   preferredLocale?: SupportedLocale;
   /** Current profile timezone; live DB state, not an authorization claim. */
   timezone?: string;
+  /** Recomputed from live grants/denies; never signed into the session token. */
+  effectivePermissions?: readonly Permission[];
 }
 
 export type AuthenticatedSessionUser = Omit<
@@ -826,7 +829,11 @@ async function readLiveSession(): Promise<LiveIdentity | null> {
  */
 export async function getSession(): Promise<AuthenticatedSessionUser | null> {
   const identity = await readLiveSession();
-  return identity?.onboardingComplete ? identity.user : null;
+  if (!identity?.onboardingComplete) return null;
+  return {
+    ...identity.user,
+    effectivePermissions: await resolveEffectiveRoutePermissions(identity.user),
+  };
 }
 
 /**
@@ -841,7 +848,10 @@ export async function requireSession() {
   const identity = await readLiveSession();
   if (!identity) redirect("/login");
   if (!identity.onboardingComplete) redirect("/profile?onboarding=1");
-  return identity.user;
+  return {
+    ...identity.user,
+    effectivePermissions: await resolveEffectiveRoutePermissions(identity.user),
+  };
 }
 
 /**
