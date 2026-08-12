@@ -90,6 +90,54 @@ describe("Resend provider adapter", () => {
     });
   });
 
+  it("carries the validated account-setup recipient name into the Resend request", async () => {
+    const requests = [];
+    const provider = createResendEmailProvider({
+      token: "re_synthetic_production_key_value",
+      fetchImpl: vi.fn(async (_url, options) => {
+        requests.push(JSON.parse(options.body));
+        return new Response(JSON.stringify({ id: "resend-synthetic-invitation-id" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    });
+    const readFileImpl = vi.fn(async () => Buffer.from("synthetic-inline-asset"));
+
+    await expect(sendAccountSetup({
+      deliveryId: "7c400000-0000-4000-8000-000000000002",
+      recipientName: "Synthetic administrator",
+      recipientEmail: "administrator@example.invalid",
+      companyName: "Axora",
+      role: "ADMIN",
+      expiresAt: "2026-08-13T00:00:00.000Z",
+      locale: "en",
+      setupUrl: `https://axora.management/account/setup#token=${"A".repeat(43)}`,
+    }, {
+      env: {
+        AXORA_EMAIL_DELIVERY_ENABLED: "true",
+        AXORA_EMAIL_PROVIDER: "resend",
+        AXORA_EMAIL_FROM_ADDRESS: "noreply@axora.management",
+        AXORA_EMAIL_FROM_NAME: "Axora",
+        AXORA_EMAIL_REPLY_TO: "support@axora.management",
+        APP_BASE_URL: "https://axora.management",
+      },
+      provider,
+      readFileImpl,
+    })).resolves.toMatchObject({
+      succeeded: true,
+      status: "submitted",
+      messageId: "resend-synthetic-invitation-id",
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      to: ["administrator@example.invalid"],
+      subject: expect.any(String),
+    });
+    expect(requests[0].subject).not.toHaveLength(0);
+  });
+
   it.each([
     [429, "retry"],
     [500, "retry"],

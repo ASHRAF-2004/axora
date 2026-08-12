@@ -363,7 +363,7 @@ export async function renderAccountSetupEmail(input, options = {}) {
     `${copy.privacyLabel}: ${privacyUrl}`,
     `${copy.supportLine}: ${supportEmail}`,
   ].join("\n");
-  return { subject, html, text, recipientEmail, supportEmail };
+  return { subject, html, text, recipientName, recipientEmail, supportEmail };
 }
 
 export const accountSetupEmailInternals = {
