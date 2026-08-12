@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { calculateLineAmounts } from "./domain";
 import { getDemoStore } from "./demo-data";
-import { COD_PAYMENT_METHOD } from "./types";
+import { INTERNAL_PAYMENT_STRATEGY } from "./types";
 import type { ApprovalRecord, AttachmentRecord, AuditRecord, DeliveryRecord, InvoiceRecord, PaymentRecord, QuotationRecord } from "./types";
 
 export interface DemoOperationsStore {
@@ -56,7 +56,7 @@ function buildDemoOperations(): DemoOperationsStore {
         paymentStatus: request.paymentStatus ?? "Unpaid", requestStatus: request.status };
       invoices.push(invoice);
       if (paidAmount) payments.push({ id: randomUUID(), invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber,
-        paymentDate: request.completedDate ?? request.requestDate, amount: paidAmount, method: COD_PAYMENT_METHOD, reference: "DEMO-PAYMENT" });
+        paymentDate: request.completedDate ?? request.requestDate, amount: paidAmount, method: INTERNAL_PAYMENT_STRATEGY, reference: "DEMO-PAYMENT" });
     }
   }
   return { quotations, approvals, deliveries, invoices, payments, audit: [], attachments: [] };

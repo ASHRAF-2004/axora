@@ -75,9 +75,9 @@ const definitions: Record<string, TutorialStepDefinition[]> = {
     sharedHelp,
   ],
   FINANCE_REVIEWER: [
-    { key: "finance-queue", title: "Start with finance exceptions", body: "Prioritize missing evidence, discrepancies, unmatched invoices, and COD status needing review.", target: "[data-tour='finance']" },
+    { key: "finance-queue", title: "Start with finance exceptions", body: "Prioritize missing evidence, discrepancies, unmatched invoices, and payment status needing review.", target: "[data-tour='finance']" },
     { key: "three-way-match", title: "Compare three records", body: "Match the approved request or order, accepted receipt, and invoice before completing reconciliation.", target: "[data-tour='matching']" },
-    { key: "cod-evidence", title: "Record COD status with evidence", body: "Use the approved payment method and keep receipt references and attachments attached to the correct invoice.", target: "[data-tour='payments']" },
+    { key: "payment-evidence", title: "Review payment evidence", body: "Keep receipt references and attachments linked to the correct supplier invoice.", target: "[data-tour='payments']" },
     sharedHelp,
   ],
   AUDITOR: [
@@ -215,15 +215,15 @@ const localizedTutorialCopy: Record<Exclude<SupportedLocale, "en">, Record<strin
     },
     "finance-queue": {
       title: "ابدأ بالاستثناءات المالية",
-      body: "أعطِ الأولوية للأدلة الناقصة والفروقات والفواتير غير المطابقة وحالات الدفع عند الاستلام التي تحتاج إلى مراجعة.",
+      body: "أعطِ الأولوية للأدلة الناقصة والفروقات والفواتير غير المطابقة وحالات الدفع التي تحتاج إلى مراجعة.",
     },
     "three-way-match": {
       title: "قارن السجلات الثلاثة",
       body: "طابق الطلب أو أمر الشراء المعتمد مع إيصال الاستلام المقبول والفاتورة قبل إكمال التسوية.",
     },
-    "cod-evidence": {
-      title: "سجّل حالة الدفع عند الاستلام مع الدليل",
-      body: "استخدم طريقة الدفع المعتمدة، واربط مراجع الإيصالات والمرفقات بالفاتورة الصحيحة.",
+    "payment-evidence": {
+      title: "راجع دليل الدفع",
+      body: "اربط مراجع الإيصالات والمرفقات بفاتورة المورد الصحيحة.",
     },
     "audit-read-only": {
       title: "مساحة عملك للقراءة فقط",
@@ -389,15 +389,15 @@ const localizedTutorialCopy: Record<Exclude<SupportedLocale, "en">, Record<strin
     },
     "finance-queue": {
       title: "Mulakan dengan pengecualian kewangan",
-      body: "Utamakan bukti yang tiada, percanggahan, invois tidak dipadankan dan status COD yang memerlukan semakan.",
+      body: "Utamakan bukti yang tiada, percanggahan, invois tidak dipadankan dan status bayaran yang memerlukan semakan.",
     },
     "three-way-match": {
       title: "Bandingkan tiga rekod",
       body: "Padankan permintaan atau pesanan yang diluluskan, penerimaan yang disahkan dan invois sebelum melengkapkan rekonsiliasi.",
     },
-    "cod-evidence": {
-      title: "Rekod status COD berserta bukti",
-      body: "Gunakan kaedah bayaran yang diluluskan dan pastikan rujukan resit serta lampiran dipautkan kepada invois yang betul.",
+    "payment-evidence": {
+      title: "Semak bukti bayaran",
+      body: "Pastikan rujukan resit dan lampiran dipautkan kepada invois pembekal yang betul.",
     },
     "audit-read-only": {
       title: "Ruang kerja anda ialah baca sahaja",

@@ -18,7 +18,7 @@ import {
   evaluateAuthorizedCustomerMatch,
   overrideAuthorizedCustomerMatch,
 } from "@/lib/customer-matching-isolation";
-import { COD_PAYMENT_METHOD } from "@/lib/types";
+import { INTERNAL_PAYMENT_STRATEGY } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -156,7 +156,7 @@ export async function recordDeliveryAction(formData: FormData) {
   revalidatePath("/deliveries"); revalidatePath("/requests"); revalidatePath("/dashboard");
 }
 
-const invoiceSchema = z.object({ direction: z.enum(["CUSTOMER", "SUPPLIER"]), requestId: z.string().uuid(),
+const invoiceSchema = z.object({ direction: z.literal("SUPPLIER"), requestId: z.string().uuid(),
   supplierId: z.string().uuid().optional(), invoiceNumber: z.string().trim().min(1).max(100),
   invoiceDate: z.iso.date(), dueDate: optionalDate, amount: z.coerce.number().positive(), status: z.literal("Issued") });
 
@@ -168,12 +168,15 @@ export async function createInvoiceAction(formData: FormData) {
 }
 
 const paymentSchema = z.object({ invoiceId: z.string().uuid(), paymentDate: z.iso.date(), amount: z.coerce.number().positive(),
-  method: z.literal(COD_PAYMENT_METHOD), reference: z.string().trim().min(1, "Receipt reference is required.").max(200) });
+  reference: z.string().trim().min(1, "Payment reference is required.").max(200) });
 
 export async function recordPaymentAction(formData: FormData) {
   const user = await requirePermission("manage_finance");
   await requireRecentStepUp(user, "/finance");
-  await recordScopedPayment(paymentSchema.parse(Object.fromEntries(formData)), user);
+  await recordScopedPayment({
+    ...paymentSchema.parse(Object.fromEntries(formData)),
+    method: INTERNAL_PAYMENT_STRATEGY,
+  }, user);
   revalidatePath("/finance"); revalidatePath("/dashboard");
 }
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COD_PAYMENT_METHOD } from "./types";
+import { STANDARD_BILLING_TERMS } from "./types";
 
 const required = (label: string, max = 200) => z.string().trim().min(1, `${label} is required.`).max(max);
 const optional = (max = 500) => z.string().trim().max(max).optional().transform((value) => value || undefined);
@@ -20,7 +20,7 @@ export const companySchema = z.object({
   mainContactName: required("Main contact"),
   mainContactEmail: email, mainContactPhone: required("Main contact phone", 50), billingContactName: required("Billing contact"),
   billingContactEmail: email, billingContactPhone: required("Billing contact phone", 50), billingAddress: required("Billing address", 500),
-  paymentTerms: z.literal(COD_PAYMENT_METHOD), billingCycle: required("Billing cycle", 100), notes: optional(1000),
+  paymentTerms: z.literal(STANDARD_BILLING_TERMS), billingCycle: required("Billing cycle", 100), notes: optional(1000),
 });
 
 export const companyPricingSchema = z.object({
@@ -41,7 +41,7 @@ export const branchSchema = z.object({
 
 export const supplierSchema = z.object({
   name: required("Supplier name"), category: required("Category"), contactName: required("Contact name"), phone: required("Phone", 50),
-  email, address: required("Address", 500), coverageArea: required("Coverage area"), paymentTerms: z.literal(COD_PAYMENT_METHOD),
+  email, address: required("Address", 500), coverageArea: required("Coverage area"), paymentTerms: z.literal(STANDARD_BILLING_TERMS),
   leadTimeDays: wholeDays, minimumOrderQuantity: positive, mainProducts: required("Main products", 500), notes: optional(1000),
 });
 

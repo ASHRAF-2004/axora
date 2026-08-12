@@ -52,7 +52,7 @@ function validDirectory() {
       billingContactEmail: "finance@example.test",
       billingContactPhone: "+601100000002",
       billingAddress: "Cyberjaya",
-      paymentTerms: "Cash on delivery (COD)",
+      paymentTerms: "Standard billing terms",
       billingCycle: "Monthly",
       taxRate: 0,
       estimatedDeliveryFee: 15,

@@ -132,9 +132,9 @@ COMPANY_EN = (
         ("Use notifications", "Open role-relevant in-app alerts or safe email links; mark items read when handled."),
         ("Report delays", "Use the workflow ID when asking for help; never send confidential documents outside Axora."),
     ], "timeline", ("Request", "Approval", "Sourcing", "Delivery", "Receipt", "Invoice"), "PRIVACY", "You see only timeline details allowed by your tenant, role and branch scope."),
-    t("SUPPLIER COLLABORATION", "Understand the quotation stage", "Axora sends a request for quotation to approved supplier accounts after company approval.", [
-        ("Supplier receives the RFQ", "The supplier sees only its organization’s assigned records and shared specifications."),
-        ("Supplier submits an offer", "Price, MOQ, lead time, validity, availability, delivery charge and documents are recorded."),
+    t("SUPPLIER COLLABORATION", "Understand the quotation stage", "Axora staff manage approved suppliers and quotations in a private internal workspace after company approval.", [
+        ("Axora requests a quotation", "Authorized operators share only the specifications needed by the selected supplier."),
+        ("Axora records the offer", "Price, MOQ, lead time, validity, availability, delivery charge and documents are recorded."),
         ("Axora evaluates", "Axora compares offers and records the selection reason. Suppliers cannot select themselves."),
         ("Company follows progress", "Customer users see suitable fulfilment status without private supplier commercial data."),
     ], "supplier", ("RFQ", "Quotation", "Axora selection", "Order"), "CONFIDENTIALITY", "Competing suppliers, quotations, Axora margin and internal selection notes remain private."),
@@ -148,14 +148,14 @@ COMPANY_EN = (
         ("Compare the delivery", "Check product, delivered quantity, packaging and evidence against the approved request."),
         ("Record quantities", "Enter accepted, damaged and missing quantities; partial receipt remains open."),
         ("Raise a discrepancy", "Add a clear reason and permitted evidence for shortage, damage or the wrong item."),
-        ("Complete receipt", "Confirm date, receiver identity and final quantities only after inspection."),
+        ("Complete receipt", "Confirm date, receiver identity and final quantities only after inspection so Axora can complete three-way matching."),
     ], "receive", ("Driver evidence", "Inspection", "Partial or final receipt", "Discrepancy"), "INDEPENDENT CONTROL", "A driver cannot create final receiving approval alone."),
-    t("FINANCE", "Understand three-way matching and COD records", "Finance compares the approved order, receipt evidence and invoice before reconciliation.", [
-        ("Match three records", "Compare approved quantity and price, accepted receipt quantities and the customer invoice."),
-        ("Resolve exceptions", "Investigate quantity mismatch, price mismatch, missing file, duplicate invoice or delivery discrepancy."),
-        ("Record COD status", "Cash on delivery remains the approved method; Axora records evidence and status, not an online card payment."),
-        ("Close with evidence", "Completion requires the allowed approval, receiving, invoice and reconciliation events."),
-    ], "match", ("Approved order", "Receipt", "Invoice", "Matched / exception"), "PLAIN LANGUAGE", "Matched means all required records agree. An exception stays open until an authorized person resolves it."),
+    t("FINANCE", "Pay and keep the finalized invoice", "Payment, invoice finalization and physical delivery are independent auditable states.", [
+        ("Select Pay", "After approval, Pay recalculates the trusted total and records it as paid."),
+        ("Keep the invoice", "Axora finalizes one permanent invoice and generates its PDF from the immutable snapshot."),
+        ("Check the email", "One transactional email includes the invoice summary and attached PDF."),
+        ("Follow delivery separately", "Fulfilment, delivery and independent receipt continue in their own workflow."),
+    ], "match", ("Pay", "Paid", "Invoice PDF", "Email queued"), "PLAIN LANGUAGE", "A failed invoice email does not reverse a valid paid record or finalized invoice."),
     t("ACCOUNT", "Protect your profile and sessions", "Your avatar menu contains personal settings without interrupting purchasing work.", [
         ("Keep profile current", "Maintain phone, language, timezone, avatar and notification preference."),
         ("Change password safely", "Enter the current password, create a strong new one and choose whether to sign out other sessions."),
@@ -183,7 +183,7 @@ OWNER_EN = (
         ("Issue the invitation", "Axora stores only a secure token hash and records issuer, expiry and intended scope."),
         ("Resend safely", "A resend revokes the earlier link and creates a new single-use link."),
         ("Manage lifecycle", "Revoke invitations, deactivate accounts and inspect activation status without seeing passwords."),
-    ], "roles", ("Identity", "Membership", "Role + scope", "Invitation"), "CANONICAL ROLES", "Use Platform Owner, Operations Administrator, Company Administrator, Branch Administrator, Branch Approver, Company Approver, Purchase Requester, Finance Reviewer, Read-Only Auditor, Technical Support, Supplier User, Delivery Driver and Receiving User."),
+    ], "roles", ("Identity", "Membership", "Role + scope", "Invitation"), "CANONICAL ROLES", "Use Platform Owner, Operations Administrator, Company Administrator, Branch Administrator, Branch Approver, Company Approver, Purchase Requester, Finance Reviewer, Read-Only Auditor, Technical Support, Delivery Driver and Receiving User."),
     t("OWNER NAVIGATION", "Run operations from the top shell", "Frequent modules stay in top navigation; system tools and settings stay in the hamburger drawer.", [
         ("Top work", "Use Dashboard, Companies, Catalog, Sourcing, Deliveries and Invoices when permissions allow."),
         ("Drawer work", "Open Settings, Audit history, Reports, Email delivery and system tools."),
@@ -196,7 +196,7 @@ OWNER_EN = (
         ("Upload a real image", "Validate JPEG, PNG or WebP bytes, optimize locally and write useful alternative text."),
         ("Verify the Shop card", "Confirm image, name, search terms, unit and customer-facing details before activation."),
     ], "catalog", ("Validate", "Describe", "Upload image", "Publish"), "PRIVATE DATA", "Buying cost, supplier identity, margin and internal notes never appear in the company Shop."),
-    t("SUPPLIERS & RFQ", "Coordinate suppliers through isolated portals", "Supplier organizations receive only assigned quotation and order records.", [
+    t("SUPPLIERS & RFQ", "Coordinate suppliers in the internal workspace", "Authorized Axora operators manage supplier quotations and order records privately.", [
         ("Maintain supplier records", "Keep contacts, coverage, categories, lead time, terms and active status accurate."),
         ("Send an RFQ", "Share approved specifications and requested response fields without exposing competitors."),
         ("Evaluate offers", "Compare price, MOQ, availability, lead time, validity, delivery charge and documents."),
@@ -220,12 +220,12 @@ OWNER_EN = (
         ("Support partial receipt", "Keep the remaining quantity available for a later valid delivery and receipt."),
         ("Manage discrepancies", "Route a reason and evidence to the authorized resolver before final completion."),
     ], "receive", ("Evidence", "Inspect", "Partial / final", "Resolve"), "CONCURRENCY", "Prevent duplicate receipt, stale reservation and repeated-event races with transactions and idempotency."),
-    t("FINANCE", "Perform three-way matching and COD reconciliation", "Finance compares approved commercial intent, accepted delivery and invoice evidence.", [
-        ("Match the order", "Use approved product, quantity and allowed price."),
-        ("Match the receipt", "Use independently accepted quantities and recorded discrepancies."),
-        ("Match the invoice", "Detect price, quantity, document and duplicate-invoice exceptions."),
-        ("Reconcile COD", "Record receipt evidence and status; resolve exceptions before completion."),
-    ], "match", ("Order", "Receipt", "Invoice", "Matched / exception"), "PAYMENT MODEL", "COD is the current approved method. The application records evidence and status; it does not claim to process online payment."),
+    t("FINANCE", "Oversee payment and invoice finalization", "The trusted paid event finalizes the customer invoice while supplier reconciliation and delivery remain separate.", [
+        ("Verify the snapshot", "Use approved products, quantities, customer prices, fees, taxes and currency."),
+        ("Protect idempotency", "One request produces one paid record, invoice number, final PDF and logical email."),
+        ("Inspect delivery independently", "Supplier invoices, receipt evidence, three-way matching and discrepancies stay in their reconciliation workflow."),
+        ("Handle email failure safely", "Retry invoice delivery without changing paid or finalized states."),
+    ], "match", ("Approved snapshot", "Paid", "Final invoice", "Email lifecycle"), "PAYMENT MODEL", "A future verified gateway can produce the same trusted paid event without rewriting invoice finalization."),
     t("SECURITY & AUDIT", "Protect every tenant and sensitive action", "Authorization, uploads, authentication, email and support operations require defense in depth.", [
         ("Enforce tenant boundaries", "Verify role and scope server-side and keep supplier/customer private fields separated."),
         ("Protect authentication", "Hash passwords with a slow password algorithm; hash high-entropy tokens; rotate sessions."),
@@ -241,7 +241,7 @@ OWNER_EN = (
     t("OPERATIONS CHECKLIST", "Verify the complete path before launch", "A production-ready tenant proves its controls with low-risk records before normal purchasing.", [
         ("Identity", "Company, branches, contacts, roles, invitations and receiver assignments are correct."),
         ("Procurement", "Shop, request, independent approval, RFQ, selection and order events are traceable."),
-        ("Delivery and finance", "Driver evidence, independent receipt, discrepancy, matching, invoice and COD status work."),
+        ("Delivery and finance", "Driver evidence, independent receipt, discrepancy, matching, invoice and payment status work."),
         ("Recovery", "Audit, notifications, backup, restore and rollback procedures have current evidence."),
     ], "check", ("Onboard", "Test", "Inspect", "Approve release"), "DO NOT GUESS", "Quarantine invalid imports and resolve missing business values through review rather than inventing data."),
 )
@@ -263,7 +263,7 @@ COMPANY_AR = tuple(ar_topic(en, *args) for en, args in zip(COMPANY_EN, (
     ("تعاون المورّد", "افهم مرحلة عرض السعر", "ترسل أكسورا طلب عرض إلى حسابات مورّدين معتمدين بعد اعتماد الشركة.", [("يستلم المورّد", "يرى المورّد السجلات المسندة لمنظمته والمواصفات المشتركة فقط."), ("يقدم العرض", "يسجل السعر والحد الأدنى والمدة والصلاحية والتوفر ورسوم التسليم والمستندات."), ("تقيم أكسورا", "تقارن العروض وتسجل سبب الاختيار ولا يختار المورّد نفسه."), ("تتابع الشركة", "يرى العميل حالة تنفيذ مناسبة دون بيانات تجارية خاصة.")], "السرية", "تبقى عروض المنافسين وهامش أكسورا وملاحظات الاختيار الداخلية خاصة.", ("طلب عرض", "عرض", "اختيار أكسورا", "أمر")),
     ("التسليم", "تابع التسليم عبر الهاتف", "يستخدم السائق المسند بوابة هاتف مركزة ويحافظ الفرع على سلطة استلام مستقلة.", [("المهمة", "يرى السائق محطة اليوم والعنوان وجهة الاتصال والطرود والتعليمات."), ("أحداث الرحلة", "قبول وبدء ووصول ومحاولة وتسليم جزئي أو كامل أو مشكلة."), ("دليل السائق", "يرفع الدليل المسموح ويسجل اسم المستلم والكمية والتلف أو النقص."), ("الشبكة الضعيفة", "تبقى الأحداث في الانتظار ظاهرة حتى المزامنة ولا تختفي بصمت.")], "وصول محدود", "لا يرى السائق الميزانيات أو الفواتير أو المستخدمين أو أسعار المورّد أو الطلبات الأخرى.", ("مسند", "في الطريق", "وصل", "رفع الدليل")),
     ("الاستلام", "أكد الاستلام باستقلال", "دليل السائق ليس قبولاً نهائياً ويسجل مستخدم الاستلام المعين نتيجة الفحص.", [("قارن التسليم", "راجع المنتج والكمية والتغليف والدليل مقابل الطلب المعتمد."), ("سجل الكميات", "أدخل المقبول والتالف والناقص ويبقى الاستلام الجزئي مفتوحاً."), ("افتح اختلافاً", "أضف سبباً ودليلاً مسموحاً للنقص أو التلف أو الصنف الخطأ."), ("أكمل الاستلام", "أكد التاريخ والهوية والكميات النهائية بعد الفحص.")], "ضبط مستقل", "لا يستطيع السائق وحده إنشاء اعتماد استلام نهائي.", ("دليل السائق", "فحص", "جزئي أو نهائي", "اختلاف")),
-    ("المالية", "افهم المطابقة والدفع عند الاستلام", "تقارن المالية الطلب المعتمد ودليل الاستلام والفاتورة قبل التسوية.", [("طابق ثلاثة سجلات", "قارن الكمية والسعر المعتمدين والكميات المقبولة وفاتورة العميل."), ("حل الاستثناءات", "حقق في اختلاف الكمية أو السعر أو الملف الناقص أو الفاتورة المكررة."), ("سجل حالة الدفع", "الدفع عند الاستلام هو الأسلوب المعتمد وتدون أكسورا الدليل والحالة."), ("أغلق بالدليل", "يتطلب الإكمال أحداث الاعتماد والاستلام والفاتورة والتسوية.")], "شرح", "تعني مطابق أن السجلات المطلوبة متفقة ويبقى الاستثناء مفتوحاً حتى حله.", ("طلب معتمد", "استلام", "فاتورة", "مطابق أو استثناء")),
+    ("المالية", "ادفع واحتفظ بالفاتورة النهائية", "تسجل أكسورا الطلب كمدفوع عند اختيار «ادفع»، وتصدر فاتورة نهائية بينما يبقى التسليم مستقلاً.", [("اختر ادفع", "تعيد أكسورا حساب المبلغ الموثوق على الخادم وتسجله كمدفوع."), ("احتفظ بالفاتورة", "تنشئ أكسورا رقماً دائماً وملف PDF من لقطة نهائية غير قابلة للتغيير."), ("راجع البريد", "تصل رسالة واحدة بملخص الفاتورة وملف PDF المرفق."), ("تابع التسليم", "يستمر التنفيذ والاستلام المستقل في مسارهما المنفصل.")], "حالة مستقلة", "فشل إرسال الفاتورة لا يعكس سجلاً صحيحاً مدفوعاً أو فاتورة نهائية.", ("ادفع", "مدفوع", "فاتورة نهائية", "رسالة بريد")),
     ("الحساب", "احم ملفك وجلساتك", "توجد الإعدادات الشخصية في قائمة الملف دون مقاطعة العمل.", [("حدث الملف", "حافظ على الهاتف واللغة والمنطقة والصورة والتنبيهات."), ("غير كلمة المرور", "أدخل الحالية ثم أنشئ كلمة قوية واختر إنهاء الجلسات الأخرى."), ("راجع الجلسات", "أنه جلسة جهاز غير معروف وأبلغ عن النشاط المريب."), ("استخدم الاستعادة", "استخدم رابط البريد الآمن ولا تكشف كلمة المرور لأكسورا.")], "الجاهزية", "استخدم مدير كلمات مرور وسجل الخروج من الأجهزة المشتركة.", ("الملف", "الأمان", "الجلسات", "المساعدة")),
 )))
 
@@ -279,7 +279,7 @@ OWNER_AR = tuple(ar_topic(en, *args) for en, args in zip(OWNER_EN, (
     ("التتبع والتنبيهات", "استخدم نموذج أحداث واحداً", "تحفظ الأحداث الملحقة التاريخ أبعد من الحالة الحالية.", [("اربط المسار", "استخدم معرفاً واحداً للطلب والاعتماد والتوريد والتسليم والاستلام والفاتورة."), ("سجل بيانات آمنة", "المنفذ والدور والمستأجر والفرع والوقت والحالتان والسبب والمصدر."), ("نبه التالي", "استخدم رسائل داخلية وبريدية غير مكررة بروابط آمنة."), ("راقب التأخير", "استخدم إنذارات المدة والاستثناء دون كشف بيانات خاصة.")], "تاريخ ثابت", "لا تبن التاريخ الحرج من حالة الصف الحالية فقط.", ("احتياج", "اعتماد", "توريد", "تسليم", "استلام", "مالية")),
     ("عمليات التسليم", "اسند السائق بأقل بيانات", "تعرض بوابة الهاتف معلومات المهمة المسندة فقط.", [("أنشئ المهمة", "حدد التسليم والسائق وعنوان الفرع والنافذة والتعليمات."), ("راقب الحالة", "تابع القبول والبدء والوصول والمحاولة والجزئي والكامل والفشل."), ("احم الدليل", "تحقق من الملفات وافصل دليل السائق عن استلام العميل."), ("عالج عدم الاتصال", "استخدم مزامنة متكررة آمنة وأظهر الأحداث المنتظرة أو الفاشلة.")], "أقل كشف", "لا تكشف الميزانية أو الفواتير أو المورد أو المستخدمين أو العملاء الآخرين للسائق.", ("إسناد", "رحلة", "دليل", "استلام")),
     ("الاستلام", "حافظ على فحص مستقل", "يثبت تأكيد المستلم ما قبله العميل لا ما ذكره السائق فقط.", [("قارن الدليل", "راجع البنود المعتمدة ودليل السائق والبضاعة."), ("التقط الكميات", "خزن المسلم والمقبول والتالف والناقص بمعاملة."), ("ادعم الجزئي", "أبق الكمية المتبقية متاحة لتسليم لاحق صالح."), ("أدر الاختلاف", "وجه السبب والدليل إلى المخول قبل الإكمال.")], "التزامن", "امنع تكرار الاستلام والحجز القديم والحدث المتكرر بالمعاملات والتكرار الآمن.", ("دليل", "فحص", "جزئي أو نهائي", "حل")),
-    ("المالية", "نفذ المطابقة وتسوية الدفع عند الاستلام", "تقارن المالية النية التجارية والاستلام المقبول ودليل الفاتورة.", [("طابق الطلب", "استخدم المنتج والكمية والسعر المسموح المعتمد."), ("طابق الاستلام", "استخدم الكميات المقبولة والاختلافات."), ("طابق الفاتورة", "اكشف السعر والكمية والملف والفاتورة المكررة."), ("سو الدفع", "سجل الدليل والحالة وحل الاستثناء قبل الإكمال.")], "نموذج الدفع", "الدفع عند الاستلام هو المعتمد ويسجل التطبيق الدليل والحالة.", ("طلب", "استلام", "فاتورة", "مطابق أو استثناء")),
+    ("المالية", "أشرف على الدفع وإصدار الفاتورة", "يحوّل حدث الدفع الموثوق لقطة الطلب المعتمدة إلى فاتورة عميل نهائية مستقلة عن التسليم.", [("تحقق من اللقطة", "استخدم المنتجات والكميات والأسعار والرسوم والعملة المعتمدة."), ("احم التكرار", "ينتج الطلب دفعة واحدة ورقم فاتورة واحداً وملف PDF واحداً ورسالة منطقية واحدة."), ("افصل التسليم", "تبقى فواتير المورد والاستلام والمطابقة الثلاثية في مسار التسوية الخاص بها."), ("عالج فشل البريد", "أعد محاولة إرسال الفاتورة دون تغيير حالة الدفع أو الفاتورة النهائية.")], "امتداد مستقبلي", "يمكن لبوابة موثقة لاحقاً إنتاج حدث الدفع نفسه دون إعادة كتابة إصدار الفاتورة.", ("لقطة معتمدة", "مدفوع", "فاتورة نهائية", "دورة البريد")),
     ("الأمان والتدقيق", "احم كل مستأجر وإجراء حساس", "يحتاج التفويض والرفع والمصادقة والبريد والدعم إلى دفاع متعدد.", [("اعزل المستأجر", "تحقق من الدور والنطاق وافصل حقول المورّد والعميل."), ("احم المصادقة", "جزئ كلمات المرور بخوارزمية بطيئة والرموز عالية العشوائية ودوّر الجلسات."), ("احم الملفات", "تحقق من النوع والمحتوى والاسم والانتهاء والحدود والرؤوس."), ("دقق الارتفاع", "سجل تغييرات الوصول والهوية والتسليم والمالية والدعم دون أسرار.")], "سلامة البريد", "استخدم نطاق أكسورا الموثق وتوقيع الويب هوك وقائمة المنع وعنوان رد مراقباً.", ("مصادقة", "تفويض", "تحقق", "تدقيق")),
     ("اللغة والدعم", "شغل بوضوح عبر اللغات", "يسأل الكشف العام للتأكيد وتتبع اللغة ملف المستخدم عبر الأجهزة.", [("احترم الاختيار", "لا تستبدل الاختيار المحفوظ بكشف المتصفح لاحقاً."), ("ادعم RTL", "تبقى العربية والتركيز والتواريخ والأرقام والبريد صالحة."), ("تفضيلات التنبيه", "أرسل رسائل مفيدة للدور وحافظ على رسائل الأمان."), ("ادعم بأمان", "استخدم معرف المسار وتشخيصاً مدققاً ولا تطلب كلمة المرور.")], "تحقق المالك", "راجع الهاتف ولوحة المفاتيح وتقليل الحركة والترجمات قبل الإطلاق.", ("كشف", "تأكيد", "حفظ", "مزامنة")),
     ("قائمة التشغيل", "تحقق من المسار قبل الإطلاق", "يثبت المستأجر ضوابطه بسجلات منخفضة المخاطر قبل الشراء المعتاد.", [("الهوية", "الشركة والفروع والاتصال والأدوار والدعوات والمستلم صحيحة."), ("المشتريات", "المتجر والطلب والاعتماد المستقل والعرض والاختيار قابلة للتتبع."), ("التسليم والمالية", "دليل السائق والاستلام والاختلاف والمطابقة والفاتورة والدفع تعمل."), ("التعافي", "للتدقيق والتنبيه والنسخ والاستعادة والرجوع دليل حديث.")], "لا تخمن", "اعزل صفوف الاستيراد غير الصالحة وعالج النواقص بالمراجعة.", ("تهيئة", "اختبار", "فحص", "اعتماد")),

@@ -5,6 +5,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -170,6 +171,43 @@ export async function loadInlineAttachments({
   } catch {
     throw new Error("email_not_configured");
   }
+}
+
+export async function loadTransactionalAttachment(attachment, {
+  env = process.env,
+  readFileImpl = readFile,
+} = {}) {
+  const root = path.resolve(String(
+    env.AXORA_UPLOADS_CONTAINER_DIR ?? "/app/data/uploads",
+  ));
+  const storagePath = String(attachment?.storagePath ?? "");
+  const fileName = String(attachment?.fileName ?? "");
+  const checksum = String(attachment?.checksum ?? "");
+  const fileSize = Number(attachment?.fileSize);
+  if (!/^generated-documents\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.pdf$/.test(storagePath)
+    || !/^Axora-Invoice-[A-Za-z0-9._-]{1,120}\.pdf$/.test(fileName)
+    || attachment?.contentType !== "application/pdf"
+    || !/^[0-9a-f]{64}$/.test(checksum)
+    || !Number.isSafeInteger(fileSize) || fileSize < 100
+    || fileSize > 10 * 1024 * 1024) {
+    throw new Error("email_attachment_unavailable");
+  }
+  const target = path.resolve(root, ...storagePath.split("/"));
+  if (!target.startsWith(`${root}${path.sep}`)) {
+    throw new Error("email_attachment_unavailable");
+  }
+  const bytes = await readFileImpl(target);
+  const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+  if (buffer.length !== fileSize
+    || !buffer.subarray(0, 5).equals(Buffer.from("%PDF-"))
+    || !buffer.subarray(Math.max(0, buffer.length - 1024)).includes(Buffer.from("%%EOF"))
+    || createHash("sha256").update(buffer).digest("hex") !== checksum) {
+    throw new Error("email_attachment_unavailable");
+  }
+  return {
+    content: buffer.toString("base64"), filename: fileName,
+    type: "application/pdf", disposition: "attachment",
+  };
 }
 
 async function inlineAttachments() {
@@ -658,6 +696,12 @@ export async function sendTransactionalEmail(payload, {
       attachment.content_id === "axora-logo"
     ))
     : await loadInlineAttachments({ readFileImpl, contentIds: ["axora-logo"] });
+  if (payload.attachment) {
+    attachments.push(await loadTransactionalAttachment(
+      payload.attachment,
+      { env, readFileImpl },
+    ));
+  }
   const providerAgent = PROVIDER_AGENTS.includes(payload.providerAgent)
     ? payload.providerAgent : rendered.providerAgent;
   if (!PROVIDER_AGENTS.includes(providerAgent)) throw new Error("email_not_configured");

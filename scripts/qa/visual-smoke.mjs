@@ -90,7 +90,7 @@ try {
   await inspect("request-detail", requestHref, requestHeading);
   await inspect("sourcing", "/sourcing", "Sourcing and quotations");
   await inspect("deliveries", "/deliveries", "Deliveries");
-  await inspect("finance", "/finance", "Invoices and COD payments");
+  await inspect("finance", "/finance", "Invoices and payments");
   await inspect("users", "/users", "Create named accounts");
   await inspect("settings", "/settings", "Settings and security");
 

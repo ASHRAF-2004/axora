@@ -42,7 +42,7 @@ Layout chains used below:
 | `/suppliers` | `src/app/(portal)/suppliers/page.tsx` | Portal shell | `manage_suppliers` | Internal Axora supplier register with commercial terms, contacts, activation controls, and supplier creation form. |
 | `/sourcing` | `src/app/(portal)/sourcing/page.tsx` | Portal shell | `manage_sourcing` | Quotation comparison and supplier-selection workspace; captures written offers and promotes the selected buying price to the request line. |
 | `/deliveries` | `src/app/(portal)/deliveries/page.tsx` | Portal shell | `view_deliveries` | Delivery register and, where permitted, shipment-update form with accepted quantities, dates, receiver, and issue reasons. |
-| `/finance` | `src/app/(portal)/finance/page.tsx` | Portal shell | `view_invoices` | Owner invoice/COD reconciliation controls or company-facing invoice and receipt visibility, with status and financial totals. |
+| `/finance` | `src/app/(portal)/finance/page.tsx` | Portal shell | `view_invoices` | Owner invoice/payment reconciliation controls or company-facing invoice and receipt visibility, with status and financial totals. |
 | `/documents` | `src/app/(portal)/documents/page.tsx` | Portal shell | `view_documents` | Company-isolated evidence library; privileged users can upload request, invoice, delivery, or supporting files and set customer visibility. |
 | `/reports` | `src/app/(portal)/reports/page.tsx` | Portal shell | `view_reports` | Owner financial reconciliation or customer purchasing report with KPIs, branch summaries, status distribution, and request CSV export. |
 | `/audit` | `src/app/(portal)/audit/page.tsx` | Portal shell | `view_audit` | Read-only table of up to 500 recent audited database changes with actor, entity, action, record, time, and reason. |

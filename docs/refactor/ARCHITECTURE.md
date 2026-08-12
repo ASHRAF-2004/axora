@@ -277,7 +277,7 @@ Operational meaning and evidence:
 6. Only approved quantities from confirmed customer receipts feed customer
    three-way matching and final delivery readiness. Customer invoices cannot
    exceed the approved total and mismatches remain explicit exceptions.
-7. The MVP records only numbered cash-on-delivery evidence. Completion requires
+7. The MVP records only numbered paid-checkout evidence. Completion requires
    active customer invoices to equal the approved total and be fully paid.
 
 `On Hold` is permitted only from `Under Verification`, requires a reason, and
@@ -316,7 +316,7 @@ recovery still block authorization. Its design and exact audited impact are in
   and a protected owner flag; a legacy `ADMIN` label alone cannot grant it.
 - Every business query is scoped server-side; hiding navigation is not access
   control.
-- Approval, selected quotation, accepted delivery, issued invoice, and COD
+- Approval, selected quotation, accepted delivery, issued invoice, and payment
   evidence are explicit records, not inferred from a spreadsheet cell.
 - Money is stored as fixed-precision numeric values and quantity is applied
   before cent rounding.

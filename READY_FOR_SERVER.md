@@ -32,24 +32,9 @@ restore are deliberately left for the Ubuntu server.
 
 ## Confirm before entering live data
 
-- Obtain written supervisor and Finance confirmation that cash on delivery
-  (COD) is the only payment method for the three-company MVP.
-- Treat COD as a temporary safety boundary for the MVP, not as Axora's final
-  product scope. Any later payment method needs a separate security,
-  compliance, Finance, and operations approval.
-- Do not configure payment-gateway credentials: the MVP does not accept cards,
-  FPX, DuitNow, bank transfers, credit terms, or buy-now-pay-later.
-- Each participating seller must name its authorized collector and issue a
-  numbered receipt. Axora must not receive, hold, or deposit the cash.
-- Require confirmed delivery evidence before collection. The application and
-  database accept only `Cash on delivery (COD)`; Finance still reconciles the
-  amount, receipt number, invoice, and delivery evidence daily.
-- Apply migration `002_cod_only_payments.sql`. It normalizes known demo aliases
-  and stops if an unknown historical non-COD record needs Finance review. See
-  `MVP_COD_OPERATING_RULES.md`.
-- If the old Excel workbook is kept as a fallback, replace the old payment-term
-  examples in `Company Master!K2:K4` and `Supplier Master!I2:I11` with the exact
-  text `Cash on delivery (COD)` before anyone uses that workbook for the pilot.
+- Confirm the scoped Pay action, server-authoritative totals, finalized invoice, PDF attachment, and one logical invoice email in the controlled production test.
+- Keep payment, email delivery, fulfilment, physical delivery, and customer receipt as independent auditable states.
+- Follow `PAYMENT_AND_INVOICE_OPERATING_RULES.md` before the first live checkout.
 
 ## Do later on the server PC
 
@@ -63,6 +48,6 @@ restore are deliberately left for the Ubuntu server.
 7. Apply the firewall with the real LAN values.
 8. Test from another office PC, test a reboot, create an off-SSD backup, and run
    `restore-test.sh`.
-9. Complete and approve the COD responsibilities and decisions listed in
-   `MVP_COD_OPERATING_RULES.md`.
+9. Complete and approve the payment responsibilities and decisions listed in
+   `PAYMENT_AND_INVOICE_OPERATING_RULES.md`.
 10. Obtain supervisor approval before entering real production data.

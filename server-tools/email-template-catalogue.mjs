@@ -83,6 +83,7 @@ export const EMAIL_TEMPLATE_CATALOGUE = Object.freeze({
   "approved-request-pdf-available": t("approved-request-pdf-available", "axora-documents", "Approved Purchase Request PDF is available", "ملف PDF لطلب الشراء المعتمد متاح", "PDF Permintaan Pembelian yang diluluskan tersedia"),
   "final-delivery-pdf-available": t("final-delivery-pdf-available", "axora-documents", "Final fulfilment and delivery PDF is available", "ملف PDF النهائي للتجهيز والتوصيل متاح", "PDF pemenuhan dan penghantaran akhir tersedia"),
   "supplier-purchase-order-ready": t("supplier-purchase-order-ready", "axora-documents", "Supplier purchase order is ready", "أمر شراء المورد جاهز", "Pesanan pembelian pembekal sedia"),
+  "invoice-finalized": t("invoice-finalized", "axora-documents", "Your Axora invoice", "فاتورة Axora الخاصة بك", "Invois Axora anda", ["recipientName", "invoiceNumber", "requestReference", "amount", "currency", "paidAt"]),
   "workflow-update": t("workflow-update", "axora-platform", "Axora workflow update", "تحديث إجراء في Axora", "Kemas kini aliran kerja Axora"),
 });
 
@@ -99,6 +100,7 @@ export function resolveEmailTemplate(input) {
       : input?.messageKind === "PASSWORD_RESET" ? "password-reset"
         : input?.messageKind === "PASSWORD_CHANGED" ? "password-changed"
           : input?.messageKind === "EMAIL_VERIFICATION" ? "email-verification"
+            : input?.messageKind === "INVOICE_FINALIZED" ? "invoice-finalized"
             : "workflow-update";
   return emailTemplateDefinition(key);
 }

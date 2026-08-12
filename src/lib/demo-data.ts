@@ -1,4 +1,4 @@
-import { COD_PAYMENT_METHOD } from "./types";
+import { STANDARD_BILLING_TERMS } from "./types";
 import { roundMoney } from "./domain";
 import type { Branch, Company, ProcurementRequest, Product, Supplier } from "./types";
 
@@ -11,9 +11,9 @@ export interface DemoStore {
 }
 
 const companies: Company[] = [
-  { id: "co-youruni", code: "C-001", name: "YourUni", industry: "Education", mainContactName: "Pilot coordinator", mainContactEmail: "coordinator@youruni.example", mainContactPhone: "012-000-1001", billingContactName: "Finance desk", billingContactEmail: "finance@youruni.example", billingContactPhone: "012-000-1002", billingAddress: "Kuala Lumpur", paymentTerms: COD_PAYMENT_METHOD, billingCycle: "Monthly", taxRate: 0, estimatedDeliveryFee: 0, status: "Active" },
-  { id: "co-excel", code: "C-002", name: "Excel Language Centre", industry: "Education", mainContactName: "Operations coordinator", mainContactEmail: "operations@excel.example", mainContactPhone: "013-000-2001", billingContactName: "Finance desk", billingContactEmail: "finance@excel.example", billingContactPhone: "013-000-2002", billingAddress: "Petaling Jaya", paymentTerms: COD_PAYMENT_METHOD, billingCycle: "Monthly", taxRate: 0, estimatedDeliveryFee: 0, status: "Active" },
-  { id: "co-unibax", code: "C-003", name: "Unibax", industry: "Business services", mainContactName: "Office coordinator", mainContactEmail: "office@unibax.example", mainContactPhone: "014-000-3001", billingContactName: "Finance desk", billingContactEmail: "finance@unibax.example", billingContactPhone: "014-000-3002", billingAddress: "Shah Alam", paymentTerms: COD_PAYMENT_METHOD, billingCycle: "Monthly", taxRate: 0, estimatedDeliveryFee: 0, status: "Active" },
+  { id: "co-youruni", code: "C-001", name: "YourUni", industry: "Education", mainContactName: "Pilot coordinator", mainContactEmail: "coordinator@youruni.example", mainContactPhone: "012-000-1001", billingContactName: "Finance desk", billingContactEmail: "finance@youruni.example", billingContactPhone: "012-000-1002", billingAddress: "Kuala Lumpur", paymentTerms: STANDARD_BILLING_TERMS, billingCycle: "Monthly", taxRate: 0, estimatedDeliveryFee: 0, status: "Active" },
+  { id: "co-excel", code: "C-002", name: "Excel Language Centre", industry: "Education", mainContactName: "Operations coordinator", mainContactEmail: "operations@excel.example", mainContactPhone: "013-000-2001", billingContactName: "Finance desk", billingContactEmail: "finance@excel.example", billingContactPhone: "013-000-2002", billingAddress: "Petaling Jaya", paymentTerms: STANDARD_BILLING_TERMS, billingCycle: "Monthly", taxRate: 0, estimatedDeliveryFee: 0, status: "Active" },
+  { id: "co-unibax", code: "C-003", name: "Unibax", industry: "Business services", mainContactName: "Office coordinator", mainContactEmail: "office@unibax.example", mainContactPhone: "014-000-3001", billingContactName: "Finance desk", billingContactEmail: "finance@unibax.example", billingContactPhone: "014-000-3002", billingAddress: "Shah Alam", paymentTerms: STANDARD_BILLING_TERMS, billingCycle: "Monthly", taxRate: 0, estimatedDeliveryFee: 0, status: "Active" },
 ];
 
 const branches: Branch[] = [
@@ -43,7 +43,7 @@ const suppliers: Supplier[] = [
   email: `sales${index + 1}@supplier.example`,
   address: `${String(name)} demo address`,
   coverageArea: String(coverageArea),
-  paymentTerms: COD_PAYMENT_METHOD,
+  paymentTerms: STANDARD_BILLING_TERMS,
   leadTimeDays: Number(leadTimeDays),
   minimumOrderQuantity: 1,
   mainProducts: String(mainProducts),

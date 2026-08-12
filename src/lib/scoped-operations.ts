@@ -15,7 +15,7 @@ import {
 } from "./operations";
 import { canAccess } from "./permissions";
 import {
-  COD_PAYMENT_METHOD,
+  INTERNAL_PAYMENT_STRATEGY,
   type ApprovalRecord,
   type DeliveryStatus,
   type InvoiceStatus,
@@ -849,11 +849,14 @@ export async function createScopedInvoice(
   },
   actor: AuthenticatedSessionUser,
 ) {
-  if (isDemoMode()) return legacyCreateInvoice(input, actor);
   if (!canAccess(actor, "manage_finance")) {
     throw new Error("Only authorized Axora finance users can create invoices.");
   }
-  if (input.direction === "SUPPLIER" && !input.supplierId) {
+  if (input.direction !== "SUPPLIER") {
+    throw new Error("Customer invoices are finalized by checkout.");
+  }
+  if (isDemoMode()) return legacyCreateInvoice(input, actor);
+  if (!input.supplierId) {
     throw new Error("Select the supplier for a supplier invoice.");
   }
   if (input.status !== "Issued") {
@@ -1019,8 +1022,8 @@ export async function recordScopedPayment(
   if (!canAccess(actor, "manage_finance")) {
     throw new Error("Only authorized Axora finance users can record payments.");
   }
-  if (input.method !== COD_PAYMENT_METHOD) {
-    throw new Error(`Only ${COD_PAYMENT_METHOD} is currently supported.`);
+  if (input.method !== INTERNAL_PAYMENT_STRATEGY) {
+    throw new Error(`Only ${INTERNAL_PAYMENT_STRATEGY} is currently supported.`);
   }
   if (!Number.isFinite(input.amount) || input.amount <= 0) {
     throw new Error("Enter a positive payment amount.");
@@ -1037,14 +1040,10 @@ export async function recordScopedPayment(
       "finance.manage",
       input.invoiceId,
     );
-    if (access.invoiceDirection === "SUPPLIER") {
-      await lockRequest(
-        client,
-        actor,
-        "platform.view",
-        access.requestId,
-      );
+    if (access.invoiceDirection !== "SUPPLIER") {
+      throw new Error("The invoice is unavailable.");
     }
+    await lockRequest(client, actor, "platform.view", access.requestId);
 
     const invoice = await client.query<{
       amount: number;
@@ -1070,7 +1069,7 @@ export async function recordScopedPayment(
     `, [input.invoiceId, access.requestId]);
     if (!invoice.rows[0]) {
       throw new Error(
-        "Record COD only against an issued invoice after delivery.",
+        "Record supplier payment only against an issued invoice after delivery.",
       );
     }
 
@@ -1085,37 +1084,19 @@ export async function recordScopedPayment(
 
     const inserted = await client.query<{ id: string }>(`
       INSERT INTO public.payments(
-        invoice_id,payment_date,amount,method,reference,recorded_by
-      ) VALUES ($1,$2,$3,$4,$5,$6)
+        invoice_id,payment_date,amount,method,reference,recorded_by,
+        payment_status,paid_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,'PAID',now())
       RETURNING id::text
     `, [
       input.invoiceId,
       input.paymentDate,
       input.amount,
-      COD_PAYMENT_METHOD,
+      INTERNAL_PAYMENT_STRATEGY,
       reference,
       actor.id,
     ]);
-    if (invoice.rows[0].direction === "CUSTOMER") {
-      const event = await appendWorkflowEvent(client, {
-        companyId: access.companyId,
-        branchId: access.branchId,
-        requestId: access.requestId,
-        aggregateType: "request",
-        aggregateId: access.requestId,
-        eventKey: "payment.status_changed",
-        stableKey: inserted.rows[0].id,
-        actor,
-        newState: "COD payment recorded",
-        source: "WEB",
-      });
-      await notifyWorkflowAudience(client, event, {
-        actorUserId: actor.id,
-        audiences: ["REQUEST_CREATOR", "COMPANY_FINANCE"],
-        message: { key: "payment_status_changed" },
-        routePath: "/finance",
-      });
-    }
+    void inserted;
   });
 }
 

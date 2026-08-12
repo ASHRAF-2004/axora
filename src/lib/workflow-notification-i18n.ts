@@ -371,9 +371,9 @@ export function renderWorkflowNotification(
       if (locale === "ms") return { title: "Invois dikeluarkan", body: "Invois pelanggan tersedia untuk permintaan pembelian ini." };
       return { title: "Invoice issued", body: "A customer invoice is available for this purchase request." };
     case "payment_status_changed":
-      if (locale === "ar") return { title: "تم تحديث حالة الدفع", body: "تم تسجيل دفعة عند الاستلام على فاتورة العميل." };
-      if (locale === "ms") return { title: "Status bayaran dikemas kini", body: "Bayaran tunai semasa penghantaran direkodkan pada invois pelanggan anda." };
-      return { title: "Payment status updated", body: "A COD payment was recorded against your customer invoice." };
+      if (locale === "ar") return { title: "تم تحديث حالة الدفع", body: "تم تسجيل دفعة على فاتورة العميل." };
+      if (locale === "ms") return { title: "Status bayaran dikemas kini", body: "Bayaran direkodkan pada invois pelanggan anda." };
+      return { title: "Payment status updated", body: "A payment payment was recorded against your customer invoice." };
     case "three_way_match_completed":
       if (locale === "ar") return { title: "اكتملت المطابقة الثلاثية", body: "يتطابق الطلب المعتمد والاستلام وفاتورة العميل." };
       if (locale === "ms") return { title: "Padanan tiga hala selesai", body: "Pesanan yang diluluskan, penerimaan dan invois pelanggan sepadan." };

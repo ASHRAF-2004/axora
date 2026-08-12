@@ -24,7 +24,8 @@ export type TransactionalEmailKind =
   | "CONTACT_ACKNOWLEDGEMENT"
   | "PASSWORD_RESET"
   | "PASSWORD_CHANGED"
-  | "EMAIL_VERIFICATION";
+  | "EMAIL_VERIFICATION"
+  | "INVOICE_FINALIZED";
 
 export type TransactionalEmailOutcome =
   | "sent"
@@ -69,6 +70,15 @@ export interface TransactionalEmailOutboxJob {
     subject: string;
     message: string;
     submittedAt: string;
+  };
+  invoice?: {
+    invoiceId: string; invoiceNumber: string; requestId: string;
+    requestReference: string; companyName: string; amount: string;
+    currency: string; paidAt: string; issuedAt: string;
+  };
+  attachment?: {
+    storagePath: string; fileName: string; contentType: "application/pdf";
+    checksum: string; fileSize: number;
   };
 }
 
@@ -404,6 +414,8 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                  WHERE verification.id=outbox.email_verification_token_id
                    AND axora_email_recipient_is_suppressed(verification.email)
                ))
+               OR (outbox.message_kind='INVOICE_FINALIZED'
+                 AND public.axora_invoice_email_recipient_suppressed(outbox.id))
              )
            RETURNING contact_submission_id,message_kind
          )
@@ -548,6 +560,8 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                AND verification_user.active=true
                AND verification_user.account_status='ACTIVE'
                AND NOT axora_email_recipient_is_suppressed(verification.email))
+             OR (outbox.message_kind='INVOICE_FINALIZED'
+               AND public.axora_invoice_email_ready(outbox.id))
            )
          ORDER BY CASE outbox.priority
              WHEN 'URGENT' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'NORMAL' THEN 3 ELSE 4 END,
@@ -628,6 +642,38 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
             subject: String(row.subject),
             message: String(row.message),
             submittedAt: String(row.submittedAt),
+          },
+        };
+      }
+
+      if (row.messageKind === "INVOICE_FINALIZED") {
+        const payloadResult = await client.query<{ value: Record<string, unknown> | null }>(
+          "SELECT public.axora_invoice_email_payload($1) AS value",
+          [row.deliveryId],
+        );
+        const payload = payloadResult.rows[0]?.value;
+        if (!payload || typeof payload.attachment !== "object" || !payload.attachment) {
+          throw new Error("The invoice email payload is unavailable.");
+        }
+        const attachment = payload.attachment as Record<string, unknown>;
+        return {
+          deliveryId: row.deliveryId, leaseId, messageKind: row.messageKind,
+          locale: row.locale, eventKey: row.eventKey, templateKey: row.templateKey,
+          templateVersion: row.templateVersion, priority: row.priority,
+          providerAgent: row.providerAgent,
+          recipientEmail: String(payload.recipientEmail),
+          recipientName: String(payload.recipientName),
+          invoice: {
+            invoiceId: String(payload.invoiceId), invoiceNumber: String(payload.invoiceNumber),
+            requestId: String(payload.requestId), requestReference: String(payload.requestReference),
+            companyName: String(payload.companyName), amount: String(payload.amount),
+            currency: String(payload.currency), paidAt: String(payload.paidAt),
+            issuedAt: String(payload.issuedAt),
+          },
+          attachment: {
+            storagePath: String(attachment.storagePath),
+            fileName: String(attachment.fileName), contentType: "application/pdf",
+            checksum: String(attachment.checksum), fileSize: Number(attachment.fileSize),
           },
         };
       }

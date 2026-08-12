@@ -55,7 +55,7 @@
     {
       "name": "finance",
       "route": "/finance",
-      "heading": "Invoices and COD payments",
+      "heading": "Invoices and payments",
       "screenshot": "C:\\Users\\ASHRAF\\Desktop\\Axora\\axora-app\\reports\\screenshots\\finance.png",
       "title": "Axora operations",
       "horizontalOverflow": 0,

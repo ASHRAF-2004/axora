@@ -3,12 +3,10 @@ import { requireSession } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
 import { canAccess } from "@/lib/permissions";
 import { listCompanies } from "@/lib/repository";
-import { COD_PAYMENT_METHOD } from "@/lib/types";
 import {
   Building2,
   Clock3,
   Coins,
-  Database,
   FileCheck2,
   KeyRound,
   Percent,
@@ -54,7 +52,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <div className="readiness-item"><Building2 /><div><strong>{m("settings.workspace")}</strong><p>{workspace}</p></div></div>
       <div className="readiness-item"><Clock3 /><div><strong>{m("settings.timezone")}</strong><p>{actor.timezone ?? "Asia/Kuala_Lumpur"}</p></div></div>
       <div className="readiness-item"><Coins /><div><strong>{m("settings.currency")}</strong><p>{m("settings.currencyValue")}</p></div></div>
-      <div className="readiness-item"><Database /><div><strong>{m("settings.payment")}</strong><p>{COD_PAYMENT_METHOD}</p></div></div>
     </div></article><article className="panel"><div className="panel-header"><div><h2>{m("settings.protection")}</h2><p>{m("settings.protectionIntro")}</p></div></div><div className="panel-body readiness-list">
       <div className="readiness-item"><ShieldCheck /><div><strong>{m("settings.isolation")}</strong><p>{m("settings.isolationBody")}</p></div></div>
       <div className="readiness-item"><UserRoundCog /><div><strong>{m("settings.permissions")}</strong><p>{m("settings.permissionsBody")}</p></div></div>

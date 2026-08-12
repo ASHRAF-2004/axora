@@ -92,8 +92,9 @@ export type DeliveryStatus =
 
 export type InvoiceStatus = "Not Issued" | "Draft" | "Issued" | "Disputed" | "Cancelled";
 export type PaymentStatus = "Unpaid" | "Partial" | "Paid" | "Void";
-export const COD_PAYMENT_METHOD = "Cash on delivery (COD)" as const;
-export type PaymentMethod = typeof COD_PAYMENT_METHOD;
+export const INTERNAL_PAYMENT_STRATEGY = "OFFLINE" as const;
+export const STANDARD_BILLING_TERMS = "Standard billing terms" as const;
+export type PaymentMethod = typeof INTERNAL_PAYMENT_STRATEGY;
 
 export interface Company {
   id: string;
@@ -109,7 +110,7 @@ export interface Company {
   billingContactEmail: string;
   billingContactPhone: string;
   billingAddress: string;
-  paymentTerms: PaymentMethod;
+  paymentTerms: string;
   billingCycle: string;
   taxRate: number;
   estimatedDeliveryFee: number;
@@ -194,7 +195,7 @@ export interface Supplier {
   email: string;
   address: string;
   coverageArea: string;
-  paymentTerms: PaymentMethod;
+  paymentTerms: string;
   leadTimeDays: number;
   minimumOrderQuantity: number;
   mainProducts: string;

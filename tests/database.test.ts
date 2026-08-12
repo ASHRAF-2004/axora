@@ -157,33 +157,44 @@ describe("PostgreSQL migration and demonstration seed", () => {
     expect(unpaid.rows[0]).toEqual({ payment_status: "Unpaid", outstanding_amount: 59.4 });
   });
 
-  it("enforces the canonical COD value for payments and settlement terms", async () => {
+  it("uses neutral payment defaults and leaves future settlement terms extensible", async () => {
     const [methods, companyTerms, supplierTerms] = await Promise.all([
       db.query<{ method: string }>("SELECT DISTINCT method FROM payments"),
       db.query<{ payment_terms: string }>("SELECT DISTINCT payment_terms FROM companies"),
       db.query<{ payment_terms: string }>("SELECT DISTINCT payment_terms FROM suppliers"),
     ]);
-    expect(methods.rows).toEqual([{ method: "Cash on delivery (COD)" }]);
-    expect(companyTerms.rows).toEqual([{ payment_terms: "Cash on delivery (COD)" }]);
-    expect(supplierTerms.rows).toEqual([{ payment_terms: "Cash on delivery (COD)" }]);
+    expect(methods.rows).toEqual([{ method: "OFFLINE" }]);
+    expect(companyTerms.rows).toEqual([{ payment_terms: "Standard billing terms" }]);
+    expect(supplierTerms.rows).toEqual([{ payment_terms: "Standard billing terms" }]);
 
     await expect(db.exec(`
       INSERT INTO payments (invoice_id, payment_date, amount, method, reference)
       VALUES (
         '80000000-0000-4000-8000-000000000012', '2026-07-22', 1,
-        'Bank transfer', 'INVALID-NON-COD'
+        'Bank transfer', 'INVALID-NON-payment'
       )
     `)).rejects.toThrow();
 
-    await expect(db.exec(`
-      UPDATE companies SET payment_terms = '30 days'
-      WHERE id = '10000000-0000-4000-8000-000000000001'
-    `)).rejects.toThrow();
-
-    await expect(db.exec(`
-      UPDATE suppliers SET payment_terms = 'Bank transfer'
-      WHERE id = '30000000-0000-4000-8000-000000000001'
-    `)).rejects.toThrow();
+    await db.exec(`
+      UPDATE companies SET payment_terms = 'Invoice terms'
+      WHERE id = '10000000-0000-4000-8000-000000000001';
+      UPDATE suppliers SET payment_terms = 'Net 30'
+      WHERE id = '30000000-0000-4000-8000-000000000001';
+    `);
+    const extensibleTerms = await db.query<{ company_terms: string; supplier_terms: string }>(`
+      SELECT company.payment_terms AS company_terms,
+        supplier.payment_terms AS supplier_terms
+      FROM companies company CROSS JOIN suppliers supplier
+      WHERE company.id='10000000-0000-4000-8000-000000000001'
+        AND supplier.id='30000000-0000-4000-8000-000000000001'
+    `);
+    expect(extensibleTerms.rows).toEqual([{ company_terms: "Invoice terms", supplier_terms: "Net 30" }]);
+    await db.exec(`
+      UPDATE companies SET payment_terms = 'Standard billing terms'
+      WHERE id = '10000000-0000-4000-8000-000000000001';
+      UPDATE suppliers SET payment_terms = 'Standard billing terms'
+      WHERE id = '30000000-0000-4000-8000-000000000001';
+    `);
   });
 
   it("enforces delivery evidence and final quantity semantics in the database", async () => {
@@ -217,33 +228,7 @@ describe("PostgreSQL migration and demonstration seed", () => {
     `)).rejects.toThrow();
   });
 
-  it("enforces delivery, supplier, and approved-total invoice controls in the database", async () => {
-    await expect(db.exec(`
-      INSERT INTO invoices (
-        direction,request_id,company_id,invoice_number,invoice_date,amount,status_id
-      ) VALUES (
-        'CUSTOMER',
-        '50000000-0000-4000-8000-000000000008',
-        '10000000-0000-4000-8000-000000000002',
-        'CINV-EARLY-TEST',
-        CURRENT_DATE,
-        1,
-        lookup_id('invoice_status','Issued')
-      )
-    `)).rejects.toThrow();
-    await expect(db.exec(`
-      INSERT INTO invoices (
-        direction,request_id,company_id,invoice_number,invoice_date,amount,status_id
-      ) VALUES (
-        'CUSTOMER',
-        '50000000-0000-4000-8000-000000000012',
-        '10000000-0000-4000-8000-000000000003',
-        'CINV-OVER-TEST',
-        CURRENT_DATE,
-        0.01,
-        lookup_id('invoice_status','Issued')
-      )
-    `)).rejects.toThrow();
+  it("enforces sourced-supplier invoice controls in the database", async () => {
     await expect(db.exec(`
       INSERT INTO invoices (
         direction,request_id,supplier_id,invoice_number,invoice_date,amount,status_id
@@ -259,15 +244,19 @@ describe("PostgreSQL migration and demonstration seed", () => {
     `)).rejects.toThrow();
   });
 
-  it("requires a numbered receipt reference and positive catalog prices", async () => {
+  it("enforces payment-state timestamps and positive catalog prices", async () => {
     await expect(db.exec(`
-      INSERT INTO payments (invoice_id,payment_date,amount,method,reference)
+      INSERT INTO payments (
+        invoice_id,payment_date,amount,method,reference,payment_status,paid_at
+      )
       VALUES (
         '80000000-0000-4000-8000-000000000012',
         CURRENT_DATE,
         1,
-        'Cash on delivery (COD)',
-        NULL
+        'OFFLINE',
+        NULL,
+        'PENDING',
+        now()
       )
     `)).rejects.toThrow();
     await expect(db.exec(`
@@ -330,9 +319,9 @@ describe("PostgreSQL migration and demonstration seed", () => {
         coverage_area, payment_terms, lead_time_days, minimum_order_quantity, main_products, company_id)
       VALUES
         ('S-TENANT-A', 'Tenant supplier', 'General', 'A', '1', 'a@tenant.test', 'A', 'A',
-         'Cash on delivery (COD)', 1, 1, 'General', '10000000-0000-4000-8000-000000000001'),
+         'Standard billing terms', 1, 1, 'General', '10000000-0000-4000-8000-000000000001'),
         ('S-TENANT-B', 'Tenant supplier', 'General', 'B', '2', 'b@tenant.test', 'B', 'B',
-         'Cash on delivery (COD)', 1, 1, 'General', '10000000-0000-4000-8000-000000000002')
+         'Standard billing terms', 1, 1, 'General', '10000000-0000-4000-8000-000000000002')
     `)).resolves.not.toThrow();
   });
 

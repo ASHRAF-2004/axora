@@ -85,11 +85,13 @@ def validate_pdf(path: Path, pages: int, render_dir: Path) -> list[str]:
     elif not any("NotoSans" in font and "Arabic" not in font for font in fonts):
         errors.append(f"{path}: Noto Sans is not embedded")
     if "owner" in path.name and "en.pdf" in path.name:
-        for required in ("authorized Axora Platform Owners", "Supplier User", "Delivery Driver", "Receiving User"):
+        for required in ("authorized Axora Platform Owners", "internal workspace", "Delivery Driver", "Receiving User"):
             if required not in content:
                 errors.append(f"{path}: missing required owner guidance {required!r}")
+        if "Supplier User" in content:
+            errors.append(f"{path}: removed supplier actor guidance is present")
     if "company" in path.name and "en.pdf" in path.name:
-        for required in ("one-time invitation", "hamburger", "self", "three-way", "COD"):
+        for required in ("one-time invitation", "hamburger", "self", "three-way", "payment"):
             if required.lower() not in content.lower():
                 errors.append(f"{path}: missing required company guidance {required!r}")
     document.close()
