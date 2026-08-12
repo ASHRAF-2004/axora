@@ -13,6 +13,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_INTERNAL_BODY_BYTES = 8 * 1024;
+const providerNameSchema = z.enum([
+  "resend",
+  "zeptomail",
+  "cloudflare-email-service",
+  "test",
+  "unconfigured",
+]);
 const transactionalClaimSchema = z.object({
   action: z.literal("claim"),
   queue: z.literal("transactional"),
@@ -29,7 +36,7 @@ const transactionalCompleteSchema = z.object({
   outcome: z.enum(["sent", "retry", "failed", "paused", "disabled", "uncertain"]),
   providerMessageId: z.string().trim().min(1).max(255).regex(/^[^\r\n]+$/).optional(),
   errorCode: z.string().trim().regex(/^[a-z0-9_]{1,64}$/).optional(),
-  providerName: z.enum(["zeptomail", "cloudflare-email-service", "test", "unconfigured"]).optional(),
+  providerName: providerNameSchema.optional(),
   providerAgent: z.enum(["axora-auth", "axora-procurement", "axora-budget", "axora-delivery", "axora-documents", "axora-platform"]).optional(),
   httpStatus: z.number().int().min(100).max(599).optional(),
 }).strict();
@@ -41,7 +48,7 @@ const workflowCompleteSchema = z.object({
   outcome: z.enum(["sent", "retry", "failed", "paused", "disabled", "uncertain"]),
   providerMessageId: z.string().trim().min(1).max(255).regex(/^[^\r\n]+$/).optional(),
   errorCode: z.string().trim().regex(/^[a-z0-9_]{1,64}$/).optional(),
-  providerName: z.enum(["zeptomail", "cloudflare-email-service", "test", "unconfigured"]).optional(),
+  providerName: providerNameSchema.optional(),
   providerAgent: z.enum(["axora-auth", "axora-procurement", "axora-budget", "axora-delivery", "axora-documents", "axora-platform"]).optional(),
   httpStatus: z.number().int().min(100).max(599).optional(),
 }).strict();

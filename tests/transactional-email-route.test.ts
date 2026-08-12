@@ -68,7 +68,9 @@ describe("private transactional outbox route", () => {
       deliveryId: "00000000-0000-4000-8000-000000000011",
       leaseId: "00000000-0000-4000-8000-000000000012",
       outcome: "sent",
-      providerMessageId: "cloudflare-message-123",
+      providerMessageId: "resend-message-123",
+      providerName: "resend",
+      providerAgent: "axora-auth",
     } as const;
     mocks.completeTransactional.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
@@ -79,7 +81,13 @@ describe("private transactional outbox route", () => {
       body.deliveryId,
       body.leaseId,
       "sent",
-      { providerMessageId: body.providerMessageId, errorCode: undefined },
+      {
+        providerMessageId: body.providerMessageId,
+        errorCode: undefined,
+        providerName: "resend",
+        providerAgent: "axora-auth",
+        httpStatus: undefined,
+      },
     );
 
     const stale = await POST(request(body));
@@ -113,13 +121,22 @@ describe("private transactional outbox route", () => {
       deliveryId: job.deliveryId,
       leaseId: job.leaseId,
       outcome: "sent",
+      providerMessageId: "resend-message-456",
+      providerName: "resend",
+      providerAgent: "axora-procurement",
     }));
     expect(completed.status).toBe(200);
     expect(mocks.completeWorkflow).toHaveBeenCalledWith(
       job.deliveryId,
       job.leaseId,
       "sent",
-      { providerMessageId: undefined, errorCode: undefined },
+      {
+        providerMessageId: "resend-message-456",
+        errorCode: undefined,
+        providerName: "resend",
+        providerAgent: "axora-procurement",
+        httpStatus: undefined,
+      },
     );
   });
 
