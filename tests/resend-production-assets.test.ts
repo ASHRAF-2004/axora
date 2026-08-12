@@ -4,6 +4,21 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("Resend production assets", () => {
+  it("preserves an existing secure configuration traversal policy", async () => {
+    const installer = await read("scripts/production/install.sh");
+    const configBlockStart = installer.indexOf('if [[ ! -e "$CONFIG_DIR" ]]');
+    const configBlockEnd = installer.indexOf("install -d -o root -g root -m 0700 \\", configBlockStart + 1);
+    const configBlock = installer.slice(configBlockStart, configBlockEnd);
+    expect(configBlockStart).toBeGreaterThan(0);
+    expect(configBlock).toContain('install -d -o root -g root -m 0700 "$CONFIG_DIR"');
+    expect(configBlock).toContain('config_directory_owner="$(stat -c \'%u\' "$CONFIG_DIR")"');
+    expect(configBlock).toContain('config_directory_group="$(stat -c \'%g\' "$CONFIG_DIR")"');
+    expect(configBlock).toContain('config_directory_mode="$(stat -c \'%a\' "$CONFIG_DIR")"');
+    expect(configBlock).toContain('"$config_directory_group" == "$RUNTIME_GID"');
+    expect(configBlock).toContain("8#067");
+    expect(configBlock).not.toMatch(/(?:chown|chmod).*\$CONFIG_DIR/);
+  });
+
   it("initializes protected files only after the secret directory and preserves existing bytes", async () => {
     const installer = await read("scripts/production/install.sh");
     const secretsVariableIndex = installer.indexOf('SECRETS_DIR="/etc/axora-production/secrets"');

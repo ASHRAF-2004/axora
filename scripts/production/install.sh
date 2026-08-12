@@ -68,7 +68,22 @@ fi
 install -d -o root -g root -m 0750 "$LIBEXEC_DIR" "$STATE_DIR" "$STATE_DIR/releases" "$STATE_DIR/backups" "$LOG_DIR"
 install -d -o root -g root -m 0700 \
   "$STATE_DIR/reset-backups" "$STATE_DIR/reset-quarantine" "$STATE_DIR/reset-audit"
-install -d -o root -g root -m 0700 "$CONFIG_DIR"
+if [[ ! -e "$CONFIG_DIR" ]]; then
+  install -d -o root -g root -m 0700 "$CONFIG_DIR"
+else
+  [[ -d "$CONFIG_DIR" && ! -L "$CONFIG_DIR" ]] \
+    || fail "Production configuration path must be a regular directory."
+  config_directory_owner="$(stat -c '%u' "$CONFIG_DIR")"
+  config_directory_group="$(stat -c '%g' "$CONFIG_DIR")"
+  config_directory_mode="$(stat -c '%a' "$CONFIG_DIR")"
+  [[ "$config_directory_owner" == "0" ]] \
+    || fail "Production configuration directory must be owned by root."
+  [[ "$config_directory_group" == "0" || "$config_directory_group" == "$RUNTIME_GID" ]] \
+    || fail "Production configuration directory has an unexpected group."
+  (( (8#$config_directory_mode & 8#700) == 8#700 \
+    && (8#$config_directory_mode & 8#067) == 0 )) \
+    || fail "Production configuration directory permissions are unsafe."
+fi
 install -d -o root -g root -m 0700 \
   "$CONTROLLER_HOME" "$CONTROLLER_HOME/docker" "$CONTROLLER_HOME/buildx"
 install -d -o root -g "$RUNTIME_GID" -m 0710 "$SECRETS_DIR"
