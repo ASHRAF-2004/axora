@@ -747,16 +747,15 @@ export async function inspectAccountSetupToken(
       AND company_membership.company_id=i.company_id
      LEFT JOIN branches b ON b.id=i.intended_branch_id
        AND b.company_id=i.company_id
-     LEFT JOIN departments department ON department.id=i.intended_department_id
-       AND department.company_id=i.company_id
      LEFT JOIN branch_assignments branch_assignment
        ON branch_assignment.user_id=u.id
       AND branch_assignment.company_id=i.company_id
       AND branch_assignment.branch_id=i.intended_branch_id
-     LEFT JOIN department_assignments department_assignment
-       ON department_assignment.user_id=u.id
-      AND department_assignment.company_id=i.company_id
-      AND department_assignment.department_id=i.intended_department_id
+     LEFT JOIN LATERAL (
+       SELECT public.axora_auth_department_scope(
+         u.id,intended_assignment.id
+       ) AS snapshot
+     ) department_scope ON i.intended_scope_type='DEPARTMENT'
      LEFT JOIN supplier_memberships supplier_membership
        ON supplier_membership.user_id=u.id
       AND supplier_membership.supplier_id=i.intended_supplier_id
@@ -802,10 +801,15 @@ export async function inspectAccountSetupToken(
            AND c.lifecycle_status IN (
              'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
              'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
-           ) AND COALESCE(b.active,true) AND department.active=true
+           ) AND COALESCE(
+             (department_scope.snapshot->>'branchActive')::boolean,true
+           )
+           AND (department_scope.snapshot->>'departmentActive')::boolean=true
+           AND (department_scope.snapshot->>'branchId')::uuid
+             IS NOT DISTINCT FROM i.intended_branch_id
            AND company_membership.status='INVITED'
            AND (i.intended_branch_id IS NULL OR branch_assignment.status='ACTIVE')
-           AND department_assignment.status='ACTIVE'
+           AND department_scope.snapshot->>'assignmentStatus'='ACTIVE'
            AND intended_role.role_key IN (
              'DEPARTMENT_ADMIN','REQUESTER','FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
            ))
@@ -888,16 +892,15 @@ export async function consumeAccountSetupToken(
           AND company_membership.company_id=i.company_id
          LEFT JOIN branches b ON b.id=i.intended_branch_id
            AND b.company_id=i.company_id
-         LEFT JOIN departments department ON department.id=i.intended_department_id
-           AND department.company_id=i.company_id
          LEFT JOIN branch_assignments branch_assignment
            ON branch_assignment.user_id=u.id
           AND branch_assignment.company_id=i.company_id
           AND branch_assignment.branch_id=i.intended_branch_id
-         LEFT JOIN department_assignments department_assignment
-           ON department_assignment.user_id=u.id
-          AND department_assignment.company_id=i.company_id
-          AND department_assignment.department_id=i.intended_department_id
+         LEFT JOIN LATERAL (
+           SELECT public.axora_auth_department_scope(
+             u.id,intended_assignment.id
+           ) AS snapshot
+         ) department_scope ON i.intended_scope_type='DEPARTMENT'
          LEFT JOIN supplier_memberships supplier_membership
            ON supplier_membership.user_id=u.id
           AND supplier_membership.supplier_id=i.intended_supplier_id
@@ -943,10 +946,15 @@ export async function consumeAccountSetupToken(
                AND c.lifecycle_status IN (
                  'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
                  'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
-               ) AND COALESCE(b.active,true) AND department.active=true
+               ) AND COALESCE(
+                 (department_scope.snapshot->>'branchActive')::boolean,true
+               )
+               AND (department_scope.snapshot->>'departmentActive')::boolean=true
+               AND (department_scope.snapshot->>'branchId')::uuid
+                 IS NOT DISTINCT FROM i.intended_branch_id
                AND company_membership.status='INVITED'
                AND (i.intended_branch_id IS NULL OR branch_assignment.status='ACTIVE')
-               AND department_assignment.status='ACTIVE'
+               AND department_scope.snapshot->>'assignmentStatus'='ACTIVE'
                AND intended_role.role_key IN (
                  'DEPARTMENT_ADMIN','REQUESTER','FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
                ))
