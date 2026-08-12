@@ -109,12 +109,12 @@ describe("Resend provider adapter", () => {
   it("treats transport ambiguity and malformed success as uncertain without logging secrets", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const unavailable = createResendEmailProvider({
-      token: "re_secret_that_must_not_be_logged",
+      token: "re_synthetic_secret_that_must_not_be_logged",
       fetchImpl: vi.fn(async () => { throw new Error("connection reset"); }),
     });
     await expect(unavailable.send(message)).rejects.toMatchObject({ disposition: "uncertain" });
     const malformed = createResendEmailProvider({
-      token: "re_secret_that_must_not_be_logged",
+      token: "re_synthetic_secret_that_must_not_be_logged",
       fetchImpl: vi.fn(async () => new Response("{}", {
         status: 200,
         headers: { "content-type": "application/json" },
