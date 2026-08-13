@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 import { applyDemoSeed, applyMigrations } from "./helpers/pglite";
@@ -72,6 +73,37 @@ async function fixture() {
 }
 
 describe("Platform Owner company verification migration", () => {
+  it("upgrades populated legacy verification states before installing the new constraint", async () => {
+    const db = new PGlite();
+    try {
+      await db.exec("CREATE ROLE axora_app NOLOGIN");
+      await applyMigrations(db, { through: "080_operating_model_simplification.sql" });
+      await applyDemoSeed(db);
+      const company = await db.query<{ id: string }>(
+        "SELECT id::text FROM companies ORDER BY id LIMIT 1",
+      );
+      const companyId = company.rows[0]?.id;
+      if (!companyId) throw new Error("Populated verification fixture has no company");
+      await db.query(`
+        UPDATE companies SET active=false,portal_access_enabled=false,
+          lifecycle_status='NEW_LEAD',verification_status='CHANGES_REQUIRED'
+        WHERE id=$1
+      `, [companyId]);
+
+      await db.exec(await readFile(
+        new URL("../database/migrations/081_platform_owner_company_verification.sql", import.meta.url),
+        "utf8",
+      ));
+
+      const migrated = await db.query<{ status: string }>(`
+        SELECT verification_status AS status FROM companies WHERE id=$1
+      `, [companyId]);
+      expect(migrated.rows[0]?.status).toBe("CHANGES_REQUESTED");
+    } finally {
+      await db.close();
+    }
+  }, 30_000);
+
   it("requires Manager submission and an owner-only decision before activation", async () => {
     const { db, companyId } = await fixture();
     try {
