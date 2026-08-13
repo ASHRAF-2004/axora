@@ -6,6 +6,8 @@ import { getMyProfile, myProfileMeetsRequiredOnboarding } from "@/lib/profile";
 import { getProfileImagePolicy } from "@/lib/profile-images";
 import { safeInternalReturnPath } from "@/lib/session-return";
 import { BellRing, CheckCircle2, Languages, ShieldCheck, UserRound } from "lucide-react";
+import Image from "next/image";
+import { portalMessages } from "@/lib/portal-i18n";
 import {
   removeProfileImageAction,
   saveProfileAction,
@@ -33,7 +35,7 @@ const profileCopy = {
     formLabel: "Personal profile", personal: "Personal information", personalHelp: "Used to identify you in requests, approvals, deliveries, and audit history.",
     displayName: "Display name", jobTitle: "Job title", jobExample: "For example, Branch manager", phone: "Phone", accountEmail: "Account email",
     emailHelp: "Contact an authorized administrator to change the sign-in email.", languageTime: "Language and time", languageHelp: "Dates, email, and guidance use these personal preferences.",
-    preferredLanguage: "Preferred language", timeZone: "Time zone", notifications: "Notifications",
+    preferredLanguage: "Preferred language", timeZone: "Time zone", assignedTeam: "Assigned team", chooseTeam: "Choose your assigned team", teamHelp: "Confirm the team and scope already assigned by your administrator. This does not grant new access.", notifications: "Notifications",
     notificationsHelp: "In-app workflow evidence is always available. Optional email and reminder choices are managed in Notifications.",
     inApp: "In-app notifications", inAppHelp: "Always on so assignments, decisions, delivery events, and exceptions remain available.",
     email: "Email notifications", emailNotificationsHelp: "Send important transactional updates to your account email.",
@@ -51,7 +53,7 @@ const profileCopy = {
     formLabel: "الملف الشخصي", personal: "المعلومات الشخصية", personalHelp: "تُستخدم للتعريف بك في الطلبات والاعتمادات والتسليمات وسجل التدقيق.",
     displayName: "اسم العرض", jobTitle: "المسمى الوظيفي", jobExample: "مثال: مدير فرع", phone: "الهاتف", accountEmail: "بريد الحساب",
     emailHelp: "تواصل مع مدير مخوّل لتغيير بريد تسجيل الدخول.", languageTime: "اللغة والوقت", languageHelp: "تستخدم التواريخ والرسائل والإرشادات هذه التفضيلات.",
-    preferredLanguage: "اللغة المفضلة", timeZone: "المنطقة الزمنية", notifications: "الإشعارات",
+    preferredLanguage: "اللغة المفضلة", timeZone: "المنطقة الزمنية", assignedTeam: "الفريق المعيّن", chooseTeam: "اختر فريقك المعيّن", teamHelp: "أكد الفريق والنطاق اللذين عيّنهما لك المسؤول. لا يمنح هذا الاختيار صلاحيات جديدة.", notifications: "الإشعارات",
     notificationsHelp: "تبقى أدلة سير العمل داخل التطبيق متاحة دائماً. تُدار خيارات البريد والتذكير الاختيارية في الإشعارات.",
     inApp: "إشعارات داخل التطبيق", inAppHelp: "مفعّلة دائماً حتى تبقى المهام والقرارات وأحداث التسليم والاستثناءات متاحة.",
     email: "إشعارات البريد الإلكتروني", emailNotificationsHelp: "إرسال التحديثات المهمة إلى بريد حسابك.",
@@ -69,7 +71,7 @@ const profileCopy = {
     formLabel: "Profil peribadi", personal: "Maklumat peribadi", personalHelp: "Digunakan untuk mengenal pasti anda dalam permintaan, kelulusan, penghantaran dan sejarah audit.",
     displayName: "Nama paparan", jobTitle: "Jawatan", jobExample: "Contohnya, Pengurus cawangan", phone: "Telefon", accountEmail: "E-mel akaun",
     emailHelp: "Hubungi pentadbir yang dibenarkan untuk menukar e-mel log masuk.", languageTime: "Bahasa dan masa", languageHelp: "Tarikh, e-mel dan panduan menggunakan pilihan peribadi ini.",
-    preferredLanguage: "Bahasa pilihan", timeZone: "Zon waktu", notifications: "Pemberitahuan",
+    preferredLanguage: "Bahasa pilihan", timeZone: "Zon waktu", assignedTeam: "Pasukan yang ditugaskan", chooseTeam: "Pilih pasukan yang ditugaskan", teamHelp: "Sahkan pasukan dan skop yang telah ditetapkan oleh pentadbir anda. Pilihan ini tidak memberikan akses baharu.", notifications: "Pemberitahuan",
     notificationsHelp: "Bukti aliran kerja dalam aplikasi sentiasa tersedia. Pilihan e-mel dan peringatan diurus dalam Pemberitahuan.",
     inApp: "Pemberitahuan dalam aplikasi", inAppHelp: "Sentiasa aktif supaya tugasan, keputusan, penghantaran dan pengecualian kekal tersedia.",
     email: "Pemberitahuan e-mel", emailNotificationsHelp: "Hantar kemas kini transaksi penting ke e-mel akaun anda.",
@@ -102,12 +104,17 @@ export default async function ProfilePage({
     typeof search.returnTo === "string" ? search.returnTo : undefined,
     "/dashboard",
   );
+  const teamValue = actor.roleAssignmentId ?? actor.role;
+  const roleCopy = portalMessages(profile.preferredLocale).roles;
+  const teamLabel = actor.isOwner
+    ? roleCopy.PLATFORM_OWNER
+    : roleCopy[actor.role] ?? roleCopy.SCOPED_USER;
   const continuityFields = <>
     <input type="hidden" name="onboarding" value={onboarding ? "true" : "false"} />
     <input type="hidden" name="returnTo" value={returnTo} />
   </>;
 
-  return <>
+  const profileContent = <>
     <PageHeader
       eyebrow={onboarding ? copy.firstStep : copy.personalSettings}
       title={onboarding ? copy.onboardingTitle : copy.title}
@@ -141,6 +148,7 @@ export default async function ProfilePage({
         <div className="form-grid">
           <label>{copy.preferredLanguage}<select name="preferredLocale" defaultValue={profile.preferredLocale}>{SUPPORTED_LOCALES.map((locale) => <option value={locale} key={locale}>{LOCALE_NAMES[locale].native}</option>)}</select></label>
           <label>{copy.timeZone}<select name="timezone" defaultValue={profile.timezone}>{timezones.includes(profile.timezone) ? null : <option value={profile.timezone}>{profile.timezone}</option>}{timezones.map((zone) => <option value={zone} key={zone}>{zone.replaceAll("_", " ")}</option>)}</select></label>
+          {onboarding ? <label className="field-full first-use-team-field">{copy.assignedTeam}<select name="assignedTeam" defaultValue="" required><option value="" disabled>{copy.chooseTeam}</option><option value={teamValue}>{teamLabel}</option></select><small>{copy.teamHelp}</small></label> : null}
         </div>
 
         <header><BellRing size={21} /><div><h2>{copy.notifications}</h2><p>{copy.notificationsHelp}</p></div></header>
@@ -158,4 +166,12 @@ export default async function ProfilePage({
       </form>
     </div>
   </>;
+
+  if (!onboarding) return profileContent;
+  return <div className="first-use-gate" role="dialog" aria-modal="true" aria-label={copy.onboardingTitle}>
+    <div className="first-use-gate-card" data-photo-required={actor.accountKind === "DELIVERY" && imagePolicy.deliveryAgentPhotoRequired ? "true" : "false"}>
+      <div className="first-use-guide" aria-hidden="true"><Image src="/login-yeti.svg" alt="" width={92} height={92} priority /></div>
+      {profileContent}
+    </div>
+  </div>;
 }
