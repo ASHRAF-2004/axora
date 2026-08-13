@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   requireRecentStepUp: vi.fn(),
   updateRequestStatus: vi.fn(),
   recordApproval: vi.fn(),
+  createCompanyWithBrand: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
@@ -16,7 +17,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 vi.mock("@/lib/locale-server", () => ({ requestLocaleDecision: vi.fn(async () => ({ locale: "en", explicit: true })) }));
 vi.mock("@/lib/repository", () => ({ createBranch: vi.fn(), createProduct: vi.fn(), createSupplier: vi.fn(), setMasterActive: vi.fn(), createCompany: vi.fn(), createRequest: vi.fn(), updateRequestStatus: mocks.updateRequestStatus }));
-vi.mock("@/lib/tenant-branding", () => ({ createCompanyWithBrand: vi.fn(), regenerateCompanyBrand: vi.fn() }));
+vi.mock("@/lib/tenant-branding", () => ({ createCompanyWithBrand: mocks.createCompanyWithBrand, regenerateCompanyBrand: vi.fn() }));
 vi.mock("@/lib/product-admin", () => ({ updateProduct: vi.fn() }));
 vi.mock("@/lib/product-delete", () => ({ deleteProduct: vi.fn() }));
 vi.mock("@/lib/product-images", () => ({ deactivateProductImage: vi.fn(), prepareProductImages: vi.fn(async () => []), savePreparedProductImages: vi.fn(), saveProductImages: vi.fn(), setPrimaryProductImage: vi.fn(), updateProductImageAltText: vi.fn() }));
@@ -45,6 +46,7 @@ describe("localized portal action feedback", () => {
     mocks.requirePermission.mockResolvedValue(actor);
     mocks.requireRecentStepUp.mockResolvedValue(undefined);
     mocks.recordApproval.mockResolvedValue(undefined);
+    mocks.createCompanyWithBrand.mockResolvedValue({ companyId: "30000000-0000-4000-8000-000000000001" });
   });
 
   it("keeps every stable approval code translated in all supported locales", () => {
@@ -65,6 +67,48 @@ describe("localized portal action feedback", () => {
     statusData.set("status", "NOT_A_CANONICAL_STATUS");
     await expect(updateStatusAction("request-1", statusData)).rejects.toThrow("REDIRECT:/requests/request-1?notice=request-status-invalid");
     expect(mocks.updateRequestStatus).not.toHaveBeenCalled();
+  });
+
+  it("creates a company lead from the reduced form and ignores removed legacy fields", async () => {
+    const formData = new FormData();
+    formData.set("name", "Simple Company");
+    formData.set("industry", "Education");
+    formData.set("companyInformation", "A concise company profile.");
+    formData.set("mainContactName", "Main Contact");
+    formData.set("mainContactEmail", "contact@example.test");
+    formData.set("mainContactPhone", "+601100000001");
+    formData.set("billingCycle", "Monthly");
+    formData.set("logo", new File(["logo"], "logo.png", { type: "image/png" }));
+    formData.set("legalName", "Ignored Legal Name");
+    formData.set("registrationNumber", "IGNORED-REGISTRATION");
+    formData.set("websiteUrl", "https://ignored.example.test");
+    formData.set("billingContactName", "Ignored Billing Contact");
+    formData.set("billingAddress", "Ignored Billing Address");
+    formData.set("notes", "Ignored onboarding notes");
+
+    await expect(createCompanyAction(formData)).rejects.toThrow(
+      "REDIRECT:/companies?notice=company-created&created=30000000-0000-4000-8000-000000000001",
+    );
+
+    expect(mocks.createCompanyWithBrand).toHaveBeenCalledOnce();
+    const input = mocks.createCompanyWithBrand.mock.calls[0]?.[0];
+    expect(input).toMatchObject({
+      name: "Simple Company",
+      legalName: "Simple Company",
+      industry: "Education",
+      companyInformation: "A concise company profile.",
+      mainContactName: "Main Contact",
+      mainContactEmail: "contact@example.test",
+      mainContactPhone: "+601100000001",
+      billingContactName: "Main Contact",
+      billingContactEmail: "contact@example.test",
+      billingContactPhone: "+601100000001",
+      billingAddress: "Pending onboarding",
+      billingCycle: "Monthly",
+    });
+    expect(input.registrationNumber).toMatch(/^PENDING-[0-9a-f-]{36}$/);
+    expect(input.websiteUrl).toBeUndefined();
+    expect(input.notes).toBeUndefined();
   });
 
   it("renders redirect notices in EN, AR and MS", () => {

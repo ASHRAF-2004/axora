@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { requirePermission } from "@/lib/auth";
 import { sendAccountSetupEmail } from "@/lib/account-email";
 import {
@@ -34,12 +35,13 @@ import {
   updateProductImageAltText,
 } from "@/lib/product-images";
 import { createBranch, createProduct, setMasterActive, type MasterEntity } from "@/lib/repository";
-import { branchSchema, companySchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
+import { branchSchema, companyLeadCreateSchema, companySchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { calculateCommercialSellingPrice } from "@/lib/procurement-rules";
 import { canAccess } from "@/lib/permissions";
+import { STANDARD_BILLING_TERMS } from "@/lib/types";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 function productInput(formData: FormData) {
@@ -73,20 +75,26 @@ export async function createCompanyAction(formData: FormData) {
   const user = await requirePermission("manage_companies");
   const logo = formData.get("logo");
   if (!(logo instanceof File) || logo.size < 1) redirect("/companies?notice=company-logo-required");
-  const mainContactName = readFormText(formData, "mainContactName");
-  const mainContactEmail = readFormText(formData, "mainContactEmail");
-  const mainContactPhone = readFormText(formData, "mainContactPhone");
-  const input = companySchema.parse({
-    name: readFormText(formData, "name"), legalName: readFormText(formData, "legalName"),
-    registrationNumber: readFormText(formData, "registrationNumber"),
+  const submitted = companyLeadCreateSchema.parse({
+    name: readFormText(formData, "name"),
     industry: readFormText(formData, "industry"),
     companyInformation: readFormText(formData, "companyInformation"),
-    websiteUrl: readFormText(formData, "websiteUrl"), mainContactName,
-    mainContactEmail, mainContactPhone, billingContactName: readFormText(formData, "billingContactName") || mainContactName,
-    billingContactEmail: readFormText(formData, "billingContactEmail") || mainContactEmail,
-    billingContactPhone: readFormText(formData, "billingContactPhone") || mainContactPhone,
-    billingAddress: readFormText(formData, "billingAddress"), paymentTerms: readFormText(formData, "paymentTerms"),
-    billingCycle: readFormText(formData, "billingCycle"), notes: readFormText(formData, "notes"),
+    mainContactName: readFormText(formData, "mainContactName"),
+    mainContactEmail: readFormText(formData, "mainContactEmail"),
+    mainContactPhone: readFormText(formData, "mainContactPhone"),
+    billingCycle: readFormText(formData, "billingCycle"),
+  });
+  const input = companySchema.parse({
+    ...submitted,
+    legalName: submitted.name,
+    registrationNumber: `PENDING-${randomUUID()}`,
+    websiteUrl: "",
+    billingContactName: submitted.mainContactName,
+    billingContactEmail: submitted.mainContactEmail,
+    billingContactPhone: submitted.mainContactPhone,
+    billingAddress: "Pending onboarding",
+    paymentTerms: STANDARD_BILLING_TERMS,
+    notes: undefined,
   });
   const created = await createCompanyWithBrand(input, logo, user);
   revalidatePath("/companies"); revalidatePath("/dashboard");
