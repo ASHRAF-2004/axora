@@ -68,7 +68,7 @@ const englishNavigation: Record<string, PortalNavigationCopy> = {
   "/email-operations": { label: "Email operations", description: "Delivery, suppression and provider health" },
   "/support": { label: "Support diagnostics", description: "Audited system and account checks" },
   "/settings": { label: "Settings", description: "Personal and permitted administration" },
-  "/help": { label: "Help & tutorial", description: "Guidance for your role" },
+  "/help": { label: "Help", description: "Guidance for your role" },
 };
 
 const english: PortalMessages = {
@@ -90,7 +90,7 @@ const english: PortalMessages = {
   shell: {
     openMenu: "Open application menu", primaryNavigation: "Primary application navigation",
     notifications: (count) => `Notifications, ${count} unread`, myProfile: "My profile",
-    accountSecurity: "Account & security", helpTutorial: "Help & tutorial", signOut: "Sign out",
+    accountSecurity: "Account & security", helpTutorial: "Help", signOut: "Sign out",
     language: "Language", workspace: "Axora workspace", menu: "Menu", closeMenu: "Close application menu",
     completeNavigation: "Complete application navigation",
     groups: { workspace: "Workspace", administration: "Administration", insight: "Insights & controls", support: "Support" },
@@ -136,13 +136,13 @@ const arabic: PortalMessages = {
     "/email-operations": { label: "عمليات البريد", description: "التسليم والحظر وصحة مزود البريد" },
     "/support": { label: "تشخيص الدعم", description: "فحوصات مدققة للنظام والحسابات" },
     "/settings": { label: "الإعدادات", description: "الإعدادات الشخصية والإدارية المسموحة" },
-    "/help": { label: "المساعدة والدليل", description: "إرشادات مخصصة لدورك" },
+    "/help": { label: "المساعدة", description: "إرشادات مخصصة لدورك" },
   },
   quickActions: { newRequest: "طلب جديد", addCompany: "إضافة شركة", catalog: "الكتالوج" },
   shell: {
     openMenu: "فتح قائمة التطبيق", primaryNavigation: "التنقل الرئيسي في التطبيق",
     notifications: (count) => `الإشعارات، ${count} غير مقروء`, myProfile: "ملفي الشخصي",
-    accountSecurity: "الحساب والأمان", helpTutorial: "المساعدة والدليل", signOut: "تسجيل الخروج",
+    accountSecurity: "الحساب والأمان", helpTutorial: "المساعدة", signOut: "تسجيل الخروج",
     language: "اللغة", workspace: "مساحة عمل أكسورا", menu: "القائمة", closeMenu: "إغلاق قائمة التطبيق",
     completeNavigation: "التنقل الكامل في التطبيق",
     groups: { workspace: "مساحة العمل", administration: "الإدارة", insight: "الرؤى والضوابط", support: "الدعم" },
@@ -188,13 +188,13 @@ const malay: PortalMessages = {
     "/email-operations": { label: "Operasi e-mel", description: "Penghantaran, sekatan dan kesihatan penyedia" },
     "/support": { label: "Diagnostik sokongan", description: "Semakan sistem dan akaun yang diaudit" },
     "/settings": { label: "Tetapan", description: "Pentadbiran peribadi dan yang dibenarkan" },
-    "/help": { label: "Bantuan & tutorial", description: "Panduan untuk peranan anda" },
+    "/help": { label: "Bantuan", description: "Panduan untuk peranan anda" },
   },
   quickActions: { newRequest: "Permintaan baharu", addCompany: "Tambah syarikat", catalog: "Katalog" },
   shell: {
     openMenu: "Buka menu aplikasi", primaryNavigation: "Navigasi utama aplikasi",
     notifications: (count) => `Pemberitahuan, ${count} belum dibaca`, myProfile: "Profil saya",
-    accountSecurity: "Akaun & keselamatan", helpTutorial: "Bantuan & tutorial", signOut: "Log keluar",
+    accountSecurity: "Akaun & keselamatan", helpTutorial: "Bantuan", signOut: "Log keluar",
     language: "Bahasa", workspace: "Ruang kerja Axora", menu: "Menu", closeMenu: "Tutup menu aplikasi",
     completeNavigation: "Navigasi lengkap aplikasi",
     groups: { workspace: "Ruang kerja", administration: "Pentadbiran", insight: "Cerapan & kawalan", support: "Sokongan" },

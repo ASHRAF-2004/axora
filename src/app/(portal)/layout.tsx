@@ -2,12 +2,10 @@ import { NavigationNotice } from "@/components/NavigationNotice";
 import { PortalDraftManager } from "@/components/PortalDraftManager";
 import { AppShell } from "@/components/app-shell/AppShell";
 import { getAccountLifecycleSession } from "@/lib/auth";
-import { isDemoMode } from "@/lib/db";
 import { canAccess } from "@/lib/permissions";
 import { requestLocaleDecision } from "@/lib/locale-server";
 import { getActiveCompanyBrand } from "@/lib/tenant-branding";
 import { getMyProfile, myProfileMeetsRequiredOnboarding } from "@/lib/profile";
-import { listTutorialProgress } from "@/lib/onboarding";
 import { unreadNotificationCount } from "@/lib/notification-repository";
 import { landingPathForSession } from "@/lib/session-landing";
 import {
@@ -78,9 +76,8 @@ export default async function PortalLayout({ children }: { children: React.React
     redirect(`/profile?${params.toString()}`);
   }
 
-  const [companyBrand, tutorialSteps, unreadNotifications] = await Promise.all([
+  const [companyBrand, unreadNotifications] = await Promise.all([
     companyBrandPromise,
-    onboardingComplete ? listTutorialProgress(user, user.role, locale) : Promise.resolve([]),
     onboardingComplete ? unreadNotificationCount(user) : Promise.resolve(0),
   ]);
   const theme = companyBrand?.tokens;
@@ -164,10 +161,8 @@ export default async function PortalLayout({ children }: { children: React.React
           logoPlacement: companyBrand?.logoPlacement,
           style: themeStyle,
         }}
-        environmentLabel={isDemoMode() ? messages.environment.sample : messages.environment.production}
         unreadNotifications={unreadNotifications}
         profileRequired={!onboardingComplete}
-        tutorial={{ roleKey: user.role, steps: tutorialSteps }}
       >
         {children}
       </AppShell>

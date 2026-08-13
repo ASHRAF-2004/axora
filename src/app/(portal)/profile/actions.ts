@@ -73,9 +73,7 @@ export async function saveProfileAction(formData: FormData) {
       String(formData.get("returnTo") ?? ""),
       landing,
     );
-    const parsed = new URL(destination, "https://axora.management");
-    parsed.searchParams.set("tutorial", "1");
-    redirect(`${parsed.pathname}${parsed.search}${parsed.hash}`);
+    redirect(destination);
   }
   redirect("/profile?saved=1");
 }

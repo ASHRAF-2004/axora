@@ -18,8 +18,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
 import { LOCALE_NAMES, SUPPORTED_LOCALES, persistBrowserLocale, type SupportedLocale } from "@/lib/i18n";
-import { GuidedTutorial } from "@/components/onboarding/GuidedTutorial";
-import type { TutorialStepDefinition, TutorialStepStatus } from "@/lib/onboarding";
 import { setPreferredLocaleAction } from "@/app/(portal)/profile/language-action";
 import { portalMessages } from "@/lib/portal-i18n";
 import {
@@ -59,13 +57,8 @@ interface AppShellProps {
     logoPlacement?: "HEADER_START" | "HEADER_CENTER";
     style?: CSSProperties;
   };
-  environmentLabel: string;
   unreadNotifications?: number;
   profileRequired?: boolean;
-  tutorial?: {
-    roleKey: string;
-    steps: Array<TutorialStepDefinition & { status: TutorialStepStatus }>;
-  };
 }
 
 function tourName(href: string) {
@@ -101,10 +94,8 @@ export function AppShell({
   quickAction,
   locale,
   brand,
-  environmentLabel,
   unreadNotifications = 0,
   profileRequired = false,
-  tutorial,
 }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -324,14 +315,6 @@ export function AppShell({
           </label>
         </div>
       </header>
-
-      <div className="app-context-bar">
-        <span className="environment-dot environment-live" />
-        <span>{environmentLabel}</span>
-        <span className="app-context-divider" aria-hidden="true" />
-        <strong>{brand.name}</strong>
-        {!profileRequired && tutorial ? <div className="tutorial-launcher-slot"><GuidedTutorial roleKey={tutorial.roleKey} steps={tutorial.steps} locale={locale} /></div> : null}
-      </div>
 
       <main className="content-shell app-content">{children}</main>
 

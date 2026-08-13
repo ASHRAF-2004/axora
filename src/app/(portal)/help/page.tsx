@@ -1,6 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
 import { requireAccountLifecycleSession } from "@/lib/auth";
-import { listTutorialProgress } from "@/lib/onboarding";
 import {
   BookOpenCheck,
   Building2,
@@ -14,26 +13,17 @@ import {
   UserRoundCog,
   WalletCards,
 } from "lucide-react";
-import Link from "next/link";
-import { operationalHelpContent, operationalMessage, operationalNumber, type OperationalMessageKey } from "@/lib/operational-i18n";
+import { operationalHelpContent, operationalMessage, type OperationalMessageKey } from "@/lib/operational-i18n";
 
 export default async function HelpPage() {
   const actor = await requireAccountLifecycleSession();
   const locale = actor.preferredLocale ?? "en";
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) => operationalMessage(locale, key, values);
   const content = operationalHelpContent(locale);
-  const tutorial = await listTutorialProgress(actor);
-  const settled = tutorial.filter((step) => step.status === "COMPLETED" || step.status === "SKIPPED").length;
-  const tutorialPanel = <section className="tutorial-summary" data-tour="help">
-    <div><span className="tutorial-summary-icon"><BookOpenCheck size={22} /></span><div><p className="eyebrow">{m("help.roleGuide")}</p><h2>{m(settled === tutorial.length ? "help.complete" : "help.continue")}</h2><p>{m("help.progress", { settled: operationalNumber(locale, settled), total: operationalNumber(locale, tutorial.length) })}</p></div></div>
-    <div className="tutorial-summary-progress" aria-label={m("help.progressLabel", { settled: operationalNumber(locale, settled), total: operationalNumber(locale, tutorial.length) })}><span style={{ width: `${tutorial.length ? settled / tutorial.length * 100 : 0}%` }} /></div>
-    <Link className="button button-primary" href="/help?tutorial=1">{m(settled === tutorial.length ? "help.review" : "help.continueButton")}</Link>
-  </section>;
 
   if (actor.isOwner) {
     const ownerIcons = [Building2, PackageSearch, ImageUp, ClipboardCheck, Truck];
     return <><PageHeader eyebrow={m("help.ownerEyebrow")} title={m("help.ownerTitle")} description={m("help.ownerDescription")} />
-      {tutorialPanel}
       <section className="panel" style={{ marginBottom: 17 }}>
         <div className="panel-header"><div><h2>{m("help.ownerManuals")}</h2><p>{m("help.manualsIntro")}</p></div>
           <div className="toolbar-group">
@@ -55,7 +45,6 @@ export default async function HelpPage() {
 
   const companyIcons = [Building2, UserRoundCog, PackageSearch, ClipboardPlus, ClipboardCheck, Truck];
   return <><PageHeader eyebrow={m("help.companyEyebrow")} title={m("help.companyTitle")} description={m("help.companyDescription")} />
-    {tutorialPanel}
     <section className="panel" style={{ marginBottom: 17 }}>
       <div className="panel-header"><div><h2>{m("help.companyManuals")}</h2><p>{m("help.manualsIntro")}</p></div>
         <div className="toolbar-group">

@@ -69,7 +69,7 @@ export function operationalNumber(locale: SupportedLocale, value: number, option
   return new Intl.NumberFormat(locale === "ar" ? "ar-MY" : locale === "ms" ? "ms-MY" : "en-MY", options).format(value);
 }
 
-export const notificationEventKeys = ["invitation.sent","invitation.accepted","company.lead.created","company.lead.submitted","company.lead.assigned","company.lead.reassigned","company.lead.contacted","company.lead.information_requested","company.lead.qualified","company.lead.duplicate_cleared","company.lead.duplicate_confirmed","company.lead.note_added","company.lead.task_added","company.lead.task_completed","company.lead.converted","company.lead.rejected","company.lead.archived","company.lead.anonymized","company.lead.sla_overdue","company.onboarding.updated","company.onboarding.ready","company.onboarding.verified","company.assigned","company.reassigned","company.information_requested","company.administrator_activated","company.activated","company.suspended","request.submitted","approval.needed","request.approved","request.rejected","quotation.requested","quotation.received","supplier.selected","supplier.order_selected","supplier.rfq_acknowledged","supplier.order_acknowledged","delivery.scheduled","driver.assigned","driver.assignment_rejected","delivery.accepted","delivery.arrived","delivery.attempted","delivery.partially_delivered","delivery.issue_reported","delivery.note_added","delivery.delayed","delivery.completed","receipt.required","discrepancy.opened","invoice.issued","payment.status_changed","order.confirmed","preparation.started","delivery.out_for_delivery","delivery.evidence_recorded","delivery.partial_evidence_recorded","delivery.failed","receipt.confirmed","three_way_match.completed","three_way_match.exception","request.completed","request.cancelled","request.on_hold"] as const;
+export const notificationEventKeys = ["invitation.sent","invitation.accepted","company.lead.created","company.lead.submitted","company.lead.assigned","company.lead.reassigned","company.lead.contacted","company.lead.information_requested","company.lead.qualified","company.lead.duplicate_cleared","company.lead.duplicate_confirmed","company.lead.note_added","company.lead.task_added","company.lead.task_completed","company.lead.converted","company.lead.rejected","company.lead.archived","company.lead.anonymized","company.lead.sla_overdue","company.onboarding.updated","company.onboarding.ready","company.onboarding.verified","company.verification.submitted","company.verification.approved","company.verification.changes_requested","company.verification.rejected","company.assigned","company.reassigned","company.information_requested","company.administrator_activated","company.activated","company.suspended","request.submitted","approval.needed","request.approved","request.rejected","quotation.requested","quotation.received","supplier.selected","supplier.order_selected","supplier.rfq_acknowledged","supplier.order_acknowledged","delivery.scheduled","driver.assigned","driver.assignment_rejected","delivery.accepted","delivery.arrived","delivery.attempted","delivery.partially_delivered","delivery.issue_reported","delivery.note_added","delivery.delayed","delivery.completed","receipt.required","discrepancy.opened","invoice.issued","payment.status_changed","order.confirmed","preparation.started","delivery.out_for_delivery","delivery.evidence_recorded","delivery.partial_evidence_recorded","delivery.failed","receipt.confirmed","three_way_match.completed","three_way_match.exception","request.completed","request.cancelled","request.on_hold"] as const;
 
 const eventLabels: Record<SupportedLocale, Record<string, string>> = {
   en: Object.fromEntries(notificationEventKeys.map((key) => [key, key.replaceAll(".", " ").replaceAll("_", " ")])),
@@ -128,6 +128,10 @@ export function operationalEventLabel(locale: SupportedLocale, eventKey: string)
       "company.onboarding.updated": "حُفظ إعداد الشركة",
       "company.onboarding.ready": "اكتمل إعداد الشركة للمراجعة",
       "company.onboarding.verified": "تم التحقق من إعداد الشركة",
+      "company.verification.submitted": "أُرسل ملف الشركة للتحقق",
+      "company.verification.approved": "تم التحقق من الشركة",
+      "company.verification.changes_requested": "طُلبت تغييرات على الشركة",
+      "company.verification.rejected": "رُفض ملف الشركة",
       "company.assigned": "أُسندت الشركة",
       "company.reassigned": "أُعيد إسناد الشركة",
       "company.information_requested": "طُلبت معلومات الشركة",
@@ -159,6 +163,10 @@ export function operationalEventLabel(locale: SupportedLocale, eventKey: string)
       "company.onboarding.updated": "Persediaan syarikat disimpan",
       "company.onboarding.ready": "Persediaan syarikat sedia untuk semakan",
       "company.onboarding.verified": "Persediaan syarikat disahkan",
+      "company.verification.submitted": "Syarikat dihantar untuk pengesahan",
+      "company.verification.approved": "Syarikat disahkan",
+      "company.verification.changes_requested": "Perubahan syarikat diminta",
+      "company.verification.rejected": "Penyerahan syarikat ditolak",
       "company.assigned": "Syarikat ditugaskan",
       "company.reassigned": "Syarikat ditugaskan semula",
       "company.information_requested": "Maklumat syarikat diminta",
