@@ -80,8 +80,7 @@ export async function updateProduct(productId: string, input: ProductInput, acto
          name=$2, category=$3, subcategory=$4, brand=$5, product_size=$6,
          unit_of_measure=$7, packaging=$8, description=$9,
          default_buy_price=$10, default_sell_price=$11,
-         minimum_order_quantity=1, maximum_order_quantity=NULL,
-         order_increment=1, pack_size=1, pack_unit=$7,
+         minimum_order_quantity=1,
          delivery_sla_days=$12, updated_at=now()
        WHERE id=$1`,
       [productId, input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null,
