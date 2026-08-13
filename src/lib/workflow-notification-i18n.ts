@@ -19,6 +19,10 @@ export type WorkflowNotificationMessage =
   | { key: "company_onboarding_updated"; companyName: string }
   | { key: "company_onboarding_ready"; companyName: string }
   | { key: "company_onboarding_verified"; companyName: string }
+  | { key: "company_verification_submitted"; companyName: string }
+  | { key: "company_verification_approved"; companyName: string }
+  | { key: "company_verification_changes_requested"; companyName: string }
+  | { key: "company_verification_rejected"; companyName: string }
   | { key: "company_administrator_activated"; companyName: string }
   | { key: "company_activated"; companyName: string }
   | { key: "company_suspended"; companyName: string }
@@ -246,6 +250,30 @@ export function renderWorkflowNotification(
       if (locale === "ar") return { title: "تم التحقق من تهيئة الشركة", body: `تم التحقق من تهيئة ${companyName}. يبقى التفعيل خطوة منفصلة.` };
       if (locale === "ms") return { title: "Penerimaan masuk syarikat disahkan", body: `Penerimaan masuk ${companyName} disahkan. Pengaktifan kekal langkah berasingan.` };
       return { title: "Company onboarding verified", body: `${companyName}'s onboarding was verified. Activation remains a separate step.` };
+    }
+    case "company_verification_submitted": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "شركة بانتظار التحقق", body: `أرسل مدير الحساب ملف ${companyName} لمراجعة مالك المنصة.` };
+      if (locale === "ms") return { title: "Syarikat menunggu pengesahan", body: `Pengurus Akaun menghantar ${companyName} untuk semakan Pemilik Platform.` };
+      return { title: "Company awaiting verification", body: `The Account Manager submitted ${companyName} for Platform Owner review.` };
+    }
+    case "company_verification_approved": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "تم التحقق من الشركة", body: `وافق مالك المنصة على ملف ${companyName}. يمكن متابعة التفعيل بعد اكتمال الضوابط المتبقية.` };
+      if (locale === "ms") return { title: "Syarikat disahkan", body: `Pemilik Platform meluluskan ${companyName}. Pengaktifan boleh diteruskan selepas kawalan selebihnya lengkap.` };
+      return { title: "Company verified", body: `The Platform Owner approved ${companyName}. Activation can continue after remaining controls are complete.` };
+    }
+    case "company_verification_changes_requested": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "تغييرات الشركة مطلوبة", body: `طلب مالك المنصة تحديث ملف ${companyName} قبل إعادة إرساله.` };
+      if (locale === "ms") return { title: "Perubahan syarikat diperlukan", body: `Pemilik Platform meminta kemas kini pada ${companyName} sebelum dihantar semula.` };
+      return { title: "Company changes requested", body: `The Platform Owner requested updates to ${companyName} before resubmission.` };
+    }
+    case "company_verification_rejected": {
+      const companyName = boundedParameter(message.companyName, "Company name");
+      if (locale === "ar") return { title: "رُفض ملف الشركة", body: `رفض مالك المنصة ملف ${companyName}. يبقى السجل محفوظًا للتصحيح وإعادة الإرسال المصرح به.` };
+      if (locale === "ms") return { title: "Penyerahan syarikat ditolak", body: `Pemilik Platform menolak ${companyName}. Rekod dikekalkan untuk pembetulan dan penghantaran semula yang dibenarkan.` };
+      return { title: "Company submission rejected", body: `The Platform Owner rejected ${companyName}. The record remains available for authorized correction and resubmission.` };
     }
     case "company_administrator_activated": {
       const companyName = boundedParameter(message.companyName, "Company name");

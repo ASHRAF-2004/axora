@@ -11,6 +11,14 @@ primary manager through the existing company-assignment relationship. The
 Platform Owner retains global visibility and recovery authority without
 operational assignment controls.
 
+An assigned Client Account Manager prepares a company as a private draft and
+submits it for verification after its onboarding evidence is complete. Only a
+Platform Owner can approve, reject, or request changes. Rejected and
+change-requested records remain assigned and editable for correction; all
+decisions remain append-only evidence. Database constraints prevent a company
+from becoming active or portal-enabled before its verification state is
+`VERIFIED`.
+
 New work follows:
 
 `Request -> company approval -> Pay -> finalized invoice -> Delivery Guy buys

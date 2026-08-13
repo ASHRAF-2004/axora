@@ -18,10 +18,19 @@ export const COMPANY_ONBOARDING_STEPS = [
 ] as const;
 
 export const COMPANY_VERIFICATION_STATUSES = [
+  "DRAFT",
+  "PENDING_VERIFICATION",
+  "CHANGES_REQUESTED",
+  "VERIFIED",
+  "REJECTED",
+  "INACTIVE",
+] as const;
+
+const COMPANY_VERIFICATION_HISTORY_STATUSES = [
+  ...COMPANY_VERIFICATION_STATUSES,
   "NOT_STARTED",
   "IN_PROGRESS",
   "READY_FOR_REVIEW",
-  "VERIFIED",
   "CHANGES_REQUIRED",
 ] as const;
 
@@ -40,6 +49,10 @@ const companySchema = z.object({
   id: uuid,
   code: z.string().min(1).max(80),
   name: z.string().min(1).max(300),
+  companyInformation: z.string().max(5000),
+  websiteUrl: optionalText(2048),
+  internalNotes: optionalText(5000),
+  createdBy: optionalUuid,
   status: z.string().min(1).max(80),
   legalName: z.string().max(300),
   registrationNumber: z.string().max(160),
@@ -88,8 +101,8 @@ const itemSchema = z.object({
 
 const historySchema = z.object({
   id: uuid,
-  fromStatus: z.enum(COMPANY_VERIFICATION_STATUSES).nullable(),
-  toStatus: z.enum(COMPANY_VERIFICATION_STATUSES),
+  fromStatus: z.enum(COMPANY_VERIFICATION_HISTORY_STATUSES).nullable(),
+  toStatus: z.enum(COMPANY_VERIFICATION_HISTORY_STATUSES),
   reason: z.string().min(1).max(1000),
   changedAt: z.coerce.date(),
   changedByName: z.string().max(300).nullable(),
@@ -100,6 +113,10 @@ const workspaceSchema = z.object({
   canEdit: z.boolean(),
   canApproveExceptions: z.boolean(),
   canVerify: z.boolean(),
+  canReview: z.boolean(),
+  canSubmit: z.boolean(),
+  canRequestChanges: z.boolean(),
+  canReject: z.boolean(),
   company: companySchema,
   industries: z.array(z.object({
     code: z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/),
@@ -125,6 +142,10 @@ const mutationSchema = z.object({
     "company.onboarding.updated",
     "company.onboarding.ready",
     "company.onboarding.verified",
+    "company.verification.submitted",
+    "company.verification.approved",
+    "company.verification.changes_requested",
+    "company.verification.rejected",
   ]),
   notificationRecipientIds: z.array(uuid),
 }).strict();
@@ -186,10 +207,15 @@ function demoOnboardingWorkspace(companyId: string, capturedAt: Date) {
     canEdit: false,
     canApproveExceptions: false,
     canVerify: false,
+    canReview: false,
+    canSubmit: false,
+    canRequestChanges: false,
+    canReject: false,
     company: {
       id: companyId,
       code: "C-100",
       name: "YourUni",
+      companyInformation: "Demo education company",
       status: "ONBOARDING",
       legalName: "YourUni Education Sdn. Bhd.",
       registrationNumber: "DEMO-REG-100",
@@ -212,7 +238,7 @@ function demoOnboardingWorkspace(companyId: string, capturedAt: Date) {
       completedSteps: COMPANY_ONBOARDING_STEPS.filter((step) => step !== "REVIEW"),
       version: 1,
       savedAt: capturedAt,
-      verificationStatus: "READY_FOR_REVIEW",
+      verificationStatus: "PENDING_VERIFICATION",
       activationBlockers: ["ONBOARDING_VERIFICATION"],
     },
     industries: [{
@@ -270,8 +296,8 @@ function demoOnboardingWorkspace(companyId: string, capturedAt: Date) {
     ],
     verificationHistory: [{
       id: "10000000-0000-4000-8000-000000000105",
-      fromStatus: "IN_PROGRESS",
-      toStatus: "READY_FOR_REVIEW",
+      fromStatus: "DRAFT",
+      toStatus: "PENDING_VERIFICATION",
       reason: "Demo onboarding controls completed",
       changedAt: capturedAt,
       changedByName: "Client Account Manager",
@@ -309,7 +335,7 @@ export async function loadCompanyOnboardingWorkspace(
   if (isDemoMode()) return demoOnboardingWorkspace(companyId, capturedAt);
   try {
     const result = await query<SnapshotRow>(
-      "SELECT public.axora_company_onboarding_workspace($1,$2,$3,$4) AS snapshot",
+      "SELECT public.axora_company_verification_workspace($1,$2,$3,$4) AS snapshot",
       [actor.id, assignmentId(actor), uuid.parse(companyId), capturedAt],
     );
     const parsed = workspaceSchema.safeParse(result.rows[0]?.snapshot);
@@ -338,6 +364,22 @@ const messages: Record<z.infer<typeof mutationSchema>["eventKey"], (
     key: "company_onboarding_verified",
     companyName,
   }),
+  "company.verification.submitted": (companyName) => ({
+    key: "company_verification_submitted",
+    companyName,
+  }),
+  "company.verification.approved": (companyName) => ({
+    key: "company_verification_approved",
+    companyName,
+  }),
+  "company.verification.changes_requested": (companyName) => ({
+    key: "company_verification_changes_requested",
+    companyName,
+  }),
+  "company.verification.rejected": (companyName) => ({
+    key: "company_verification_rejected",
+    companyName,
+  }),
 };
 
 async function notifyMutation(
@@ -360,7 +402,7 @@ async function notifyMutation(
     recipientUserIds: mutation.notificationRecipientIds,
     message: messages[mutation.eventKey](mutation.companyName),
     routePath: `/companies/${mutation.companyId}/onboarding`,
-    priority: mutation.eventKey === "company.onboarding.ready" ? "HIGH" : "NORMAL",
+    priority: mutation.eventKey === "company.verification.submitted" ? "HIGH" : "NORMAL",
   });
 }
 
@@ -386,7 +428,7 @@ export function saveCompanyOnboarding(
   return mutate(
     actor,
     input.reason,
-    `SELECT public.axora_save_company_onboarding(
+    `SELECT public.axora_save_company_verification_draft(
        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
        $19,$20,$21,$22,$23,$24,$25,$26
      ) AS snapshot`,
@@ -410,7 +452,7 @@ export function updateCompanyOnboardingItem(
   return mutate(
     actor,
     input.reason,
-    `SELECT public.axora_update_company_onboarding_item(
+    `SELECT public.axora_update_company_verification_item(
        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
      ) AS snapshot`,
     [
@@ -422,7 +464,7 @@ export function updateCompanyOnboardingItem(
   );
 }
 
-export function verifyCompanyOnboarding(
+export function submitCompanyVerification(
   actor: AuthenticatedSessionUser,
   companyId: string,
   expectedVersion: number,
@@ -431,8 +473,26 @@ export function verifyCompanyOnboarding(
   return mutate(
     actor,
     reason,
-    "SELECT public.axora_verify_company_onboarding($1,$2,$3,$4,$5,$6) AS snapshot",
+    "SELECT public.axora_submit_company_verification($1,$2,$3,$4,$5,$6) AS snapshot",
     [actor.id, assignmentId(actor), uuid.parse(companyId), expectedVersion, reason, new Date()],
+  );
+}
+
+export function reviewCompanyVerification(
+  actor: AuthenticatedSessionUser,
+  companyId: string,
+  expectedVersion: number,
+  decision: "APPROVE" | "REQUEST_CHANGES" | "REJECT",
+  reason: string,
+) {
+  return mutate(
+    actor,
+    reason,
+    "SELECT public.axora_review_company_verification($1,$2,$3,$4,$5,$6,$7) AS snapshot",
+    [
+      actor.id, assignmentId(actor), uuid.parse(companyId), expectedVersion,
+      decision, reason, new Date(),
+    ],
   );
 }
 

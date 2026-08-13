@@ -38,7 +38,7 @@ const profileCopy = {
     inApp: "In-app notifications", inAppHelp: "Always on so assignments, decisions, delivery events, and exceptions remain available.",
     email: "Email notifications", emailNotificationsHelp: "Send important transactional updates to your account email.",
     policy: "I confirm these details and accept the required Axora policies.", policyHelp: "Do not share your account, password, session, or invitation links.",
-    next: "Next: a short tutorial for your role", audit: "Changes are recorded in the audit trail.", saveContinue: "Save and continue", save: "Save profile",
+    next: "Next: your Axora workspace", audit: "Changes are recorded in the audit trail.", saveContinue: "Save and continue", save: "Save profile",
   },
   ar: {
     firstStep: "الخطوة الأولى · ملفك الشخصي", personalSettings: "الإعدادات الشخصية",
@@ -56,7 +56,7 @@ const profileCopy = {
     inApp: "إشعارات داخل التطبيق", inAppHelp: "مفعّلة دائماً حتى تبقى المهام والقرارات وأحداث التسليم والاستثناءات متاحة.",
     email: "إشعارات البريد الإلكتروني", emailNotificationsHelp: "إرسال التحديثات المهمة إلى بريد حسابك.",
     policy: "أؤكد صحة هذه البيانات وأوافق على سياسات Axora المطلوبة.", policyHelp: "لا تشارك حسابك أو كلمة مرورك أو جلستك أو روابط الدعوة.",
-    next: "التالي: دليل قصير مخصص لدورك", audit: "تُسجل التغييرات في سجل التدقيق.", saveContinue: "حفظ ومتابعة", save: "حفظ الملف",
+    next: "التالي: مساحة عمل Axora الخاصة بك", audit: "تُسجل التغييرات في سجل التدقيق.", saveContinue: "حفظ ومتابعة", save: "حفظ الملف",
   },
   ms: {
     firstStep: "Langkah pertama · Profil anda", personalSettings: "Tetapan peribadi",
@@ -74,7 +74,7 @@ const profileCopy = {
     inApp: "Pemberitahuan dalam aplikasi", inAppHelp: "Sentiasa aktif supaya tugasan, keputusan, penghantaran dan pengecualian kekal tersedia.",
     email: "Pemberitahuan e-mel", emailNotificationsHelp: "Hantar kemas kini transaksi penting ke e-mel akaun anda.",
     policy: "Saya mengesahkan butiran ini dan menerima dasar Axora yang diperlukan.", policyHelp: "Jangan kongsi akaun, kata laluan, sesi atau pautan jemputan anda.",
-    next: "Seterusnya: tutorial ringkas untuk peranan anda", audit: "Perubahan direkodkan dalam jejak audit.", saveContinue: "Simpan dan teruskan", save: "Simpan profil",
+    next: "Seterusnya: ruang kerja Axora anda", audit: "Perubahan direkodkan dalam jejak audit.", saveContinue: "Simpan dan teruskan", save: "Simpan profil",
   },
 } as const;
 

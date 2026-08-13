@@ -10,14 +10,16 @@ import {
   companyOnboardingBlockerLabel,
   companyOnboardingMessages,
   companyOnboardingStepLabel,
+  companyVerificationStatusLabel,
 } from "@/lib/company-onboarding-i18n";
 import { formatDateTime } from "@/lib/domain";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  reviewCompanyVerificationAction,
   saveCompanyOnboardingAction,
+  submitCompanyVerificationAction,
   updateCompanyOnboardingItemAction,
-  verifyCompanyOnboardingAction,
 } from "./actions";
 
 const TIMEZONES = [
@@ -55,22 +57,31 @@ export default async function CompanyOnboardingPage({
   const company = workspace.company;
   const notice = first(query.notice) === "saved" ? copy.saved
     : first(query.notice) === "item-saved" ? copy.itemSaved
-      : first(query.notice) === "verified" ? copy.verified : undefined;
+      : first(query.notice) === "submitted" ? copy.submitted
+        : first(query.notice) === "approve" ? copy.approved
+          : first(query.notice) === "request_changes" ? copy.changesRequested
+            : first(query.notice) === "reject" ? copy.rejected : undefined;
   const industryName = (industry: typeof workspace.industries[number]) => locale === "ar"
     ? industry.nameAr : locale === "ms" ? industry.nameMs : industry.nameEn;
   const statusLabel = (status: typeof workspace.items[number]["status"]) => status === "PASSED"
     ? copy.passed : status === "FAILED" ? copy.failed : status === "WAIVED" ? copy.waived : copy.pending;
-  const verificationReady = company.activationBlockers.every(
-    (blocker) => blocker === "ONBOARDING_VERIFICATION",
-  );
 
   return <>
     <PageHeader eyebrow={copy.eyebrow} title={`${copy.title}: ${company.name}`} description={copy.description} />
     <div className="action-row" style={{ marginBlockEnd: 16 }}>
       <Link className="button button-secondary" href="/companies">{copy.back}</Link>
-      <StatusBadge>{company.verificationStatus.replaceAll("_", " ")}</StatusBadge>
+      <StatusBadge>{companyVerificationStatusLabel(locale, company.verificationStatus)}</StatusBadge>
     </div>
     {notice ? <section className="panel" role="status" aria-live="polite"><strong>{notice}</strong></section> : null}
+
+    <section className="panel" style={{ marginBlockStart: 16 }}>
+      <div className="panel-header"><div><h2>{copy.submission}</h2><p>{copy.submissionHelp}</p></div></div>
+      <div className="detail-grid">
+        <div><strong>{copy.companyInformation}</strong><p>{company.companyInformation || copy.notAvailable}</p></div>
+        <div><strong>{copy.website}</strong><p>{company.websiteUrl ?? copy.notAvailable}</p></div>
+        <div><strong>{copy.internalNotes}</strong><p>{company.internalNotes ?? copy.notAvailable}</p></div>
+      </div>
+    </section>
 
     <section className="panel form-panel" style={{ marginBlockStart: 16 }}>
       <div className="panel-header"><div><h2>{copy.profile}</h2><p>{copy.profileHelp}</p></div><span className="subtle">{company.code} · v{company.version}</span></div>
@@ -130,9 +141,10 @@ export default async function CompanyOnboardingPage({
     <section className="detail-grid" style={{ marginBlockStart: 17 }}>
       <article className="panel form-panel"><h2>{copy.verification}</h2><p>{copy.verificationHelp}</p>
         <h3>{copy.blockers}</h3>{company.activationBlockers.length ? <ul>{company.activationBlockers.map((blocker) => <li key={blocker}>{companyOnboardingBlockerLabel(locale, blocker)}</li>)}</ul> : <p>{copy.noBlockers}</p>}
-        {workspace.canVerify && verificationReady && company.verificationStatus !== "VERIFIED" ? <form action={verifyCompanyOnboardingAction} className="table-action-stack"><input type="hidden" name="companyId" value={company.id} /><input type="hidden" name="expectedVersion" value={company.version} /><label>{copy.reason}<textarea name="reason" required minLength={3} maxLength={1000} /></label><button className="button button-primary" type="submit">{copy.verify}</button></form> : null}
+        {workspace.canSubmit ? <form action={submitCompanyVerificationAction} className="table-action-stack"><input type="hidden" name="companyId" value={company.id} /><input type="hidden" name="expectedVersion" value={company.version} /><label>{copy.reason}<textarea name="reason" required minLength={3} maxLength={1000} /></label><button className="button button-primary" type="submit">{copy.submitForVerification}</button></form> : null}
+        {workspace.canReview ? <form action={reviewCompanyVerificationAction} className="table-action-stack"><input type="hidden" name="companyId" value={company.id} /><input type="hidden" name="expectedVersion" value={company.version} /><label>{copy.reason}<textarea name="reason" required minLength={3} maxLength={1000} /></label><div className="form-actions"><button className="button button-primary" name="decision" value="APPROVE" type="submit">{copy.approve}</button>{workspace.canRequestChanges ? <button className="button button-secondary" name="decision" value="REQUEST_CHANGES" type="submit">{copy.requestChanges}</button> : null}{workspace.canReject ? <button className="button button-danger" name="decision" value="REJECT" type="submit">{copy.reject}</button> : null}</div></form> : null}
       </article>
-      <article className="panel"><h2>{copy.history}</h2>{workspace.verificationHistory.length ? <ol>{workspace.verificationHistory.map((entry) => <li key={entry.id}><strong>{entry.toStatus.replaceAll("_", " ")}</strong><br /><span className="subtle">{entry.reason} · {formatDateTime(entry.changedAt.toISOString(), locale, company.timezone)} · {entry.changedByName ?? copy.system}</span></li>)}</ol> : <p className="subtle">{copy.notAvailable}</p>}</article>
+      <article className="panel"><h2>{copy.history}</h2>{workspace.verificationHistory.length ? <ol>{workspace.verificationHistory.map((entry) => <li key={entry.id}><strong>{companyVerificationStatusLabel(locale, entry.toStatus)}</strong><br /><span className="subtle">{entry.reason} · {formatDateTime(entry.changedAt.toISOString(), locale, company.timezone)} · {entry.changedByName ?? copy.system}</span></li>)}</ol> : <p className="subtle">{copy.notAvailable}</p>}</article>
     </section>
   </>;
 }

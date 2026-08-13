@@ -29,7 +29,7 @@ authorized Axora platform owner explicitly approves decommissioning.
 - Top application navigation with a permission-aware drawer, profile,
   notifications, and language control; no permanent left sidebar.
 - Canonical account/role/scope assignments, one-time invitations, Argon2id
-  passwords, live sessions, profile onboarding, and role tutorials.
+  passwords, live sessions, profile onboarding, and localized role guidance.
 - Routine authenticated work uses the live session, explicit permission,
   tenant scope, CSRF and audited database boundaries without a disruptive
   second password prompt. Credential changes still verify the current password.
@@ -185,6 +185,11 @@ file contents.
 
 Current work follows `NEW -> ASSIGNED -> CONTACTED -> QUALIFIED -> ONBOARDING -> ACTIVE`.
 Human Resources Management assigns leads to Client Account Managers (Agents).
+An assigned Client Account Manager prepares the customer-company record and
+submits it for verification. Only the Platform Owner can approve, reject, or
+request changes. A submitted company cannot become active or open its portal
+until the owner has verified it; rejected and change-requested records remain
+available to the assigned Manager for correction and audited resubmission.
 Agents can see only assigned leads and companies; the Platform Owner retains
 global visibility but does not perform lead or company assignment. Customer
 approval remains tenant-owned and always prevents self-approval.

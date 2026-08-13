@@ -59,7 +59,8 @@ describe("P0-03 route and session integration", () => {
     expect(page).toContain('name="returnTo"');
     expect(page).toContain("safeInternalReturnPath(");
     expect(action).toContain("authorizedSessionReturnPath(");
-    expect(action).toContain('parsed.searchParams.set("tutorial", "1")');
+    expect(action).toContain("redirect(destination)");
+    expect(action).not.toContain('searchParams.set("tutorial"');
   });
 
   it("namespaces browser drafts and clears them on logout or committed submission", async () => {

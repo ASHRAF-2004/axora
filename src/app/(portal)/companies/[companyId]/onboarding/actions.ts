@@ -2,9 +2,10 @@
 
 import {
   COMPANY_ONBOARDING_STEPS,
+  reviewCompanyVerification,
   saveCompanyOnboarding,
+  submitCompanyVerification,
   updateCompanyOnboardingItem,
-  verifyCompanyOnboarding,
 } from "@/lib/company-onboarding";
 import { requirePermission } from "@/lib/auth";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
@@ -120,15 +121,37 @@ export async function updateCompanyOnboardingItemAction(formData: FormData) {
   redirect(`${path(input.companyId)}?notice=item-saved`);
 }
 
-export async function verifyCompanyOnboardingAction(formData: FormData) {
+function verificationDecisionInput(formData: FormData) {
+  return {
+    companyId: z.uuid().parse(readFormText(formData, "companyId")),
+    expectedVersion: z.coerce.number().int().positive().parse(
+      readFormText(formData, "expectedVersion"),
+    ),
+    reason: z.string().trim().min(3).max(1000).parse(readFormText(formData, "reason")),
+  };
+}
+
+export async function submitCompanyVerificationAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
-  const companyId = z.uuid().parse(readFormText(formData, "companyId"));
-  const expectedVersion = z.coerce.number().int().positive().parse(
-    readFormText(formData, "expectedVersion"),
+  const input = verificationDecisionInput(formData);
+  await submitCompanyVerification(
+    actor,input.companyId,input.expectedVersion,input.reason,
   );
-  const reason = z.string().trim().min(3).max(1000).parse(readFormText(formData, "reason"));
-  await verifyCompanyOnboarding(actor, companyId, expectedVersion, reason);
-  revalidatePath(path(companyId));
+  revalidatePath(path(input.companyId));
   revalidatePath("/companies");
-  redirect(`${path(companyId)}?notice=verified`);
+  redirect(`${path(input.companyId)}?notice=submitted`);
+}
+
+export async function reviewCompanyVerificationAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  const input = verificationDecisionInput(formData);
+  const decision = z.enum(["APPROVE", "REQUEST_CHANGES", "REJECT"]).parse(
+    readFormText(formData, "decision"),
+  );
+  await reviewCompanyVerification(
+    actor,input.companyId,input.expectedVersion,decision,input.reason,
+  );
+  revalidatePath(path(input.companyId));
+  revalidatePath("/companies");
+  redirect(`${path(input.companyId)}?notice=${decision.toLowerCase()}`);
 }
