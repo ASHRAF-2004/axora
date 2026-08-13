@@ -21,7 +21,6 @@ import {
   companyLifecycleStatusLabel,
   companyLifecycleText,
 } from "@/lib/company-lifecycle-i18n";
-import { STANDARD_BILLING_TERMS } from "@/lib/types";
 import Link from "next/link";
 import {
   activateCompanyAction,
@@ -518,22 +517,13 @@ export default async function CompaniesPage({
           <h2>{copy.createTitle}</h2><p>{copy.createIntro}</p>
           <div className="form-grid">
             <label>{copy.displayName}<input name="name" required maxLength={300} /></label>
-            <label>{copy.legalName}<input name="legalName" required maxLength={300} /></label>
-            <label>{copy.registrationNumber}<input name="registrationNumber" required maxLength={160} /></label>
             <label>{copy.industry}<input name="industry" required maxLength={300} /></label>
             <label className="field-full">{copy.companyInformation}<textarea name="companyInformation" required maxLength={3000} /></label>
-            <label className="field-full">{copy.website}<input name="websiteUrl" type="url" inputMode="url" placeholder="https://example.com" /></label>
             <label className="field-full">{copy.logo}<input name="logo" type="file" accept="image/png,image/jpeg,image/webp" required /><small>{copy.logoHelp}</small></label>
             <label>{copy.mainContact}<input name="mainContactName" required /></label>
             <label>{copy.mainEmail}<input name="mainContactEmail" type="email" required /></label>
             <label>{copy.mainPhone}<input name="mainContactPhone" required /></label>
             <label>{copy.billingCycle}<select name="billingCycle"><option value="Monthly">{copy.monthly}</option><option value="Per order">{copy.perOrder}</option><option value="Weekly">{copy.weekly}</option></select></label>
-            <label>{copy.billingContact}<input name="billingContactName" /></label>
-            <label>{copy.billingEmail}<input name="billingContactEmail" type="email" /></label>
-            <label>{copy.billingPhone}<input name="billingContactPhone" /></label>
-            <input type="hidden" name="paymentTerms" value={STANDARD_BILLING_TERMS} />
-            <label className="field-full">{copy.billingAddress}<textarea name="billingAddress" required /></label>
-            <label className="field-full">{copy.notes}<textarea name="notes" /></label>
           </div>
           <div className="form-actions"><button className="button button-primary" type="submit">{copy.submit}</button></div>
         </form>

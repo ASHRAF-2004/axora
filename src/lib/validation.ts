@@ -20,6 +20,16 @@ export const companySchema = z.object({
   paymentTerms: z.literal(STANDARD_BILLING_TERMS), billingCycle: required("Billing cycle", 100), notes: optional(1000),
 });
 
+export const companyLeadCreateSchema = z.object({
+  name: required("Company display name", 300),
+  industry: required("Industry", 300),
+  companyInformation: required("Company information", 3000),
+  mainContactName: required("Main contact name", 300),
+  mainContactEmail: required("Main contact email", 254).pipe(z.email("Enter a valid email address.")),
+  mainContactPhone: required("Main contact phone", 120),
+  billingCycle: required("Billing cycle", 100),
+}).strict();
+
 export const companyPricingSchema = z.object({
   companyId: required("Company"),
   taxRate: z.coerce
