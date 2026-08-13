@@ -6,10 +6,10 @@ import { getDemoOperations } from "./demo-operations";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { requireSession, type SessionUser } from "./auth";
 import { canAccess } from "./permissions";
-import type { Branch, Company, DashboardData, ProcurementRequest, Product, RequestStatus, Supplier } from "./types";
+import type { Branch, Company, DashboardData, ProcurementRequest, Product, RequestStatus } from "./types";
 import { validateStatusTransition } from "./workflow";
 import { appendWorkflowEvent, notifyWorkflowAudience } from "./workflow-repository";
-import { calculateCommercialSellingPrice, quantityMatchesProductRule, withDemoCommercialDefaults } from "./procurement-rules";
+import { calculateCommercialSellingPrice, withDemoCommercialDefaults } from "./procurement-rules";
 
 function nextCode(prefix: string, count: number, digits = 3) {
   return `${prefix}-${String(count + 1).padStart(digits, "0")}`;
@@ -157,8 +157,6 @@ export async function listProducts(providedActor?: SessionUser): Promise<Product
     return managesCatalog ? priced : priced.map((product) => ({
       ...product,
       defaultBuyPrice: 0,
-      preferredSupplierId: undefined,
-      preferredSupplierName: undefined,
       duplicateWarning: false,
     }));
   }
@@ -173,14 +171,10 @@ export async function listProducts(providedActor?: SessionUser): Promise<Product
   }
   const result = await query<Product>(`SELECT offer.id::text,offer.company_id::text AS "companyId",c.name AS "companyName",offer.product_code AS code, offer.name, offer.category, offer.subcategory, offer.brand, offer.product_size AS size,
     offer.unit_of_measure AS unit, offer.packaging, offer.description, 0::float8 AS "defaultBuyPrice",
-    offer.default_sell_price::float8 AS "defaultSellPrice", offer.minimum_order_quantity::float8 AS "minimumOrderQuantity",
-    offer.maximum_order_quantity::float8 AS "maximumOrderQuantity",offer.order_increment::float8 AS "orderIncrement",
-    offer.pack_size::float8 AS "packSize",offer.pack_unit AS "packUnit",
-    offer.quantity_rule_version AS "quantityRuleVersion",offer.quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
+    offer.default_sell_price::float8 AS "defaultSellPrice",
     offer.price_rule_version AS "priceRuleVersion",offer.price_effective_from::text AS "priceEffectiveFrom",
     offer.price_changed_at::text AS "priceChangedAt",offer.price_currency AS "priceCurrency",
-    offer.delivery_sla_days AS "deliverySlaDays",NULL::text AS "preferredSupplierId",
-    NULL::text AS "preferredSupplierName",offer.has_image AS "hasImage",
+    offer.delivery_sla_days AS "deliverySlaDays",offer.has_image AS "hasImage",
     offer.image_alt_text AS "imageAltText",'Active'::text AS status,
     false AS "duplicateWarning"
     FROM v_customer_catalog_products offer
@@ -188,18 +182,6 @@ export async function listProducts(providedActor?: SessionUser): Promise<Product
     WHERE offer.active=true AND offer.needs_review=false
       AND (offer.company_id IS NULL OR offer.company_id=$1)
     ORDER BY offer.name`, [actor.companyId]);
-  return result.rows;
-}
-
-export async function listSuppliers(providedActor?: SessionUser): Promise<Supplier[]> {
-  const actor = await actorOrSession(providedActor);
-  if (!canAccess(actor, "manage_suppliers")) return [];
-  if (isDemoMode()) return getDemoStore().suppliers;
-  const result = await query<Supplier>(`SELECT s.id::text,s.company_id::text AS "companyId",c.name AS "companyName",s.supplier_code AS code,s.name,s.category,
-    s.contact_name AS "contactName",s.phone,s.email,s.address,s.coverage_area AS "coverageArea",s.payment_terms AS "paymentTerms",
-    s.lead_time_days AS "leadTimeDays",s.minimum_order_quantity::float8 AS "minimumOrderQuantity",s.main_products AS "mainProducts",s.notes,
-    CASE WHEN s.active THEN 'Active' ELSE 'Inactive' END AS status
-    FROM suppliers s LEFT JOIN companies c ON c.id=s.company_id ORDER BY s.name`);
   return result.rows;
 }
 
@@ -464,7 +446,7 @@ export async function getDashboardData(providedActor?: SessionUser): Promise<Das
   const actor = await actorOrSession(providedActor);
   if (!canAccess(actor, "view_dashboard")) throw new Error("Your account cannot view procurement dashboard data.");
   if (!isPlatformAnalyticsActor(actor)) return buildCompanyDashboardData(await listRequests(actor));
-  const [requests, companies, suppliers] = await Promise.all([listRequests(actor), listCompanies(actor), listSuppliers(actor)]);
+  const [requests, companies] = await Promise.all([listRequests(actor), listCompanies(actor)]);
   const totals = calculateTotals(requests);
   const byStatus = Object.entries(requests.reduce<Record<string, number>>((acc, request) => ({ ...acc, [request.status]: (acc[request.status] ?? 0) + 1 }), {})).map(([label, value]) => ({ label, value }));
   const byCompany = Object.entries(requests.reduce<Record<string, number>>((acc, request) => ({ ...acc, [request.companyName]: (acc[request.companyName] ?? 0) + 1 }), {})).map(([label, value]) => ({ label, value }));
@@ -485,7 +467,6 @@ export async function getDashboardData(providedActor?: SessionUser): Promise<Das
     delayedDeliveryCount: requests.flatMap((request) => request.lines).filter((line) => line.deliveryStatus === "Delayed").length,
     outstandingInvoiceCount: requests.filter((request) => request.invoiceStatus === "Issued" && request.paymentStatus !== "Paid").length,
     activeCompanyCount: companies.filter((company) => company.status === "Active").length,
-    activeSupplierCount: suppliers.filter((supplier) => supplier.status === "Active").length,
     byStatus,
     byCompany,
     topProducts,
@@ -620,28 +601,12 @@ export async function createBranch(input: Omit<Branch, "id" | "code" | "companyN
   });
 }
 
-export async function createSupplier(
-  input: Omit<Supplier, "id" | "code" | "status" | "companyId" | "companyName">,
-  actor: SessionUser,
-) {
-  if (!canAccess(actor, "manage_suppliers")) throw new Error("Only authorized Axora operations users can manage suppliers.");
-  if (isDemoMode()) {
-    const store = getDemoStore();
-    if (store.suppliers.some((supplier) => supplier.name.toLowerCase() === input.name.toLowerCase())) throw new Error("A supplier with this name already exists.");
-    store.suppliers.push({ ...input, id: randomUUID(), code: nextCode("S", store.suppliers.length), status: "Active" });
-    return;
-  }
-  await withAuditTransaction({ actor }, (client) => client.query(
-    `INSERT INTO suppliers
-      (supplier_code,name,category,contact_name,phone,email,address,coverage_area,payment_terms,lead_time_days,minimum_order_quantity,main_products,notes,company_id)
-     VALUES (next_supplier_code(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULL)`,
-    [input.name, input.category, input.contactName, input.phone, input.email, input.address, input.coverageArea,
-      input.paymentTerms, input.leadTimeDays, input.minimumOrderQuantity, input.mainProducts, input.notes ?? null],
-  ));
-}
-
 export async function createProduct(
-  input: Omit<Product, "id" | "code" | "status" | "duplicateWarning" | "preferredSupplierName" | "companyId" | "companyName" | "hasImage" | "imageAltText">,
+  input: Pick<Product,
+    "name" | "category" | "subcategory" | "brand" | "size" | "unit"
+    | "packaging" | "description" | "defaultBuyPrice" | "defaultSellPrice"
+    | "deliverySlaDays"
+  >,
   actor: SessionUser,
 ) {
   if (!canAccess(actor, "manage_catalog")) throw new Error("Only authorized Axora operations users can manage the product catalog.");
@@ -650,29 +615,19 @@ export async function createProduct(
     if (store.products.some((product) => product.name.trim().toLowerCase() === input.name.trim().toLowerCase())) {
       throw new Error("A product with this name already exists. Use the existing catalog record.");
     }
-    const supplier = store.suppliers.find((item) => item.id === input.preferredSupplierId);
     const id = randomUUID();
     store.products.push(withDemoCommercialDefaults({
       ...input,
       defaultSellPrice: calculateCommercialSellingPrice(input.defaultBuyPrice),
-      orderIncrement: input.orderIncrement ?? 1,
-      packSize: input.packSize ?? 1,
-      packUnit: input.packUnit ?? input.unit,
-      quantityRuleEffectiveFrom: input.quantityRuleEffectiveFrom ?? new Date().toISOString(),
       id,
       code: nextCode("AX-NEW", store.products.length),
       hasImage: false,
       status: "Active",
       duplicateWarning: false,
-      preferredSupplierName: supplier?.name,
     }));
     return id;
   }
   return withAuditTransaction({ actor }, async (client) => {
-    if (input.preferredSupplierId) {
-      const supplier = await client.query("SELECT 1 FROM suppliers WHERE id=$1 AND active=true AND company_id IS NULL", [input.preferredSupplierId]);
-      if (!supplier.rowCount) throw new Error("The preferred supplier must be active.");
-    }
     await client.query("SELECT pg_advisory_xact_lock(hashtext(lower(btrim($1))))", [input.name]);
     const duplicate = await client.query(
       "SELECT 1 FROM products WHERE lower(btrim(name))=lower(btrim($1)) LIMIT 1",
@@ -687,25 +642,7 @@ export async function createProduct(
       VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,NULL) RETURNING id::text`,
     [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit,
       input.packaging ?? null, input.description ?? null, input.defaultBuyPrice,
-      calculateCommercialSellingPrice(input.defaultBuyPrice),
-      input.minimumOrderQuantity, input.deliverySlaDays]);
-    if (input.preferredSupplierId) {
-      await client.query(
-        `INSERT INTO product_suppliers
-           (product_id,supplier_id,preferred,indicative_buy_price,supplier_moq,
-            maximum_order_quantity,order_increment,pack_size,pack_unit,
-            quantity_rule_effective_from,quantity_rule_effective_to,quantity_rule_reason,
-            quantity_rule_updated_by,lead_time_days)
-         VALUES ($1,$2,true,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-        [product.rows[0].id, input.preferredSupplierId, input.defaultBuyPrice,
-          input.minimumOrderQuantity, input.maximumOrderQuantity ?? null,
-          input.orderIncrement ?? 1, input.packSize ?? 1, input.packUnit ?? input.unit,
-          input.quantityRuleEffectiveFrom ?? new Date().toISOString(),
-          input.quantityRuleEffectiveTo ?? null,
-          input.quantityRuleReason ?? "Product commercial setup", actor.id,
-          input.deliverySlaDays],
-      );
-    }
+      calculateCommercialSellingPrice(input.defaultBuyPrice), 1, input.deliverySlaDays]);
     return product.rows[0].id;
   });
 }
@@ -740,9 +677,8 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
     if (input.lines.some((item) => !store.products.some((product) =>
       product.id === item.productId
       && product.status === "Active"
-      && (!product.companyId || product.companyId === companyId)
-      && quantityMatchesProductRule(item.quantity, product),
-    ))) throw new Error("One or more products are unavailable or below the minimum order quantity.");
+      && (!product.companyId || product.companyId === companyId),
+    ))) throw new Error("One or more products are unavailable.");
     const subtotal = input.lines.reduce((total, item) => {
       const product = store.products.find(
         (candidate) => candidate.id === item.productId,
@@ -812,8 +748,8 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
       [input.branchId, companyId],
     );
     if (!branchMatch.rowCount) throw new Error("The selected branch does not belong to the selected company.");
-    const selectedProducts = await client.query<{ id: string; minimumOrderQuantity: number; name: string }>(
-      `SELECT id::text,name,minimum_order_quantity::float8 AS "minimumOrderQuantity" FROM products
+    const selectedProducts = await client.query<{ id: string; name: string }>(
+      `SELECT id::text,name FROM products
        WHERE id = ANY($1::uuid[]) AND active=true AND needs_review=false
          AND (company_id IS NULL OR company_id=$2)
        FOR SHARE`,
@@ -821,13 +757,6 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
     );
     if (selectedProducts.rows.length !== input.lines.length) {
       throw new Error("One or more selected products are unavailable or still need review.");
-    }
-    const selectedById = new Map(selectedProducts.rows.map((product) => [product.id, product]));
-    for (const line of input.lines) {
-      const product = selectedById.get(line.productId);
-      if (!product || line.quantity < product.minimumOrderQuantity) {
-        throw new Error(`Order at least ${product?.minimumOrderQuantity ?? "the catalog minimum"} for ${product?.name ?? "each product"}.`);
-      }
     }
     const requestResult = await client.query<{ id: string }>(
       `INSERT INTO requests (
@@ -945,16 +874,13 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
 }
 
 export async function updateRequestStatus(id: string, status: RequestStatus, reason: string | undefined, actor: SessionUser) {
-  if (!canAccess(actor, "manage_sourcing")) throw new Error("Only authorized Axora operations users can manage the fulfillment workflow.");
+  if (!canAccess(actor, "manage_deliveries")) throw new Error("Only authorized delivery operations users can manage the fulfillment workflow.");
   if (isDemoMode()) {
     const request = getDemoStore().requests.find((item) => item.id === id);
     if (!request) throw new Error("Request not found.");
     validateStatusTransition(request.status, status, reason);
     if (request.approvalStatus !== "Approved") {
       throw new Error("The company must approve this request before Axora starts fulfillment.");
-    }
-    if (status === "Supplier Assigned" && request.lines.some((line) => !line.supplierId)) {
-      throw new Error("Select a supplier quotation for every request line first.");
     }
     if (status === "Delivered" && request.lines.some((line) => line.quantityReceived < line.quantity)) {
       throw new Error("Every request line must be fully received before marking the request delivered.");
@@ -996,10 +922,6 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
       [id],
     );
     if (!evidence.rowCount) throw new Error("The company must approve this request before Axora starts fulfillment.");
-    if (status === "Supplier Assigned") {
-      const missing = await client.query<{ count: number }>("SELECT count(*)::int AS count FROM request_lines WHERE request_id=$1 AND selected_supplier_id IS NULL", [id]);
-      if (missing.rows[0].count) throw new Error("Select a supplier quotation for every request line first.");
-    }
     if (status === "Delivered") {
       const incomplete = await client.query<{ count: number }>(`SELECT count(*)::int AS count FROM request_lines l
         WHERE l.request_id=$1 AND axora_received_quantity(l.id)<l.quantity`, [id]);
@@ -1056,8 +978,6 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
     }
     await client.query(`UPDATE requests SET status_id=lookup_id('request_status',$2), issue_reason=COALESCE(NULLIF($3,''),issue_reason), completed_at=CASE WHEN $2='Completed' THEN now() ELSE completed_at END WHERE id=$1`, [id, status, reason ?? ""]);
     const eventKeys: Partial<Record<RequestStatus, string>> = {
-      "Waiting for Quotation": "quotation.requested",
-      "Supplier Assigned": "supplier.selected",
       Ordered: "order.confirmed",
       "Preparing for Delivery": "preparation.started",
       "Out for Delivery": "delivery.out_for_delivery",
@@ -1094,17 +1014,15 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
   });
 }
 
-export type MasterEntity = "companies" | "branches" | "products" | "suppliers";
+export type MasterEntity = "companies" | "branches" | "products";
 
 export async function setMasterActive(entity: MasterEntity, id: string, active: boolean, actor: SessionUser) {
   if (entity === "companies") {
     throw new Error("Company activation is controlled by the onboarding lifecycle.");
   }
   const requiredPermission = entity === "branches"
-      ? "manage_branches"
-      : entity === "products"
-        ? "manage_catalog"
-        : "manage_suppliers";
+    ? "manage_branches"
+    : "manage_catalog";
   if (!canAccess(actor, requiredPermission)) throw new Error("Your account cannot change this record.");
   if (isDemoMode()) {
     const store = getDemoStore();
@@ -1123,7 +1041,7 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
     record.status = active ? "Active" : "Inactive";
     return;
   }
-  const allowedTables: Record<MasterEntity, string> = { companies: "companies", branches: "branches", products: "products", suppliers: "suppliers" };
+  const allowedTables: Record<MasterEntity, string> = { companies: "companies", branches: "branches", products: "products" };
   const table = allowedTables[entity];
   await withAuditTransaction({ actor, reason: active ? "Master record activated" : "Master record deactivated" }, async (client) => {
     const platformActor = isPlatformProcurementActor(actor);

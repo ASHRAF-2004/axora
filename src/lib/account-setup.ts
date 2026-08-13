@@ -816,7 +816,7 @@ export async function inspectAccountSetupToken(
          OR (i.intended_scope_type='DELIVERY'
            AND u.account_kind='DELIVERY' AND u.is_owner=false
            AND driver.active=true
-           AND intended_role.role_key='DELIVERY_DRIVER')
+           AND intended_role.role_key IN ('DELIVERY_DRIVER','DELIVERY_GUY'))
        )
     `,
     [tokenHash, PENDING_ACCOUNT_PASSWORD_HASH],
@@ -961,7 +961,7 @@ export async function consumeAccountSetupToken(
              OR (i.intended_scope_type='DELIVERY'
                AND u.account_kind='DELIVERY' AND u.is_owner=false
                AND driver.active=true
-               AND intended_role.role_key='DELIVERY_DRIVER')
+               AND intended_role.role_key IN ('DELIVERY_DRIVER','DELIVERY_GUY'))
            )
          FOR UPDATE OF i,u`,
         [tokenHash, PENDING_ACCOUNT_PASSWORD_HASH],

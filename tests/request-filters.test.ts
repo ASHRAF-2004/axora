@@ -28,7 +28,7 @@ describe("permission-scoped procurement filters",() => {
     expect(hasActiveRequestFilters(filters)).toBe(true);
   });
 
-  it("parameterizes every value and fails closed for an unauthorized supplier filter",() => {
+  it("parameterizes every value and ignores retired supplier filters",() => {
     const filters=normalizeRequestFilters(new URLSearchParams({
       q:"%' OR TRUE --",
       category:"Office Supplies",
@@ -36,8 +36,8 @@ describe("permission-scoped procurement filters",() => {
       submittedFrom:"2026-08-01",
       minAmount:"100",
     }));
-    const spec=requestReaderInternals.buildRequestSearchSpec(filters,"Asia/Kuala_Lumpur",false);
-    expect(spec.where).toContain("FALSE");
+    const spec=requestReaderInternals.buildRequestSearchSpec(filters,"Asia/Kuala_Lumpur");
+    expect(filters).not.toHaveProperty("supplierIds");
     expect(spec.where).toContain("AT TIME ZONE");
     expect(spec.where).toContain("category_line.request_id=r.id");
     expect(spec.where).not.toContain("%' OR TRUE --");

@@ -122,14 +122,14 @@ describe("secure account setup primitives", () => {
     const companyResult = resolveUserCreation({
       email: "  Person@Example.Test ",
       displayName: "  Person Name  ",
-      role: "VIEWER",
+      role: "BRANCH_APPROVER",
       companyId: "attacker-company",
       branchId: branchB,
     }, companyAdmin);
     expect(companyResult).toEqual({
       email: "person@example.test",
       displayName: "Person Name",
-      role: "AUDITOR",
+      role: "BRANCH_APPROVER",
       accountKind: "COMPANY",
       scopeType: "BRANCH",
       companyId: companyA,
@@ -163,20 +163,25 @@ describe("secure account setup primitives", () => {
       companyId: companyA,
     }, companyAdmin)).toThrow(/cannot create this role/i);
 
-    expect(resolveUserCreation({
+    expect(() => resolveUserCreation({
       email: "support@example.test",
       displayName: "Support User",
       role: "IT_SUPPORT",
       companyId: companyA,
+    }, owner)).toThrow(/cannot create this role/i);
+    expect(resolveUserCreation({
+      email: "hr@example.test",
+      displayName: "HR Manager",
+      role: "HUMAN_RESOURCES_MANAGEMENT",
     }, owner)).toMatchObject({
-      role: "TECHNICAL_SUPPORT",
+      role: "HUMAN_RESOURCES_MANAGEMENT",
       accountKind: "PLATFORM",
       scopeType: "PLATFORM",
     });
     expect(resolveUserCreation({
-      email: "support@example.test",
-      displayName: "Support User",
-      role: "IT_SUPPORT",
+      email: "hr@example.test",
+      displayName: "HR Manager",
+      role: "HUMAN_RESOURCES_MANAGEMENT",
       companyId: companyA,
     }, owner).companyId).toBeUndefined();
   });
@@ -194,23 +199,24 @@ describe("secure account setup primitives", () => {
     expect(resolveUserCreation({
       email: "driver@example.test",
       displayName: "Delivery Driver",
-      role: "DELIVERY_DRIVER",
+      role: "DELIVERY_GUY",
       supplierId,
       companyId: companyA,
       branchId: branchA,
     }, owner)).toEqual({
       email: "driver@example.test",
       displayName: "Delivery Driver",
-      role: "DELIVERY_DRIVER",
+      role: "DELIVERY_GUY",
       accountKind: "DELIVERY",
       scopeType: "DELIVERY",
       jobTitle: undefined,
       preferredLocale: "en",
+      permissions: undefined,
     });
   });
 
   it("limits a branch administrator to the exact branch-safe role catalog", () => {
-    for (const role of ["BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER"] as const) {
+    for (const role of ["BRANCH_APPROVER", "REQUESTER"] as const) {
       expect(resolveUserCreation({
         email: `${role.toLowerCase()}@example.test`,
         displayName: `${role} Person`,
@@ -223,7 +229,7 @@ describe("secure account setup primitives", () => {
         scopeType: "BRANCH",
       });
     }
-    for (const role of ["BRANCH_ADMIN", "FINANCE_REVIEWER", "AUDITOR"] as const) {
+    for (const role of ["BRANCH_ADMIN", "FINANCE_REVIEWER", "AUDITOR", "RECEIVING_USER"] as const) {
       expect(() => resolveUserCreation({
         email: `${role.toLowerCase()}@example.test`,
         displayName: `${role} Person`,

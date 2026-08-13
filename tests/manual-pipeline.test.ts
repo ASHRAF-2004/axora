@@ -46,9 +46,10 @@ describe("production manual publication", () => {
     expect(source).toContain("one-time invitation link");
     expect(source).toContain("Self-approval is blocked");
     expect(source).not.toContain("Supplier User");
-    expect(source).toContain("Delivery Driver");
-    expect(source).toContain("Receiving User");
-    expect(source).toContain("three-way matching");
+    expect(source).toContain("Delivery Guy");
+    expect(source).toContain("Human Resources Management");
+    expect(source).toContain("Client Account Manager");
+    expect(source).not.toMatch(/sourcing team|supplier selection|three-way matching|Delivery Driver|Receiving User/i);
     expect(source).not.toMatch(/\b(?:sidebar|temporary password|initial password|interactive-experience)\b/i);
   });
 });

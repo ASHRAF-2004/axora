@@ -132,12 +132,6 @@ function sortDemoProducts(
       return left.deliverySlaDays - right.deliverySlaDays;
     }
 
-    if (sort === "moq-asc") {
-      return (
-        left.minimumOrderQuantity - right.minimumOrderQuantity
-      );
-    }
-
     if (sort === "relevance" && searchTerm) {
       const term = searchTerm.toLowerCase();
 
@@ -251,12 +245,6 @@ async function searchDemoCatalog(
       defaultBuyPrice: actor.isOwner
         ? product.defaultBuyPrice
         : 0,
-      preferredSupplierId: actor.isOwner
-        ? product.preferredSupplierId
-        : undefined,
-      preferredSupplierName: actor.isOwner
-        ? product.preferredSupplierName
-        : undefined,
       duplicateWarning: false,
     }));
 
@@ -388,7 +376,6 @@ export async function searchCatalogProducts(
     "price-asc": "p.default_sell_price, p.name",
     "price-desc": "p.default_sell_price DESC, p.name",
     "delivery-asc": "p.delivery_sla_days, p.name",
-    "moq-asc": "p.minimum_order_quantity, p.name",
   };
 
   const offset = (input.page - 1) * input.limit;
@@ -420,18 +407,10 @@ export async function searchCatalogProducts(
         p.description,
         0::float8 AS "defaultBuyPrice",
         p.default_sell_price::float8 AS "defaultSellPrice",
-        p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
-        p.maximum_order_quantity::float8 AS "maximumOrderQuantity",
-        p.order_increment::float8 AS "orderIncrement",
-        p.pack_size::float8 AS "packSize",p.pack_unit AS "packUnit",
-        p.quantity_rule_version AS "quantityRuleVersion",
-        p.quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
         p.price_rule_version AS "priceRuleVersion",
         p.price_effective_from::text AS "priceEffectiveFrom",
         p.price_changed_at::text AS "priceChangedAt",p.price_currency AS "priceCurrency",
         p.delivery_sla_days AS "deliverySlaDays",
-        NULL::text AS "preferredSupplierId",
-        NULL::text AS "preferredSupplierName",
         p.has_image AS "hasImage",
         p.image_alt_text AS "imageAltText",
         'Active'::text AS status,
@@ -542,8 +521,6 @@ export async function getCatalogProductById(
     return {
       ...withDemoCommercialDefaults(product),
       defaultBuyPrice: 0,
-      preferredSupplierId: undefined,
-      preferredSupplierName: undefined,
       duplicateWarning: false,
     };
   }
@@ -578,16 +555,9 @@ export async function getCatalogProductById(
       p.description,
       0::float8 AS "defaultBuyPrice",
       p.default_sell_price::float8 AS "defaultSellPrice",
-      p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
-      p.maximum_order_quantity::float8 AS "maximumOrderQuantity",
-      p.order_increment::float8 AS "orderIncrement",p.pack_size::float8 AS "packSize",
-      p.pack_unit AS "packUnit",p.quantity_rule_version AS "quantityRuleVersion",
-      p.quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
       p.price_rule_version AS "priceRuleVersion",p.price_effective_from::text AS "priceEffectiveFrom",
       p.price_changed_at::text AS "priceChangedAt",p.price_currency AS "priceCurrency",
       p.delivery_sla_days AS "deliverySlaDays",
-      NULL::text AS "preferredSupplierId",
-      NULL::text AS "preferredSupplierName",
       p.has_image AS "hasImage",
       p.image_alt_text AS "imageAltText",
       'Active'::text AS status,
@@ -639,8 +609,6 @@ export async function getCatalogProductsByIds(
       .map((product): Product => ({
         ...withDemoCommercialDefaults(product),
         defaultBuyPrice: 0,
-        preferredSupplierId: undefined,
-        preferredSupplierName: undefined,
         duplicateWarning: false,
       }));
 
@@ -694,16 +662,9 @@ export async function getCatalogProductsByIds(
       p.description,
       0::float8 AS "defaultBuyPrice",
       p.default_sell_price::float8 AS "defaultSellPrice",
-      p.minimum_order_quantity::float8 AS "minimumOrderQuantity",
-      p.maximum_order_quantity::float8 AS "maximumOrderQuantity",
-      p.order_increment::float8 AS "orderIncrement",p.pack_size::float8 AS "packSize",
-      p.pack_unit AS "packUnit",p.quantity_rule_version AS "quantityRuleVersion",
-      p.quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
       p.price_rule_version AS "priceRuleVersion",p.price_effective_from::text AS "priceEffectiveFrom",
       p.price_changed_at::text AS "priceChangedAt",p.price_currency AS "priceCurrency",
       p.delivery_sla_days AS "deliverySlaDays",
-      NULL::text AS "preferredSupplierId",
-      NULL::text AS "preferredSupplierName",
       p.has_image AS "hasImage",
       p.image_alt_text AS "imageAltText",
       'Active'::text AS status,
@@ -727,8 +688,6 @@ function shopSafeProduct(product: Product): Product {
   return {
     ...withDemoCommercialDefaults(product),
     defaultBuyPrice: 0,
-    preferredSupplierId: undefined,
-    preferredSupplierName: undefined,
     duplicateWarning: false,
   };
 }
@@ -843,13 +802,6 @@ export async function listShopDepartments(
     packaging?: string;
     description?: string;
     defaultSellPrice: number;
-    minimumOrderQuantity: number;
-    maximumOrderQuantity?: number;
-    orderIncrement: number;
-    packSize: number;
-    packUnit: string;
-    quantityRuleVersion: number;
-    quantityRuleEffectiveFrom: string;
     priceRuleVersion: number;
     priceEffectiveFrom: string;
     priceChangedAt: string;
@@ -888,13 +840,6 @@ export async function listShopDepartments(
         p.packaging,
         p.description,
         p.default_sell_price,
-        p.minimum_order_quantity,
-        p.maximum_order_quantity,
-        p.order_increment,
-        p.pack_size,
-        p.pack_unit,
-        p.quantity_rule_version,
-        p.quantity_rule_effective_from,
         p.price_rule_version,
         p.price_effective_from,
         p.price_changed_at,
@@ -932,12 +877,6 @@ export async function listShopDepartments(
       packaging,
       description,
       default_sell_price::float8 AS "defaultSellPrice",
-      minimum_order_quantity::float8
-        AS "minimumOrderQuantity",
-      maximum_order_quantity::float8 AS "maximumOrderQuantity",
-      order_increment::float8 AS "orderIncrement",pack_size::float8 AS "packSize",
-      pack_unit AS "packUnit",quantity_rule_version AS "quantityRuleVersion",
-      quantity_rule_effective_from::text AS "quantityRuleEffectiveFrom",
       price_rule_version AS "priceRuleVersion",price_effective_from::text AS "priceEffectiveFrom",
       price_changed_at::text AS "priceChangedAt",price_currency AS "priceCurrency",
       delivery_sla_days AS "deliverySlaDays",
@@ -969,17 +908,6 @@ export async function listShopDepartments(
       description: row.description,
       defaultBuyPrice: 0,
       defaultSellPrice: Number(row.defaultSellPrice),
-      minimumOrderQuantity: Number(
-        row.minimumOrderQuantity,
-      ),
-      maximumOrderQuantity: row.maximumOrderQuantity === undefined
-        ? undefined
-        : Number(row.maximumOrderQuantity),
-      orderIncrement: Number(row.orderIncrement),
-      packSize: Number(row.packSize),
-      packUnit: row.packUnit,
-      quantityRuleVersion: Number(row.quantityRuleVersion),
-      quantityRuleEffectiveFrom: row.quantityRuleEffectiveFrom,
       priceRuleVersion: Number(row.priceRuleVersion),
       priceEffectiveFrom: row.priceEffectiveFrom,
       priceChangedAt: row.priceChangedAt,

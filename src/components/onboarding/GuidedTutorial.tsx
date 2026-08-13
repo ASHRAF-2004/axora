@@ -16,9 +16,8 @@ interface GuidedStep extends TutorialStepDefinition {
 const targetRoutes: Record<string, string> = {
   dashboard: "/dashboard",
   companies: "/companies",
-  operations: "/sourcing",
+  operations: "/deliveries",
   audit: "/audit",
-  sourcing: "/sourcing",
   deliveries: "/deliveries",
   branches: "/branches",
   people: "/users",

@@ -7,7 +7,7 @@ import {
 
 const companyId = "10000000-0000-4000-8000-000000000001";
 
-test("owner previews reviewed company branding across device, Arabic, and reduced motion", async ({ page }) => {
+test("owner previews reviewed company branding across device, Arabic, and reduced motion", async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await signInAsDemoOwner(page);
   await page.goto("/companies/" + companyId + "/theme");
@@ -37,6 +37,21 @@ test("owner previews reviewed company branding across device, Arabic, and reduce
     Number.parseFloat(getComputedStyle(element).transitionDuration)
   ));
   expect(duration).toBeLessThanOrEqual(0.00001);
+  await page.screenshot({
+    path: `output/playwright/company-theme-${testInfo.project.name}.png`,
+    fullPage: true,
+    caret: "initial",
+  });
+  await page.goto(`/companies/${companyId}/onboarding`);
+  await expect(page.getByRole("heading", {
+    level: 1,
+    name: /Onboarding workspace: YourUni/,
+  })).toBeVisible();
+  await page.screenshot({
+    path: `output/playwright/company-onboarding-${testInfo.project.name}.png`,
+    fullPage: true,
+    caret: "initial",
+  });
 });
 
 test("company users cannot enter Axora brand review", async ({ page }) => {

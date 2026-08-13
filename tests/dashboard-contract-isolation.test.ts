@@ -80,15 +80,14 @@ describe("P0-11 analytics contract isolation", () => {
     } as unknown as SessionUser)).toBe(true);
   });
 
-  it("branches before loading cross-company organization or supplier aggregates", async () => {
+  it("branches before loading cross-company organization aggregates", async () => {
     const source = await readFile(new URL("../src/lib/request-reader.ts", import.meta.url), "utf8");
     const branch = source.indexOf("if (!isPlatformAnalyticsActor(actor))");
     const organizationLoad = source.indexOf("loadOrganizationDirectory(actor)", branch);
-    const supplierLoad = source.indexOf("listSuppliers(actor)", branch);
 
     expect(branch).toBeGreaterThan(-1);
     expect(organizationLoad).toBeGreaterThan(branch);
-    expect(supplierLoad).toBeGreaterThan(branch);
+    expect(source).not.toContain("listSuppliers(actor)");
     expect(source.slice(branch, organizationLoad)).toContain("return buildCompanyDashboardData");
   });
 });

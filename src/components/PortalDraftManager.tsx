@@ -11,17 +11,9 @@ import {
 } from "@/lib/form-drafts";
 import type { SupportedLocale } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import styles from "./PortalDraftManager.module.css";
-
-const messages = {
-  en: { saved: "Progress saved", restored: "Saved progress restored", body: "Safe form fields are stored only in this browser session.", file: "Choose any file again before submitting.", discard: "Discard saved progress", dismiss: "Dismiss" },
-  ms: { saved: "Kemajuan disimpan", restored: "Kemajuan tersimpan dipulihkan", body: "Medan borang yang selamat disimpan dalam sesi pelayar ini sahaja.", file: "Pilih semula sebarang fail sebelum menghantar.", discard: "Buang kemajuan tersimpan", dismiss: "Tutup" },
-  ar: { saved: "تم حفظ التقدم", restored: "تمت استعادة التقدم المحفوظ", body: "تُحفظ حقول النموذج الآمنة في جلسة المتصفح هذه فقط.", file: "اختر أي ملف مرة أخرى قبل الإرسال.", discard: "حذف التقدم المحفوظ", dismiss: "إغلاق" },
-} as const;
+import { useEffect, useMemo } from "react";
 
 type DraftableControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-type Notice = { kind: "saved" | "restored"; key: string; fileReselection: boolean };
 
 function controls(form: HTMLFormElement) {
   return Array.from(form.elements).filter((element): element is DraftableControl => {
@@ -97,8 +89,7 @@ export function PortalDraftManager({
   locale: SupportedLocale;
 }) {
   const pathname = usePathname();
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const copy = messages[locale];
+  void locale;
   const routeContext = useMemo(() => ({ userId, scopeKey, route: pathname }), [pathname, scopeKey, userId]);
 
   useEffect(() => {
@@ -114,12 +105,10 @@ export function PortalDraftManager({
       const key = keyFor(form);
       const content = collect(form);
       storage.setItem(key, JSON.stringify(createStoredFormDraft(content.fields, content.fileFields, { submitted })));
-      if (!submitted) setNotice({ kind: "saved", key, fileReselection: content.fileFields.length > 0 });
     };
     const clear = (form: HTMLFormElement) => {
       const key = keyFor(form);
       storage.removeItem(key);
-      setNotice((current) => current?.key === key ? null : current);
     };
     const register = (form: HTMLFormElement) => {
       if (registered.has(form) || form.dataset.draftIgnore === "true"
@@ -129,9 +118,7 @@ export function PortalDraftManager({
       const raw = storage.getItem(key);
       const draft = parseStoredFormDraft(raw);
       if (raw && !draft) storage.removeItem(key);
-      if (draft && restore(form, draft)) {
-        setNotice({ kind: "restored", key, fileReselection: draft.fileFields.length > 0 });
-      }
+      if (draft) restore(form, draft);
       form.addEventListener("input", () => {
         const prior = timers.get(form);
         if (prior) window.clearTimeout(prior);
@@ -170,17 +157,5 @@ export function PortalDraftManager({
     };
   }, [routeContext]);
 
-  if (!notice) return null;
-  return <aside className={styles.notice} role="status" aria-live="polite">
-    <strong>{notice.kind === "restored" ? copy.restored : copy.saved}</strong>
-    <p>{copy.body}</p>
-    {notice.fileReselection ? <p>{copy.file}</p> : null}
-    <div className={styles.actions}>
-      <button type="button" className="text-button" onClick={() => {
-        window.sessionStorage.removeItem(notice.key);
-        setNotice(null);
-      }}>{copy.discard}</button>
-      <button type="button" className={`text-button ${styles.dismiss}`} onClick={() => setNotice(null)}>{copy.dismiss}</button>
-    </div>
-  </aside>;
+  return null;
 }

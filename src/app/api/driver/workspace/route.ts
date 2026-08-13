@@ -11,7 +11,11 @@ export async function GET() {
     return Response.json({ error: "Delivery workspace unavailable" }, { status: 403 });
   }
   try {
-    return Response.json(await getDeliveryExecutionWorkspace(actor), {
+    const workspace = await getDeliveryExecutionWorkspace(actor);
+    const { products: _products, suppliers: _suppliers, ...customerSafeWorkspace } = workspace;
+    void _products;
+    void _suppliers;
+    return Response.json(customerSafeWorkspace, {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch {

@@ -45,7 +45,7 @@ export interface DeliveryJobSummary {
 export async function listDeliveryAgents(actor: SessionUser): Promise<DeliveryAgentOption[]> {
   requireDeliveryManager(actor);
   if (isDemoMode()) return [];
-  return withAuditTransaction({ actor, reason: "Viewed active delivery agents" }, async (client) => {
+  return withAuditTransaction({ actor, reason: "Viewed active Delivery Guys" }, async (client) => {
     const result = await client.query<DeliveryAgentOption>(`
       SELECT account.id::text,profile.display_name AS name,account.email
       FROM delivery_agent_profiles driver
@@ -240,7 +240,7 @@ export async function assignDeliveryDriver(actor: SessionUser, input: {
     throw new Error("Delivery assignment identifiers are invalid.");
   }
   if (isDemoMode()) return;
-  await withAuditTransaction({ actor, reason: "Assigned delivery driver" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "Assigned Delivery Guy" }, async (client) => {
     const job = await client.query<{ companyId: string; branchId: string; requestId: string; jobCode: string }>(`
       SELECT company_id::text AS "companyId",branch_id::text AS "branchId",
         request_id::text AS "requestId",job_code AS "jobCode"
@@ -256,7 +256,7 @@ export async function assignDeliveryDriver(actor: SessionUser, input: {
         AND account.account_status='ACTIVE' AND account.account_kind='DELIVERY'
       FOR SHARE OF driver,account
     `, [input.driverUserId]);
-    if (!activeDriver.rowCount) throw new Error("Choose an active delivery driver.");
+    if (!activeDriver.rowCount) throw new Error("Choose an active Delivery Guy.");
     const assignment = await client.query<{ id: string }>(`
       INSERT INTO delivery_job_assignments(
         company_id,delivery_job_id,driver_user_id,status,assigned_by

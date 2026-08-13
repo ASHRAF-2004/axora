@@ -8,23 +8,20 @@ const source = (path: string) => readFile(
 
 describe("P0-02 active isolation coverage", () => {
   it("uses predicate-first operational registers", async () => {
-    const [runtime, finance, sourcing, delivery, approvals, documents] =
+    const [runtime, finance, delivery, approvals, documents] =
       await Promise.all([
         source("src/lib/operational-isolation.ts"),
         source("src/lib/finance-isolation.ts"),
-        source("src/lib/sourcing-isolation.ts"),
         source("src/lib/delivery-isolation.ts"),
         source("src/app/(portal)/approvals/page.tsx"),
         source("src/lib/document-register-isolation.ts"),
       ]);
 
     expect(runtime).toContain("axora_operation_request_access_rows");
-    expect(runtime).toContain("'sourcing.manage'");
     expect(runtime).toContain("'request.approval_queue.view'");
     expect(runtime).toContain("'delivery.view'");
     expect(runtime).toContain("'finance.invoice.view'");
     expect(finance).not.toContain('from "./operations"');
-    expect(sourcing).not.toContain('from "./operations"');
     expect(delivery).not.toContain('from "./operations"');
     expect(approvals).toContain("getApprovalWorkspace(actor)");
     expect(approvals).not.toContain("listApprovals()");
@@ -33,28 +30,17 @@ describe("P0-02 active isolation coverage", () => {
   });
 
   it("reauthorizes operational mutations in the write transaction", async () => {
-    const [runtime, actions, matching] = await Promise.all([
+    const [runtime, actions] = await Promise.all([
       source("src/lib/scoped-operations.ts"),
       source("src/app/(portal)/operations/actions.ts"),
-      source("src/lib/customer-matching-isolation.ts"),
     ]);
 
     expect(runtime).toContain("axora_lock_request_resource_access");
     expect(runtime).toContain("axora_lock_request_line_access");
-    expect(runtime).toContain("axora_lock_quotation_access");
     expect(runtime).toContain("axora_lock_invoice_access");
     expect(runtime).toContain("withAuditTransaction");
-    expect(actions).toContain("issueScopedSupplierRfq");
-    expect(actions).toContain("createScopedQuotation");
-    expect(actions).toContain("selectScopedQuotation");
     expect(actions).toContain("recordScopedApproval");
-    expect(actions).toContain("recordScopedDelivery");
-    expect(actions).toContain("createScopedInvoice");
-    expect(actions).toContain("recordScopedPayment");
     expect(actions).not.toMatch(/\b(createQuotation|selectQuotation|recordApproval|recordDelivery|createInvoice|recordPayment)\b.*from \"@\/lib\/operations\"/s);
-    expect(matching).toContain("axora_lock_request_line_access");
-    expect(matching).toContain("axora_lock_invoice_access");
-    expect(matching).toContain("finance.match.review");
   });
 
   it("uses exact-assignment user and organization administration", async () => {

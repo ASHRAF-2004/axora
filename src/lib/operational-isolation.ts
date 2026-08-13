@@ -8,9 +8,7 @@ import type {
   DeliveryRecord,
   InvoiceRecord,
   PaymentRecord,
-  QuotationRecord,
 } from "./types";
-import type { SupplierRfqActivityRecord } from "./operations";
 
 export class OperationalAccessUnavailableError extends Error {
   constructor() {
@@ -34,99 +32,6 @@ async function visibleRequestIdentity(actor: AuthenticatedSessionUser) {
       requests.flatMap((request) => request.lines.map((line) => line.id)),
     ),
   };
-}
-
-export async function listAuthorizedQuotations(
-  actor: AuthenticatedSessionUser,
-): Promise<QuotationRecord[]> {
-  if (isDemoMode()) {
-    const { requestLineIds } = await visibleRequestIdentity(actor);
-    return getDemoOperations().quotations.filter((quotation) =>
-      requestLineIds.has(quotation.requestLineId));
-  }
-
-  const capturedAt = new Date();
-  try {
-    const result = await query<QuotationRecord>(`
-      SELECT
-        quotation.id::text,
-        quotation.request_line_id::text AS "requestLineId",
-        line.request_line_code AS "requestLineCode",
-        request.order_code AS "orderCode",
-        line.product_name_snapshot AS "productName",
-        quotation.supplier_id::text AS "supplierId",
-        supplier.name AS "supplierName",
-        COALESCE(quotation.quotation_reference,'') AS "quotationReference",
-        quotation.quotation_date::text AS "quotationDate",
-        quotation.unit_price::float8 AS "unitPrice",
-        quotation.delivery_charge::float8 AS "deliveryCharge",
-        quotation.minimum_order_quantity::float8 AS "minimumOrderQuantity",
-        quotation.lead_time_days AS "leadTimeDays",
-        quotation.valid_until::text AS "validUntil",
-        line.quantity::float8 AS "requestLineQuantity",
-        supplier.active AS "supplierActive",
-        status.label AS status,
-        quotation.selected,
-        quotation.selection_reason AS "selectionReason"
-      FROM public.quotations quotation
-      JOIN public.request_lines line
-        ON line.id=quotation.request_line_id
-      JOIN public.requests request ON request.id=line.request_id
-      JOIN public.axora_operation_request_access_rows(
-        $1,$2,'sourcing.manage',$3
-      ) access ON access.request_id=request.id
-      JOIN public.suppliers supplier ON supplier.id=quotation.supplier_id
-      JOIN public.lookup_values status ON status.id=quotation.status_id
-      ORDER BY quotation.created_at DESC,quotation.id DESC
-    `, [actor.id, assignmentId(actor), capturedAt]);
-    return result.rows;
-  } catch (error) {
-    if (error instanceof OperationalAccessUnavailableError) throw error;
-    throw new OperationalAccessUnavailableError();
-  }
-}
-
-export async function listAuthorizedSupplierRfqs(
-  actor: AuthenticatedSessionUser,
-): Promise<SupplierRfqActivityRecord[]> {
-  if (isDemoMode()) return [];
-
-  const capturedAt = new Date();
-  try {
-    const result = await query<SupplierRfqActivityRecord>(`
-      SELECT
-        rfq.id::text,
-        rfq.rfq_reference AS reference,
-        rfq.request_line_id::text AS "requestLineId",
-        line.request_line_code AS "requestLineCode",
-        request.order_code AS "orderCode",
-        line.product_name_snapshot AS "productName",
-        supplier.name AS "supplierName",
-        rfq.status,
-        rfq.respond_by::text AS "respondBy",
-        rfq.issued_at::text AS "issuedAt",
-        count(response.id)::int AS "responseCount"
-      FROM public.supplier_rfqs rfq
-      JOIN public.request_lines line ON line.id=rfq.request_line_id
-      JOIN public.requests request
-        ON request.id=line.request_id
-       AND request.company_id=rfq.company_id
-      JOIN public.axora_operation_request_access_rows(
-        $1,$2,'sourcing.manage',$3
-      ) access ON access.request_id=request.id
-      JOIN public.suppliers supplier ON supplier.id=rfq.supplier_id
-      LEFT JOIN public.supplier_quotation_responses response
-        ON response.rfq_id=rfq.id
-      GROUP BY
-        rfq.id,line.request_line_code,request.order_code,
-        line.product_name_snapshot,supplier.name
-      ORDER BY rfq.issued_at DESC,rfq.id DESC
-    `, [actor.id, assignmentId(actor), capturedAt]);
-    return result.rows;
-  } catch (error) {
-    if (error instanceof OperationalAccessUnavailableError) throw error;
-    throw new OperationalAccessUnavailableError();
-  }
 }
 
 export async function listAuthorizedApprovals(

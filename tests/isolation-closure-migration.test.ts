@@ -286,7 +286,7 @@ describe("P0-02 isolation closure migration", () => {
         db,
         ids.owner,
         ids.ownerAssignment,
-        "sourcing.manage",
+        "request.view",
       );
       expect(owner).toContain(ids.requestA);
       expect(owner).toContain(ids.requestB);
@@ -312,7 +312,7 @@ describe("P0-02 isolation closure migration", () => {
         db,
         ids.companyAdminA,
         ids.companyAssignmentA,
-        "sourcing.manage",
+        "commercial.cost.view",
       )).toEqual([]);
     } finally {
       await db.close();
@@ -324,7 +324,7 @@ describe("P0-02 isolation closure migration", () => {
     try {
       const line = await db.query<SnapshotRow>(`
         SELECT axora_lock_request_line_access(
-          $1,$2,'sourcing.manage',$3,now()
+          $1,$2,'commercial.cost.view',$3,now()
         ) AS snapshot
       `, [ids.owner, ids.ownerAssignment, resource.lineA]);
       expect(line.rows[0]?.snapshot).toMatchObject({
@@ -334,14 +334,14 @@ describe("P0-02 isolation closure migration", () => {
 
       const deniedLine = await db.query<SnapshotRow>(`
         SELECT axora_lock_request_line_access(
-          $1,$2,'sourcing.manage',$3,now()
+          $1,$2,'commercial.cost.view',$3,now()
         ) AS snapshot
       `, [ids.companyAdminA, ids.companyAssignmentA, resource.lineA]);
       expect(deniedLine.rows[0]?.snapshot).toBeNull();
 
       const quotation = await db.query<SnapshotRow>(`
         SELECT axora_lock_quotation_access(
-          $1,$2,'sourcing.manage',$3,now()
+          $1,$2,'commercial.cost.view',$3,now()
         ) AS snapshot
       `, [ids.owner, ids.ownerAssignment, ids.quotation]);
       expect(quotation.rows[0]?.snapshot).toMatchObject({

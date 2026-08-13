@@ -37,19 +37,19 @@ treated as authorization.
 
 | Role | Scope | Principal positive capabilities | Explicit exclusions |
 | --- | --- | --- | --- |
-| Platform owner | Platform | Company onboarding, global catalog/suppliers, sourcing, deliveries, finance, reports, audit, users, settings | Cannot create or approve customer requests or set customer branch budgets |
-| Platform operations | Platform | Global catalog/suppliers, sourcing, fulfilment, delivery coordination, operational documents/reports | No owner governance, company approval, customer request creation, or unrestricted finance administration |
+| Platform owner | Platform | Company oversight, global catalog, deliveries, finance, reports, audit, users, settings | Cannot create or approve customer requests or set customer branch budgets |
+| Human Resources Management | Platform | New leads, eligible Agents, assignment and reassignment, onboarding progress | No platform finance, catalog, budget, delivery or owner authority |
+| Client Account Manager / Agent | Assigned companies | Assigned leads, company onboarding, company users, requests, invoices and deliveries | No other Agent's companies, platform finance, internal users or settings |
 | Technical support | Platform | Aggregate system health, exact-email account diagnostics, and session revocation for non-platform targets; every account lookup/session action has an operator reason | No general audit feed or tenant browsing; no self/platform-account session action; no catalog, supplier, pricing, approval, delivery, or finance authority |
-| Company administrator | Company | Branches, budgets, people, company requests/approvals, permitted invoices/documents/reports | No global catalog/supplier/sourcing control; no Axora buying cost; cannot create purchase requests by default |
+| Company administrator | Company | Branches, budgets, people, company requests/approvals, permitted invoices/reports | No global catalog control or Axora buying cost; cannot create purchase requests by default |
 | Branch administrator | Branch | Branch people, catalog, requests, branch approvals, deliveries, documents/reports | No other branch; no platform operations; cannot create broader roles |
-| Company approver | Company | Eligible company-wide approval queue, budget/evidence context, reports | No self-approval; no sourcing, supplier selection, or user administration |
-| Branch approver | Branch | Eligible branch approval queue, budget/evidence context, reports | No self-approval; no other branch; no sourcing or supplier selection |
-| Purchase requester | Branch | Shop, create and track own requests, permitted documents/delivery status | Cannot approve, source, manage users, or see other users' private work |
-| Finance reviewer | Company or branch | Permitted invoices, payment evidence, customer three-way matching, exceptions/reports | No request approval, sourcing, or private Axora supplier-cost view outside granted finance records |
+| Company approver | Company | Eligible company-wide approval queue, budget/evidence context, reports | No self-approval or user administration |
+| Branch approver | Branch | Eligible branch approval queue, budget/evidence context, reports | No self-approval or other branch |
+| Purchase requester | Branch | Shop, create and track own requests and delivery status | Cannot approve, manage users, or see other users' private work |
+| Finance reviewer | Company or branch | Permitted invoices, payment evidence and exceptions/reports | No request approval or private Axora cost view outside granted finance records |
 | Read-only auditor | Company or branch | Read-only requests, deliveries, invoices, documents, reports; company-wide audit when safe | No mutations; branch-scoped audit remains denied where history cannot be safely narrowed |
 | Receiving user | Company or branch | Independently inspect and confirm assigned receipts | Cannot alter driver evidence, approve requests, or administer invoices |
-| Supplier user | Supplier | Assigned RFQs, own quotation terms/documents, acknowledgement and fulfilment updates | No competitors, Axora margin, unrelated customers, private selection notes, or self-selection |
-| Delivery driver | Delivery | Assigned jobs and offline-queued status, note, and line-outcome events; binary evidence uploads require connectivity and explicit retry | No budgets, invoices, users, supplier prices, unrelated jobs, or final customer receipt approval |
+| Delivery Guy | Delivery | Assigned paid requests, buying progress, delivery events and evidence | No budgets, invoices, users, internal financials, unrelated jobs, or final customer receipt approval |
 
 The permission key list is intentionally smaller than the entity-level policy.
 For example, `approve_requests` opens the approval operation, but the operation

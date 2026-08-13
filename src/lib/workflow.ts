@@ -2,12 +2,12 @@ import type { RequestStatus } from "./types";
 
 const nextStatuses: Record<RequestStatus, RequestStatus[]> = {
   "New Request": ["Under Verification", "Cancelled"],
-  "Under Verification": ["Waiting for Quotation", "On Hold", "Cancelled"],
-  "Waiting for Quotation": ["Supplier Assigned", "Cancelled"],
+  "Under Verification": ["Approved", "On Hold", "Cancelled"],
+  "Waiting for Quotation": ["Approved", "Cancelled"],
   // These two statuses are retained so historical requests can finish, but
   // no new request enters this retired second-approval path.
   "Waiting for Approval": ["Approved", "Cancelled"],
-  Approved: ["Supplier Assigned", "Cancelled"],
+  Approved: ["Preparing for Delivery", "Cancelled"],
   "Supplier Assigned": ["Ordered", "Cancelled"],
   Ordered: ["Preparing for Delivery", "Cancelled"],
   "Preparing for Delivery": ["Out for Delivery"],

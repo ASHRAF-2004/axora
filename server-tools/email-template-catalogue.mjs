@@ -71,7 +71,7 @@ export const EMAIL_TEMPLATE_CATALOGUE = Object.freeze({
   "budget-refresh-failed": t("budget-refresh-failed", "axora-budget", "Budget refresh requires attention", "تحديث الميزانية يحتاج إلى متابعة", "Penyegaran bajet memerlukan perhatian"),
 
   "delivery-assignment-created": t("delivery-assignment-created", "axora-delivery", "Delivery assignment created", "تم إنشاء مهمة توصيل", "Tugasan penghantaran dibuat"),
-  "delivery-agent-accepted": t("delivery-agent-accepted", "axora-delivery", "Delivery Agent accepted the assignment", "قبل مندوب التوصيل المهمة", "Ejen Penghantaran menerima tugasan"),
+  "delivery-agent-accepted": t("delivery-agent-accepted", "axora-delivery", "Delivery Guy accepted the assignment", "قبل مسؤول التوصيل المهمة", "Penghantar menerima tugasan"),
   "shopping-started": t("shopping-started", "axora-delivery", "Shopping started", "بدأ التسوق", "Pembelian bermula"),
   "items-acquired": t("items-acquired", "axora-delivery", "Items were acquired", "تم الحصول على المنتجات", "Item telah diperoleh"),
   "substitute-approval-required": t("substitute-approval-required", "axora-delivery", "Substitute approval required", "موافقة البديل مطلوبة", "Kelulusan pengganti diperlukan"),

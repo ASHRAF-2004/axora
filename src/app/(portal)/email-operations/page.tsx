@@ -85,6 +85,31 @@ export default async function EmailOperationsPage({
     [messages.webhookFailures, workspace.metrics.webhookFailures],
   ] as const;
   const notice = typeof rawFilters.notice === "string" ? rawFilters.notice : undefined;
+  const configuredQuota = Number(process.env.AXORA_EMAIL_PERIOD_RECIPIENT_QUOTA ?? "");
+  const hasConfiguredQuota = Number.isSafeInteger(configuredQuota) && configuredQuota > 0;
+  const quotaUsed = workspace.metrics.monthlyRecipientUnits;
+  const quotaRemaining = hasConfiguredQuota ? Math.max(0, configuredQuota - quotaUsed) : undefined;
+  const periodStart = new Date();
+  periodStart.setUTCDate(1); periodStart.setUTCHours(0, 0, 0, 0);
+  const periodEnd = new Date(Date.UTC(
+    periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1, 1,
+  ));
+  const quotaCopy = locale === "ar" ? {
+    title: "سعة البريد للفترة الحالية", total: "الإجمالي", used: "المستخدم",
+    remaining: "المتبقي", period: "الفترة", updated: "آخر تحديث",
+    source: "المصدر: حصة إنتاج مضبوطة مع استخدام Axora المسجل",
+    missing: "لم تُضبط حصة إنتاج موثوقة.",
+  } : locale === "ms" ? {
+    title: "Kapasiti e-mel tempoh semasa", total: "Jumlah", used: "Digunakan",
+    remaining: "Baki", period: "Tempoh", updated: "Kemas kini terakhir",
+    source: "Sumber: kuota produksi dikonfigurasi dengan penggunaan Axora direkodkan",
+    missing: "Kuota produksi yang dipercayai belum dikonfigurasi.",
+  } : {
+    title: "Current-period email capacity", total: "Total", used: "Used",
+    remaining: "Remaining", period: "Period", updated: "Last updated",
+    source: "Source: configured production quota with Axora-recorded usage",
+    missing: "No trustworthy production quota is configured.",
+  };
 
   return <div className={styles.workspace} data-email-operations-workspace>
     <PageHeader eyebrow={messages.eyebrow} title={messages.title} description={messages.description} />
@@ -137,6 +162,20 @@ export default async function EmailOperationsPage({
           <span>{label}</span><strong>{typeof value === "number" ? number.format(value) : value}</strong>
           {note ? <small>{note}</small> : null}
         </article>)}
+      </div>
+    </section>
+
+    <section className="panel" aria-labelledby="email-quota-title">
+      <div className="panel-header"><div>
+        <h2 id="email-quota-title">{quotaCopy.title}</h2>
+        <p>{hasConfiguredQuota ? quotaCopy.source : quotaCopy.missing}</p>
+      </div></div>
+      <div className={`panel-body ${styles.healthGrid}`}>
+        <div><span>{quotaCopy.total}</span><strong>{hasConfiguredQuota ? number.format(configuredQuota) : "-"}</strong></div>
+        <div><span>{quotaCopy.used}</span><strong>{number.format(quotaUsed)}</strong></div>
+        <div><span>{quotaCopy.remaining}</span><strong>{quotaRemaining === undefined ? "-" : number.format(quotaRemaining)}</strong></div>
+        <div><span>{quotaCopy.period}</span><strong>{formatDateTime(periodStart.toISOString(), locale, timeZone)} - {formatDateTime(periodEnd.toISOString(), locale, timeZone)}</strong></div>
+        <div><span>{quotaCopy.updated}</span><strong>{formatDateTime(new Date().toISOString(), locale, timeZone)}</strong></div>
       </div>
     </section>
 

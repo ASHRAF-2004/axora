@@ -108,7 +108,7 @@ async function renderPreview({ locale, template }) {
       recipientName: "Axora Preview User",
       workflow: {
         title: "Purchase request approved",
-        body: "Your purchase request moved to Axora sourcing.",
+        body: "Your approved purchase request is ready for payment.",
         actionPath: "/notifications",
       },
     });

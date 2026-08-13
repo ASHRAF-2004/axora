@@ -5,14 +5,11 @@ const authenticatedRoutes = [
   { path: "/dashboard", heading: /Good (morning|afternoon|evening),/ },
   { path: "/products", heading: "Products" },
   { path: "/requests", heading: "Purchase requests" },
-  { path: "/sourcing", heading: "Sourcing and quotations" },
   { path: "/deliveries", heading: "Delivery control tower" },
   { path: "/receiving", heading: "Confirm delivered quantities" },
   { path: "/finance", heading: "Invoices and payments" },
-  { path: "/documents", heading: "Documents" },
   { path: "/companies", heading: "Company lifecycle" },
   { path: "/branches", heading: "Branches & monthly budgets" },
-  { path: "/suppliers", heading: "Suppliers" },
   { path: "/reports", heading: "Reports and reconciliation" },
   { path: "/audit", heading: "Audit history" },
   { path: "/users", heading: "Create named accounts" },
@@ -64,4 +61,27 @@ test("keeps customer approval decisions outside the platform-owner role", async 
   await expect(page.getByRole("button", {
     name: "Approve and reserve budget",
   })).toHaveCount(0);
+});
+
+test("creates one catalogue product without losing the route after insertion", async ({ page }, testInfo) => {
+  await signInAsDemoOwner(page);
+  await page.goto("/products");
+  const name = `E2E catalogue product ${Date.now()}`;
+  const form = page.locator('form[data-draft-id="create-product"]');
+  await form.getByLabel("Product name").fill(name);
+  await form.getByLabel("Subcategory").fill("Regression fixtures");
+  await form.getByLabel("Axora buying cost (RM)").fill("12.50");
+  await form.getByLabel("Description / specification").fill("Catalogue route-recovery regression fixture");
+  await form.getByRole("button", { name: "Create product" }).click();
+
+  await expect(page).toHaveURL(/\/products\/[0-9a-f-]+\/edit(?:\?.*)?$/i);
+  await expect(page.getByText("This page could not be restored")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  await page.goto("/products");
+  await expect(page.getByRole("cell", { name }).first()).toBeVisible();
+  await page.screenshot({
+    path: `output/playwright/catalogue-product-created-${testInfo.project.name}.png`,
+    fullPage: true,
+    caret: "initial",
+  });
 });

@@ -5,8 +5,7 @@ export type CatalogSort =
   | "name-asc"
   | "price-asc"
   | "price-desc"
-  | "delivery-asc"
-  | "moq-asc";
+  | "delivery-asc";
 
 export const CATALOG_SORTS: readonly CatalogSort[] = [
   "relevance",
@@ -14,7 +13,6 @@ export const CATALOG_SORTS: readonly CatalogSort[] = [
   "price-asc",
   "price-desc",
   "delivery-asc",
-  "moq-asc",
 ];
 
 export interface CatalogSearchInput {

@@ -55,17 +55,20 @@ describe("email operations application boundary", () => {
       .toBe("private operations recipient");
   });
 
-  it("allows owners and platform operations to manage, CAMs to view, and company users neither", () => {
+  it("allows owners and explicitly permitted platform users while denying role-only access", () => {
     expect(() => emailOperationsInternals.requireManage(actor())).not.toThrow();
     expect(() => emailOperationsInternals.requireManage(actor({
       role: "PLATFORM_OPERATIONS", isOwner: false,
     }))).not.toThrow();
     const manager = actor({
       role: "CLIENT_ACCOUNT_MANAGER", isOwner: false,
-      scopeType: "COMPANY", companyId: "30000000-0000-4000-8000-000000000001",
+      scopeType: "PLATFORM", effectivePermissions: ["view_email_operations"],
     });
     expect(() => emailOperationsInternals.requireView(manager)).not.toThrow();
     expect(() => emailOperationsInternals.requireManage(manager)).toThrow();
+    expect(() => emailOperationsInternals.requireView(actor({
+      role: "CLIENT_ACCOUNT_MANAGER", isOwner: false, scopeType: "PLATFORM",
+    }))).toThrow();
     const company = actor({
       role: "COMPANY_ADMIN", isOwner: false, accountKind: "COMPANY",
       scopeType: "COMPANY", companyId: "30000000-0000-4000-8000-000000000001",

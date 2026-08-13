@@ -43,18 +43,15 @@ describe("real asynchronous operation status", () => {
     expect(css).not.toMatch(/data-ux-navigating="true"[^}]+width:\s*78%/s);
   });
 
-  it("polls persisted document jobs and prevents conflicting commands while pending", async () => {
-    const [controls, panel, domain] = await Promise.all([
+  it("polls retained invoice document jobs without inventing client completion", async () => {
+    const [controls, domain] = await Promise.all([
       source("src/components/GeneratedDocumentAsyncControls.tsx"),
-      source("src/components/GeneratedDocumentsPanel.tsx"),
       source("src/lib/generated-documents.ts"),
     ]);
     expect(controls).toContain("router.refresh()");
     expect(controls).toContain("document.visibilityState");
     expect(controls).toContain("navigator.onLine");
     expect(controls).toContain("useFormStatus");
-    expect(panel).toContain('["PENDING", "PROCESSING", "RETRY"]');
-    expect(panel).toContain("job.id");
     expect(domain).toContain("DocumentGenerationJobSummary");
   });
 

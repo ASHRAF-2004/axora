@@ -15,14 +15,12 @@ export type Permission =
   | "view_branches"
   | "manage_companies"
   | "manage_catalog"
-  | "manage_suppliers"
   | "manage_branches"
   | "manage_branch_budget"
   | "create_requests"
   | "view_approvals"
   | "view_budgets"
   | "approve_requests"
-  | "manage_sourcing"
   | "manage_deliveries"
   | "view_invoices"
   | "manage_finance"
@@ -40,7 +38,6 @@ export type Permission =
   | "update_assigned_deliveries"
   | "view_receiving"
   | "confirm_receipts"
-  | "review_three_way_matches"
   | "view_platform_revenue"
   | "view_platform_profit"
   | "view_internal_cost"
@@ -67,14 +64,14 @@ const platformOwnerPermissions: readonly Permission[] = [
   "view_catalog",
   "view_requests",
   "view_deliveries",
+  "view_receiving",
+  "confirm_receipts",
     "view_branches",
     "view_approvals",
     "view_budgets",
     "manage_companies",
   "manage_catalog",
-  "manage_suppliers",
   "manage_branches",
-  "manage_sourcing",
   "manage_deliveries",
   "view_invoices",
   "manage_finance",
@@ -89,7 +86,6 @@ const platformOwnerPermissions: readonly Permission[] = [
   "view_email_operations",
   "manage_email_operations",
   "view_receiving",
-  "review_three_way_matches",
   "view_platform_revenue",
   "view_platform_profit",
   "view_internal_cost",
@@ -125,6 +121,8 @@ const companyAdminPermissions: readonly Permission[] = [
   "view_catalog",
   "view_requests",
   "view_deliveries",
+  "view_receiving",
+  "confirm_receipts",
   "view_branches",
   "manage_branches",
   "manage_branch_budget",
@@ -146,6 +144,7 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   ADMIN: legacyCompanyAdminPermissions,
   BRANCH_ADMIN: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
+    "view_receiving", "confirm_receipts",
     "view_branches", "create_requests", "view_approvals", "view_budgets", "approve_requests",
     "view_invoices", "view_documents", "manage_documents", "view_reports", "manage_users",
   ],
@@ -175,14 +174,13 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   PLATFORM_OWNER: platformOwnerPermissions,
   CLIENT_ACCOUNT_MANAGER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "manage_companies", "view_documents", "view_reports",
-    "manage_users", "view_email_operations",
+    "view_branches", "manage_companies", "view_invoices", "view_reports", "manage_users",
   ],
+  HUMAN_RESOURCES_MANAGEMENT: ["view_dashboard", "manage_companies"],
   PLATFORM_OPERATIONS: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "manage_catalog", "manage_suppliers",
-    "manage_sourcing", "manage_deliveries", "view_documents",
-    "manage_documents", "view_reports", "view_receiving",
+    "view_branches", "manage_catalog", "manage_deliveries",
+    "view_reports", "view_receiving",
     "view_email_operations", "manage_email_operations",
   ],
   COMPANY_ADMIN: companyAdminPermissions,
@@ -202,7 +200,7 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   FINANCE_REVIEWER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
     "view_branches", "view_budgets", "view_invoices", "manage_finance", "view_documents",
-    "view_reports", "review_three_way_matches",
+    "view_reports",
   ],
   AUDITOR: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
@@ -215,6 +213,7 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   ],
   DELIVERY_AGENT: ["view_delivery_portal", "update_assigned_deliveries"],
   DELIVERY_DRIVER: ["view_delivery_portal", "update_assigned_deliveries"],
+  DELIVERY_GUY: ["view_dashboard", "view_delivery_portal", "update_assigned_deliveries"],
   RECEIVING_USER: ["view_receiving", "confirm_receipts"],
 };
 
@@ -255,7 +254,12 @@ function canonicalSubjectIsValid(subject: AccessSubject) {
         && !subject.companyId && !subject.branchId
         && !subject.departmentId && !subject.supplierId;
     case "CLIENT_ACCOUNT_MANAGER":
-      return !subject.isOwner && validPlatformCompanyScope(subject);
+      return !subject.isOwner && (
+        validPlatformCompanyScope(subject)
+        || (subject.accountKind === "PLATFORM" && subject.scopeType === "PLATFORM"
+          && !subject.companyId && !subject.branchId && !subject.departmentId && !subject.supplierId)
+      );
+    case "HUMAN_RESOURCES_MANAGEMENT":
     case "PLATFORM_OPERATIONS":
     case "TECHNICAL_SUPPORT":
       return !subject.isOwner
@@ -286,6 +290,7 @@ function canonicalSubjectIsValid(subject: AccessSubject) {
     case "DELIVERY_TEAM_SUPERVISOR":
     case "DELIVERY_AGENT":
     case "DELIVERY_DRIVER":
+    case "DELIVERY_GUY":
       return !subject.isOwner
         && subject.accountKind === "DELIVERY"
         && subject.scopeType === "DELIVERY"

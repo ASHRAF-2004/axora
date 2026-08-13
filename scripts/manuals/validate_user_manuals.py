@@ -20,16 +20,21 @@ OUTPUT = ROOT / "output" / "pdf"
 PUBLISH = ROOT / "public" / "manuals"
 RENDER = ROOT / "output" / "playwright" / "manuals" / "rendered"
 FILES = {
-    "axora-company-user-manual-en.pdf": 13,
-    "axora-company-user-manual-ar.pdf": 13,
-    "axora-owner-admin-manual-en.pdf": 14,
-    "axora-owner-admin-manual-ar.pdf": 14,
+    "axora-company-user-manual-en.pdf": 12,
+    "axora-company-user-manual-ar.pdf": 12,
+    "axora-owner-admin-manual-en.pdf": 13,
+    "axora-owner-admin-manual-ar.pdf": 13,
 }
 FORBIDDEN = (
     re.compile(r"\bsidebar\b", re.I),
     re.compile(r"\btemporary password\b", re.I),
     re.compile(r"\binitial password\b", re.I),
     re.compile(r"\binteractive[- ]experience\b", re.I),
+    re.compile(r"\bsourcing team\b", re.I),
+    re.compile(r"\bsupplier selection\b", re.I),
+    re.compile(r"\bthree-way matching\b", re.I),
+    re.compile(r"\bDelivery Driver\b", re.I),
+    re.compile(r"\bReceiving User\b", re.I),
     re.compile(r"screenshot pending", re.I),
     re.compile(r"placeholder", re.I),
     re.compile(r"\{\{[^}]+\}\}"),
@@ -85,13 +90,18 @@ def validate_pdf(path: Path, pages: int, render_dir: Path) -> list[str]:
     elif not any("NotoSans" in font and "Arabic" not in font for font in fonts):
         errors.append(f"{path}: Noto Sans is not embedded")
     if "owner" in path.name and "en.pdf" in path.name:
-        for required in ("authorized Axora Platform Owners", "internal workspace", "Delivery Driver", "Receiving User"):
+        for required in (
+            "authorized Axora Platform Owners",
+            "Human Resources Management",
+            "Client Account Manager",
+            "Delivery Guy",
+        ):
             if required not in content:
                 errors.append(f"{path}: missing required owner guidance {required!r}")
         if "Supplier User" in content:
             errors.append(f"{path}: removed supplier actor guidance is present")
     if "company" in path.name and "en.pdf" in path.name:
-        for required in ("one-time invitation", "hamburger", "self", "three-way", "payment"):
+        for required in ("one-time invitation", "hamburger", "self", "Pay", "payment"):
             if required.lower() not in content.lower():
                 errors.append(f"{path}: missing required company guidance {required!r}")
     document.close()

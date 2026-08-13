@@ -20,7 +20,7 @@ describe("core portal internationalization", () => {
     for (const locale of ["en", "ar", "ms"] as const) {
       const copy = CORE_PORTAL_MESSAGES[locale];
       expect(Object.keys(copy.dashboard.metrics)).toEqual(Object.keys(CORE_PORTAL_MESSAGES.en.dashboard.metrics));
-      expect(Object.keys(copy.dashboard.role)).toEqual(Object.keys(CORE_PORTAL_MESSAGES.en.dashboard.role));
+      expect(Object.keys(copy.dashboard.role).sort()).toEqual(Object.keys(CORE_PORTAL_MESSAGES.en.dashboard.role).sort());
       expect(Object.keys(copy.requestForm)).toEqual(Object.keys(CORE_PORTAL_MESSAGES.en.requestForm));
       expect(copy.requests.create).toBeTruthy();
       expect(copy.approvals.rejectionReason).toBeTruthy();

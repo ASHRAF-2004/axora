@@ -103,7 +103,7 @@ describe("private transactional outbox route", () => {
       recipientEmail: "aisha@example.test",
       workflow: {
         title: "Request approved",
-        body: "Your request moved to sourcing.",
+        body: "Your request moved to buying preparation.",
         actionPath: "/requests/00000000-0000-4000-8000-000000000023",
       },
     };

@@ -48,12 +48,6 @@ export const NOTIFICATION_EVENT_POLICIES = [
   { eventKey: "budget.zero", category: "BUDGET", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
   { eventKey: "budget.refreshed", category: "BUDGET", emailMandatory: false, companyConfigurable: true },
   { eventKey: "budget.refresh_failed", category: "BUDGET", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
-  { eventKey: "quotation.requested", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
-  { eventKey: "quotation.received", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
-  { eventKey: "supplier.selected", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
-  { eventKey: "supplier.order_selected", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
-  { eventKey: "supplier.order_acknowledged", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
-  { eventKey: "supplier.rfq_acknowledged", category: "SOURCING", emailMandatory: false, companyConfigurable: true },
   { eventKey: "delivery.scheduled", category: "DELIVERY", emailMandatory: false, companyConfigurable: true },
   { eventKey: "driver.assigned", category: "DELIVERY", emailMandatory: false, defaultReminderHours: 12, companyConfigurable: true },
   { eventKey: "delivery.out_for_delivery", category: "DELIVERY", emailMandatory: false, companyConfigurable: true },
@@ -64,8 +58,6 @@ export const NOTIFICATION_EVENT_POLICIES = [
   { eventKey: "discrepancy.opened", category: "DELIVERY", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
   { eventKey: "invoice.issued", category: "FINANCE", emailMandatory: false, companyConfigurable: true },
   { eventKey: "payment.status_changed", category: "FINANCE", emailMandatory: false, companyConfigurable: true },
-  { eventKey: "three_way_match.completed", category: "FINANCE", emailMandatory: false, companyConfigurable: true },
-  { eventKey: "three_way_match.exception", category: "FINANCE", emailMandatory: true, defaultReminderHours: 24, companyConfigurable: true },
   { eventKey: "email.hard_bounce", category: "EMAIL", emailMandatory: true, companyConfigurable: false },
 ] as const satisfies readonly NotificationEventPolicy[];
 
@@ -174,9 +166,7 @@ export function notificationPolicyForEvent(eventKey: string): NotificationEventP
       ? "APPROVAL"
       : eventKey.startsWith("budget.")
         ? "BUDGET"
-        : eventKey.startsWith("quotation.") || eventKey.startsWith("supplier.")
-          ? "SOURCING"
-          : eventKey.startsWith("delivery.") || eventKey.startsWith("driver.")
+        : eventKey.startsWith("delivery.") || eventKey.startsWith("driver.")
             || eventKey.startsWith("receipt.") || eventKey.startsWith("discrepancy.")
             ? "DELIVERY"
             : eventKey.startsWith("invoice.") || eventKey.startsWith("payment.")

@@ -11,6 +11,7 @@ export const LEGACY_USER_ROLES = [
 
 export const CANONICAL_USER_ROLES = [
   "PLATFORM_OWNER",
+  "HUMAN_RESOURCES_MANAGEMENT",
   "PLATFORM_OPERATIONS",
   "CLIENT_ACCOUNT_MANAGER",
   "COMPANY_ADMIN",
@@ -25,6 +26,7 @@ export const CANONICAL_USER_ROLES = [
   "DELIVERY_TEAM_SUPERVISOR",
   "DELIVERY_AGENT",
   "DELIVERY_DRIVER",
+  "DELIVERY_GUY",
   "RECEIVING_USER",
 ] as const;
 
@@ -160,22 +162,11 @@ export interface Product {
   description?: string;
   defaultBuyPrice: number;
   defaultSellPrice: number;
-  minimumOrderQuantity: number;
-  maximumOrderQuantity?: number;
-  orderIncrement?: number;
-  packSize?: number;
-  packUnit?: string;
-  quantityRuleVersion?: number;
-  quantityRuleEffectiveFrom?: string;
-  quantityRuleEffectiveTo?: string;
-  quantityRuleReason?: string;
   priceRuleVersion?: number;
   priceEffectiveFrom?: string;
   priceChangedAt?: string;
   priceCurrency?: string;
   deliverySlaDays: number;
-  preferredSupplierId?: string;
-  preferredSupplierName?: string;
   hasImage: boolean;
   imageAltText?: string;
   images?: ProductImageSummary[];
@@ -278,7 +269,6 @@ export interface PlatformDashboardData extends FinancialTotals {
   delayedDeliveryCount: number;
   outstandingInvoiceCount: number;
   activeCompanyCount: number;
-  activeSupplierCount: number;
   byStatus: Array<{ label: string; value: number }>;
   byCompany: Array<{ label: string; value: number }>;
   topProducts: Array<{ label: string; value: number }>;

@@ -18,7 +18,6 @@ interface RequestFilterMessages {
   requester: string;
   approver: string;
   deliveryAgent: string;
-  supplier: string;
   budgetException: string;
   noBudgetFilter: string;
   advanced: string;
@@ -72,8 +71,7 @@ const en: RequestFilterMessages = {
   costCentre: "Cost centre",
   requester: "Requester",
   approver: "Approver",
-  deliveryAgent: "Delivery Agent",
-  supplier: "Supplier",
+  deliveryAgent: "Delivery Guy",
   budgetException: "Budget exception",
   noBudgetFilter: "Any budget status",
   advanced: "Organization, people, dates, and amount",
@@ -136,7 +134,6 @@ const ar: RequestFilterMessages = {
   requester: "مقدم الطلب",
   approver: "المعتمد",
   deliveryAgent: "مندوب التسليم",
-  supplier: "المورد",
   budgetException: "استثناء الميزانية",
   noBudgetFilter: "أي حالة ميزانية",
   advanced: "المؤسسة والأشخاص والتواريخ والمبلغ",
@@ -198,8 +195,7 @@ const ms: RequestFilterMessages = {
   costCentre: "Pusat kos",
   requester: "Peminta",
   approver: "Pelulus",
-  deliveryAgent: "Ejen Penghantaran",
-  supplier: "Pembekal",
+  deliveryAgent: "Penghantar",
   budgetException: "Pengecualian bajet",
   noBudgetFilter: "Sebarang status bajet",
   advanced: "Organisasi, individu, tarikh dan amaun",

@@ -9,8 +9,6 @@ import {
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
-import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
-import { productQuantityRule } from "@/lib/procurement-rules";
 import {
   addProductToRequestCart,
   readRequestCart,
@@ -49,7 +47,6 @@ export function ShopCategoryHub({
 }) {
   const productCopy=corePortalMessages(locale).products;
   const shopCopy=shopMessages(locale);
-  const ruleCopy=procurementRulesMessages(locale);
   const router=useRouter();
   const pathname=usePathname();
   const searchParams=useSearchParams();
@@ -207,13 +204,13 @@ export function ShopCategoryHub({
       {showingProducts ? <div className="shop-product-view">
         <div className="shop-product-toolbar"><div><button type="button" data-ux-silent="true" onClick={() => {if (query) {setSearchText("");updateUrl({q:null,page:null});return;} if (selectedSubcategory || view==="category") {updateUrl({subcategory:null,view:null,page:null});return;} returnToDepartments();}}><ArrowLeft className="directional-icon" size={16} />{shopCopy.back}</button><h2 ref={productHeading} tabIndex={-1}>{pageTitle}</h2><span aria-live="polite">{catalog ? shopCopy.found(catalog.total) : shopCopy.loadingProducts}</span></div>
           <div className="shop-product-controls"><label>{shopCopy.filterCategory}<select value={categoryName} onChange={(event) => {focusAfterLoad.current=true;updateUrl({category:event.target.value || null,subcategory:null,view:"all",page:null});}}><option value="">{shopCopy.allCategories}</option>{departments.map((department) => <option key={department.name} value={department.name}>{department.name}</option>)}</select></label>
-            <label>{shopCopy.sortBy}<select value={sort} onChange={(event) => {focusAfterLoad.current=true;updateUrl({sort:event.target.value==="relevance" ? null : event.target.value,page:null});}}><option value="relevance">{shopCopy.recommended}</option><option value="name-asc">{shopCopy.nameAsc}</option><option value="price-asc">{shopCopy.priceAsc}</option><option value="price-desc">{shopCopy.priceDesc}</option><option value="delivery-asc">{shopCopy.fastest}</option><option value="moq-asc">{shopCopy.lowestMoq}</option></select></label></div>
+            <label>{shopCopy.sortBy}<select value={sort} onChange={(event) => {focusAfterLoad.current=true;updateUrl({sort:event.target.value==="relevance" ? null : event.target.value,page:null});}}><option value="relevance">{shopCopy.recommended}</option><option value="name-asc">{shopCopy.nameAsc}</option><option value="price-asc">{shopCopy.priceAsc}</option><option value="price-desc">{shopCopy.priceDesc}</option><option value="delivery-asc">{shopCopy.fastest}</option></select></label></div>
         </div>
         {error ? <div className="request-section-error" role="alert">{error}</div> : null}
         <div className={loading ? "shop-product-grid is-loading" : "shop-product-grid"} aria-busy={loading}>{products.map((product) => <article key={product.id} className="shop-product-card" tabIndex={0}>
           <div className="shop-product-image"><ProductImage product={product} locale={locale} /></div><div className="shop-product-content"><div className="shop-product-meta"><span>{product.subcategory}</span><small>{product.code}</small></div><h3>{product.name}</h3>{product.brand || product.size ? <p>{[product.brand,product.size].filter(Boolean).join(" · ")}</p> : null}
-            <div className="shop-product-price"><strong>{formatCurrency(product.defaultSellPrice,locale)}</strong><span>{shopCopy.per} {product.packSize && product.packSize>1 ? product.packUnit : product.unit}</span></div>{product.packSize && product.packSize>1 ? <small>{ruleCopy.packSummary(product.packSize,product.packUnit ?? product.unit)}</small> : null}
-            <div className="shop-product-facts"><span>{ruleCopy.quantitySummary(productQuantityRule(product))}</span><span>{product.deliverySlaDays===0 ? shopCopy.sameDay : shopCopy.days(product.deliverySlaDays)}</span></div>
+            <div className="shop-product-price"><strong>{formatCurrency(product.defaultSellPrice,locale)}</strong><span>{shopCopy.per} {product.unit}</span></div>
+            <div className="shop-product-facts"><span>{product.deliverySlaDays===0 ? shopCopy.sameDay : shopCopy.days(product.deliverySlaDays)}</span></div>
             {canRequest ? <button type="button" className={cartProductIds.has(product.id) ? "button button-secondary" : "button button-primary"} data-ux-silent="true" disabled={cartProductIds.has(product.id)} onClick={() => addToCart(product)}>{cartProductIds.has(product.id) ? <><Check size={16} />{shopCopy.added}</> : <><ShoppingBag size={16} />{shopCopy.add}</>}</button> : <span className="button button-secondary">{shopCopy.viewOnly}</span>}
           </div></article>)}</div>
         {!loading && !products.length ? <div className="shop-empty-state"><PackageSearch size={40} /><strong>{shopCopy.noMatch}</strong><p>{shopCopy.noMatchBody}</p></div> : null}

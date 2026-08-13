@@ -30,13 +30,12 @@ describe("role-specific portal navigation boundaries", () => {
     };
 
     expect(hrefs(PRIMARY_NAVIGATION, companyAdmin)).toEqual([
-      "/dashboard", "/products", "/requests", "/approvals", "/budgets", "/deliveries", "/finance",
+      "/dashboard", "/receiving", "/products", "/requests", "/approvals", "/budgets", "/deliveries", "/finance",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).toEqual([
-      "/branches", "/budgets", "/users", "/documents", "/reports", "/audit", "/settings", "/help",
+      "/receiving", "/branches", "/budgets", "/users", "/reports", "/audit", "/settings", "/help",
     ]);
     expect(canAccess(companyAdmin, "manage_catalog")).toBe(false);
-    expect(canAccess(companyAdmin, "manage_suppliers")).toBe(false);
     expect(canAccess(companyAdmin, "manage_commercial_pricing")).toBe(false);
   });
 
@@ -71,14 +70,13 @@ describe("role-specific portal navigation boundaries", () => {
       "/dashboard", "/products", "/requests", "/budgets", "/deliveries", "/finance",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, auditor)).toEqual([
-      "/branches", "/budgets", "/documents", "/reports", "/audit", "/settings", "/help",
+      "/branches", "/budgets", "/reports", "/audit", "/settings", "/help",
     ]);
     expect(hrefs(PRIMARY_NAVIGATION, receiver)).toEqual(["/receiving"]);
     expect(hrefs(DRAWER_NAVIGATION, receiver)).toEqual(["/receiving", "/settings", "/help"]);
 
     for (const subject of [support, auditor]) {
       expect(canAccess(subject, "manage_catalog")).toBe(false);
-      expect(canAccess(subject, "manage_suppliers")).toBe(false);
       expect(canAccess(subject, "manage_users")).toBe(false);
       expect(canAccess(subject, "manage_finance")).toBe(false);
     }
@@ -118,12 +116,13 @@ describe("role-specific portal navigation boundaries", () => {
       scopeType: "COMPANY", companyId,
     };
 
-    for (const subject of [owner, operations, manager]) {
+    for (const subject of [owner, operations]) {
       expect(hrefs(DRAWER_NAVIGATION, subject)).toContain("/email-operations");
       expect(canAccess(subject, "view_email_operations")).toBe(true);
     }
     expect(canAccess(owner, "manage_email_operations")).toBe(true);
     expect(canAccess(operations, "manage_email_operations")).toBe(true);
+    expect(canAccess(manager, "view_email_operations")).toBe(false);
     expect(canAccess(manager, "manage_email_operations")).toBe(false);
     expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).not.toContain("/email-operations");
     expect(canAccess(companyAdmin, "view_email_operations")).toBe(false);

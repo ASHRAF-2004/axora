@@ -119,8 +119,6 @@ export default async function PortalLayout({ children }: { children: React.React
     ? { href: "/requests/new", label: messages.quickActions.newRequest }
     : user.isOwner
       ? { href: "/companies", label: messages.quickActions.addCompany }
-      : canAccess(user, "manage_sourcing")
-        ? { href: "/sourcing", label: messages.quickActions.openSourcing }
       : undefined;
   return (
     <>

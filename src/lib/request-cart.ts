@@ -19,13 +19,6 @@ export interface RequestCartProduct {
   size?: string;
   unit: string;
   defaultSellPrice: number;
-  minimumOrderQuantity: number;
-  maximumOrderQuantity?: number;
-  orderIncrement?: number;
-  packSize?: number;
-  packUnit?: string;
-  quantityRuleVersion?: number;
-  quantityRuleEffectiveFrom?: string;
   priceRuleVersion?: number;
   priceEffectiveFrom?: string;
   priceChangedAt?: string;
@@ -42,7 +35,7 @@ export interface RequestCartItem {
 }
 
 export function minimumCartQuantity(
-  product: Pick<Product, "minimumOrderQuantity">,
+  product: Product,
 ) {
   void product;
   return 1;
@@ -59,13 +52,6 @@ function productSnapshot(product: Product): RequestCartProduct {
     size: product.size,
     unit: product.unit,
     defaultSellPrice: product.defaultSellPrice,
-    minimumOrderQuantity: product.minimumOrderQuantity,
-    maximumOrderQuantity: product.maximumOrderQuantity,
-    orderIncrement: product.orderIncrement,
-    packSize: product.packSize,
-    packUnit: product.packUnit,
-    quantityRuleVersion: product.quantityRuleVersion,
-    quantityRuleEffectiveFrom: product.quantityRuleEffectiveFrom,
     priceRuleVersion: product.priceRuleVersion,
     priceEffectiveFrom: product.priceEffectiveFrom,
     priceChangedAt: product.priceChangedAt,
@@ -91,7 +77,6 @@ function validItem(value: unknown): value is RequestCartItem {
       typeof product.subcategory === "string" &&
       typeof product.unit === "string" &&
       Number.isFinite(product.defaultSellPrice) &&
-      Number.isFinite(product.minimumOrderQuantity) &&
       Number.isFinite(product.deliverySlaDays) &&
       Number.isFinite(item.quantity) &&
       typeof item.specification === "string",

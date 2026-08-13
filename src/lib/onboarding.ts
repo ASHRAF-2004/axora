@@ -31,13 +31,13 @@ const definitions: Record<string, TutorialStepDefinition[]> = {
   PLATFORM_OWNER: [
     { key: "owner-dashboard", title: "Start with platform health", body: "Review company onboarding, workflow exceptions, and tenant-isolation alerts before opening detailed modules.", target: "[data-tour='dashboard']" },
     { key: "company-onboarding", title: "Create a complete company", body: "Add verified company information, billing context, branches, and a logo. Axora generates its accessible portal theme automatically.", target: "[data-tour='companies']" },
-    { key: "global-operations", title: "Coordinate the global workflow", body: "Catalog, supplier, sourcing, delivery, and finance controls remain in Axora's operational scope.", target: "[data-tour='operations']" },
+    { key: "global-operations", title: "Coordinate the global workflow", body: "Catalog, paid-request, delivery, invoice, and finance controls remain in Axora's operational scope.", target: "[data-tour='operations']" },
     { key: "audit-and-security", title: "Review evidence and security", body: "Use audit and system tools for investigations; elevated support actions remain recorded.", target: "[data-tour='audit']" },
     sharedHelp,
   ],
   PLATFORM_OPERATIONS: [
-    { key: "operations-queue", title: "Work the exception queue", body: "Prioritize sourcing, preparation, delivery, and finance records that need Axora action.", target: "[data-tour='dashboard']" },
-    { key: "sourcing", title: "Source without exposing suppliers", body: "Request quotations, compare complete terms, and record a selection rationale. Customer users do not see private supplier identities or buying cost.", target: "[data-tour='sourcing']" },
+    { key: "operations-queue", title: "Work the exception queue", body: "Prioritize paid requests, delivery, and finance records that need Axora action.", target: "[data-tour='dashboard']" },
+    { key: "paid-fulfilment", title: "Coordinate paid fulfilment", body: "Assign paid work to a Delivery Guy without exposing private cost or margin data.", target: "[data-tour='deliveries']" },
     { key: "delivery-coordination", title: "Coordinate fulfilment", body: "Assign delivery work and follow operational events without replacing customer receiving confirmation.", target: "[data-tour='deliveries']" },
     sharedHelp,
   ],
@@ -68,7 +68,7 @@ const definitions: Record<string, TutorialStepDefinition[]> = {
     sharedHelp,
   ],
   REQUESTER: [
-    { key: "shop", title: "Start in Shop", body: "Find approved products by image, name, category, or search. Product quantities still follow catalog minimums.", target: "[data-tour='shop']", mobileTarget: "[data-mobile-tour='shop']" },
+    { key: "shop", title: "Start in Shop", body: "Find approved products by image, name, category, or search, then choose the quantity your branch needs.", target: "[data-tour='shop']", mobileTarget: "[data-mobile-tour='shop']" },
     { key: "cart", title: "Build one clear request", body: "Choose quantities, branch, needed date, urgency, and specifications before submitting.", target: "[data-tour='cart']" },
     { key: "request-status", title: "Follow the complete timeline", body: "The request page explains its current state, completed events, and the next responsible role.", target: "[data-tour='requests']" },
     { key: "request-actions", title: "Respond to requested changes", body: "Open required actions and delivery or invoice status that your permissions allow.", target: "[data-tour='required-actions']" },
@@ -87,7 +87,7 @@ const definitions: Record<string, TutorialStepDefinition[]> = {
   ],
   TECHNICAL_SUPPORT: [
     { key: "support-health", title: "Begin with diagnostics", body: "Review application health, account state, and safe support checks before taking action.", target: "[data-tour='system-health']" },
-    { key: "support-boundary", title: "Commercial controls are separate", body: "Technical support cannot change company pricing, approve requests, source suppliers, or edit finance records.", target: "[data-tour='support-boundary']" },
+    { key: "support-boundary", title: "Commercial controls are separate", body: "Technical support cannot change company pricing, approve requests, manage deliveries, or edit finance records.", target: "[data-tour='support-boundary']" },
     { key: "support-audit", title: "Elevated actions are visible", body: "Use only approved support actions and provide a reason for the audit record.", target: "[data-tour='support-actions']" },
     sharedHelp,
   ],
@@ -131,11 +131,11 @@ const localizedTutorialCopy: Record<Exclude<SupportedLocale, "en">, Record<strin
     },
     "operations-queue": {
       title: "عالج قائمة الاستثناءات",
-      body: "أعطِ الأولوية لسجلات التوريد والتجهيز والتسليم والعمليات المالية التي تتطلب إجراءً من Axora.",
+      body: "أعطِ الأولوية للطلبات المدفوعة والتسليمات والسجلات المالية التي تتطلب إجراءً من Axora.",
     },
-    sourcing: {
-      title: "نفّذ التوريد مع حماية بيانات الموردين",
-      body: "اطلب عروض الأسعار، وقارن الشروط كاملة، وسجّل مبررات الاختيار. لا يرى عملاء الشركات هويات الموردين الخاصة أو تكلفة الشراء.",
+    "paid-fulfilment": {
+      title: "نسّق تنفيذ الطلبات المدفوعة",
+      body: "عيّن الطلبات المدفوعة لمسؤول التوصيل من دون كشف التكلفة أو الهامش الخاص.",
     },
     "delivery-coordination": {
       title: "نسّق التنفيذ والتسليم",
@@ -305,11 +305,11 @@ const localizedTutorialCopy: Record<Exclude<SupportedLocale, "en">, Record<strin
     },
     "operations-queue": {
       title: "Urus baris gilir pengecualian",
-      body: "Utamakan rekod penyumberan, penyediaan, penghantaran dan kewangan yang memerlukan tindakan Axora.",
+      body: "Utamakan permintaan berbayar, penghantaran dan rekod kewangan yang memerlukan tindakan Axora.",
     },
-    sourcing: {
-      title: "Buat penyumberan tanpa mendedahkan pembekal",
-      body: "Minta sebut harga, bandingkan terma lengkap dan rekod alasan pemilihan. Pengguna syarikat pelanggan tidak melihat identiti pembekal persendirian atau kos belian.",
+    "paid-fulfilment": {
+      title: "Selaras pemenuhan permintaan berbayar",
+      body: "Tugaskan permintaan berbayar kepada Penghantar tanpa mendedahkan kos atau margin persendirian.",
     },
     "delivery-coordination": {
       title: "Selaraskan pemenuhan",

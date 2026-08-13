@@ -175,6 +175,110 @@ export interface CompanyOnboardingItemInput {
   reason: string;
 }
 
+const DEMO_ONBOARDING_COMPANY_ID = "10000000-0000-4000-8000-000000000001";
+
+function demoOnboardingWorkspace(companyId: string, capturedAt: Date) {
+  if (companyId !== DEMO_ONBOARDING_COMPANY_ID) {
+    throw new CompanyOnboardingUnavailableError();
+  }
+  return workspaceSchema.parse({
+    capturedAt,
+    canEdit: false,
+    canApproveExceptions: false,
+    canVerify: false,
+    company: {
+      id: companyId,
+      code: "C-100",
+      name: "YourUni",
+      status: "ONBOARDING",
+      legalName: "YourUni Education Sdn. Bhd.",
+      registrationNumber: "DEMO-REG-100",
+      registrationCountryCode: "MY",
+      taxRegistrationNumber: "",
+      industryCode: "EDUCATION",
+      registeredAddress: "Cyberjaya, Selangor",
+      operatingAddress: "Cyberjaya, Selangor",
+      mainContactName: "Company administrator",
+      mainContactEmail: "admin@youruni.example",
+      mainContactPhone: "+60 00-000 0000",
+      billingContactName: "Company administrator",
+      billingContactEmail: "billing@youruni.example",
+      billingContactPhone: "+60 00-000 0000",
+      billingAddress: "Cyberjaya, Selangor",
+      billingCycle: "Monthly",
+      defaultLocale: "en",
+      timezone: "Asia/Kuala_Lumpur",
+      currentStep: "REVIEW",
+      completedSteps: COMPANY_ONBOARDING_STEPS.filter((step) => step !== "REVIEW"),
+      version: 1,
+      savedAt: capturedAt,
+      verificationStatus: "READY_FOR_REVIEW",
+      activationBlockers: ["ONBOARDING_VERIFICATION"],
+    },
+    industries: [{
+      code: "EDUCATION",
+      nameEn: "Education",
+      nameAr: "التعليم",
+      nameMs: "Pendidikan",
+      allowsCustomLabel: false,
+    }],
+    responsibleUsers: [],
+    items: [
+      {
+        id: "10000000-0000-4000-8000-000000000101",
+        code: "COMPANY_PROFILE",
+        label: "Company profile",
+        description: "Legal identity, contacts, billing and timezone are complete.",
+        required: true,
+        status: "PASSED",
+        responsibleRole: "CLIENT_ACCOUNT_MANAGER",
+        evidenceMetadata: {},
+        completedAt: capturedAt,
+      },
+      {
+        id: "10000000-0000-4000-8000-000000000102",
+        code: "LOGO_THEME",
+        label: "Reviewed logo theme",
+        description: "Accessible portal colours were generated from the reviewed logo.",
+        required: true,
+        status: "PASSED",
+        responsibleRole: "CLIENT_ACCOUNT_MANAGER",
+        evidenceMetadata: {},
+        completedAt: capturedAt,
+      },
+      {
+        id: "10000000-0000-4000-8000-000000000103",
+        code: "INITIAL_CONTROLS",
+        label: "Initial branch, budget and approvals",
+        description: "The company operating scope and spending controls are ready.",
+        required: true,
+        status: "PASSED",
+        responsibleRole: "CLIENT_ACCOUNT_MANAGER",
+        evidenceMetadata: {},
+        completedAt: capturedAt,
+      },
+      {
+        id: "10000000-0000-4000-8000-000000000104",
+        code: "COMPANY_ADMINISTRATOR",
+        label: "Named company administrator",
+        description: "A private single-use account invitation is ready for the administrator.",
+        required: true,
+        status: "PENDING",
+        responsibleRole: "CLIENT_ACCOUNT_MANAGER",
+        evidenceMetadata: {},
+      },
+    ],
+    verificationHistory: [{
+      id: "10000000-0000-4000-8000-000000000105",
+      fromStatus: "IN_PROGRESS",
+      toStatus: "READY_FOR_REVIEW",
+      reason: "Demo onboarding controls completed",
+      changedAt: capturedAt,
+      changedByName: "Client Account Manager",
+    }],
+  });
+}
+
 export class CompanyOnboardingUnavailableError extends Error {
   constructor() {
     super("The requested company onboarding operation is unavailable.");
@@ -199,9 +303,10 @@ export async function loadCompanyOnboardingWorkspace(
   companyId: string,
   capturedAt = new Date(),
 ) {
-  if (isDemoMode() || !Number.isFinite(capturedAt.getTime())) {
+  if (!Number.isFinite(capturedAt.getTime())) {
     throw new CompanyOnboardingUnavailableError();
   }
+  if (isDemoMode()) return demoOnboardingWorkspace(companyId, capturedAt);
   try {
     const result = await query<SnapshotRow>(
       "SELECT public.axora_company_onboarding_workspace($1,$2,$3,$4) AS snapshot",

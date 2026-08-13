@@ -10,7 +10,6 @@ export const REQUEST_FILTER_DIMENSIONS = [
   "requester",
   "approver",
   "deliveryAgent",
-  "supplier",
   "budgetException",
 ] as const;
 
@@ -52,7 +51,6 @@ export interface RequestFilters {
   requesterIds: string[];
   approverIds: string[];
   deliveryAgentIds: string[];
-  supplierIds: string[];
   budgetExceptionStatuses: RequestBudgetExceptionStatus[];
   neededFrom?: string;
   neededTo?: string;
@@ -84,7 +82,6 @@ const UUID_DIMENSIONS = new Set<RequestFilterDimension>([
   "requester",
   "approver",
   "deliveryAgent",
-  "supplier",
 ]);
 
 function valuesFor(raw: RawRequestSearchParams, key: string) {
@@ -159,7 +156,6 @@ export function normalizeRequestFilters(raw: RawRequestSearchParams): RequestFil
     requesterIds: uuidValues(raw, "requester"),
     approverIds: uuidValues(raw, "approver"),
     deliveryAgentIds: uuidValues(raw, "deliveryAgent"),
-    supplierIds: uuidValues(raw, "supplier"),
     budgetExceptionStatuses,
     neededFrom: dateValue(raw, "neededFrom"),
     neededTo: dateValue(raw, "neededTo"),
@@ -196,7 +192,6 @@ export function requestFiltersToSearchParams(
     ["requester", filters.requesterIds],
     ["approver", filters.approverIds],
     ["deliveryAgent", filters.deliveryAgentIds],
-    ["supplier", filters.supplierIds],
     ["budgetException", filters.budgetExceptionStatuses],
   ];
   for (const [key, values] of lists) {
@@ -231,7 +226,6 @@ export function hasActiveRequestFilters(filters: RequestFilters) {
     || filters.requesterIds.length
     || filters.approverIds.length
     || filters.deliveryAgentIds.length
-    || filters.supplierIds.length
     || filters.budgetExceptionStatuses.length
     || filters.neededFrom || filters.neededTo
     || filters.submittedFrom || filters.submittedTo

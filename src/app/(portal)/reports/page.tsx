@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency } from "@/lib/domain";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
+import { canAccess } from "@/lib/permissions";
 import {
   getAuthorizedDashboardData,
   listAuthorizedRequests,
@@ -16,6 +17,9 @@ export default async function ReportsPage() {
   const locale = actor.preferredLocale ?? "en";
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) => operationalMessage(locale, key, values);
   const platformView = isPlatformAnalyticsActor(actor);
+  const canViewRevenue = canAccess(actor, "view_platform_revenue");
+  const canViewCost = canAccess(actor, "view_internal_cost");
+  const canViewProfit = canAccess(actor, "view_platform_profit");
   const companyView = actor.accountKind === "COMPANY";
   const [data, requests, organization] = await Promise.all([
     getAuthorizedDashboardData(actor),
@@ -40,10 +44,10 @@ export default async function ReportsPage() {
     description={m(platformView ? "reports.platformDescription" : "reports.companyDescription")} />
     <section className="metric-grid">
       {data.scope === "platform" ? <>
-        <MetricCard label={m("reports.sales")} value={formatCurrency(data.sales, locale)} note={m("reports.salesNote")} icon={ReceiptText} tone="blue" />
-        <MetricCard label={m("reports.cost")} value={formatCurrency(data.buyingCost, locale)} note={m("reports.costNote")} icon={Banknote} tone="navy" />
-        <MetricCard label={m("reports.margin")} value={`${operationalNumber(locale, data.grossMarginPercent, { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`} note={formatCurrency(data.grossProfit, locale)} icon={Percent} tone="teal" />
-        <MetricCard label={m("reports.fees")} value={formatCurrency(data.deliveryCharges, locale)} note={m("reports.feesNote")} icon={Truck} tone="orange" />
+        {canViewRevenue ? <MetricCard label={m("reports.sales")} value={formatCurrency(data.sales, locale)} note={m("reports.salesNote")} icon={ReceiptText} tone="blue" /> : null}
+        {canViewCost ? <MetricCard label={m("reports.cost")} value={formatCurrency(data.buyingCost, locale)} note={m("reports.costNote")} icon={Banknote} tone="navy" /> : null}
+        {canViewProfit ? <MetricCard label={m("reports.margin")} value={`${operationalNumber(locale, data.grossMarginPercent, { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`} note={formatCurrency(data.grossProfit, locale)} icon={Percent} tone="teal" /> : null}
+        {canViewRevenue ? <MetricCard label={m("reports.fees")} value={formatCurrency(data.deliveryCharges, locale)} note={m("reports.feesNote")} icon={Truck} tone="orange" /> : null}
       </> : <>
         <MetricCard label={m("reports.requested")} value={formatCurrency(requestedSpend, locale)} note={m("reports.requestedNote")} icon={ReceiptText} tone="blue" />
         <MetricCard label={m("reports.approved")} value={formatCurrency(approvedSpend, locale)} note={m("reports.approvedNote")} icon={ClipboardCheck} tone="teal" />

@@ -15,15 +15,14 @@ Role and scope changes must not be implemented by editing `users.role_id`, trust
 
 The database validates account kind and scope before accepting an active assignment:
 
-- Platform Owner, Platform Operations, and Technical Support use platform scope on platform accounts.
+- Platform Owner, Human Resources Management, and Technical Support use platform scope on platform accounts.
 - Client Account Manager uses one company scope on a platform account.
 - Company Administrator and Company Approver use company scope.
 - Branch Administrator and Branch Approver use branch scope.
 - Department Administrator uses department scope.
 - Requester uses branch or department scope.
 - Finance Reviewer, Auditor, and Receiving User use company, branch, or department scope.
-- Supplier User uses supplier scope.
-- Delivery Team Supervisor, Delivery Agent, and Delivery Driver use delivery scope.
+- Delivery Guy uses delivery scope.
 
 Retained aliases remain valid only for existing invitation/bootstrap compatibility. New audited lifecycle commands accept canonical role keys.
 
@@ -34,7 +33,7 @@ The database combines two independent checks:
 1. the actor must possess live `user.permission.manage` authority in the requested scope; and
 2. the actor's canonical role must be allowed to manage the requested target role and scope.
 
-Platform Owners may manage all canonical account-role contracts. Company Administrators manage company identities inside their company. Branch and Department Administrators can manage only subordinate scoped identities when an explicit permission grant also gives them `user.permission.manage`. Delivery Team Supervisors can manage delivery agents only when that permission is explicitly granted.
+Platform Owners may manage all canonical account-role contracts. Human Resources Management assigns leads and customer companies to Client Account Managers. Company Administrators manage company identities inside their company. Branch and Department Administrators can manage only subordinate scoped identities when an explicit permission grant also gives them `user.permission.manage`.
 
 The two-check model allows controlled customization without letting a permission override erase the hierarchy boundary.
 
@@ -44,10 +43,9 @@ The target must be an active, fully established account for audited lifecycle co
 
 - cross-account-kind role changes;
 - cross-company role assignment;
-- inactive companies, branches, departments, or suppliers;
+- inactive companies, branches, or departments;
 - branch and department identifiers from another company;
-- supplier assignments without active supplier membership;
-- delivery agent roles without an active delivery profile;
+- Delivery Guy assignments without an active delivery profile;
 - self-assignment and self-revocation;
 - a non-owner role assignment while an active Platform Owner identity is still selected.
 

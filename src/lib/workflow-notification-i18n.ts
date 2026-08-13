@@ -274,7 +274,7 @@ export function renderWorkflowNotification(
     case "request_approved":
       if (locale === "ar") return { title: "تم اعتماد طلب الشراء", body: "اعتمدت الشركة طلب الشراء، ويمكن لأكسورا بدء التوريد." };
       if (locale === "ms") return { title: "Permintaan pembelian diluluskan", body: "Syarikat meluluskan permintaan pembelian. Axora boleh memulakan perolehan sumber." };
-      return { title: "Purchase request approved", body: "The company approved the purchase request. Axora can begin sourcing." };
+      return { title: "Purchase request approved", body: "The company approved the purchase request. It is ready for payment." };
     case "request_rejected":
       if (locale === "ar") return { title: "تم رفض طلب الشراء", body: "رفضت الشركة طلب الشراء. افتحه لمراجعة السبب المسجل." };
       if (locale === "ms") return { title: "Permintaan pembelian ditolak", body: "Syarikat menolak permintaan pembelian. Buka rekod untuk menyemak sebabnya." };
@@ -306,7 +306,7 @@ export function renderWorkflowNotification(
     case "supplier_selected":
       if (locale === "ar") return { title: "تم تأكيد خيار التوريد", body: "اختارت أكسورا خيار توريد معتمدًا لطلبك." };
       if (locale === "ms") return { title: "Pilihan pembekal disahkan", body: "Axora memilih pilihan perolehan yang diluluskan untuk permintaan anda." };
-      return { title: "Supplier option confirmed", body: "Axora selected an approved sourcing option for your request." };
+      return { title: "Historical procurement update", body: "A legacy procurement event was recorded for this request." };
     case "supplier_order_selected":
       if (locale === "ar") return { title: "تم اختيار عرضكم", body: "اختارت أكسورا عرضكم. افتح مساحة عمل المورد لتأكيد الطلب ورفع المستندات المساندة." };
       if (locale === "ms") return { title: "Sebut harga anda dipilih", body: "Axora memilih sebut harga anda. Buka ruang kerja pembekal untuk mengakui pesanan dan memuat naik dokumen sokongan." };

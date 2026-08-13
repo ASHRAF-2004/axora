@@ -55,15 +55,16 @@ describe("locale selection and public dictionaries", () => {
 
   it("localizes the authenticated shell, principal roles, and navigation", () => {
     const requiredRoles = [
-      "PLATFORM_OWNER", "PLATFORM_OPERATIONS", "COMPANY_ADMIN", "BRANCH_ADMIN",
+      "PLATFORM_OWNER", "HUMAN_RESOURCES_MANAGEMENT", "PLATFORM_OPERATIONS",
+      "CLIENT_ACCOUNT_MANAGER", "COMPANY_ADMIN", "BRANCH_ADMIN",
       "BRANCH_APPROVER", "COMPANY_APPROVER", "REQUESTER", "FINANCE_REVIEWER",
-      "AUDITOR", "TECHNICAL_SUPPORT", "DELIVERY_DRIVER",
+      "AUDITOR", "TECHNICAL_SUPPORT", "DELIVERY_GUY",
       "RECEIVING_USER",
     ];
     const requiredRoutes = [
-      "/dashboard", "/products", "/requests", "/approvals", "/sourcing",
-      "/deliveries", "/finance", "/companies", "/branches", "/suppliers",
-      "/users", "/documents", "/reports", "/audit", "/support", "/settings", "/help",
+      "/dashboard", "/products", "/requests", "/approvals",
+      "/deliveries", "/finance", "/companies", "/branches",
+      "/users", "/reports", "/audit", "/support", "/settings", "/help",
       "/driver", "/receiving",
     ];
     for (const locale of SUPPORTED_LOCALES) {

@@ -222,8 +222,9 @@ function CompanyActions({
 }) {
   const copy = companyLifecycleMessages(locale);
   const actions = new Set(company.availableActions);
-  const assignmentActions = (["ASSIGN", "REASSIGN", "ADD_BACKUP", "REPLACE_BACKUP"] as const)
-    .filter((action) => actions.has(action));
+  const assignmentActions = owner
+    ? []
+    : (["ASSIGN", "REASSIGN"] as const).filter((action) => actions.has(action));
   const transitionActions = (Object.keys(transitionTargets) as CompanyLifecycleAction[])
     .filter((action) => actions.has(action));
 

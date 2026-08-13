@@ -77,6 +77,5 @@ export async function decideRequestActualAction(formData: FormData) {
   }
   revalidatePath("/approvals");
   revalidatePath("/budgets");
-  revalidatePath("/sourcing");
   redirect("/approvals?success=actual-decision");
 }

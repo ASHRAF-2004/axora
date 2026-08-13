@@ -113,7 +113,7 @@ Only these fields are persisted:
 - update timestamp.
 
 Stored values are bounded and validated before restoration. Product selections
-remain in the separately scoped request cart. Supplier selection, buying cost,
+remain in the separately scoped request cart. Internal cost,
 payment data, authentication material, and private authorization facts are not
 stored.
 

@@ -197,20 +197,6 @@ export const FOUNDATION_PERMISSION_CATALOG = [
     "highRisk": true
   },
   {
-    "code": "supplier.manage",
-    "group": "Sourcing",
-    "label": "Manage suppliers",
-    "description": "Manage supplier records and approved contacts.",
-    "highRisk": true
-  },
-  {
-    "code": "sourcing.manage",
-    "group": "Sourcing",
-    "label": "Manage sourcing",
-    "description": "Run quotation, supplier selection, and sourcing operations.",
-    "highRisk": true
-  },
-  {
     "code": "cart.manage",
     "group": "Requests",
     "label": "Manage cart",
@@ -477,13 +463,6 @@ export const FOUNDATION_PERMISSION_CATALOG = [
     "highRisk": true
   },
   {
-    "code": "finance.match.review",
-    "group": "Finance",
-    "label": "Review three-way matches",
-    "description": "Review request, receipt, and invoice matching exceptions.",
-    "highRisk": true
-  },
-  {
     "code": "document.view",
     "group": "Documents",
     "label": "View documents",
@@ -510,13 +489,6 @@ export const FOUNDATION_PERMISSION_CATALOG = [
     "label": "Download documents",
     "description": "Download a private document after current authorization is rechecked.",
     "highRisk": false
-  },
-  {
-    "code": "document.dispatch.supplier",
-    "group": "Documents",
-    "label": "Dispatch supplier documents",
-    "description": "Dispatch an approved supplier-facing document.",
-    "highRisk": true
   },
   {
     "code": "document.dispatch.company",
@@ -637,12 +609,18 @@ export const ADDITIVE_PERMISSION_CATALOG = [
 ] as const;
 
 const GRANULAR_ROLE_DEFAULT_PERMISSIONS: Readonly<Partial<Record<KnownUserRole, readonly string[]>>> = {
+  HUMAN_RESOURCES_MANAGEMENT: [
+    "company.view.all", "company.lead.view", "company.lead.assign",
+    "company.lead.reassign",
+  ],
+  DELIVERY_GUY: [],
   PLATFORM_OPERATIONS: [
     "product.manage", "product.archive", "category.manage",
     "commercial.cost.view", "commercial.pricing.manage",
   ],
   CLIENT_ACCOUNT_MANAGER: [
     "company.create", "company.view.assigned",
+    "company.lead.view", "company.lead.create", "company.lead.assign",
     "company_user.view", "company_user.create", "company_user.invite",
     "company_user.edit", "company_user.deactivate",
   ],
@@ -771,14 +749,25 @@ export type AuthorizationDecision =
     };
 
 export const ROLE_DEFAULT_PERMISSIONS = {
+  "HUMAN_RESOURCES_MANAGEMENT": [
+    "dashboard.view",
+    "platform.view",
+    "company.view.all",
+    "company.lead.view",
+    "company.lead.assign",
+    "company.lead.reassign"
+  ],
+  "DELIVERY_GUY": [
+    "dashboard.view",
+    "delivery.portal.view",
+    "delivery.assignment.update"
+  ],
   "PLATFORM_OWNER": [
     "dashboard.view",
     "platform.view",
     "company.view",
     "company.lead.view",
     "company.lead.create",
-    "company.lead.assign",
-    "company.lead.reassign",
     "company.edit",
     "company.activate",
     "company.suspend",
@@ -798,8 +787,6 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "organization.delivery_location.manage",
     "product.view",
     "catalog.manage",
-    "supplier.manage",
-    "sourcing.manage",
     "request.view",
     "request.approval_queue.view",
     "budget.view",
@@ -815,12 +802,10 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "receiving.view",
     "finance.invoice.view",
     "finance.manage",
-    "finance.match.review",
     "document.view",
     "document.manage",
     "document.generate",
     "document.download",
-    "document.dispatch.supplier",
     "document.dispatch.company",
     "report.view",
     "analytics.platform.view",
@@ -836,8 +821,6 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "platform.view",
     "product.view",
     "catalog.manage",
-    "supplier.manage",
-    "sourcing.manage",
     "request.view",
     "delivery.view",
     "delivery.manage",
@@ -847,7 +830,6 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "document.manage",
     "document.generate",
     "document.download",
-    "document.dispatch.supplier",
     "report.view",
     "email.operations.view",
     "email.operations.manage"
@@ -858,7 +840,6 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "company.lead.view",
     "company.lead.create",
     "company.lead.assign",
-    "company.lead.reassign",
     "company.edit",
     "company.activate",
     "company.suspend",
@@ -911,6 +892,8 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "budget.reduce",
     "budget.refresh",
     "delivery.view",
+    "receiving.view",
+    "receiving.confirm",
     "finance.invoice.view",
     "document.view",
     "document.manage",
@@ -945,6 +928,8 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "request.approve.other",
     "budget.view",
     "delivery.view",
+    "receiving.view",
+    "receiving.confirm",
     "finance.invoice.view",
     "document.view",
     "document.manage",
@@ -1036,7 +1021,6 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "delivery.view",
     "finance.invoice.view",
     "finance.manage",
-    "finance.match.review",
     "document.view",
     "document.download",
     "report.view",
@@ -1191,11 +1175,12 @@ function scopeIsStructurallyValid(scope: AuthorizationScope) {
 function roleScopeContract(role: AuthorizationRole) {
   switch (role) {
     case "PLATFORM_OWNER":
+    case "HUMAN_RESOURCES_MANAGEMENT":
     case "PLATFORM_OPERATIONS":
     case "TECHNICAL_SUPPORT":
       return { accountKind: "PLATFORM" as const, scopes: ["PLATFORM"] as const };
     case "CLIENT_ACCOUNT_MANAGER":
-      return { accountKind: "PLATFORM" as const, scopes: ["COMPANY"] as const };
+      return { accountKind: "PLATFORM" as const, scopes: ["PLATFORM", "COMPANY"] as const };
     case "COMPANY_ADMIN":
     case "COMPANY_APPROVER":
       return { accountKind: "COMPANY" as const, scopes: ["COMPANY"] as const };
@@ -1219,6 +1204,7 @@ function roleScopeContract(role: AuthorizationRole) {
     case "DELIVERY_TEAM_SUPERVISOR":
     case "DELIVERY_AGENT":
     case "DELIVERY_DRIVER":
+    case "DELIVERY_GUY":
       return { accountKind: "DELIVERY" as const, scopes: ["DELIVERY"] as const };
     default:
       return undefined;

@@ -5,7 +5,7 @@ const driver = {
   id: "44444444-4444-4444-8444-444444444444",
   email: "driver-recovery.fixture@axora.invalid",
   name: "Driver recovery fixture",
-  role: "DELIVERY_DRIVER",
+  role: "DELIVERY_GUY",
   accountKind: "DELIVERY",
   scopeType: "DELIVERY",
 } as const;

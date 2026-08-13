@@ -46,9 +46,14 @@ describe("P0-01 authorization policy foundation migration", () => {
         FROM permissions
         ORDER BY permission_code
       `);
-      expect(permissions.rows.map((row) => row.code)).toEqual(
-        FOUNDATION_PERMISSION_CATALOG.map((entry) => entry.code).sort(),
-      );
+      const installedCodes = permissions.rows.map((row) => row.code);
+      expect(installedCodes).toEqual(expect.arrayContaining(
+        FOUNDATION_PERMISSION_CATALOG.map((entry) => entry.code),
+      ));
+      expect(installedCodes).toEqual(expect.arrayContaining([
+        "document.dispatch.supplier", "finance.match.review",
+        "sourcing.manage", "supplier.manage",
+      ]));
 
       const defaults = await db.query<{
         roleKey: string;

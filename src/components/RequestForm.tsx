@@ -32,8 +32,6 @@ import {
 import Link from "next/link";
 import {
   productPriceChanged,
-  productQuantityRule,
-  quantityMatchesProductRule,
 } from "@/lib/procurement-rules";
 import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
 
@@ -327,13 +325,6 @@ export function RequestForm({
             size: product.size,
             unit: product.unit,
             defaultSellPrice: product.defaultSellPrice,
-            minimumOrderQuantity: product.minimumOrderQuantity,
-            maximumOrderQuantity: product.maximumOrderQuantity,
-            orderIncrement: product.orderIncrement,
-            packSize: product.packSize,
-            packUnit: product.packUnit,
-            quantityRuleVersion: product.quantityRuleVersion,
-            quantityRuleEffectiveFrom: product.quantityRuleEffectiveFrom,
             priceRuleVersion: product.priceRuleVersion,
             priceEffectiveFrom: product.priceEffectiveFrom,
             priceChangedAt: product.priceChangedAt,
@@ -475,14 +466,15 @@ export function RequestForm({
 
       if (!product) return true;
 
-      return !quantityMatchesProductRule(line.quantity, product);
+      return !Number.isSafeInteger(line.quantity) || line.quantity < 1;
     });
 
     if (invalidQuantity) {
-      const product = productById.get(invalidQuantity.productId);
-      nextErrors.quantity = product
-        ? ruleCopy.quantityError(productQuantityRule(product))
-        : ruleCopy.quantityError({ minimum: 1, increment: 1, packSize: 1, packUnit: "unit", version: 0 });
+      nextErrors.quantity = locale === "ar"
+        ? "استخدم كمية صحيحة لا تقل عن 1."
+        : locale === "ms"
+          ? "Gunakan kuantiti nombor bulat sekurang-kurangnya 1."
+          : "Use a whole quantity of at least 1.";
     }
 
     if (priceChanges.length && !pricesAcknowledged) {
@@ -829,8 +821,6 @@ export function RequestForm({
 
                 if (!product) return null;
 
-                const quantityRule = productQuantityRule(product);
-
                 return (
                   <article
                     key={line.productId}
@@ -858,9 +848,8 @@ export function RequestForm({
                       <input
                         name="quantity"
                         type="number"
-                        min={quantityRule.minimum}
-                        max={quantityRule.maximum}
-                        step={quantityRule.increment}
+                        min={1}
+                        step={1}
                         value={line.quantity}
                         className={
                           errors.quantity
@@ -874,9 +863,6 @@ export function RequestForm({
                           })
                         }
                       />
-                      <small>
-                        {ruleCopy.quantitySummary(quantityRule)}
-                      </small>
                     </label>
 
                     <label className="request-cart-specification">

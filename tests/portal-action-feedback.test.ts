@@ -29,13 +29,9 @@ vi.mock("@/lib/scoped-operations", () => ({
   recordScopedPayment: vi.fn(),
   selectScopedQuotation: vi.fn(),
 }));
-vi.mock("@/lib/customer-matching-isolation", () => ({
-  evaluateAuthorizedCustomerMatch: vi.fn(),
-  overrideAuthorizedCustomerMatch: vi.fn(),
-}));
 
 import { addProductImagesAction, createCompanyAction, regenerateCompanyBrandAction, replaceProductImageAction } from "@/app/(portal)/masters/actions";
-import { recordApprovalAction, uploadAttachmentAction } from "@/app/(portal)/operations/actions";
+import { recordApprovalAction } from "@/app/(portal)/operations/actions";
 import { updateStatusAction } from "@/app/(portal)/requests/actions";
 import { ACTION_FEEDBACK_CODES, ACTION_FEEDBACK_MESSAGES, publicApprovalErrorCode } from "@/lib/action-feedback-i18n";
 import { CORE_PORTAL_MESSAGES } from "@/lib/core-portal-i18n";
@@ -65,11 +61,6 @@ describe("localized portal action feedback", () => {
     await expect(addProductImagesAction("product-1", new FormData())).rejects.toThrow("REDIRECT:/products/product-1/edit?notice=product-image-required");
     await expect(replaceProductImageAction("product-1", new FormData())).rejects.toThrow("REDIRECT:/products/product-1/edit?notice=product-image-required");
 
-    const documentData = new FormData();
-    documentData.set("entityType", "request");
-    documentData.set("recordId", requestId);
-    await expect(uploadAttachmentAction(documentData)).rejects.toThrow("REDIRECT:/documents?notice=document-file-required");
-
     const statusData = new FormData();
     statusData.set("status", "NOT_A_CANONICAL_STATUS");
     await expect(updateStatusAction("request-1", statusData)).rejects.toThrow("REDIRECT:/requests/request-1?notice=request-status-invalid");
@@ -77,7 +68,7 @@ describe("localized portal action feedback", () => {
   });
 
   it("renders redirect notices in EN, AR and MS", () => {
-    for (const code of ["company-logo-required", "product-image-required", "document-file-required", "request-status-invalid"]) {
+    for (const code of ["company-logo-required", "product-image-required", "request-status-invalid"]) {
       expect(CORE_PORTAL_MESSAGES.en.notices[code]?.message).toBeTruthy();
       expect(CORE_PORTAL_MESSAGES.ar.notices[code]?.message).toBeTruthy();
       expect(CORE_PORTAL_MESSAGES.ms.notices[code]?.message).toBeTruthy();
