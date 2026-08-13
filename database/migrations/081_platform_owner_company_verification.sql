@@ -13,6 +13,14 @@ ALTER TABLE public.company_verification_history
     )
   );
 
+-- Drop the legacy live-row constraint before translating persisted values.
+-- PostgreSQL validates every UPDATE against the currently installed check,
+-- so changing CHANGES_REQUIRED to CHANGES_REQUESTED first would reject a
+-- legitimate populated upgrade even though the replacement constraint is
+-- installed later in this same transaction.
+ALTER TABLE public.companies
+  DROP CONSTRAINT IF EXISTS companies_verification_status_check;
+
 INSERT INTO public.company_verification_history(
   company_id,from_status,to_status,reason,evidence,changed_by,changed_at
 )
@@ -48,7 +56,6 @@ WHERE company.verification_status IN (
 
 ALTER TABLE public.companies
   ALTER COLUMN verification_status SET DEFAULT 'DRAFT',
-  DROP CONSTRAINT IF EXISTS companies_verification_status_check,
   DROP CONSTRAINT IF EXISTS companies_active_requires_verification,
   DROP CONSTRAINT IF EXISTS companies_portal_requires_verification;
 ALTER TABLE public.companies
