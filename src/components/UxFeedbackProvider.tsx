@@ -7,7 +7,7 @@ import {
   LoaderCircle,
   X,
 } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -96,8 +96,6 @@ function getActionLabel(form: HTMLFormElement, submitter: HTMLElement | null) {
 
 export function UxFeedbackProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const routeKey = `${pathname}?${searchParams.toString()}`;
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [confirmation, setConfirmation] =
     useState<PendingConfirmation | null>(null);
@@ -179,8 +177,10 @@ export function UxFeedbackProvider({ children }: { children: ReactNode }) {
     clearTimer();
     clearFormPending();
     clearNavigationPending();
-    queueMicrotask(() => setFeedback(null));
-  }, [routeKey, clearTimer, clearFormPending, clearNavigationPending]);
+    queueMicrotask(() => setFeedback(
+      (current) => current?.tone === "loading" ? null : current,
+    ));
+  }, [pathname, clearTimer, clearFormPending, clearNavigationPending]);
 
   useEffect(() => {
     if (!confirmation) return;
