@@ -39,6 +39,11 @@ function profileStatePath(
 
 export async function saveProfileAction(formData: FormData) {
   const actor = await requireAccountLifecycleSession();
+  const onboarding = formData.get("onboarding") === "true";
+  const assignedTeam = String(formData.get("assignedTeam") ?? "");
+  if (onboarding && assignedTeam !== (actor.roleAssignmentId ?? actor.role)) {
+    redirect(profileStatePath(formData, { error: "invalid-profile" }));
+  }
   if (!checked(formData, "policyAccepted")) {
     redirect(profileStatePath(formData, { error: "invalid-profile" }));
   }

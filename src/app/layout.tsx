@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { InteractionMagic } from "@/components/InteractionMagic";
 import { UxFeedbackProvider } from "@/components/UxFeedbackProvider";
 import { isSupportedLocale, LOCALE_NAMES } from "@/lib/i18n";
 import { requestLocaleDecision } from "@/lib/locale-server";
 import { headers } from "next/headers";
 import "./globals.css";
+import "./interaction-magic.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://axora.management"),
@@ -33,7 +35,10 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={LOCALE_NAMES[locale].dir}>
       <body>
-        <UxFeedbackProvider>{children}</UxFeedbackProvider>
+        <UxFeedbackProvider>
+          <InteractionMagic />
+          {children}
+        </UxFeedbackProvider>
       </body>
     </html>
   );
