@@ -103,7 +103,7 @@ describe("localized role portals", () => {
       expect(copy.receiving.confirmReceipt).toBeTruthy();
       expect(Object.keys(copy.driver.eventLabels)).toHaveLength(10);
       const deliveryCopy = deliveryWorkflowMessages(locale);
-      for (const key of ["accept", "reject", "startShopping", "outForDelivery", "arrived", "partial", "delivered", "completed", "reportIssue", "uploadProof"] as const) {
+      for (const key of ["accept", "reject", "startBuying", "itemsAcquired", "outForDelivery", "arrived", "partial", "delivered", "completed", "reportIssue", "uploadProof"] as const) {
         expect(deliveryCopy[key]).toBeTruthy();
       }
     }

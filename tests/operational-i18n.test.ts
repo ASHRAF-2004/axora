@@ -12,14 +12,14 @@ import {
 
 describe("operational portal localization", () => {
   it("keeps Arabic and Malay complete against the English key catalog", () => {
-    expect(operationalDictionaryKeys().length).toBeGreaterThan(250);
+    expect(operationalDictionaryKeys().length).toBeGreaterThan(150);
     expect(operationalMissingKeys("ar")).toEqual([]);
     expect(operationalMissingKeys("ms")).toEqual([]);
   });
 
   it("localizes representative operational screens and interpolates values", () => {
     expect(operationalMessage("ar", "companies.title")).toBe("الشركات العميلة");
-    expect(operationalMessage("ms", "suppliers.title")).toBe("Pembekal");
+    expect(operationalMessage("ms", "finance.platformTitle")).toBe("Invois dan bayaran");
     expect(operationalMessage("ar", "notifications.unread", { count: 3 })).toContain("3");
     expect(operationalMessage("ms", "settings.updated")).toBe("Tetapan harga disimpan.");
   });

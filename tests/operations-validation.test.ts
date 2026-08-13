@@ -5,12 +5,10 @@ import { INTERNAL_PAYMENT_STRATEGY, STANDARD_BILLING_TERMS } from "@/lib/types";
 import { companySchema, supplierSchema } from "@/lib/validation";
 import {
   createInvoice,
-  createQuotation,
   recordApproval,
   recordDelivery,
   recordPayment,
   saveAttachment,
-  selectQuotation,
 } from "@/lib/operations";
 import { createProduct, createRequest, getRequest, listRequests, setMasterActive } from "@/lib/repository";
 
@@ -44,12 +42,6 @@ function getSupplierPaymentInvoice() {
 }
 
 describe("operational validation helpers", () => {
-  it("requires a reason before a quotation can be selected", async () => {
-    await expect(selectQuotation("missing-quotation", "", actor)).rejects.toThrow(
-      "Explain why this quotation was selected.",
-    );
-  });
-
   it("requires a reason when an approval is rejected", async () => {
     await expect(recordApproval({
       requestId: getDemoStore().requests[0].id,
@@ -211,78 +203,6 @@ describe("operational validation helpers", () => {
     }, actor)).rejects.toThrow("Customer invoices are finalized by checkout.");
   });
 
-  it("rejects a supplier invoice for a vendor not sourced on the request", async () => {
-    const store = getDemoStore();
-    const request = store.requests.find((item) => !item.invoiceNumber && item.lines.every((line) => line.supplierId));
-    expect(request).toBeDefined();
-    const sourcedIds = new Set(request!.lines.flatMap((line) => line.supplierId ? [line.supplierId] : []));
-    const wrongSupplier = store.suppliers.find((supplier) => !sourcedIds.has(supplier.id));
-    expect(wrongSupplier).toBeDefined();
-    const originalStatus = request!.status;
-    const originalApproval = request!.approvalStatus;
-    const originalReceived = request!.lines.map((line) => line.quantityReceived);
-    request!.status = "Delivered";
-    request!.approvalStatus = "Approved";
-    request!.lines.forEach((line) => { line.quantityReceived = line.quantity; });
-    try {
-      await expect(createInvoice({
-        direction: "SUPPLIER",
-        requestId: request!.id,
-        supplierId: wrongSupplier!.id,
-        invoiceNumber: "SINV-WRONG-SUPPLIER",
-        invoiceDate: "2026-07-22",
-        amount: 1,
-        status: "Issued",
-      }, actor)).rejects.toThrow("selected on this request");
-    } finally {
-      request!.status = originalStatus;
-      request!.approvalStatus = originalApproval;
-      request!.lines.forEach((line, index) => { line.quantityReceived = originalReceived[index]; });
-    }
-  });
-
-  it("rejects invalid quotation dates, expired offers, and excessive supplier MOQ", async () => {
-    const store = getDemoStore();
-    const ops = getDemoOperations();
-    const request = store.requests.find((item) => item.status === "Waiting for Quotation" && item.approvalStatus === "Approved");
-    expect(request).toBeDefined();
-    await expect(createQuotation({
-      requestLineId: request!.lines[0].id,
-      supplierId: store.suppliers[0].id,
-      quotationReference: "Q-DATE",
-      quotationDate: "2026-07-22",
-      validUntil: "2026-07-21",
-      unitPrice: 1,
-      deliveryCharge: 0,
-    }, actor)).rejects.toThrow("cannot end before");
-
-    const quotation = {
-      id: "quote-expired-test",
-      requestLineId: request!.lines[0].id,
-      requestLineCode: request!.lines[0].code,
-      orderCode: request!.orderCode,
-      productName: request!.lines[0].productName,
-      supplierId: store.suppliers[0].id,
-      supplierName: store.suppliers[0].name,
-      quotationReference: "Q-EXPIRED",
-      quotationDate: "2026-01-01",
-      validUntil: "2026-01-02",
-      unitPrice: 1,
-      deliveryCharge: 0,
-      status: "Received",
-      selected: false,
-    };
-    ops.quotations.push(quotation);
-    try {
-      await expect(selectQuotation(quotation.id, "Lowest valid offer", actor)).rejects.toThrow("expired");
-      quotation.validUntil = "2099-01-01";
-      Object.assign(quotation, { minimumOrderQuantity: request!.lines[0].quantity + 1 });
-      await expect(selectQuotation(quotation.id, "Lowest valid offer", actor)).rejects.toThrow("minimum order quantity");
-    } finally {
-      ops.quotations.splice(ops.quotations.indexOf(quotation), 1);
-    }
-  });
-
   it("rejects new duplicate products and lets owners retire a legacy review row", async () => {
     const store = getDemoStore();
     const existing = store.products[0];
@@ -298,9 +218,7 @@ describe("operational validation helpers", () => {
       description: existing.description,
       defaultBuyPrice: existing.defaultBuyPrice,
       defaultSellPrice: existing.defaultSellPrice,
-      minimumOrderQuantity: existing.minimumOrderQuantity,
       deliverySlaDays: existing.deliverySlaDays,
-      preferredSupplierId: existing.preferredSupplierId,
     }, actor)).rejects.toThrow("already exists");
     expect(store.products).toHaveLength(count);
 
@@ -312,21 +230,11 @@ describe("operational validation helpers", () => {
     review!.duplicateWarning = true;
   });
 
-  it("keeps Axora sourcing, delivery, invoice, and payment mutations out of company roles", async () => {
+  it("keeps delivery, invoice, and payment mutations out of company roles", async () => {
     const request = getDemoStore().requests[0];
     const line = request.lines[0];
     const invoice = getDemoOperations().invoices[0];
 
-    await expect(createQuotation({
-      requestLineId: line.id,
-      supplierId: "missing-supplier",
-      quotationReference: "Q-BLOCKED",
-      quotationDate: "2026-07-22",
-      unitPrice: 1,
-      deliveryCharge: 0,
-    }, companyActor)).rejects.toThrow("Only authorized Axora operations users can manage supplier quotations.");
-    await expect(selectQuotation("missing-quotation", "Best offer", companyActor))
-      .rejects.toThrow("Only authorized Axora operations users can select supplier quotations.");
     await expect(recordDelivery({
       requestLineId: line.id,
       status: "Scheduled",
@@ -348,46 +256,9 @@ describe("operational validation helpers", () => {
     }, companyActor)).rejects.toThrow("Only authorized Axora finance users can record payments.");
   });
 
-  it("blocks quotation work until the company approval exists", async () => {
+  it("accepts single-unit quantities and enforces one line per product on the server", async () => {
     const store = getDemoStore();
-    const ops = getDemoOperations();
-    const quotation = ops.quotations[0];
-    const request = store.requests.find((item) =>
-      item.lines.some((line) => line.id === quotation?.requestLineId),
-    ) ?? store.requests.find((item) => item.status === "Waiting for Quotation");
-    expect(request).toBeDefined();
-
-    const originalStatus = request!.status;
-    const originalApproval = request!.approvalStatus;
-    request!.status = "Waiting for Quotation";
-    request!.approvalStatus = "Pending";
-    try {
-      const quotationCount = ops.quotations.length;
-      await expect(createQuotation({
-        requestLineId: request!.lines[0].id,
-        supplierId: store.suppliers[0].id,
-        quotationReference: "Q-PENDING",
-        quotationDate: "2026-07-22",
-        unitPrice: 1,
-        deliveryCharge: 0,
-      }, actor)).rejects.toThrow("The company must approve this request");
-      expect(ops.quotations).toHaveLength(quotationCount);
-
-      if (quotation) {
-        const originalSelected = quotation.selected;
-        await expect(selectQuotation(quotation.id, "Attempted early selection", actor))
-          .rejects.toThrow("The company must approve this request");
-        expect(quotation.selected).toBe(originalSelected);
-      }
-    } finally {
-      request!.status = originalStatus;
-      request!.approvalStatus = originalApproval;
-    }
-  });
-
-  it("enforces catalog minimum quantity and one line per product on the server", async () => {
-    const store = getDemoStore();
-    const product = store.products.find((item) => item.status === "Active" && item.minimumOrderQuantity > 1);
+    const product = store.products.find((item) => item.status === "Active");
     const branch = store.branches.find((item) => item.companyId === requesterActor.companyId);
     expect(product).toBeDefined();
     expect(branch).toBeDefined();
@@ -402,14 +273,9 @@ describe("operational validation helpers", () => {
     };
     await expect(createRequest({
       ...baseRequest,
-      lines: [{ productId: product!.id, quantity: product!.minimumOrderQuantity - 1 }],
-    }, requesterActor)).rejects.toThrow("below the minimum order quantity");
-
-    await expect(createRequest({
-      ...baseRequest,
       lines: [
-        { productId: product!.id, quantity: product!.minimumOrderQuantity },
-        { productId: product!.id, quantity: product!.minimumOrderQuantity },
+        { productId: product!.id, quantity: 1 },
+        { productId: product!.id, quantity: 1 },
       ],
     }, requesterActor)).rejects.toThrow("Add each catalog product only once");
   });
@@ -441,7 +307,7 @@ describe("operational validation helpers", () => {
       department: "Administration",
       neededByDate: "2026-08-15",
       urgency: "Normal",
-      lines: [{ productId: product.id, quantity: product.minimumOrderQuantity }],
+      lines: [{ productId: product.id, quantity: 1 }],
     }, requester);
     try {
       expect((await listRequests(requester)).some((request) => request.id === requestId)).toBe(true);

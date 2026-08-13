@@ -29,27 +29,20 @@ describe("request resource isolation integration", () => {
     }
   });
 
-  it("uses predicate-first approvals, sourcing, finance, delivery, and document registers", async () => {
-    const [approvals, sourcing, finance, delivery, documents,
-      operationRuntime, deliveryRuntime] = await Promise.all([
+  it("uses predicate-first approvals, finance, and delivery registers", async () => {
+    const [approvals, finance, delivery, deliveryRuntime] = await Promise.all([
         source("src/app/(portal)/approvals/page.tsx"),
-        source("src/app/(portal)/sourcing/page.tsx"),
         source("src/app/(portal)/finance/page.tsx"),
         source("src/app/api/deliveries/workspace/route.ts"),
-        source("src/app/(portal)/documents/page.tsx"),
-        source("src/lib/operational-isolation.ts"),
         source("src/lib/delivery-execution.ts"),
       ]);
 
     expect(approvals).toContain("getApprovalWorkspace(actor)");
-    expect(sourcing).toContain("loadAuthorizedSourcingRegisters(actor)");
     expect(finance).toContain("loadAuthorizedFinanceRegisters(actor)");
     expect(delivery).toContain("getDeliverySupervisorWorkspace(actor)");
     expect(delivery).toContain('canAccess(actor, "manage_deliveries")');
     expect(deliveryRuntime).toContain("axora_delivery_supervisor_workspace");
-    expect(documents).toContain("loadAuthorizedDocumentRegisters(actor)");
-    expect(operationRuntime).toContain("axora_operation_request_access_rows");
-    for (const text of [approvals, sourcing, finance, delivery, documents]) {
+    for (const text of [approvals, finance, delivery]) {
       expect(text).not.toMatch(/\blistRequests\s*\(/);
     }
   });

@@ -15,27 +15,24 @@ interface NavigationDefinition extends PortalNavigationItem {
 
 export const PRIMARY_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/dashboard", label: "Dashboard", permission: "view_dashboard" },
-  { href: "/driver", label: "Driver", permission: "view_delivery_portal" },
+  { href: "/driver", label: "Delivery Guy", permission: "view_delivery_portal" },
   { href: "/receiving", label: "Receiving", permission: "view_receiving" },
   { href: "/products", label: "Shop", permission: "view_catalog" },
   { href: "/requests", label: "Requests", permission: "view_requests" },
   { href: "/approvals", label: "Approvals", permission: "view_approvals" },
   { href: "/budgets", label: "Budgets", permission: "view_budgets" },
-  { href: "/sourcing", label: "Sourcing", permission: "manage_sourcing" },
   { href: "/deliveries", label: "Deliveries", permission: "view_deliveries" },
   { href: "/finance", label: "Invoices", permission: "view_invoices" },
 ];
 
 export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
-  { href: "/driver", label: "Driver assignments", description: "Offline-safe status and delivery evidence", permission: "view_delivery_portal", group: "workspace" },
+  { href: "/driver", label: "Delivery Guy assignments", description: "Buy items and complete assigned deliveries with receipt evidence", permission: "view_delivery_portal", group: "workspace" },
   { href: "/receiving", label: "Receiving", description: "Independent line-by-line receipt confirmation", permission: "view_receiving", group: "workspace" },
   { href: "/companies", label: "Companies", description: "Onboarding and tenant health", permission: "manage_companies", group: "administration" },
   { href: "/products", label: "Global catalog", description: "Products and customer-facing images", permission: "manage_catalog", group: "administration" },
   { href: "/branches", label: "Branches & budgets", description: "Company structure and controls", permission: "view_branches", group: "administration" },
   { href: "/budgets", label: "Budget ledger", description: "Authorization periods, balances and reservations", permission: "view_budgets", group: "administration" },
-  { href: "/suppliers", label: "Suppliers", description: "Private supplier organizations", permission: "manage_suppliers", group: "administration" },
   { href: "/users", label: "People & access", description: "Invitations, roles and scope", permission: "manage_users", group: "administration" },
-  { href: "/documents", label: "Documents", description: "Permitted evidence and records", permission: "view_documents", group: "workspace" },
   { href: "/reports", label: "Reports", description: "Operational and company insights", permission: "view_reports", group: "insight" },
   { href: "/audit", label: "Audit history", description: "Read-only evidence trail", permission: "view_audit", group: "insight" },
   { href: "/email-operations", label: "Email operations", description: "Delivery, suppression and provider health", permission: "view_email_operations", group: "support" },

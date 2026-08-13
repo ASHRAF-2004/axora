@@ -263,22 +263,23 @@ Operational meaning and evidence:
    snapshotted and a company decision is pending.
 2. An assigned company/branch administrator or approver approves within tenant
    and branch scope. Self-approval is rejected. Rejection cancels the request.
-3. An Axora owner verifies the approved request and moves it to quotation.
-4. Axora records supplier offers. Selection requires a reason, an active
-   supplier, valid MOQ/date, approval evidence, and one selected offer per
-   line. Selecting all lines moves the request to `Supplier Assigned`.
-5. Axora records ordering and append-only driver delivery evidence, including
+3. The authorized customer selects `Pay`. Axora recalculates the trusted total,
+   records payment once, commits the budget amount, finalizes one permanent
+   invoice, generates one PDF, and queues one invoice email.
+4. Axora assigns the paid request to one Delivery Guy. The Delivery Guy buys
+   the requested products and records the buying and delivery progress without
+   receiving customer financial or private catalog-cost data.
+5. Axora records append-only Delivery Guy evidence, including
    attempts, partial handovers, issue reasons, reported quantities and the name
    supplied at handover. The server retains the device capture time for
    evidence while using server receipt order for current state, so an incorrect
    future device clock cannot pin or reorder the workflow. An independently
    assigned customer receiver then records accepted, damaged, and missing
    quantities. Driver evidence never becomes customer acceptance by itself.
-6. Only approved quantities from confirmed customer receipts feed customer
-   three-way matching and final delivery readiness. Customer invoices cannot
-   exceed the approved total and mismatches remain explicit exceptions.
-7. The MVP records only numbered paid-checkout evidence. Completion requires
-   active customer invoices to equal the approved total and be fully paid.
+6. Confirmed customer receipt remains independent from Delivery Guy evidence.
+   Accepted, damaged and missing quantities remain explicit, auditable outcomes.
+7. Completion requires one paid, finalized invoice and the required customer
+   proof of receipt. Payment and physical delivery remain independent states.
 
 `On Hold` is permitted only from `Under Verification`, requires a reason, and
 resumes to `Under Verification`. Cancellation requires a reason and is allowed

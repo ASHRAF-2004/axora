@@ -219,7 +219,7 @@ const en: NotificationCentreMessages = {
   noReminder: "Off", hours12: "After 12 hours", hours24: "After 24 hours", hours72: "After 3 days", hours168: "After 7 days",
   immediate: "Immediately", daily: "Next daily window", weekly: "Next weekly window", mandatory: "Required", optional: "Optional",
   save: "Save preference", saved: "Notification preference saved.", denied: "The notification action was unavailable.", live: "Updates sync automatically while this page is open.",
-  categories: { ACCOUNT: "Account", LEAD: "Company leads", APPROVAL: "Approvals", BUDGET: "Budgets", SOURCING: "Sourcing", DELIVERY: "Delivery and receiving", FINANCE: "Finance", EMAIL: "Email delivery", WORKFLOW: "Requests" },
+  categories: { ACCOUNT: "Account", LEAD: "Company leads", APPROVAL: "Approvals", BUDGET: "Budgets", SOURCING: "Legacy operations", DELIVERY: "Delivery and receiving", FINANCE: "Finance", EMAIL: "Email delivery", WORKFLOW: "Requests" },
   eventLabels: eventLabels.en,
 };
 
@@ -234,7 +234,7 @@ const ar: NotificationCentreMessages = {
   preferences: "تفضيلات التسليم", preferencesIntro: "تبقى الأدلة داخل التطبيق دائماً. اضبط توقيت البريد والتذكيرات الاختيارية لكل حدث.", inAppLocked: "الإشعارات داخل التطبيق مفعّلة دائماً", inAppLockedBody: "لا يمكن تعطيل أدلة سير العمل والحساب والأمان الموثوقة.",
   personalChoice: "تفضيلي", companyDefault: "إعداد الشركة", email: "البريد", schedule: "توقيت البريد", reminderSchedule: "التذكير", noReminder: "إيقاف", hours12: "بعد 12 ساعة", hours24: "بعد 24 ساعة", hours72: "بعد 3 أيام", hours168: "بعد 7 أيام",
   immediate: "فوراً", daily: "النافذة اليومية التالية", weekly: "النافذة الأسبوعية التالية", mandatory: "إلزامي", optional: "اختياري", save: "حفظ التفضيل", saved: "تم حفظ تفضيل الإشعار.", denied: "تعذر تنفيذ إجراء الإشعار.", live: "تتزامن التحديثات تلقائياً أثناء فتح الصفحة.",
-  categories: { ACCOUNT: "الحساب", LEAD: "عملاء الشركات المحتملون", APPROVAL: "الاعتمادات", BUDGET: "الميزانيات", SOURCING: "التوريد", DELIVERY: "التسليم والاستلام", FINANCE: "المالية", EMAIL: "تسليم البريد", WORKFLOW: "الطلبات" },
+  categories: { ACCOUNT: "الحساب", LEAD: "عملاء الشركات المحتملون", APPROVAL: "الاعتمادات", BUDGET: "الميزانيات", SOURCING: "عمليات سابقة", DELIVERY: "التسليم والاستلام", FINANCE: "المالية", EMAIL: "تسليم البريد", WORKFLOW: "الطلبات" },
   eventLabels: eventLabels.ar,
 };
 
@@ -249,7 +249,7 @@ const ms: NotificationCentreMessages = {
   preferences: "Pilihan penghantaran", preferencesIntro: "Bukti dalam aplikasi sentiasa disimpan. Tetapkan masa e-mel dan peringatan pilihan mengikut acara.", inAppLocked: "Penghantaran dalam aplikasi sentiasa aktif", inAppLockedBody: "Bukti aliran kerja, akaun dan keselamatan yang berwibawa tidak boleh dimatikan.",
   personalChoice: "Pilihan saya", companyDefault: "Tetapan syarikat", email: "E-mel", schedule: "Masa e-mel", reminderSchedule: "Peringatan", noReminder: "Tutup", hours12: "Selepas 12 jam", hours24: "Selepas 24 jam", hours72: "Selepas 3 hari", hours168: "Selepas 7 hari",
   immediate: "Serta-merta", daily: "Tetingkap harian seterusnya", weekly: "Tetingkap mingguan seterusnya", mandatory: "Wajib", optional: "Pilihan", save: "Simpan pilihan", saved: "Pilihan pemberitahuan disimpan.", denied: "Tindakan pemberitahuan tidak tersedia.", live: "Kemas kini disegerakkan secara automatik semasa halaman ini dibuka.",
-  categories: { ACCOUNT: "Akaun", LEAD: "Prospek syarikat", APPROVAL: "Kelulusan", BUDGET: "Bajet", SOURCING: "Penyumberan", DELIVERY: "Penghantaran dan penerimaan", FINANCE: "Kewangan", EMAIL: "Penghantaran e-mel", WORKFLOW: "Permintaan" },
+  categories: { ACCOUNT: "Akaun", LEAD: "Prospek syarikat", APPROVAL: "Kelulusan", BUDGET: "Bajet", SOURCING: "Operasi terdahulu", DELIVERY: "Penghantaran dan penerimaan", FINANCE: "Kewangan", EMAIL: "Penghantaran e-mel", WORKFLOW: "Permintaan" },
   eventLabels: eventLabels.ms,
 };
 

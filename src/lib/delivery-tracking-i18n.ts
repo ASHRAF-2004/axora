@@ -27,7 +27,7 @@ const catalog = {
     awaitingPoint: "Waiting for the first location update.",
     destinationUnavailable: "Destination coordinates need supervisor review.",
     remaining: "Remaining estimate",
-    agent: "Delivery Agent",
+    agent: "Delivery Guy",
     contact: "Contact",
     relay: "Contact through Axora",
     vehicle: "Approved vehicle",

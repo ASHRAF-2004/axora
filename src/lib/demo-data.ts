@@ -78,7 +78,7 @@ const productDefinitions: Array<[string, string, string, string, string, number,
   ["AX-OFF-011", "Highlighters 4s", "Office Basics", "Writing", "Pack", 8, 13, 1, 1, 3],
 ];
 
-const products: Product[] = productDefinitions.map(([code, name, category, subcategory, unit, defaultBuyPrice, defaultSellPrice, minimumOrderQuantity, deliverySlaDays, supplierIndex], index) => ({
+const products: Product[] = productDefinitions.map(([code, name, category, subcategory, unit, defaultBuyPrice, defaultSellPrice, , deliverySlaDays], index) => ({
   id: `pr-${index + 1}`,
   code,
   name,
@@ -87,10 +87,7 @@ const products: Product[] = productDefinitions.map(([code, name, category, subca
   unit,
   defaultBuyPrice,
   defaultSellPrice,
-  minimumOrderQuantity,
   deliverySlaDays,
-  preferredSupplierId: `su-${supplierIndex}`,
-  preferredSupplierName: suppliers[supplierIndex - 1]?.name,
   hasImage: false,
   imageAltText: `${name} product image`,
   status: index === 24 ? "Needs Review" : "Active",
@@ -109,9 +106,7 @@ function line(index: number, productIndex: number, quantity: number, options: Pa
     subcategory: product.subcategory,
     quantity,
     unit: product.unit,
-    supplierId: product.preferredSupplierId,
-    supplierName: product.preferredSupplierName,
-    supplierConfirmationStatus: "Confirmed",
+    supplierConfirmationStatus: "Pending",
     unitBuyPrice: product.defaultBuyPrice,
     unitSellPrice: product.defaultSellPrice,
     deliveryCharge: 5,

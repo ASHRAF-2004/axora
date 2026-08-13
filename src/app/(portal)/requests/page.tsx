@@ -59,7 +59,6 @@ export default async function RequestsPage({
         filters={result.filters}
         currentQuery={currentParams.toString()}
         platformView={platformView}
-        canViewSupplier={canAccess(actor,"manage_sourcing")}
         locale={locale}
       />
       <div className="request-results-bar">

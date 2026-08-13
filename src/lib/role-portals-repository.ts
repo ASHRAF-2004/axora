@@ -55,7 +55,9 @@ export interface DriverJobWorkspaceItem {
 }
 
 async function activeDriverScope(actor: SessionUser, client: import("pg").PoolClient) {
-  if (actor.accountKind !== "DELIVERY" || actor.role !== "DELIVERY_DRIVER") throw new Error("An active delivery account is required.");
+  if (actor.accountKind !== "DELIVERY" || ![
+    "DELIVERY_DRIVER", "DELIVERY_GUY",
+  ].includes(actor.role)) throw new Error("An active delivery account is required.");
   const profile = await client.query<{ userId: string; active: boolean }>(`
     SELECT user_id::text AS "userId",active FROM delivery_agent_profiles WHERE user_id=$1
   `, [actor.id]);

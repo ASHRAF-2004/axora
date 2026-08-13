@@ -23,7 +23,6 @@ import {
   notifyWorkflowAudience,
 } from "./workflow-repository";
 import { initializeRequestApproval } from "./request-approval";
-import { productQuantityRule, quantityMatchesProductRule } from "./procurement-rules";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -126,21 +125,10 @@ export async function createAuthorizedRequest(
 
     const selectedProducts = await client.query<{
       id: string;
-      minimumOrderQuantity: number;
-      maximumOrderQuantity?: number;
-      orderIncrement?: number;
-      packSize?: number;
-      packUnit?: string;
-      quantityRuleVersion?: number;
       unit: string;
       name: string;
     }>(
-      `SELECT id::text,name,unit_of_measure AS unit,
-         minimum_order_quantity::float8 AS "minimumOrderQuantity",
-         maximum_order_quantity::float8 AS "maximumOrderQuantity",
-         order_increment::float8 AS "orderIncrement",
-         pack_size::float8 AS "packSize",pack_unit AS "packUnit",
-         quantity_rule_version AS "quantityRuleVersion"
+      `SELECT id::text,name,unit_of_measure AS unit
        FROM v_customer_catalog_products
        WHERE id=ANY($1::uuid[])
          AND active=true
@@ -159,13 +147,8 @@ export async function createAuthorizedRequest(
     );
     for (const line of input.lines) {
       const product = selectedById.get(line.productId);
-      if (!product || !quantityMatchesProductRule(line.quantity, product)) {
-        const rule = product ? productQuantityRule(product) : undefined;
-        throw new Error(
-          rule
-            ? `Use a whole quantity from ${rule.minimum}${rule.maximum === undefined ? "" : ` to ${rule.maximum}`} in increments of ${rule.increment} for ${product?.name ?? "this product"}.`
-            : "One or more product quantity rules are unavailable.",
-        );
+      if (!product || !Number.isSafeInteger(line.quantity) || line.quantity < 1) {
+        throw new Error("Use a whole quantity of at least 1 for every product.");
       }
     }
 
@@ -321,7 +304,7 @@ export async function updateAuthorizedRequestStatus(
   reason: string | undefined,
   actor: AuthenticatedSessionUser,
 ) {
-  if (!canAccess(actor, "manage_sourcing")) {
+  if (!canAccess(actor, "manage_deliveries")) {
     throw new RequestAccessUnavailableError();
   }
 
@@ -331,14 +314,14 @@ export async function updateAuthorizedRequestStatus(
     await requireDemoRequestPermission(
       actor,
       request as ProcurementRequest,
-      "sourcing.manage",
+      "delivery.manage",
     );
     return updateLegacyRequestStatus(id, status, reason, actor);
   }
 
   await withAuditTransaction({ actor, reason }, async (client) => {
     const access = await lockRequestResourceAccess(client, actor, {
-      permission: "sourcing.manage",
+      permission: "delivery.manage",
       requestId: id,
     });
     if (!access.active) throw new RequestAccessUnavailableError();
@@ -382,20 +365,6 @@ export async function updateAuthorizedRequestStatus(
       throw new Error(
         "The company must approve this request before Axora starts fulfillment.",
       );
-    }
-
-    if (status === "Supplier Assigned") {
-      const missing = await client.query<{ count: number }>(
-        `SELECT count(*)::int AS count
-         FROM request_lines
-         WHERE request_id=$1 AND selected_supplier_id IS NULL`,
-        [id],
-      );
-      if (missing.rows[0]?.count) {
-        throw new Error(
-          "Select a supplier quotation for every request line first.",
-        );
-      }
     }
 
     if (status === "Delivered") {
@@ -497,8 +466,6 @@ export async function updateAuthorizedRequestStatus(
     );
 
     const eventKeys: Partial<Record<RequestStatus, string>> = {
-      "Waiting for Quotation": "quotation.requested",
-      "Supplier Assigned": "supplier.selected",
       Ordered: "order.confirmed",
       "Preparing for Delivery": "preparation.started",
       "Out for Delivery": "delivery.out_for_delivery",

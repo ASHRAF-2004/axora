@@ -2,10 +2,11 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ProductActionForm } from "@/components/ProductActionForm";
 import { requirePagePermission } from "@/lib/auth";
 import { MAX_PRODUCT_IMAGES, listProductImages } from "@/lib/product-images";
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "@/lib/product-options";
-import { listProducts, listSuppliers } from "@/lib/repository";
+import { listProducts } from "@/lib/repository";
 import { ArrowLeft, ImagePlus, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -35,9 +36,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const copy = productEditorMessages(locale);
   const rules = procurementRulesMessages(locale);
   const { id } = await params;
-  const [products, suppliers, images, commercialHistory] = await Promise.all([
+  const [products, images, commercialHistory] = await Promise.all([
     listProducts(actor),
-    listSuppliers(actor),
     listProductImages(id, actor),
     listProductCommercialHistory(id, actor),
   ]);
@@ -60,7 +60,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     </div>
 
     <section className="split-layout" style={{ alignItems: "start" }}>
-      <form action={updateProductAction.bind(null, product.id)} className="panel form-panel">
+      <ProductActionForm action={updateProductAction.bind(null, product.id)} submitLabel={copy.save}>
         <div className="panel-header"><div><h2>{copy.information}</h2><p>{copy.informationBody}</p></div></div>
         <div className="form-grid">
           <label className="field-full">{productCopy.name}<input name="name" defaultValue={product.name} required /></label>
@@ -72,22 +72,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           <label>{productCopy.packaging}<input name="packaging" defaultValue={product.packaging} /></label>
           <label>{productCopy.buyCost}<input name="defaultBuyPrice" type="number" min="0" step="0.01" defaultValue={product.defaultBuyPrice} required /></label>
           <label>{rules.calculatedSellingPrice}<output>{formatCurrency(product.defaultSellPrice, locale)}</output><small>{rules.calculatedSellingHelp}</small></label>
-          <label>{rules.minimum}<input name="minimumOrderQuantity" type="number" min="1" step="1" defaultValue={product.minimumOrderQuantity} required /></label>
-          <label>{rules.maximum}<input name="maximumOrderQuantity" type="number" min="1" step="1" defaultValue={product.maximumOrderQuantity} placeholder={rules.noMaximum} /></label>
-          <label>{rules.increment}<input name="orderIncrement" type="number" min="1" step="1" defaultValue={product.orderIncrement ?? 1} required /></label>
-          <label>{rules.packSize}<input name="packSize" type="number" min="1" step="1" defaultValue={product.packSize ?? 1} required /></label>
-          <label>{rules.packUnit}<input name="packUnit" maxLength={80} defaultValue={product.packUnit ?? product.unit} /></label>
-          <label>{rules.effectiveFrom}<input name="quantityRuleEffectiveFrom" type="date" defaultValue={product.quantityRuleEffectiveFrom?.slice(0, 10)} /></label>
-          <label className="field-full">{rules.changeReason}<textarea name="quantityRuleReason" placeholder={rules.changeReasonPlaceholder} required /></label>
           <label>{productCopy.deliverySla}<input name="deliverySlaDays" type="number" min="0" step="1" defaultValue={product.deliverySlaDays} required /></label>
-          <label className="field-full">{productCopy.supplier}<select name="preferredSupplierId" defaultValue={product.preferredSupplierId ?? ""}>
-            <option value="">{productCopy.notAssigned}</option>
-            {suppliers.filter((supplier) => supplier.status === "Active").map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.code} · {supplier.name}</option>)}
-          </select></label>
           <label className="field-full">{productCopy.description}<textarea name="description" defaultValue={product.description} /></label>
         </div>
-        <div className="form-actions"><button className="button button-primary" type="submit">{copy.save}</button></div>
-      </form>
+      </ProductActionForm>
 
       <div className="stack-lg">
         <section className="panel">

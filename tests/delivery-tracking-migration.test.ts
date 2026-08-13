@@ -308,6 +308,7 @@ describe("live delivery tracking migration", () => {
           set_config('axora.role_assignment_id',$2,false)
       `, [ownerIds.id, ownerIds.role_assignment_id]);
 
+      await db.exec("ALTER TABLE delivery_jobs DISABLE TRIGGER delivery_jobs_paid_request_guard");
       await db.query(`
         INSERT INTO delivery_jobs(
           id,company_id,branch_id,request_id,job_code,status,
@@ -319,6 +320,7 @@ describe("live delivery tracking migration", () => {
           'Tracking destination','delivery-tracking-068',$4
         );
       `, [ids.company_id, ids.branch_id, ids.request_id, ownerIds.id]);
+      await db.exec("ALTER TABLE delivery_jobs ENABLE TRIGGER delivery_jobs_paid_request_guard");
       await db.query(`
         INSERT INTO delivery_job_assignments(
           id,company_id,delivery_job_id,driver_user_id,status,assigned_by,

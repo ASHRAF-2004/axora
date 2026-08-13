@@ -7,7 +7,7 @@ import styles from "./DeliveryExecution.module.css";
 
 type Line = {
   id: string; requestLineId: string; productId: string; productName: string;
-  quantity: number; unitOfMeasure: string; selectedSupplierId?: string | null;
+  quantity: number; unitOfMeasure: string;
 };
 type Event = { id: string; type: string; receivedAt: string; metadata?: Record<string, unknown> };
 type Evidence = { id: string; type: string; fileName: string; version: number; accessUrl?: string };
@@ -111,7 +111,7 @@ function availableEvents(job: Job) {
   switch (job.status) {
     case "ASSIGNED": return ["ACCEPTED", "REJECTED"];
     case "ACCEPTED": return ["SHOPPING_STARTED", "ISSUE_REPORTED"];
-    case "SHOPPING": return ["ISSUE_REPORTED", "NOTE_ADDED"];
+    case "SHOPPING": return ["ITEMS_ACQUIRED", "ISSUE_REPORTED", "NOTE_ADDED"];
     case "ITEMS_ACQUIRED": return ["OUT_FOR_DELIVERY", "ISSUE_REPORTED"];
     case "OUT_FOR_DELIVERY": return ["ARRIVED", "FAILED", "ISSUE_REPORTED"];
     case "ARRIVED": return ["DELIVERED", "PARTIALLY_DELIVERED", "FAILED", "ISSUE_REPORTED"];
@@ -240,32 +240,6 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
     else setNotice(copy.offline);
   };
 
-  const submitShopping = async (event: FormEvent<HTMLFormElement>, job: Job) => {
-    event.preventDefault();
-    setBusy(true); setError("");
-    const form = new FormData(event.currentTarget);
-    form.set("requestId", job.requestId);
-    form.set("idempotencyKey", crypto.randomUUID());
-    const lines = job.lines.map((line) => ({
-      requestLineId: line.requestLineId,
-      actualProductId: form.get(`product-${line.id}`),
-      supplierId: form.get(`supplier-${line.id}`),
-      quantity: form.get(`quantity-${line.id}`),
-      actualBuyUnitPrice: form.get(`price-${line.id}`),
-      taxRate: form.get(`tax-${line.id}`) || 0,
-      deliveryCharge: 0, otherCharge: 0,
-      substituteReason: form.get(`substitute-${line.id}`) || "",
-      notes: form.get(`line-note-${line.id}`) || "",
-    }));
-    form.set("lines", JSON.stringify(lines));
-    try {
-      const response = await fetch("/api/driver/shopping", { method: "POST", body: form });
-      if (!response.ok) throw new Error("shopping");
-      setNotice(copy.saved); await refresh();
-    } catch { setError(copy.shoppingError); }
-    finally { setBusy(false); }
-  };
-
   const uploadProof = async (event: FormEvent<HTMLFormElement>, job: Job) => {
     event.preventDefault(); setBusy(true); setError("");
     const form = new FormData(event.currentTarget);
@@ -348,17 +322,13 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
           <label>{copy.note}<textarea value={notes[job.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [job.id]: event.target.value }))} maxLength={1000} /></label>
           {job.status === "ARRIVED" ? <div className={styles.formGrid}>{job.lines.map((line) => <label key={line.id}>{line.productName}<input id={`partial-${job.id}-${line.id}`} type="number" min="0" max={line.quantity} step="0.001" defaultValue={line.quantity} /></label>)}</div> : null}
           <div className={styles.actions}>{availableEvents(job).map((type) => <button className={styles.actionButton} data-primary={["ACCEPTED", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED"].includes(type)} disabled={busy || (type === "COMPLETED" && !job.proofSatisfied)} key={type} type="button" onClick={() => void sendEvent(job, type)}>{({
-            ACCEPTED: copy.accept, REJECTED: copy.reject, SHOPPING_STARTED: copy.startShopping,
+            ACCEPTED: copy.accept, REJECTED: copy.reject, SHOPPING_STARTED: copy.startBuying,
+            ITEMS_ACQUIRED: copy.itemsAcquired,
             OUT_FOR_DELIVERY: copy.outForDelivery, ARRIVED: copy.arrived,
             PARTIALLY_DELIVERED: copy.partial, DELIVERED: copy.delivered,
             COMPLETED: copy.completed, ISSUE_REPORTED: copy.reportIssue,
             FAILED: copy.reportIssue, NOTE_ADDED: copy.note,
           } as Record<string, string>)[type] ?? type}</button>)}</div>
-          {["SHOPPING", "AWAITING_SUBSTITUTE_APPROVAL", "AWAITING_ADDITIONAL_APPROVAL"].includes(job.status) ? <details className={styles.details} open={job.status === "SHOPPING"}><summary>{copy.shopping}</summary><form className={styles.form} onSubmit={(event) => void submitShopping(event, job)}>
-            <div className={styles.formGrid}><label>{copy.mode}<select name="purchaseMode" defaultValue="FINAL"><option value="FINAL">{copy.finalPurchase}</option><option value="PARTIAL">{copy.partialPurchase}</option><option value="REFUND">{copy.refund}</option></select></label><label>{copy.note}<input name="notes" minLength={3} maxLength={2000} required /></label><label>{copy.receipt}<input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required /></label></div>
-            {job.lines.map((line) => <div className={styles.lineEditor} key={line.id}><strong>{line.productName}<br />{line.quantity} {line.unitOfMeasure}</strong><label>{copy.actualProduct}<select name={`product-${line.id}`} defaultValue={line.productId}>{workspace.products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label><label>{copy.supplier}<select name={`supplier-${line.id}`} defaultValue={line.selectedSupplierId ?? ""} required><option value="" disabled>—</option>{workspace.suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></label><label>{copy.quantity}<input name={`quantity-${line.id}`} type="number" min="0.001" step="0.001" defaultValue={line.quantity} required /></label><label>{copy.buyPrice}<input name={`price-${line.id}`} type="number" min="0" step="0.000001" required /></label><label>{copy.tax}<input name={`tax-${line.id}`} type="number" min="0" max="100" step="0.01" defaultValue="0" /></label><label>{copy.substituteReason}<input name={`substitute-${line.id}`} maxLength={1000} /></label><label>{copy.lineNote}<input name={`line-note-${line.id}`} maxLength={2000} /></label></div>)}
-            <button className={styles.actionButton} data-primary="true" disabled={busy} type="submit">{copy.submitShopping}</button>
-          </form></details> : null}
           {job.events.length ? <details className={styles.details}><summary>{copy.uploadProof}</summary><form className={styles.form} onSubmit={(event) => void uploadProof(event, job)}><div className={styles.formGrid}><label>{copy.event}<select name="eventId" required>{[...job.events].reverse().map((item) => <option key={item.id} value={item.id}>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</option>)}</select></label><label>{copy.evidenceType}<select name="type" defaultValue="PHOTO"><option>PHOTO</option><option>SIGNATURE</option><option>DELIVERY_NOTE</option></select></label><label>{copy.file}<input name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.recipient}<input name="recipientIdentity" maxLength={200} /></label><label><input name="consented" type="checkbox" /> {copy.consent}</label><label>{copy.correctEvidence}<select name="supersedesEvidenceId" defaultValue=""><option value="">—</option>{job.evidence.map((item) => <option key={item.id} value={item.id}>{item.type} v{item.version}</option>)}</select></label></div><button className={styles.actionButton} type="submit">{copy.uploadProof}</button></form></details> : null}
           {job.proofPolicy.includes("OTP") ? <details className={styles.details}><summary>{copy.verifyOtp}</summary><form className={styles.form} onSubmit={(event) => void verifyOtp(event, job)}><div className={styles.formGrid}><label>{copy.challengeId}<input name="challengeId" required /></label><label>{copy.code}<input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label></div><button className={styles.actionButton} type="submit">{copy.verifyOtp}</button></form></details> : null}
           {job.evidence.length ? <ul>{job.evidence.map((item) => <li key={item.id}>{item.accessUrl ? <a href={item.accessUrl}>{item.type} · {item.fileName} · v{item.version}</a> : item.fileName}</li>)}</ul> : null}

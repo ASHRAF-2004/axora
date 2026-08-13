@@ -21,14 +21,10 @@ const requestInput = {
 };
 
 describe("whole-number product quantities", () => {
-  it("accepts whole-number product minimum quantities", () => {
-    expect(productSchema.safeParse({ ...productInput, minimumOrderQuantity: 1 }).success).toBe(true);
-    expect(productSchema.safeParse({ ...productInput, minimumOrderQuantity: 4 }).success).toBe(true);
-  });
-
-  it("rejects decimal product minimum quantities", () => {
-    expect(productSchema.safeParse({ ...productInput, minimumOrderQuantity: 0.99 }).success).toBe(false);
-    expect(productSchema.safeParse({ ...productInput, minimumOrderQuantity: 1.01 }).success).toBe(false);
+  it("accepts the simplified product shape and rejects retired ordering fields", () => {
+    expect(productSchema.safeParse(productInput).success).toBe(true);
+    expect(productSchema.safeParse({ ...productInput, minimumOrderQuantity: 1 }).success).toBe(false);
+    expect(productSchema.safeParse({ ...productInput, orderIncrement: 1 }).success).toBe(false);
   });
 
   it("accepts whole-number request quantities and rejects decimals", () => {

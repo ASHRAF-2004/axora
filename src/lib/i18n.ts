@@ -63,7 +63,6 @@ export const PUBLIC_PAGE_SLUGS = [
   "procurement-process",
   "solutions-by-role",
   "company-procurement",
-  "supplier-collaboration",
   "delivery-tracking",
   "security-and-privacy",
   "about",
@@ -182,7 +181,7 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
     sections: [
       { title: "Employees request", body: "Authorized employees choose catalog items, quantities, branch, required date, and supporting context. They see only their permitted company and branch data." },
       { title: "Companies decide", body: "The correct approver reviews the request, budget effect, supporting files, and history. A requester cannot approve their own request." },
-      { title: "Axora coordinates", body: "Axora manages private supplier sourcing, quotation comparison, order coordination, delivery administration, and finance evidence without exposing internal buying cost to customer users." },
+      { title: "Axora fulfils", body: "After approval and Pay, Axora finalizes the invoice and assigns a Delivery Guy to buy and deliver the requested items without exposing internal buying cost to customer users." },
       { title: "Delivery is independently received", body: "A driver records operational evidence. An authorized company receiver separately confirms quantities, damage, missing items, and discrepancies." },
     ],
   },
@@ -193,9 +192,9 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
     sections: [
       { title: "1. Identify and request", body: "A branch identifies a need and creates a purchase request from the approved catalog or with a clear ad-hoc specification." },
       { title: "2. Review and approve", body: "Company approvers check necessity, budget, scope, required date, and supporting evidence. The decision and reason become part of the timeline." },
-      { title: "3. Source and coordinate", body: "Axora requests quotations from eligible suppliers, evaluates commercial and delivery terms, records the selection rationale, and coordinates the order." },
-      { title: "4. Deliver and receive", body: "The delivery team reports preparation, travel, arrival, completion, or issues. Customer receiving remains a separate confirmation." },
-      { title: "5. Match and close", body: "The approved request, accepted receipt, and invoice are compared. Mismatches remain visible until resolved; payment status and completion are recorded." },
+      { title: "3. Pay and invoice", body: "Pay confirms the server-authoritative total, records payment once, commits the budget and finalizes one permanent invoice." },
+      { title: "4. Buy and deliver", body: "The assigned Delivery Guy buys the items, records progress and exceptions, and delivers them to the approved location." },
+      { title: "5. Receive and close", body: "The customer records receipt evidence and any discrepancy. Completion, invoice, notifications and audit history remain traceable." },
     ],
   },
   "solutions-by-role": {
@@ -206,7 +205,7 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "Requesters and approvers", body: "Requesters shop and track their work. Approvers receive a decision queue with budget and evidence context, while separation of duties prevents self-approval." },
       { title: "Company and branch administrators", body: "Administrators manage permitted people, branch scopes, budgets, approvals, delivery status, and company-visible reporting." },
       { title: "Finance and auditors", body: "Finance reviewers handle invoices, payment evidence, matching, and exceptions. Auditors receive read-only evidence and immutable event history." },
-      { title: "Suppliers, drivers, and receivers", body: "Simple dedicated portals expose only assigned quotations, deliveries, or receiving tasks and the minimum data required to complete them." },
+      { title: "Delivery Guy and receivers", body: "The Delivery Guy sees only assigned paid work, while customer receivers independently record delivery acceptance and exceptions." },
     ],
   },
   "company-procurement": {
@@ -217,16 +216,6 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "Clear company boundaries", body: "Company users cannot see another tenant, private supplier records, Axora buying cost, or internal commercial notes." },
       { title: "Branch-aware budgets", body: "Requests are attached to a branch and approved commitments are reflected against the correct monthly budget period." },
       { title: "Useful status, not mystery", body: "Plain-language timelines explain what happened, who owns the next action, and why an item is blocked or delayed." },
-    ],
-  },
-  "supplier-collaboration": {
-    eyebrow: "Supplier collaboration",
-    title: "A focused quotation and fulfilment workspace for each supplier.",
-    intro: "Supplier users receive only work assigned to their supplier organization and never see competing suppliers or confidential internal selection data.",
-    sections: [
-      { title: "Respond with complete terms", body: "Submit price, minimum order quantity, lead time, validity, availability, delivery charge, and quotation documents in one clear mobile form." },
-      { title: "Follow shared commitments", body: "Acknowledge selected work, keep a response and clarification history, upload supporting documents, and view Axora-registered invoice and payment status." },
-      { title: "Commercial privacy", body: "Competitor quotations, Axora margin, unrelated customers, and private selection notes remain unavailable." },
     ],
   },
   "delivery-tracking": {
@@ -253,7 +242,7 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
   about: {
     eyebrow: "About Axora",
     title: "Procurement coordination built for accountable business operations.",
-    intro: "Axora connects company requesters and approvers with Axora operations, suppliers, delivery teams, receivers, and finance evidence in one coherent workflow.",
+    intro: "Axora connects company requesters and approvers with Agents, the Delivery Guy, receivers, invoices, and auditable finance evidence in one coherent workflow.",
     sections: [
       { title: "Product purpose", body: "The platform reduces fragmented spreadsheets, messages, and status chasing while preserving clear responsibility at every step." },
       { title: "What Axora does not claim", body: "This website does not present unsupported customer numbers, certifications, partnerships, savings guarantees, or service commitments." },
@@ -275,7 +264,7 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
     title: "How Axora handles account and procurement information.",
     intro: "This product notice describes the intended handling of Axora platform data. Final legal wording, retention periods, and controller details require owner and legal review before production publication.",
     sections: [
-      { title: "Information used", body: "Axora processes account, company, branch, request, quotation, delivery, receiving, invoice, support, security, and audit information required to operate the service. The public visitor counter uses the public IP address observed by the server to derive and retain a permanent secret-keyed hash; it does not store the raw IP address. People sharing one public IP share one visitor spot." },
+      { title: "Information used", body: "Axora processes account, company, branch, request, payment, delivery, receiving, invoice, support, security, and audit information required to operate the service. The public visitor counter uses the public IP address observed by the server to derive and retain a permanent secret-keyed hash; it does not store the raw IP address. People sharing one public IP share one visitor spot." },
       { title: "Access and purpose", body: "Data is used for authenticated procurement workflows, security, support, operational communication, evidence, and recovery. Access is restricted by role and scope." },
       { title: "Public forms", body: "Contact submissions are validated, rate limited, spam checked, retained for follow-up, and must not include passwords or confidential procurement data." },
       { title: "Questions and rights", body: "Use Contact Us for privacy questions. Verified account requests are handled according to applicable obligations and the final approved policy." },
@@ -287,7 +276,7 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
     intro: "These product terms are a review draft and are not a substitute for owner-approved legal terms before production publication.",
     sections: [
       { title: "Authorized access", body: "Users must use only their own account, protect invitation and session links, and access only work permitted by their role and organization." },
-      { title: "Accurate records", body: "Users should provide accurate request, quotation, delivery, receiving, invoice, and contact information and correct discovered errors promptly." },
+      { title: "Accurate records", body: "Users should provide accurate request, delivery, receiving, invoice, and contact information and correct discovered errors promptly." },
       { title: "Prohibited use", body: "Do not bypass access controls, upload malicious or unlawful content, impersonate another person, expose confidential records, or interfere with platform operation." },
       { title: "Operational status", body: "Service scope, support arrangements, retention, liability, and governing law require final written business and legal approval." },
     ],
@@ -302,7 +291,7 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
     sections: [
       { title: "الموظفون يطلبون", body: "يختار الموظفون المخوّلون أصناف الكتالوج والكميات والفرع والموعد المطلوب والمعلومات الداعمة. ولا يرون إلا بيانات الشركة والفروع المسموح بها." },
       { title: "الشركات تقرر", body: "يراجع المعتمد الصحيح الطلب وتأثيره في الميزانية والملفات والسجل. ولا يمكن لمقدم الطلب اعتماد طلبه بنفسه." },
-      { title: "أكسورا تنسق", body: "تدير أكسورا التوريد الخاص ومقارنة العروض وتنسيق الطلب والتسليم والسجلات المالية، من دون إظهار تكلفة الشراء الداخلية لمستخدمي الشركة." },
+      { title: "أكسورا تنفذ", body: "بعد الاعتماد والدفع، تنهي أكسورا الفاتورة وتعين مسؤول التوصيل لشراء الأصناف المطلوبة وتسليمها من دون إظهار تكلفة الشراء الداخلية لمستخدمي الشركة." },
       { title: "الاستلام مستقل عن التسليم", body: "يسجل السائق دليل التسليم، ثم يؤكد مستلم مخوّل من الشركة الكميات والتلف والنواقص والفروقات بصورة مستقلة." },
     ],
   },
@@ -313,9 +302,9 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
     sections: [
       { title: "1. تحديد الاحتياج وإنشاء الطلب", body: "يحدد الفرع احتياجه وينشئ طلب شراء من الكتالوج المعتمد أو بمواصفات واضحة للطلب الخاص." },
       { title: "2. المراجعة والاعتماد", body: "يراجع معتمدو الشركة الحاجة والميزانية والنطاق والموعد والمستندات. ويصبح القرار وسببه جزءًا من الخط الزمني." },
-      { title: "3. التوريد والتنسيق", body: "تطلب أكسورا عروضًا من الموردين المؤهلين وتقارن الشروط التجارية ومواعيد التسليم وتسجل سبب الاختيار وتنسق الطلب." },
-      { title: "4. التسليم والاستلام", body: "يسجل فريق التسليم التجهيز والانطلاق والوصول والإنجاز أو المشكلة، بينما يبقى استلام العميل تأكيدًا منفصلًا." },
-      { title: "5. المطابقة والإغلاق", body: "تتم مقارنة الطلب المعتمد والاستلام المقبول والفاتورة. وتبقى الفروقات ظاهرة حتى حلها، مع تسجيل حالة الدفع والإكمال." },
+      { title: "3. الدفع والفاتورة", body: "يؤكد إجراء الدفع الإجمالي المعتمد من الخادم ويسجل الدفع مرة واحدة ويلتزم بالميزانية وينهي فاتورة دائمة واحدة." },
+      { title: "4. الشراء والتسليم", body: "يشتري مسؤول التوصيل المعين الأصناف ويسجل التقدم والاستثناءات ثم يسلمها إلى الموقع المعتمد." },
+      { title: "5. الاستلام والإغلاق", body: "يسجل العميل إثبات الاستلام وأي فرق. وتبقى حالة الإكمال والفاتورة والإشعارات وسجل التدقيق قابلة للتتبع." },
     ],
   },
   "solutions-by-role": {
@@ -326,7 +315,7 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "مقدمو الطلبات والمعتمدون", body: "يتسوق مقدم الطلب ويتابع عمله، بينما يستلم المعتمد قائمة قرارات تتضمن الميزانية والأدلة، مع منع الاعتماد الذاتي." },
       { title: "مديرو الشركات والفروع", body: "يدير المديرون الأشخاص والفروع والميزانيات والاعتمادات وحالة التسليم والتقارير ضمن نطاقهم." },
       { title: "المالية والمدققون", body: "يراجع فريق المالية الفواتير وإثبات الدفع والمطابقة والاستثناءات، ويحصل المدقق على أدلة وسجل أحداث للقراءة فقط." },
-      { title: "الموردون والسائقون والمستلمون", body: "تعرض البوابات المبسطة عروض الأسعار أو عمليات التسليم أو مهام الاستلام المسندة فقط وبأقل قدر لازم من البيانات." },
+      { title: "مسؤول التوصيل والمستلمون", body: "يرى مسؤول التوصيل الأعمال المدفوعة والمسندة إليه فقط، ويسجل مستلمو العميل قبول التسليم والاستثناءات بصورة مستقلة." },
     ],
   },
   "company-procurement": {
@@ -337,16 +326,6 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "حدود واضحة لكل شركة", body: "لا يستطيع مستخدم الشركة رؤية شركة أخرى أو سجلات الموردين الخاصة أو تكلفة شراء أكسورا أو الملاحظات التجارية الداخلية." },
       { title: "ميزانيات مرتبطة بالفروع", body: "يرتبط كل طلب بفرع، وتنعكس الالتزامات المعتمدة على ميزانية الفرع والفترة الشهرية الصحيحة." },
       { title: "حالة مفهومة وليست غامضة", body: "توضح الخطوط الزمنية بلغة سهلة ما حدث ومن يملك الإجراء التالي ولماذا تعطل الطلب أو تأخر." },
-    ],
-  },
-  "supplier-collaboration": {
-    eyebrow: "تعاون الموردين",
-    title: "مساحة مركزة لعروض الأسعار والتنفيذ لكل مورد.",
-    intro: "لا يرى مستخدم المورد إلا العمل المسند إلى مؤسسته، ولا يرى الموردين المنافسين أو بيانات الاختيار الداخلية السرية.",
-    sections: [
-      { title: "عرض كامل الشروط", body: "أدخل السعر والحد الأدنى للطلب ومدة التجهيز والصلاحية والتوفر ورسوم التسليم ومستند العرض في نموذج جوال واضح." },
-      { title: "متابعة الالتزامات", body: "أكد العمل المختار واحتفظ بسجل الردود والاستيضاحات وارفع المستندات المساندة وتابع الفاتورة وحالة الدفع بعد تسجيلها لدى أكسورا." },
-      { title: "خصوصية تجارية", body: "تبقى عروض المنافسين وهامش أكسورا والعملاء غير المرتبطين وملاحظات الاختيار الخاصة غير متاحة." },
     ],
   },
   "delivery-tracking": {
@@ -422,7 +401,7 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
     sections: [
       { title: "Pekerja membuat permintaan", body: "Pekerja yang diberi kuasa memilih item katalog, kuantiti, cawangan, tarikh diperlukan dan konteks sokongan. Mereka hanya melihat data syarikat dan cawangan yang dibenarkan." },
       { title: "Syarikat membuat keputusan", body: "Pelulus yang betul menyemak permintaan, kesan bajet, fail sokongan dan sejarah. Pemohon tidak boleh meluluskan permintaannya sendiri." },
-      { title: "Axora menyelaras", body: "Axora mengurus sumber pembekal secara sulit, perbandingan sebut harga, pesanan, penghantaran dan bukti kewangan tanpa mendedahkan kos belian dalaman kepada pelanggan." },
+      { title: "Axora memenuhi permintaan", body: "Selepas kelulusan dan Bayar, Axora memuktamadkan invois dan menugaskan Penghantar untuk membeli serta menghantar item tanpa mendedahkan kos belian dalaman kepada pelanggan." },
       { title: "Penerimaan disahkan secara berasingan", body: "Pemandu merekod bukti operasi. Penerima syarikat yang diberi kuasa mengesahkan kuantiti, kerosakan, kekurangan dan perbezaan secara berasingan." },
     ],
   },
@@ -433,9 +412,9 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
     sections: [
       { title: "1. Kenal pasti dan mohon", body: "Cawangan mengenal pasti keperluan dan membuat permintaan daripada katalog diluluskan atau spesifikasi ad hoc yang jelas." },
       { title: "2. Semak dan lulus", body: "Pelulus syarikat menyemak keperluan, bajet, skop, tarikh dan bukti. Keputusan serta sebab menjadi sebahagian garis masa." },
-      { title: "3. Sumber dan selaras", body: "Axora meminta sebut harga daripada pembekal layak, menilai terma komersial dan penghantaran, merekod alasan pemilihan dan menyelaras pesanan." },
-      { title: "4. Hantar dan terima", body: "Pasukan penghantaran melapor persediaan, perjalanan, ketibaan, selesai atau isu. Pengesahan penerima pelanggan kekal berasingan." },
-      { title: "5. Padankan dan tutup", body: "Permintaan diluluskan, penerimaan dan invois dibandingkan. Perbezaan kekal kelihatan sehingga selesai; status bayaran dan penutupan direkod." },
+      { title: "3. Bayar dan invois", body: "Bayar mengesahkan jumlah berautoriti pelayan, merekod bayaran sekali, mengikat bajet dan memuktamadkan satu invois kekal." },
+      { title: "4. Beli dan hantar", body: "Penghantar yang ditugaskan membeli item, merekod kemajuan dan pengecualian, lalu menghantarnya ke lokasi diluluskan." },
+      { title: "5. Terima dan tutup", body: "Pelanggan merekod bukti penerimaan dan sebarang perbezaan. Penyiapan, invois, notifikasi dan audit kekal boleh dijejaki." },
     ],
   },
   "solutions-by-role": {
@@ -446,7 +425,7 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "Pemohon dan pelulus", body: "Pemohon membeli dan menjejak kerja sendiri. Pelulus menerima barisan keputusan dengan konteks bajet dan bukti; pengasingan tugas menghalang kelulusan sendiri." },
       { title: "Pentadbir syarikat dan cawangan", body: "Pentadbir mengurus orang, skop cawangan, bajet, kelulusan, status penghantaran dan laporan yang dibenarkan." },
       { title: "Kewangan dan juruaudit", body: "Penyemak kewangan mengurus invois, bukti payment, padanan dan pengecualian. Juruaudit mendapat bukti baca sahaja dan sejarah peristiwa kekal." },
-      { title: "Pembekal, pemandu dan penerima", body: "Portal khas yang ringkas hanya mendedahkan sebut harga, penghantaran atau tugas penerimaan yang diberikan serta data minimum yang diperlukan." },
+      { title: "Penghantar dan penerima", body: "Penghantar hanya melihat kerja berbayar yang ditugaskan, manakala penerima pelanggan merekod penerimaan dan pengecualian secara bebas." },
     ],
   },
   "company-procurement": {
@@ -457,16 +436,6 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "Sempadan syarikat yang jelas", body: "Pengguna syarikat tidak boleh melihat penyewa lain, rekod pembekal sulit, kos belian Axora atau nota komersial dalaman." },
       { title: "Bajet mengikut cawangan", body: "Permintaan diikat kepada cawangan dan komitmen diluluskan dikira pada tempoh bajet bulanan yang betul." },
       { title: "Status yang mudah difahami", body: "Garis masa menerangkan apa yang berlaku, siapa memiliki tindakan seterusnya dan sebab item tersekat atau lewat." },
-    ],
-  },
-  "supplier-collaboration": {
-    eyebrow: "Kerjasama pembekal",
-    title: "Ruang sebut harga dan pemenuhan yang fokus untuk setiap pembekal.",
-    intro: "Pengguna pembekal hanya menerima kerja untuk organisasi mereka dan tidak pernah melihat pesaing atau data pemilihan dalaman sulit.",
-    sections: [
-      { title: "Balas dengan terma lengkap", body: "Hantar harga, kuantiti pesanan minimum, tempoh, kesahan, ketersediaan, caj penghantaran dan dokumen dalam satu borang mudah alih." },
-      { title: "Ikuti komitmen bersama", body: "Akui kerja terpilih, simpan sejarah respons dan penjelasan, muat naik dokumen sokongan, serta lihat invois dan status bayaran yang didaftarkan Axora." },
-      { title: "Privasi komersial", body: "Sebutharga pesaing, margin Axora, pelanggan tidak berkaitan dan nota pemilihan peribadi tidak tersedia." },
     ],
   },
   "delivery-tracking": {
@@ -541,7 +510,7 @@ const english: PublicMessages = {
   home: {
     eyebrow: "Procurement coordination, made accountable",
     title: "One clear path from business need to verified delivery.",
-    lead: "Axora helps companies request and approve purchasing while Axora coordinates sourcing, suppliers, delivery, receiving, invoices, and auditable records.",
+    lead: "Axora helps companies request, approve and pay while Axora coordinates buying, delivery, receiving, invoices and auditable records.",
     primaryAction: "See how Axora works",
     secondaryAction: "Contact Us",
     trustNote: "Built for role-based, multi-company procurement. No public signup and no shared temporary passwords.",
@@ -564,9 +533,9 @@ const english: PublicMessages = {
       { title: "Identify need", body: "A branch or employee identifies a required product or service." },
       { title: "Create request", body: "The requester adds items, quantities, timing, branch, and context." },
       { title: "Company approval", body: "An authorized approver checks necessity, budget, and evidence." },
-      { title: "Source suppliers", body: "Axora privately requests and evaluates eligible quotations." },
-      { title: "Coordinate order", body: "The selected supplier acknowledges terms and preparation." },
-      { title: "Track delivery", body: "Assigned delivery users record schedule, travel, arrival, and proof." },
+      { title: "Pay and finalize", body: "Pay records the trusted total once and finalizes the invoice." },
+      { title: "Buy the items", body: "The assigned Delivery Guy buys the approved products and records progress." },
+      { title: "Track delivery", body: "The Delivery Guy records schedule, travel, arrival, and proof." },
       { title: "Receive and inspect", body: "A company receiver separately confirms accepted and discrepant quantities." },
       { title: "Match records", body: "Request, receipt, and invoice are compared and exceptions are resolved." },
       { title: "Complete and retain", body: "payment/payment status, completion, documents, and audit history remain traceable." },
@@ -575,13 +544,12 @@ const english: PublicMessages = {
     rolesLead: "People see the next work they own, not every module in the platform.",
     roles: [
       { title: "Companies", body: "Manage people, branches, budgets, requests, approvals, receiving, and permitted finance records.", href: "company-procurement" },
-      { title: "Suppliers", body: "Respond to assigned quotation requests and fulfilment work without seeing competitors.", href: "supplier-collaboration" },
-      { title: "Delivery teams", body: "Use a simple mobile workflow for assigned stops, issues, and evidence.", href: "delivery-tracking" },
+      { title: "Delivery Guy", body: "Use a simple mobile workflow to buy assigned items, deliver them, and record evidence.", href: "delivery-tracking" },
     ],
     trackingTitle: "A timeline that explains what happened",
-    trackingBody: "Requests, approvals, quotations, orders, deliveries, receipts, discrepancies, invoices, and payment updates produce consistent tenant-scoped events.",
+    trackingBody: "Requests, approvals, payments, invoices, buying, deliveries, receipts and discrepancies produce consistent tenant-scoped events.",
     securityTitle: "Commercial boundaries stay clear",
-    securityBody: "Customer users do not see private suppliers, competitor quotations, Axora buying cost, or another company’s records. Supplier and delivery users receive the minimum scope required for assigned work.",
+    securityBody: "Customer users do not see Axora buying cost, internal commercial data, or another company’s records. Delivery users receive the minimum scope required for assigned work.",
     closingTitle: "Ready to discuss your procurement workflow?",
     closingBody: "Tell Axora about your company, branch structure, and current purchasing process. Do not include passwords or confidential records.",
   },
@@ -633,8 +601,7 @@ const arabic: PublicMessages = {
     rolesLead: "يرى كل شخص العمل التالي الذي يخصه بدلًا من رؤية جميع وحدات المنصة.",
     roles: [
       { title: "الشركات", body: "إدارة الموظفين والفروع والميزانيات والطلبات والاعتمادات والاستلام والسجلات المسموحة.", href: "company-procurement" },
-      { title: "الموردون", body: "الرد على طلبات الأسعار والأعمال المسندة دون الاطلاع على المنافسين.", href: "supplier-collaboration" },
-      { title: "فرق التسليم", body: "استخدام تجربة جوال بسيطة للمهام المسندة والمشكلات والإثبات.", href: "delivery-tracking" },
+      { title: "مسؤول التوصيل", body: "استخدام تجربة جوال بسيطة لشراء الأصناف المسندة وتسليمها وتسجيل الإثبات.", href: "delivery-tracking" },
     ],
     trackingTitle: "خط زمني يوضح ما حدث",
     trackingBody: "تُسجل الطلبات والاعتمادات وعروض الأسعار والتسليم والاستلام والفواتير والدفع كأحداث متسقة ومحددة للشركة.",
@@ -691,8 +658,7 @@ const malay: PublicMessages = {
     rolesLead: "Setiap orang melihat kerja seterusnya yang dimiliki, bukan semua modul platform.",
     roles: [
       { title: "Syarikat", body: "Urus orang, cawangan, bajet, permintaan, kelulusan, penerimaan dan rekod kewangan yang dibenarkan.", href: "company-procurement" },
-      { title: "Pembekal", body: "Balas permintaan sebut harga dan kerja pemenuhan tanpa melihat pesaing.", href: "supplier-collaboration" },
-      { title: "Pasukan penghantaran", body: "Gunakan aliran mudah alih untuk tugasan, isu dan bukti yang diberikan.", href: "delivery-tracking" },
+      { title: "Penghantar", body: "Gunakan aliran mudah alih untuk membeli item yang ditugaskan, menghantarnya dan merekod bukti.", href: "delivery-tracking" },
     ],
     trackingTitle: "Garis masa yang menerangkan apa yang berlaku",
     trackingBody: "Permintaan, kelulusan, sebut harga, penghantaran, penerimaan, invois dan payment menghasilkan peristiwa konsisten dalam skop penyewa.",

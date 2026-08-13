@@ -38,7 +38,7 @@ const statuses: readonly NotificationStatusFilter[] = [
   "ALL", "UNREAD", "READ", "ARCHIVED",
 ];
 const categories: readonly NotificationCenterCategoryFilter[] = [
-  "ALL", "ACCOUNT", "LEAD", "APPROVAL", "BUDGET", "SOURCING",
+  "ALL", "ACCOUNT", "LEAD", "APPROVAL", "BUDGET",
   "DELIVERY", "FINANCE", "EMAIL", "WORKFLOW",
 ];
 const reminderOptions = [0, 12, 24, 72, 168] as const;

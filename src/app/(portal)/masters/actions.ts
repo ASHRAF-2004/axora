@@ -33,8 +33,8 @@ import {
   setPrimaryProductImage,
   updateProductImageAltText,
 } from "@/lib/product-images";
-import { createBranch, createProduct, createSupplier, setMasterActive, type MasterEntity } from "@/lib/repository";
-import { branchSchema, companySchema, productSchema, readFormText, supplierSchema } from "@/lib/validation";
+import { createBranch, createProduct, setMasterActive, type MasterEntity } from "@/lib/repository";
+import { branchSchema, companySchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -42,8 +42,6 @@ import { calculateCommercialSellingPrice } from "@/lib/procurement-rules";
 import { canAccess } from "@/lib/permissions";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
-const optionalNumber = (data: FormData, key: string) => data.get(key) === null || data.get(key) === "" ? "" : data.get(key);
-
 function productInput(formData: FormData) {
   const defaultBuyPrice = Number(number(formData, "defaultBuyPrice"));
   return productSchema.parse({
@@ -57,15 +55,7 @@ function productInput(formData: FormData) {
     description: readFormText(formData, "description"),
     defaultBuyPrice,
     defaultSellPrice: calculateCommercialSellingPrice(defaultBuyPrice),
-    minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1),
-    maximumOrderQuantity: optionalNumber(formData, "maximumOrderQuantity"),
-    orderIncrement: number(formData, "orderIncrement", 1),
-    packSize: number(formData, "packSize", 1),
-    packUnit: readFormText(formData, "packUnit"),
-    quantityRuleEffectiveFrom: readFormText(formData, "quantityRuleEffectiveFrom"),
-    quantityRuleReason: readFormText(formData, "quantityRuleReason") || "Catalog ordering rule configured",
     deliverySlaDays: number(formData, "deliverySlaDays", 1),
-    preferredSupplierId: readFormText(formData, "preferredSupplierId") || undefined,
   });
 }
 
@@ -313,42 +303,62 @@ export async function createBranchAction(formData: FormData) {
   redirect("/branches?notice=branch-created");
 }
 
-export async function createSupplierAction(formData: FormData) {
-  const user = await requirePermission("manage_suppliers");
-  const input = { ...supplierSchema.parse({ name: readFormText(formData, "name"), category: readFormText(formData, "category"), contactName: readFormText(formData, "contactName"), phone: readFormText(formData, "phone"),
-    email: readFormText(formData, "email"), address: readFormText(formData, "address"), coverageArea: readFormText(formData, "coverageArea"), paymentTerms: readFormText(formData, "paymentTerms"),
-    leadTimeDays: number(formData, "leadTimeDays", 1), minimumOrderQuantity: number(formData, "minimumOrderQuantity", 1), mainProducts: readFormText(formData, "mainProducts"), notes: readFormText(formData, "notes") }),
-  };
-  await createSupplier(input, user);
-  revalidatePath("/suppliers"); revalidatePath("/dashboard");
-  redirect("/suppliers?notice=supplier-created");
-}
+export interface ProductActionState { status: "idle" | "error"; message?: string }
 
-export async function createProductAction(formData: FormData) {
+export async function createProductAction(
+  _previous: ProductActionState,
+  formData: FormData,
+): Promise<ProductActionState> {
   const user = await requirePermission("manage_catalog");
   if (!canAccess(user, "manage_commercial_pricing")) {
-    throw new Error("Commercial pricing permission is required to create a priced product.");
+    return { status: "error", message: "Commercial pricing permission is required to create a priced product." };
   }
-  const selectedFiles = [...files(formData, "images"), ...files(formData, "image")];
-  const preparedImages = await prepareProductImages(selectedFiles);
-  const productId = await createProduct(productInput(formData), user);
+  let input: ReturnType<typeof productInput>;
+  let preparedImages: Awaited<ReturnType<typeof prepareProductImages>>;
+  try {
+    input = productInput(formData);
+    preparedImages = await prepareProductImages([
+      ...files(formData, "images"), ...files(formData, "image"),
+    ]);
+  } catch (error) {
+    return { status: "error", message: validationMessage(error) };
+  }
+  let productId: string;
+  try {
+    productId = await createProduct(input, user);
+  } catch (error) {
+    return { status: "error", message: validationMessage(error) };
+  }
   if (preparedImages.length) {
-    await savePreparedProductImages({
-      productId,
-      images: preparedImages,
-      altText: readFormText(formData, "imageAltText"),
-    }, user);
+    try {
+      await savePreparedProductImages({
+        productId,
+        images: preparedImages,
+        altText: readFormText(formData, "imageAltText"),
+      }, user);
+    } catch {
+      revalidateProduct(productId);
+      redirect(`/products/${productId}/edit?notice=product-created-image-retry`);
+    }
   }
   revalidateProduct(productId);
   redirect(`/products/${productId}/edit?notice=product-created`);
 }
 
-export async function updateProductAction(productId: string, formData: FormData) {
+export async function updateProductAction(
+  productId: string,
+  _previous: ProductActionState,
+  formData: FormData,
+): Promise<ProductActionState> {
   const user = await requirePermission("manage_catalog");
   if (!canAccess(user, "manage_commercial_pricing")) {
-    throw new Error("Commercial pricing permission is required to change a priced product.");
+    return { status: "error", message: "Commercial pricing permission is required to change a priced product." };
   }
-  await updateProduct(productId, productInput(formData), user);
+  try {
+    await updateProduct(productId, productInput(formData), user);
+  } catch (error) {
+    return { status: "error", message: validationMessage(error) };
+  }
   revalidateProduct(productId);
   redirect("/products?notice=product-updated");
 }
@@ -390,10 +400,8 @@ export async function setMasterActiveAction(entity: MasterEntity, id: string, ac
     throw new Error("Company activation is controlled by the onboarding lifecycle.");
   }
   const permission = entity === "branches"
-      ? "manage_branches"
-      : entity === "products"
-        ? "manage_catalog"
-        : "manage_suppliers";
+    ? "manage_branches"
+    : "manage_catalog";
   const user = await requirePermission(permission);
   await setMasterActive(entity, id, active, user);
   revalidatePath(`/${entity}`); revalidatePath("/dashboard");

@@ -16,14 +16,12 @@ const ROUTE_PERMISSION_CODES: Readonly<Record<Permission, readonly PermissionCod
   view_branches: ["organization.branch.view"],
   manage_companies: ["company.create", "company.view.all", "company.view.assigned", "company.edit"],
   manage_catalog: ["product.manage", "product.archive", "category.manage"],
-  manage_suppliers: ["supplier.manage"],
   manage_branches: ["organization.branch.manage", "organization.department.manage"],
   manage_branch_budget: ["budget.branch.manage"],
   create_requests: ["request.create"],
   view_approvals: ["request.approval_queue.view"],
   view_budgets: ["budget.view"],
   approve_requests: ["request.approve.other", "request.approve.self"],
-  manage_sourcing: ["sourcing.manage"],
   manage_deliveries: ["delivery.manage"],
   view_invoices: ["finance.invoice.view"],
   manage_finance: ["finance.manage"],
@@ -45,7 +43,6 @@ const ROUTE_PERMISSION_CODES: Readonly<Record<Permission, readonly PermissionCod
   update_assigned_deliveries: ["delivery.assignment.update"],
   view_receiving: ["receiving.view"],
   confirm_receipts: ["receiving.confirm"],
-  review_three_way_matches: ["finance.match.review"],
   view_platform_revenue: ["analytics.revenue.view"],
   view_platform_profit: ["commercial.platform_margin.view"],
   view_internal_cost: ["commercial.cost.view"],
@@ -81,7 +78,9 @@ export async function resolveEffectiveRoutePermissions(
 }
 
 export async function listGrantablePermissionOptions(actor: AuthenticatedSessionUser) {
-  if (actor.isOwner) return PERMISSION_CATALOG.map((permission) => ({ ...permission }));
+  if (actor.isOwner) {
+    return PERMISSION_CATALOG.map((permission) => ({ ...permission }));
+  }
   const access = (await loadEffectiveAccess(actor)).subject;
   const scope = actorScope(actor);
   return PERMISSION_CATALOG.filter((permission) => authorize({

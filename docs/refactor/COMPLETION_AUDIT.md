@@ -41,8 +41,8 @@ Legend:
 
 ### 4) Role-specific workflows
 
-- Company, supplier, and driver/receiver operational paths (request→approval→sourcing→delivery→receiving)
-  - **Verified** in role tests (`tests/role-portals-repository.test.ts`, `tests/role-portals-ui.test.ts`, `e2e/role-portals.spec.ts`) and workflow tests (`tests/receiving.test.ts`, `tests/supplier-portal.test.ts`, `tests/supplier-rfq-operations.test.ts`, `tests/customer-matching*`).
+- Company and Delivery Guy operational paths (request→approval→Pay→invoice→buying→delivery→receiving)
+  - **Verified** in role tests (`tests/role-portals-repository.test.ts`, `tests/role-portals-ui.test.ts`, `e2e/role-portals.spec.ts`) and workflow tests (`tests/receiving.test.ts`, `tests/paid-checkout-invoice-migration.test.ts`, `tests/invoice-document-email.test.mjs`). Historical supplier tests remain evidence for preserved legacy records, not active product workflows.
 
 - Branch/company isolation and separation-of-duty constraints
   - **Verified** by `tests/permissions.test.ts`, `tests/user-management-security.test.ts`, `tests/workflow-event-rls-security.test.ts`, `tests/portal-navigation-security.test.ts`.

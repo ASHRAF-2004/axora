@@ -236,15 +236,15 @@ const messages = {
 } satisfies Record<SupportedLocale, Record<string, string>>;
 
 const statusLabels: Record<SupportedLocale, Record<CompanyLeadStatus, string>> = {
-  en: { NEW: "New", ASSIGNED: "Assigned", CONTACTED: "Contacted", INFORMATION_PENDING: "Information pending", QUALIFIED: "Qualified", CONVERTED: "Converted", DUPLICATE: "Duplicate", REJECTED: "Rejected", ARCHIVED: "Archived" },
-  ar: { NEW: "جديد", ASSIGNED: "مسند", CONTACTED: "تم التواصل", INFORMATION_PENDING: "بانتظار المعلومات", QUALIFIED: "مؤهل", CONVERTED: "تم التحويل", DUPLICATE: "مكرر", REJECTED: "مرفوض", ARCHIVED: "مؤرشف" },
-  ms: { NEW: "Baharu", ASSIGNED: "Ditugaskan", CONTACTED: "Dihubungi", INFORMATION_PENDING: "Menunggu maklumat", QUALIFIED: "Layak", CONVERTED: "Ditukar", DUPLICATE: "Pendua", REJECTED: "Ditolak", ARCHIVED: "Diarkibkan" },
+  en: { NEW: "New", ASSIGNED: "Assigned", CONTACTED: "Contacted", INFORMATION_PENDING: "Information pending", QUALIFIED: "Qualified", ONBOARDING: "Onboarding", ACTIVE: "Active", CONVERTED: "Converted", DUPLICATE: "Duplicate", REJECTED: "Rejected", ARCHIVED: "Archived" },
+  ar: { NEW: "جديد", ASSIGNED: "مسند", CONTACTED: "تم التواصل", INFORMATION_PENDING: "بانتظار المعلومات", QUALIFIED: "مؤهل", ONBOARDING: "قيد الإعداد", ACTIVE: "نشط", CONVERTED: "تم التحويل", DUPLICATE: "مكرر", REJECTED: "مرفوض", ARCHIVED: "مؤرشف" },
+  ms: { NEW: "Baharu", ASSIGNED: "Ditugaskan", CONTACTED: "Dihubungi", INFORMATION_PENDING: "Menunggu maklumat", QUALIFIED: "Layak", ONBOARDING: "Penerimaan", ACTIVE: "Aktif", CONVERTED: "Ditukar", DUPLICATE: "Pendua", REJECTED: "Ditolak", ARCHIVED: "Diarkibkan" },
 };
 
 const actionLabels: Record<SupportedLocale, Partial<Record<CompanyLeadAction, string>>> = {
-  en: { ASSIGN: "Assign", REASSIGN: "Reassign", MARK_CONTACTED: "Mark contacted", REQUEST_INFORMATION: "Request information", QUALIFY: "Qualify", REJECT: "Reject", CONVERT: "Convert", REVIEW_DUPLICATE: "Review duplicate", ADD_NOTE: "Add note", ADD_TASK: "Add task", ANONYMIZE: "Anonymize" },
-  ar: { ASSIGN: "إسناد", REASSIGN: "إعادة الإسناد", MARK_CONTACTED: "تحديد أنه تم التواصل", REQUEST_INFORMATION: "طلب معلومات", QUALIFY: "تأهيل", REJECT: "رفض", CONVERT: "تحويل", REVIEW_DUPLICATE: "مراجعة التكرار", ADD_NOTE: "إضافة ملاحظة", ADD_TASK: "إضافة مهمة", ANONYMIZE: "إخفاء الهوية" },
-  ms: { ASSIGN: "Tugaskan", REASSIGN: "Tugaskan semula", MARK_CONTACTED: "Tandakan dihubungi", REQUEST_INFORMATION: "Minta maklumat", QUALIFY: "Layakkan", REJECT: "Tolak", CONVERT: "Tukar", REVIEW_DUPLICATE: "Semak pendua", ADD_NOTE: "Tambah nota", ADD_TASK: "Tambah tugas", ANONYMIZE: "Anonimkan" },
+  en: { ASSIGN: "Assign", REASSIGN: "Reassign", MARK_CONTACTED: "Mark contacted", REQUEST_INFORMATION: "Request information", QUALIFY: "Qualify", REJECT: "Reject", CONVERT: "Start onboarding", ACTIVATE: "Mark active", REVIEW_DUPLICATE: "Review duplicate", ADD_NOTE: "Add note", ADD_TASK: "Add task", ANONYMIZE: "Anonymize" },
+  ar: { ASSIGN: "إسناد", REASSIGN: "إعادة الإسناد", MARK_CONTACTED: "تحديد أنه تم التواصل", REQUEST_INFORMATION: "طلب معلومات", QUALIFY: "تأهيل", REJECT: "رفض", CONVERT: "بدء الإعداد", ACTIVATE: "تفعيل", REVIEW_DUPLICATE: "مراجعة التكرار", ADD_NOTE: "إضافة ملاحظة", ADD_TASK: "إضافة مهمة", ANONYMIZE: "إخفاء الهوية" },
+  ms: { ASSIGN: "Tugaskan", REASSIGN: "Tugaskan semula", MARK_CONTACTED: "Tandakan dihubungi", REQUEST_INFORMATION: "Minta maklumat", QUALIFY: "Layakkan", REJECT: "Tolak", CONVERT: "Mulakan penerimaan", ACTIVATE: "Tandakan aktif", REVIEW_DUPLICATE: "Semak pendua", ADD_NOTE: "Tambah nota", ADD_TASK: "Tambah tugas", ANONYMIZE: "Anonimkan" },
 };
 
 export function companyLeadMessages(locale: SupportedLocale) {

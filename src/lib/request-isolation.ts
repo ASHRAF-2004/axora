@@ -208,13 +208,7 @@ function minimizeDemoRequest(
     request,
     capturedAt,
   );
-  const canViewSourcing = permissionAllowed(
-    subject,
-    "sourcing.manage",
-    request,
-    capturedAt,
-  );
-  const canViewCommercial = canViewSourcing || permissionAllowed(
+  const canViewCommercial = permissionAllowed(
     subject,
     "commercial.cost.view",
     request,
@@ -228,14 +222,10 @@ function minimizeDemoRequest(
     invoiceNumber: canViewFinance ? request.invoiceNumber : undefined,
     lines: request.lines.map((line) => ({
       ...line,
-      supplierId: canViewSourcing ? line.supplierId : undefined,
-      supplierName: canViewSourcing ? line.supplierName : undefined,
-      quotationReference: canViewSourcing
-        ? line.quotationReference
-        : undefined,
-      supplierConfirmationStatus: canViewSourcing
-        ? line.supplierConfirmationStatus
-        : undefined,
+      supplierId: undefined,
+      supplierName: undefined,
+      quotationReference: undefined,
+      supplierConfirmationStatus: undefined,
       unitBuyPrice: canViewCommercial ? line.unitBuyPrice : 0,
       deliveryCharge: canViewCommercial ? line.deliveryCharge : 0,
     })),

@@ -43,20 +43,44 @@ const transitions: Partial<Record<CompanyLeadAction, CompanyLeadStatus>> = {
   MARK_CONTACTED: "CONTACTED",
   REQUEST_INFORMATION: "INFORMATION_PENDING",
   QUALIFY: "QUALIFIED",
+  ACTIVATE: "ACTIVE",
   REJECT: "REJECTED",
 };
+
+function actionsForRole(
+  role: string,
+  isOwner: boolean,
+  source: readonly CompanyLeadAction[],
+  status: CompanyLeadStatus,
+) {
+  const allowed = isOwner
+    ? new Set<CompanyLeadAction>(["REVIEW_DUPLICATE", "ANONYMIZE"])
+    : role === "HUMAN_RESOURCES_MANAGEMENT"
+      ? new Set<CompanyLeadAction>(["ASSIGN", "REASSIGN", "REVIEW_DUPLICATE", "ADD_NOTE", "ADD_TASK"])
+      : role === "CLIENT_ACCOUNT_MANAGER"
+        ? new Set<CompanyLeadAction>([
+          "MARK_CONTACTED", "REQUEST_INFORMATION", "QUALIFY", "CONVERT",
+          "ACTIVATE", "REVIEW_DUPLICATE", "ADD_NOTE", "ADD_TASK",
+        ])
+        : new Set<CompanyLeadAction>();
+  const candidates = role === "CLIENT_ACCOUNT_MANAGER" && status === "ONBOARDING"
+    ? [...source, "ACTIVATE" as const]
+    : source;
+  return new Set(candidates.filter((action) => allowed.has(action)));
+}
 
 function LeadActions({
   lead,
   managers,
   locale,
+  available,
 }: {
   lead: CompanyLeadRecord;
   managers: Array<{ id: string; name: string; email: string }>;
   locale: SupportedLocale;
+  available: Set<CompanyLeadAction>;
 }) {
   const copy = companyLeadMessages(locale);
-  const available = new Set(lead.availableActions);
   return <div className="table-action-stack">
     {available.has("ASSIGN") || available.has("REASSIGN") ? <details>
       <summary>{companyLeadActionLabel(locale, available.has("REASSIGN") ? "REASSIGN" : "ASSIGN")}</summary>
@@ -147,7 +171,7 @@ export default async function CompanyLeadsPage({
     {!workspace.leads.length ? <section className="empty-state"><p>{copy.noLeads}</p></section> : null}
     <div className="page-stack">
       {workspace.leads.map((lead) => {
-        const available = new Set(lead.availableActions);
+        const available = actionsForRole(actor.role, actor.isOwner, lead.availableActions, lead.status);
         return <article className="panel" key={lead.id} id={`lead-${lead.id}`}>
           <header className="section-heading">
             <div><p className="eyebrow">{lead.code}</p><h2>{lead.companyName}</h2><p>{lead.legalName}</p></div>
@@ -169,7 +193,7 @@ export default async function CompanyLeadsPage({
               <p>{copy.consent}: {formatDate(locale, timezone, lead.consentAt)} ({lead.privacyPolicyVersion})</p>
               <p>{copy.retentionUntil}: {formatDate(locale, timezone, lead.retentionUntil)}</p>
               {lead.convertedCompanyId ? <p>{copy.convertedCompany}: <Link href={`/companies?created=${lead.convertedCompanyId}`}>{lead.convertedCompanyId}</Link></p> : null}
-              <LeadActions lead={lead} managers={workspace.managers} locale={locale} />
+              <LeadActions lead={lead} managers={workspace.managers} locale={locale} available={available} />
 
               {lead.duplicateCandidates.length ? <section><h3>{copy.duplicateCandidates}</h3>{lead.duplicateCandidates.map((candidate) => <div className="subpanel" key={candidate.id}>
                 <p><strong>{candidate.kind}: {candidate.label}</strong></p><p>{copy.matched}: {candidate.matchedFields.join(", ")}</p><p>{candidate.reviewStatus}</p>

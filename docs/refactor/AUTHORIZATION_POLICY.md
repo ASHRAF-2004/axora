@@ -12,27 +12,26 @@ ownership, and current workflow state.
 ```mermaid
 flowchart TB
   PO[Platform Owner]
+  HR[Human Resources Management]
   CAM[Client Account Manager]
   CA[Company Administrator]
   BA[Branch Administrator]
   DA[Department Administrator]
   R[Requester / Purchasing Assistant]
-  DTS[Delivery Team Supervisor]
-  DAgent[Delivery Agent]
+  DG[Delivery Guy]
 
-  PO --> CAM
+  PO --> HR
+  HR --> CAM
   CAM --> CA
   CA --> BA
   CA --> DA
   BA --> R
   DA --> R
-  PO --> DTS
-  DTS --> DAgent
+  PO --> DG
 ```
 
 Specialist roles such as Company Approver, Branch Approver, Finance Reviewer,
-Auditor, Receiving User, Supplier User, Platform Operations, and Technical
-Support remain available where separation of duties requires them. They are not
+Auditor, Receiving User, and Technical Support remain available where separation of duties requires them. They are not
 implicit powers inherited from a person's job title.
 
 ## Authorization decision order
@@ -70,7 +69,7 @@ surface while routes are migrated; new work must use canonical codes such as:
 - `budget.increase`
 - `commercial.company_ceiling.override`
 - `delivery.assign`
-- `document.dispatch.supplier`
+- `delivery.manage`
 - `analytics.platform.view`
 
 ## Role versus job title

@@ -11,11 +11,10 @@ export interface DemoRoleSession {
   email: string;
   name: string;
   role: string;
-  accountKind: "PLATFORM" | "COMPANY" | "SUPPLIER" | "DELIVERY";
-  scopeType: "PLATFORM" | "COMPANY" | "BRANCH" | "SUPPLIER" | "DELIVERY";
+  accountKind: "PLATFORM" | "COMPANY" | "DELIVERY";
+  scopeType: "PLATFORM" | "COMPANY" | "BRANCH" | "DEPARTMENT" | "DELIVERY";
   companyId?: string;
   branchId?: string;
-  supplierId?: string;
   isOwner?: boolean;
   preferredLocale?: "en" | "ar" | "ms";
 }
@@ -42,7 +41,6 @@ export async function signInAsDemoRole(page: Page, fixture: DemoRoleSession) {
     scopeType: fixture.scopeType,
     companyId: fixture.companyId,
     branchId: fixture.branchId,
-    supplierId: fixture.supplierId,
     isOwner: fixture.isOwner ?? false,
     authVersion: 1,
     preferredLocale: fixture.preferredLocale ?? "en",

@@ -195,13 +195,11 @@ export function RequestFiltersPanel({
   filters,
   currentQuery,
   platformView,
-  canViewSupplier,
   locale,
 }: {
   filters: RequestFilters;
   currentQuery: string;
   platformView: boolean;
-  canViewSupplier: boolean;
   locale: SupportedLocale;
 }) {
   const copy = requestFilterMessages(locale);
@@ -209,7 +207,7 @@ export function RequestFiltersPanel({
     filters.companyIds.length || filters.managerIds.length || filters.branchIds.length
     || filters.departmentIds.length || filters.costCentreIds.length
     || filters.requesterIds.length || filters.approverIds.length
-    || filters.deliveryAgentIds.length || filters.supplierIds.length
+    || filters.deliveryAgentIds.length
     || filters.budgetExceptionStatuses.length || filters.neededFrom || filters.neededTo
     || filters.submittedFrom || filters.submittedTo || filters.approvedFrom
     || filters.approvedTo || filters.completedFrom || filters.completedTo
@@ -269,7 +267,6 @@ export function RequestFiltersPanel({
             <ScopedFilter dimension="requester" name="requester" label={copy.requester} initialValues={filters.requesterIds} locale={locale} />
             <ScopedFilter dimension="approver" name="approver" label={copy.approver} initialValues={filters.approverIds} locale={locale} />
             {platformView ? <ScopedFilter dimension="deliveryAgent" name="deliveryAgent" label={copy.deliveryAgent} initialValues={filters.deliveryAgentIds} locale={locale} /> : null}
-            {canViewSupplier ? <ScopedFilter dimension="supplier" name="supplier" label={copy.supplier} initialValues={filters.supplierIds} locale={locale} /> : null}
             <label>{copy.budgetException}<select name="budgetException" defaultValue={filters.budgetExceptionStatuses[0] ?? ""}>
               <option value="">{copy.noBudgetFilter}</option>
               {REQUEST_BUDGET_EXCEPTION_STATUSES.map((status) => <option key={status} value={status}>{copy.budgetStatuses[status]}</option>)}

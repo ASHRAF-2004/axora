@@ -12,18 +12,18 @@ const owner = {
 };
 
 describe("customer-approved procurement workflow", () => {
-  it("uses one company approval before Axora sourcing", () => {
+  it("uses one company approval before payment and delivery", () => {
     expect(allowedNextStatuses("New Request")).not.toContain("On Hold");
     expect(allowedNextStatuses("Under Verification")).not.toContain("Waiting for Approval");
     expect(allowedNextStatuses("Under Verification")).toContain("On Hold");
-    expect(allowedNextStatuses("Waiting for Quotation")).toContain("Supplier Assigned");
+    expect(allowedNextStatuses("Waiting for Quotation")).toContain("Approved");
     expect(allowedNextStatuses("Waiting for Quotation")).not.toContain("Waiting for Approval");
     expect(allowedNextStatuses("Waiting for Quotation")).not.toContain("On Hold");
   });
 
   it("keeps retired approval statuses usable for historical requests", () => {
     expect(allowedNextStatuses("Waiting for Approval")).toContain("Approved");
-    expect(allowedNextStatuses("Approved")).toContain("Supplier Assigned");
+    expect(allowedNextStatuses("Approved")).toContain("Preparing for Delivery");
   });
 
   it("blocks every owner status action until the company approves the request", async () => {

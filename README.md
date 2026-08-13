@@ -1,8 +1,8 @@
 # Axora procurement
 
 Axora is a self-hosted, secure multi-company procurement platform. It gives
-company requesters and approvers, Axora operations, suppliers, delivery teams,
-receivers, finance reviewers, auditors, and support staff focused workspaces
+company requesters and approvers, Axora Agents, HR Management, and Delivery Guys,
+Human Resources Management users, Client Account Managers, and Delivery Guys focused workspaces
 while preserving one tenant-scoped, append-only lifecycle from need through
 payment, fulfilment, receipt, invoice, and delivery evidence.
 
@@ -38,8 +38,8 @@ authorized Axora platform owner explicitly approves decommissioning.
   draft; passwords, tokens, secrets and file contents are never persisted.
 - Automatically derived accessible company branding from validated logos;
   company users receive no color/theme editor.
-- Internal supplier sourcing, mobile delivery-driver, and independent receiver
-  flows, customer three-way matching, workflow timelines, and in-app/email
+- Global catalogue management, Delivery Guy execution, and independent receiver
+  flows, invoice reconciliation, workflow timelines, and in-app/email
   outboxes. Axora has no supplier account or supplier-facing portal.
 - Optional sanitized demonstration data for isolated local development only.
 - PostgreSQL 18 forward migrations through `076`, guarded
@@ -112,7 +112,7 @@ attached. Customers are not shown an implementation strategy or provider.
 
 The current testing-stage strategy does not use an online gateway. It is
 isolated behind the payment-completion boundary so a future verified provider
-or reviewed manual-confirmation flow can replace it without changing invoice,
+or reviewed administrator-confirmed flow can replace it without changing invoice,
 document, email, fulfilment, or delivery semantics. Follow
 [PAYMENT_AND_INVOICE_OPERATING_RULES.md](PAYMENT_AND_INVOICE_OPERATING_RULES.md).
 
@@ -151,7 +151,7 @@ polished transactional email with that PDF attached through Resend.
 Payment and physical delivery are independent states. Fulfilment, delivery
 tracking, and customer receipt continue through their own state machines after
 payment. The internal payment-completion boundary is replaceable: a future bank,
-card, FPX, or reviewed manual-confirmation integration can produce the same
+card, FPX, or reviewed administrator-confirmed integration can produce the same
 trusted paid event without rewriting invoice finalization or email delivery.
 
 ### Effective access, scoped administration, and saved progress
@@ -181,3 +181,27 @@ after refresh or route recovery. Draft keys include the signed-in user, tenant
 scope, route, form identifier, and schema version; drafts expire, can be
 discarded, and never persist passwords, tokens, credentials, payment secrets, or
 file contents.
+## Simplified operating model
+
+Current work follows `NEW -> ASSIGNED -> CONTACTED -> QUALIFIED -> ONBOARDING -> ACTIVE`.
+Human Resources Management assigns leads to Client Account Managers (Agents).
+Agents can see only assigned leads and companies; the Platform Owner retains
+global visibility but does not perform lead or company assignment. Customer
+approval remains tenant-owned and always prevents self-approval.
+
+The active purchase path is:
+
+`Request -> Company approval -> Pay -> Invoice -> Delivery Guy buys items -> Delivery -> proof of receipt -> Completed`
+
+The catalogue no longer exposes supplier ordering rules, minimum or maximum
+quantities, increments, pack units, rule reasons, or effective dates. Historical
+columns and sourcing evidence remain preserved for audit and rollback, but new
+application behavior does not use the retired workflow.
+
+`Pay` is server-authoritative and idempotent. It commits the approved budget,
+records payment once, finalizes one permanent invoice, generates one PDF, and
+queues one invoice email. Payment and delivery states remain independent.
+
+Safe form drafts remain scoped to the authenticated user, role assignment,
+tenant and route. Draft restoration is silent; passwords, tokens, secrets and
+file contents are never persisted.

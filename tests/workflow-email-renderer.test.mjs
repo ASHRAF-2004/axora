@@ -21,7 +21,7 @@ describe("localized workflow email renderer", () => {
       recipientName: "Aisha Rahman",
       workflow: {
         title: "Request PR-204 was approved",
-        body: "The request has moved to Axora sourcing.",
+        body: "The request has moved to Axora buying preparation.",
         actionPath: "/requests/00000000-0000-4000-8000-000000000032",
       },
     }, { appBaseUrl: "https://axora.management" });
@@ -32,7 +32,7 @@ describe("localized workflow email renderer", () => {
     expect(rendered.html).toContain(
       "https://axora.management/requests/00000000-0000-4000-8000-000000000032",
     );
-    expect(rendered.text).toContain("The request has moved to Axora sourcing.");
+    expect(rendered.text).toContain("The request has moved to Axora buying preparation.");
     expect(rendered.html).toContain('src="cid:axora-logo"');
     expect(rendered.templateKey).toBe("workflow-update");
   });

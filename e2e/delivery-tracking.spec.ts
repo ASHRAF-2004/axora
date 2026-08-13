@@ -4,8 +4,8 @@ import { signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
 const driver: DemoRoleSession = {
   id: "44444444-4444-4444-8444-444444444444",
   email: "tracking-driver.fixture@axora.invalid",
-  name: "Tracking driver fixture",
-  role: "DELIVERY_AGENT",
+  name: "Tracking Delivery Guy fixture",
+  role: "DELIVERY_GUY",
   accountKind: "DELIVERY",
   scopeType: "DELIVERY",
 };
@@ -14,17 +14,16 @@ const receiver: DemoRoleSession = {
   id: "55555555-5555-4555-8555-555555555555",
   email: "tracking-receiver.fixture@axora.invalid",
   name: "Tracking receiver fixture",
-  role: "RECEIVING_USER",
+  role: "COMPANY_ADMIN",
   accountKind: "COMPANY",
-  scopeType: "BRANCH",
+  scopeType: "COMPANY",
   companyId: "66666666-6666-4666-8666-666666666666",
-  branchId: "77777777-7777-4777-8777-777777777777",
 };
 
 const sessionId = "10000000-0000-4000-8000-000000000068";
 const jobId = "20000000-0000-4000-8000-000000000068";
 
-test("assigned driver shares only the active delivery location and sees the privacy indicator", async ({ page, context }) => {
+test("assigned Delivery Guy shares only the active delivery location and sees the privacy indicator", async ({ page, context }) => {
   const points: Record<string, unknown>[] = [];
   await context.grantPermissions(["geolocation"], {
     origin: "http://127.0.0.1:3100",
@@ -33,8 +32,6 @@ test("assigned driver shares only the active delivery location and sees the priv
   await page.route("**/api/driver/workspace", async (route) => route.fulfill({ json: {
     actorId: driver.id,
     capturedAt: "2026-08-09T04:00:00Z",
-    products: [],
-    suppliers: [],
     jobs: [{
       id: jobId,
       code: "DEL-LIVE-068",
@@ -88,10 +85,10 @@ test("assigned driver shares only the active delivery location and sees the priv
     latitude: 3.139,
     longitude: 101.6869,
   });
-  await expect(page.getByText(/private supplier|buying cost/i)).toHaveCount(0);
+  await expect(page.getByText(/internal cost|buying cost/i)).toHaveCount(0);
 });
 
-test("company receiver sees active ETA, route, approved vehicle and no historical movement", async ({ page }) => {
+test("company recipient sees active ETA, route, approved vehicle and no historical movement", async ({ page }) => {
   await page.route("**/api/receiving/delivery-otp", async (route) => route.fulfill({
     json: { capturedAt: "2026-08-09T04:00:00Z", jobs: [] },
   }));

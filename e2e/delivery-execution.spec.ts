@@ -1,46 +1,34 @@
 import { expect, test } from "@playwright/test";
-import { signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
+import { signInAsDemoOwner, signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
 
 const driver: DemoRoleSession = {
   id: "44444444-4444-4444-8444-444444444444",
   email: "canonical-driver.fixture@axora.invalid",
   name: "Canonical driver fixture",
-  role: "DELIVERY_AGENT",
+  role: "DELIVERY_GUY",
   accountKind: "DELIVERY",
   scopeType: "DELIVERY",
   preferredLocale: "ar",
-};
-
-const supervisor: DemoRoleSession = {
-  id: "11111111-1111-4111-8111-111111111111",
-  email: "delivery-supervisor.fixture@axora.invalid",
-  name: "Delivery supervisor fixture",
-  role: "DELIVERY_TEAM_SUPERVISOR",
-  accountKind: "DELIVERY",
-  scopeType: "DELIVERY",
 };
 
 const receiver: DemoRoleSession = {
   id: "55555555-5555-4555-8555-555555555555",
   email: "delivery-receiver.fixture@axora.invalid",
   name: "Delivery receiver fixture",
-  role: "RECEIVING_USER",
+  role: "COMPANY_ADMIN",
   accountKind: "COMPANY",
-  scopeType: "BRANCH",
+  scopeType: "COMPANY",
   companyId: "66666666-6666-4666-8666-666666666666",
-  branchId: "77777777-7777-4777-8777-777777777777",
 };
 
 const jobId = "10000000-0000-4000-8000-000000000001";
 const assignmentId = "20000000-0000-4000-8000-000000000001";
 const roleAssignmentId = "30000000-0000-4000-8000-000000000001";
 
-test("Arabic mobile driver retains a versioned command offline with reduced motion", async ({ page, context }) => {
+test("Arabic mobile Delivery Guy retains a versioned command offline with reduced motion", async ({ page, context }, testInfo) => {
   await page.route("**/api/driver/workspace", async (route) => route.fulfill({ json: {
     actorId: driver.id,
     capturedAt: "2026-08-09T01:00:00Z",
-    products: [{ id: "40000000-0000-4000-8000-000000000001", name: "Safety gloves", code: "P-1" }],
-    suppliers: [{ id: "50000000-0000-4000-8000-000000000001", name: "Private supplier", code: "S-1" }],
     jobs: [{
       id: jobId, code: "DEL-MEETING-001", status: "ITEMS_ACQUIRED", workflowVersion: 7,
       assignmentId, requestId: "60000000-0000-4000-8000-000000000001",
@@ -64,6 +52,7 @@ test("Arabic mobile driver retains a versioned command offline with reduced moti
   const card = page.locator("article").filter({ hasText: "DEL-MEETING-001" });
   expect(await card.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+  await page.screenshot({ path: `output/playwright/delivery-guy-${testInfo.project.name}.png`, fullPage: true });
 
   await context.setOffline(true);
   await page.getByRole("button", { name: "خرج للتسليم" }).click();
@@ -72,7 +61,7 @@ test("Arabic mobile driver retains a versioned command offline with reduced moti
   expect(queued).toContain('"commandId"');
 });
 
-test("supervisor assignment captures workload, destination time, proof policy and expected version", async ({ page }) => {
+test("owner assignment captures workload, destination time, proof policy and expected version", async ({ page }) => {
   let command: Record<string, unknown> | null = null;
   const workspace = {
     capturedAt: "2026-08-09T01:00:00Z",
@@ -85,7 +74,7 @@ test("supervisor assignment captures workload, destination time, proof policy an
     command = route.request().postDataJSON() as Record<string, unknown>;
     await route.fulfill({ json: { status: "ASSIGNED", workflowVersion: 5 } });
   });
-  await signInAsDemoRole(page, supervisor);
+  await signInAsDemoOwner(page);
   await page.goto("/deliveries");
 
   await expect(page.getByRole("heading", { level: 1, name: "Delivery control tower" })).toBeVisible();
@@ -103,7 +92,7 @@ test("supervisor assignment captures workload, destination time, proof policy an
   });
 });
 
-test("customer receiver sees a one-time OTP without purchasing internals", async ({ page }) => {
+test("customer recipient sees a one-time OTP without purchasing internals", async ({ page }) => {
   await page.route("**/api/receiving/delivery-otp", async (route) => {
     if (route.request().method() === "POST") {
       await route.fulfill({ json: {
@@ -125,7 +114,7 @@ test("customer receiver sees a one-time OTP without purchasing internals", async
 
   await expect(page.getByRole("region", { name: "Secure delivery confirmation" })).toBeVisible();
   await expect(page.getByText(/buying cost/i)).toHaveCount(0);
-  await expect(page.getByText(/private supplier/i)).toHaveCount(0);
+  await expect(page.getByText(/internal cost/i)).toHaveCount(0);
   await page.getByRole("button", { name: "Generate one-time code" }).click();
   await expect(page.getByText("004271", { exact: true })).toBeVisible();
   await expect(page.getByText(/never stored in plaintext/i)).toBeVisible();

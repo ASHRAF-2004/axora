@@ -14,21 +14,23 @@ export interface AccountRoleDefinition {
 
 export const ACCOUNT_ROLE_CATALOG: readonly AccountRoleDefinition[] = [
   { key: "PLATFORM_OWNER", label: "Axora platform owner", description: "Full platform governance and protected tenant administration.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
-  { key: "CLIENT_ACCOUNT_MANAGER", label: "Client account manager", description: "Manages only explicitly assigned client companies and their onboarding work.", accountKind: "PLATFORM", allowedScopes: ["COMPANY"], category: "Axora", availableForCreation: false },
-  { key: "PLATFORM_OPERATIONS", label: "Axora operations administrator", description: "Catalog, sourcing, fulfilment, and delivery coordination without owner governance.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
-  { key: "TECHNICAL_SUPPORT", label: "Technical support", description: "Audited diagnostics and safe support actions without commercial authority.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
+  { key: "HUMAN_RESOURCES_MANAGEMENT", label: "Human Resources Management", description: "Assigns company leads to eligible Agents and monitors onboarding.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
+  { key: "CLIENT_ACCOUNT_MANAGER", label: "Client account manager", description: "Agent responsible only for assigned leads and customer companies.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM", "COMPANY"], category: "Axora" },
+  { key: "PLATFORM_OPERATIONS", label: "Axora operations administrator", description: "Compatibility role for existing catalogue and delivery operations.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora", availableForCreation: false },
+  { key: "TECHNICAL_SUPPORT", label: "Technical support", description: "Historical compatibility role.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora", availableForCreation: false },
   { key: "COMPANY_ADMIN", label: "Company administrator", description: "People, branches, budgets, and company-wide procurement oversight.", accountKind: "COMPANY", allowedScopes: ["COMPANY"], category: "Company" },
   { key: "BRANCH_ADMIN", label: "Branch administrator", description: "People and procurement activity for one assigned branch.", accountKind: "COMPANY", allowedScopes: ["BRANCH"], category: "Company" },
   { key: "DEPARTMENT_ADMIN", label: "Department administrator", description: "People, requests, approvals, and budget visibility for one assigned department.", accountKind: "COMPANY", allowedScopes: ["DEPARTMENT"], category: "Company" },
   { key: "COMPANY_APPROVER", label: "Company approver", description: "Eligible approval decisions across one customer company.", accountKind: "COMPANY", allowedScopes: ["COMPANY"], category: "Company" },
   { key: "BRANCH_APPROVER", label: "Branch approver", description: "Eligible approval decisions for one assigned branch.", accountKind: "COMPANY", allowedScopes: ["BRANCH"], category: "Company" },
   { key: "REQUESTER", label: "Purchase requester", description: "Shop and create purchase requests for one assigned branch or department.", accountKind: "COMPANY", allowedScopes: ["BRANCH", "DEPARTMENT"], category: "Company" },
-  { key: "FINANCE_REVIEWER", label: "Finance reviewer", description: "Customer invoices, payment status, matching, and finance exceptions.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company" },
-  { key: "AUDITOR", label: "Read-only auditor", description: "Read-only evidence and audit history within the assigned scope.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company" },
-  { key: "RECEIVING_USER", label: "Receiving user", description: "Independent delivery inspection and receipt confirmation.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company" },
-  { key: "DELIVERY_TEAM_SUPERVISOR", label: "Delivery team supervisor", description: "Assigns and supervises delivery work without platform or company authority.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
-  { key: "DELIVERY_AGENT", label: "Delivery agent", description: "Purchases, transports, and delivers only assigned work.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
-  { key: "DELIVERY_DRIVER", label: "Delivery driver", description: "Compatibility role for existing assigned mobile delivery jobs.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery" },
+  { key: "FINANCE_REVIEWER", label: "Finance reviewer", description: "Historical compatibility role.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company", availableForCreation: false },
+  { key: "AUDITOR", label: "Read-only auditor", description: "Historical compatibility role.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company", availableForCreation: false },
+  { key: "RECEIVING_USER", label: "Receiving user", description: "Historical compatibility role.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company", availableForCreation: false },
+  { key: "DELIVERY_GUY", label: "Delivery Guy", description: "Buys requested items and completes only assigned deliveries with receipt evidence.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery" },
+  { key: "DELIVERY_TEAM_SUPERVISOR", label: "Legacy delivery supervisor", description: "Historical compatibility role.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
+  { key: "DELIVERY_AGENT", label: "Legacy delivery account", description: "Historical compatibility role.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
+  { key: "DELIVERY_DRIVER", label: "Legacy delivery assignment", description: "Historical compatibility role.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
 ] as const;
 
 const roleByKey = new Map(ACCOUNT_ROLE_CATALOG.map((role) => [role.key, role]));
@@ -47,6 +49,9 @@ export function canonicalAccountRole(role: UserRole, branchId?: string): UserRol
   if (role === "VIEWER") return "AUDITOR";
   if (role === "IT_SUPPORT") return "TECHNICAL_SUPPORT";
   if (role === "OPERATIONS") return "REQUESTER";
+  if (["DELIVERY_TEAM_SUPERVISOR", "DELIVERY_AGENT", "DELIVERY_DRIVER"].includes(role)) {
+    return "DELIVERY_GUY";
+  }
   return role;
 }
 
@@ -69,7 +74,7 @@ export function creatableAccountRoles(actor: SessionUser) {
     }
     if (actor.role === "BRANCH_ADMIN") {
       return ACCOUNT_ROLE_CATALOG.filter((role) => [
-        "BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER",
+        "BRANCH_APPROVER", "REQUESTER",
       ].includes(role.key));
     }
   }
@@ -79,10 +84,10 @@ export function creatableAccountRoles(actor: SessionUser) {
     if (role.category === "Delivery") return canAccess(actor, "create_delivery_users");
     if (!canAccess(actor, "create_company_users")) return false;
     if (actor.role === "BRANCH_ADMIN") {
-      return ["BRANCH_APPROVER", "REQUESTER", "RECEIVING_USER"].includes(role.key);
+      return ["BRANCH_APPROVER", "REQUESTER"].includes(role.key);
     }
     if (actor.role === "DEPARTMENT_ADMIN") {
-      return ["REQUESTER", "RECEIVING_USER"].includes(role.key);
+      return role.key === "REQUESTER";
     }
     return true;
   });

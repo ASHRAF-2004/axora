@@ -9,8 +9,6 @@ import {
   findVisibleDemoRequest,
   RequestAccessUnavailableError,
 } from "./request-isolation";
-import { listSuppliers } from "./repository";
-import { canAccess } from "./permissions";
 import type {
   RequestFilterDimension,
   RequestFilters,
@@ -203,14 +201,10 @@ const requestSelect = `SELECT
   line.specification,
   line.quantity::float8,
   line.unit_of_measure AS unit,
-  CASE WHEN access.can_view_sourcing
-    THEN line.selected_supplier_id::text END AS "supplierId",
-  CASE WHEN access.can_view_sourcing
-    THEN supplier.name END AS "supplierName",
-  CASE WHEN access.can_view_sourcing
-    THEN line.quotation_reference END AS "quotationReference",
-  CASE WHEN access.can_view_sourcing
-    THEN confirmation.label END AS "supplierConfirmationStatus",
+  NULL::text AS "supplierId",
+  NULL::text AS "supplierName",
+  NULL::text AS "quotationReference",
+  NULL::text AS "supplierConfirmationStatus",
   CASE WHEN access.can_view_commercial
     THEN line.unit_buy_price::float8 ELSE 0::float8 END AS "unitBuyPrice",
   line.unit_sell_price::float8 AS "unitSellPrice",
@@ -238,9 +232,6 @@ JOIN lookup_values u ON u.id=r.urgency_id
 JOIN lookup_values rs ON rs.id=r.status_id
 LEFT JOIN request_lines line ON line.request_id=r.id
 LEFT JOIN products product ON product.id=line.product_id
-LEFT JOIN suppliers supplier ON supplier.id=line.selected_supplier_id
-LEFT JOIN lookup_values confirmation
-  ON confirmation.id=line.supplier_confirmation_status_id
 LEFT JOIN LATERAL (
   SELECT approval_row.status,approval_row.reason,
     reviewer.display_name AS reviewer_name
@@ -330,7 +321,6 @@ LEFT JOIN LATERAL (
 function buildRequestSearchSpec(
   filters: RequestFilters,
   timeZone: string,
-  canFilterSupplier: boolean,
 ) {
   const values: unknown[] = [];
   const conditions: string[] = [];
@@ -394,17 +384,6 @@ function buildRequestSearchSpec(
       WHERE filter_job.request_id=r.id
         AND filter_assignment.driver_user_id=ANY(${bind(filters.deliveryAgentIds)}::uuid[])
     )`);
-  }
-  if (filters.supplierIds.length) {
-    if (!canFilterSupplier) {
-      conditions.push("FALSE");
-    } else {
-      conditions.push(`EXISTS (
-        SELECT 1 FROM public.request_lines supplier_line
-        WHERE supplier_line.request_id=r.id
-          AND supplier_line.selected_supplier_id=ANY(${bind(filters.supplierIds)}::uuid[])
-      )`);
-    }
   }
   if (filters.budgetExceptionStatuses.length) {
     const alternatives: string[] = [];
@@ -498,7 +477,6 @@ function demoRequestMatches(request: ProcurementRequest, filters: RequestFilters
   if (filters.statuses.length && !filters.statuses.some((status) => (
     status === "open" ? !["Completed","Cancelled"].includes(request.status) : request.status === status
   ))) return false;
-  if (filters.supplierIds.length && !request.lines.some((line) => line.supplierId && filters.supplierIds.includes(line.supplierId))) return false;
   if (filters.managerIds.length || filters.costCentreIds.length || filters.approverIds.length || filters.deliveryAgentIds.length) return false;
   if (filters.budgetExceptionStatuses.length && !filters.budgetExceptionStatuses.includes("NONE")) return false;
   if (filters.neededFrom && request.neededByDate < filters.neededFrom) return false;
@@ -530,7 +508,6 @@ async function searchDemoRequests(
   filters: RequestFilters,
   paginate: boolean,
 ) {
-  if (filters.supplierIds.length && !canAccess(actor,"manage_sourcing")) return [];
   const visible = (await filterVisibleDemoRequests(actor,getDemoStore().requests,new Date()))
     .filter((request) => demoRequestMatches(request,filters));
   const sorted = sortDemoRequests(visible,filters);
@@ -557,9 +534,7 @@ async function loadAuthorizedFilteredRequests(
   }
   const assignmentId=requireAssignment(actor);
   const capturedAt=new Date();
-  const spec=buildRequestSearchSpec(
-    filters,actor.timezone ?? "Asia/Kuala_Lumpur",canAccess(actor,"manage_sourcing"),
-  );
+  const spec=buildRequestSearchSpec(filters,actor.timezone ?? "Asia/Kuala_Lumpur");
   const baseValues=[actor.id,assignmentId,capturedAt,...spec.values];
   try {
     return await withAuditTransaction(
@@ -624,7 +599,6 @@ async function demoFilterOptions(
   queryText: string,
   selectedValues: string[],
 ) {
-  if (dimension==="supplier" && !canAccess(actor,"manage_sourcing")) return [];
   const counts=new Map<string,{label:string;requests:Set<string>}>();
   function add(value:string|undefined,label:string|undefined,requestId:string) {
     if (!value || !label) return;
@@ -638,7 +612,6 @@ async function demoFilterOptions(
     if (dimension==="department") add(request.departmentId,request.department,request.id);
     if (dimension==="requester") add(request.createdById,request.requestedBy,request.id);
     if (dimension==="category") for (const category of new Set(request.lines.map((line) => line.category))) add(category,category,request.id);
-    if (dimension==="supplier") for (const line of request.lines) add(line.supplierId,line.supplierName,request.id);
     if (dimension==="budgetException") add("NONE","NONE",request.id);
   }
   const normalizedQuery=queryText.toLowerCase();
@@ -664,7 +637,6 @@ const optionConfigurations: Record<RequestFilterDimension,{value:string;label:st
   deliveryAgent:{value:"option_delivery_assignment.driver_user_id::text",label:"option_driver.display_name",joins:`JOIN public.delivery_jobs option_job ON option_job.request_id=r.id
     JOIN public.delivery_job_assignments option_delivery_assignment ON option_delivery_assignment.delivery_job_id=option_job.id AND option_delivery_assignment.ended_at IS NULL AND option_delivery_assignment.status IN ('ASSIGNED','ACCEPTED')
     JOIN public.users option_driver ON option_driver.id=option_delivery_assignment.driver_user_id`},
-  supplier:{value:"option_supplier.id::text",label:"option_supplier.name",joins:"JOIN public.request_lines option_supplier_line ON option_supplier_line.request_id=r.id AND option_supplier_line.selected_supplier_id IS NOT NULL JOIN public.suppliers option_supplier ON option_supplier.id=option_supplier_line.selected_supplier_id"},
   budgetException:{value:requestBudgetException,label:requestBudgetException,joins:""},
 };
 
@@ -675,7 +647,6 @@ export async function listAuthorizedRequestFilterOptions(
   selectedValues:string[]=[],
 ): Promise<AuthorizedRequestFilterOption[]> {
   if (isDemoMode()) return demoFilterOptions(actor,dimension,queryText,selectedValues);
-  if (dimension==="supplier" && !canAccess(actor,"manage_sourcing")) return [];
   const assignmentId=requireAssignment(actor);
   const capturedAt=new Date();
   const config=optionConfigurations[dimension];
@@ -855,10 +826,9 @@ export async function getAuthorizedDashboardData(
     return buildCompanyDashboardData(await listAuthorizedRequests(actor));
   }
 
-  const [requests,organization,suppliers] = await Promise.all([
+  const [requests,organization] = await Promise.all([
     listAuthorizedRequests(actor),
     loadOrganizationDirectory(actor),
-    listSuppliers(actor),
   ]);
   const totals=calculateTotals(requests);
   const byStatus=Object.entries(requests.reduce<Record<string,number>>(
@@ -910,9 +880,6 @@ export async function getAuthorizedDashboardData(
     )).length,
     activeCompanyCount: organization.companies.filter((company) => (
       company.status==="Active"
-    )).length,
-    activeSupplierCount: suppliers.filter((supplier) => (
-      supplier.status==="Active"
     )).length,
     byStatus,
     byCompany,

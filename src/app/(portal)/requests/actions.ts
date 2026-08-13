@@ -47,7 +47,7 @@ export async function createRequestAction(formData: FormData) {
 }
 
 export async function updateStatusAction(id: string, formData: FormData) {
-  const user = await requirePermission("manage_sourcing");
+  const user = await requirePermission("manage_deliveries");
   const status = String(formData.get("status")) as RequestStatus;
   if (!REQUEST_STATUSES.includes(status)) {
     redirect(`/requests/${id}?notice=request-status-invalid`);
@@ -72,6 +72,5 @@ export async function payRequestAction(id: string, formData: FormData) {
   revalidatePath(`/requests/${id}`);
   revalidatePath("/requests");
   revalidatePath("/dashboard");
-  revalidatePath("/documents");
   redirect(`/requests/${id}?notice=payment-completed`);
 }

@@ -41,7 +41,6 @@ export interface RolePortalMessages {
     quotationReference: string;
     unitPrice: string;
     deliveryCharge: string;
-    minimumOrderQuantity: string;
     leadTimeDays: string;
     validUntil: string;
     commercialNote: string;
@@ -233,7 +232,7 @@ const english: RolePortalMessages = {
     buyerContextPlaceholder: "Optional context for the buyer", recordResponse: "Record response",
     submitRevised: "Submit revised quotation", submitQuotation: "Submit quotation",
     quotationReference: "Quotation reference", unitPrice: "Unit price (MYR)",
-    deliveryCharge: "Delivery charge (MYR)", minimumOrderQuantity: "Minimum order quantity",
+    deliveryCharge: "Delivery charge (MYR)",
     leadTimeDays: "Lead time (days)", validUntil: "Valid until", commercialNote: "Commercial note",
     submitVersioned: "Submit versioned quotation", uploadSummary: "Upload quotation document",
     pdfOrImage: "PDF or image", uploadHint: "Maximum 5 MB. Files are validated and available only to your supplier account.",
@@ -297,7 +296,7 @@ const english: RolePortalMessages = {
     recordAttempt: "Record attempted delivery", reportIssue: "Report issue",
     queuedUpdates: (count) => `${count} update${count === 1 ? "" : "s"} safely queued on this device.`,
     lastConfirmed: (date) => `Last confirmed ${date}.`, noStatus: "No status recorded yet.",
-    addNote: "Add driver note", operationalNote: "Operational note", saveNoteOffline: "Save note offline",
+    addNote: "Add Delivery Guy note", operationalNote: "Operational note", saveNoteOffline: "Save note offline",
     uploadEvidence: "Upload driver evidence", photoOrDeliveryNote: "Photo or delivery note",
     syncBeforeEvidence: "Sync the latest status before attaching evidence to it.",
     evidenceHint: "Maximum 5 MB. Evidence supports the driver timeline; the receiver confirms quantities separately.",
@@ -360,7 +359,7 @@ const arabic: RolePortalMessages = {
     buyerContextPlaceholder: "سياق اختياري للمشتري", recordResponse: "تسجيل الرد",
     submitRevised: "تقديم عرض سعر منقح", submitQuotation: "تقديم عرض سعر",
     quotationReference: "مرجع عرض السعر", unitPrice: "سعر الوحدة (ر.م)",
-    deliveryCharge: "رسوم التسليم (ر.م)", minimumOrderQuantity: "الحد الأدنى لكمية الطلب",
+    deliveryCharge: "رسوم التسليم (ر.م)",
     leadTimeDays: "مدة التجهيز (بالأيام)", validUntil: "صالح حتى", commercialNote: "ملاحظة تجارية",
     submitVersioned: "تقديم عرض السعر وحفظ إصداره", uploadSummary: "رفع مستند عرض السعر",
     pdfOrImage: "ملف PDF أو صورة", uploadHint: "الحد الأقصى 5 ميجابايت. يتم التحقق من الملفات ولا تتاح إلا لحساب المورد الخاص بك.",
@@ -487,7 +486,7 @@ const malay: RolePortalMessages = {
     buyerContextPlaceholder: "Konteks pilihan untuk pembeli", recordResponse: "Rekod respons",
     submitRevised: "Hantar sebut harga disemak", submitQuotation: "Hantar sebut harga",
     quotationReference: "Rujukan sebut harga", unitPrice: "Harga unit (MYR)",
-    deliveryCharge: "Caj penghantaran (MYR)", minimumOrderQuantity: "Kuantiti pesanan minimum",
+    deliveryCharge: "Caj penghantaran (MYR)",
     leadTimeDays: "Tempoh siap (hari)", validUntil: "Sah sehingga", commercialNote: "Nota komersial",
     submitVersioned: "Hantar sebut harga berversi", uploadSummary: "Muat naik dokumen sebut harga",
     pdfOrImage: "PDF atau imej", uploadHint: "Maksimum 5 MB. Fail disahkan dan hanya tersedia kepada akaun pembekal anda.",

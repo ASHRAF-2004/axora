@@ -119,6 +119,37 @@ describe("canonical authorization policy", () => {
     });
   });
 
+  it("accepts the canonical HR, Agent, and Delivery Guy scope contracts", () => {
+    const platformScope: AuthorizationScope = { type: "PLATFORM" };
+    expect(authorize({
+      subject: subject({
+        role: "HUMAN_RESOURCES_MANAGEMENT",
+        accountKind: "PLATFORM",
+        scopes: [platformScope],
+      }),
+      permission: "company.lead.view",
+      resource: { scope: platformScope },
+    }).allowed).toBe(true);
+    expect(authorize({
+      subject: subject({
+        role: "CLIENT_ACCOUNT_MANAGER",
+        accountKind: "PLATFORM",
+        scopes: [platformScope],
+      }),
+      permission: "company.lead.view",
+      resource: { scope: platformScope },
+    }).allowed).toBe(true);
+    expect(authorize({
+      subject: subject({
+        role: "DELIVERY_GUY",
+        accountKind: "DELIVERY",
+        scopes: [{ type: "DELIVERY" }],
+      }),
+      permission: "delivery.portal.view",
+      resource: { scope: { type: "DELIVERY" } },
+    }).allowed).toBe(true);
+  });
+
   it("keeps department administrators inside one department", () => {
     const administrator = subject({
       role: "DEPARTMENT_ADMIN",

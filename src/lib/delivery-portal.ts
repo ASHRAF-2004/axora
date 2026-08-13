@@ -322,7 +322,7 @@ export function resolveDeliveryDriverScope(
 ): DeliveryDriverScope {
   assertUuid(userId, "Driver user id");
   if (!profile || profile.userId !== userId || !profile.active) {
-    throw new Error("An active delivery driver profile is required.");
+    throw new Error("An active Delivery Guy profile is required.");
   }
   return Object.freeze({ driverUserId: userId, [driverScopeBrand]: true as const });
 }

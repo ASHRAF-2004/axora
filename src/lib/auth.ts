@@ -237,6 +237,7 @@ const platformActorRoles = new Set([
   "PLATFORM_OPERATIONS",
   "TECHNICAL_SUPPORT",
   "IT_SUPPORT",
+  "HUMAN_RESOURCES_MANAGEMENT",
 ]);
 const companyScopeRoles = new Set([
   "COMPANY_ADMIN",
@@ -274,6 +275,7 @@ const deliveryScopeRoles = new Set([
   "DELIVERY_TEAM_SUPERVISOR",
   "DELIVERY_AGENT",
   "DELIVERY_DRIVER",
+  "DELIVERY_GUY",
 ]);
 const legacyCompanyRoles = new Set([
   "ADMIN",
@@ -389,7 +391,7 @@ function roleFitsAccountScope(
     if (isOwner) {
       return scopeType === "PLATFORM" && platformOwnerRoles.has(role);
     }
-    if (role === "CLIENT_ACCOUNT_MANAGER") return scopeType === "COMPANY";
+    if (role === "CLIENT_ACCOUNT_MANAGER") return scopeType === "PLATFORM" || scopeType === "COMPANY";
     return scopeType === "PLATFORM" && platformActorRoles.has(role);
   }
   if (isOwner) return false;

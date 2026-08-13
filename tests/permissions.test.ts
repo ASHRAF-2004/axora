@@ -10,13 +10,11 @@ const allPermissions: Permission[] = [
   "view_branches",
   "manage_companies",
   "manage_catalog",
-  "manage_suppliers",
   "manage_branches",
   "manage_branch_budget",
   "create_requests",
   "view_approvals",
   "approve_requests",
-  "manage_sourcing",
   "manage_deliveries",
   "view_invoices",
   "manage_finance",
@@ -34,7 +32,6 @@ const allPermissions: Permission[] = [
   "update_assigned_deliveries",
   "view_receiving",
   "confirm_receipts",
-  "review_three_way_matches",
 ];
 
 function expectExactPermissions(subject: AccessSubject, allowed: Permission[]) {
@@ -49,7 +46,7 @@ function expectExactPermissions(subject: AccessSubject, allowed: Permission[]) {
 describe("legacy customer role permissions", () => {
   const expected: Record<LegacyUserRole, Permission[]> = {
     ADMIN: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_branches", "manage_branch_budget", "create_requests", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings"],
-    BRANCH_ADMIN: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "create_requests", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "manage_users"],
+    BRANCH_ADMIN: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_receiving", "confirm_receipts", "view_branches", "create_requests", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "manage_users"],
     APPROVER: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "create_requests", "view_approvals", "approve_requests", "view_documents", "manage_documents", "view_reports"],
     REQUESTER: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "create_requests", "view_documents", "manage_documents"],
     OPERATIONS: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "create_requests", "view_documents", "manage_documents"],
@@ -70,8 +67,7 @@ describe("legacy customer role permissions", () => {
   it("keeps the legacy platform owner out of tenant approval and budgets", () => {
     const owner = { role: "ADMIN" as const, isOwner: true };
     expect(canAccess(owner, "manage_catalog")).toBe(true);
-    expect(canAccess(owner, "manage_suppliers")).toBe(true);
-    expect(canAccess(owner, "manage_sourcing")).toBe(true);
+    expect(canAccess(owner, "manage_deliveries")).toBe(true);
     expect(canAccess(owner, "create_requests")).toBe(false);
     expect(canAccess(owner, "approve_requests")).toBe(false);
     expect(canAccess(owner, "manage_branch_budget")).toBe(false);
@@ -100,7 +96,7 @@ describe("normalized least-privilege permissions", () => {
         accountKind: "PLATFORM",
         scopeType: "PLATFORM",
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_companies", "manage_catalog", "manage_suppliers", "manage_branches", "manage_sourcing", "manage_deliveries", "view_approvals", "view_budgets", "view_invoices", "manage_finance", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_commercial_pricing", "view_system_diagnostics", "view_email_operations", "manage_email_operations", "view_receiving", "review_three_way_matches"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_companies", "manage_catalog", "manage_branches", "manage_deliveries", "view_approvals", "view_budgets", "view_invoices", "manage_finance", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_commercial_pricing", "view_system_diagnostics", "view_email_operations", "manage_email_operations", "view_receiving", "confirm_receipts"],
     },
     {
       subject: {
@@ -109,7 +105,7 @@ describe("normalized least-privilege permissions", () => {
         accountKind: "PLATFORM",
         scopeType: "PLATFORM",
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_catalog", "manage_suppliers", "manage_sourcing", "manage_deliveries", "view_documents", "manage_documents", "view_reports", "view_receiving", "view_email_operations", "manage_email_operations"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_catalog", "manage_deliveries", "view_reports", "view_receiving", "view_email_operations", "manage_email_operations"],
     },
     {
       subject: {
@@ -119,7 +115,7 @@ describe("normalized least-privilege permissions", () => {
         scopeType: "COMPANY",
         companyId,
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_branches", "manage_branch_budget", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_receiving", "confirm_receipts", "view_branches", "manage_branches", "manage_branch_budget", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings"],
     },
     {
       subject: {
@@ -150,7 +146,7 @@ describe("normalized least-privilege permissions", () => {
         scopeType: "COMPANY",
         companyId,
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "view_invoices", "manage_finance", "view_documents", "view_reports", "review_three_way_matches"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "view_invoices", "manage_finance", "view_documents", "view_reports"],
     },
     {
       subject: {
@@ -246,10 +242,9 @@ describe("new canonical role compatibility permissions", () => {
       "view_deliveries",
       "view_branches",
       "manage_companies",
-      "view_documents",
+      "view_invoices",
       "view_reports",
       "manage_users",
-      "view_email_operations",
     ]);
   });
 
@@ -278,26 +273,14 @@ describe("new canonical role compatibility permissions", () => {
     ]);
   });
 
-  it("separates delivery supervision from delivery-agent updates", () => {
+  it("gives the single Delivery Guy role only assigned-delivery authority", () => {
     expectExactPermissions({
-      role: "DELIVERY_TEAM_SUPERVISOR",
+      role: "DELIVERY_GUY",
       isOwner: false,
       accountKind: "DELIVERY",
       scopeType: "DELIVERY",
     }, [
       "view_dashboard",
-      "view_deliveries",
-      "manage_deliveries",
-      "view_reports",
-      "view_delivery_portal",
-      "update_assigned_deliveries",
-    ]);
-    expectExactPermissions({
-      role: "DELIVERY_AGENT",
-      isOwner: false,
-      accountKind: "DELIVERY",
-      scopeType: "DELIVERY",
-    }, [
       "view_delivery_portal",
       "update_assigned_deliveries",
     ]);
@@ -309,7 +292,7 @@ describe("new canonical role compatibility permissions", () => {
       isOwner: false,
       accountKind: "PLATFORM",
       scopeType: "PLATFORM",
-    }, "manage_companies")).toBe(false);
+    }, "view_all_companies")).toBe(false);
     expect(canAccess({
       role: "DEPARTMENT_ADMIN",
       isOwner: false,

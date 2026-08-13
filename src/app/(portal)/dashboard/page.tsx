@@ -46,17 +46,26 @@ function roleDashboard(
   const role = corePortalMessages(locale).dashboard.role;
   const paths: Record<keyof typeof role, string[]> = {
     owner: ["/companies", "/users", "/products", "/audit"],
-    operations: ["/sourcing", "/deliveries", "/products", "/reports"],
+    hr: ["/companies/leads", "/companies", "/users"],
+    agent: ["/companies/leads", "/companies", "/requests", "/finance"],
+    operations: ["/deliveries", "/products", "/reports"],
+    deliveryGuy: ["/deliveries", "/dashboard"],
     companyAdmin: ["/users", "/branches", "/requests", "/reports"],
     branchAdmin: ["/users", "/branches", "/requests", "/deliveries"],
     approver: ["/approvals", "/requests", "/branches"],
-    finance: ["/finance", "/reports", "/documents", "/requests"],
-    auditor: ["/audit", "/documents", "/reports"],
+    finance: ["/finance", "/reports", "/requests"],
+    auditor: ["/audit", "/reports"],
     requester: ["/products", "/requests/new", "/requests", "/deliveries"],
   };
   const key: keyof typeof role = actor.isOwner
     ? "owner"
-    : actor.role === "PLATFORM_OPERATIONS"
+    : actor.role === "HUMAN_RESOURCES_MANAGEMENT"
+      ? "hr"
+      : actor.role === "CLIENT_ACCOUNT_MANAGER"
+        ? "agent"
+        : actor.role === "DELIVERY_GUY"
+          ? "deliveryGuy"
+          : actor.role === "PLATFORM_OPERATIONS"
       ? "operations"
       : ["ADMIN", "COMPANY_ADMIN"].includes(actor.role)
         ? "companyAdmin"
@@ -91,6 +100,9 @@ export default async function DashboardPage({
   const raw = await searchParams;
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).dashboard;
+  const canViewRevenue = canAccess(actor, "view_platform_revenue");
+  const canViewCost = canAccess(actor, "view_internal_cost");
+  const canViewProfit = canAccess(actor, "view_platform_profit");
   const periodCopy = dashboardPeriodMessages(locale);
   const input: DashboardPeriodInput = {
     preset: first(raw.preset),
@@ -201,7 +213,7 @@ export default async function DashboardPage({
               icon={ClipboardList}
               tone="blue"
             />
-            <MetricCard
+            {canViewRevenue ? <MetricCard
               label={copy.metrics.customerSales}
               value={formatCurrency(platformData!.sales, locale)}
               note={comparisonNote(
@@ -212,8 +224,8 @@ export default async function DashboardPage({
               )}
               icon={TrendingUp}
               tone="teal"
-            />
-            <MetricCard
+            /> : null}
+            {canViewCost ? <MetricCard
               label={copy.metrics.buyingCost}
               value={formatCurrency(platformData!.buyingCost, locale)}
               note={comparisonNote(
@@ -224,8 +236,8 @@ export default async function DashboardPage({
               )}
               icon={Banknote}
               tone="navy"
-            />
-            <MetricCard
+            /> : null}
+            {canViewProfit ? <MetricCard
               label={copy.metrics.grossProfit}
               value={formatCurrency(platformData!.grossProfit, locale)}
               note={comparisonNote(
@@ -236,7 +248,7 @@ export default async function DashboardPage({
               )}
               icon={CircleDollarSign}
               tone="teal"
-            />
+            /> : null}
             <MetricCard
               label={copy.metrics.urgent}
               value={String(data.urgentRequestCount)}
@@ -261,7 +273,7 @@ export default async function DashboardPage({
               icon={Clock3}
               tone="orange"
             />
-            <MetricCard
+            {canAccess(actor, "view_invoices") ? <MetricCard
               label={copy.metrics.outstanding}
               value={String(platformData!.outstandingInvoiceCount)}
               note={comparisonNote(
@@ -272,8 +284,8 @@ export default async function DashboardPage({
               )}
               icon={PackageCheck}
               tone="blue"
-            />
-            <MetricCard
+            /> : null}
+            {canViewProfit ? <MetricCard
               label={copy.metrics.margin}
               value={percent(platformData!.grossMarginPercent)}
               note={comparisonNote(
@@ -284,7 +296,7 @@ export default async function DashboardPage({
               )}
               icon={Percent}
               tone="navy"
-            />
+            /> : null}
           </>
         ) : (
           <>

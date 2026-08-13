@@ -30,6 +30,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const requestCopy = corePortalMessages(locale).requests;
   const detail = requestDetailMessages(locale);
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
+  const canViewRevenue = !platformView || canAccess(actor, "view_platform_revenue");
+  const canViewCost = platformView && canAccess(actor, "view_internal_cost");
+  const canViewProfit = platformView && canAccess(actor, "view_platform_profit");
   const request = await getAuthorizedRequest(actor, id);
   if (!request) notFound();
   const canViewInvoices = request.invoiceStatus !== undefined
@@ -56,9 +59,9 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     };
   }, { sales: 0, buyingCost: 0, grossProfit: 0, delivery: 0 });
   const margin = totals.sales ? (totals.grossProfit / totals.sales) * 100 : 0;
-  const nextStatuses = canAccess(actor, "manage_sourcing") ? allowedNextStatuses(request.status) : [];
+  const nextStatuses = canAccess(actor, "manage_deliveries") ? allowedNextStatuses(request.status) : [];
   const updateAction = updateStatusAction.bind(null, id);
-  const canMoveRequest = canAccess(actor, "manage_sourcing")
+  const canMoveRequest = canAccess(actor, "manage_deliveries")
     && nextStatuses.length > 0
     && !(request.status === "New Request" && request.approvalStatus !== "Approved");
   const payAction = payRequestAction.bind(null, id);
@@ -79,14 +82,16 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         <div className="summary-box"><span>{requestCopy.approval}</span><strong><StatusBadge status={request.approvalStatus}>{localizedStatus(request.approvalStatus, locale)}</StatusBadge></strong></div>
         <div className="summary-box"><span>{requestCopy.fulfilment}</span><strong><StatusBadge status={request.status}>{localizedStatus(request.status, locale)}</StatusBadge></strong></div>
         <div className="summary-box"><span>{requestCopy.neededBy}</span><strong>{formatDate(request.neededByDate, locale, timeZone)}</strong></div>
-        <div className="summary-box"><span>{platformView ? requestCopy.customerTotal : requestCopy.estimatedTotal}</span><strong>{formatCurrency(request.estimatedTotal, locale)}</strong></div>
+        {!platformView || canViewRevenue ? <div className="summary-box"><span>{platformView ? requestCopy.customerTotal : requestCopy.estimatedTotal}</span><strong>{formatCurrency(request.estimatedTotal, locale)}</strong></div> : null}
         {platformView ? <>
-          <div className="summary-box"><span>{detail.supplierCost}</span><strong>{formatCurrency(totals.buyingCost, locale)}</strong></div>
+          {canViewCost ? <div className="summary-box"><span>{detail.buyTotal}</span><strong>{formatCurrency(totals.buyingCost, locale)}</strong></div> : null}
+          {canViewProfit ?
           <div className="summary-box"><span>{detail.grossMargin}</span><strong>{formatCurrency(totals.grossProfit, locale)} · {new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(margin)}%</strong></div>
+          : null}
         </> : null}
       </section>
 
-      <RequestPricingSummary
+      {!platformView || canViewRevenue ? <RequestPricingSummary
         subtotal={request.subtotal ?? totals.sales}
         estimatedDeliveryFee={request.estimatedDeliveryFee ?? 0}
         taxRate={request.taxRate ?? 0}
@@ -94,7 +99,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
         estimatedTotal={request.estimatedTotal}
         totalLabel={platformView ? requestCopy.customerTotal : requestCopy.estimatedTotal}
         locale={locale}
-      />
+      /> : null}
 
       <section className="detail-grid">
         <div className="panel-stack">
@@ -108,31 +113,26 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             <div className="data-table-wrap">
               <table className="data-table">
                 <thead>
-                  {platformView
-                    ? <tr><th>{detail.line}</th><th>{detail.product}</th><th>{detail.quantity}</th><th>{detail.supplier}</th><th>{detail.buyTotal}</th><th>{detail.customerTotal}</th><th>{detail.delivery}</th></tr>
-                    : <tr><th>{detail.item}</th><th>{detail.product}</th><th>{detail.quantity}</th><th>{detail.unitPrice}</th><th>{detail.lineTotal}</th><th>{detail.delivery}</th></tr>}
+                  <tr>
+                    <th>{platformView ? detail.line : detail.item}</th><th>{detail.product}</th><th>{detail.quantity}</th>
+                    {canViewCost ? <th>{detail.buyTotal}</th> : null}
+                    {!platformView || canViewRevenue ? <th>{platformView ? detail.customerTotal : detail.unitPrice}</th> : null}
+                    {!platformView ? <th>{detail.lineTotal}</th> : null}
+                    <th>{detail.delivery}</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {request.lines.map((line) => {
                     const amount = calculateLineAmounts(line);
-                    return platformView
-                      ? <tr key={line.id}>
-                          <td><strong>{line.code}</strong><br /><span className="subtle">{line.productCode}</span></td>
-                          <td><strong>{line.productName}</strong><br /><span className="subtle">{line.specification || line.category}</span></td>
-                          <td>{line.quantity} {line.unit}</td>
-                          <td>{line.supplierName || detail.notAssigned}<br /><span className="subtle">{localizedStatus(line.supplierConfirmationStatus ?? detail.notAssigned, locale)}</span></td>
-                          <td>{formatCurrency(amount.buyingCost, locale)}</td>
-                          <td>{formatCurrency(amount.sales, locale)}</td>
-                          <td><StatusBadge status={line.deliveryStatus}>{localizedStatus(line.deliveryStatus, locale)}</StatusBadge></td>
-                        </tr>
-                      : <tr key={line.id}>
-                          <td><strong>{line.code}</strong><br /><span className="subtle">{line.productCode}</span></td>
-                          <td><strong>{line.productName}</strong><br /><span className="subtle">{line.specification || line.category}</span></td>
-                          <td>{line.quantity} {line.unit}</td>
-                          <td>{formatCurrency(line.unitSellPrice, locale)}</td>
-                          <td>{formatCurrency(amount.sales, locale)}</td>
-                          <td><StatusBadge status={line.deliveryStatus}>{localizedStatus(line.deliveryStatus, locale)}</StatusBadge></td>
-                        </tr>;
+                    return <tr key={line.id}>
+                      <td><strong>{line.code}</strong><br /><span className="subtle">{line.productCode}</span></td>
+                      <td><strong>{line.productName}</strong><br /><span className="subtle">{line.specification || line.category}</span></td>
+                      <td>{line.quantity} {line.unit}</td>
+                      {canViewCost ? <td>{formatCurrency(amount.buyingCost, locale)}</td> : null}
+                      {!platformView || canViewRevenue ? <td>{formatCurrency(platformView ? amount.sales : line.unitSellPrice, locale)}</td> : null}
+                      {!platformView ? <td>{formatCurrency(amount.sales, locale)}</td> : null}
+                      <td><StatusBadge status={line.deliveryStatus}>{localizedStatus(line.deliveryStatus, locale)}</StatusBadge></td>
+                    </tr>;
                   })}
                 </tbody>
               </table>
@@ -147,7 +147,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <div className="readiness-item"><Route size={19} /><div><strong>{request.branchName}</strong><p>{request.requestType} · {localizedStatus(request.urgency, locale)}</p></div></div>
                 {canViewInvoices ? <div className="readiness-item"><PackageCheck size={19} /><div><strong>{request.invoiceNumber || detail.noInvoice}</strong><p>{localizedStatus(request.invoiceStatus ?? detail.notAssigned, locale)} · {localizedStatus(request.paymentStatus ?? "Unpaid", locale)}</p></div></div> : null}
                 {platformView
-                  ? <div className="readiness-item"><CircleDollarSign size={19} /><div><strong>{formatCurrency(totals.delivery, locale)} {detail.deliveryFees}</strong><p>{detail.deliveryFeesBody}</p></div></div>
+                  ? canViewRevenue ? <div className="readiness-item"><CircleDollarSign size={19} /><div><strong>{formatCurrency(totals.delivery, locale)} {detail.deliveryFees}</strong><p>{detail.deliveryFeesBody}</p></div></div> : null
                   : <div className="readiness-item"><WalletCards size={19} /><div>
                       <strong>{branchBudget?.canViewBudget && branchBudget.monthlyBudget != null ? `${formatCurrency(branchBudget.remainingAmount ?? 0, locale)} ${detail.remaining}` : detail.noBudget}</strong>
                       <p>{branchBudget?.canViewBudget && branchBudget.monthlyBudget != null
@@ -217,7 +217,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <div className="timeline-dot" />
                 <div>
                   <strong>{detail.workflow[event.eventKey] ?? (event.newState ? localizedStatus(event.newState, locale) : detail.workflowUpdated)}</strong>
-                  <p>{formatDateTime(event.occurredAt, locale, timeZone)}{event.actorName ? detail.byActor(event.actorName) : event.source === "SUPPLIER_PORTAL" ? detail.bySupplier : detail.bySystem}{event.reason ? ` · ${event.reason}` : ""}</p>
+                  <p>{formatDateTime(event.occurredAt, locale, timeZone)}{event.actorName ? detail.byActor(event.actorName) : detail.bySystem}{event.reason ? ` · ${event.reason}` : ""}</p>
                 </div>
               </div>
             )) : <>
