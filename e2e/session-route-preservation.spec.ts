@@ -132,6 +132,12 @@ test("an expired cookie resumes the exact prior route after login", async ({ pag
   await signInAsDemoOwner(page);
   await page.goto("/requests?q=paper&status=open#request-table");
   await expect(page).toHaveURL(/#request-table$/);
+  await expect.poll(
+    () => page.evaluate(() => (
+      window.sessionStorage.getItem("axora-session-return:v1")
+    )),
+    { message: "the exact protected route is recorded before session expiry" },
+  ).toBe("/requests?q=paper&status=open#request-table");
 
   await page.context().clearCookies();
   await page.reload();

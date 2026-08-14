@@ -193,7 +193,9 @@ test("small-phone keyboard flow exposes language, login, and menu controls", asy
   await page
     .locator("nextjs-portal")
     .evaluateAll((portals) => portals.forEach((portal) => portal.remove()));
+  await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
   const skipLink = page.getByRole("link", { name: "Skip to main content" });
+  await expect(skipLink).toHaveAttribute("data-focus-ready", "true");
   await skipLink.focus();
   await expect(skipLink).toBeFocused();
   await page.keyboard.press("Tab");
