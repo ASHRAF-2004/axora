@@ -336,7 +336,7 @@ export interface UserRecord {
   companyId?: string; companyName?: string; branchId?: string; branchName?: string;
   departmentId?: string; departmentName?: string;
   supplierId?: string; supplierName?: string; jobTitle?: string;
-  accountKind?: AccountKind; scopeType?: RoleScopeType; accountStatus?: "INVITED" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+  accountKind?: AccountKind; scopeType?: RoleScopeType; accountStatus?: "INVITED" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
   accountSetupCompletedAt?: string;
   accountSetupDeliveryStatus?: "PENDING" | "SENDING" | "SENT" | "FAILED" | "DISABLED" | "UNCERTAIN" | "CANCELLED";
   accountSetupExpiresAt?: string;

@@ -11,7 +11,7 @@ import {
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
 import { requirePermission } from "@/lib/auth";
-import { setAuthorizedUserActive } from "@/lib/user-isolation";
+import { removeAuthorizedUser, setAuthorizedUserActive } from "@/lib/user-isolation";
 import { deactivateAuthorizedProfileImage } from "@/lib/profile-images";
 import { isUserRole, type UserRole } from "@/lib/types";
 import { readFormText } from "@/lib/validation";
@@ -145,6 +145,23 @@ export async function setUserActiveAction(id: string, active: boolean) {
     actor,
   );
   revalidatePath("/users");
+}
+
+export async function removeUserAction(id: string, formData: FormData) {
+  const actor = await requirePermission("manage_users");
+  const targetUserId = z.uuid().parse(id);
+  const confirmed = readFormText(formData, "confirmRemoval") === "confirmed";
+  const reason = z.string().trim().min(3).max(500).parse(
+    readFormText(formData, "reason"),
+  );
+  if (!confirmed) redirect("/users?notice=remove-unavailable");
+  try {
+    await removeAuthorizedUser(targetUserId, reason, actor);
+  } catch {
+    redirect("/users?notice=remove-unavailable");
+  }
+  revalidatePath("/users");
+  redirect("/users?notice=user-removed");
 }
 
 export async function deactivateUserProfileImageAction(id: string) {

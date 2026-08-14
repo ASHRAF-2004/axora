@@ -436,7 +436,7 @@ const actionLabels: Record<SupportedLocale, Record<CompanyLifecycleAction, strin
     REQUEST_INFORMATION: "Request information", START_ONBOARDING: "Start onboarding", CREATE_PORTAL_DRAFT: "Create portal draft",
     SUBMIT_COMPANY_REVIEW: "Submit company review", INVITE_ADMINISTRATOR: "Invite administrator",
     SYNC_ADMINISTRATOR: "Refresh administrator status", ACTIVATE: "Activate company", SUSPEND: "Suspend company",
-    MARK_INACTIVE: "Mark inactive", ARCHIVE: "Archive", MARK_DUPLICATE: "Confirm duplicate", REJECT: "Reject lead",
+    MARK_INACTIVE: "Mark inactive", ARCHIVE: "Delete company", MARK_DUPLICATE: "Confirm duplicate", REJECT: "Reject lead",
     CLEAR_DUPLICATE: "Clear duplicate warning", PUBLISH: "Publish listing", UNPUBLISH: "Remove public listing",
   },
   ar: {
@@ -445,7 +445,7 @@ const actionLabels: Record<SupportedLocale, Record<CompanyLifecycleAction, strin
     REQUEST_INFORMATION: "طلب معلومات", START_ONBOARDING: "بدء التهيئة", CREATE_PORTAL_DRAFT: "إنشاء مسودة البوابة",
     SUBMIT_COMPANY_REVIEW: "إرسال مراجعة الشركة", INVITE_ADMINISTRATOR: "دعوة المدير",
     SYNC_ADMINISTRATOR: "تحديث حالة المدير", ACTIVATE: "تفعيل الشركة", SUSPEND: "تعليق الشركة",
-    MARK_INACTIVE: "تعيين غير نشط", ARCHIVE: "أرشفة", MARK_DUPLICATE: "تأكيد التكرار", REJECT: "رفض السجل",
+    MARK_INACTIVE: "تعيين غير نشط", ARCHIVE: "حذف الشركة", MARK_DUPLICATE: "تأكيد التكرار", REJECT: "رفض السجل",
     CLEAR_DUPLICATE: "مسح تحذير التكرار", PUBLISH: "نشر الإدراج", UNPUBLISH: "إزالة الإدراج العام",
   },
   ms: {
@@ -454,7 +454,7 @@ const actionLabels: Record<SupportedLocale, Record<CompanyLifecycleAction, strin
     REQUEST_INFORMATION: "Minta maklumat", START_ONBOARDING: "Mulakan penerimaan masuk", CREATE_PORTAL_DRAFT: "Cipta draf portal",
     SUBMIT_COMPANY_REVIEW: "Hantar semakan syarikat", INVITE_ADMINISTRATOR: "Jemput pentadbir",
     SYNC_ADMINISTRATOR: "Segar semula status pentadbir", ACTIVATE: "Aktifkan syarikat", SUSPEND: "Gantung syarikat",
-    MARK_INACTIVE: "Tanda tidak aktif", ARCHIVE: "Arkib", MARK_DUPLICATE: "Sahkan pendua", REJECT: "Tolak prospek",
+    MARK_INACTIVE: "Tanda tidak aktif", ARCHIVE: "Padam syarikat", MARK_DUPLICATE: "Sahkan pendua", REJECT: "Tolak prospek",
     CLEAR_DUPLICATE: "Kosongkan amaran pendua", PUBLISH: "Terbitkan penyenaraian", UNPUBLISH: "Buang penyenaraian awam",
   },
 };

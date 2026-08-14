@@ -21,9 +21,11 @@ import Link from "next/link";
 import {
   setUserActiveAction,
   deactivateUserProfileImageAction,
+  removeUserAction,
 } from "./actions";
 
 function invitationStatus(user: Awaited<ReturnType<typeof listAuthorizedUsers>>[number]) {
+  if (user.accountStatus === "DEACTIVATED") return "Removed";
   if (!user.active) return "Inactive";
   if (user.accountSetupCompletedAt) return "Active";
   if (user.accountSetupExpiresAt && new Date(user.accountSetupExpiresAt).getTime() <= Date.now()) {
@@ -55,7 +57,11 @@ function invitationTimeline(user: Awaited<ReturnType<typeof listAuthorizedUsers>
   return copy.neverSignedIn;
 }
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
   const actor = await requirePagePermission("manage_users");
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
@@ -64,12 +70,16 @@ export default async function UsersPage() {
   const accessCopy = accessAdministrationMessages(locale);
   const imageCopy = profileImageMessages(locale);
   const availableRoles = creatableAccountRoles(actor);
-  const [users, organization, structure, permissionOptions] = await Promise.all([
+  const [directoryUsers, organization, structure, permissionOptions, params] = await Promise.all([
     listAuthorizedUsers(actor),
     loadOrganizationDirectory(actor),
     loadOrganizationStructureWorkspace(actor),
     listGrantablePermissionOptions(actor),
+    searchParams,
   ]);
+  const users = directoryUsers.filter((user) => user.accountStatus !== "DEACTIVATED");
+  const notice = params.notice === "user-removed" ? copy.removedNotice
+    : params.notice === "remove-unavailable" ? copy.removeUnavailable : undefined;
   const companies: Company[] = organization.companies.map((company) => ({
     ...company,
     paymentTerms: STANDARD_BILLING_TERMS,
@@ -91,6 +101,7 @@ export default async function UsersPage() {
   const showOrganization = actor.accountKind === "PLATFORM" || actor.isOwner;
 
   return <><PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+    {notice ? <div className="callout" role="status"><strong>{notice}</strong></div> : null}
     <section className="detail-grid">
       <article className="panel form-panel"><h2>{copy.create}</h2>
         <UserCreateForm
@@ -161,6 +172,15 @@ export default async function UsersPage() {
             <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
               <button className="button button-secondary" type="submit">{user.active ? copy.deactivate : copy.reactivate}</button>
             </form>
+            {actor.isOwner && !isPlatformOwner ? <details>
+              <summary>{copy.deleteUser}</summary>
+              <form action={removeUserAction.bind(null, user.id)} className="table-action-stack">
+                <p className="subtle">{copy.deleteUserHelp}</p>
+                <label>{copy.deleteReason}<input name="reason" required minLength={3} maxLength={500} /></label>
+                <label><input type="checkbox" name="confirmRemoval" value="confirmed" required /> {copy.confirmDelete}</label>
+                <button className="button button-secondary" type="submit">{copy.deleteUser}</button>
+              </form>
+            </details> : null}
             {user.avatarAvailable ? <form action={deactivateUserProfileImageAction.bind(null, user.id)}>
               <button className="text-button" type="submit" aria-label={imageCopy.removeFor(user.displayName)}>{imageCopy.remove}</button>
             </form> : null}
