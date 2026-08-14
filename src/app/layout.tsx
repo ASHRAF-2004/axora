@@ -4,8 +4,10 @@ import { UxFeedbackProvider } from "@/components/UxFeedbackProvider";
 import { AtmosphereProvider } from "@/components/public/AtmosphereProvider";
 import { isSupportedLocale, LOCALE_NAMES } from "@/lib/i18n";
 import { requestLocaleDecision } from "@/lib/locale-server";
-import { headers } from "next/headers";
+import type { PublicAtmosphere } from "@/lib/immersive-public-experience";
+import { cookies, headers } from "next/headers";
 import "./globals.css";
+import "./atmosphere-tokens.css";
 import "./interaction-magic.css";
 
 export const metadata: Metadata = {
@@ -33,10 +35,18 @@ export default async function RootLayout({
   const locale = isSupportedLocale(routeLocale)
     ? routeLocale
     : (await requestLocaleDecision()).locale;
+  const savedAtmosphere = (await cookies()).get("axora_public_atmosphere")?.value;
+  const initialAtmosphere: PublicAtmosphere = savedAtmosphere === "solar"
+    ? "Solar"
+    : savedAtmosphere === "ember"
+      ? "Ember"
+      : savedAtmosphere === "midnight"
+        ? "Midnight"
+        : "Aurora";
   return (
-    <html lang={locale} dir={LOCALE_NAMES[locale].dir}>
+    <html lang={locale} dir={LOCALE_NAMES[locale].dir} data-atmosphere={initialAtmosphere.toLowerCase()}>
       <body>
-        <AtmosphereProvider>
+        <AtmosphereProvider initialAtmosphere={initialAtmosphere}>
           <UxFeedbackProvider>
             <InteractionMagic />
             {children}

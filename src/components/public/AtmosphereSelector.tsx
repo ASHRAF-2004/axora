@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { PUBLIC_ATMOSPHERES, type PublicAtmosphere } from "@/lib/immersive-public-experience";
 import { useAtmosphere } from "./AtmosphereProvider";
@@ -34,6 +34,7 @@ export function AtmosphereSelector({
 }) {
   const { atmosphere, setAtmosphere } = useAtmosphere();
   const initialized = useRef(false);
+  const [persistenceState, setPersistenceState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
 
   useEffect(() => {
     if (!staffUserId || !initialAtmosphere || initialized.current) return;
@@ -46,25 +47,40 @@ export function AtmosphereSelector({
     setAtmosphere(next, !staffUserId);
     onThemeSelect?.();
     if (!staffUserId) return;
+    setPersistenceState("saving");
     try {
-      await fetch("/api/profile/atmosphere", {
+      const response = await fetch("/api/profile/atmosphere", {
         method: "PATCH",
         credentials: "same-origin",
+        keepalive: true,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ atmosphere: next }),
       });
+      const saved = await response.json() as { atmosphere?: PublicAtmosphere };
+      if (!response.ok || saved.atmosphere !== next) throw new Error("Atmosphere preference unavailable.");
+      setPersistenceState("saved");
     } catch {
-      // The visual choice remains available for this session; server state is
-      // authoritative on the next authenticated load.
+      setPersistenceState("failed");
+      if (initialAtmosphere) setAtmosphere(initialAtmosphere, false);
     }
   }
 
   const title = locale === "ar" ? "الأجواء" : locale === "ms" ? "Suasana" : "Atmosphere";
-  return <fieldset className={compact ? styles.atmosphereCompact : styles.atmosphereSelector}>
+  const failedMessage = locale === "ar"
+    ? "تعذر حفظ تفضيل الأجواء."
+    : locale === "ms"
+      ? "Pilihan suasana tidak dapat disimpan."
+      : "The atmosphere preference could not be saved.";
+  return <fieldset
+    aria-busy={persistenceState === "saving"}
+    className={compact ? styles.atmosphereCompact : styles.atmosphereSelector}
+    data-persistence-state={persistenceState}
+  >
     <legend className={compact ? "sr-only" : undefined}>{title}</legend>
     {showThemes ? PUBLIC_ATMOSPHERES.map((item) => <button
       aria-pressed={atmosphere === item}
       data-selected={atmosphere === item}
+      disabled={persistenceState === "saving"}
       key={item}
       onClick={() => void select(item)}
       title={`${title}: ${labels[item][locale]}`}
@@ -77,5 +93,6 @@ export function AtmosphereSelector({
       {soundEnabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
       <span>{soundEnabled ? (locale === "ar" ? "كتم صوت الواجهة" : locale === "ms" ? "Senyapkan bunyi antara muka" : "Mute interface sound") : (locale === "ar" ? "تشغيل صوت الواجهة" : locale === "ms" ? "Hidupkan bunyi antara muka" : "Enable interface sound")}</span>
     </button> : null}
+    {persistenceState === "failed" ? <span className="sr-only" role="alert">{failedMessage}</span> : null}
   </fieldset>;
 }

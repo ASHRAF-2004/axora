@@ -60,19 +60,51 @@ jobs:
       - name: Build the production application
         run: npm run build
 
+      - name: Validate licensed runtime assets and record bundle evidence
+        run: |
+          npm run assets:validate
+          npm run evidence:report
+
       - name: Install the browser used by interaction checks
         run: npx playwright install --with-deps chromium
 
       - name: Test critical browser journeys
         run: npm run test:e2e
 
-      - name: Retain browser evidence after a failure
-        if: failure()
+      - name: Verify required pull-request visual evidence
+        run: npm run evidence:validate
+
+      - name: Audit public Lighthouse budgets and links
+        env:
+          APP_BASE_URL: http://127.0.0.1:3100
+          AXORA_EVIDENCE_BASE_URL: http://127.0.0.1:3100
+          DEMO_MODE: "true"
+        run: |
+          mkdir -p output/lighthouse output/reports
+          npm start -- --hostname 127.0.0.1 --port 3100 >output/reports/production-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3100/en >/dev/null; then break; fi
+            if [ "$attempt" -eq 60 ]; then exit 1; fi
+            sleep 1
+          done
+          export CHROME_PATH="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          npx --no-install lighthouse http://127.0.0.1:3100/en --quiet --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" --output=json --output=html --output-path=output/lighthouse/mobile
+          npx --no-install lighthouse http://127.0.0.1:3100/en --quiet --preset=desktop --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" --output=json --output=html --output-path=output/lighthouse/desktop
+          npm run evidence:lighthouse
+          npm run links:validate
+
+      - name: Retain reviewable browser and performance evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: playwright-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: output/playwright
-          if-no-files-found: ignore
+          name: immersive-world-v2-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/playwright
+            output/lighthouse
+            output/reports
+          if-no-files-found: error
           retention-days: 14
 
   container:

@@ -61,6 +61,12 @@ export type DriverDetailWorkspace = {
     branchName: string; assignedAt: string; endedAt?: string;
   }>;
   locations: Array<{ latitude: number; longitude: number; accuracy: number; capturedAt: string }>;
+  recoveryEligibility?: {
+    eligible: boolean;
+    reasonCode: "TERMINAL_JOB" | "NO_ACTIVE_ASSIGNMENT" | "DRIVER_INACTIVE" | "ACCEPTANCE_EXPIRED" | "DRIVER_OFFLINE" | "TRACKING_STALE" | "WORKFLOW_STALE" | "HEALTHY_ACTIVE_JOB";
+    reason: string;
+    facts: Record<string, unknown>;
+  };
 };
 
 function assignmentId(actor: AuthenticatedSessionUser) {
@@ -118,7 +124,15 @@ export async function getDriverDetailWorkspace(actor: AuthenticatedSessionUser, 
     ],
   } satisfies DriverDetailWorkspace;
   try {
-    return await capability<DriverDetailWorkspace>("axora_driver_detail_workspace", [actor.id, assignmentId(actor), driverId, new Date()]);
+    const at = new Date();
+    const detail = await capability<DriverDetailWorkspace>("axora_driver_detail_workspace", [actor.id, assignmentId(actor), driverId, at]);
+    const activeJob = detail.jobs.find((job) => !["DELIVERED", "COMPLETED", "CANCELLED", "FAILED", "RETURNED"].includes(job.status));
+    if (!activeJob) return detail;
+    const recoveryEligibility = await capability<NonNullable<DriverDetailWorkspace["recoveryEligibility"]>>(
+      "axora_delivery_recovery_eligibility",
+      [actor.id, assignmentId(actor), activeJob.id, at],
+    );
+    return { ...detail, recoveryEligibility };
   } catch {
     return null;
   }
@@ -130,7 +144,7 @@ export async function releaseStuckDeliveryJob(
   commandId: string,
   reason: string,
 ) {
-  if (isDemoMode()) return { jobId, released: true, status: "AWAITING_ASSIGNMENT" };
+  if (isDemoMode()) throw new Error("The demo delivery is healthy and cannot be released.");
   return withAuditTransaction({ actor, reason: "Stuck delivery recovery", commandId }, async (client) => {
     const result = await client.query<ValueRow<Record<string, unknown>>>(
       "SELECT public.axora_release_stuck_delivery_job($1,$2,$3,$4,$5,$6) AS value",

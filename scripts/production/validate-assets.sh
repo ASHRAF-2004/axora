@@ -26,6 +26,7 @@ node --check "$REPOSITORY_DIR/server-tools/email-sender.mjs"
 node --check "$REPOSITORY_DIR/server-tools/document-renderer.mjs"
 node --check "$REPOSITORY_DIR/server-tools/document-worker.mjs"
 node --check "$REPOSITORY_DIR/scripts/production/check-email-service.mjs"
+node "$REPOSITORY_DIR/scripts/validate-third-party-assets.mjs"
 
 checker_install_mentions="$(grep -cF 'check-email-service.mjs' "$SCRIPT_DIR/install.sh")"
 (( checker_install_mentions >= 2 )) \

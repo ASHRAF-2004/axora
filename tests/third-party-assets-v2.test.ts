@@ -1,53 +1,37 @@
-import fs from "node:fs";
-import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { CATEGORY_IMAGE_CATEGORIES, categoryImage } from "@/lib/category-images";
-import { SEMANTIC_MODEL_PATHS, STAGE_SOUND_PATHS, WORKFLOW_STAGE_IDS } from "@/lib/immersive-public-experience";
-
-const root = process.cwd();
-const manifest = fs.readFileSync(path.join(root, "THIRD_PARTY_ASSETS.md"), "utf8");
-
-function assetPath(publicPath: string) {
-  return path.join(root, "public", publicPath.replace(/^\//, ""));
-}
+import { CATEGORY_IMAGE_CATEGORIES } from "@/lib/category-images";
 
 describe("immersive and catalogue asset provenance", () => {
-  it("self-hosts every semantic GLB with declared provenance", () => {
-    const paths = new Set(Object.values(SEMANTIC_MODEL_PATHS));
-    expect(paths.size).toBe(Object.keys(SEMANTIC_MODEL_PATHS).length);
-    for (const publicPath of paths) {
-      const file = assetPath(publicPath);
-      expect(fs.existsSync(file), publicPath).toBe(true);
-      expect(fs.readFileSync(file).subarray(0, 4).toString("ascii"), publicPath).toBe("glTF");
-      expect(manifest).toContain(publicPath.replace(/^\//, "public/"));
+  it("has exactly one validated provenance record for every runtime third-party file", async () => {
+    const output = execFileSync(process.execPath, ["scripts/validate-third-party-assets.mjs"], { cwd: process.cwd(), encoding: "utf8" });
+    expect(output).toContain("Validated 56 self-hosted third-party assets");
+    const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as { assets: Array<{ path: string }> };
+    expect(manifest.assets).toHaveLength(56);
+    expect(new Set(manifest.assets.map((asset) => asset.path)).size).toBe(56);
+  });
+
+  it("maps every category derivative to one exact source item", async () => {
+    const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as {
+      assets: Array<{ path: string; canonicalSource: string; originalFilename: string; exactPackOrItem: string }>;
+    };
+    const categories = manifest.assets.filter((asset) => asset.path.startsWith("public/catalog/categories/"));
+    expect(categories).toHaveLength(CATEGORY_IMAGE_CATEGORIES.length * 2);
+    for (const asset of categories) {
+      expect(asset.canonicalSource).toMatch(/^https:\/\/3dicons\.co\/icons\/[a-z0-9-]+\?angle=dynamic$/);
+      expect(asset.originalFilename).toMatch(/\/dynamic\/500\/color\.webp$/);
+      expect(asset.exactPackOrItem).toContain("3dicons v1 /");
     }
   });
 
-  it("uses a distinct self-hosted cue for every customer workflow stage", () => {
-    const paths = WORKFLOW_STAGE_IDS.map((stage) => STAGE_SOUND_PATHS[stage]);
-    expect(new Set(paths).size).toBe(WORKFLOW_STAGE_IDS.length);
-    for (const publicPath of [...paths, "/immersive/sounds/delivery-door.wav"]) {
-      const file = assetPath(publicPath);
-      expect(fs.existsSync(file), publicPath).toBe(true);
-      const signature = fs.readFileSync(file).subarray(0, 4).toString("ascii");
-      expect(["OggS", "RIFF"], publicPath).toContain(signature);
-      expect(manifest).toContain(publicPath.replace(/^\//, "public/"));
-    }
-  });
-
-  it("provides localized, self-hosted AVIF and WebP art for every fixed category", () => {
-    expect(CATEGORY_IMAGE_CATEGORIES.length).toBeGreaterThan(0);
-    for (const category of CATEGORY_IMAGE_CATEGORIES) {
-      for (const locale of ["en", "ar", "ms"] as const) {
-        const art = categoryImage(category, locale);
-        expect(art.alt.trim().length, `${category}:${locale}`).toBeGreaterThan(4);
-        expect(art.avif).toMatch(/^\/catalog\/categories\/[a-z0-9-]+\.avif$/);
-        expect(art.webp).toMatch(/^\/catalog\/categories\/[a-z0-9-]+\.webp$/);
-        expect(fs.existsSync(assetPath(art.avif)), art.avif).toBe(true);
-        expect(fs.existsSync(assetPath(art.webp)), art.webp).toBe(true);
-      }
-    }
-    expect(manifest).toContain("3dicons v1");
-    expect(manifest).toContain("CC0");
+  it("records tracking as Space Kit only and never as City Kit Roads", async () => {
+    const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as {
+      assets: Array<{ path: string; canonicalSource: string; exactPackOrItem: string }>;
+    };
+    const track = manifest.assets.filter((asset) => asset.path === "public/immersive/models/track.glb");
+    expect(track).toHaveLength(1);
+    expect(track[0]).toMatchObject({ exactPackOrItem: "Space Kit" });
+    expect(track[0]?.canonicalSource).toBe("https://kenney.nl/assets/space-kit");
   });
 });

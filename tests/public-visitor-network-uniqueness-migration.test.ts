@@ -116,8 +116,8 @@ async function snapshot(
   return result.rows[0];
 }
 
-describe("permanent public-network visitor uniqueness", () => {
-  it("reuses one claim across normal and private contexts on the same public IP hash", async () => {
+describe("privacy-safe anonymous visitor identity", () => {
+  it("uses signed cookie identity while retaining network hashes only as legacy evidence", async () => {
     const db = new PGlite();
     try {
       await applyMigrations(db);
@@ -162,17 +162,24 @@ describe("permanent public-network visitor uniqueness", () => {
         turnstileDevice: hash("5"),
         choice: "NIGHT_OWL",
       });
-      expect(verifiedPrivateWindow).toEqual(privateWindow);
+      expect(verifiedPrivateWindow).toEqual({
+        total: 2,
+        early: 1,
+        night: 1,
+        visitorNumber: 2,
+        choice: "NIGHT_OWL",
+        claimedNew: true,
+      });
 
       await expect(snapshot(db, {
         network: hash("b"),
         networkDevice: hash("6"),
       })).resolves.toEqual({
-        total: 1,
+        total: 2,
         early: 1,
-        night: 0,
-        visitorNumber: 1,
-        choice: "EARLY_BIRD",
+        night: 1,
+        visitorNumber: null,
+        choice: null,
       });
 
       const otherNetwork = await fallbackClaim(db, {
@@ -183,10 +190,10 @@ describe("permanent public-network visitor uniqueness", () => {
         choice: "NIGHT_OWL",
       });
       expect(otherNetwork).toEqual({
-        total: 2,
+        total: 3,
         early: 1,
-        night: 1,
-        visitorNumber: 2,
+        night: 2,
+        visitorNumber: 3,
         choice: "NIGHT_OWL",
         claimedNew: true,
       });
@@ -197,7 +204,7 @@ describe("permanent public-network visitor uniqueness", () => {
             AS networks,
           (SELECT count(*)::int FROM public_visitor_claims) AS claims
       `);
-      expect(aliases.rows[0]).toEqual({ networks: 2, claims: 2 });
+      expect(aliases.rows[0]).toEqual({ networks: 2, claims: 3 });
     } finally {
       await db.close();
     }
@@ -326,7 +333,7 @@ describe("permanent public-network visitor uniqueness", () => {
       expect(boundary.rows[0]).toEqual({
         appSnapshot: true,
         appTurnstileClaim: true,
-        appFallbackClaim: true,
+        appFallbackClaim: false,
         appTableSelect: false,
         publicSnapshotDenied: true,
         triggerCount: 1,

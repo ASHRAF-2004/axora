@@ -18,7 +18,12 @@ test("owner previews reviewed company branding across device, Arabic, and reduce
   })).toBeVisible();
   await expect(page.getByText("Review required", { exact: true }).first())
     .toBeVisible();
-  await expect(page.getByText("WCAG contrast evidence")).toBeVisible();
+  const contrastHeading = page.getByRole("heading", {
+    level: 2,
+    name: "WCAG contrast evidence",
+  });
+  await expect(contrastHeading).toHaveCount(1);
+  await expect(contrastHeading).toBeVisible();
 
   await page.getByLabel("Tablet").check();
   await expect(page.locator('section[data-device="tablet"]')).toBeVisible();

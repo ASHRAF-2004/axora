@@ -14,7 +14,6 @@ export const VISITOR_CLAIM_COOKIE_MAX_AGE = 400 * 24 * 60 * 60;
 
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 const COOKIE_PATTERN = /^v1\.([A-Za-z0-9_-]{43})\.([A-Za-z0-9_-]{43})$/;
-const EPHEMERAL_ID_PATTERN = /^x:[A-Za-z0-9._:-]{1,120}$/;
 
 export const visitorChoiceSchema = z.enum(["EARLY_BIRD", "NIGHT_OWL"]);
 export type VisitorChoice = z.infer<typeof visitorChoiceSchema>;
@@ -31,9 +30,6 @@ export interface VisitorCounterSnapshot {
 export interface VisitorIdentity {
   tokenHash?: string;
   networkHash?: string;
-  networkDeviceHash?: string;
-  clientSignalHash?: string;
-  turnstileDeviceHash?: string;
 }
 
 interface VisitorSnapshotRow extends QueryResultRow {
@@ -128,46 +124,16 @@ export function normalizedPublicNetworkIdentifier(value: string | null | undefin
 export function buildVisitorIdentity(input: {
   cookieValue?: string;
   remoteIp?: string;
-  clientSignal?: string;
-  ephemeralId?: string;
 }): VisitorIdentity {
   const tokenHash = visitorTokenHashFromCookie(input.cookieValue);
   const remoteIp = normalizedPublicNetworkIdentifier(input.remoteIp);
-  const clientSignal = input.clientSignal?.trim().toLowerCase();
-  const validClientSignal = clientSignal && HASH_PATTERN.test(clientSignal)
-    ? clientSignal
-    : undefined;
-  const ephemeralId = input.ephemeralId?.trim();
-  const validEphemeralId = ephemeralId
-    && EPHEMERAL_ID_PATTERN.test(ephemeralId)
-    ? ephemeralId
-    : undefined;
-
   const networkHash = remoteIp
     ? fingerprint("network", remoteIp)
-    : undefined;
-  const clientSignalHash = validClientSignal
-    ? fingerprint("client-signal", validClientSignal)
-    : undefined;
-  const networkDeviceHash = remoteIp && validClientSignal
-    ? fingerprint(
-      "network-device",
-      JSON.stringify([remoteIp, validClientSignal]),
-    )
-    : undefined;
-  const turnstileDeviceHash = validEphemeralId && validClientSignal
-    ? fingerprint(
-      "turnstile-device",
-      JSON.stringify([validEphemeralId, validClientSignal]),
-    )
     : undefined;
 
   return {
     ...(tokenHash ? { tokenHash } : {}),
     ...(networkHash ? { networkHash } : {}),
-    ...(networkDeviceHash ? { networkDeviceHash } : {}),
-    ...(clientSignalHash ? { clientSignalHash } : {}),
-    ...(turnstileDeviceHash ? { turnstileDeviceHash } : {}),
   };
 }
 
@@ -215,8 +181,8 @@ export async function getPublicVisitorSnapshot(identity: VisitorIdentity) {
     [
       identity.tokenHash ?? null,
       identity.networkHash ?? null,
-      identity.networkDeviceHash ?? null,
-      identity.turnstileDeviceHash ?? null,
+      null,
+      null,
     ],
   );
   if (result.rowCount !== 1) {
@@ -227,6 +193,7 @@ export async function getPublicVisitorSnapshot(identity: VisitorIdentity) {
 
 async function consumeRateScope(
   client: PoolClient,
+  action: "VISITOR_CHOICE" | "VISITOR_CHOICE_STREAM",
   kind: "NETWORK" | "IDENTIFIER",
   hash: string,
   limit: number,
@@ -238,13 +205,13 @@ async function consumeRateScope(
   const consumed = await client.query(
     `INSERT INTO public.public_request_rate_buckets(
        action_key,scope_kind,scope_hash,bucket_started_at,request_count
-     ) VALUES ('VISITOR_CHOICE',$1,$2,date_trunc('hour',now()),1)
+     ) VALUES ($1,$2,$3,date_trunc('hour',now()),1)
      ON CONFLICT(action_key,scope_kind,scope_hash,bucket_started_at)
      DO UPDATE SET
        request_count=public.public_request_rate_buckets.request_count+1
-     WHERE public.public_request_rate_buckets.request_count < $3
+     WHERE public.public_request_rate_buckets.request_count < $4
      RETURNING request_count`,
-    [kind, hash, limit],
+    [action, kind, hash, limit],
   );
   if (!consumed.rowCount) throw new VisitorClaimRateLimitError();
 }
@@ -254,22 +221,24 @@ export async function consumeVisitorClaimRateLimit(identity: VisitorIdentity) {
     ...(identity.networkHash
       ? [{ kind: "NETWORK" as const, hash: identity.networkHash, limit: 24 }]
       : []),
-    ...(identity.clientSignalHash
-      ? [{
-        kind: "IDENTIFIER" as const,
-        hash: identity.clientSignalHash,
-        limit: 12,
-      }]
-      : []),
   ];
   if (!scopes.length) return;
   await withAuditTransaction(
     { reason: "Public visitor choice rate-limit check" },
     async (client) => {
+      await client.query(`SELECT public.axora_prune_public_visitor_rate_buckets()`);
       for (const scope of scopes) {
-        await consumeRateScope(client, scope.kind, scope.hash, scope.limit);
+        await consumeRateScope(client, "VISITOR_CHOICE", scope.kind, scope.hash, scope.limit);
       }
     },
+  );
+}
+
+export async function consumeVisitorStreamRateLimit(identity: VisitorIdentity) {
+  if (!identity.networkHash) return;
+  await withAuditTransaction(
+    { reason: "Public visitor stream rate-limit check" },
+    async (client) => consumeRateScope(client, "VISITOR_CHOICE_STREAM", "NETWORK", identity.networkHash!, 30),
   );
 }
 
@@ -296,9 +265,9 @@ export async function claimPublicVisitor(input: {
         [
           input.identity.tokenHash,
           input.identity.networkHash ?? null,
-          input.identity.networkDeviceHash ?? null,
-          input.identity.clientSignalHash ?? null,
-          input.identity.turnstileDeviceHash ?? null,
+          null,
+          null,
+          null,
           parsedChoice,
           input.locale,
           input.turnstileChallengeAt,

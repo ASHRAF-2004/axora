@@ -12,6 +12,11 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({ totalCount: 42, earlyBirdCount: 24, nightOwlCount: 18, choice: "EARLY_BIRD", visitorNumber: 42 }),
     });
   });
+  await page.route("**/api/public/visitor-choice/stream", (route) => route.fulfill({
+    status: 200,
+    headers: { "Content-Type": "text/event-stream" },
+    body: `event: snapshot\ndata: ${JSON.stringify({ sequence: 1, version: "immersive-fixture", snapshot: { totalCount: 42, earlyBirdCount: 24, nightOwlCount: 18 } })}\n\n`,
+  }));
 });
 
 async function useLocale(context: Parameters<typeof test>[0] extends never ? never : import("@playwright/test").BrowserContext, locale: "en" | "ar" | "ms") {
@@ -26,6 +31,19 @@ async function expectWorkflowSceneReady(page: Page) {
     const context = scene.getContext("webgl2") ?? scene.getContext("webgl");
     return Boolean(context && context.drawingBufferWidth > 0 && context.drawingBufferHeight > 0);
   })).toBe(true);
+}
+
+async function computedAtmosphere(page: Page, selector = "html") {
+  return page.locator(selector).evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      page: style.getPropertyValue("--axora-page-bg").trim(),
+      surface: style.getPropertyValue("--axora-surface").trim(),
+      brand: style.getPropertyValue("--axora-brand").trim(),
+      background: style.backgroundColor,
+      color: style.color,
+    };
+  });
 }
 
 test("desktop loads the 3D console and keeps every control accessible", async ({ context, page }) => {
@@ -64,6 +82,40 @@ test("sound stays silent by default and persists only after explicit activation"
   await expect(page.getByRole("button", { name: "Mute interface sound" })).toHaveAttribute("aria-pressed", "true");
 });
 
+test("opted-in scroll activation plays Delivery engine then door exactly once", async ({ context, page }) => {
+  await useLocale(context, "en");
+  await page.addInitScript(() => {
+    const events: Array<{ type: "play" | "pause"; path: string }> = [];
+    Object.assign(window, { __axoraAudioEvents: events });
+    class TestAudio {
+      currentTime = 0;
+      preload = "none";
+      volume = 1;
+      constructor(readonly src: string) {}
+      load() {}
+      pause() { events.push({ type: "pause", path: this.src }); }
+      play() { events.push({ type: "play", path: this.src }); return Promise.resolve(); }
+    }
+    Object.defineProperty(window, "Audio", { configurable: true, value: TestAudio });
+  });
+  await page.goto("/en");
+  await page.getByRole("button", { name: "Enable interface sound" }).click();
+  const delivery = page.locator('[data-scene-step="5"]');
+  await delivery.scrollIntoViewIfNeeded();
+  await expect(delivery.getByRole("button", { name: /06.*Deliver/ })).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __axoraAudioEvents: Array<{ type: string; path: string }> }).__axoraAudioEvents
+    .filter((event) => event.type === "play").map((event) => event.path))).toEqual(expect.arrayContaining([
+      "/immersive/sounds/delivery-engine.ogg",
+      "/immersive/sounds/delivery-door.wav",
+    ]));
+  await delivery.scrollIntoViewIfNeeded();
+  const deliveryPlays = await page.evaluate(() => (window as typeof window & { __axoraAudioEvents: Array<{ type: string; path: string }> }).__axoraAudioEvents
+    .filter((event) => event.type === "play" && event.path.includes("delivery-engine")).length);
+  expect(deliveryPlays).toBe(1);
+  await page.getByRole("button", { name: "Mute interface sound" }).click();
+  await expect.poll(() => page.evaluate(() => (window as typeof window & { __axoraAudioEvents: Array<{ type: string; path: string }> }).__axoraAudioEvents.some((event) => event.type === "pause"))).toBe(true);
+});
+
 test("theme persists without enabling sound or overriding document direction", async ({ context, page }) => {
   await useLocale(context, "en");
   await page.goto("/en");
@@ -76,8 +128,10 @@ test("theme persists without enabling sound or overriding document direction", a
   await expect(emberButton).toBeVisible();
   await emberButton.click();
   await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();
+  expect((await computedAtmosphere(page)).brand).toBe("#bd3f32");
   await page.reload();
   await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();
+  expect((await computedAtmosphere(page)).page).toBe("#fff3ef");
   await expect(page.getByRole("button", { name: "Enable interface sound" })).toHaveAttribute("aria-pressed", "false");
 });
 
@@ -88,6 +142,17 @@ test("reduced motion receives meaningful static content with no canvas", async (
   await expect(page.getByTestId("workflow-fallback").first()).toBeVisible();
   await expect(page.locator("[data-scene-route] canvas")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /01.*Request/ })).toBeVisible();
+});
+
+test("forced colours retain meaningful public controls and evidence", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Forced-colour evidence is captured once by desktop Chromium.");
+  await useLocale(context, "en");
+  await page.emulateMedia({ forcedColors: "active" });
+  await page.goto("/en");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: /01.*Request/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Sign in/i })).toBeVisible();
+  await page.screenshot({ animations: "disabled", path: `output/playwright/immersive-forced-colors-${testInfo.project.name}.png`, fullPage: false });
 });
 
 test("WebGL unavailability falls back while navigation and challenge remain usable", async ({ context, page }, testInfo) => {
@@ -132,7 +197,7 @@ test("the server-rendered document retains meaningful localized content without 
   expect(html).toContain("Enter the Axora world");
 });
 
-test("context loss restores the semantic console without losing the route", async ({ context, page }) => {
+test("context loss restores the semantic console without losing the route", async ({ context, page }, testInfo) => {
   await useLocale(context, "en");
   await page.goto("/en");
   const canvas = page.locator("[data-scene-route] canvas").first();
@@ -140,6 +205,7 @@ test("context loss restores the semantic console without losing the route", asyn
   await canvas.dispatchEvent("webglcontextlost", { cancelable: true });
   await expect(page.locator('[data-testid="workflow-fallback"][data-reason="context-lost"]')).toBeVisible();
   await expect(page).toHaveURL(/\/en$/);
+  await page.screenshot({ animations: "disabled", path: `output/playwright/immersive-context-loss-${testInfo.project.name}.png`, fullPage: false });
 });
 
 test("Arabic mirrors direction and Malay localizes workflow controls", async ({ context, page }) => {
@@ -184,20 +250,28 @@ test("desktop and theme visual evidence is captured once in Chromium", async ({ 
   await expect(page.getByTestId("workflow-console")).toBeVisible();
   await expectWorkflowSceneReady(page);
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-default-${testInfo.project.name}.png`, fullPage: true });
+  const computedThemes = new Set<string>();
   for (const theme of ["Aurora", "Solar", "Ember", "Midnight"] as const) {
     const themeButton = page.getByRole("button", { name: theme, exact: true });
     const atmosphere = theme.toLowerCase();
     await themeButton.click();
     await expect(themeButton).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator(`html[data-atmosphere="${atmosphere}"]`)).toBeVisible();
+    const tokens = await computedAtmosphere(page);
+    expect(tokens.page).not.toBe("");
+    expect(tokens.surface).not.toBe("");
+    expect(tokens.brand).not.toBe("");
+    computedThemes.add(JSON.stringify(tokens));
     await expectWorkflowSceneReady(page);
     await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-theme-${atmosphere}-${testInfo.project.name}.png`, fullPage: false });
   }
+  expect(computedThemes.size).toBe(4);
   await page.getByRole("button", { name: /06.*Deliver/ }).click();
   await page.locator("#workflow").screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-workflow-${testInfo.project.name}.png` });
 
   await page.goto("/login");
   await expect(page.locator("main form")).toBeVisible();
+  expect((await computedAtmosphere(page)).page).toBe("#091124");
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-login-${testInfo.project.name}.png`, fullPage: false });
 });
 
@@ -215,11 +289,75 @@ test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mob
   await expectWorkflowSceneReady(page);
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-arabic-${testInfo.project.name}.png`, fullPage: false });
 
+  await useLocale(context, "ms");
+  await page.goto("/ms");
+  await expect(page.getByRole("button", { name: /02.*Lulus/ })).toBeVisible();
+  await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-malay-${testInfo.project.name}.png`, fullPage: false });
+
   await page.emulateMedia({ reducedMotion: "reduce" });
   await useLocale(context, "en");
   await page.goto("/en");
   await expect(page.getByTestId("workflow-fallback").first()).toBeVisible();
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-reduced-motion-${testInfo.project.name}.png`, fullPage: false });
+});
+
+test("records the reviewable immersive interaction tour", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "The interaction tour is recorded once with desktop Chromium.");
+  const context = await browser.newContext({
+    baseURL,
+    viewport: { width: 1440, height: 900 },
+    recordVideo: { dir: "output/playwright/video", size: { width: 1280, height: 800 } },
+  });
+  await useLocale(context, "en");
+  const page = await context.newPage();
+  let claimed = false;
+  await page.addInitScript(() => {
+    let options: Record<string, unknown> | undefined;
+    window.turnstile = {
+      render: (_container, next) => { options = next; return "tour-widget"; },
+      execute: () => queueMicrotask(() => (options?.callback as ((token: string) => void) | undefined)?.("tour-token")),
+      reset: () => undefined,
+      remove: () => { options = undefined; },
+    };
+  });
+  await page.route("https://challenges.cloudflare.com/turnstile/**", (route) => route.fulfill({ status: 200, contentType: "application/javascript", body: "" }));
+  await page.route(/\/api\/public\/visitor-choice$/, async (route) => {
+    if (route.request().method() === "POST") claimed = true;
+    const snapshot = claimed
+      ? { totalCount: 43, earlyBirdCount: 25, nightOwlCount: 18, visitorNumber: 43, choice: "EARLY_BIRD", claimedNew: true }
+      : { totalCount: 42, earlyBirdCount: 24, nightOwlCount: 18 };
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(snapshot) });
+  });
+  await page.route("**/api/public/visitor-choice/stream", (route) => route.fulfill({
+    status: 200,
+    headers: { "Content-Type": "text/event-stream" },
+    body: `event: snapshot\ndata: ${JSON.stringify({ sequence: 1, version: "tour", snapshot: { totalCount: 42, earlyBirdCount: 24, nightOwlCount: 18 } })}\n\n`,
+  }));
+  await page.goto("/en");
+  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toBeVisible();
+  await page.getByRole("button", { name: "Choose Early Birds" }).click();
+  await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
+  await expectWorkflowSceneReady(page);
+  const emblem = page.getByRole("link", { name: /Home.*Axora/i }).first();
+  await emblem.focus();
+  await emblem.press("Enter");
+  await expect(page).toHaveURL(/\/en$/);
+  await page.getByRole("button", { name: "Enable interface sound" }).click();
+  for (let index = 0; index < 8; index += 1) {
+    const step = page.locator(`[data-scene-step="${index}"]`);
+    await step.evaluate((element) => element.scrollIntoView({ behavior: "instant", block: "center" }));
+    if (await step.getByRole("button").getAttribute("aria-pressed") !== "true") {
+      await step.getByRole("button").click();
+    }
+    await expect(step.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  }
+  await page.getByRole("button", { name: "Ember", exact: true }).click();
+  await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();
+  const video = page.video();
+  await page.close();
+  await context.close();
+  if (!video) throw new Error("The interaction tour video was not initialized.");
+  await video.saveAs("output/playwright/interaction-tour.webm");
 });
 
 test("public experience passes WCAG A and AA automation", async ({ context, page }) => {

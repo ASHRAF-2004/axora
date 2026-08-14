@@ -196,7 +196,7 @@ approval remains tenant-owned and always prevents self-approval.
 
 The active purchase path is:
 
-`Request -> Company approval -> Pay -> Invoice -> Delivery Guy buys items -> Delivery -> proof of receipt -> Completed`
+`Request -> Company approval -> Pay -> Invoice -> Prepare -> Delivery -> proof of receipt -> Completed`
 
 The catalogue no longer exposes supplier ordering rules, minimum or maximum
 quantities, increments, pack units, rule reasons, or effective dates. Historical

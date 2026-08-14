@@ -6,8 +6,8 @@ async function rememberLocale(context: BrowserContext, locale: "en" | "ar" | "ms
   await context.addCookies([{ name: "axora_locale", value: locale, url: baseURL }]);
 }
 
-async function installVisitorFixture(page: Page) {
-  let claimed = false;
+async function installVisitorFixture(page: Page, options: { claimed?: boolean } = {}) {
+  let claimed = options.claimed ?? false;
   let posts = 0;
   await page.addInitScript(() => {
     let options: Record<string, unknown> | undefined;
@@ -32,7 +32,7 @@ async function installVisitorFixture(page: Page) {
   await page.route("**/api/public/visitor-choice/stream", (route) => route.fulfill({
     status: 200,
     headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-store" },
-    body: `retry: 60000\nevent: snapshot\ndata: ${JSON.stringify({ totalCount: 12, earlyBirdCount: 7, nightOwlCount: 5, sequence: 12 })}\n\n`,
+    body: `retry: 60000\nevent: snapshot\ndata: ${JSON.stringify({ sequence: 12, version: "fixture", snapshot: { totalCount: 12, earlyBirdCount: 7, nightOwlCount: 5 } })}\n\n`,
   }));
   return { postCount: () => posts };
 }
@@ -95,6 +95,43 @@ test("the modal and counters exist only on the public homepage", async ({ contex
   await rememberLocale(context, "en");
   await installVisitorFixture(page);
   await page.goto("/en/about");
+  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
+  await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
+});
+
+test("an anonymous visitor with a valid recorded claim sees only compact live results", async ({ context, page }, testInfo) => {
+  await rememberLocale(context, "en");
+  await installVisitorFixture(page, { claimed: true });
+  await page.goto("/en");
+  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
+  await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
+  await page.screenshot({ animations: "disabled", path: `output/playwright/v2-visitor-claimed-counters-${testInfo.project.name}.png`, fullPage: false });
+});
+
+test("authenticated owner, delivery, and company users never receive the public choice modal", async ({ page }) => {
+  const { signInAsDemoOwner, signInAsDemoRole } = await import("./helpers/auth");
+  await signInAsDemoOwner(page);
+  await page.goto("/en");
+  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
+  await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
+
+  const sessions = [
+    { id: "40444444-4444-4444-8444-444444444444", email: "driver.fixture@axora.invalid", name: "Delivery fixture", role: "DELIVERY_GUY", accountKind: "DELIVERY", scopeType: "DELIVERY" },
+    { id: "30333333-3333-4333-8333-333333333333", email: "company.fixture@axora.invalid", name: "Company fixture", role: "COMPANY_ADMIN", accountKind: "COMPANY", scopeType: "COMPANY", companyId: "10000000-0000-4000-8000-000000000001" },
+  ] as const;
+  for (const session of sessions) {
+    await page.context().clearCookies();
+    await signInAsDemoRole(page, session);
+    await page.goto("/en");
+    await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
+    await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
+  }
+});
+
+test("an explicitly privacy-ineligible visitor never receives the modal", async ({ context, page }) => {
+  await rememberLocale(context, "en");
+  await page.setExtraHTTPHeaders({ DNT: "1" });
+  await page.goto("/en");
   await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
   await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
 });

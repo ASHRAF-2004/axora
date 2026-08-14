@@ -47,11 +47,21 @@ export function visitorChoicePercentages(snapshot: VisitorCounterSnapshot) {
   return { early, night: 100 - early };
 }
 
-export function VisitorChoiceChallenge({ locale, siteKey }: { locale: SupportedLocale; siteKey?: string }) {
+export function VisitorChoiceChallenge({
+  locale,
+  siteKey,
+  initialSnapshot,
+}: {
+  locale: SupportedLocale;
+  siteKey?: string;
+  initialSnapshot?: VisitorCounterSnapshot;
+}) {
   const copy = publicVisitorCopy[locale];
   const validSiteKey = Boolean(siteKey && /^[A-Za-z0-9_-]{10,100}$/.test(siteKey));
-  const [snapshot, setSnapshot] = useState<VisitorCounterSnapshot>(emptySnapshot);
-  const [phase, setPhase] = useState<Phase>("loading");
+  const [snapshot, setSnapshot] = useState<VisitorCounterSnapshot>(initialSnapshot ?? emptySnapshot);
+  const [phase, setPhase] = useState<Phase>(
+    initialSnapshot?.choice ? "claimed" : initialSnapshot && validSiteKey ? "ready" : "loading",
+  );
   const [pendingChoice, setPendingChoice] = useState<VisitorChoice | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const modalRef = useRef<HTMLElement>(null);
@@ -99,10 +109,10 @@ export function VisitorChoiceChallenge({ locale, siteKey }: { locale: SupportedL
       source = new EventSource("/api/public/visitor-choice/stream", { withCredentials: true });
       source.addEventListener("snapshot", (event) => {
         try {
-          const payload = JSON.parse((event as MessageEvent<string>).data) as VisitorCounterSnapshot & { sequence?: number };
-          if (!isSnapshot(payload) || !Number.isSafeInteger(payload.sequence) || Number(payload.sequence) < sequence.current) return;
+          const payload = JSON.parse((event as MessageEvent<string>).data) as { sequence?: number; snapshot?: VisitorCounterSnapshot };
+          if (!isSnapshot(payload.snapshot) || !Number.isSafeInteger(payload.sequence) || Number(payload.sequence) <= sequence.current) return;
           sequence.current = Number(payload.sequence);
-          setSnapshot((current) => ({ ...payload, ...(current.choice ? { choice: current.choice, visitorNumber: current.visitorNumber } : {}) }));
+          setSnapshot((current) => ({ ...payload.snapshot!, ...(current.choice ? { choice: current.choice, visitorNumber: current.visitorNumber } : {}) }));
         } catch {
           // EventSource reconnects and the next event is an authoritative snapshot.
         }
@@ -128,7 +138,7 @@ export function VisitorChoiceChallenge({ locale, siteKey }: { locale: SupportedL
   }, [load]);
 
   useEffect(() => {
-    if (claimed) return;
+    if (claimed || phase === "loading" || phase === "unavailable") return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const target = modalRef.current;
@@ -153,7 +163,7 @@ export function VisitorChoiceChallenge({ locale, siteKey }: { locale: SupportedL
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", containFocus);
     };
-  }, [claimed]);
+  }, [claimed, phase]);
 
   useEffect(() => {
     if (claimed || phase !== "ready") return;

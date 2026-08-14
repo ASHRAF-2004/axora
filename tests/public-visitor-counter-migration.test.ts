@@ -67,7 +67,7 @@ async function claim(
 }
 
 describe("public visitor choice counter migration", () => {
-  it("creates gap-free claims and reuses the existing claim across aliases", async () => {
+  it("creates gap-free claims keyed by each signed anonymous cookie", async () => {
     const db = new PGlite();
     try {
       await applyMigrations(db);
@@ -115,22 +115,22 @@ describe("public visitor choice counter migration", () => {
         choice: "NIGHT_OWL",
       });
       expect(repeatedFromAnotherBrowser).toEqual({
-        total: 1,
+        total: 2,
         early: 1,
-        night: 0,
-        visitorNumber: 1,
-        choice: "EARLY_BIRD",
-        claimedNew: false,
+        night: 1,
+        visitorNumber: 2,
+        choice: "NIGHT_OWL",
+        claimedNew: true,
       });
 
       await expect(
         snapshot(db, hash("e"), null, null),
       ).resolves.toEqual({
-        total: 1,
+        total: 2,
         early: 1,
-        night: 0,
-        visitorNumber: 1,
-        choice: "EARLY_BIRD",
+        night: 1,
+        visitorNumber: 2,
+        choice: "NIGHT_OWL",
       });
 
       const second = await claim(db, {
@@ -142,10 +142,10 @@ describe("public visitor choice counter migration", () => {
         choice: "NIGHT_OWL",
       });
       expect(second).toEqual({
-        total: 2,
+        total: 3,
         early: 1,
-        night: 1,
-        visitorNumber: 2,
+        night: 2,
+        visitorNumber: 3,
         choice: "NIGHT_OWL",
         claimedNew: true,
       });
@@ -163,8 +163,8 @@ describe("public visitor choice counter migration", () => {
           (SELECT count(*)::int FROM public_visitor_claim_tokens) AS aliases
       `);
       expect(state.rows[0]).toEqual({
-        total: 2,
-        claims: 2,
+        total: 3,
+        claims: 3,
         aliases: 3,
       });
     } finally {

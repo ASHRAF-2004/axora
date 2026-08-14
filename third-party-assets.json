@@ -1,0 +1,1070 @@
+{
+  "schemaVersion": 1,
+  "generatedFor": "Axora Immersive World V2",
+  "assets": [
+    {
+      "path": "public/catalog/categories/cleaning-hygiene.avif",
+      "assetName": "Bucket category artwork (AVIF)",
+      "originalFilename": "ecf873-bucket/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/ecf873-bucket?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Bucket / dynamic color render",
+      "originalFileSha256": "2600acbb112b5bebe6d15c5305b6ebf125f91e28128b9cadbf3a63d9d1cec2f8",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "3c4950e194b393833666fa6c1d9f2cef9a7f6457fe10634d7243e936deee4dd1",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/cleaning-hygiene.webp",
+      "assetName": "Bucket category artwork (WEBP)",
+      "originalFilename": "ecf873-bucket/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/ecf873-bucket?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Bucket / dynamic color render",
+      "originalFileSha256": "2600acbb112b5bebe6d15c5305b6ebf125f91e28128b9cadbf3a63d9d1cec2f8",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "33dfef88bd25c21ca7a80b996cdfb1f314b4fe6005df45eac37eb08668592f32",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/facilities-services.avif",
+      "assetName": "Tools category artwork (AVIF)",
+      "originalFilename": "ff5be0-tools/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/ff5be0-tools?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Tools / dynamic color render",
+      "originalFileSha256": "baa3b5b683a5812bd8cc360e8f0f2f3accf8303c8e79e77320a599d678846df7",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "7420c5afc8eae80ade954682119c72aa16080e0a86a7255b62fff4eab3af6798",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/facilities-services.webp",
+      "assetName": "Tools category artwork (WEBP)",
+      "originalFilename": "ff5be0-tools/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/ff5be0-tools?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Tools / dynamic color render",
+      "originalFileSha256": "baa3b5b683a5812bd8cc360e8f0f2f3accf8303c8e79e77320a599d678846df7",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "da43b749f6bdc8db026a773fc89edb3420bb159009ae843f5e4beb288266a02e",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/furniture.avif",
+      "assetName": "Locker category artwork (AVIF)",
+      "originalFilename": "e67951-locker/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/e67951-locker?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Locker / dynamic color render",
+      "originalFileSha256": "bd5ec1fb9196a70c09ddf96e9f3706ca1b5dd472bbf82595f1bdf3788fe45b09",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "655a60e8e3cffefdd40e5d04d81379c0a72bd29d51ce052e8db689179b3f8b19",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/furniture.webp",
+      "assetName": "Locker category artwork (WEBP)",
+      "originalFilename": "e67951-locker/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/e67951-locker?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Locker / dynamic color render",
+      "originalFileSha256": "bd5ec1fb9196a70c09ddf96e9f3706ca1b5dd472bbf82595f1bdf3788fe45b09",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "9916bdd3f90dfad6796ea0de4f95bad76a84deecb8042491a17010320407af83",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/it-equipment.avif",
+      "assetName": "Computer category artwork (AVIF)",
+      "originalFilename": "5f20be-computer/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/5f20be-computer?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Computer / dynamic color render",
+      "originalFileSha256": "8143c8356b63209f088bcd05ec314d487a4cfb5efbc37b2bf9b7f8bf7f3f639b",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "f440769184d2bf67fb70ae4875aee1b9749b7657d5e48cfb85c283c3830cdf86",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/it-equipment.webp",
+      "assetName": "Computer category artwork (WEBP)",
+      "originalFilename": "5f20be-computer/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/5f20be-computer?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Computer / dynamic color render",
+      "originalFileSha256": "8143c8356b63209f088bcd05ec314d487a4cfb5efbc37b2bf9b7f8bf7f3f639b",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "a0bfc8fb126522c94dea46df96c35c001c49b80da2b3984aa11521dc8c73ae4f",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/maintenance.avif",
+      "assetName": "Setting category artwork (AVIF)",
+      "originalFilename": "7e47be-setting/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/7e47be-setting?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Setting / dynamic color render",
+      "originalFileSha256": "247f3764778fe463d8f4f442c610186499a5700fce41e9e28e0c670c0cba6a26",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "1607e2c2b051fb928ee484cf109c8737200d44ef82b63a2cd3f2976816cbedc4",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/maintenance.webp",
+      "assetName": "Setting category artwork (WEBP)",
+      "originalFilename": "7e47be-setting/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/7e47be-setting?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Setting / dynamic color render",
+      "originalFileSha256": "247f3764778fe463d8f4f442c610186499a5700fce41e9e28e0c670c0cba6a26",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "7ce797904ef2f61ed6ad125638d382d10ccaa21f299e1123ed606ba35c9d0683",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/office-basics.avif",
+      "assetName": "Pencil category artwork (AVIF)",
+      "originalFilename": "66b0f8-pencil/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/66b0f8-pencil?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Pencil / dynamic color render",
+      "originalFileSha256": "ec69b4b43c7d1377be1b5dc18d02ca66c1a805f29857eff6d4fa04452a8738af",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "c109a7c258a4e5253c39afe4dac973de2b3dcd69989f581c6dcd4ba367c10a61",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/office-basics.webp",
+      "assetName": "Pencil category artwork (WEBP)",
+      "originalFilename": "66b0f8-pencil/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/66b0f8-pencil?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Pencil / dynamic color render",
+      "originalFileSha256": "ec69b4b43c7d1377be1b5dc18d02ca66c1a805f29857eff6d4fa04452a8738af",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "48f9e4c6e9a688400561431b41a494f69c18f75a889522a715d7ceef4bbc08fc",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/office-supplies.avif",
+      "assetName": "Notebook category artwork (AVIF)",
+      "originalFilename": "628100-notebook/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/628100-notebook?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Notebook / dynamic color render",
+      "originalFileSha256": "2501829d61ca81bd55f9172be8679e760db8ceb770e40cd7411b7149df72c8fd",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "496fde7ba029c2bbe736b2da1fb3d3962098f82ed1f4bb3efbd93426abbc7b58",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/office-supplies.webp",
+      "assetName": "Notebook category artwork (WEBP)",
+      "originalFilename": "628100-notebook/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/628100-notebook?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Notebook / dynamic color render",
+      "originalFileSha256": "2501829d61ca81bd55f9172be8679e760db8ceb770e40cd7411b7149df72c8fd",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "c7a7cdbefdaa60e489d29c7ef9be8da5fc9766004f5db2df1bd0dd8f75b5f9e0",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/other.avif",
+      "assetName": "Cube category artwork (AVIF)",
+      "originalFilename": "4f52f8-cube/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/4f52f8-cube?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Cube / dynamic color render",
+      "originalFileSha256": "c4eeb2821b393f0b31b7826080858c18391c3840f6597d29aac2b22da55043af",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "53dc255cb7f1b144dd21ec9331f5bbcd92244fcba311e312deca9f0365117afb",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/other.webp",
+      "assetName": "Cube category artwork (WEBP)",
+      "originalFilename": "4f52f8-cube/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/4f52f8-cube?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Cube / dynamic color render",
+      "originalFileSha256": "c4eeb2821b393f0b31b7826080858c18391c3840f6597d29aac2b22da55043af",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "72e101b7150c2ecaf732863a0d3407469db5a5634e5bc6c5671f4f152da3ded3",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/pantry-hospitality.avif",
+      "assetName": "Takeway cup category artwork (AVIF)",
+      "originalFilename": "abab3a-takeway-cup/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/abab3a-takeway-cup?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Takeway cup / dynamic color render",
+      "originalFileSha256": "1e5817cbd14193cf79cbd8da62f67e3861af75fd856c32f86b1810290aa67158",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "2b1d698950ffdfa3e537dcb5b2cd14762d50b4b21b0039dccb33b6606fdfc123",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/pantry-hospitality.webp",
+      "assetName": "Takeway cup category artwork (WEBP)",
+      "originalFilename": "abab3a-takeway-cup/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/abab3a-takeway-cup?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Takeway cup / dynamic color render",
+      "originalFileSha256": "1e5817cbd14193cf79cbd8da62f67e3861af75fd856c32f86b1810290aa67158",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "1090349ee60396e2bddf24c32b9be3233070e7e948adee3f39cd4fcd42299e84",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/pantry-refreshments.avif",
+      "assetName": "Tea cup category artwork (AVIF)",
+      "originalFilename": "845bf0-tea-cup/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/845bf0-tea-cup?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Tea cup / dynamic color render",
+      "originalFileSha256": "90ec43b6fdd5d087e113086dbfc3ec18dd881c95ef36d770c986174cbf389394",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "dc5abf90c137d2380e7541abd67a6bc4c8dde95cafc6789a462f73ccf9e2e471",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/pantry-refreshments.webp",
+      "assetName": "Tea cup category artwork (WEBP)",
+      "originalFilename": "845bf0-tea-cup/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/845bf0-tea-cup?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Tea cup / dynamic color render",
+      "originalFileSha256": "90ec43b6fdd5d087e113086dbfc3ec18dd881c95ef36d770c986174cbf389394",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "a3da49fdcb3215e414690ff2dea612b795369c283287933e7206b0f7d25421b5",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/printing-branding.avif",
+      "assetName": "Color palette category artwork (AVIF)",
+      "originalFilename": "82db59-color-palette/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/82db59-color-palette?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Color palette / dynamic color render",
+      "originalFileSha256": "28872600f00e7417e17f3fa5fe6acc95651c638901349f6a8724d81cbea05b9e",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "743192d9b82cd72069f05bbe8ec0d73bcdbc9212d38c9bff8f7892e689297d75",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/printing-branding.webp",
+      "assetName": "Color palette category artwork (WEBP)",
+      "originalFilename": "82db59-color-palette/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/82db59-color-palette?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Color palette / dynamic color render",
+      "originalFileSha256": "28872600f00e7417e17f3fa5fe6acc95651c638901349f6a8724d81cbea05b9e",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "58d8d85a53b3c872ebd45900252d45342e5613f17151d12721f24d919a8895d0",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/printing-stationery.avif",
+      "assetName": "File text category artwork (AVIF)",
+      "originalFilename": "65d841-file-text/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/65d841-file-text?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / File text / dynamic color render",
+      "originalFileSha256": "327ebea4d30ec85fade8bdcdc9bee1a443c2c1bc8567a8ccf39e1d2cfaa8c9ea",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "8d730d528137f5dbbabbf8691908a5ab06916eb195baea3607a2fecce4512ade",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/printing-stationery.webp",
+      "assetName": "File text category artwork (WEBP)",
+      "originalFilename": "65d841-file-text/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/65d841-file-text?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / File text / dynamic color render",
+      "originalFileSha256": "327ebea4d30ec85fade8bdcdc9bee1a443c2c1bc8567a8ccf39e1d2cfaa8c9ea",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "3f905d257ae82e97bff49ccdcbafe5d92acfeb9069d228ad0af103964e87aec4",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/safety-security.avif",
+      "assetName": "Shield category artwork (AVIF)",
+      "originalFilename": "b91186-shield/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/b91186-shield?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Shield / dynamic color render",
+      "originalFileSha256": "37d81814907128c7256796c161235ca4ebbae074fc23a8f0d395ab5ca257478d",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "407d3dd72183d0956d7c3e7545960249fb80e644ddae778136665f5172550812",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/safety-security.webp",
+      "assetName": "Shield category artwork (WEBP)",
+      "originalFilename": "b91186-shield/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/b91186-shield?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Shield / dynamic color render",
+      "originalFileSha256": "37d81814907128c7256796c161235ca4ebbae074fc23a8f0d395ab5ca257478d",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "801dc55f520b8168e481387af76b508a2716872ca19e368d969ef50eda93f4b7",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/uniforms-apparel.avif",
+      "assetName": "Boy category artwork (AVIF)",
+      "originalFilename": "a14880-boy/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/a14880-boy?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Boy / dynamic color render",
+      "originalFileSha256": "8c8bf2995550112b85a77bea568cd36551ec65ac552f7d06966bab4f83de1b0f",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as AVIF.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "03faf9fb6ee5912a4faf94e9be6ba1b830b423fa0088b62a968d5ce54c7d3b28",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/catalog/categories/uniforms-apparel.webp",
+      "assetName": "Boy category artwork (WEBP)",
+      "originalFilename": "a14880-boy/dynamic/500/color.webp",
+      "creator": "Vijay Verma (RealVJY)",
+      "canonicalSource": "https://3dicons.co/icons/a14880-boy?angle=dynamic",
+      "exactPackOrItem": "3dicons v1 / Boy / dynamic color render",
+      "originalFileSha256": "8c8bf2995550112b85a77bea568cd36551ec65ac552f7d06966bab4f83de1b0f",
+      "modifications": "Placed on Axora's neutral 640x420 card canvas, resized, stripped of nonessential metadata, and encoded as WEBP.",
+      "restrictions": "CC0; stylized icon only; no recognizable trademark or real person.",
+      "repositoryFileSha256": "3329ccda601fc9392269a9100eb3f798386ac8b1919399c81ff36f997d9f9549",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/approve.glb",
+      "assetName": "Approval floor control",
+      "originalFilename": "button-floor-round.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/prototype-kit",
+      "exactPackOrItem": "Prototype Kit",
+      "originalFileSha256": "96949468323f745d8afdfacfbce47df3ccab695cf0b112b40b00f199d2b53351",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "a4425983f52f0836f03714b470cd44fb762979341be36bfa1a1ba6aaadc1b2b3",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/company.glb",
+      "assetName": "Commercial company building",
+      "originalFilename": "building-a.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/city-kit-commercial",
+      "exactPackOrItem": "City Kit Commercial",
+      "originalFileSha256": "5cf22001ced31a09c411d8e9d854f87d58925a7ed960765df042cff64f8da63e",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "0f009f6c3b46c4b62d5b7e3fc83812bc1d9b0d9248e1766d80a20f451af171c7",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/complete.glb",
+      "assetName": "Closed completed parcel",
+      "originalFilename": "cardboardBoxClosed.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/furniture-kit",
+      "exactPackOrItem": "Furniture Kit",
+      "originalFileSha256": "4af079c0cf0031355195d97723f78e18b9eb83685c0a1fa4e7eeb21b9f315546",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "4af079dca52960912764574950f0549ff2ae1224b3db1528718629473a2d5d81",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/deliver.glb",
+      "assetName": "Delivery van",
+      "originalFilename": "delivery.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/car-kit",
+      "exactPackOrItem": "Car Kit",
+      "originalFileSha256": "426a3e634eff015120039412905700146cd6b11b9c557439525918a0fc5b7449",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "5d0578211992a7831eb86a00847bad81df3fc380e7685378339717f650f71d5b",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/flag.glb",
+      "assetName": "Route completion flag",
+      "originalFilename": "flag.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/prototype-kit",
+      "exactPackOrItem": "Prototype Kit",
+      "originalFileSha256": "3814017d64b4a87d9fc47d58b570a98c00d81a28a199128893c05c734e59a068",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "94b348bc01a91164ed22cf99857eebbf3b64d8398ad1e687719cb8fd683551c9",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/invoice.glb",
+      "assetName": "Invoice books and ledger",
+      "originalFilename": "books.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/furniture-kit",
+      "exactPackOrItem": "Furniture Kit",
+      "originalFileSha256": "b8dc85a59257fe8931f5476c01b46a7295822b1e7938cecaa645c83648924978",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "b8dc56e5d29f6fc1f4727fccb1b9642627fee9942c48060a00034e98df02701c",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/network.glb",
+      "assetName": "Company network satellite dish",
+      "originalFilename": "satelliteDish.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/space-kit",
+      "exactPackOrItem": "Space Kit",
+      "originalFileSha256": "db27f577c4c4c350a2faf3e8052890fda3e2e65fe02c2c8408531b75fd27e15a",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "db27a561b66fabda45a6ce2bcf41d650852e89e15bb9f63b68133ad1293aed8b",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/pay.glb",
+      "assetName": "Payment coin",
+      "originalFilename": "coin.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/prototype-kit",
+      "exactPackOrItem": "Prototype Kit",
+      "originalFileSha256": "83ce6a6ed78a326af81ccac84ceda2f82f296c49aa87d54569c166344dfa48a6",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "4bda1c65ab715ec2cc147a5c74e3c656cec3ff4937bab8c6c336f6e04d75e737",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/person.glb",
+      "assetName": "Role character",
+      "originalFilename": "character-a.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/blocky-characters",
+      "exactPackOrItem": "Blocky Characters",
+      "originalFileSha256": "8ee529ccdf24e99e5c9a28e6f16d54bb19cf68e9dd256079441102c8bda45ce0",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "0af21b9f4859043d9294dc4e0c8a36318dd1f843eef007de666898aed06312c6",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/prepare.glb",
+      "assetName": "Open preparation parcel",
+      "originalFilename": "cardboardBoxOpen.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/furniture-kit",
+      "exactPackOrItem": "Furniture Kit",
+      "originalFileSha256": "960da7997dbd53a56a36bd326c05d4b36ae8d45254821fd2c63a17df944c9d9b",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "960da412564774c75e7b32f9af0100895e1edb877fc1e70dd34ee2422a2196d4",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/request.glb",
+      "assetName": "Request laptop document",
+      "originalFilename": "laptop.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/furniture-kit",
+      "exactPackOrItem": "Furniture Kit",
+      "originalFileSha256": "5fa8dba1e3507c011dfb2b99e634b43b7d46cb3c079244f2c38ac76245cc78ba",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "5fa8a1f4a71ab8d82ef64da77a6973ffd350c6d4557516069a4ffd4bb8d808af",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/road.glb",
+      "assetName": "Delivery road",
+      "originalFilename": "road-straight.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/city-kit-roads",
+      "exactPackOrItem": "City Kit Roads",
+      "originalFileSha256": "c3d524ab870039350ba62c00283cc2f81364e7ff60939e8a5cba0e5aebcc4730",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "da0222375618d62f497438a17e4774135cce08e4ad10d31cafc66fe74739a026",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/shield.glb",
+      "assetName": "Security shield",
+      "originalFilename": "weapon-shield.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/prototype-kit",
+      "exactPackOrItem": "Prototype Kit",
+      "originalFileSha256": "82328ee3dd1174d44072c243c9905893865e8772311ce8d372e08994e1be2a5f",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "7afa98ead6b16e4bc78b73e18baec0d45df8b24aa3ceb269c2faa1d5efbd17c3",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/track.glb",
+      "assetName": "Tracking satellite dish",
+      "originalFilename": "satelliteDish.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/space-kit",
+      "exactPackOrItem": "Space Kit",
+      "originalFileSha256": "db27f577c4c4c350a2faf3e8052890fda3e2e65fe02c2c8408531b75fd27e15a",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "db27a561b66fabda45a6ce2bcf41d650852e89e15bb9f63b68133ad1293aed8b",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/vault.glb",
+      "assetName": "Secure vault structure",
+      "originalFilename": "structure.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/space-kit",
+      "exactPackOrItem": "Space Kit",
+      "originalFileSha256": "0cd5033e1282bd1f532f14b663c76116c99d9b20d497fd1f63d29aa30639b49e",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "0cd503971ffb2773c9f7f5e54526612b08a625d518be3aac927d993f532d27f7",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/models/workspace.glb",
+      "assetName": "Workspace desk",
+      "originalFilename": "desk.glb",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/furniture-kit",
+      "exactPackOrItem": "Furniture Kit",
+      "originalFileSha256": "0164eb295807b5c2ba6ca207e5b87c5ca5ce8272c036a8aa65daf5784a3eac88",
+      "modifications": "Converted/optimized as a self-contained GLB; unused scene data removed; geometry/material data compressed where applicable.",
+      "restrictions": "No trademarks or identity-specific content. Self-hosted runtime use only.",
+      "repositoryFileSha256": "0164fe828f028b321730fb8c74502e353583f751be74da1682d42fff7d3c5a42",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/approve.ogg",
+      "assetName": "Approval confirmation cue",
+      "originalFilename": "confirmation_002.ogg",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/interface-sounds",
+      "exactPackOrItem": "Interface Sounds",
+      "originalFileSha256": "33b17a9a9a2397c62b285c52c33a907fdffb476909c99e42dde603f6a7a8b12c",
+      "modifications": "Selected from the pack and renamed; no runtime hotlink.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "33b17a9a9a2397c62b285c52c33a907fdffb476909c99e42dde603f6a7a8b12c",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/complete.ogg",
+      "assetName": "Completion parcel cue",
+      "originalFilename": "drop_004.ogg",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/interface-sounds",
+      "exactPackOrItem": "Interface Sounds",
+      "originalFileSha256": "10738707f9300f9b963ceba46d5da2ed4a221faf7d39484a643c2d3bc151c5f2",
+      "modifications": "Selected from the pack and renamed; no runtime hotlink.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "10738707f9300f9b963ceba46d5da2ed4a221faf7d39484a643c2d3bc151c5f2",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/delivery-door.wav",
+      "assetName": "Delivery van door cue",
+      "originalFilename": "door_closing.wav",
+      "creator": "looneybits",
+      "canonicalSource": "https://opengameart.org/content/cardoorsfx",
+      "exactPackOrItem": "CarDoorSFX / closing cue",
+      "originalFileSha256": "0f5ae25dc3d3eef54bf1a9222c0731d24255f8fc38a3695977730a6f8f6f1f85",
+      "modifications": "Selected closing cue and renamed.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "0f5a47631d8705c583999998f75f4384d555fef3089a4ad61e0484800089576c",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/delivery-engine.ogg",
+      "assetName": "Short delivery engine cue",
+      "originalFilename": "car_engine_start_up_0.ogg",
+      "creator": "GGBotNet",
+      "canonicalSource": "https://opengameart.org/content/car-sound-effects-pack-low-quality",
+      "exactPackOrItem": "Car Sound Effects Pack - low quality / engine start",
+      "originalFileSha256": "016af5657986a518045002928894bddfbeab1e9f596f666015b79d85b9a4376d",
+      "modifications": "Short non-looping selection retained and renamed.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "016a15099621dbf56e2125908c3fe25e8d3bda6c91d915025ae2750a115bf373",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/invoice.ogg",
+      "assetName": "Invoice paper cue",
+      "originalFilename": "open_002.ogg",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/interface-sounds",
+      "exactPackOrItem": "Interface Sounds",
+      "originalFileSha256": "24ff224fe2c09c6aed1b41249825382dc74cf324b887ff279d8494912ce2beee",
+      "modifications": "Selected from the pack and renamed; no runtime hotlink.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "24ff224fe2c09c6aed1b41249825382dc74cf324b887ff279d8494912ce2beee",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/pay.ogg",
+      "assetName": "Payment confirmation cue",
+      "originalFilename": "bong_001.ogg",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/interface-sounds",
+      "exactPackOrItem": "Interface Sounds",
+      "originalFileSha256": "d21d0f0b782445db579d11e2506b24cd1ac9d664ee33aeaf807761aa7b6fd710",
+      "modifications": "Selected from the pack and renamed; no runtime hotlink.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "d21d0f0b782445db579d11e2506b24cd1ac9d664ee33aeaf807761aa7b6fd710",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/prepare.ogg",
+      "assetName": "Preparation packing cue",
+      "originalFilename": "close_003.ogg",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/interface-sounds",
+      "exactPackOrItem": "Interface Sounds",
+      "originalFileSha256": "39a1a7f3bc001766c1881841e9903c6b16f5a10b5666e0791d7f6444677d8b05",
+      "modifications": "Selected from the pack and renamed; no runtime hotlink.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "39a1a7f3bc001766c1881841e9903c6b16f5a10b5666e0791d7f6444677d8b05",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/request.ogg",
+      "assetName": "Request paper cue",
+      "originalFilename": "scroll_002.ogg",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/interface-sounds",
+      "exactPackOrItem": "Interface Sounds",
+      "originalFileSha256": "6fbcda22bc45349c66f1ba4b56d6c211b12264e83667de4b9af1e4ffcef74be5",
+      "modifications": "Selected from the pack and renamed; no runtime hotlink.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "6fbcda22bc45349c66f1ba4b56d6c211b12264e83667de4b9af1e4ffcef74be5",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/theme.ogg",
+      "assetName": "Atmosphere switch cue",
+      "originalFilename": "toggle_004.ogg",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/interface-sounds",
+      "exactPackOrItem": "Interface Sounds",
+      "originalFileSha256": "d7bf2236fc95a0fe1e3b278259392bcb062644e2d4ec5f9c96f7c09a9928262f",
+      "modifications": "Selected from the pack and renamed; no runtime hotlink.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "d7bf2236fc95a0fe1e3b278259392bcb062644e2d4ec5f9c96f7c09a9928262f",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/immersive/sounds/track.ogg",
+      "assetName": "Tracking radar cue",
+      "originalFilename": "question_002.ogg",
+      "creator": "Kenney",
+      "canonicalSource": "https://kenney.nl/assets/interface-sounds",
+      "exactPackOrItem": "Interface Sounds",
+      "originalFileSha256": "46056f10c70dda860e93bd27b66f4d33c0b7154eff28def06471b50028efa5b3",
+      "modifications": "Selected from the pack and renamed; no runtime hotlink.",
+      "restrictions": "Muted by default; no autoplay.",
+      "repositoryFileSha256": "46056f10c70dda860e93bd27b66f4d33c0b7154eff28def06471b50028efa5b3",
+      "license": {
+        "name": "CC0 1.0 Universal",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "recordPath": "third_party/licenses/CC0-1.0.txt"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/maps/natural-earth-southeast-asia-countries.geojson",
+      "assetName": "Southeast Asia country boundaries",
+      "originalFilename": "ne_10m_admin_0_countries",
+      "creator": "Natural Earth contributors",
+      "canonicalSource": "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/",
+      "exactPackOrItem": "Natural Earth 1:10m Cultural Vectors / Admin 0 - Countries",
+      "originalFileSha256": null,
+      "modifications": "Selected Southeast Asia features exported as self-hosted GeoJSON for the operational fallback basemap.",
+      "restrictions": "Natural Earth data is public domain; required map attribution remains visible.",
+      "repositoryFileSha256": "66963e95144adaf49a15a1c0ed728d92ec9d5030fba458f62a37e80082eefcb1",
+      "license": {
+        "name": "Natural Earth public domain",
+        "url": "https://www.naturalearthdata.com/about/terms-of-use/",
+        "recordPath": "third_party/licenses/NATURAL_EARTH_PUBLIC_DOMAIN.md"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    },
+    {
+      "path": "public/maps/natural-earth-southeast-asia-places.geojson",
+      "assetName": "Southeast Asia populated places",
+      "originalFilename": "ne_10m_populated_places",
+      "creator": "Natural Earth contributors",
+      "canonicalSource": "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/",
+      "exactPackOrItem": "Natural Earth 1:10m Cultural Vectors / Populated Places",
+      "originalFileSha256": null,
+      "modifications": "Selected Southeast Asia features exported as self-hosted GeoJSON for the operational fallback basemap.",
+      "restrictions": "Natural Earth data is public domain; required map attribution remains visible.",
+      "repositoryFileSha256": "0d02d734a22f4a38979f3f3320163e9411ca28785e625c2fe42c6a14f7753e41",
+      "license": {
+        "name": "Natural Earth public domain",
+        "url": "https://www.naturalearthdata.com/about/terms-of-use/",
+        "recordPath": "third_party/licenses/NATURAL_EARTH_PUBLIC_DOMAIN.md"
+      },
+      "downloadDate": "2026-08-14",
+      "attributionRequired": false
+    }
+  ]
+}

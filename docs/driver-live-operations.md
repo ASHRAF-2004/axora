@@ -27,19 +27,24 @@ and only a privacy-safe ETA/status is returned.
 
 ## Map source
 
-`NEXT_PUBLIC_AXORA_MAP_STYLE_URL` selects the reviewed MapLibre style used by
-the owner-only live map. The configured style must be a production-supported
-or self-hosted style whose sources declare all legally required attribution;
-the public OpenStreetMap community tile endpoint is not an approved production
-dependency. When no provider style is configured, Axora uses the self-hosted
-`/maps/axora-operational-style.json` route-only fallback and makes the missing
-geographic basemap explicit rather than contacting a third party.
+`NEXT_PUBLIC_AXORA_MAP_STYLE_URL` may select a reviewed MapLibre style used by
+the owner-only live map. The configured style must be production-supported or
+self-hosted and its sources must declare all legally required attribution; the
+public OpenStreetMap community tile endpoint is not an approved production
+dependency. Without an external provider, Axora uses the genuine self-hosted
+`/maps/axora-operational-style.json` regional basemap. Its country and
+populated-place sources are Natural Earth public-domain GeoJSON, while the
+authorized driver marker and route remain application-owned overlays. This is
+honest regional operational context, not street-level navigation. An unusable
+style produces a localized unavailable state rather than a blank rectangle.
 
 ## Live transport
 
-Authenticated driver views use private no-store SSE snapshots. Each event has
-a monotonic sequence, reconnects begin with an authoritative snapshot, stale
-or duplicate events are ignored, native EventSource reconnection is retained,
-and safe polling is used only when EventSource is unavailable. Streams and
-pollers stop while hidden and on unmount. Session loss closes the stream on the
-next authorized snapshot attempt.
+Authenticated driver views use bounded authoritative database snapshot polling
+transported over private no-store SSE. This provides near-live updates without
+refresh, but it is not database-event push. Each event has a content-derived
+version and monotonic connection sequence, reconnects begin with an
+authoritative snapshot, stale or duplicate events are ignored, native
+EventSource reconnection is retained, and browser polling is used only when
+EventSource is unavailable. Streams and pollers stop while hidden and on
+unmount. Session loss closes the stream on the next authorized snapshot attempt.

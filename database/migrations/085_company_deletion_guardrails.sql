@@ -297,7 +297,10 @@ BEGIN
     )) AND active;
     UPDATE public.users SET active=false,account_status='DEACTIVATED',auth_version=auth_version+1,updated_at=p_at
     WHERE company_id=company_row.id AND active;
-    UPDATE public.companies SET active=false,lifecycle_status='ARCHIVED',updated_at=p_at
+    UPDATE public.companies SET active=false,lifecycle_status='ARCHIVED',
+      portal_access_enabled=false,is_publicly_listed=false,
+      verification_status='INACTIVE',lifecycle_version=lifecycle_version+1,
+      lifecycle_updated_at=p_at,updated_at=p_at
     WHERE id=company_row.id;
     mode:='ARCHIVED_RETAINED';
   END IF;

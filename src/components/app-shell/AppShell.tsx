@@ -25,6 +25,7 @@ import {
   SessionContinuity,
 } from "@/components/SessionContinuity";
 import { AtmosphereSelector } from "@/components/public/AtmosphereSelector";
+import { AxoraBrandEmblem } from "@/components/public/AxoraBrandEmblem";
 import type { PublicAtmosphere } from "@/lib/immersive-public-experience";
 
 export interface AppNavigationItem {
@@ -300,9 +301,9 @@ export function AppShell({
         <button className="app-menu-button" type="button" onClick={openDrawer} aria-label={messages.shell.openMenu}>
           <Menu size={22} aria-hidden="true" />
         </button>
-        <Link
+        {brand.tenant ? <Link
           href={homeHref}
-          className={`app-active-brand${brand.tenant ? " app-tenant-brand" : ""}`}
+          className="app-active-brand app-tenant-brand"
           aria-label={messages.shell.home(brand.name)}
           data-logo-variant={brand.logoVariant}
           data-logo-placement={brand.logoPlacement}
@@ -314,18 +315,22 @@ export function AppShell({
         >
           <Image
             src={brand.logoUrl}
-            width={brand.tenant ? 152 : 158}
-            height={brand.tenant ? 44 : 29}
+            width={152}
+            height={44}
             alt={brand.name}
             priority
-            unoptimized={brand.tenant}
+            unoptimized
             style={brand.logoVariant === "MONOCHROME"
               ? { filter: "grayscale(1) contrast(1.2)" }
               : brand.logoVariant === "INVERTED"
                 ? { filter: "brightness(0) invert(1)" }
                 : undefined}
           />
-        </Link>
+        </Link> : <AxoraBrandEmblem
+          href={homeHref}
+          label={messages.shell.home(brand.name)}
+          className="app-active-brand"
+        />}
         <nav className="app-primary-nav" aria-label={messages.shell.primaryNavigation}>
           {primaryItems.map((item) => (
             <Link key={item.href} href={item.href} data-tour={tourName(item.href)} data-mobile-tour={tourName(item.href)} aria-current={isActive(pathname, item.href) ? "page" : undefined}>

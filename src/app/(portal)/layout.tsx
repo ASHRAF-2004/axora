@@ -5,6 +5,7 @@ import { getAccountLifecycleSession } from "@/lib/auth";
 import { canAccess } from "@/lib/permissions";
 import { requestLocaleDecision } from "@/lib/locale-server";
 import { getActiveCompanyBrand } from "@/lib/tenant-branding";
+import { isDemoMode } from "@/lib/db";
 import { getMyProfile, myProfileMeetsRequiredOnboarding } from "@/lib/profile";
 import { unreadNotificationCount } from "@/lib/notification-repository";
 import { landingPathForSession } from "@/lib/session-landing";
@@ -161,7 +162,11 @@ export default async function PortalLayout({ children }: { children: React.React
         locale={locale}
         brand={{
           name: companyBrand?.companyName ?? "Axora",
-          logoUrl: companyBrand ? `/api/company-brand/${companyBrand.companyId}/logo?v=${companyBrand.themeVersion}` : "/brand/axora-logo.png",
+          logoUrl: companyBrand
+            ? isDemoMode()
+              ? "/brand/demo-company-logo.svg"
+              : `/api/company-brand/${companyBrand.companyId}/logo?v=${companyBrand.themeVersion}`
+            : "/brand/axora-logo.png",
           tenant: Boolean(companyBrand),
           themeVersion: companyBrand?.themeVersion,
           logoVariant: companyBrand?.logoVariant,

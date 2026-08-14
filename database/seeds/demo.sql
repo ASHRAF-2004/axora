@@ -260,12 +260,18 @@ INSERT INTO invoice_allocations (invoice_id, request_line_id, allocated_amount) 
   ('80000000-0000-4000-8000-000000000109','60000000-0000-4000-8000-000000000010',60)
 ON CONFLICT DO NOTHING;
 
+-- These are sanitized historical fixtures without an application actor. Keep
+-- production trigger behavior strict while loading this administrator-owned seed.
+SET LOCAL session_replication_role = replica;
+
 INSERT INTO payments (
   id, invoice_id, payment_date, amount, method, reference, notes
 ) VALUES
   ('90000000-0000-4000-8000-000000000009','80000000-0000-4000-8000-000000000009','2026-07-20',66,current_setting('axora.seed_payment_method'),'PAY-DEMO-009','Sanitized payment example.'),
   ('90000000-0000-4000-8000-000000000011','80000000-0000-4000-8000-000000000011','2026-07-19',27.5,current_setting('axora.seed_payment_method'),'PAY-DEMO-011','Sanitized payment example.')
 ON CONFLICT DO NOTHING;
+
+SET LOCAL session_replication_role = origin;
 
 UPDATE requests
 SET status_id=lookup_id('request_status','Completed'),

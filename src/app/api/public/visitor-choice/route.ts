@@ -1,4 +1,5 @@
 import { isDemoMode } from "@/lib/db";
+import { getAccountLifecycleSession } from "@/lib/auth";
 import {
   buildVisitorIdentity,
   claimPublicVisitor,
@@ -41,13 +42,21 @@ function setCookie(response: NextResponse, value: string) {
   response.cookies.set({ name: VISITOR_CLAIM_COOKIE, value, httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: VISITOR_CLAIM_COOKIE_MAX_AGE, priority: "high" });
 }
 function unavailable() { return NextResponse.json({ error: "Visitor claiming is temporarily unavailable." }, { status: 503, headers: noStoreHeaders }); }
+function privacyIneligible(request: NextRequest) {
+  return request.headers.get("sec-gpc") === "1" || request.headers.get("dnt") === "1";
+}
+async function eligible(request: NextRequest) {
+  if (privacyIneligible(request)) return false;
+  return !(await getAccountLifecycleSession());
+}
 
 export async function GET(request: NextRequest) {
+  if (!await eligible(request)) return NextResponse.json({ eligible: false }, { headers: noStoreHeaders });
   if (isDemoMode()) return NextResponse.json({ totalCount: 0, earlyBirdCount: 0, nightOwlCount: 0 }, { headers: noStoreHeaders });
   try {
     const cookieValue = request.cookies.get(VISITOR_CLAIM_COOKIE)?.value;
     const snapshot = await getPublicVisitorSnapshot(buildVisitorIdentity({ cookieValue, remoteIp: remoteIp(request) }));
-    const response = NextResponse.json(snapshot, { headers: noStoreHeaders });
+    const response = NextResponse.json({ ...snapshot, eligible: true }, { headers: noStoreHeaders });
     if (cookieValue && visitorTokenHashFromCookie(cookieValue)) setCookie(response, cookieValue);
     return response;
   } catch (error) {
@@ -57,6 +66,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!await eligible(request)) return NextResponse.json({ error: "This visitor is not eligible to claim a public choice." }, { status: 403, headers: noStoreHeaders });
   if (isDemoMode()) return unavailable();
   if (!sameOrigin(request)) return NextResponse.json({ error: "The visitor claim request was rejected." }, { status: 403, headers: noStoreHeaders });
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) return NextResponse.json({ error: "The visitor claim request is invalid." }, { status: 415, headers: noStoreHeaders });
@@ -72,7 +82,7 @@ export async function POST(request: NextRequest) {
     const challengeAt = new Date(verified.challengeTimestamp);
     if (!Number.isFinite(challengeAt.getTime())) throw new TurnstileVerificationError();
     const snapshot = await claimPublicVisitor({
-      identity: { ...buildVisitorIdentity({ cookieValue: cookie.value, remoteIp: sourceIp, ephemeralId: verified.ephemeralId }), tokenHash: cookie.tokenHash },
+      identity: { ...buildVisitorIdentity({ cookieValue: cookie.value, remoteIp: sourceIp }), tokenHash: cookie.tokenHash },
       choice: parsed.choice,
       locale: parsed.locale,
       turnstileChallengeAt: challengeAt,

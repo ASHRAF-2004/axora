@@ -1,11 +1,32 @@
+import { createHash } from "node:crypto";
+
 type SnapshotLoader = () => Promise<unknown>;
 
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, child]) => [key, canonicalize(child)]));
+}
+
+export function authoritativeSnapshotVersion(snapshot: unknown) {
+  return createHash("sha256").update(JSON.stringify(canonicalize(snapshot))).digest("hex");
+}
+
+/**
+ * Bounded near-live authoritative snapshot polling transported over SSE.
+ * This is deliberately not described as database-event push. Each connection
+ * starts with a full snapshot, emits only changed versions, and uses a local
+ * monotonic sequence solely to reject duplicate/out-of-order transport data.
+ */
 export function snapshotEventStream(request: Request, load: SnapshotLoader, intervalMs = 10_000) {
   const encoder = new TextEncoder();
   let interval: ReturnType<typeof setInterval> | undefined;
   let lifetime: ReturnType<typeof setTimeout> | undefined;
   let closed = false;
   let sequence = 0;
+  let previousVersion: string | null = null;
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -20,12 +41,11 @@ export function snapshotEventStream(request: Request, load: SnapshotLoader, inte
         if (closed) return;
         try {
           const snapshot = await load();
-          const snapshotSequence = typeof snapshot === "object" && snapshot !== null
-            && "sequence" in snapshot && Number.isSafeInteger((snapshot as { sequence?: unknown }).sequence)
-            ? Number((snapshot as { sequence: number }).sequence)
-            : 0;
-          sequence = Math.max(sequence + 1, snapshotSequence, Date.now());
-          controller.enqueue(encoder.encode(`event: snapshot\ndata: ${JSON.stringify({ sequence, snapshot })}\n\n`));
+          const version = authoritativeSnapshotVersion(snapshot);
+          if (version === previousVersion) return;
+          previousVersion = version;
+          sequence += 1;
+          controller.enqueue(encoder.encode(`id: ${version}\nevent: snapshot\ndata: ${JSON.stringify({ sequence, version, snapshot })}\n\n`));
         } catch {
           controller.enqueue(encoder.encode("event: unavailable\ndata: {}\n\n"));
           close();
@@ -33,7 +53,7 @@ export function snapshotEventStream(request: Request, load: SnapshotLoader, inte
       };
       request.signal.addEventListener("abort", close, { once: true });
       void emit();
-      interval = setInterval(() => void emit(), intervalMs);
+      interval = setInterval(() => void emit(), Math.max(5_000, intervalMs));
       lifetime = setTimeout(close, 55_000);
     },
     cancel() {
@@ -52,3 +72,5 @@ export function snapshotEventStream(request: Request, load: SnapshotLoader, inte
     },
   });
 }
+
+export const serverEventStreamInternals = { canonicalize };

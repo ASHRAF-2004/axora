@@ -13,12 +13,12 @@ import {
 import type { SupportedLocale } from "@/lib/i18n";
 import {
   PUBLIC_SCENE_MODELS,
-  STAGE_SOUND_PATHS,
   immersivePublicCopy,
   type PublicSceneRoute,
   type PublicAtmosphereId,
-  type SemanticModelId,
 } from "@/lib/immersive-public-experience";
+import { ImmersiveAudioController, type ImmersiveSoundId } from "@/lib/immersive-audio";
+import { publicSceneStates } from "@/lib/public-scene-states";
 import { AtmosphereSelector } from "./AtmosphereSelector";
 import { useAtmosphere } from "./AtmosphereProvider";
 import { AxoraSemanticScene } from "./AxoraSemanticScene";
@@ -26,40 +26,39 @@ import styles from "./ImmersiveWorld.module.css";
 
 const SOUND_STORAGE_KEY = "axora-interface-sound:v2";
 
-function routeModelLabel(model: SemanticModelId, index: number, locale: SupportedLocale) {
-  const labels: Record<SupportedLocale, Partial<Record<SemanticModelId, string>>> = {
-    en: { person: "Role", workspace: "Workspace", company: "Company", shield: "Shield", vault: "Vault", network: "Network", flag: "Shared future" },
-    ar: { person: "الدور", workspace: "مساحة العمل", company: "الشركة", shield: "الدرع", vault: "الخزنة", network: "الشبكة", flag: "المستقبل المشترك" },
-    ms: { person: "Peranan", workspace: "Ruang kerja", company: "Syarikat", shield: "Perisai", vault: "Bilik kebal", network: "Rangkaian", flag: "Masa depan bersama" },
-  };
-  return labels[locale][model] ?? `${index + 1}`;
-}
-
 function useStageAudio() {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const doorRef = useRef<HTMLAudioElement | null>(null);
-  const timerRef = useRef<number | null>(null);
+  const controllerRef = useRef<ImmersiveAudioController | null>(null);
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
+    const controller = new ImmersiveAudioController((path) => new Audio(path));
+    controllerRef.current = controller;
     let enabledPreference = false;
     try {
       enabledPreference = window.localStorage.getItem(SOUND_STORAGE_KEY) === "on";
     } catch {
       // Sound remains muted.
     }
+    controller.setEnabled(enabledPreference);
     const frame = window.requestAnimationFrame(() => setEnabled(enabledPreference));
-    return () => window.cancelAnimationFrame(frame);
+    const unlockSavedPreference = () => {
+      if (enabledPreference) controller.unlock();
+    };
+    window.addEventListener("pointerdown", unlockSavedPreference, { once: true });
+    window.addEventListener("keydown", unlockSavedPreference, { once: true });
+    window.addEventListener("wheel", unlockSavedPreference, { once: true, passive: true });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("pointerdown", unlockSavedPreference);
+      window.removeEventListener("keydown", unlockSavedPreference);
+      window.removeEventListener("wheel", unlockSavedPreference);
+      controller.dispose();
+      if (controllerRef.current === controller) controllerRef.current = null;
+    };
   }, []);
 
   const stop = useCallback(() => {
-    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    timerRef.current = null;
-    for (const audio of [audioRef.current, doorRef.current]) {
-      if (!audio) continue;
-      audio.pause();
-      audio.currentTime = 0;
-    }
+    controllerRef.current?.stop();
   }, []);
 
   useEffect(() => {
@@ -69,7 +68,6 @@ function useStageAudio() {
     document.addEventListener("visibilitychange", visibility);
     return () => {
       document.removeEventListener("visibilitychange", visibility);
-      stop();
     };
   }, [stop]);
 
@@ -81,29 +79,15 @@ function useStageAudio() {
       } catch {
         // The current-page preference still works.
       }
-      if (!next) stop();
+      controllerRef.current?.setEnabled(next);
+      if (next) controllerRef.current?.unlock();
       return next;
     });
-  }, [stop]);
+  }, []);
 
-  const play = useCallback((stage: SemanticModelId | "theme") => {
-    if (!enabled) return;
-    stop();
-    const audio = new Audio(STAGE_SOUND_PATHS[stage]);
-    audio.volume = stage === "deliver" ? 0.22 : 0.3;
-    audioRef.current = audio;
-    void audio.play().catch(() => undefined);
-    if (stage === "deliver") {
-      timerRef.current = window.setTimeout(() => {
-        const door = new Audio("/immersive/sounds/delivery-door.wav");
-        door.volume = 0.22;
-        doorRef.current = door;
-        void door.play().catch(() => undefined);
-      }, 720);
-    }
-  }, [enabled, stop]);
+  const play = useCallback((stage: ImmersiveSoundId) => controllerRef.current?.play(stage) ?? false, []);
 
-  return { enabled, toggle, play };
+  return useMemo(() => ({ enabled, toggle, play, stop }), [enabled, play, stop, toggle]);
 }
 
 export function AxoraImmersiveExperience({
@@ -120,11 +104,11 @@ export function AxoraImmersiveExperience({
   const atmosphereId = atmosphere.toLowerCase() as PublicAtmosphereId;
   const sound = useStageAudio();
   const routeModels = PUBLIC_SCENE_MODELS[route];
+  const sceneStates = useMemo(() => publicSceneStates(route, locale), [locale, route]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [interactionReady, setInteractionReady] = useState(false);
   const activeModel = routeModels[activeIndex] ?? routeModels[0];
   const nextModel = routeModels[(activeIndex + 1) % routeModels.length];
-  const homeStage = route === "home" ? copy.stages[activeIndex] : null;
   const routeText = route === "home" ? null : copy.routeCopy[route];
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -133,12 +117,13 @@ export function AxoraImmersiveExperience({
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  const activate = useCallback((index: number, announce = true) => {
+  const activate = useCallback((index: number) => {
     const bounded = Math.max(0, Math.min(routeModels.length - 1, index));
+    if (bounded === activeIndex) return;
     setActiveIndex(bounded);
-    const model = routeModels[bounded];
-    if (announce) sound.play(model);
-  }, [routeModels, sound]);
+    const model = sceneStates[bounded]?.sound ?? routeModels[bounded];
+    sound.play(model);
+  }, [activeIndex, routeModels, sceneStates, sound]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -148,7 +133,7 @@ export function AxoraImmersiveExperience({
       const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
       if (!visible) return;
       const index = Number((visible.target as HTMLElement).dataset.sceneStep);
-      if (Number.isInteger(index)) activate(index, false);
+      if (Number.isInteger(index)) activate(index);
     }, { rootMargin: "-30% 0px -48%", threshold: [0.2, 0.55, 0.8] });
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
@@ -165,13 +150,11 @@ export function AxoraImmersiveExperience({
     return () => window.removeEventListener("keydown", keyboard);
   }, [activate, route, routeModels.length]);
 
-  const sceneDescription = homeStage?.description ?? routeText?.steps[activeIndex % routeText.steps.length] ?? copy.sceneAlternative;
+  const sceneDescription = sceneStates[activeIndex]?.description ?? copy.sceneAlternative;
   const heading = routeText?.title ?? copy.title;
   const lead = routeText?.lead ?? copy.lead;
   const eyebrow = routeText?.eyebrow ?? copy.eyebrow;
-  const controlItems = useMemo(() => route === "home"
-    ? copy.stages.map((stage) => ({ label: stage.label, title: stage.title, model: stage.id as SemanticModelId }))
-    : routeModels.map((model, index) => ({ label: routeModelLabel(model, index, locale), title: routeText?.steps[index % (routeText?.steps.length ?? 1)] ?? "", model })), [copy.stages, locale, route, routeModels, routeText]);
+  const controlItems = sceneStates;
 
   return (
     <div
@@ -248,7 +231,7 @@ export function AxoraImmersiveExperience({
                 <strong>{item.label}</strong>
                 <small>{item.title}</small>
               </button>
-              {route === "home" ? <p>{copy.stages[index].description}</p> : null}
+              <p>{item.description}</p>
             </article>
           ))}
         </div>
@@ -279,7 +262,7 @@ export function AxoraImmersiveExperience({
         </>
       ) : (
         <section className={styles.routeSummary}>
-          {routeText?.steps.map((step, index) => <article key={step}><span>0{index + 1}</span><h2>{step}</h2><p>{sceneDescription}</p></article>)}
+          {routeText?.steps.map((step, index) => <article key={step}><span>0{index + 1}</span><h2>{step}</h2><p>{sceneStates[index]?.description}</p></article>)}
         </section>
       )}
     </div>

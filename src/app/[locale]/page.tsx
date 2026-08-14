@@ -2,6 +2,15 @@ import { AxoraImmersiveExperience } from "@/components/public/AxoraImmersiveExpe
 import { VisitorChoiceChallenge } from "@/components/public/VisitorChoiceChallenge";
 import type { Metadata } from "next";
 import { isSupportedLocale, publicMessages, type SupportedLocale } from "@/lib/i18n";
+import { getAccountLifecycleSession } from "@/lib/auth";
+import { isDemoMode } from "@/lib/db";
+import {
+  buildVisitorIdentity,
+  getPublicVisitorSnapshot,
+  normalizedPublicNetworkIdentifier,
+  VISITOR_CLAIM_COOKIE,
+} from "@/lib/public-visitor-counter";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -20,11 +29,38 @@ export default async function PublicHome({ params }: { params: Promise<{ locale:
   const { locale: rawLocale } = await params;
   if (!isSupportedLocale(rawLocale)) notFound();
   const locale = rawLocale as SupportedLocale;
+  const [session, requestHeaders, cookieStore] = await Promise.all([
+    getAccountLifecycleSession(),
+    headers(),
+    cookies(),
+  ]);
+  const privacyOptOut = requestHeaders.get("sec-gpc") === "1" || requestHeaders.get("dnt") === "1";
+  let initialVisitorSnapshot;
+  if (!session && !privacyOptOut) {
+    if (isDemoMode()) {
+      initialVisitorSnapshot = { totalCount: 0, earlyBirdCount: 0, nightOwlCount: 0 };
+    } else {
+      try {
+        initialVisitorSnapshot = await getPublicVisitorSnapshot(buildVisitorIdentity({
+          cookieValue: cookieStore.get(VISITOR_CLAIM_COOKIE)?.value,
+          remoteIp: normalizedPublicNetworkIdentifier(
+            requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0],
+          ),
+        }));
+      } catch {
+        initialVisitorSnapshot = undefined;
+      }
+    }
+  }
   return (
     <AxoraImmersiveExperience
       locale={locale}
       route="home"
-      challenge={<VisitorChoiceChallenge locale={locale} siteKey={process.env.TURNSTILE_SITE_KEY?.trim()} />}
+      challenge={!session && !privacyOptOut ? <VisitorChoiceChallenge
+        locale={locale}
+        siteKey={process.env.TURNSTILE_SITE_KEY?.trim()}
+        initialSnapshot={initialVisitorSnapshot}
+      /> : null}
     />
   );
 }

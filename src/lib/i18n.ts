@@ -213,7 +213,7 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
     title: "Control branch purchasing without losing everyday simplicity.",
     intro: "Customer companies manage their own people, branches, budgets, requests, approvals, receiving, and permitted finance records.",
     sections: [
-      { title: "Clear company boundaries", body: "Company users cannot see another tenant, private supplier records, Axora buying cost, or internal commercial notes." },
+      { title: "Clear company boundaries", body: "Company users see only their authorized company and branch records; private operational and commercial information is excluded." },
       { title: "Branch-aware budgets", body: "Requests are attached to a branch and approved commitments are reflected against the correct monthly budget period." },
       { title: "Useful status, not mystery", body: "Plain-language timelines explain what happened, who owns the next action, and why an item is blocked or delayed." },
     ],
@@ -234,7 +234,7 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
     intro: "Axora is designed around least privilege, server-side authorization, secure account invitations, auditable transitions, and controlled file visibility.",
     sections: [
       { title: "Account security", body: "New users create their own passwords through expiring, single-use invitations. Passwords are hashed, sessions can be revoked, and authentication errors avoid account enumeration." },
-      { title: "Tenant and commercial separation", body: "Customer users are restricted to their company and approved branch scope. Supplier identities, buying cost, private documents, and internal notes remain protected." },
+      { title: "Tenant and commercial separation", body: "Customer users are restricted to their company and approved branch scope. Private operational documents and internal commercial information remain protected." },
       { title: "Evidence and recovery", body: "Important actions produce audit and workflow records. Production data and persistent files follow verified backup, restore, and rollback procedures." },
       { title: "Responsible disclosure", body: "Do not send passwords, invitation links, payment evidence, or confidential procurement data through the public contact form." },
     ],
@@ -291,7 +291,7 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
     sections: [
       { title: "الموظفون يطلبون", body: "يختار الموظفون المخوّلون أصناف الكتالوج والكميات والفرع والموعد المطلوب والمعلومات الداعمة. ولا يرون إلا بيانات الشركة والفروع المسموح بها." },
       { title: "الشركات تقرر", body: "يراجع المعتمد الصحيح الطلب وتأثيره في الميزانية والملفات والسجل. ولا يمكن لمقدم الطلب اعتماد طلبه بنفسه." },
-      { title: "أكسورا تنفذ", body: "بعد الاعتماد والدفع، تنهي أكسورا الفاتورة وتعين مسؤول التوصيل لشراء الأصناف المطلوبة وتسليمها من دون إظهار تكلفة الشراء الداخلية لمستخدمي الشركة." },
+      { title: "أكسورا تجهز وتسلم", body: "بعد الاعتماد والدفع، تنهي أكسورا الفاتورة وتجهز الطلب وتسلمه من دون كشف المعلومات التشغيلية الخاصة." },
       { title: "الاستلام مستقل عن التسليم", body: "يسجل السائق دليل التسليم، ثم يؤكد مستلم مخوّل من الشركة الكميات والتلف والنواقص والفروقات بصورة مستقلة." },
     ],
   },
@@ -323,7 +323,7 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
     title: "تحكم في مشتريات الفروع مع الحفاظ على سهولة العمل اليومي.",
     intro: "تدير الشركات موظفيها وفروعها وميزانياتها وطلباتها واعتماداتها واستلامها والسجلات المالية المسموح بها.",
     sections: [
-      { title: "حدود واضحة لكل شركة", body: "لا يستطيع مستخدم الشركة رؤية شركة أخرى أو سجلات الموردين الخاصة أو تكلفة شراء أكسورا أو الملاحظات التجارية الداخلية." },
+      { title: "حدود واضحة لكل شركة", body: "يرى مستخدم الشركة سجلات شركته وفروعه المصرح بها فقط، وتُستبعد المعلومات التشغيلية والتجارية الخاصة." },
       { title: "ميزانيات مرتبطة بالفروع", body: "يرتبط كل طلب بفرع، وتنعكس الالتزامات المعتمدة على ميزانية الفرع والفترة الشهرية الصحيحة." },
       { title: "حالة مفهومة وليست غامضة", body: "توضح الخطوط الزمنية بلغة سهلة ما حدث ومن يملك الإجراء التالي ولماذا تعطل الطلب أو تأخر." },
     ],
@@ -344,7 +344,7 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
     intro: "صُممت أكسورا على أساس الحد الأدنى من الصلاحيات والتحقق في الخادم والدعوات الآمنة والتحولات القابلة للتدقيق ورؤية الملفات المنضبطة.",
     sections: [
       { title: "أمان الحساب", body: "ينشئ المستخدم الجديد كلمة مروره عبر دعوة قصيرة الصلاحية ومرة واحدة. تُجزّأ كلمات المرور ويمكن إلغاء الجلسات ولا تكشف أخطاء الدخول وجود الحساب." },
-      { title: "عزل الشركات والبيانات التجارية", body: "يقتصر مستخدم العميل على شركته وفروعه المعتمدة، وتبقى هوية الموردين وتكلفة الشراء والمستندات الخاصة والملاحظات الداخلية محمية." },
+      { title: "عزل الشركات والبيانات التجارية", body: "يقتصر مستخدم العميل على شركته وفروعه المعتمدة، وتبقى المستندات التشغيلية والمعلومات التجارية الداخلية محمية." },
       { title: "الأدلة والتعافي", body: "تنتج الإجراءات المهمة سجلات تدقيق وسير عمل. وتتبع بيانات الإنتاج وملفاته إجراءات نسخ احتياطي واستعادة وتراجع تم التحقق منها." },
       { title: "الإبلاغ المسؤول", body: "لا ترسل كلمات مرور أو روابط دعوة أو إثباتات دفع أو بيانات مشتريات سرية عبر نموذج التواصل العام." },
     ],
@@ -433,7 +433,7 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
     title: "Kawal pembelian cawangan tanpa menjejaskan kesederhanaan harian.",
     intro: "Syarikat pelanggan mengurus orang, cawangan, bajet, permintaan, kelulusan, penerimaan dan rekod kewangan yang dibenarkan.",
     sections: [
-      { title: "Sempadan syarikat yang jelas", body: "Pengguna syarikat tidak boleh melihat penyewa lain, rekod pembekal sulit, kos belian Axora atau nota komersial dalaman." },
+      { title: "Sempadan syarikat yang jelas", body: "Pengguna syarikat hanya melihat rekod syarikat dan cawangan yang dibenarkan; maklumat operasi dan komersial persendirian dikecualikan." },
       { title: "Bajet mengikut cawangan", body: "Permintaan diikat kepada cawangan dan komitmen diluluskan dikira pada tempoh bajet bulanan yang betul." },
       { title: "Status yang mudah difahami", body: "Garis masa menerangkan apa yang berlaku, siapa memiliki tindakan seterusnya dan sebab item tersekat atau lewat." },
     ],
@@ -454,7 +454,7 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
     intro: "Axora direka berdasarkan keistimewaan minimum, kebenaran sisi pelayan, jemputan selamat, peralihan boleh diaudit dan keterlihatan fail terkawal.",
     sections: [
       { title: "Keselamatan akaun", body: "Pengguna baharu mencipta kata laluan melalui jemputan sekali guna yang tamat tempoh. Kata laluan dihash, sesi boleh dibatalkan dan ralat log masuk tidak mendedahkan kewujudan akaun." },
-      { title: "Pengasingan penyewa dan komersial", body: "Pengguna pelanggan dihadkan kepada syarikat dan skop cawangan diluluskan. Identiti pembekal, kos belian, dokumen peribadi dan nota dalaman dilindungi." },
+      { title: "Pengasingan penyewa dan komersial", body: "Pengguna pelanggan dihadkan kepada syarikat dan skop cawangan diluluskan. Dokumen operasi persendirian dan maklumat komersial dalaman kekal dilindungi." },
       { title: "Bukti dan pemulihan", body: "Tindakan penting menghasilkan rekod audit dan aliran kerja. Data serta fail pengeluaran mengikuti prosedur sandaran, pemulihan dan undur balik yang disahkan." },
       { title: "Pendedahan bertanggungjawab", body: "Jangan hantar kata laluan, pautan jemputan, bukti pembayaran atau data perolehan sulit melalui borang hubungan awam." },
     ],

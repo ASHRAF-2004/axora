@@ -60,19 +60,15 @@ describe("public visitor identity", () => {
     expect(visitorTokenHashFromCookie("not-a-cookie")).toBeUndefined();
   });
 
-  it("retains only domain-separated irreversible identity fingerprints", () => {
+  it("uses the signed claim cookie as identity and network only for bounded abuse prevention", () => {
     const cookie = createVisitorClaimCookie();
     const first = buildVisitorIdentity({
       cookieValue: cookie.value,
       remoteIp: "203.0.113.42",
-      clientSignal: "a".repeat(64),
-      ephemeralId: "x:visitor-test-ephemeral",
     });
     const repeated = buildVisitorIdentity({
       cookieValue: cookie.value,
       remoteIp: "203.0.113.42",
-      clientSignal: "a".repeat(64),
-      ephemeralId: "x:visitor-test-ephemeral",
     });
 
     expect(first).toEqual(repeated);
@@ -80,11 +76,10 @@ describe("public visitor identity", () => {
       expect(value).toMatch(/^[0-9a-f]{64}$/);
       expect(value).not.toContain("203.0.113.42");
     }
-    expect(first.networkDeviceHash).not.toBe(first.networkHash);
-    expect(first.turnstileDeviceHash).not.toBe(first.clientSignalHash);
+    expect(Object.keys(first).sort()).toEqual(["networkHash", "tokenHash"]);
   });
 
-  it("canonicalizes equivalent public IP text before deriving the permanent network hash", () => {
+  it("canonicalizes equivalent public IP text only for the short-lived network rate bucket", () => {
     expect(normalizedPublicNetworkIdentifier("203.0.113.8")).toBe(
       "203.0.113.8",
     );
@@ -94,24 +89,17 @@ describe("public visitor identity", () => {
 
     const expanded = buildVisitorIdentity({
       remoteIp: "2001:0DB8:0:0::1",
-      clientSignal: "b".repeat(64),
     });
     const compressed = buildVisitorIdentity({
       remoteIp: "2001:db8::1",
-      clientSignal: "c".repeat(64),
     });
     expect(expanded.networkHash).toBe(compressed.networkHash);
-    expect(expanded.networkDeviceHash).not.toBe(
-      compressed.networkDeviceHash,
-    );
   });
 
   it("ignores malformed or unavailable network and browser signals", () => {
     expect(normalizedPublicNetworkIdentifier("not-an-ip")).toBeUndefined();
     expect(buildVisitorIdentity({
       remoteIp: "not-an-ip",
-      clientSignal: "not-a-hash",
-      ephemeralId: "invalid",
     })).toEqual({});
   });
 
