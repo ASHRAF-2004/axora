@@ -61,6 +61,7 @@ async function visitorSection(page: Page, locale: "en" | "ar" | "ms") {
     name: publicVisitorCopy[locale].title,
   });
   await expect(section).toBeVisible();
+  await expect(section).toHaveAttribute("data-interactive", "true");
   return section;
 }
 

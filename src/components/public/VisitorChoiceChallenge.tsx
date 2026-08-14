@@ -77,6 +77,15 @@ export function VisitorChoiceChallenge({
   const percentages = useMemo(() => visitorChoicePercentages(snapshot), [snapshot]);
   const claimed = Boolean(snapshot.choice);
 
+  useEffect(() => {
+    const modal = modalRef.current;
+    if (!modal) return;
+    modal.dataset.interactive = "true";
+    return () => {
+      delete modal.dataset.interactive;
+    };
+  }, []);
+
   const load = useCallback(async () => {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), GET_TIMEOUT_MS);
