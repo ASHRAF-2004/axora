@@ -37,7 +37,7 @@ const userDirectoryRowSchema = z.object({
   avatarAvailable: z.boolean(),
   isOwner: z.boolean(),
   accountKind: z.string().refine(isAccountKind, "Unknown account kind"),
-  accountStatus: z.enum(["INVITED", "ACTIVE", "SUSPENDED", "CLOSED"]),
+  accountStatus: z.enum(["INVITED", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
   scopeType: z.string().refine(isRoleScopeType, "Unknown scope type"),
   companyId: optionalUuid,
   companyName: optionalText,
@@ -73,7 +73,7 @@ const userTargetSchema = z.object({
   active: z.boolean(),
   isOwner: z.boolean(),
   accountKind: z.string().refine(isAccountKind),
-  accountStatus: z.enum(["INVITED", "ACTIVE", "SUSPENDED", "CLOSED"]),
+  accountStatus: z.enum(["INVITED", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
   setupCompleted: z.boolean(),
   roleAssignmentId: uuidSchema,
   role: z.string().refine(isUserRole),
@@ -118,6 +118,20 @@ interface UserDirectoryRow extends QueryResultRow {
 interface TargetRow extends QueryResultRow {
   snapshot: unknown;
 }
+
+interface RemovalRow extends QueryResultRow {
+  snapshot: unknown;
+}
+
+const removalSchema = z.object({
+  removed: z.boolean(),
+  userId: uuidSchema,
+  authVersion: z.coerce.number().int().positive(),
+  revokedAssignments: z.coerce.number().int().nonnegative(),
+  revokedInvitations: z.coerce.number().int().nonnegative(),
+  disabledOverrides: z.coerce.number().int().nonnegative(),
+  cancelledWorkflowEmails: z.coerce.number().int().nonnegative(),
+}).strict();
 
 export class UserAccessUnavailableError extends Error {
   constructor() {
@@ -282,6 +296,9 @@ export async function setAuthorizedUserActive(
       "user.deactivate",
       client,
     );
+    if (active && target.accountStatus === "DEACTIVATED") {
+      throw new UserAccessUnavailableError();
+    }
     if (!active && target.active) {
       await client.query(`
         UPDATE public.account_setup_invitations
@@ -313,8 +330,44 @@ export async function setAuthorizedUserActive(
   });
 }
 
+export async function removeAuthorizedUser(
+  targetUserId: string,
+  reason: string,
+  actor: AuthenticatedSessionUser,
+) {
+  const safeTargetUserId = uuidSchema.parse(targetUserId);
+  const safeReason = z.string().trim().min(3).max(500)
+    .refine((value) => !/[\u0000-\u001f\u007f]/u.test(value))
+    .parse(reason);
+  if (!actor.isOwner || safeTargetUserId === actor.id) {
+    throw new UserAccessUnavailableError();
+  }
+  if (isDemoMode()) {
+    await setLegacyUserActive(safeTargetUserId, false, actor);
+    return;
+  }
+
+  await withAuditTransaction({ actor, reason: safeReason }, async (client) => {
+    const result = await client.query<RemovalRow>(`
+      SELECT public.axora_remove_user_account($1,$2,$3,$4,$5) AS snapshot
+    `, [
+      actor.id,
+      requireAssignment(actor),
+      safeTargetUserId,
+      safeReason,
+      new Date(),
+    ]);
+    const parsed = removalSchema.safeParse(result.rows[0]?.snapshot);
+    if (!parsed.success || parsed.data.userId !== safeTargetUserId
+      || !parsed.data.removed) {
+      throw new UserAccessUnavailableError();
+    }
+  });
+}
+
 export const userIsolationInternals = {
   toUserRecord,
   userDirectoryRowSchema,
   userTargetSchema,
+  removalSchema,
 };

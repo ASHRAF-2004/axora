@@ -487,7 +487,7 @@ export default async function CompaniesPage({
   const created = first(params.created);
   const notice = noticeText(locale, first(params.notice));
   const companies = workspace.companies.filter((company) => (
-    (!status || company.status === status)
+    (status ? company.status === status : company.status !== "ARCHIVED")
     && (view !== "mine" || company.isAssignedToActor)
   ));
 

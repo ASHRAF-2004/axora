@@ -533,3 +533,16 @@ BEGIN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_catalog_offer(uuid,timestamptz),public.axora_product_commercial_history(uuid,uuid,uuid,timestamptz),public.axora_product_administration_catalog(uuid,uuid,timestamptz) TO axora_app';
   END IF;
 END $$;
+
+-- Permanent account removal remains owner-only inside the narrow capability.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regprocedure(
+      'public.axora_remove_user_account(uuid,uuid,uuid,text,timestamp with time zone)'
+    ) IS NOT NULL
+  THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_remove_user_account(uuid,uuid,uuid,text,timestamptz) TO axora_app';
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_prevent_removed_user_reactivation() FROM axora_app';
+  END IF;
+END $$;

@@ -51,7 +51,7 @@ const targetSchema = z.object({
   active: z.boolean(),
   isOwner: z.boolean(),
   accountKind: z.string().refine(isAccountKind),
-  accountStatus: z.enum(["INVITED", "ACTIVE", "SUSPENDED", "CLOSED"]),
+  accountStatus: z.enum(["INVITED", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
   setupCompleted: z.boolean(),
   roleAssignmentId: uuidSchema,
   role: z.string().refine(isUserRole),

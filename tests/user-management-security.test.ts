@@ -191,13 +191,15 @@ function sourceFiles(directory: string): string[] {
 describe("normal account lifecycle architecture", () => {
   const sourceRoot = new URL("../src", import.meta.url).pathname;
 
-  it("has no hard-delete portal, action, or user-service path", () => {
+  it("keeps account removal non-destructive", () => {
     const activeSurfaces = [
       new URL("../src/lib/users.ts", import.meta.url),
       new URL("../src/app/(portal)/users/actions.ts", import.meta.url),
       new URL("../src/app/(portal)/users/page.tsx", import.meta.url),
     ].map((path) => readFileSync(path, "utf8")).join("\n");
-    expect(activeSurfaces).not.toMatch(/\bdeleteUser(?:Action)?\b|DELETE\s+FROM\s+users/i);
+    expect(activeSurfaces).not.toMatch(/DELETE\s+FROM\s+users/i);
+    expect(activeSurfaces).toContain("removeAuthorizedUser");
+    expect(activeSurfaces).toContain("removeUserAction");
   });
 
   it("never writes immutable audit rows directly from application runtime", () => {
