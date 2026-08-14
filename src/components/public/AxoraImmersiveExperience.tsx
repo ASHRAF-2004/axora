@@ -106,6 +106,7 @@ export function AxoraImmersiveExperience({
   const routeModels = PUBLIC_SCENE_MODELS[route];
   const sceneStates = useMemo(() => publicSceneStates(route, locale), [locale, route]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [sceneEngaged, setSceneEngaged] = useState(false);
   const [interactionReady, setInteractionReady] = useState(false);
   const activeModel = routeModels[activeIndex] ?? routeModels[0];
   const nextModel = routeModels[(activeIndex + 1) % routeModels.length];
@@ -119,6 +120,7 @@ export function AxoraImmersiveExperience({
 
   const activate = useCallback((index: number) => {
     const bounded = Math.max(0, Math.min(routeModels.length - 1, index));
+    setSceneEngaged(true);
     if (bounded === activeIndex) return;
     setActiveIndex(bounded);
     const model = sceneStates[bounded]?.sound ?? routeModels[bounded];
@@ -189,6 +191,7 @@ export function AxoraImmersiveExperience({
             alternative={copy.sceneAlternative}
             route={route}
             direction={locale === "ar" ? "rtl" : "ltr"}
+            engaged={sceneEngaged}
           />
           <div className={styles.sceneCaption} aria-live="polite">
             <span>{String(activeIndex + 1).padStart(2, "0")}</span>
@@ -216,6 +219,7 @@ export function AxoraImmersiveExperience({
             alternative={copy.sceneAlternative}
             route={`${route}-workflow`}
             direction={locale === "ar" ? "rtl" : "ltr"}
+            engaged={sceneEngaged}
           />
         </div>
         <div className={styles.workflowSteps} role="list" aria-label={copy.consoleLabel}>

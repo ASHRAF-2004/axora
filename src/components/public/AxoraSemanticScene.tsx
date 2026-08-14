@@ -56,6 +56,7 @@ export function AxoraSemanticScene({
   alternative,
   route,
   direction,
+  engaged,
 }: {
   model: SemanticModelId;
   nextModel?: SemanticModelId;
@@ -63,30 +64,47 @@ export function AxoraSemanticScene({
   alternative: string;
   route: string;
   direction: "ltr" | "rtl";
+  engaged: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const contextLost = useRef(false);
   const [active, setActive] = useState(true);
   const [fallbackReason, setFallbackReason] = useState<string | null>("checking");
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const compact = window.matchMedia("(max-width: 760px)");
     const reducedData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
-    const frame = window.requestAnimationFrame(() => {
+    const resolveFallback = () => {
       setReducedMotion(motion.matches);
-      setFallbackReason(motion.matches ? "reduced-motion" : reducedData ? "reduced-data" : supportsWebGL() ? null : "webgl-unavailable");
-    });
-    const onMotion = () => {
-      setReducedMotion(motion.matches);
-      if (motion.matches) setFallbackReason("reduced-motion");
-      else if (!reducedData) setFallbackReason(supportsWebGL() ? null : "webgl-unavailable");
+      if (contextLost.current) {
+        setFallbackReason("context-lost");
+        return;
+      }
+      setFallbackReason(
+        motion.matches
+          ? "reduced-motion"
+          : reducedData
+            ? "reduced-data"
+            : compact.matches && !engaged
+              ? "mobile-deferred"
+              : supportsWebGL()
+                ? null
+                : "webgl-unavailable",
+      );
     };
-    motion.addEventListener("change", onMotion);
+    const frame = window.requestAnimationFrame(() => {
+      resolveFallback();
+    });
+    motion.addEventListener("change", resolveFallback);
+    compact.addEventListener("change", resolveFallback);
     return () => {
       window.cancelAnimationFrame(frame);
-      motion.removeEventListener("change", onMotion);
+      motion.removeEventListener("change", resolveFallback);
+      compact.removeEventListener("change", resolveFallback);
     };
-  }, []);
+  }, [engaged]);
 
   useEffect(() => {
     const target = container.current;
@@ -113,7 +131,10 @@ export function AxoraSemanticScene({
             atmosphere={atmosphere}
             reducedMotion={reducedMotion}
             active={active}
-            onContextLost={() => setFallbackReason("context-lost")}
+            onContextLost={() => {
+              contextLost.current = true;
+              setFallbackReason("context-lost");
+            }}
             direction={direction}
           />
         </SceneErrorBoundary>

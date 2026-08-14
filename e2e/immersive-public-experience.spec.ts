@@ -24,13 +24,29 @@ async function useLocale(context: Parameters<typeof test>[0] extends never ? nev
 }
 
 async function expectWorkflowSceneReady(page: Page) {
-  const canvas = page.locator("[data-scene-route] canvas").first();
+  const readyScene = page.locator('[data-scene-route] [data-context-loss-ready="true"]').first();
+  await expect(readyScene).toBeVisible({ timeout: 15_000 });
+  const canvas = readyScene.locator("canvas");
   await expect(canvas).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => canvas.evaluate((element) => {
     const scene = element as HTMLCanvasElement;
     const context = scene.getContext("webgl2") ?? scene.getContext("webgl");
     return Boolean(context && context.drawingBufferWidth > 0 && context.drawingBufferHeight > 0);
   })).toBe(true);
+}
+
+async function engageDeferredMobileScene(page: Page, stageName: RegExp) {
+  if ((page.viewportSize()?.width ?? 761) > 760) return;
+  const fallback = page.getByTestId("workflow-fallback").first();
+  const canvas = page.locator("[data-scene-route] canvas").first();
+  await expect.poll(async () => {
+    if (await canvas.isVisible()) return "canvas";
+    const reason = await fallback.getAttribute("data-reason");
+    return reason && reason !== "checking" ? reason : "pending";
+  }).not.toBe("pending");
+  if (await fallback.getAttribute("data-reason") === "mobile-deferred") {
+    await page.getByRole("button", { name: stageName }).click();
+  }
 }
 
 async function computedAtmosphere(page: Page, selector = "html") {
@@ -59,6 +75,7 @@ test("desktop loads the 3D console and keeps every control accessible", async ({
   await page.goto("/en");
 
   await expect(page.getByTestId("workflow-console")).toBeVisible();
+  await engageDeferredMobileScene(page, /02.*Approve/);
   await expect(page.locator("[data-scene-route] canvas").first()).toBeVisible({ timeout: 15_000 });
   const approve = page.getByRole("button", { name: /02.*Approve/ });
   await approve.click();
@@ -183,6 +200,7 @@ test("a failed 3D chunk leaves the full semantic experience available", async ({
   await useLocale(context, "en");
   await page.route("**/immersive/models/*.glb", (route) => route.abort("failed"));
   await page.goto("/en");
+  await engageDeferredMobileScene(page, /02.*Approve/);
   await expect(page.getByTestId("workflow-fallback").first()).toHaveAttribute("data-reason", "scene-failed");
   await expect(page.getByRole("button", { name: /01.*Request/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -200,7 +218,10 @@ test("the server-rendered document retains meaningful localized content without 
 test("context loss restores the semantic console without losing the route", async ({ context, page }, testInfo) => {
   await useLocale(context, "en");
   await page.goto("/en");
-  const canvas = page.locator("[data-scene-route] canvas").first();
+  await engageDeferredMobileScene(page, /02.*Approve/);
+  const readyScene = page.locator('[data-scene-route] [data-context-loss-ready="true"]').first();
+  await expect(readyScene).toBeVisible({ timeout: 15_000 });
+  const canvas = readyScene.locator("canvas");
   await expect(canvas).toBeVisible({ timeout: 15_000 });
   await canvas.dispatchEvent("webglcontextlost", { cancelable: true });
   await expect(page.locator('[data-testid="workflow-fallback"][data-reason="context-lost"]')).toBeVisible();
@@ -280,12 +301,16 @@ test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mob
   await useLocale(context, "en");
   await page.goto("/en");
   await expect(page.getByTestId("workflow-console")).toBeVisible();
+  await expect(page.locator('[data-testid="workflow-fallback"][data-reason="mobile-deferred"]').first()).toBeVisible();
+  await engageDeferredMobileScene(page, /02.*Approve/);
   await expectWorkflowSceneReady(page);
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-mobile-${testInfo.project.name}.png`, fullPage: false });
 
   await useLocale(context, "ar");
   await page.goto("/ar");
   await expect(page.locator('[data-locale="ar"]')).toBeVisible();
+  await expect(page.locator('[data-testid="workflow-fallback"][data-reason="mobile-deferred"]').first()).toBeVisible();
+  await engageDeferredMobileScene(page, /02.*الموافقة/);
   await expectWorkflowSceneReady(page);
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-arabic-${testInfo.project.name}.png`, fullPage: false });
 

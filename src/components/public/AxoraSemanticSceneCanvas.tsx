@@ -221,7 +221,7 @@ function CameraRig({
   return null;
 }
 
-function ContextLossGuard({ onContextLost }: { onContextLost: () => void }) {
+function ContextLossGuard({ onContextLost, onReady }: { onContextLost: () => void; onReady: () => void }) {
   const canvas = useThree((state) => state.gl.domElement);
   useEffect(() => {
     const handle = (event: Event) => {
@@ -229,8 +229,11 @@ function ContextLossGuard({ onContextLost }: { onContextLost: () => void }) {
       onContextLost();
     };
     canvas.addEventListener("webglcontextlost",handle);
-    return () => canvas.removeEventListener("webglcontextlost",handle);
-  }, [canvas,onContextLost]);
+    onReady();
+    return () => {
+      canvas.removeEventListener("webglcontextlost",handle);
+    };
+  }, [canvas,onContextLost,onReady]);
   return null;
 }
 
@@ -297,6 +300,7 @@ export default function AxoraSemanticSceneCanvas({
   direction: "ltr" | "rtl";
 }) {
   const [previousModel, setPreviousModel] = useState<SemanticModelId | null>(null);
+  const [contextLossReady, setContextLossReady] = useState(false);
   const currentRef = useRef(model);
   useEffect(() => {
     if (currentRef.current === model) return;
@@ -320,6 +324,7 @@ export default function AxoraSemanticSceneCanvas({
   return (
     <Canvas
       data-testid="workflow-webgl"
+      data-context-loss-ready={contextLossReady ? "true" : "false"}
       aria-hidden="true"
       camera={{ position: [0, 0.35, 7.2], fov: 42 }}
       dpr={[1, 1.35]}
@@ -327,7 +332,7 @@ export default function AxoraSemanticSceneCanvas({
       gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       shadows={!reducedMotion}
     >
-      <ContextLossGuard onContextLost={onContextLost} />
+      <ContextLossGuard onContextLost={onContextLost} onReady={() => setContextLossReady(true)} />
       <Scene model={model} previousModel={previousModel} atmosphere={atmosphere} reducedMotion={reducedMotion} direction={direction} />
     </Canvas>
   );
