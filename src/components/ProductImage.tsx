@@ -3,13 +3,16 @@
 /* eslint-disable @next/next/no-img-element */
 
 import type { Product, ProductImageSummary } from "@/lib/types";
+import type { CustomerCatalogProduct } from "@/lib/catalog-contracts";
 import { ChevronLeft, ChevronRight, Coffee, FileText, Package, Printer, Sparkles, type LucideIcon } from "lucide-react";
 import type { CSSProperties, MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
 
-type ProductImageProduct = Pick<Product, "category" | "code" | "hasImage" | "id" | "imageAltText" | "name">;
+type ProductImageProduct = Pick<Product, "category" | "hasImage" | "imageAltText" | "name">
+  & Partial<Pick<Product, "code" | "id">>
+  & Partial<Pick<CustomerCatalogProduct, "publicRef">>;
 
 type Artwork = {
   accent: string;
@@ -100,26 +103,31 @@ export function ProductImage({
   const [loadedGallery, setLoadedGallery] = useState<LoadedGallery | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
+  const productKey = product.publicRef ?? product.id ?? "";
+  const catalogBase = product.publicRef
+    ? `/api/catalog/products/${encodeURIComponent(product.publicRef)}`
+    : `/api/products/${encodeURIComponent(product.id ?? "")}`;
+
   useEffect(() => {
     if (!product.hasImage) return;
 
     const controller = new AbortController();
-    fetch(`/api/products/${encodeURIComponent(product.id)}/images`, {
+    fetch(`${catalogBase}/images`, {
       credentials: "same-origin",
       signal: controller.signal,
     })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Gallery unavailable")))
       .then((payload: { images?: ProductImageSummary[] }) => {
         if (payload.images?.length) {
-          setLoadedGallery({ productId: product.id, images: payload.images });
+          setLoadedGallery({ productId: productKey, images: payload.images });
           setActiveIndex(0);
         }
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [product.hasImage, product.id]);
+  }, [catalogBase, product.hasImage, productKey]);
 
-  const images: GalleryImage[] = loadedGallery?.productId === product.id && loadedGallery.images.length
+  const images: GalleryImage[] = loadedGallery?.productId === productKey && loadedGallery.images.length
     ? loadedGallery.images
     : fallbackImages;
   const boundedIndex = images.length ? activeIndex % images.length : 0;
@@ -134,9 +142,9 @@ export function ProductImage({
 
   const current = images[boundedIndex] ?? images[0];
   const imageSource = current?.legacy
-    ? `/api/products/${encodeURIComponent(product.id)}/image`
+    ? `${catalogBase}/image`
     : current
-      ? `/api/products/${encodeURIComponent(product.id)}/images/${encodeURIComponent(current.id)}`
+      ? `${catalogBase}/images/${encodeURIComponent(current.id)}`
       : "";
   const controlsVisible = showControls && images.length > 1;
 
@@ -289,35 +297,36 @@ export function ProductImage({
         </>
       ) : null}
 
-      <span
-        className="status-badge"
-        style={{
-          background: "rgba(255,255,255,.84)",
-          insetBlockEnd: 13,
-          color: foreground,
-          insetInlineStart: 13,
-          position: "absolute",
-        }}
-      >
-        {product.category}
-      </span>
-
-      <span
-        aria-hidden="true"
-        style={{
-          color: foreground,
-          fontSize: 10,
-          fontWeight: 850,
-          letterSpacing: ".08em",
-          opacity: 0.78,
-          position: "absolute",
-          insetInlineEnd: 14,
-          textTransform: "uppercase",
-          top: 13,
-        }}
-      >
-        {product.code}
-      </span>
+      {product.code ? <>
+        <span
+          className="status-badge"
+          style={{
+            background: "rgba(255,255,255,.84)",
+            insetBlockEnd: 13,
+            color: foreground,
+            insetInlineStart: 13,
+            position: "absolute",
+          }}
+        >
+          {product.category}
+        </span>
+        <span
+          aria-hidden="true"
+          style={{
+            color: foreground,
+            fontSize: 10,
+            fontWeight: 850,
+            letterSpacing: ".08em",
+            opacity: 0.78,
+            position: "absolute",
+            insetInlineEnd: 14,
+            textTransform: "uppercase",
+            top: 13,
+          }}
+        >
+          {product.code}
+        </span>
+      </> : null}
     </div>
   );
 }

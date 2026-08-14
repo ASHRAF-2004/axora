@@ -23,6 +23,7 @@ import type {
   WorkflowMetadata,
 } from "./workflow-events";
 import type { RequestWorkflowEvent } from "./workflow-repository";
+import { sanitizeCustomerWorkflowEvent } from "./customer-workflow-privacy";
 
 interface RequestRow extends QueryResultRow {
   id: string;
@@ -149,6 +150,25 @@ function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
     }
   }
   return [...requests.values()];
+}
+
+function minimizeCustomerProductReferences(
+  actor: AuthenticatedSessionUser,
+  requests: ProcurementRequest[],
+) {
+  if (actor.accountKind !== "COMPANY") return requests;
+  return requests.map((request) => ({
+    ...request,
+    lines: request.lines.map((line) => ({
+      ...line,
+      productId: undefined,
+      productCode: undefined,
+      supplierId: undefined,
+      supplierName: undefined,
+      quotationReference: undefined,
+      supplierConfirmationStatus: undefined,
+    })),
+  }));
 }
 
 const requestSelect = `SELECT
@@ -426,7 +446,7 @@ function buildRequestSearchSpec(
         LEFT JOIN public.products search_product ON search_product.id=search_line.product_id
         WHERE search_line.request_id=r.id AND (
           search_line.product_name_snapshot ILIKE '%'||${search}||'%'
-          OR COALESCE(search_product.product_code,'') ILIKE '%'||${search}||'%'
+          OR (access.can_view_commercial AND COALESCE(search_product.product_code,'') ILIKE '%'||${search}||'%')
           OR to_tsvector('simple',concat_ws(' ',search_line.product_name_snapshot,
             search_line.category_snapshot,search_line.subcategory_snapshot,
             search_line.specification)) @@ plainto_tsquery('simple',${search})
@@ -569,7 +589,7 @@ async function loadAuthorizedFilteredRequests(
            ORDER BY array_position($4::uuid[],r.id),line.request_line_code`,
           [actor.id,assignmentId,capturedAt,ids],
         );
-        return {requests:groupRequestRows(detailResult.rows),filters:{...filters,page},
+        return {requests:minimizeCustomerProductReferences(actor,groupRequestRows(detailResult.rows)),filters:{...filters,page},
           total,page,pageSize:filters.pageSize,totalPages};
       },
     );
@@ -703,7 +723,7 @@ export async function listAuthorizedRequests(
         [actor.id,assignmentId,capturedAt],
       ),
     );
-    return groupRequestRows(result.rows);
+    return minimizeCustomerProductReferences(actor,groupRequestRows(result.rows));
   } catch (error) {
     if (error instanceof RequestAccessUnavailableError) throw error;
     throw new RequestAccessUnavailableError();
@@ -734,7 +754,7 @@ export async function getAuthorizedRequest(
         [actor.id,assignmentId,capturedAt,requestId],
       ),
     );
-    return groupRequestRows(result.rows)[0];
+    return minimizeCustomerProductReferences(actor,groupRequestRows(result.rows))[0];
   } catch (error) {
     if (error instanceof RequestAccessUnavailableError) throw error;
     throw new RequestAccessUnavailableError();
@@ -789,28 +809,33 @@ export async function listAuthorizedRequestWorkflowEvents(
           WHERE event.request_id=$1
           ORDER BY event.occurred_at,event.event_version,event.id
         `,[requestId,actor.id,assignmentId,capturedAt]);
-        return result.rows.map((row) => ({
-          id: row.id,
-          eventKey: row.eventKey,
-          ...(metadataText(row.metadata,"previousState")
-            ? { previousState: metadataText(row.metadata,"previousState") }
-            : {}),
-          ...(metadataText(row.metadata,"newState")
-            ? { newState: metadataText(row.metadata,"newState") }
-            : {}),
-          ...(metadataText(row.metadata,"reason")
-            ? { reason: metadataText(row.metadata,"reason") }
-            : {}),
-          source: metadataText(row.metadata,"source") ?? "SYSTEM",
-          ...(visibleActorName(row.actorKind,row.actorName)
-            ? { actorName: row.actorName }
-            : {}),
-          ...(metadataText(row.metadata,"actorRole")
-            ? { actorRole: metadataText(row.metadata,"actorRole") }
-            : {}),
-          occurredAt: row.occurredAt,
-          recordedAt: row.recordedAt,
-        }));
+        return result.rows.map((row) => {
+          const event: RequestWorkflowEvent = {
+            id: row.id,
+            eventKey: row.eventKey,
+            ...(metadataText(row.metadata,"previousState")
+              ? { previousState: metadataText(row.metadata,"previousState") }
+              : {}),
+            ...(metadataText(row.metadata,"newState")
+              ? { newState: metadataText(row.metadata,"newState") }
+              : {}),
+            ...(metadataText(row.metadata,"reason")
+              ? { reason: metadataText(row.metadata,"reason") }
+              : {}),
+            source: metadataText(row.metadata,"source") ?? "SYSTEM",
+            ...(visibleActorName(row.actorKind,row.actorName)
+              ? { actorName: row.actorName }
+              : {}),
+            ...(metadataText(row.metadata,"actorRole")
+              ? { actorRole: metadataText(row.metadata,"actorRole") }
+              : {}),
+            occurredAt: row.occurredAt,
+            recordedAt: row.recordedAt,
+          };
+          return actor.accountKind === "COMPANY"
+            ? sanitizeCustomerWorkflowEvent(event,row.actorKind)
+            : event;
+        });
       },
     );
   } catch (error) {

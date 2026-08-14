@@ -11,7 +11,7 @@ export function buildContentSecurityPolicy(nonce: string, development = false) {
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",
-    "connect-src 'self' https://challenges.cloudflare.com",
+    "connect-src 'self' blob: https://challenges.cloudflare.com",
     "frame-src https://challenges.cloudflare.com",
     "worker-src 'self' blob:",
     "media-src 'self' blob:",

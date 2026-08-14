@@ -3,7 +3,7 @@ import { RequestDraftBoundary } from "@/components/RequestDraftBoundary";
 import { RequestForm } from "@/components/RequestForm";
 import { getRequestBudgetChoices } from "@/lib/budget-ledger";
 import { requirePagePermission } from "@/lib/auth";
-import { getCatalogProductById } from "@/lib/catalog";
+import { getCustomerCatalogProductByPublicRef } from "@/lib/catalog";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import { STANDARD_BILLING_TERMS, type Branch, type Company } from "@/lib/types";
@@ -22,7 +22,7 @@ export default async function NewRequestPage({
   const [organization, initialProduct] = await Promise.all([
     loadOrganizationDirectory(actor),
     params.product
-      ? getCatalogProductById(params.product, actor)
+      ? getCustomerCatalogProductByPublicRef(params.product, actor)
       : Promise.resolve(undefined),
   ]);
   const companies: Company[] = organization.companies.map((company) => ({

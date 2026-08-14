@@ -58,6 +58,7 @@ const scopeC: BrowserSessionScope = {
 const cart = [{
   product: {
     id: "50000000-0000-4000-8000-000000000050",
+    publicRef: "AX-REF-500000000050",
     code: "P-050",
     name: "A4 Paper",
     category: "Office",

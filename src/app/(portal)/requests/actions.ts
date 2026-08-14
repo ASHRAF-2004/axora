@@ -12,17 +12,20 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { completePayment } from "@/lib/payment-checkout";
+import { getCatalogProductsByPublicRefs } from "@/lib/catalog";
 
 const requestSubmissionKeySchema = z.string().uuid();
 
 export async function createRequestAction(formData: FormData) {
   const user = await requirePermission("create_requests");
-  const productIds = formData.getAll("productId").map(String);
+  const productRefs = formData.getAll("publicRef").map(String);
   const quantities = formData.getAll("quantity");
   const specifications = formData.getAll("specification").map(String);
-  const lines = productIds
-    .map((productId, index) => ({
-      productId,
+  const resolvedProducts = await getCatalogProductsByPublicRefs(productRefs, user);
+  const productsByRef = new Map(resolvedProducts.map((product) => [product.code, product]));
+  const lines = productRefs
+    .map((publicRef, index) => ({
+      productId: productsByRef.get(publicRef)?.id ?? "",
       quantity: quantities[index],
       specification: specifications[index] || undefined,
     }))

@@ -210,3 +210,12 @@ queues one invoice email. Payment and delivery states remain independent.
 Safe form drafts remain scoped to the authenticated user, role assignment,
 tenant and route. Draft restoration is silent; passwords, tokens, secrets and
 file contents are never persisted.
+# Immersive World V2
+
+Axora's public experience uses six route-specific, progressively enhanced 3D scenes. The customer-visible lifecycle is `Request -> Approve -> Pay -> Invoice -> Prepare -> Deliver -> Track -> Complete`; internal buying activity, supplier identity, private cost and driver operational notes never cross the customer boundary. Licensed semantic GLB models and interface sounds are self-hosted and inventoried in `THIRD_PARTY_ASSETS.md`.
+
+Aurora, Solar, Ember and Midnight are public and internal-staff atmosphere choices. Customer-company portals always use the reviewed logo-derived company theme, which takes precedence over any pre-login choice. Sound is muted by default. Reduced-motion, reduced-data, WebGL failure and context loss retain complete semantic HTML fallbacks.
+
+Paid requests enter an available delivery-job pool. Active Delivery Guys claim work atomically; Platform Owners monitor drivers and may only release a genuinely stuck job through an audited recovery action. Driver location requires explicit browser permission, is collected only for active work, and is exposed to customers only as privacy-safe status and ETA.
+
+Platform Owners do not administer customer budgets. Company and branch budget validation remains company-scoped. Creation routes are separated from collection routes for companies, users, products and branches.

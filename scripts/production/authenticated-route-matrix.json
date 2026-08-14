@@ -1,78 +1,1058 @@
 {
   "version": 1,
   "origin": "https://axora.management",
-  "accountLabels": ["OWNER_1", "OWNER_2", "C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+  "accountLabels": [
+    "OWNER_1",
+    "OWNER_2",
+    "C100_ADMIN",
+    "C101_ADMIN",
+    "C102_ADMIN"
+  ],
   "routes": [
-    {"route":"/access-denied","accountRole":"AUTHENTICATED","companyScope":"none","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"read-only","apis":[],"expectedFinalUrl":"/access-denied","landmark":"main"},
-    {"route":"/account","accountRole":"AUTHENTICATED","companyScope":"self","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"mixed","apis":[],"expectedFinalUrl":"/account","landmark":"main h1"},
-    {"route":"/profile","accountRole":"AUTHENTICATED","companyScope":"self","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"mixed","apis":["/api/profile/avatar"],"expectedFinalUrl":"/profile","landmark":"main h1"},
-    {"route":"/notifications","accountRole":"AUTHENTICATED","companyScope":"self","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"mixed","apis":["/api/notifications/summary"],"expectedFinalUrl":"/notifications","landmark":"main h1"},
-    {"route":"/settings","accountRole":"AUTHENTICATED","companyScope":"permission-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"mixed","apis":[],"expectedFinalUrl":"/settings","landmark":"main h1"},
-    {"route":"/help","accountRole":"AUTHENTICATED","companyScope":"self","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"read-only","apis":[],"expectedFinalUrl":"/help","landmark":"main h1"},
-    {"route":"/dashboard","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"read-only","apis":["/api/export/dashboard"],"expectedFinalUrl":"/dashboard","landmark":"main h1"},
-    {"route":"/products","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"catalog-with-private-cost-filtering","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"mixed","apis":["/api/catalog","/api/catalog/cart","/api/products/[id]/image"],"expectedFinalUrl":"/products","landmark":"main h1"},
-    {"route":"/products/[id]/edit","accountRole":"PLATFORM_OWNER","companyScope":"platform","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mutating","apis":["/api/products/[id]/images","/api/products/[id]/images/[imageId]"],"expectedFinalUrl":"/products/[id]/edit","landmark":"main h1"},
-    {"route":"/requests","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":[],"mode":"read-only","apis":["/api/requests/filter-options","/api/export/requests"],"expectedFinalUrl":"/requests","landmark":"main h1"},
-    {"route":"/requests/[id]","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"resource-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mixed","apis":["/api/attachments/[id]","/api/generated-documents/[id]"],"expectedFinalUrl":"/requests/[id]","landmark":"main h1"},
-    {"route":"/requests/new","accountRole":"CREATE_REQUEST_PERMISSION","companyScope":"assigned-branch-or-department","expectedAccess":[],"expectedDenial":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mutating","apis":["/api/catalog/cart"],"expectedFinalUrl":"/access-denied","landmark":"main"},
-    {"route":"/approvals","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mutating","apis":[],"expectedFinalUrl":"/approvals","landmark":"main h1"},
-    {"route":"/budgets","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mixed","apis":[],"expectedFinalUrl":"/budgets","landmark":"main h1"},
-    {"route":"/branches","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mixed","apis":[],"expectedFinalUrl":"/branches","landmark":"main h1"},
-    {"route":"/branches/organization","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mixed","apis":[],"expectedFinalUrl":"/branches/organization","landmark":"main h1"},
-    {"route":"/users","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mixed","apis":["/api/profile/avatar/[userId]"],"expectedFinalUrl":"/users","landmark":"main h1"},
-    {"route":"/users/[id]/access","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"resource-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mutating","apis":[],"expectedFinalUrl":"/users/[id]/access","landmark":"main h1"},
-    {"route":"/deliveries","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered-read-only-for-company","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mixed","apis":["/api/deliveries/workspace","/api/deliveries/tracking","/api/receiving/delivery-tracking"],"expectedFinalUrl":"/deliveries","landmark":"main h1"},
-    {"route":"/finance","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"mixed","apis":[],"expectedFinalUrl":"/finance","landmark":"main h1"},
-    {"route":"/reports","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"read-only","apis":["/api/export/dashboard","/api/export/requests"],"expectedFinalUrl":"/reports","landmark":"main h1"},
-    {"route":"/audit","accountRole":"PLATFORM_OWNER|COMPANY_ADMIN","companyScope":"tenant-filtered","expectedAccess":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"expectedDenial":["foreign-company-resource"],"mode":"read-only","apis":["/api/export/audit"],"expectedFinalUrl":"/audit","landmark":"main h1"},
-    {"route":"/companies","accountRole":"PLATFORM_OWNER","companyScope":"platform","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mixed","apis":["/api/company-brand/[companyId]/logo"],"expectedFinalUrl":"/companies","landmark":"main h1"},
-    {"route":"/companies/leads","accountRole":"PLATFORM_OWNER","companyScope":"platform","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mixed","apis":["/companies/leads/[leadId]/export"],"expectedFinalUrl":"/companies/leads","landmark":"main h1"},
-    {"route":"/companies/[companyId]/onboarding","accountRole":"PLATFORM_OWNER","companyScope":"assigned-or-platform","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mutating","apis":[],"expectedFinalUrl":"/companies/[companyId]/onboarding","landmark":"main h1"},
-    {"route":"/companies/[companyId]/theme","accountRole":"PLATFORM_OWNER","companyScope":"assigned-or-platform","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mutating","apis":["/api/company-brand/[companyId]/logo"],"expectedFinalUrl":"/companies/[companyId]/theme","landmark":"main h1"},
-    {"route":"/email-operations","accountRole":"PLATFORM_OWNER","companyScope":"platform","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mixed","apis":[],"expectedFinalUrl":"/email-operations","landmark":"main h1"},
-    {"route":"/support","accountRole":"PLATFORM_OWNER","companyScope":"platform","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"read-only","apis":[],"expectedFinalUrl":"/support","landmark":"main h1"},
-    {"route":"/receiving","accountRole":"PLATFORM_OWNER","companyScope":"resource-filtered","expectedAccess":["OWNER_1","OWNER_2"],"expectedDenial":["C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mutating","apis":["/api/receiving/delivery-otp","/api/receiving/delivery-tracking"],"expectedFinalUrl":"/receiving","landmark":"main h1"},
-    {"route":"/driver","accountRole":"DELIVERY_ACTOR","companyScope":"assigned-delivery","expectedAccess":[],"expectedDenial":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"mutating","apis":["/api/driver/workspace","/api/driver/workflow","/api/driver/tracking","/api/driver/evidence","/api/driver/events","/api/driver/otp","/api/driver/proof"],"expectedFinalUrl":"/access-denied","landmark":"main"},
-    {"route":"/supplier","accountRole":"REMOVED_SUPPLIER_ACTOR","companyScope":"none","expectedAccess":[],"expectedDenial":["OWNER_1","OWNER_2","C100_ADMIN","C101_ADMIN","C102_ADMIN"],"mode":"removed","apis":["/api/supplier/documents/[id]"],"expectedFinalUrl":"/supplier","landmark":"body"}
+    {
+      "route": "/access-denied",
+      "accountRole": "AUTHENTICATED",
+      "companyScope": "none",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "read-only",
+      "apis": [],
+      "expectedFinalUrl": "/access-denied",
+      "landmark": "main"
+    },
+    {
+      "route": "/account",
+      "accountRole": "AUTHENTICATED",
+      "companyScope": "self",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/account",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/profile",
+      "accountRole": "AUTHENTICATED",
+      "companyScope": "self",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "mixed",
+      "apis": [
+        "/api/profile/avatar"
+      ],
+      "expectedFinalUrl": "/profile",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/notifications",
+      "accountRole": "AUTHENTICATED",
+      "companyScope": "self",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "mixed",
+      "apis": [
+        "/api/notifications/summary"
+      ],
+      "expectedFinalUrl": "/notifications",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/settings",
+      "accountRole": "AUTHENTICATED",
+      "companyScope": "permission-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/settings",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/help",
+      "accountRole": "AUTHENTICATED",
+      "companyScope": "self",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "read-only",
+      "apis": [],
+      "expectedFinalUrl": "/help",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/dashboard",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "read-only",
+      "apis": [
+        "/api/export/dashboard"
+      ],
+      "expectedFinalUrl": "/dashboard",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/products",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "catalog-with-private-cost-filtering",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "mixed",
+      "apis": [
+        "/api/catalog",
+        "/api/catalog/cart",
+        "/api/products/[id]/image"
+      ],
+      "expectedFinalUrl": "/products",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/products/[id]/edit",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [
+        "/api/products/[id]/images",
+        "/api/products/[id]/images/[imageId]"
+      ],
+      "expectedFinalUrl": "/products/[id]/edit",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/requests",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [],
+      "mode": "read-only",
+      "apis": [
+        "/api/requests/filter-options",
+        "/api/export/requests"
+      ],
+      "expectedFinalUrl": "/requests",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/requests/[id]",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "resource-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mixed",
+      "apis": [
+        "/api/attachments/[id]",
+        "/api/generated-documents/[id]"
+      ],
+      "expectedFinalUrl": "/requests/[id]",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/requests/new",
+      "accountRole": "CREATE_REQUEST_PERMISSION",
+      "companyScope": "assigned-branch-or-department",
+      "expectedAccess": [],
+      "expectedDenial": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [
+        "/api/catalog/cart"
+      ],
+      "expectedFinalUrl": "/access-denied",
+      "landmark": "main"
+    },
+    {
+      "route": "/approvals",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/approvals",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/budgets",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/budgets",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/branches",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/branches",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/branches/organization",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/branches/organization",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/users",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mixed",
+      "apis": [
+        "/api/profile/avatar/[userId]"
+      ],
+      "expectedFinalUrl": "/users",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/users/[id]/access",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "resource-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/users/[id]/access",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/deliveries",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered-read-only-for-company",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mixed",
+      "apis": [
+        "/api/deliveries/workspace",
+        "/api/deliveries/tracking",
+        "/api/receiving/delivery-tracking"
+      ],
+      "expectedFinalUrl": "/deliveries",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/finance",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/finance",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/reports",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "read-only",
+      "apis": [
+        "/api/export/dashboard",
+        "/api/export/requests"
+      ],
+      "expectedFinalUrl": "/reports",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/audit",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "read-only",
+      "apis": [
+        "/api/export/audit"
+      ],
+      "expectedFinalUrl": "/audit",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mixed",
+      "apis": [
+        "/api/company-brand/[companyId]/logo"
+      ],
+      "expectedFinalUrl": "/companies",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/leads",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mixed",
+      "apis": [
+        "/companies/leads/[leadId]/export"
+      ],
+      "expectedFinalUrl": "/companies/leads",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]/onboarding",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "assigned-or-platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/companies/[companyId]/onboarding",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]/theme",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "assigned-or-platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [
+        "/api/company-brand/[companyId]/logo"
+      ],
+      "expectedFinalUrl": "/companies/[companyId]/theme",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/email-operations",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/email-operations",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/support",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "read-only",
+      "apis": [],
+      "expectedFinalUrl": "/support",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/receiving",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "resource-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [
+        "/api/receiving/delivery-otp",
+        "/api/receiving/delivery-tracking"
+      ],
+      "expectedFinalUrl": "/receiving",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/driver",
+      "accountRole": "DELIVERY_ACTOR",
+      "companyScope": "assigned-delivery",
+      "expectedAccess": [],
+      "expectedDenial": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [
+        "/api/driver/workspace",
+        "/api/driver/workflow",
+        "/api/driver/tracking",
+        "/api/driver/evidence",
+        "/api/driver/events",
+        "/api/driver/otp",
+        "/api/driver/proof"
+      ],
+      "expectedFinalUrl": "/access-denied",
+      "landmark": "main"
+    },
+    {
+      "route": "/supplier",
+      "accountRole": "REMOVED_SUPPLIER_ACTOR",
+      "companyScope": "none",
+      "expectedAccess": [],
+      "expectedDenial": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "removed",
+      "apis": [
+        "/api/supplier/documents/[id]"
+      ],
+      "expectedFinalUrl": "/supplier",
+      "landmark": "body"
+    },
+    {
+      "route": "/branches/[branchId]",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/branches/[branchId]",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/branches/new",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "tenant-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/branches/new",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/companies/[companyId]",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/new",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/companies/new",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/deliveries/drivers/[driverId]",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "delivery-network",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/deliveries/drivers/[driverId]",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/products/[id]",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform-catalog",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "read-only",
+      "apis": [],
+      "expectedFinalUrl": "/products/[id]",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/products/new",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform-catalog",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/products/new",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/users/new",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "delegated-scope",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/users/new",
+      "landmark": "main h1"
+    }
   ],
   "apiRoutes": [
-    {"route":"/api/health/live","authentication":"public-health","scope":"none","mode":"read-only"},
-    {"route":"/api/health/ready","authentication":"public-health","scope":"none","mode":"read-only"},
-    {"route":"/api/notifications/summary","authentication":"session","scope":"self","mode":"read-only"},
-    {"route":"/api/catalog","authentication":"view_catalog","scope":"catalog-filtered","mode":"read-only"},
-    {"route":"/api/catalog/cart","authentication":"view_catalog","scope":"session-cart","mode":"mixed"},
-    {"route":"/api/products/[id]/image","authentication":"view_catalog","scope":"catalog-filtered","mode":"read-only"},
-    {"route":"/api/products/[id]/images","authentication":"view_catalog","scope":"catalog-filtered","mode":"mixed"},
-    {"route":"/api/products/[id]/images/[imageId]","authentication":"view_catalog","scope":"catalog-filtered","mode":"mixed"},
-    {"route":"/api/requests/filter-options","authentication":"view_requests","scope":"tenant-filtered","mode":"read-only"},
-    {"route":"/api/export/requests","authentication":"view_reports","scope":"tenant-filtered","mode":"read-only"},
-    {"route":"/api/export/dashboard","authentication":"view_dashboard","scope":"tenant-filtered","mode":"read-only"},
-    {"route":"/api/export/audit","authentication":"view_audit","scope":"tenant-filtered","mode":"read-only"},
-    {"route":"/api/attachments/[id]","authentication":"view_documents","scope":"resource-filtered","mode":"read-only"},
-    {"route":"/api/generated-documents/[id]","authentication":"session-capability","scope":"resource-filtered","mode":"read-only"},
-    {"route":"/api/delivery-evidence/[id]","authentication":"session-capability","scope":"resource-filtered","mode":"read-only"},
-    {"route":"/api/profile/avatar","authentication":"session","scope":"self","mode":"mixed"},
-    {"route":"/api/profile/avatar/[userId]","authentication":"session-capability","scope":"resource-filtered","mode":"read-only"},
-    {"route":"/api/company-brand/[companyId]/logo","authentication":"session-capability","scope":"company-filtered","mode":"read-only"},
-    {"route":"/api/receiving/delivery-tracking","authentication":"view_receiving|view_deliveries","scope":"tenant-filtered","mode":"read-only"},
-    {"route":"/api/receiving/delivery-otp","authentication":"view_receiving","scope":"assigned-delivery","mode":"mixed"},
-    {"route":"/api/deliveries/workspace","authentication":"manage_deliveries","scope":"assigned-delivery","mode":"read-only"},
-    {"route":"/api/deliveries/jobs","authentication":"manage_deliveries","scope":"assigned-delivery","mode":"mutating"},
-    {"route":"/api/deliveries/tracking","authentication":"manage_deliveries","scope":"assigned-delivery","mode":"mixed"},
-    {"route":"/api/deliveries/commands","authentication":"manage_deliveries","scope":"assigned-delivery","mode":"mutating"},
-    {"route":"/api/driver/workspace","authentication":"view_delivery_portal","scope":"assigned-delivery","mode":"read-only"},
-    {"route":"/api/driver/workflow","authentication":"update_assigned_deliveries","scope":"assigned-delivery","mode":"mutating"},
-    {"route":"/api/driver/tracking","authentication":"view_delivery_portal|update_assigned_deliveries","scope":"assigned-delivery","mode":"mixed"},
-    {"route":"/api/driver/evidence","authentication":"update_assigned_deliveries","scope":"assigned-delivery","mode":"mutating"},
-    {"route":"/api/driver/events","authentication":"update_assigned_deliveries","scope":"assigned-delivery","mode":"mutating"},
-    {"route":"/api/driver/otp","authentication":"update_assigned_deliveries","scope":"assigned-delivery","mode":"mutating"},
-    {"route":"/api/driver/proof","authentication":"update_assigned_deliveries","scope":"assigned-delivery","mode":"mutating"},
-    {"route":"/api/supplier/documents/[id]","authentication":"removed","scope":"none","mode":"removed"},
-    {"route":"/api/email/provider-events/cloudflare","authentication":"signed-provider-event","scope":"provider","mode":"mutating"},
-    {"route":"/api/email/provider-events/zeptomail","authentication":"signed-provider-event","scope":"provider","mode":"mutating"},
-    {"route":"/api/email/provider-events/resend","authentication":"signed-provider-event","scope":"provider","mode":"mutating"},
-    {"route":"/api/public/visitor-choice","authentication":"public-bounded","scope":"anonymous","mode":"mutating"},
-    {"route":"/account/email-outbox","authentication":"signed-account-link","scope":"self","mode":"mutating"},
-    {"route":"/companies/leads/[leadId]/export","authentication":"manage_companies","scope":"assigned-or-platform","mode":"read-only"}
+    {
+      "route": "/api/health/live",
+      "authentication": "public-health",
+      "scope": "none",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/health/ready",
+      "authentication": "public-health",
+      "scope": "none",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/notifications/summary",
+      "authentication": "session",
+      "scope": "self",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/catalog",
+      "authentication": "view_catalog",
+      "scope": "catalog-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/catalog/cart",
+      "authentication": "view_catalog",
+      "scope": "session-cart",
+      "mode": "mixed"
+    },
+    {
+      "route": "/api/products/[id]/image",
+      "authentication": "view_catalog",
+      "scope": "catalog-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/products/[id]/images",
+      "authentication": "view_catalog",
+      "scope": "catalog-filtered",
+      "mode": "mixed"
+    },
+    {
+      "route": "/api/products/[id]/images/[imageId]",
+      "authentication": "view_catalog",
+      "scope": "catalog-filtered",
+      "mode": "mixed"
+    },
+    {
+      "route": "/api/requests/filter-options",
+      "authentication": "view_requests",
+      "scope": "tenant-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/export/requests",
+      "authentication": "view_reports",
+      "scope": "tenant-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/export/dashboard",
+      "authentication": "view_dashboard",
+      "scope": "tenant-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/export/audit",
+      "authentication": "view_audit",
+      "scope": "tenant-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/attachments/[id]",
+      "authentication": "view_documents",
+      "scope": "resource-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/generated-documents/[id]",
+      "authentication": "session-capability",
+      "scope": "resource-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/delivery-evidence/[id]",
+      "authentication": "session-capability",
+      "scope": "resource-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/profile/avatar",
+      "authentication": "session",
+      "scope": "self",
+      "mode": "mixed"
+    },
+    {
+      "route": "/api/profile/avatar/[userId]",
+      "authentication": "session-capability",
+      "scope": "resource-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/company-brand/[companyId]/logo",
+      "authentication": "session-capability",
+      "scope": "company-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/receiving/delivery-tracking",
+      "authentication": "view_receiving|view_deliveries",
+      "scope": "tenant-filtered",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/receiving/delivery-otp",
+      "authentication": "view_receiving",
+      "scope": "assigned-delivery",
+      "mode": "mixed"
+    },
+    {
+      "route": "/api/driver/workspace",
+      "authentication": "view_delivery_portal",
+      "scope": "assigned-delivery",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/driver/workflow",
+      "authentication": "update_assigned_deliveries",
+      "scope": "assigned-delivery",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/driver/tracking",
+      "authentication": "view_delivery_portal|update_assigned_deliveries",
+      "scope": "assigned-delivery",
+      "mode": "mixed"
+    },
+    {
+      "route": "/api/driver/evidence",
+      "authentication": "update_assigned_deliveries",
+      "scope": "assigned-delivery",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/driver/events",
+      "authentication": "update_assigned_deliveries",
+      "scope": "assigned-delivery",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/driver/otp",
+      "authentication": "update_assigned_deliveries",
+      "scope": "assigned-delivery",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/driver/proof",
+      "authentication": "update_assigned_deliveries",
+      "scope": "assigned-delivery",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/supplier/documents/[id]",
+      "authentication": "removed",
+      "scope": "none",
+      "mode": "removed"
+    },
+    {
+      "route": "/api/email/provider-events/cloudflare",
+      "authentication": "signed-provider-event",
+      "scope": "provider",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/email/provider-events/zeptomail",
+      "authentication": "signed-provider-event",
+      "scope": "provider",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/email/provider-events/resend",
+      "authentication": "signed-provider-event",
+      "scope": "provider",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/public/visitor-choice",
+      "authentication": "public-bounded",
+      "scope": "anonymous",
+      "mode": "mutating"
+    },
+    {
+      "route": "/account/email-outbox",
+      "authentication": "signed-account-link",
+      "scope": "self",
+      "mode": "mutating"
+    },
+    {
+      "route": "/companies/leads/[leadId]/export",
+      "authentication": "manage_companies",
+      "scope": "assigned-or-platform",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/catalog/products/[publicRef]/image",
+      "authentication": "authenticated",
+      "scope": "tenant-catalog",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/catalog/products/[publicRef]/images/[imageId]",
+      "authentication": "authenticated",
+      "scope": "tenant-catalog",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/catalog/products/[publicRef]/images",
+      "authentication": "authenticated",
+      "scope": "tenant-catalog",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/driver/availability",
+      "authentication": "authenticated",
+      "scope": "delivery-self",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/driver/jobs/live",
+      "authentication": "authenticated",
+      "scope": "delivery-self",
+      "mode": "stream"
+    },
+    {
+      "route": "/api/driver/jobs",
+      "authentication": "authenticated",
+      "scope": "delivery-self",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/drivers/[driverId]/live",
+      "authentication": "authenticated",
+      "scope": "platform-delivery",
+      "mode": "stream"
+    },
+    {
+      "route": "/api/drivers/[driverId]",
+      "authentication": "authenticated",
+      "scope": "platform-delivery",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/drivers/live",
+      "authentication": "authenticated",
+      "scope": "platform-delivery",
+      "mode": "stream"
+    },
+    {
+      "route": "/api/drivers",
+      "authentication": "authenticated",
+      "scope": "platform-delivery",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/notifications/summary/stream",
+      "authentication": "authenticated",
+      "scope": "self",
+      "mode": "stream"
+    },
+    {
+      "route": "/api/profile/atmosphere",
+      "authentication": "authenticated",
+      "scope": "staff-self",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/public/visitor-choice/stream",
+      "authentication": "public-bounded",
+      "scope": "anonymous",
+      "mode": "stream"
+    },
+    {
+      "route": "/api/receiving/delivery-tracking/live",
+      "authentication": "authenticated",
+      "scope": "tenant-filtered",
+      "mode": "stream"
+    }
   ]
 }

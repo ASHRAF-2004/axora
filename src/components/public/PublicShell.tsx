@@ -5,6 +5,9 @@ import type { ReactNode } from "react";
 import { LOCALE_NAMES, publicMessages, type SupportedLocale } from "@/lib/i18n";
 import { LanguagePreference } from "./LanguagePreference";
 import { PublicMobileMenu } from "./PublicMobileMenu";
+import { PublicSkipLink } from "./PublicSkipLink";
+import { AxoraBrandEmblem } from "./AxoraBrandEmblem";
+import { AtmosphereSelector } from "./AtmosphereSelector";
 
 interface PublicShellProps {
   locale: SupportedLocale;
@@ -27,16 +30,15 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
 
   return (
     <div className="public-site" lang={locale} dir={LOCALE_NAMES[locale].dir}>
-      <a className="skip-link" href="#main-content">{messages.skipToContent}</a>
+      <PublicSkipLink>{messages.skipToContent}</PublicSkipLink>
       <header className="public-header">
         <div className="public-header-inner">
-          <Link href={prefix} className="public-brand" aria-label={`${messages.nav.home} — Axora`}>
-            <Image src="/brand/axora-logo.png" width={190} height={35} alt="Axora" priority />
-          </Link>
+          <AxoraBrandEmblem href={prefix} label={`${messages.nav.home} - Axora`} />
           <nav className="public-desktop-nav" aria-label={messages.nav.primaryNavigation}>
             {navigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
           </nav>
           <div className="public-header-actions">
+            <div className="public-desktop-atmosphere"><AtmosphereSelector locale={locale} compact /></div>
             <LanguagePreference
               locale={locale}
               detectedLocale={detectedLocale}
@@ -55,6 +57,7 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
               contactHref={`${prefix}/contact`}
               contactLabel={messages.nav.contact}
               loginLabel={messages.nav.login}
+              locale={locale}
             />
           </div>
         </div>

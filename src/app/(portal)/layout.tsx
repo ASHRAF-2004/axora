@@ -13,6 +13,7 @@ import {
   SESSION_RETURN_HEADER,
 } from "@/lib/session-return";
 import type { CSSProperties } from "react";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -22,6 +23,7 @@ import {
   PRIMARY_NAVIGATION,
   visiblePortalNavigation,
 } from "@/lib/portal-navigation";
+import { canChooseStaffAtmosphere, getStaffAtmosphere } from "@/lib/staff-atmosphere";
 
 export const metadata: Metadata = { robots: { index: false, follow: false, noarchive: true } };
 
@@ -62,6 +64,10 @@ export default async function PortalLayout({ children }: { children: React.React
   const companyBrandPromise = user.companyId
     ? getActiveCompanyBrand(user.companyId, user)
     : Promise.resolve(null);
+  const staffCanChooseAtmosphere = canChooseStaffAtmosphere(user);
+  const staffAtmospherePromise = staffCanChooseAtmosphere
+    ? getStaffAtmosphere(user)
+    : Promise.resolve(undefined);
   const [localeDecision, profile] = await Promise.all([
     requestLocaleDecision(),
     getMyProfile(user),
@@ -76,9 +82,10 @@ export default async function PortalLayout({ children }: { children: React.React
     redirect(`/profile?${params.toString()}`);
   }
 
-  const [companyBrand, unreadNotifications] = await Promise.all([
+  const [companyBrand, unreadNotifications, staffAtmosphere] = await Promise.all([
     companyBrandPromise,
     onboardingComplete ? unreadNotificationCount(user) : Promise.resolve(0),
+    staffAtmospherePromise,
   ]);
   const theme = companyBrand?.tokens;
   const messages = portalMessages(locale);
@@ -163,6 +170,8 @@ export default async function PortalLayout({ children }: { children: React.React
         }}
         unreadNotifications={unreadNotifications}
         profileRequired={!onboardingComplete}
+        staffAtmosphere={staffAtmosphere}
+        allowAtmosphere={staffCanChooseAtmosphere}
       >
         {children}
       </AppShell>

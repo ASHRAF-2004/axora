@@ -1,4 +1,4 @@
-import type { Product } from "@/lib/types";
+import type { CustomerCatalogProduct } from "@/lib/catalog-contracts";
 import { productPriceChanged } from "./procurement-rules";
 import {
   scopedBrowserStorageKey,
@@ -6,12 +6,12 @@ import {
 } from "./browser-session-scope";
 
 const LEGACY_REQUEST_CART_STORAGE_KEY = "axora-request-cart:v1";
-const REQUEST_CART_STORAGE_PREFIX = "axora-request-cart:v2";
+const LEGACY_SCOPED_REQUEST_CART_PREFIX = "axora-request-cart:v2";
+const REQUEST_CART_STORAGE_PREFIX = "axora-request-cart:v3";
 export const REQUEST_CART_EVENT = "axora-request-cart-change";
 
 export interface RequestCartProduct {
-  id: string;
-  code: string;
+  publicRef: string;
   name: string;
   category: string;
   subcategory: string;
@@ -35,16 +35,15 @@ export interface RequestCartItem {
 }
 
 export function minimumCartQuantity(
-  product: Product,
+  product: CustomerCatalogProduct,
 ) {
   void product;
   return 1;
 }
 
-function productSnapshot(product: Product): RequestCartProduct {
+function productSnapshot(product: CustomerCatalogProduct): RequestCartProduct {
   return {
-    id: product.id,
-    code: product.code,
+    publicRef: product.publicRef,
     name: product.name,
     category: product.category,
     subcategory: product.subcategory,
@@ -70,8 +69,7 @@ function validItem(value: unknown): value is RequestCartItem {
 
   return Boolean(
     product &&
-      typeof product.id === "string" &&
-      typeof product.code === "string" &&
+      typeof product.publicRef === "string" &&
       typeof product.name === "string" &&
       typeof product.category === "string" &&
       typeof product.subcategory === "string" &&
@@ -93,6 +91,10 @@ function discardUnscopedLegacyCart() {
     // The old key has no user or tenant identity. Migrating it could expose one
     // person's draft after a different person signs into the same browser.
     window.localStorage.removeItem(LEGACY_REQUEST_CART_STORAGE_KEY);
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(LEGACY_SCOPED_REQUEST_CART_PREFIX)) window.localStorage.removeItem(key);
+    }
   } catch {
     // Storage availability is not required for catalogue browsing.
   }
@@ -143,12 +145,12 @@ export function writeRequestCart(
 }
 
 export function addProductToRequestCart(
-  product: Product,
+  product: CustomerCatalogProduct,
   scope?: BrowserSessionScope | null,
 ) {
   const current = readRequestCart(scope);
   const existing = current.find(
-    (item) => item.product.id === product.id,
+    (item) => item.product.publicRef === product.publicRef,
   );
 
   if (existing) {
@@ -185,6 +187,7 @@ export function clearRequestCart(scope?: BrowserSessionScope | null) {
 
 export const requestCartInternals = {
   legacyStorageKey: LEGACY_REQUEST_CART_STORAGE_KEY,
+  legacyScopedStoragePrefix: LEGACY_SCOPED_REQUEST_CART_PREFIX,
   storagePrefix: REQUEST_CART_STORAGE_PREFIX,
   validItem,
   productPriceChanged,

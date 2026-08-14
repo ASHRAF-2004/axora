@@ -24,6 +24,8 @@ import {
   clearBrowserSessionWorkspace,
   SessionContinuity,
 } from "@/components/SessionContinuity";
+import { AtmosphereSelector } from "@/components/public/AtmosphereSelector";
+import type { PublicAtmosphere } from "@/lib/immersive-public-experience";
 
 export interface AppNavigationItem {
   href: string;
@@ -59,6 +61,8 @@ interface AppShellProps {
   };
   unreadNotifications?: number;
   profileRequired?: boolean;
+  allowAtmosphere?: boolean;
+  staffAtmosphere?: PublicAtmosphere;
 }
 
 function tourName(href: string) {
@@ -96,6 +100,8 @@ export function AppShell({
   brand,
   unreadNotifications = 0,
   profileRequired = false,
+  allowAtmosphere = false,
+  staffAtmosphere,
 }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -109,6 +115,7 @@ export function AppShell({
     unreadCount: number;
   } | null>(null);
   const notificationEtag = useRef<string | undefined>(undefined);
+  const notificationSequence = useRef(0);
   const [languagePending, startLanguageTransition] = useTransition();
   const messages = portalMessages(locale);
   const browserScope = {
@@ -127,8 +134,32 @@ export function AppShell({
 
   useEffect(() => {
     if (profileRequired) return;
+    notificationSequence.current = 0;
     let stopped = false;
+    let source: EventSource | null = null;
+    let fallbackInterval: number | undefined;
     const controller = new AbortController();
+
+    function applyNotificationSummary(result: {
+      unreadCount?: unknown;
+      versionToken?: unknown;
+    }) {
+      if (!Number.isInteger(result.unreadCount)
+        || Number(result.unreadCount) < 0
+        || typeof result.versionToken !== "string") return;
+      setPolledNotifications({
+        userId: user.id,
+        serverCount: unreadNotifications,
+        unreadCount: Number(result.unreadCount),
+      });
+      window.dispatchEvent(new CustomEvent("axora:notification-summary", {
+        detail: {
+          unreadCount: Number(result.unreadCount),
+          versionToken: result.versionToken,
+        },
+      }));
+    }
+
     async function pollNotifications() {
       if (stopped || document.visibilityState === "hidden" || !navigator.onLine) return;
       try {
@@ -145,42 +176,76 @@ export function AppShell({
           unreadCount?: unknown;
           versionToken?: unknown;
         };
-        if (!Number.isInteger(result.unreadCount)
-          || Number(result.unreadCount) < 0
-          || typeof result.versionToken !== "string") return;
         const etag = response.headers.get("etag");
         if (etag) notificationEtag.current = etag;
-        setPolledNotifications({
-          userId: user.id,
-          serverCount: unreadNotifications,
-          unreadCount: Number(result.unreadCount),
-        });
-        window.dispatchEvent(new CustomEvent("axora:notification-summary", {
-          detail: {
-            unreadCount: Number(result.unreadCount),
-            versionToken: result.versionToken,
-          },
-        }));
+        applyNotificationSummary(result);
       } catch {
         // Polling is opportunistic. The server-rendered count remains valid
         // and the next visible interval retries without surfacing private data.
       }
     }
-    const interval = window.setInterval(pollNotifications, 30_000);
-    function pollWhenVisible() {
-      if (document.visibilityState === "visible") void pollNotifications();
+
+    function startFallback() {
+      if (fallbackInterval !== undefined) return;
+      void pollNotifications();
+      fallbackInterval = window.setInterval(pollNotifications, 30_000);
     }
-    window.addEventListener("online", pollWhenVisible);
-    window.addEventListener("focus", pollWhenVisible);
-    document.addEventListener("visibilitychange", pollWhenVisible);
-    void pollNotifications();
+
+    function connect() {
+      if (stopped || source || document.visibilityState === "hidden" || !navigator.onLine) return;
+      if (!("EventSource" in window)) {
+        startFallback();
+        return;
+      }
+      source = new EventSource("/api/notifications/summary/stream", { withCredentials: true });
+      source.addEventListener("snapshot", (event) => {
+        try {
+          const message = JSON.parse((event as MessageEvent<string>).data) as {
+            sequence?: unknown;
+            snapshot?: { unreadCount?: unknown; versionToken?: unknown };
+          };
+          if (!Number.isSafeInteger(message.sequence)
+            || Number(message.sequence) <= notificationSequence.current
+            || !message.snapshot) return;
+          notificationSequence.current = Number(message.sequence);
+          if (fallbackInterval !== undefined) {
+            window.clearInterval(fallbackInterval);
+            fallbackInterval = undefined;
+          }
+          applyNotificationSummary(message.snapshot);
+        } catch {
+          // A malformed frame is ignored; the next server snapshot is authoritative.
+        }
+      });
+      source.onerror = () => {
+        // Native EventSource reconnects while bounded polling preserves live
+        // updates until the next authoritative stream snapshot arrives.
+        startFallback();
+      };
+    }
+
+    function updateTransport() {
+      if (document.visibilityState === "hidden" || !navigator.onLine) {
+        source?.close();
+        source = null;
+        return;
+      }
+      connect();
+      if (fallbackInterval !== undefined) void pollNotifications();
+    }
+
+    window.addEventListener("online", updateTransport);
+    window.addEventListener("focus", updateTransport);
+    document.addEventListener("visibilitychange", updateTransport);
+    connect();
     return () => {
       stopped = true;
       controller.abort();
-      window.clearInterval(interval);
-      window.removeEventListener("online", pollWhenVisible);
-      window.removeEventListener("focus", pollWhenVisible);
-      document.removeEventListener("visibilitychange", pollWhenVisible);
+      source?.close();
+      if (fallbackInterval !== undefined) window.clearInterval(fallbackInterval);
+      window.removeEventListener("online", updateTransport);
+      window.removeEventListener("focus", updateTransport);
+      document.removeEventListener("visibilitychange", updateTransport);
     };
   }, [profileRequired, unreadNotifications, user.id]);
 
@@ -269,6 +334,7 @@ export function AppShell({
           ))}
         </nav>
         <div className="app-topbar-actions">
+          {allowAtmosphere ? <div className="app-desktop-atmosphere"><AtmosphereSelector compact locale={locale} staffUserId={user.id} initialAtmosphere={staffAtmosphere} /></div> : null}
           {quickAction ? <Link className="button app-quick-action" href={quickAction.href}>{quickAction.label}</Link> : null}
           {!profileRequired ? (
             <Link className="app-notification-button" href="/notifications" aria-label={messages.shell.notifications(notificationUnreadCount)}>
@@ -326,6 +392,7 @@ export function AppShell({
           </div>
           <button type="button" onClick={() => drawerRef.current?.close()} aria-label={messages.shell.closeMenu}><X size={20} aria-hidden="true" /></button>
         </div>
+        {allowAtmosphere ? <div className="app-drawer-atmosphere"><AtmosphereSelector compact locale={locale} staffUserId={user.id} initialAtmosphere={staffAtmosphere} /></div> : null}
         <nav aria-label={messages.shell.completeNavigation}>
           {Object.entries(grouped).map(([group, items]) => (
             <section key={group}>

@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { randomUUID } from "node:crypto";
 import { requireSession } from "@/lib/auth";
 import { getBudgetWorkspace } from "@/lib/budget-ledger";
@@ -23,6 +23,7 @@ export default async function BudgetsPage({
   searchParams: Promise<{ success?: string; error?: string }>;
 }) {
   const actor = await requireSession();
+  if (actor.accountKind !== "COMPANY") notFound();
   if (!actor.roleAssignmentId) redirect("/access-denied");
   const [workspace, cycleWorkspace, feedback] = await Promise.all([
     getBudgetWorkspace(actor),
@@ -37,7 +38,7 @@ export default async function BudgetsPage({
   return (
     <main className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
       <header className={styles.hero}>
-        <span className={styles.eyebrow}>P0-07</span>
+        <span className={styles.eyebrow}>{messages.budgetsTitle}</span>
         <h1>{messages.budgetsTitle}</h1>
         <p>{messages.budgetsIntro}</p>
       </header>

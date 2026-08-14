@@ -44,6 +44,8 @@ export default defineConfig({
       DEMO_EMAIL: "owner@axora.e2e",
       DEMO_PASSWORD: "public-e2e-fixture-password",
       SESSION_SECRET: "public-e2e-session-key-not-for-production-0001",
+      TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+      NEXT_PUBLIC_AXORA_MAP_STYLE_URL: "/maps/axora-operational-style.json",
       NEXT_TELEMETRY_DISABLED: "1",
     },
   },

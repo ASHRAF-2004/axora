@@ -34,8 +34,10 @@ describe("authenticated production route stabilization", () => {
     ), "utf8");
     expect(source).toContain('requirePagePermission("view_deliveries")');
     expect(source).toContain('canAccess(actor, "manage_deliveries")');
-    expect(source).toContain('<DeliveryTrackingBoard audience="company"');
-    expect(source).toContain("<DeliverySupervisorPanel");
+    expect(source).toContain("<DeliveryTrackingBoard");
+    expect(source).not.toContain("audience=");
+    expect(source).toContain("<ManageDriversPanel");
+    expect(source).not.toContain("DeliverySupervisorPanel");
   });
 
   it("keeps the transactional outbox provider-agent guard contiguous", async () => {

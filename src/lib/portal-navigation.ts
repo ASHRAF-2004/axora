@@ -11,6 +11,7 @@ export interface PortalNavigationItem {
 interface NavigationDefinition extends PortalNavigationItem {
   permission?: Permission;
   ownerOnly?: boolean;
+  companyOnly?: boolean;
 }
 
 export const PRIMARY_NAVIGATION: readonly NavigationDefinition[] = [
@@ -20,7 +21,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/products", label: "Shop", permission: "view_catalog" },
   { href: "/requests", label: "Requests", permission: "view_requests" },
   { href: "/approvals", label: "Approvals", permission: "view_approvals" },
-  { href: "/budgets", label: "Budgets", permission: "view_budgets" },
+  { href: "/budgets", label: "Budgets", permission: "view_budgets", companyOnly: true },
   { href: "/deliveries", label: "Deliveries", permission: "view_deliveries" },
   { href: "/finance", label: "Invoices", permission: "view_invoices" },
 ];
@@ -31,7 +32,7 @@ export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/companies", label: "Companies", description: "Onboarding and tenant health", permission: "manage_companies", group: "administration" },
   { href: "/products", label: "Global catalog", description: "Products and customer-facing images", permission: "manage_catalog", group: "administration" },
   { href: "/branches", label: "Branches & budgets", description: "Company structure and controls", permission: "view_branches", group: "administration" },
-  { href: "/budgets", label: "Budget ledger", description: "Authorization periods, balances and reservations", permission: "view_budgets", group: "administration" },
+  { href: "/budgets", label: "Budget ledger", description: "Authorization periods, balances and reservations", permission: "view_budgets", companyOnly: true, group: "administration" },
   { href: "/users", label: "People & access", description: "Invitations, roles and scope", permission: "manage_users", group: "administration" },
   { href: "/reports", label: "Reports", description: "Operational and company insights", permission: "view_reports", group: "insight" },
   { href: "/audit", label: "Audit history", description: "Read-only evidence trail", permission: "view_audit", group: "insight" },
@@ -48,6 +49,7 @@ export function visiblePortalNavigation(
 ): PortalNavigationItem[] {
   return items.filter((item) => {
     if (item.ownerOnly && !user.isOwner) return false;
+    if (item.companyOnly && user.accountKind !== "COMPANY") return false;
     return !item.permission || canAccess(user, item.permission);
   }).map((item) => ({
     href: item.href,

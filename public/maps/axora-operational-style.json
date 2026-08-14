@@ -1,0 +1,14 @@
+{
+  "version": 8,
+  "name": "Axora operational fallback",
+  "sources": {},
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#071d35"
+      }
+    }
+  ]
+}

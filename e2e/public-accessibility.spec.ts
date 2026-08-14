@@ -27,6 +27,8 @@ const publicRoutes = [
   },
 ] as const;
 
+test.beforeEach(async ({ page }) => installClaimedPublicVisitor(page));
+
 test("public account routes expose a main landmark and page heading", async ({
   page,
 }) => {
@@ -168,7 +170,7 @@ test("public content and sign-in remain usable while noncritical media is slow",
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "One clear path from business need to verified delivery.",
+      name: "Enter the Axora world",
     }),
   ).toBeVisible();
   await expect(page.locator(".public-login-link")).toBeVisible();
@@ -177,3 +179,4 @@ test("public content and sign-in remain usable while noncritical media is slow",
     "/login",
   );
 });
+import { installClaimedPublicVisitor } from "./helpers/public-visitor";

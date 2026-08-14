@@ -564,6 +564,13 @@ export const FOUNDATION_PERMISSION_CATALOG = [
 
 export const ADDITIVE_PERMISSION_CATALOG = [
   {
+    "code": "delivery.claim",
+    "group": "Delivery",
+    "label": "Claim available deliveries",
+    "description": "Atomically claim one paid delivery job from the available pool.",
+    "highRisk": true
+  },
+  {
     "code": "company.create",
     "group": "Companies",
     "label": "Create companies",
@@ -761,7 +768,8 @@ export const ROLE_DEFAULT_PERMISSIONS = {
   "DELIVERY_GUY": [
     "dashboard.view",
     "delivery.portal.view",
-    "delivery.assignment.update"
+    "delivery.assignment.update",
+    "delivery.claim"
   ],
   "PLATFORM_OWNER": [
     "dashboard.view",

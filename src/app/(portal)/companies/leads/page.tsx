@@ -150,7 +150,7 @@ export default async function CompanyLeadsPage({
 
   return <div className="page-stack">
     <header className="page-header">
-      <div><p className="eyebrow">P0-05</p><h1>{copy.queueTitle}</h1><p>{copy.queueIntro}</p></div>
+      <div><p className="eyebrow">{copy.queueTitle}</p><h1>{copy.queueTitle}</h1><p>{copy.queueIntro}</p></div>
       <Link className="button button-secondary" href="/companies">{copy.backToCompanies}</Link>
     </header>
 

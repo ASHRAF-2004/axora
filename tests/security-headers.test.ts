@@ -26,6 +26,6 @@ describe("content security policy", () => {
   it("allows only the official Turnstile origin for third-party challenge content", () => {
     const policy = buildContentSecurityPolicy("turnstile", false);
     expect(policy).toContain("frame-src https://challenges.cloudflare.com");
-    expect(policy).toContain("connect-src 'self' https://challenges.cloudflare.com");
+    expect(policy).toContain("connect-src 'self' blob: https://challenges.cloudflare.com");
   });
 });

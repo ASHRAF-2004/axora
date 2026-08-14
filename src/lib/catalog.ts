@@ -7,6 +7,7 @@ import { withDemoCommercialDefaults } from "./procurement-rules";
 import {
   CATALOG_SORTS,
   type CatalogFacetOption,
+  type CustomerCatalogProduct,
   type CatalogSearchInput,
   type CatalogSearchResult,
   type CatalogSort,
@@ -19,6 +20,7 @@ export type {
   CatalogSearchInput,
   CatalogSearchResult,
   CatalogSort,
+  CustomerCatalogProduct,
   ShopCategorySummary,
   ShopSubcategorySummary,
 } from "./catalog-contracts";
@@ -70,9 +72,37 @@ function normalizeInput(input: CatalogSearchInput) {
 
 export const catalogInternals = { normalizeInput };
 
+function customerProductReference(product: Pick<Product,"name" | "publicReference">) {
+  if (product.publicReference) return product.publicReference;
+  const slug = product.name.normalize("NFKD").toLowerCase()
+    .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,64);
+  return `demo-${slug || "catalog-item"}`;
+}
+
+export function customerCatalogProduct(product: Product): CustomerCatalogProduct {
+  return {
+    publicRef: customerProductReference(product),
+    name: product.name,
+    category: product.category,
+    subcategory: product.subcategory,
+    brand: product.brand,
+    size: product.size,
+    unit: product.unit,
+    description: product.description,
+    defaultSellPrice: product.defaultSellPrice,
+    priceRuleVersion: product.priceRuleVersion,
+    priceEffectiveFrom: product.priceEffectiveFrom,
+    priceChangedAt: product.priceChangedAt,
+    priceCurrency: product.priceCurrency,
+    deliverySlaDays: product.deliverySlaDays,
+    hasImage: product.hasImage,
+    imageAltText: product.imageAltText,
+  };
+}
+
 function searchableProductText(product: Product) {
   return [
-    product.code,
+    customerProductReference(product),
     product.name,
     product.category,
     product.subcategory,
@@ -136,10 +166,10 @@ function sortDemoProducts(
       const term = searchTerm.toLowerCase();
 
       function rank(product: Product) {
-        if (product.code.toLowerCase() === term) return 0;
+        if (customerProductReference(product).toLowerCase() === term) return 0;
         if (product.name.toLowerCase() === term) return 1;
         if (product.name.toLowerCase().startsWith(term)) return 2;
-        if (product.code.toLowerCase().startsWith(term)) return 3;
+        if (customerProductReference(product).toLowerCase().startsWith(term)) return 3;
         return 4;
       }
 
@@ -249,7 +279,7 @@ async function searchDemoCatalog(
     }));
 
   return {
-    products,
+    products: products.map(customerCatalogProduct),
     total: sorted.length,
     page: input.page,
     limit: input.limit,
@@ -299,7 +329,7 @@ export async function searchCatalogProducts(
   if (input.query) {
     const searchParameter = parameter(`%${input.query}%`);
     conditions.push(`(
-      p.product_code ILIKE ${searchParameter}
+      p.public_reference ILIKE ${searchParameter}
       OR p.name ILIKE ${searchParameter}
       OR p.category ILIKE ${searchParameter}
       OR p.subcategory ILIKE ${searchParameter}
@@ -365,10 +395,10 @@ export async function searchCatalogProducts(
   const sortExpressions: Record<CatalogSort, string> = {
     relevance: input.query
       ? `CASE
-          WHEN LOWER(p.product_code)=LOWER(${parameter(input.query)}) THEN 0
+          WHEN LOWER(p.public_reference)=LOWER(${parameter(input.query)}) THEN 0
           WHEN LOWER(p.name)=LOWER($${values.length}) THEN 1
           WHEN LOWER(p.name) LIKE LOWER($${values.length}) || '%' THEN 2
-          WHEN LOWER(p.product_code) LIKE LOWER($${values.length}) || '%' THEN 3
+          WHEN LOWER(p.public_reference) LIKE LOWER($${values.length}) || '%' THEN 3
           ELSE 4
         END, p.name`
       : "p.name",
@@ -396,7 +426,8 @@ export async function searchCatalogProducts(
         p.id::text,
         p.company_id::text AS "companyId",
         c.name AS "companyName",
-        p.product_code AS code,
+        p.public_reference AS code,
+        p.public_reference AS "publicReference",
         p.name,
         p.category,
         p.subcategory,
@@ -475,7 +506,7 @@ export async function searchCatalogProducts(
   const price = priceResult.rows[0];
 
   return {
-    products: productsResult.rows,
+    products: productsResult.rows.map(customerCatalogProduct),
     total,
     page: input.page,
     limit: input.limit,
@@ -544,7 +575,8 @@ export async function getCatalogProductById(
       p.id::text,
       p.company_id::text AS "companyId",
       c.name AS "companyName",
-      p.product_code AS code,
+      p.public_reference AS code,
+      p.public_reference AS "publicReference",
       p.name,
       p.category,
       p.subcategory,
@@ -651,7 +683,8 @@ export async function getCatalogProductsByIds(
       p.id::text,
       p.company_id::text AS "companyId",
       c.name AS "companyName",
-      p.product_code AS code,
+      p.public_reference AS code,
+      p.public_reference AS "publicReference",
       p.name,
       p.category,
       p.subcategory,
@@ -684,12 +717,87 @@ export async function getCatalogProductsByIds(
     .filter((product): product is Product => Boolean(product));
 }
 
-function shopSafeProduct(product: Product): Product {
-  return {
+export async function getCatalogProductsByPublicRefs(
+  productRefs: string[],
+  providedActor?: SessionUser,
+): Promise<Product[]> {
+  const actor = providedActor ?? await requireSession();
+  if (!canAccess(actor, "view_catalog")) {
+    throw new Error("Your account cannot view the product catalog.");
+  }
+  const refs = [...new Set(productRefs.map((value) => value.trim()).filter(Boolean))].slice(0, 100);
+  if (!refs.length) return [];
+
+  if (isDemoMode()) {
+    const byRef = new Map(
+      getDemoStore().products
+        .filter((product) => product.status === "Active" && !product.duplicateWarning
+          && (actor.isOwner || !product.companyId || product.companyId === actor.companyId))
+        .map((product) => {
+          const normalized = withDemoCommercialDefaults(product);
+          return [customerProductReference(normalized), { ...normalized, defaultBuyPrice: 0, duplicateWarning: false } as Product];
+        }),
+    );
+    return refs.flatMap((ref) => {
+      const product = byRef.get(ref);
+      return product ? [product] : [];
+    });
+  }
+
+  if (!actor.isOwner && !actor.companyId) return [];
+  const values: unknown[] = [refs];
+  const conditions = [
+    "p.public_reference = ANY($1::text[])",
+    "p.active=true",
+    "p.needs_review=false",
+  ];
+  if (!actor.isOwner) {
+    values.push(actor.companyId);
+    conditions.push("(p.company_id IS NULL OR p.company_id=$2)");
+  }
+  const result = await query<Product>(
+    `SELECT p.id::text,p.company_id::text AS "companyId",c.name AS "companyName",
+      p.public_reference AS code,p.public_reference AS "publicReference",p.name,p.category,p.subcategory,p.brand,
+      p.product_size AS size,p.unit_of_measure AS unit,p.packaging,p.description,
+      0::float8 AS "defaultBuyPrice",p.default_sell_price::float8 AS "defaultSellPrice",
+      p.price_rule_version AS "priceRuleVersion",p.price_effective_from::text AS "priceEffectiveFrom",
+      p.price_changed_at::text AS "priceChangedAt",p.price_currency AS "priceCurrency",
+      p.delivery_sla_days AS "deliverySlaDays",p.has_image AS "hasImage",
+      p.image_alt_text AS "imageAltText",'Active'::text AS status,
+      false AS "duplicateWarning"
+    FROM v_customer_catalog_products p
+    LEFT JOIN companies c ON c.id=p.company_id
+    WHERE ${conditions.join(" AND ")}`,
+    values,
+  );
+  const byRef = new Map(result.rows.map((product) => [customerProductReference(product), product]));
+  return refs.flatMap((ref) => {
+    const product = byRef.get(ref);
+    return product ? [product] : [];
+  });
+}
+
+export async function getCustomerCatalogProductsByPublicRefs(
+  productRefs: string[],
+  providedActor?: SessionUser,
+) {
+  return (await getCatalogProductsByPublicRefs(productRefs, providedActor))
+    .map(customerCatalogProduct);
+}
+
+export async function getCustomerCatalogProductByPublicRef(
+  productRef: string,
+  providedActor?: SessionUser,
+) {
+  return (await getCustomerCatalogProductsByPublicRefs([productRef], providedActor))[0];
+}
+
+function shopSafeProduct(product: Product): CustomerCatalogProduct {
+  return customerCatalogProduct({
     ...withDemoCommercialDefaults(product),
     defaultBuyPrice: 0,
     duplicateWarning: false,
-  };
+  });
 }
 
 export async function listShopDepartments(
@@ -830,7 +938,7 @@ export async function listShopDepartments(
         p.id,
         p.company_id,
         c.name AS company_name,
-        p.product_code,
+        p.public_reference,
         p.name,
         p.category,
         p.subcategory,
@@ -867,7 +975,8 @@ export async function listShopDepartments(
       id::text,
       company_id::text AS "companyId",
       company_name AS "companyName",
-      product_code AS code,
+      public_reference AS code,
+      public_reference AS "publicReference",
       name,
       category,
       subcategory,
@@ -893,7 +1002,7 @@ export async function listShopDepartments(
   const categories = new Map<string, ShopCategorySummary>();
 
   for (const row of result.rows) {
-    const sampleProduct: Product = {
+    const sampleProduct = customerCatalogProduct({
       id: row.id,
       companyId: row.companyId,
       companyName: row.companyName,
@@ -917,7 +1026,7 @@ export async function listShopDepartments(
       imageAltText: row.imageAltText,
       status: "Active",
       duplicateWarning: false,
-    };
+    });
 
     const existing = categories.get(row.category);
 

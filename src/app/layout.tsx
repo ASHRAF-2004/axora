@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { InteractionMagic } from "@/components/InteractionMagic";
 import { UxFeedbackProvider } from "@/components/UxFeedbackProvider";
+import { AtmosphereProvider } from "@/components/public/AtmosphereProvider";
 import { isSupportedLocale, LOCALE_NAMES } from "@/lib/i18n";
 import { requestLocaleDecision } from "@/lib/locale-server";
 import { headers } from "next/headers";
@@ -35,10 +36,12 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={LOCALE_NAMES[locale].dir}>
       <body>
-        <UxFeedbackProvider>
-          <InteractionMagic />
-          {children}
-        </UxFeedbackProvider>
+        <AtmosphereProvider>
+          <UxFeedbackProvider>
+            <InteractionMagic />
+            {children}
+          </UxFeedbackProvider>
+        </AtmosphereProvider>
       </body>
     </html>
   );

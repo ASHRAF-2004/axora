@@ -3,13 +3,24 @@ import AxeBuilder from "@axe-core/playwright";
 
 const baseURL = "http://127.0.0.1:3100";
 
+test.beforeEach(async ({ page }) => {
+  await page.route(/\/api\/public\/visitor-choice$/, async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ totalCount: 42, earlyBirdCount: 24, nightOwlCount: 18, choice: "EARLY_BIRD", visitorNumber: 42 }),
+    });
+  });
+});
+
 async function useLocale(context: Parameters<typeof test>[0] extends never ? never : import("@playwright/test").BrowserContext, locale: "en" | "ar" | "ms") {
   await context.addCookies([{ name: "axora_locale", value: locale, url: baseURL }]);
 }
 
 async function expectWorkflowSceneReady(page: Page) {
-  const canvas = page.locator('canvas[data-testid="workflow-webgl"]');
-  await expect(canvas).toBeVisible();
+  const canvas = page.locator("[data-scene-route] canvas").first();
+  await expect(canvas).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => canvas.evaluate((element) => {
     const scene = element as HTMLCanvasElement;
     const context = scene.getContext("webgl2") ?? scene.getContext("webgl");
@@ -30,14 +41,14 @@ test("desktop loads the 3D console and keeps every control accessible", async ({
   await page.goto("/en");
 
   await expect(page.getByTestId("workflow-console")).toBeVisible();
-  await expect(page.locator('canvas[data-testid="workflow-webgl"]')).toBeVisible();
-  const approve = page.getByRole("tab", { name: /02.*Approve/ });
+  await expect(page.locator("[data-scene-route] canvas").first()).toBeVisible({ timeout: 15_000 });
+  const approve = page.getByRole("button", { name: /02.*Approve/ });
   await approve.click();
-  await expect(approve).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel")).toContainText("separation of duties");
+  await expect(approve).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-scene-step="1"]')).toContainText("budget and approval limits");
   await page.locator("body").click({ position: { x: 4, y: 4 } });
   await page.keyboard.press("3");
-  await expect(page.getByRole("tab", { name: /03.*Pay/ })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("button", { name: /03.*Pay/ })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "Enable interface sound" })).toHaveAttribute("aria-pressed", "false");
   expect(errors).toEqual([]);
 });
@@ -56,10 +67,17 @@ test("sound stays silent by default and persists only after explicit activation"
 test("theme persists without enabling sound or overriding document direction", async ({ context, page }) => {
   await useLocale(context, "en");
   await page.goto("/en");
-  await page.getByRole("button", { name: "Ember" }).click();
-  await expect(page.locator('[data-atmosphere="ember"]')).toBeVisible();
+  const emberButton = page.getByRole("button", { name: "Ember" });
+  const mobileMenuButton = page.getByRole("button", { name: "Open menu" });
+  await expect(emberButton.or(mobileMenuButton)).toBeVisible();
+  if (await mobileMenuButton.isVisible()) {
+    await mobileMenuButton.click();
+  }
+  await expect(emberButton).toBeVisible();
+  await emberButton.click();
+  await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();
   await page.reload();
-  await expect(page.locator('[data-atmosphere="ember"]')).toBeVisible();
+  await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "Enable interface sound" })).toHaveAttribute("aria-pressed", "false");
 });
 
@@ -67,9 +85,9 @@ test("reduced motion receives meaningful static content with no canvas", async (
   await useLocale(context, "en");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/en");
-  await expect(page.getByTestId("workflow-fallback")).toBeVisible();
-  await expect(page.locator('canvas[data-testid="workflow-webgl"]')).toHaveCount(0);
-  await expect(page.getByRole("tab", { name: /01.*Request/ })).toBeVisible();
+  await expect(page.getByTestId("workflow-fallback").first()).toBeVisible();
+  await expect(page.locator("[data-scene-route] canvas")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /01.*Request/ })).toBeVisible();
 });
 
 test("WebGL unavailability falls back while navigation and challenge remain usable", async ({ context, page }, testInfo) => {
@@ -85,8 +103,8 @@ test("WebGL unavailability falls back while navigation and challenge remain usab
     });
   });
   await page.goto("/en");
-  await expect(page.getByTestId("workflow-fallback")).toBeVisible();
-  await expect(page.locator("#visitor-choice-title")).toBeVisible();
+  await expect(page.getByTestId("workflow-fallback").first()).toBeVisible();
+  await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
   await expect(page.locator(".public-login-link")).toHaveAttribute("href", "/login");
   await page.screenshot({
     animations: "disabled",
@@ -98,10 +116,10 @@ test("WebGL unavailability falls back while navigation and challenge remain usab
 
 test("a failed 3D chunk leaves the full semantic experience available", async ({ context, page }) => {
   await useLocale(context, "en");
-  await page.route("**/_next/static/chunks/node_modules_three*.js", (route) => route.abort("failed"));
+  await page.route("**/immersive/models/*.glb", (route) => route.abort("failed"));
   await page.goto("/en");
-  await expect(page.getByTestId("workflow-fallback")).toHaveAttribute("data-reason", "scene-failed");
-  await expect(page.getByRole("tab", { name: /01.*Request/ })).toBeVisible();
+  await expect(page.getByTestId("workflow-fallback").first()).toHaveAttribute("data-reason", "scene-failed");
+  await expect(page.getByRole("button", { name: /01.*Request/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
 
@@ -111,16 +129,16 @@ test("the server-rendered document retains meaningful localized content without 
 
   expect(response.ok()).toBe(true);
   expect(html).toContain("One clear path from business need to verified delivery.");
-  expect(html).toContain("Axora Workflow Console");
+  expect(html).toContain("Enter the Axora world");
 });
 
 test("context loss restores the semantic console without losing the route", async ({ context, page }) => {
   await useLocale(context, "en");
   await page.goto("/en");
-  const canvas = page.locator('canvas[data-testid="workflow-webgl"]');
-  await expect(canvas).toBeVisible();
+  const canvas = page.locator("[data-scene-route] canvas").first();
+  await expect(canvas).toBeVisible({ timeout: 15_000 });
   await canvas.dispatchEvent("webglcontextlost", { cancelable: true });
-  await expect(page.getByTestId("workflow-fallback")).toHaveAttribute("data-reason", "context-lost");
+  await expect(page.locator('[data-testid="workflow-fallback"][data-reason="context-lost"]')).toBeVisible();
   await expect(page).toHaveURL(/\/en$/);
 });
 
@@ -128,11 +146,34 @@ test("Arabic mirrors direction and Malay localizes workflow controls", async ({ 
   await useLocale(context, "ar");
   await page.goto("/ar");
   await expect(page.locator('[data-locale="ar"]')).toHaveAttribute("dir", "rtl");
-  await expect(page.getByRole("tab", { name: /02.*الموافقة/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /02.*الموافقة/ })).toBeVisible();
 
   await useLocale(context, "ms");
   await page.goto("/ms");
-  await expect(page.getByRole("tab", { name: /02.*Lulus/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /02.*Lulus/ })).toBeVisible();
+});
+
+test("every public route presents and transforms its own semantic 3D sequence", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "The complete route evidence set is captured once by desktop Chromium.");
+  await useLocale(context, "en");
+  const cases = [
+    { path: "/en", route: "home", initial: "request", next: "approve", file: "homepage" },
+    { path: "/en/how-it-works", route: "how-it-works", initial: "request", next: "approve", file: "how-it-works" },
+    { path: "/en/procurement-process", route: "procurement-process", initial: "request", next: "approve", file: "procurement-process" },
+    { path: "/en/solutions-by-role", route: "solutions-by-role", initial: "person", next: "workspace", file: "solutions-by-role" },
+    { path: "/en/security-and-privacy", route: "security-and-privacy", initial: "shield", next: "vault", file: "security-and-privacy" },
+    { path: "/en/about", route: "about", initial: "company", next: "network", file: "about" },
+  ] as const;
+  for (const item of cases) {
+      await page.goto(item.path);
+      const world = page.locator(`[data-public-scene="${item.route}"]`);
+      await expect(world).toBeVisible();
+      await expect(world).toHaveAttribute("data-interaction-ready", "true");
+      await expect(world.locator(`[data-scene-route="${item.route}"]`).first()).toHaveAttribute("data-semantic-model", item.initial);
+    await world.locator("[data-scene-step]").nth(1).getByRole("button").click();
+    await expect(world.locator(`[data-scene-route="${item.route}"]`).first()).toHaveAttribute("data-semantic-model", item.next);
+    await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/v2-${item.file}.png`, fullPage: true });
+  }
 });
 
 test("desktop and theme visual evidence is captured once in Chromium", async ({ context, page }, testInfo) => {
@@ -148,11 +189,11 @@ test("desktop and theme visual evidence is captured once in Chromium", async ({ 
     const atmosphere = theme.toLowerCase();
     await themeButton.click();
     await expect(themeButton).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(`[data-atmosphere="${atmosphere}"]`)).toBeVisible();
+    await expect(page.locator(`html[data-atmosphere="${atmosphere}"]`)).toBeVisible();
     await expectWorkflowSceneReady(page);
     await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-theme-${atmosphere}-${testInfo.project.name}.png`, fullPage: false });
   }
-  await page.getByRole("tab", { name: /06.*Deliver/ }).click();
+  await page.getByRole("button", { name: /06.*Deliver/ }).click();
   await page.locator("#workflow").screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-workflow-${testInfo.project.name}.png` });
 
   await page.goto("/login");
@@ -177,7 +218,7 @@ test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mob
   await page.emulateMedia({ reducedMotion: "reduce" });
   await useLocale(context, "en");
   await page.goto("/en");
-  await expect(page.getByTestId("workflow-fallback")).toBeVisible();
+  await expect(page.getByTestId("workflow-fallback").first()).toBeVisible();
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-reduced-motion-${testInfo.project.name}.png`, fullPage: false });
 });
 
@@ -193,6 +234,13 @@ test("public experience passes WCAG A and AA automation", async ({ context, page
 test("every atmosphere retains automated color contrast", async ({ context, page }) => {
   await useLocale(context, "en");
   await page.goto("/en");
+  const auroraButton = page.getByRole("button", { name: "Aurora", exact: true });
+  const mobileMenuButton = page.getByRole("button", { name: "Open menu" });
+  await expect(auroraButton.or(mobileMenuButton)).toBeVisible();
+  if (await mobileMenuButton.isVisible()) {
+    await mobileMenuButton.click();
+  }
+  await expect(auroraButton).toBeVisible();
   for (const theme of ["Aurora", "Solar", "Ember", "Midnight"] as const) {
     await page.getByRole("button", { name: theme, exact: true }).click();
     const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();

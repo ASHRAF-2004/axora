@@ -1,6 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { UserCreateForm } from "@/components/UserCreateForm";
 import { UserAvatar } from "@/components/UserAvatar";
 import { InvitationResendForm } from "@/components/InvitationResendForm";
 import { accessAdministrationMessages } from "@/lib/access-administration-i18n";
@@ -9,14 +8,9 @@ import { formatDateTime } from "@/lib/domain";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
 import { localizedAccountRole } from "@/lib/user-form-i18n";
-import { creatableAccountRoles, accountRoleLabel } from "@/lib/role-catalog";
-import { loadOrganizationDirectory } from "@/lib/organization-access";
-import { loadOrganizationStructureWorkspace } from "@/lib/organization-structure";
-import { STANDARD_BILLING_TERMS, type Branch, type Company } from "@/lib/types";
+import { accountRoleLabel } from "@/lib/role-catalog";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { profileImageMessages } from "@/lib/profile-image-i18n";
-import { defaultPermissionsForRole } from "@/lib/authorization-policy";
-import { listGrantablePermissionOptions } from "@/lib/route-authorization";
 import Link from "next/link";
 import {
   setUserActiveAction,
@@ -69,25 +63,13 @@ export default async function UsersPage({
   const common = corePortalMessages(locale).common;
   const accessCopy = accessAdministrationMessages(locale);
   const imageCopy = profileImageMessages(locale);
-  const availableRoles = creatableAccountRoles(actor);
-  const [directoryUsers, organization, structure, permissionOptions, params] = await Promise.all([
+  const [directoryUsers, params] = await Promise.all([
     listAuthorizedUsers(actor),
-    loadOrganizationDirectory(actor),
-    loadOrganizationStructureWorkspace(actor),
-    listGrantablePermissionOptions(actor),
     searchParams,
   ]);
   const users = directoryUsers.filter((user) => user.accountStatus !== "DEACTIVATED");
   const notice = params.notice === "user-removed" ? copy.removedNotice
     : params.notice === "remove-unavailable" ? copy.removeUnavailable : undefined;
-  const companies: Company[] = organization.companies.map((company) => ({
-    ...company,
-    paymentTerms: STANDARD_BILLING_TERMS,
-  }));
-  const branches: Branch[] = organization.branches.map((branch) => ({
-    ...branch,
-    committedAmount: branch.committedAmount ?? 0,
-  }));
   const activeAdminCounts = users.reduce<Record<string, number>>((counts, user) => {
     if (user.active && user.accountSetupCompletedAt
       && ["ADMIN", "COMPANY_ADMIN"].includes(user.role) && user.companyId) {
@@ -101,42 +83,8 @@ export default async function UsersPage({
   const showOrganization = actor.accountKind === "PLATFORM" || actor.isOwner;
 
   return <><PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
+    <div className="page-actions"><Link className="button button-primary" href="/users/new">{copy.create}</Link></div>
     {notice ? <div className="callout" role="status"><strong>{notice}</strong></div> : null}
-    <section className="detail-grid">
-      <article className="panel form-panel"><h2>{copy.create}</h2>
-        <UserCreateForm
-          actorBranchId={actor.branchId}
-          actorCompanyId={actor.companyId}
-          actorDepartmentId={actor.departmentId}
-          actorIsOwner={actor.isOwner}
-          defaultLocale={actor.preferredLocale ?? "en"}
-          branches={branches}
-          companies={companies}
-          departments={structure.departments}
-          permissionOptions={permissionOptions}
-          roleOptions={availableRoles.map((role) => ({
-            value: role.key,
-            label: role.label,
-            description: role.description,
-            category: role.category,
-            accountKind: role.accountKind,
-            allowedScopes: role.allowedScopes,
-            defaultPermissions: defaultPermissionsForRole(
-              role.key,
-              role.allowedScopes[0],
-              role.key === "PLATFORM_OWNER",
-            ),
-          }))}
-        />
-      </article>
-      <aside className="panel"><div className="panel-header"><div><h2>{copy.smallestRole}</h2><p>{copy.smallestRoleBody}</p></div></div>
-        <div className="panel-body"><div className="callout"><strong>{copy.requesterRole}</strong><p>{copy.requesterBody}</p></div>
-          <div className="callout"><strong>{copy.approverRole}</strong><p>{copy.approverBody}</p></div>
-          <div className="callout"><strong>{copy.branchAdminRole}</strong><p>{copy.branchAdminBody}</p></div>
-          <div className="callout"><strong>{copy.companyAdminRole}</strong><p>{copy.companyAdminBody}</p></div></div>
-      </aside>
-    </section>
-
     <section className="panel" style={{ marginBlockStart: 17 }}><div className="data-table-wrap"><table className="data-table"><thead><tr>
       <th>{copy.user}</th>{showOrganization ? <th>{copy.organization}</th> : null}<th>{copy.role}</th><th>{copy.scope}</th><th>{common.status}</th><th>{copy.lastLogin}</th><th>{copy.action}</th>
     </tr></thead><tbody>{users.map((user) => {

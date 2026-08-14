@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 
 describe("delivery execution role interfaces", () => {
   it("keeps versioned offline commands, buying progress, proof and recipient OTP visible", async () => {
-    const [driver, supervisor, receiver, styles, copy] = await Promise.all([
+    const [driver, availableJobs, receiver, styles, copy] = await Promise.all([
       readFile(new URL("../src/components/role-portals/DeliveryExecutionPanel.tsx", import.meta.url), "utf8"),
-      readFile(new URL("../src/components/role-portals/DeliverySupervisorPanel.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/components/role-portals/AvailableDeliveryJobs.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/components/role-portals/ReceivingOtpPanel.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/components/role-portals/DeliveryExecution.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/lib/delivery-workflow-i18n.ts", import.meta.url), "utf8"),
@@ -21,9 +21,10 @@ describe("delivery execution role interfaces", () => {
     expect(driver).not.toContain("/api/driver/shopping");
     expect(driver).toContain("/api/driver/proof");
     expect(driver).toContain("/api/driver/otp");
-    expect(supervisor).toContain("branchTimezone");
-    expect(supervisor).toContain("proofPolicy");
-    expect(supervisor).toContain("activeJobs");
+    expect(availableJobs).toContain("/api/driver/jobs");
+    expect(availableJobs).toContain("This job was already claimed.");
+    expect(availableJobs).toContain("crypto.randomUUID()");
+    expect(availableJobs).not.toContain("driverRoleAssignmentId");
     expect(receiver).toContain("oneTimeWarning");
     expect(styles).toContain("border-inline-start");
     expect(styles).toContain("prefers-reduced-motion: no-preference");

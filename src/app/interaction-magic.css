@@ -9,19 +9,6 @@
   contain: strict;
 }
 
-.interaction-pointer-light {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 34rem;
-  height: 34rem;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(232, 163, 61, .13), rgba(232, 163, 61, .035) 36%, transparent 69%);
-  transform: translate3d(calc(50vw - 50%), calc(28vh - 50%), 0);
-  transition: opacity 180ms ease;
-  mix-blend-mode: soft-light;
-}
-
 .interaction-orbit {
   position: absolute;
   border: 1px solid rgba(232, 163, 61, .13);
@@ -61,14 +48,6 @@
 .login-template-shell ~ .interaction-atmosphere,
 .interaction-atmosphere:has(~ .login-template-shell) {
   z-index: 1;
-}
-
-.interaction-atmosphere:has(~ .login-template-shell) .interaction-pointer-light {
-  width: 46rem;
-  height: 46rem;
-  opacity: .9;
-  background: radial-gradient(circle, rgba(240, 179, 74, .27), rgba(232, 163, 61, .07) 32%, transparent 68%);
-  mix-blend-mode: screen;
 }
 
 .login-template-shell {
@@ -270,12 +249,10 @@
 }
 
 @media (pointer: coarse) {
-  .interaction-pointer-light { display: none; }
   :where(.button, .catalog-product-card, .shop-product-card):hover { transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .interaction-pointer-light,
   .interaction-orbit { display: none; }
 
   .login-template-container,

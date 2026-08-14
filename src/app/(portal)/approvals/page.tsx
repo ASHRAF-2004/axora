@@ -42,7 +42,7 @@ export default async function ApprovalsPage({
   return (
     <main className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
       <header className={styles.hero}>
-        <span className={styles.eyebrow}>P0-08</span>
+        <span className={styles.eyebrow}>{messages.approvalTitle}</span>
         <h1>{messages.approvalTitle}</h1>
         <p>{messages.approvalIntro}</p>
       </header>

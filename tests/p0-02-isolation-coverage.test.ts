@@ -44,9 +44,10 @@ describe("P0-02 active isolation coverage", () => {
   });
 
   it("uses exact-assignment user and organization administration", async () => {
-    const [users, userActions, userRuntime, accountSetup, newRequest,
+    const [users, newUser, userActions, userRuntime, accountSetup, newRequest,
       settingsAction] = await Promise.all([
         source("src/app/(portal)/users/page.tsx"),
+        source("src/app/(portal)/users/new/page.tsx"),
         source("src/app/(portal)/users/actions.ts"),
         source("src/lib/user-isolation.ts"),
         source("src/lib/account-setup.ts"),
@@ -55,7 +56,7 @@ describe("P0-02 active isolation coverage", () => {
       ]);
 
     expect(users).toContain("listAuthorizedUsers(actor)");
-    expect(users).toContain("loadOrganizationDirectory(actor)");
+    expect(newUser).toContain("loadOrganizationDirectory(actor)");
     expect(users).not.toContain("listUsers(actor)");
     expect(users).not.toContain("listCompanies(actor)");
     expect(users).not.toContain("listBranches(actor)");
@@ -95,7 +96,7 @@ describe("P0-02 active isolation coverage", () => {
     expect(requestExport).toContain("listAuthorizedFilteredRequests(user,filters)");
     expect(catalog).toContain("searchCatalogProducts");
     expect(catalog).toContain('"Cache-Control": "private, no-store"');
-    expect(cart).toContain("getCatalogProductsByIds");
+    expect(cart).toContain("getCustomerCatalogProductsByPublicRefs");
     expect(cart).toContain('"Cache-Control": "private, no-store"');
     expect(notifications).toContain("axora_notification_center_snapshot");
     expect(notifications).not.toMatch(/FROM\s+(?:public\.)?in_app_notifications\b/i);

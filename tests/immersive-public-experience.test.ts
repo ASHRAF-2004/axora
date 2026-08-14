@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   immersivePublicCopy,
-  PUBLIC_ATMOSPHERES,
+  PUBLIC_ATMOSPHERE_SCENES,
   WORKFLOW_STAGE_IDS,
 } from "@/lib/immersive-public-experience";
 
@@ -30,10 +30,10 @@ describe("immersive public experience", () => {
   });
 
   it("provides four bounded procedural scene palettes", () => {
-    expect(PUBLIC_ATMOSPHERES.map((item) => item.id)).toEqual([
+    expect(PUBLIC_ATMOSPHERE_SCENES.map((item) => item.id)).toEqual([
       "aurora", "solar", "ember", "midnight",
     ]);
-    for (const atmosphere of PUBLIC_ATMOSPHERES) {
+    for (const atmosphere of PUBLIC_ATMOSPHERE_SCENES) {
       expect(Object.values(atmosphere.scene)).toHaveLength(6);
       for (const value of Object.values(atmosphere.scene)) {
         expect(value).toMatch(/^#[0-9a-f]{6}$/i);

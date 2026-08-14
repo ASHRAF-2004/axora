@@ -10,10 +10,11 @@ describe("accessible interaction and first-login safeguards", () => {
       source("../src/app/interaction-magic.css"),
     ]);
     expect(component).toContain("prefers-reduced-motion: reduce");
-    expect(component).toContain("pointer: fine");
+    expect(component).not.toContain("pointermove");
+    expect(component).not.toContain("interaction-pointer-light");
     expect(css).toContain("pointer-events: none");
-    expect(css).toContain("@media (pointer: coarse)");
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(css).not.toContain("interaction-pointer-light");
     expect(css).not.toMatch(/cursor\s*:\s*none/i);
   });
 

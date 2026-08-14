@@ -53,7 +53,7 @@ function productInput(formData: FormData) {
     brand: readFormText(formData, "brand"),
     size: readFormText(formData, "size"),
     unit: readFormText(formData, "unit"),
-    packaging: readFormText(formData, "packaging"),
+    packaging: "",
     description: readFormText(formData, "description"),
     defaultBuyPrice,
     defaultSellPrice: calculateCommercialSellingPrice(defaultBuyPrice),
@@ -413,6 +413,7 @@ export async function setMasterActiveAction(entity: MasterEntity, id: string, ac
   const user = await requirePermission(permission);
   await setMasterActive(entity, id, active, user);
   revalidatePath(`/${entity}`); revalidatePath("/dashboard");
+  if (entity === "branches") revalidatePath(`/branches/${id}`);
 }
 
 export async function replaceProductImageAction(productId: string, formData: FormData) {

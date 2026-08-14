@@ -22,7 +22,8 @@ export async function setBranchBudgetAction(formData: FormData) {
   });
   await setBranchMonthlyBudget(input.branchId, input.monthlyBudget, actor);
   revalidatePath("/branches");
+  revalidatePath(`/branches/${input.branchId}`);
   revalidatePath("/dashboard");
   revalidatePath("/approvals");
-  redirect("/branches?notice=budget-updated");
+  redirect(`/branches/${input.branchId}?notice=budget-updated`);
 }

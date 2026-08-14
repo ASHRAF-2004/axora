@@ -222,6 +222,8 @@ function minimizeDemoRequest(
     invoiceNumber: canViewFinance ? request.invoiceNumber : undefined,
     lines: request.lines.map((line) => ({
       ...line,
+      productId: subject.accountKind === "COMPANY" ? undefined : line.productId,
+      productCode: subject.accountKind === "COMPANY" ? undefined : line.productCode,
       supplierId: undefined,
       supplierName: undefined,
       quotationReference: undefined,

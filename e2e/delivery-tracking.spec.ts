@@ -78,6 +78,7 @@ test("assigned Delivery Guy shares only the active delivery location and sees th
 
   await expect(page.getByText("Location sharing is active").first()).toBeVisible();
   await expect(page.getByText(/collected only for the active assigned delivery/i)).toBeVisible();
+  await page.getByRole("button", { name: /start.*sharing/i }).click();
   await expect.poll(() => points.some((point) => point.action === "POINT")).toBe(true);
   const location = points.find((point) => point.action === "POINT");
   expect(location).toMatchObject({
@@ -121,6 +122,14 @@ test("company recipient sees active ETA, route, approved vehicle and no historic
       vehicleRegistration: "AXR 204",
     }],
   } }));
+  await page.route("**/api/receiving/delivery-tracking/live", async (route) => route.fulfill({
+    status: 200,
+    contentType: "text/event-stream",
+    body: `event: snapshot\ndata: ${JSON.stringify({ sequence: 1, snapshot: {
+      capturedAt: "2026-08-09T04:00:00Z",
+      sessions: [{ sessionId, jobId, jobCode: "DEL-LIVE-068", branchName: "Kuala Lumpur", jobStatus: "OUT_FOR_DELIVERY", status: "ACTIVE", lastUpdatedAt: "2026-08-09T03:59:45Z", stale: false, latitude: 3.139, longitude: 101.687, accuracyMeters: 150, destinationLatitude: 3.141, destinationLongitude: 101.69, remainingMeters: 420, etaSeconds: 180, visibilityPrecision: "APPROXIMATE", rawRetentionDays: 30, agentUserId: driver.id, agentName: driver.name, contactMode: "AXORA_RELAY", contactPath: `/support?delivery=${jobId}`, vehicleType: "Van", vehicleColour: "White", vehicleRegistration: "AXR 204" }],
+    } })}\n\n`,
+  }));
   await signInAsDemoRole(page, receiver);
   await page.goto("/receiving");
 
@@ -159,6 +168,14 @@ test("Arabic small-phone tracking marks stale data and disables ETA without moti
       rawRetentionDays: 30,
     }],
   } }));
+  await page.route("**/api/receiving/delivery-tracking/live", async (route) => route.fulfill({
+    status: 200,
+    contentType: "text/event-stream",
+    body: `event: snapshot\ndata: ${JSON.stringify({ sequence: 1, snapshot: {
+      capturedAt: "2026-08-09T04:10:00Z",
+      sessions: [{ sessionId, jobId, jobCode: "DEL-LIVE-068", branchName: "كوالالمبور", jobStatus: "OUT_FOR_DELIVERY", status: "PAUSED", lastUpdatedAt: "2026-08-09T04:00:00Z", stale: true, latitude: 3.139, longitude: 101.687, destinationLatitude: 3.141, destinationLongitude: 101.69, remainingMeters: 420, etaSeconds: null, visibilityPrecision: "APPROXIMATE", rawRetentionDays: 30 }],
+    } })}\n\n`,
+  }));
   await page.setViewportSize({ width: 320, height: 740 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await signInAsDemoRole(page, arabicReceiver);

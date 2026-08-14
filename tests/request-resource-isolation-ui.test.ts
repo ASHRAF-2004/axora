@@ -33,15 +33,15 @@ describe("request resource isolation integration", () => {
     const [approvals, finance, delivery, deliveryRuntime] = await Promise.all([
         source("src/app/(portal)/approvals/page.tsx"),
         source("src/app/(portal)/finance/page.tsx"),
-        source("src/app/api/deliveries/workspace/route.ts"),
-        source("src/lib/delivery-execution.ts"),
+        source("src/app/api/drivers/route.ts"),
+        source("src/lib/driver-operations.ts"),
       ]);
 
     expect(approvals).toContain("getApprovalWorkspace(actor)");
     expect(finance).toContain("loadAuthorizedFinanceRegisters(actor)");
-    expect(delivery).toContain("getDeliverySupervisorWorkspace(actor)");
+    expect(delivery).toContain("getDriverManagementWorkspace(actor)");
     expect(delivery).toContain('canAccess(actor, "manage_deliveries")');
-    expect(deliveryRuntime).toContain("axora_delivery_supervisor_workspace");
+    expect(deliveryRuntime).toContain("axora_driver_management_workspace");
     for (const text of [approvals, finance, delivery]) {
       expect(text).not.toMatch(/\blistRequests\s*\(/);
     }

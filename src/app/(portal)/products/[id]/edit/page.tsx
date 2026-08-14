@@ -69,7 +69,6 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           <label>{productCopy.brand}<input name="brand" defaultValue={product.brand} /></label>
           <label>{productCopy.size}<input name="size" defaultValue={product.size} /></label>
           <label>{productCopy.unit}<select name="unit" defaultValue={product.unit}>{units.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
-          <label>{productCopy.packaging}<input name="packaging" defaultValue={product.packaging} /></label>
           <label>{productCopy.buyCost}<input name="defaultBuyPrice" type="number" min="0" step="0.01" defaultValue={product.defaultBuyPrice} required /></label>
           <label>{rules.calculatedSellingPrice}<output>{formatCurrency(product.defaultSellPrice, locale)}</output><small>{rules.calculatedSellingHelp}</small></label>
           <label>{productCopy.deliverySla}<input name="deliverySlaDays" type="number" min="0" step="1" defaultValue={product.deliverySlaDays} required /></label>
