@@ -126,6 +126,46 @@ test.describe("visitor-choice verification recovery", () => {
     });
   }
 
+  test("a late snapshot refresh cannot erase a Turnstile script failure", async ({
+    context,
+    page,
+  }) => {
+    let releaseSnapshot = () => {};
+    const snapshotReleased = new Promise<void>((resolve) => {
+      releaseSnapshot = resolve;
+    });
+    await rememberLocale(context, "ms");
+    await page.route("**/api/public/visitor-choice", async (route) => {
+      if (route.request().method() === "GET") await snapshotReleased;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json; charset=utf-8",
+        body: JSON.stringify({
+          totalCount: 0,
+          earlyBirdCount: 0,
+          nightOwlCount: 0,
+        }),
+      });
+    });
+    await page.route(turnstileScriptUrl, (route) =>
+      route.abort("blockedbyclient"));
+    await page.goto("/ms");
+
+    const section = await visitorSection(page, "ms");
+    await section.getByRole("button", {
+      name: publicVisitorCopy.ms.chooseEarly,
+    }).click();
+    await expect(section.getByRole("alert")).toContainText(
+      publicVisitorCopy.ms.scriptError,
+    );
+
+    releaseSnapshot();
+    await expect(section).toHaveAttribute("data-phase", "error");
+    await expect(section.getByRole("alert")).toContainText(
+      publicVisitorCopy.ms.scriptError,
+    );
+  });
+
   test("window.turnstile unavailable becomes a retryable error", async ({
     context,
     page,

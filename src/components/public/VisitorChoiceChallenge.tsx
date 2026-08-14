@@ -86,16 +86,25 @@ export function VisitorChoiceChallenge({
     };
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (resetInteraction = false) => {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), GET_TIMEOUT_MS);
     try {
       const next = await requestSnapshot(controller.signal);
       setSnapshot(next);
-      setPhase(next.choice ? "claimed" : validSiteKey ? "ready" : "unavailable");
+      setPhase((current) => {
+        if (next.choice) return "claimed";
+        if (resetInteraction || current === "loading" || current === "unavailable") {
+          return validSiteKey ? "ready" : "unavailable";
+        }
+        return current;
+      });
     } catch {
-      setErrorMessage(copy.unavailable);
-      setPhase("error");
+      setPhase((current) => {
+        if (!resetInteraction && current !== "loading" && current !== "ready") return current;
+        setErrorMessage(copy.unavailable);
+        return "error";
+      });
     } finally {
       window.clearTimeout(timer);
     }
@@ -311,7 +320,7 @@ export function VisitorChoiceChallenge({
       window.turnstile.remove(widgetId.current);
       widgetId.current = null;
     }
-    void load();
+    void load(true);
   }, [load]);
 
   if (claimed) {
