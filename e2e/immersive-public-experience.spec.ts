@@ -1,10 +1,20 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const baseURL = "http://127.0.0.1:3100";
 
 async function useLocale(context: Parameters<typeof test>[0] extends never ? never : import("@playwright/test").BrowserContext, locale: "en" | "ar" | "ms") {
   await context.addCookies([{ name: "axora_locale", value: locale, url: baseURL }]);
+}
+
+async function expectWorkflowSceneReady(page: Page) {
+  const canvas = page.locator('canvas[data-testid="workflow-webgl"]');
+  await expect(canvas).toBeVisible();
+  await expect.poll(() => canvas.evaluate((element) => {
+    const scene = element as HTMLCanvasElement;
+    const context = scene.getContext("webgl2") ?? scene.getContext("webgl");
+    return Boolean(context && context.drawingBufferWidth > 0 && context.drawingBufferHeight > 0);
+  })).toBe(true);
 }
 
 test("desktop loads the 3D console and keeps every control accessible", async ({ context, page }) => {
@@ -62,7 +72,7 @@ test("reduced motion receives meaningful static content with no canvas", async (
   await expect(page.getByRole("tab", { name: /01.*Request/ })).toBeVisible();
 });
 
-test("WebGL unavailability falls back while navigation and challenge remain usable", async ({ context, page }) => {
+test("WebGL unavailability falls back while navigation and challenge remain usable", async ({ context, page }, testInfo) => {
   await useLocale(context, "en");
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
@@ -78,7 +88,12 @@ test("WebGL unavailability falls back while navigation and challenge remain usab
   await expect(page.getByTestId("workflow-fallback")).toBeVisible();
   await expect(page.locator("#visitor-choice-title")).toBeVisible();
   await expect(page.locator(".public-login-link")).toHaveAttribute("href", "/login");
-  await page.screenshot({ caret: "initial", path: "output/playwright/immersive-webgl-unavailable.png", fullPage: false });
+  await page.screenshot({
+    animations: "disabled",
+    caret: "initial",
+    path: `output/playwright/immersive-webgl-unavailable-${testInfo.project.name}.png`,
+    fullPage: false,
+  });
 });
 
 test("a failed 3D chunk leaves the full semantic experience available", async ({ context, page }) => {
@@ -120,41 +135,50 @@ test("Arabic mirrors direction and Malay localizes workflow controls", async ({ 
   await expect(page.getByRole("tab", { name: /02.*Lulus/ })).toBeVisible();
 });
 
-test("desktop, theme, mobile, Arabic, reduced and fallback evidence is captured", async ({ context, page }, testInfo) => {
+test("desktop and theme visual evidence is captured once in Chromium", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "Desktop evidence is intentionally captured only by the desktop Chromium project.");
   await useLocale(context, "en");
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/en");
   await expect(page.getByTestId("workflow-console")).toBeVisible();
-  await expect(page.locator('canvas[data-testid="workflow-webgl"]')).toBeVisible();
-  await page.waitForTimeout(800);
-  await page.screenshot({ caret: "initial", path: `output/playwright/immersive-default-${testInfo.project.name}.png`, fullPage: true });
+  await expectWorkflowSceneReady(page);
+  await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-default-${testInfo.project.name}.png`, fullPage: true });
   for (const theme of ["Aurora", "Solar", "Ember", "Midnight"] as const) {
-    await page.getByRole("button", { name: theme, exact: true }).click();
-    await page.waitForTimeout(250);
-    await page.screenshot({ caret: "initial", path: `output/playwright/immersive-theme-${theme.toLowerCase()}-${testInfo.project.name}.png`, fullPage: false });
+    const themeButton = page.getByRole("button", { name: theme, exact: true });
+    const atmosphere = theme.toLowerCase();
+    await themeButton.click();
+    await expect(themeButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(`[data-atmosphere="${atmosphere}"]`)).toBeVisible();
+    await expectWorkflowSceneReady(page);
+    await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-theme-${atmosphere}-${testInfo.project.name}.png`, fullPage: false });
   }
   await page.getByRole("tab", { name: /06.*Deliver/ }).click();
-  await page.locator("#workflow").screenshot({ caret: "initial", path: `output/playwright/immersive-workflow-${testInfo.project.name}.png` });
+  await page.locator("#workflow").screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-workflow-${testInfo.project.name}.png` });
 
   await page.goto("/login");
   await expect(page.locator("main form")).toBeVisible();
-  await page.screenshot({ caret: "initial", path: `output/playwright/immersive-login-${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-login-${testInfo.project.name}.png`, fullPage: false });
+});
 
-  await page.setViewportSize({ width: 390, height: 844 });
+test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mobile Chrome", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chrome", "Mobile evidence is intentionally captured only with the configured Pixel 7 project.");
+  await useLocale(context, "en");
   await page.goto("/en");
   await expect(page.getByTestId("workflow-console")).toBeVisible();
-  await page.screenshot({ caret: "initial", path: `output/playwright/immersive-mobile-${testInfo.project.name}.png`, fullPage: false });
+  await expectWorkflowSceneReady(page);
+  await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-mobile-${testInfo.project.name}.png`, fullPage: false });
 
   await useLocale(context, "ar");
   await page.goto("/ar");
   await expect(page.locator('[data-locale="ar"]')).toBeVisible();
-  await page.screenshot({ caret: "initial", path: `output/playwright/immersive-arabic-${testInfo.project.name}.png`, fullPage: false });
+  await expectWorkflowSceneReady(page);
+  await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-arabic-${testInfo.project.name}.png`, fullPage: false });
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await useLocale(context, "en");
   await page.goto("/en");
   await expect(page.getByTestId("workflow-fallback")).toBeVisible();
-  await page.screenshot({ caret: "initial", path: `output/playwright/immersive-reduced-motion-${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-reduced-motion-${testInfo.project.name}.png`, fullPage: false });
 });
 
 test("public experience passes WCAG A and AA automation", async ({ context, page }) => {
