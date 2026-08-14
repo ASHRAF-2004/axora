@@ -269,7 +269,7 @@ test("reduced-motion preference removes meaningful public transition motion", as
       ),
     )
     .toBe(true);
-  const roleCard = page.locator(".public-role-grid > a").first();
+  const roleCard = page.getByTestId("public-role-card").first();
   await roleCard.hover();
   const styles = await roleCard.evaluate((element) => {
     const style = getComputedStyle(element);

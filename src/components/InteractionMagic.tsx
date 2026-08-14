@@ -43,8 +43,8 @@ export function InteractionMagic() {
           for (const entry of entries) {
             if (!entry.isIntersecting) continue;
             entry.target.animate([
-              { opacity: 0, transform: "translateY(13px)" },
-              { opacity: 1, transform: "translateY(0)" },
+              { transform: "translateY(13px)" },
+              { transform: "translateY(0)" },
             ], {
               duration: 520,
               easing: "cubic-bezier(.22, 1, .36, 1)",

@@ -64,6 +64,7 @@
   border: 1px solid var(--preview-border);
   border-radius: 1rem;
   box-shadow: 0 1rem 2.5rem rgba(10, 22, 36, .14);
+  transition: max-inline-size .42s cubic-bezier(.22, 1, .36, 1), color .28s ease, background-color .28s ease, border-color .28s ease;
 }
 
 .frame[data-device="tablet"] {
@@ -128,6 +129,7 @@
   background:
     radial-gradient(circle at 88% 15%, color-mix(in srgb, var(--preview-accent) 28%, transparent), transparent 36%),
     var(--preview-page);
+  transition: background .35s ease;
 }
 
 [dir="rtl"] .hero {
@@ -207,7 +209,10 @@
   background: var(--preview-surface);
   border: 1px solid var(--preview-border);
   border-radius: .8rem;
+  transition: color .28s ease, background-color .28s ease, border-color .28s ease, transform .28s ease;
 }
+
+.card:hover { transform: translateY(-2px); }
 
 .card h4 {
   margin: 0 0 .75rem;
