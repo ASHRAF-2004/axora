@@ -449,6 +449,48 @@
     transition: none !important;
   }
 }
+
+/* Lightweight continuity with the public procurement world. The form remains
+   an ordinary readable HTML surface and no WebGL is loaded on authentication. */
+.page {
+  isolation: isolate;
+}
+
+.page::before,
+.page::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inline-size: min(46rem, 78vw);
+  block-size: min(46rem, 78vw);
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(75px);
+  opacity: .13;
+}
+
+.page::before {
+  inset-block-start: -24rem;
+  inset-inline-start: -13rem;
+  background: #2563eb;
+  animation: loginAtmosphere 16s ease-in-out infinite alternate;
+}
+
+.page::after {
+  inset-block-end: -28rem;
+  inset-inline-end: -14rem;
+  background: #0f9d8a;
+  animation: loginAtmosphere 19s ease-in-out -7s infinite alternate-reverse;
+}
+
+@keyframes loginAtmosphere {
+  to { transform: translate3d(7%, 5%, 0) scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page::before,
+  .page::after { animation: none; }
+}
 [dir="rtl"] .passwordInput {
   padding-inline-start: 3rem;
   padding-inline-end: 0.9rem;
