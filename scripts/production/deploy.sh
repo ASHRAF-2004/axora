@@ -358,6 +358,8 @@ map_build_args=(
   --build-arg "NEXT_PUBLIC_AXORA_MAP_STYLE_URL=${NEXT_PUBLIC_AXORA_MAP_STYLE_URL:-}"
   --build-arg "NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION=${NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION:-}"
   --build-arg "NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL=${NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL:-}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS=${NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS:-}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL=${NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL:-}"
 )
 log "Running Dockerfile static build checks against the sanitized build context."
 docker buildx build --check \

@@ -43,7 +43,7 @@ for protected_path in "$CONFIG_DIR" "$STATE_DIR" "$CONTROLLER_HOME" "$LOG_DIR" "
   [[ ! -L "$protected_path" ]] || fail "Refusing symlinked production path: $protected_path"
 done
 
-for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs; do
+for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs check-retention-mode.mjs; do
   [[ -f "$SOURCE_DIR/$source_file" ]] || fail "Missing source script: $source_file"
 done
 [[ -f "$SOURCE_DIR/owner-retaining-reset.sql" ]] \
@@ -378,7 +378,7 @@ chown -R root:"$RUNTIME_GID" "$UPLOADS_DIR"
 find "$UPLOADS_DIR" -type d -exec chmod 0770 {} +
 find "$UPLOADS_DIR" -type f -exec chmod 0660 {} +
 
-for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs; do
+for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs check-retention-mode.mjs; do
   install -o root -g root -m 0750 "$SOURCE_DIR/$source_file" "$LIBEXEC_DIR/$source_file"
 done
 install -o root -g root -m 0640 \

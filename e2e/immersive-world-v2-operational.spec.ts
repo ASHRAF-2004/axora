@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 import { signInAsDemoOwner, signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
 
@@ -20,43 +19,6 @@ const deliveryGuy: DemoRoleSession = {
   accountKind: "DELIVERY",
   scopeType: "DELIVERY",
 };
-
-async function installReviewedMapFixture(page: Page) {
-  const tile = await readFile(new URL("../public/brand/axora-icon-192.png", import.meta.url));
-  await page.route("**/maps/driver-map-config.json", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      version: 1,
-      status: "configured",
-      providerId: "e2e-reviewed-map",
-      providerName: "E2E reviewed map fixture",
-      styleUrl: "/maps/e2e-provider/style.json",
-      attribution: { label: "E2E licensed map fixture", url: "https://example.test/map-licence" },
-    }),
-  }));
-  await page.route("**/maps/e2e-provider/style.json", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      version: 8,
-      metadata: { "axora:map-purpose": "operational-street" },
-      sources: {
-        streets: {
-          type: "raster",
-          tiles: ["/maps/e2e-provider/tiles/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          attribution: "E2E licensed map fixture",
-        },
-      },
-      layers: [
-        { id: "background", type: "background", paint: { "background-color": "#dbeafe" } },
-        { id: "street-context", type: "raster", source: "streets" },
-      ],
-    }),
-  }));
-  await page.route("**/maps/e2e-provider/tiles/**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: tile }));
-}
 
 async function visibleAtmosphereButton(page: Page, atmosphere: "Aurora" | "Ember") {
   const desktopButton = page.locator(`.app-desktop-atmosphere button[title="Atmosphere: ${atmosphere}"]`);
@@ -107,7 +69,11 @@ test("owner sees Manage Drivers, a live driver detail map, and no normal assignm
   await expect(page.getByText(/assign or reassign/i)).toHaveCount(0);
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-manage-drivers-${testInfo.project.name}.png`, fullPage: true });
 
-  await installReviewedMapFixture(page);
+  const browserErrors: string[] = [];
+  const failedResponses: string[] = [];
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  page.on("response", (response) => { if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`); });
   await page.addInitScript(() => {
     class FixtureEventSource {
       private listeners = new Map<string, Array<(event: MessageEvent<string>) => void>>();
@@ -130,20 +96,24 @@ test("owner sees Manage Drivers, a live driver detail map, and no normal assignm
   });
   const sourceResponses: string[] = [];
   page.on("response", (response) => {
-    if (response.url().includes("/maps/e2e-provider/tiles/") && response.ok()) sourceResponses.push(response.url());
+    if (/\/maps\/(?:mvp-klang-valley-(?:roads|places)\.geojson|fonts\/)/.test(response.url()) && response.ok()) sourceResponses.push(response.url());
   });
   await page.goto("/deliveries/drivers/44444444-4444-4444-8444-444444444444");
   await expect(page.getByRole("heading", { level: 1, name: "Demo Delivery Guy" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Live driver map" })).toBeVisible();
-  const map = page.locator('[data-map-provider="e2e-reviewed-map"]');
+  const map = page.locator('[data-map-provider="axora-mvp-klang-valley"]');
   await expect(map).toHaveAttribute("data-map-state", "ready", { timeout: 15_000 });
   await expect(map).toHaveAttribute("data-route-point-count", "2");
   await expect(map).toHaveAttribute("data-latest-coordinate", "3.141200,101.690000");
   await expect(page.locator(".maplibregl-marker")).toHaveCount(1);
-  await expect(page.getByRole("link", { name: "E2E licensed map fixture" }).first()).toBeVisible();
-  expect(sourceResponses.length).toBeGreaterThan(0);
+  await expect(page.getByRole("link", { name: "© OpenStreetMap contributors" }).first()).toBeVisible();
+  expect(sourceResponses.some((url) => url.includes("mvp-klang-valley-roads.geojson"))).toBe(true);
+  expect(sourceResponses.some((url) => url.includes("mvp-klang-valley-places.geojson"))).toBe(true);
+  expect(sourceResponses.some((url) => url.includes("/maps/fonts/"))).toBe(true);
+  expect(browserErrors).toEqual([]);
+  expect(failedResponses).toEqual([]);
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-driver-detail-${testInfo.project.name}.png`, fullPage: true });
-  await map.screenshot({ animations: "disabled", path: `output/playwright/v2-driver-map-provider-fixture-${testInfo.project.name}.png` });
+  await map.screenshot({ animations: "disabled", path: `output/playwright/v2-driver-map-operational-${testInfo.project.name}.png` });
 });
 
 test("missing map configuration is honest and customer sessions cannot read raw driver coordinates", async ({ page }, testInfo) => {
@@ -177,6 +147,7 @@ test("a configured map provider failure shows an honest unavailable state", asyn
       providerName: "Failed provider fixture",
       styleUrl: "/maps/failed-provider/style.json",
       attribution: { label: "Failed map fixture", url: "https://example.test/map-licence" },
+      coverage: { bounds: [101.35, 2.7, 102, 3.45], label: "Controlled pilot coverage" },
     }),
   }));
   await page.route("**/maps/failed-provider/style.json", (route) => route.fulfill({ status: 503, contentType: "application/json", body: "{}" }));

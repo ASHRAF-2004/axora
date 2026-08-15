@@ -218,4 +218,6 @@ Aurora, Solar, Ember and Midnight are public and internal-staff atmosphere choic
 
 Paid requests enter an available delivery-job pool. Active Delivery Guys claim work atomically; Platform Owners monitor drivers and may only release a genuinely stuck job through an audited recovery action. Driver location requires explicit browser permission, is collected only for active work, and is exposed to customers only as privacy-safe status and ETA.
 
+The controlled three-company MVP uses a bounded, self-hosted Klang Valley street map and the explicit `mvp-conservative` retention mode. Protected financial, delivery, proof, security and audit evidence is access-revoked and retained without automatic purge; broader map coverage and a general-availability retention review remain post-pilot decisions.
+
 Platform Owners do not administer customer budgets. Company and branch budget validation remains company-scoped. Creation routes are separated from collection routes for companies, users, products and branches.

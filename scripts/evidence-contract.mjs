@@ -27,7 +27,7 @@ export const REQUIRED_REVIEW_EVIDENCE = [
   ["output/playwright/v2-visitor-claimed-counters-chromium.png", "e2e/public-visitor-counter.spec.ts"],
   ["output/playwright/v2-manage-drivers-chromium.png", operationalSource],
   ["output/playwright/v2-driver-detail-chromium.png", operationalSource],
-  ["output/playwright/v2-driver-map-provider-fixture-chromium.png", operationalSource],
+  ["output/playwright/v2-driver-map-operational-chromium.png", operationalSource],
   ["output/playwright/v2-driver-map-unconfigured-chromium.png", operationalSource],
   ["output/playwright/v2-available-job-pool-chromium.png", operationalSource],
   ["output/playwright/v2-add-company-chromium.png", operationalSource],

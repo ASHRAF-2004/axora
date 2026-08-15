@@ -6,10 +6,10 @@ import { CATEGORY_IMAGE_CATEGORIES } from "@/lib/category-images";
 describe("immersive and catalogue asset provenance", () => {
   it("has exactly one validated provenance record for every runtime third-party file", async () => {
     const output = execFileSync(process.execPath, ["scripts/validate-third-party-assets.mjs"], { cwd: process.cwd(), encoding: "utf8" });
-    expect(output).toContain("Validated 56 self-hosted third-party assets");
+    expect(output).toContain("Validated 60 self-hosted third-party assets");
     const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as { assets: Array<{ path: string }> };
-    expect(manifest.assets).toHaveLength(56);
-    expect(new Set(manifest.assets.map((asset) => asset.path)).size).toBe(56);
+    expect(manifest.assets).toHaveLength(60);
+    expect(new Set(manifest.assets.map((asset) => asset.path)).size).toBe(60);
   });
 
   it("restores software notices and verifies every local licence reference", () => {
@@ -17,16 +17,12 @@ describe("immersive and catalogue asset provenance", () => {
     expect(output).toContain("Validated 13 third-party notice sections");
   });
 
-  it("documents unavailable original checksums instead of inventing them", async () => {
+  it("requires a verified original checksum for every shipped runtime asset", async () => {
     const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as {
       assets: Array<{ path: string; originalFileSha256: string | null; originalChecksumReason?: string }>;
     };
     const unavailable = manifest.assets.filter((asset) => asset.originalFileSha256 === null);
-    expect(unavailable.map((asset) => asset.path)).toEqual([
-      "public/maps/natural-earth-southeast-asia-countries.geojson",
-      "public/maps/natural-earth-southeast-asia-places.geojson",
-    ]);
-    expect(unavailable.every((asset) => Boolean(asset.originalChecksumReason?.trim()))).toBe(true);
+    expect(unavailable).toEqual([]);
   });
 
   it("maps every category derivative to one exact source item", async () => {

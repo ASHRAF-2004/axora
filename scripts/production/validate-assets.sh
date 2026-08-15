@@ -27,11 +27,29 @@ node --check "$REPOSITORY_DIR/server-tools/document-renderer.mjs"
 node --check "$REPOSITORY_DIR/server-tools/document-worker.mjs"
 node --check "$REPOSITORY_DIR/server-tools/company-deletion-cleanup-worker.mjs"
 node --check "$REPOSITORY_DIR/scripts/production/check-email-service.mjs"
+node --check "$REPOSITORY_DIR/scripts/production/check-driver-map-config.mjs"
+node --check "$REPOSITORY_DIR/scripts/production/check-retention-mode.mjs"
 node "$REPOSITORY_DIR/scripts/validate-third-party-assets.mjs"
 
 checker_install_mentions="$(grep -cF 'check-email-service.mjs' "$SCRIPT_DIR/install.sh")"
 (( checker_install_mentions >= 2 )) \
   || die "Installer must validate and install the Cloudflare email checker."
+map_checker_install_mentions="$(grep -cF 'check-driver-map-config.mjs' "$SCRIPT_DIR/install.sh")"
+(( map_checker_install_mentions >= 2 )) \
+  || die "Installer must validate and install the driver-map readiness checker."
+retention_checker_install_mentions="$(grep -cF 'check-retention-mode.mjs' "$SCRIPT_DIR/install.sh")"
+(( retention_checker_install_mentions >= 2 )) \
+  || die "Installer must validate and install the MVP retention checker."
+for required_asset in \
+  public/maps/axora-mvp-operational-style.json \
+  public/maps/mvp-klang-valley-roads.geojson \
+  public/maps/mvp-klang-valley-places.geojson \
+  'public/maps/fonts/Noto Sans Regular/0-255.pbf' \
+  'public/maps/fonts/Noto Sans Regular/256-511.pbf' \
+  docs/mvp-data-retention-policy.md \
+  docs/mvp-operational-map.md; do
+  [[ -f "$REPOSITORY_DIR/$required_asset" ]] || die "Missing controlled-MVP asset: $required_asset"
+done
 for runtime_key in \
   AXORA_EMAIL_DELIVERY_ENABLED \
   CLOUDFLARE_ACCOUNT_ID \

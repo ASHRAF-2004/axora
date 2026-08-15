@@ -11,13 +11,13 @@ atmosphere tokens without changing semantic danger, warning or success colours.
 
 ## Operational map
 
-The default map is a self-hosted MapLibre style backed by Natural Earth public
-domain country and populated-place GeoJSON. It provides honest regional context
-without a remote tile dependency or browser credential. The live route and
-authorized driver marker are application-owned overlays. It is an operational
-location display, not turn-by-turn street navigation. A deployment may set
-`NEXT_PUBLIC_AXORA_MAP_STYLE_URL` to a reviewed production MapLibre style; a
-missing or unusable style displays a localized unavailable state.
+The controlled MVP map is a self-hosted MapLibre style backed by a pinned,
+ODbL-licensed OpenStreetMap Geofabrik derivative with roads and local labels for
+Klang Valley, Putrajaya and Cyberjaya. The live route and authorized driver
+marker are application-owned overlays. Missing configuration, source failure or
+locations outside declared coverage display an honest localized unavailable
+state. Natural Earth is retained only as a regional fallback and is never
+presented as operational street navigation.
 
 ## Near-live transport
 

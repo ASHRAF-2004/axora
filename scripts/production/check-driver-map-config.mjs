@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const LOCAL_CONTEXT_PATTERN = /(?:^|[-_.])(road|roads|street|streets|transport|transportation|highway|highways|motorway|motorways)(?:$|[-_.])/i;
 const LABEL_CONTEXT_PATTERN = /(?:^|[-_.])(label|labels|place|places|poi|pois|settlement|settlements|road|roads|street|streets)(?:$|[-_.])/i;
+const FIXTURE_PATTERN = /(?:^|[-_.])(e2e|fixture|test)(?:$|[-_.])/i;
 
 function required(env, name, maximum = 300) {
   const value = String(env[name] ?? "").trim();
@@ -27,6 +28,17 @@ function safeAttributionUrl(value) {
   } catch {
     return false;
   }
+}
+
+function requiredCoverage(env) {
+  const raw = required(env, "NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS", 100);
+  const bounds = raw.split(",").map((value) => Number(value.trim()));
+  if (bounds.length !== 4 || bounds.some((value) => !Number.isFinite(value))
+    || bounds[0] >= bounds[2] || bounds[1] >= bounds[3]
+    || bounds[0] < -180 || bounds[2] > 180 || bounds[1] < -90 || bounds[3] > 90) {
+    throw new Error("NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS must be west,south,east,north coordinates.");
+  }
+  return { bounds, label: required(env, "NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL", 200) };
 }
 
 function styleAssetPaths(style) {
@@ -70,6 +82,7 @@ export function buildDriverMapConfig(env = process.env) {
   if (!/^[a-z0-9][a-z0-9-]{1,63}$/.test(providerId)) throw new Error("NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID must be a lowercase slug.");
   const providerName = required(env, "NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME", 100);
   const styleUrl = required(env, "NEXT_PUBLIC_AXORA_MAP_STYLE_URL", 500);
+  if (FIXTURE_PATTERN.test(`${providerId} ${providerName} ${styleUrl}`)) throw new Error("Test and E2E map fixtures cannot satisfy production readiness.");
   if (!isSafePublicMapPath(styleUrl)) throw new Error("NEXT_PUBLIC_AXORA_MAP_STYLE_URL must be a same-origin path under /maps without credentials or traversal.");
   const attributionLabel = required(env, "NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION", 300);
   const attributionUrl = required(env, "NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL", 500);
@@ -81,6 +94,7 @@ export function buildDriverMapConfig(env = process.env) {
     providerName,
     styleUrl,
     attribution: { label: attributionLabel, url: attributionUrl },
+    coverage: requiredCoverage(env),
   };
 }
 
@@ -89,6 +103,9 @@ export async function renderDriverMapConfig(env, outputPath, publicRoot) {
   const stylePath = path.join(publicRoot, config.styleUrl.slice(1));
   const style = JSON.parse(await readFile(stylePath, "utf8"));
   assertOperationalStyle(style);
+  if (style.metadata?.["axora:provider-id"] !== config.providerId) throw new Error("Map style provider metadata does not match the runtime provider.");
+  if (JSON.stringify(style.metadata?.["axora:coverage"]) !== JSON.stringify(config.coverage.bounds)) throw new Error("Map style coverage does not match runtime coverage.");
+  if (style.metadata?.["axora:coverage-label"] !== config.coverage.label) throw new Error("Map style coverage label does not match runtime coverage.");
   const temporaryPath = `${outputPath}.tmp-${process.pid}`;
   try {
     await writeFile(temporaryPath, `${JSON.stringify(config, null, 2)}\n`, { encoding: "utf8", mode: 0o644 });

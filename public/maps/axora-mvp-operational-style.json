@@ -1,0 +1,26 @@
+{
+  "version": 8,
+  "name": "Axora MVP Klang Valley operational streets",
+  "metadata": {
+    "axora:map-purpose": "operational-street",
+    "axora:provider-id": "axora-mvp-klang-valley",
+    "axora:coverage": [101.35, 2.7, 102, 3.45],
+    "axora:coverage-label": "Klang Valley, Putrajaya and Cyberjaya pilot region",
+    "axora:source-date": "2026-08-14"
+  },
+  "center": [101.6869, 3.139],
+  "zoom": 12,
+  "glyphs": "/maps/fonts/{fontstack}/{range}.pbf",
+  "sources": {
+    "mvp-roads": { "type": "geojson", "data": "/maps/mvp-klang-valley-roads.geojson", "attribution": "© OpenStreetMap contributors" },
+    "mvp-places": { "type": "geojson", "data": "/maps/mvp-klang-valley-places.geojson", "attribution": "© OpenStreetMap contributors" }
+  },
+  "layers": [
+    { "id": "mvp-background", "type": "background", "paint": { "background-color": "#e7f0ec" } },
+    { "id": "mvp-road-casing", "type": "line", "source": "mvp-roads", "layout": { "line-cap": "round", "line-join": "round" }, "paint": { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.4, 12, 4.2, 16, 10] } },
+    { "id": "mvp-roads", "type": "line", "source": "mvp-roads", "layout": { "line-cap": "round", "line-join": "round" }, "paint": { "line-color": ["match", ["get", "class"], ["motorway", "motorway_link"], "#dd8f3d", ["trunk", "trunk_link"], "#dfad58", ["primary", "primary_link"], "#e9c67c", ["secondary", "secondary_link"], "#7fa9b8", "#9bb7bf"], "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.7, 12, 2.5, 16, 7] } },
+    { "id": "mvp-road-labels", "type": "symbol", "source": "mvp-roads", "minzoom": 12, "filter": ["!=", ["get", "name"], ""], "layout": { "symbol-placement": "line", "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 10, "text-max-angle": 35, "symbol-spacing": 500 }, "paint": { "text-color": "#355363", "text-halo-color": "#ffffff", "text-halo-width": 1.2 } },
+    { "id": "mvp-place-points", "type": "circle", "source": "mvp-places", "paint": { "circle-color": "#0f7890", "circle-radius": 2.5, "circle-stroke-color": "#ffffff", "circle-stroke-width": 1 } },
+    { "id": "mvp-place-labels", "type": "symbol", "source": "mvp-places", "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": ["match", ["get", "class"], "city", 14, "town", 12, 10], "text-offset": [0, 1.1], "text-anchor": "top" }, "paint": { "text-color": "#15384a", "text-halo-color": "#ffffff", "text-halo-width": 1.5 } }
+  ]
+}

@@ -49,6 +49,7 @@ describe("driver operational map configuration", () => {
       providerName: "Reviewed streets",
       styleUrl: "/maps/provider/style.json",
       attribution: { label: "Licensed map data", url: "https://maps.example.test/licence" },
+      coverage: { bounds: [101.35, 2.7, 102, 3.45], label: "Controlled pilot coverage" },
     };
     expect(driverLiveMapInternals.parseRuntimeConfig(config)).toEqual({ state: "configured", config });
     expect(driverLiveMapInternals.parseRuntimeConfig({ ...config, styleUrl: "https://tile.openstreetmap.org/style.json" })).toEqual({ state: "failed" });
@@ -62,5 +63,7 @@ describe("driver operational map configuration", () => {
     ];
     expect(driverLiveMapInternals.routeFeature(points).geometry.coordinates).toEqual([[101.6869, 3.139], [101.69, 3.1412]]);
     expect(driverLiveMapInternals.routeFeature(points.slice(0, 1)).geometry.coordinates).toEqual([[101.6869, 3.139], [101.6869, 3.139]]);
+    expect(driverLiveMapInternals.coverageContainsPoints({ bounds: [101.35, 2.7, 102, 3.45], label: "MVP" }, points)).toBe(true);
+    expect(driverLiveMapInternals.coverageContainsPoints({ bounds: [102.1, 2.7, 103, 3.45], label: "Elsewhere" }, points)).toBe(false);
   });
 });

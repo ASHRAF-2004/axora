@@ -1029,43 +1029,117 @@
       "attributionRequired": false
     },
     {
+      "path": "public/maps/fonts/Noto Sans Regular/0-255.pbf",
+      "assetName": "Noto Sans Regular MapLibre glyph range 0-255",
+      "originalFilename": "0-255.pbf",
+      "creator": "The Noto Project Authors; Protomaps basemaps-assets maintainers",
+      "canonicalSource": "https://github.com/protomaps/basemaps-assets/tree/main/fonts/Noto%20Sans%20Regular",
+      "exactPackOrItem": "Protomaps basemaps-assets / Noto Sans Regular MapLibre glyph ranges",
+      "restrictions": "Font may be bundled and modified under the SIL Open Font License; reserved font names and licence terms remain applicable.",
+      "license": {
+        "name": "SIL Open Font License 1.1",
+        "url": "https://openfontlicense.org/open-font-license-official-text/",
+        "recordPath": "third_party/licenses/OFL-1.1.txt"
+      },
+      "downloadDate": "2026-08-16",
+      "attributionRequired": false,
+      "modifications": "Self-hosted unchanged for same-origin MapLibre label rendering.",
+      "originalFileSha256": "62c6d49b15fa836eb6aa45e259c7ca6762f44b011b09e47776efbe4a6db1b397",
+      "repositoryFileSha256": "62c6d49b15fa836eb6aa45e259c7ca6762f44b011b09e47776efbe4a6db1b397"
+    },
+    {
+      "path": "public/maps/fonts/Noto Sans Regular/256-511.pbf",
+      "assetName": "Noto Sans Regular MapLibre glyph range 256-511",
+      "originalFilename": "256-511.pbf",
+      "creator": "The Noto Project Authors; Protomaps basemaps-assets maintainers",
+      "canonicalSource": "https://github.com/protomaps/basemaps-assets/tree/main/fonts/Noto%20Sans%20Regular",
+      "exactPackOrItem": "Protomaps basemaps-assets / Noto Sans Regular MapLibre glyph ranges",
+      "restrictions": "Font may be bundled and modified under the SIL Open Font License; reserved font names and licence terms remain applicable.",
+      "license": {
+        "name": "SIL Open Font License 1.1",
+        "url": "https://openfontlicense.org/open-font-license-official-text/",
+        "recordPath": "third_party/licenses/OFL-1.1.txt"
+      },
+      "downloadDate": "2026-08-16",
+      "attributionRequired": false,
+      "modifications": "Self-hosted unchanged for same-origin MapLibre label rendering.",
+      "originalFileSha256": "2eca7561f9f566bcacfda5dd04fb5880baec1328ec0f5484678289a13994de8a",
+      "repositoryFileSha256": "2eca7561f9f566bcacfda5dd04fb5880baec1328ec0f5484678289a13994de8a"
+    },
+    {
+      "path": "public/maps/mvp-klang-valley-places.geojson",
+      "assetName": "Klang Valley MVP places and local labels",
+      "originalFilename": "malaysia-singapore-brunei-latest.osm.pbf",
+      "creator": "OpenStreetMap contributors; Geofabrik GmbH",
+      "canonicalSource": "https://download.geofabrik.de/asia/malaysia-singapore-brunei-latest.osm.pbf",
+      "exactPackOrItem": "Geofabrik Malaysia, Singapore and Brunei extract, snapshot published 2026-08-14",
+      "originalFileSha256": "8c79573860d46190283231bc063cdbb95fecd660d6dd2e8b4d3a232fe1fa0455",
+      "restrictions": "Coverage is limited to 101.35,2.70,102.00,3.45; OpenStreetMap attribution must remain visible. No public OSM tile endpoint is used.",
+      "license": {
+        "name": "Open Database License 1.0",
+        "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+        "recordPath": "third_party/licenses/ODbL-1.0.txt"
+      },
+      "downloadDate": "2026-08-16",
+      "attributionRequired": true,
+      "repositoryFileSha256": "d9c7a94114e08ea4470b5ce3ee47bb9e4c3bff38bf37c528b11360f8faa5b818",
+      "modifications": "Deterministically clipped to the documented MVP bounds; retained named city, town, suburb, village and neighbourhood points, rounded coordinates to five decimals, and limited labels to self-hosted glyph coverage."
+    },
+    {
+      "path": "public/maps/mvp-klang-valley-roads.geojson",
+      "assetName": "Klang Valley MVP major roads",
+      "originalFilename": "malaysia-singapore-brunei-latest.osm.pbf",
+      "creator": "OpenStreetMap contributors; Geofabrik GmbH",
+      "canonicalSource": "https://download.geofabrik.de/asia/malaysia-singapore-brunei-latest.osm.pbf",
+      "exactPackOrItem": "Geofabrik Malaysia, Singapore and Brunei extract, snapshot published 2026-08-14",
+      "originalFileSha256": "8c79573860d46190283231bc063cdbb95fecd660d6dd2e8b4d3a232fe1fa0455",
+      "restrictions": "Coverage is limited to 101.35,2.70,102.00,3.45; OpenStreetMap attribution must remain visible. No public OSM tile endpoint is used.",
+      "license": {
+        "name": "Open Database License 1.0",
+        "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+        "recordPath": "third_party/licenses/ODbL-1.0.txt"
+      },
+      "downloadDate": "2026-08-16",
+      "attributionRequired": true,
+      "repositoryFileSha256": "5ebef2a05863c3b20dface72a0b8b000c98ef016cb3b9de7425590db65044bc3",
+      "modifications": "Deterministically clipped to the documented MVP bounds; retained motorway through tertiary road classes, grouped segments by class/name, rounded coordinates to five decimals, and limited labels to self-hosted glyph coverage."
+    },
+    {
       "path": "public/maps/natural-earth-southeast-asia-countries.geojson",
       "assetName": "Southeast Asia country boundaries",
-      "originalFilename": "ne_10m_admin_0_countries",
+      "originalFilename": "ne_10m_admin_0_countries-5.1.1.zip",
       "creator": "Natural Earth contributors",
-      "canonicalSource": "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/",
-      "exactPackOrItem": "Natural Earth 1:10m Cultural Vectors / Admin 0 - Countries",
-      "originalFileSha256": null,
-      "originalChecksumReason": "The exact downloaded Natural Earth source archive was not retained; a checksum cannot be reconstructed truthfully from this selected derivative.",
-      "modifications": "Selected Southeast Asia features exported as self-hosted GeoJSON for the operational fallback basemap.",
+      "canonicalSource": "https://naciscdn.org/naturalearth/5.1.1/10m_cultural/ne_10m_admin_0_countries.zip",
+      "exactPackOrItem": "Natural Earth 5.1.1 / 1:10m Cultural Vectors / Admin 0 - Countries",
+      "originalFileSha256": "ce1ac7036499a0edd641fbc093cd209a98f96a49d2eca8480aaacad35138a7f6",
+      "modifications": "Filtered to 18 documented Southeast Asia-context countries, retained ADMIN/ISO_A2/NAME/NAME_EN/NAME_AR/NAME_ID, simplified to 5% with shape preservation, and exported deterministically as GeoJSON with mapshaper 0.6.113.",
       "restrictions": "Natural Earth data is public domain; required map attribution remains visible.",
-      "repositoryFileSha256": "66963e95144adaf49a15a1c0ed728d92ec9d5030fba458f62a37e80082eefcb1",
+      "repositoryFileSha256": "771a214372e19b95eed6f01136100b02e99b82972c629860a13816a653602cfd",
       "license": {
         "name": "Natural Earth public domain",
         "url": "https://www.naturalearthdata.com/about/terms-of-use/",
         "recordPath": "third_party/licenses/NATURAL_EARTH_PUBLIC_DOMAIN.md"
       },
-      "downloadDate": "2026-08-14",
+      "downloadDate": "2026-08-16",
       "attributionRequired": false
     },
     {
       "path": "public/maps/natural-earth-southeast-asia-places.geojson",
       "assetName": "Southeast Asia populated places",
-      "originalFilename": "ne_10m_populated_places",
+      "originalFilename": "ne_10m_populated_places-5.1.2.zip",
       "creator": "Natural Earth contributors",
-      "canonicalSource": "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/",
-      "exactPackOrItem": "Natural Earth 1:10m Cultural Vectors / Populated Places",
-      "originalFileSha256": null,
-      "originalChecksumReason": "The exact downloaded Natural Earth source archive was not retained; a checksum cannot be reconstructed truthfully from this selected derivative.",
-      "modifications": "Selected Southeast Asia features exported as self-hosted GeoJSON for the operational fallback basemap.",
+      "canonicalSource": "https://naciscdn.org/naturalearth/5.1.2/10m_cultural/ne_10m_populated_places.zip",
+      "exactPackOrItem": "Natural Earth 5.1.2 / 1:10m Cultural Vectors / Populated Places",
+      "originalFileSha256": "cd149186f03d2603e0410da399b980a4357d0ac32d3a2305a49ed3dffcc41d7b",
+      "modifications": "Filtered to the 17 documented Southeast Asia-context labels with MIN_ZOOM <= 5.6, retained localized place fields, and exported deterministically as GeoJSON with mapshaper 0.6.113.",
       "restrictions": "Natural Earth data is public domain; required map attribution remains visible.",
-      "repositoryFileSha256": "0d02d734a22f4a38979f3f3320163e9411ca28785e625c2fe42c6a14f7753e41",
+      "repositoryFileSha256": "0895ae4923b6cd33b97e544370ff3f26ca5b7c39308ce5764f3e495168164225",
       "license": {
         "name": "Natural Earth public domain",
         "url": "https://www.naturalearthdata.com/about/terms-of-use/",
         "recordPath": "third_party/licenses/NATURAL_EARTH_PUBLIC_DOMAIN.md"
       },
-      "downloadDate": "2026-08-14",
+      "downloadDate": "2026-08-16",
       "attributionRequired": false
     }
   ]

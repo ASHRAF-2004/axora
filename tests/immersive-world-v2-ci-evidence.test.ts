@@ -31,7 +31,7 @@ describe("Immersive World V2 reviewer evidence", () => {
       "v2-security-and-privacy.png",
       "v2-about.png",
       "immersive-forced-colors-chromium.png",
-      "v2-driver-map-provider-fixture-chromium.png",
+      "v2-driver-map-operational-chromium.png",
       "v2-driver-map-unconfigured-chromium.png",
       "v2-available-job-pool-chromium.png",
       "interaction-tour.webm",

@@ -38,16 +38,21 @@ MIT terms in its source header.
 
 ## Immersive World V2 self-hosted assets
 
-Runtime model, sound, category-artwork and Natural Earth dataset provenance is
+Runtime model, sound, category-artwork, map dataset and map-font provenance is
 recorded per file in `third-party-assets.json` and summarized in
 `THIRD_PARTY_ASSETS.md`. The referenced CC0 and Natural Earth licence records
 are retained at `third_party/licenses/CC0-1.0.txt` and
-`third_party/licenses/NATURAL_EARTH_PUBLIC_DOMAIN.md`.
+`third_party/licenses/NATURAL_EARTH_PUBLIC_DOMAIN.md`,
+`third_party/licenses/ODbL-1.0.txt` and `third_party/licenses/OFL-1.1.txt`.
 
 ## MapLibre GL JS
 
 Authorized operational map views use the self-hosted MapLibre GL JS runtime.
 Map data provenance is separate and is recorded in `third-party-assets.json`.
+The controlled MVP operational layer is derived from OpenStreetMap data
+distributed by Geofabrik under ODbL 1.0 and always displays
+`© OpenStreetMap contributors`. MapLibre labels use Noto Sans Regular glyphs
+under SIL OFL 1.1. Natural Earth remains only a public-domain regional fallback.
 
 - Project: https://github.com/maplibre/maplibre-gl-js
 - Version: 5.18.0

@@ -37,6 +37,8 @@ production-capable dataset and its licence/attribution have been reviewed:
 * `NEXT_PUBLIC_AXORA_MAP_STYLE_URL`
 * `NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION`
 * `NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL`
+* `NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS`
+* `NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL`
 
 The style URL and all style sources must be same-origin assets under `/maps`.
 They are public browser configuration and must not contain a private provider
@@ -51,10 +53,11 @@ Natural Earth overview. Despite its legacy filename, metadata marks it
 operational street map. It has country and populated-place context, but not the
 roads or local labels required at operational zoom.
 
-Until an approved provider/dataset is configured, `preflight.sh` fails with an
-explicit release blocker and the UI shows a localized unavailable state. It
-does not render an empty rectangle or present the Natural Earth overview as
-street navigation. A configured style is accepted only when it has usable
+The controlled MVP uses the self-hosted OSM-derived Klang Valley dataset
+documented in `docs/mvp-operational-map.md`. Outside the declared coverage the
+UI shows a localized unavailable state rather than pretending the map is
+complete. `preflight.sh` fails if this provider contract is missing, mismatched,
+or replaced by an E2E fixture. A configured style is accepted only when it has usable
 MapLibre sources, road/local-label or raster context, declared attribution,
 successful source loading, and reviewed metadata declaring
 `axora:map-purpose=operational-street`. Driver markers and route overlays remain

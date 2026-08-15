@@ -1,4 +1,15 @@
 {
   "version": 1,
-  "status": "unconfigured"
+  "status": "configured",
+  "providerId": "axora-mvp-klang-valley",
+  "providerName": "Axora self-hosted Klang Valley streets",
+  "styleUrl": "/maps/axora-mvp-operational-style.json",
+  "coverage": {
+    "bounds": [101.35, 2.7, 102, 3.45],
+    "label": "Klang Valley, Putrajaya and Cyberjaya pilot region"
+  },
+  "attribution": {
+    "label": "© OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright"
+  }
 }

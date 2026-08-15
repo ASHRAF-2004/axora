@@ -39,3 +39,8 @@ capabilities.
 `AXORA_COMPANY_SEARCH_INDEX_ROOT` respectively. Those variables remain unset
 because the current application has no such persistent stores. If either store
 is introduced, configuring and mounting its reviewed root is a release gate.
+
+During the controlled three-company pilot, `AXORA_RETENTION_MODE=mvp-conservative`
+activates the temporary policy in `docs/mvp-data-retention-policy.md`. Protected
+evidence remains tombstoned and access-revoked with no automatic purge. This is
+an MVP operating rule, not a claim of complete statutory or regulatory compliance.

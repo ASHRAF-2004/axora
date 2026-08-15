@@ -15,9 +15,10 @@ type RuntimeMapConfig = {
   providerName: string;
   styleUrl: string;
   attribution: { label: string; url: string };
+  coverage: { bounds: [number, number, number, number]; label: string };
 };
 type ConfigState = "checking" | "configured" | "unconfigured" | "failed";
-type MapState = "idle" | "loading" | "ready" | "missing" | "failed";
+type MapState = "idle" | "loading" | "ready" | "missing" | "outside" | "failed";
 
 const ROUTE_SOURCE_ID = "driver-route";
 const ROUTE_LAYER_ID = "driver-route-line";
@@ -113,6 +114,8 @@ function parseRuntimeConfig(value: unknown): { state: "configured"; config: Runt
   if (config?.version !== 1) return { state: "failed" };
   if (config.status === "unconfigured") return { state: "unconfigured" };
   const attribution = asRecord(config.attribution);
+  const coverage = asRecord(config.coverage);
+  const bounds = Array.isArray(coverage?.bounds) ? coverage.bounds : [];
   if (config.status !== "configured"
     || typeof config.providerId !== "string"
     || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(config.providerId)
@@ -122,7 +125,13 @@ function parseRuntimeConfig(value: unknown): { state: "configured"; config: Runt
     || !isSameOriginMapAsset(config.styleUrl)
     || typeof attribution?.label !== "string"
     || !attribution.label.trim()
-    || typeof attribution.url !== "string") return { state: "failed" };
+    || typeof attribution.url !== "string"
+    || bounds.length !== 4
+    || bounds.some((coordinate) => typeof coordinate !== "number" || !Number.isFinite(coordinate))
+    || bounds[0] >= bounds[2]
+    || bounds[1] >= bounds[3]
+    || typeof coverage?.label !== "string"
+    || !coverage.label.trim()) return { state: "failed" };
   try {
     const attributionUrl = new URL(attribution.url);
     if (attributionUrl.protocol !== "https:" || attributionUrl.username || attributionUrl.password) return { state: "failed" };
@@ -130,6 +139,11 @@ function parseRuntimeConfig(value: unknown): { state: "configured"; config: Runt
     return { state: "failed" };
   }
   return { state: "configured", config: config as RuntimeMapConfig };
+}
+
+function coverageContainsPoints(coverage: RuntimeMapConfig["coverage"], points: LocationPoint[]) {
+  const [west, south, east, north] = coverage.bounds;
+  return points.every(({ longitude, latitude }) => longitude >= west && longitude <= east && latitude >= south && latitude <= north);
 }
 
 function escapeHtml(value: string) {
@@ -163,11 +177,14 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
   const [mapState, setMapState] = useState<MapState>(points.length ? "idle" : "missing");
   const [clock, setClock] = useState(() => Date.now());
   const latestPoint = livePoints.at(-1);
+  const pointsInCoverage = !runtimeConfig || coverageContainsPoints(runtimeConfig.coverage, livePoints);
   const locationStale = !latestPoint || clock - new Date(latestPoint.capturedAt).getTime() > 120_000;
   const presentedState = configState === "unconfigured"
     ? "unconfigured"
     : configState === "failed"
       ? "failed"
+      : configState === "configured" && !pointsInCoverage
+        ? "outside"
       : configState === "configured" && !livePoints.length
         ? "missing"
         : configState === "configured" && (mapState === "idle" || mapState === "missing")
@@ -285,10 +302,12 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
   useEffect(() => {
     if (!runtimeConfig || configState !== "configured") return;
     if (!livePoints.length) return;
+    if (!coverageContainsPoints(runtimeConfig.coverage, livePoints)) return;
     let disposed = false;
     const controller = new AbortController();
     const start = async () => {
       try {
+        setMapState("loading");
         const styleResponse = await fetch(runtimeConfig.styleUrl, { cache: "no-store", credentials: "same-origin", signal: controller.signal });
         if (!styleResponse.ok) {
           setMapState("failed");
@@ -346,18 +365,18 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
     };
   // Recreate only when the driver, reviewed style, or presence of route data changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [driverId, runtimeConfig, configState, Boolean(livePoints.length)]);
+  }, [driverId, runtimeConfig, configState, Boolean(livePoints.length), pointsInCoverage]);
 
   useEffect(() => {
     const map = mapRef.current;
     const latest = livePoints.at(-1);
-    if (!map || !latest || !map.isStyleLoaded()) return;
+    if (!map || !latest || !runtimeConfig || !coverageContainsPoints(runtimeConfig.coverage, livePoints) || !map.isStyleLoaded()) return;
     markerRef.current?.setLngLat([latest.longitude, latest.latitude]);
     (map.getSource(ROUTE_SOURCE_ID) as GeoJSONSource | undefined)?.setData(routeFeature(livePoints));
     fitRoute(map, livePoints);
-  }, [livePoints, mapState]);
+  }, [livePoints, mapState, runtimeConfig]);
 
-  const mapHostVisible = configState === "configured" && Boolean(runtimeConfig) && livePoints.length > 0 && mapState !== "failed";
+  const mapHostVisible = configState === "configured" && Boolean(runtimeConfig) && livePoints.length > 0 && mapState !== "failed" && pointsInCoverage;
 
   return <section className="panel" aria-labelledby="driver-live-map-title">
     <div className="panel-header"><div><h2 id="driver-live-map-title">{copy.map}</h2><p>{copy.mapHelp}</p></div></div>
@@ -377,6 +396,7 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
     {configState === "unconfigured" ? <p className="callout" role="alert">{copy.mapUnconfigured}</p> : null}
     {configState === "failed" ? <p className="callout" role="alert">{copy.mapConfigurationInvalid}</p> : null}
     {configState === "configured" && presentedState === "missing" ? <p className="callout">{copy.mapMissing}</p> : null}
+    {configState === "configured" && presentedState === "outside" && runtimeConfig ? <p className="callout" role="alert">{copy.mapOutsideCoverage} {runtimeConfig.coverage.label}.</p> : null}
     {configState === "configured" && mapState === "failed" ? <p className="callout" role="alert">{copy.mapFailed}</p> : null}
     {configState === "configured" && mapState === "ready" && runtimeConfig ? <p className="subtle" data-map-attribution>
       {copy.mapAttribution}: <a href={runtimeConfig.attribution.url} target="_blank" rel="noreferrer">{runtimeConfig.attribution.label}</a>
@@ -392,6 +412,7 @@ export const driverLiveMapInternals = {
   fitRoute,
   isSameOriginMapAsset,
   operationalStyleAssessment,
+  coverageContainsPoints,
   parseRuntimeConfig,
   routeFeature,
   usableStyle,
