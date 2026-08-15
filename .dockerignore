@@ -42,4 +42,7 @@ caddy
 compose*.yaml
 render.yaml
 tailscale
-scripts
+scripts/*
+!scripts/production/
+scripts/production/*
+!scripts/production/check-driver-map-config.mjs
