@@ -257,30 +257,31 @@ test("Arabic mirrors direction and Malay localizes workflow controls", async ({ 
   await expect(page.getByRole("button", { name: /02.*Lulus/ })).toBeVisible();
 });
 
-test("every public route presents and transforms its own semantic 3D sequence", async ({ context, page }, testInfo) => {
-  test.skip(testInfo.project.name !== "chromium", "The complete route evidence set is captured once by desktop Chromium.");
-  await useLocale(context, "en");
-  const cases = [
-    { path: "/en", route: "home", initial: "request", next: "approve", file: "homepage" },
-    { path: "/en/how-it-works", route: "how-it-works", initial: "request", next: "approve", file: "how-it-works" },
-    { path: "/en/procurement-process", route: "procurement-process", initial: "request", next: "approve", file: "procurement-process" },
-    { path: "/en/solutions-by-role", route: "solutions-by-role", initial: "person", next: "workspace", file: "solutions-by-role" },
-    { path: "/en/security-and-privacy", route: "security-and-privacy", initial: "shield", next: "vault", file: "security-and-privacy" },
-    { path: "/en/about", route: "about", initial: "company", next: "network", file: "about" },
-  ] as const;
-  for (const item of cases) {
-      await page.goto(item.path);
-      const world = page.locator(`[data-public-scene="${item.route}"]`);
-      await expect(world).toBeVisible();
-      await expect(world).toHaveAttribute("data-interaction-ready", "true");
-      await expectWorkflowSceneReady(page, item.initial);
-      await expect(world).toHaveAttribute("data-rendered-stage", item.initial);
+const publicRouteSceneCases = [
+  { path: "/en", route: "home", initial: "request", next: "approve", file: "homepage" },
+  { path: "/en/how-it-works", route: "how-it-works", initial: "request", next: "approve", file: "how-it-works" },
+  { path: "/en/procurement-process", route: "procurement-process", initial: "request", next: "approve", file: "procurement-process" },
+  { path: "/en/solutions-by-role", route: "solutions-by-role", initial: "person", next: "workspace", file: "solutions-by-role" },
+  { path: "/en/security-and-privacy", route: "security-and-privacy", initial: "shield", next: "vault", file: "security-and-privacy" },
+  { path: "/en/about", route: "about", initial: "company", next: "network", file: "about" },
+] as const;
+
+for (const item of publicRouteSceneCases) {
+  test(`${item.route} presents and transforms its semantic 3D sequence`, async ({ context, page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "Each route's complete evidence is captured once by desktop Chromium.");
+    await useLocale(context, "en");
+    await page.goto(item.path);
+    const world = page.locator(`[data-public-scene="${item.route}"]`);
+    await expect(world).toBeVisible();
+    await expect(world).toHaveAttribute("data-interaction-ready", "true");
+    await expectWorkflowSceneReady(page, item.initial);
+    await expect(world).toHaveAttribute("data-rendered-stage", item.initial);
     await world.locator("[data-scene-step]").nth(1).getByRole("button").click();
     await expectWorkflowSceneReady(page, item.next);
     await expect(world).toHaveAttribute("data-rendered-stage", item.next);
     await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/v2-${item.file}.png`, fullPage: true });
-  }
-});
+  });
+}
 
 test("all homepage stages attach the selected semantic object inside usable bounds", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "The full cold-to-settled semantic sequence is verified once in desktop Chromium.");

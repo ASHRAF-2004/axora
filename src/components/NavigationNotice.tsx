@@ -4,7 +4,7 @@ import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import { clearRequestCart } from "@/lib/request-cart";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 type Notice = {
@@ -78,8 +78,6 @@ const notices: Record<string, Notice> = {
 
 export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }) {
   const { notify } = useUxFeedback();
-  const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -100,14 +98,18 @@ export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }
       }));
     }
 
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.delete("notice");
-
-    const query = nextParams.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, {
-      scroll: false,
-    });
-  }, [locale, notify, pathname, router, searchParams]);
+    // The notice is presentation-only. Starting a second Next.js navigation to
+    // remove it can race a follow-up Server Action redirect and restore the
+    // previous route after the action has already succeeded. Replace only the
+    // current history entry so the active route transition remains authoritative.
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete("notice");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+    );
+  }, [locale, notify, searchParams]);
 
   return null;
 }
