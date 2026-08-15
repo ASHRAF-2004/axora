@@ -122,6 +122,7 @@ jobs:
             output/lighthouse
             output/reports
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   container:

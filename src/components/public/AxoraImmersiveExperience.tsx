@@ -263,10 +263,18 @@ export function AxoraImmersiveExperience({
         </div>
         <div className={styles.workflowSteps} role="list" aria-label={copy.consoleLabel}>
           {controlItems.map((item, index) => (
-            <article role="listitem" key={`${item.model}-${index}`} data-scene-step={index} className={styles.workflowStep} data-active={requestedIndex === index} data-rendered={renderedIndex === index}>
+            <article
+              role="listitem"
+              key={`${item.model}-${index}`}
+              data-scene-step={index}
+              className={styles.workflowStep}
+              data-active={renderedIndex === index}
+              data-requested={requestedIndex === index}
+              data-rendered={renderedIndex === index}
+            >
               <button
                 type="button"
-                aria-pressed={requestedIndex === index}
+                aria-pressed={renderedIndex === index}
                 aria-label={`${String(index + 1).padStart(2, "0")} · ${item.label}`}
                 onClick={() => activate(index)}
               >

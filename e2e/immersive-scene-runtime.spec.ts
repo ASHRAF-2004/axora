@@ -91,12 +91,19 @@ test("cold and delayed models never blank or commit stale semantic state", async
   });
   await page.goto("/en");
   await expectRenderedAsset(page, "request");
-  await page.getByRole("button", { name: /03.*Pay/ }).click();
+  const requestControl = page.getByRole("button", { name: /01.*Request/ });
+  const payControl = page.getByRole("button", { name: /03.*Pay/ });
+  await payControl.click();
   await expect(page.locator('[data-public-scene="home"]')).toHaveAttribute("data-requested-stage", "pay");
   await expect(page.locator('[data-public-scene="home"]')).not.toHaveAttribute("data-rendered-stage", "pay");
   await expect(page.locator('[data-testid="workflow-webgl"][data-rendered-asset="request"]').first()).toBeVisible();
+  await expect(requestControl).toHaveAttribute("aria-pressed", "true");
+  await expect(payControl).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByTestId("scene-caption")).toContainText("Request");
   releasePay();
   await expectRenderedAsset(page, "pay");
+  await expect(payControl).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("scene-caption")).toContainText("Pay");
 
   await page.getByRole("button", { name: /08.*Complete/ }).click();
   await page.getByRole("button", { name: /02.*Approve/ }).click();
