@@ -311,7 +311,10 @@ export async function createBranchAction(formData: FormData) {
   redirect("/branches?notice=branch-created");
 }
 
-export interface ProductActionState { status: "idle" | "error"; message?: string }
+export type ProductActionState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "success"; redirectTo: string };
 
 export async function createProductAction(
   _previous: ProductActionState,
@@ -346,11 +349,17 @@ export async function createProductAction(
       }, user);
     } catch {
       revalidateProduct(productId);
-      redirect(`/products/${productId}/edit?notice=product-created-image-retry`);
+      return {
+        status: "success",
+        redirectTo: `/products/${productId}/edit?notice=product-created-image-retry`,
+      };
     }
   }
   revalidateProduct(productId);
-  redirect(`/products/${productId}/edit?notice=product-created`);
+  return {
+    status: "success",
+    redirectTo: `/products/${productId}/edit?notice=product-created`,
+  };
 }
 
 export async function updateProductAction(
@@ -368,7 +377,7 @@ export async function updateProductAction(
     return { status: "error", message: validationMessage(error) };
   }
   revalidateProduct(productId);
-  redirect("/products?notice=product-updated");
+  return { status: "success", redirectTo: "/products?notice=product-updated" };
 }
 
 export async function deleteProductAction(productId: string) {

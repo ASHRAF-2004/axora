@@ -8,7 +8,7 @@ const source = (path: string) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("operating model simplification", () => {
-  it("keeps catalogue validation narrow and returns structured product errors", async () => {
+  it("keeps catalogue validation narrow and returns structured product outcomes", async () => {
     const [page, actions] = await Promise.all([
       source("src/app/(portal)/products/page.tsx"),
       source("src/app/(portal)/masters/actions.ts"),
@@ -26,7 +26,8 @@ describe("operating model simplification", () => {
     expect(actions.indexOf("createProduct(input, user)")).toBeLessThan(
       actions.indexOf("savePreparedProductImages({"),
     );
-    expect(actions).toContain("redirect(`/products/${productId}/edit?notice=product-created-image-retry`)");
+    expect(actions).toContain("redirectTo: `/products/${productId}/edit?notice=product-created-image-retry`");
+    expect(actions).toContain('redirectTo: "/products?notice=product-updated"');
   });
 
   it("removes live sourcing, supplier, and document workspaces", async () => {
