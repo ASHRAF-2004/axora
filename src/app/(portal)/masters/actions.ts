@@ -68,7 +68,16 @@ function files(formData: FormData, key: string) {
 function revalidateProduct(productId?: string) {
   revalidatePath("/products");
   revalidatePath("/requests/new");
-  if (productId) revalidatePath(`/products/${productId}/edit`);
+  if (productId) {
+    revalidatePath(`/products/${productId}`);
+    revalidatePath(`/products/${productId}/edit`);
+  }
+}
+
+function revalidateProductAfterEditorUpdate(productId: string) {
+  revalidatePath("/products");
+  revalidatePath("/requests/new");
+  revalidatePath(`/products/${productId}`);
 }
 
 export async function createCompanyAction(formData: FormData) {
@@ -376,7 +385,10 @@ export async function updateProductAction(
   } catch (error) {
     return { status: "error", message: validationMessage(error) };
   }
-  revalidateProduct(productId);
+  // Do not invalidate the currently mounted editor segment here. Next applies
+  // Server Action revalidation before ProductActionForm handles redirectTo;
+  // refreshing this exact segment can supersede and abort that navigation.
+  revalidateProductAfterEditorUpdate(productId);
   return { status: "success", redirectTo: "/products?notice=product-updated" };
 }
 

@@ -29,7 +29,8 @@ test("custom dashboard dates remain bookmarkable with inclusive end semantics", 
   await expect(page).toHaveURL(/preset=custom/);
   await expect(page).toHaveURL(/start=2026-06-01/);
   await expect(page).toHaveURL(/end=2026-07-31/);
-  await expect(page.getByText(/Start is inclusive/)).toBeVisible();
+  const periodRegion = page.getByRole("region", { name: "Reporting period" });
+  await expect(periodRegion.getByText(/Start is inclusive/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Export dashboard" })).toHaveAttribute(
     "href",
     /start=2026-06-01&end=2026-07-31/,

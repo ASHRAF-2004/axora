@@ -32,10 +32,12 @@ test("owner previews reviewed company branding across device, Arabic, and reduce
   await expect(contrastHeading).toHaveCount(1);
   await expect(contrastHeading).toBeVisible();
 
-  await page.getByLabel("Tablet").check();
+  const deviceChoices = page.getByRole("group", { name: "Preview device" });
+  await deviceChoices.getByRole("radio", { name: "Tablet", exact: true }).check();
   await expect(page.locator('section[data-device="tablet"]')).toBeVisible();
-  await page.getByLabel("Mobile").check();
-  await page.getByLabel("العربية").check();
+  await deviceChoices.getByRole("radio", { name: "Mobile", exact: true }).check();
+  const languageChoices = page.getByRole("group", { name: "Preview language" });
+  await languageChoices.getByRole("radio", { name: "العربية", exact: true }).check();
   const preview = page.locator('section[lang="ar"][dir="rtl"]');
   await expect(preview).toBeVisible();
   await expect(preview.getByText("مشتريات الشركة")).toBeVisible();
