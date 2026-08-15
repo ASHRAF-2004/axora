@@ -122,7 +122,8 @@ test("every settled stage has visible pixels, matching copy, and one opted-in cu
   });
   await page.goto("/en");
   await expectRenderedAsset(page, "request");
-  await page.locator('[data-scene-route="home"]').screenshot({ animations: "disabled", caret: "initial", path: "output/playwright/v2-home-stage-request.png" });
+  await page.locator('[data-scene-route="home-workflow"]').scrollIntoViewIfNeeded();
+  await page.screenshot({ animations: "disabled", caret: "initial", path: "output/playwright/v2-home-stage-request.png" });
   expect(await page.evaluate(() => (window as typeof window & { __axoraSceneAudio: unknown[] }).__axoraSceneAudio)).toEqual([]);
   await page.getByRole("button", { name: "Enable interface sound" }).click();
 
@@ -132,7 +133,7 @@ test("every settled stage has visible pixels, matching copy, and one opted-in cu
     await control.click();
     await expectRenderedAsset(page, stage);
     await expect(page.getByTestId("scene-caption")).toContainText((await control.locator("strong").textContent()) ?? "");
-    await page.locator('[data-scene-route="home-workflow"]').screenshot({
+    await page.screenshot({
       animations: "disabled",
       caret: "initial",
       path: `output/playwright/v2-home-stage-${stage}.png`,
