@@ -28,6 +28,12 @@ const style = {
 };
 
 describe("production driver map readiness", () => {
+  it("includes the build-time map checker in the otherwise restricted Docker context", async () => {
+    const dockerIgnore = await readFile(new URL("../.dockerignore", import.meta.url), "utf8");
+    expect(dockerIgnore).toContain("scripts/*\n!scripts/production/\nscripts/production/*\n!scripts/production/check-driver-map-config.mjs");
+    expect(dockerIgnore).not.toMatch(/^scripts$/m);
+  });
+
   it("remains a release blocker until an approved provider is declared", () => {
     expect(() => buildDriverMapConfig({})).toThrow(/release|approved|ready/i);
     expect(() => buildDriverMapConfig({ ...environment, NEXT_PUBLIC_AXORA_MAP_STYLE_URL: "https://tile.openstreetmap.org/{z}/{x}/{y}.png" })).toThrow(/same-origin/i);
