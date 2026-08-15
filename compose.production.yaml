@@ -224,6 +224,8 @@ secrets:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/postgres_admin_password"
   axora_app_password:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_app_password"
+  axora_cleanup_worker_password:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_cleanup_worker_password"
   session_secret:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/session_secret"
   tailscale_db_auth_key:
