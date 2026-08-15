@@ -47,7 +47,7 @@ export function AxoraBrandEmblem({ href, label, className }: { href: string; lab
       onPointerEnter={activate} onFocus={activate} onClick={activate}
       data-canvas-ready={canvasReady || undefined}>
       <span className={styles.brandEmblemDepth} aria-hidden="true" />
-      <Image src="/brand/axora-logo.png" width={158} height={29} alt="" priority />
+      <Image src="/brand/axora-logo.png" width={158} height={29} alt="" priority unoptimized />
       {EmblemCanvas ? <EmblemCanvas activation={activation} onReady={() => setCanvasReady(true)} /> : null}
     </Link>
   );

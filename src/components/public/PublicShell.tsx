@@ -66,7 +66,7 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
       <footer className="public-footer">
         <div className="public-footer-grid">
           <div>
-            <Image src="/brand/axora-logo-dark-background.png" width={190} height={54} alt="Axora" />
+            <Image src="/brand/axora-logo-dark-background.png" width={190} height={54} alt="Axora" unoptimized />
             <p>{messages.footer.summary}</p>
           </div>
           <div>

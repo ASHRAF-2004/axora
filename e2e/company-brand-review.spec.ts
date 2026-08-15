@@ -8,6 +8,13 @@ import {
 const companyId = "10000000-0000-4000-8000-000000000001";
 
 test("owner previews reviewed company branding across device, Arabic, and reduced motion", async ({ page }, testInfo) => {
+  const optimizedOfficialLogoRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/_next/image" && url.searchParams.get("url")?.startsWith("/brand/axora-")) {
+      optimizedOfficialLogoRequests.push(request.url());
+    }
+  });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await signInAsDemoOwner(page);
   await page.goto("/companies/" + companyId + "/theme");
@@ -52,6 +59,7 @@ test("owner previews reviewed company branding across device, Arabic, and reduce
     level: 1,
     name: /Onboarding workspace: YourUni/,
   })).toBeVisible();
+  expect(optimizedOfficialLogoRequests).toEqual([]);
   await page.screenshot({
     path: `output/playwright/company-onboarding-${testInfo.project.name}.png`,
     fullPage: true,
