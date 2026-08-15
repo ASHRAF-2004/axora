@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const port = 3101;
 const baseURL = `http://127.0.0.1:${port}`;
+const useStandalone = Boolean(process.env.CI)
+  || process.env.AXORA_PLAYWRIGHT_STANDALONE === "true";
 
 export default defineConfig({
   testDir: "./e2e-visitor-recovery",
@@ -33,11 +35,17 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+    command: useStandalone
+      ? "node output/standalone/server.js"
+      : `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
     url: `${baseURL}/api/health/live`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
+      APP_BASE_URL: baseURL,
+      HOSTNAME: "127.0.0.1",
+      PORT: String(port),
+      NODE_ENV: useStandalone ? "production" : "development",
       DEMO_MODE: "true",
       DEMO_EMAIL: "owner@axora.e2e",
       DEMO_PASSWORD: "public-e2e-fixture-password",

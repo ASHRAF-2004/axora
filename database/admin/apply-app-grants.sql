@@ -87,10 +87,6 @@ REVOKE ALL ON FUNCTION
   public.audit_user_session_revocation(),
   public.protect_public_visitor_counter_state(),
   public.reject_public_visitor_claim_mutation(),
-  public.axora_public_visitor_snapshot(text,text,text),
-  public.axora_claim_public_visitor(
-    text,text,text,text,text,text,text,timestamptz,text
-  ),
   public.axora_effective_access_snapshot(uuid,uuid,timestamptz),
   public.axora_authorization_scope_contains(
     text,uuid,uuid,uuid,uuid,text,uuid,uuid,uuid,uuid
@@ -159,10 +155,6 @@ GRANT EXECUTE ON FUNCTION
   ),
   public.axora_support_system_summary(),
   public.axora_record_support_audit(text,uuid,boolean,integer,text),
-  public.axora_public_visitor_snapshot(text,text,text),
-  public.axora_claim_public_visitor(
-    text,text,text,text,text,text,text,timestamptz,text
-  ),
   public.axora_effective_access_snapshot(uuid,uuid,timestamptz),
   public.axora_set_user_permission_override(
     uuid,uuid,uuid,uuid,text,text,text,uuid,uuid,uuid,uuid,
@@ -335,6 +327,109 @@ BEGIN
     FROM axora_app;
     REVOKE ALL ON SEQUENCE public.company_lead_code_seq FROM axora_app;
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_record_public_company_lead(jsonb,timestamptz),public.axora_company_lead_workspace(uuid,uuid,jsonb,timestamptz),public.axora_export_company_lead(uuid,uuid,uuid,timestamptz),public.axora_assign_company_lead(uuid,uuid,uuid,uuid,text,timestamptz),public.axora_transition_company_lead(uuid,uuid,uuid,text,text,timestamptz),public.axora_resolve_company_lead_duplicate(uuid,uuid,uuid,uuid,text,text,timestamptz),public.axora_add_company_lead_note(uuid,uuid,uuid,text,text,timestamptz),public.axora_add_company_lead_task(uuid,uuid,uuid,text,timestamptz,uuid,timestamptz),public.axora_complete_company_lead_task(uuid,uuid,uuid,uuid,text,timestamptz),public.axora_convert_company_lead(uuid,uuid,uuid,text,timestamptz),public.axora_anonymize_company_lead(uuid,uuid,uuid,text,timestamptz),public.axora_claim_overdue_company_lead_events(uuid,uuid,timestamptz) TO axora_app';
+  END IF;
+END $$;
+
+-- Company deletion is split between user-facing owner capabilities and a
+-- dedicated external-cleanup worker. The broad legacy baseline grants above
+-- must never collapse that boundary when deployment/reset reapplies grants.
+DO $$
+BEGIN
+  IF to_regprocedure(
+    'public.axora_delete_or_archive_company_v2(uuid,uuid,uuid,uuid,text,text,timestamp with time zone)'
+  ) IS NULL THEN
+    RETURN;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app') THEN
+    REVOKE ALL ON TABLE
+      public.company_deletion_ownership_rules,
+      public.company_deletion_ownership_dag,
+      public.company_deletion_execution_authorizations,
+      public.company_deletion_commands,
+      public.company_deletion_cleanup_tasks,
+      public.company_deletion_tombstones
+    FROM axora_app;
+    REVOKE ALL ON FUNCTION
+      public.axora_company_deletion_impact(uuid,uuid,uuid,timestamptz),
+      public.axora_delete_or_archive_company(uuid,uuid,uuid,text,text,timestamptz),
+      public.axora_company_deletion_trigger_is_authorized(),
+      public.axora_reconcile_company_deletion_cleanup_tasks(timestamptz),
+      public.axora_claim_company_deletion_cleanup_task(text,integer,timestamptz),
+      public.axora_complete_company_deletion_cleanup_task(uuid,uuid,text,jsonb,timestamptz),
+      public.axora_fail_company_deletion_cleanup_task(uuid,uuid,text,text,boolean,timestamptz)
+    FROM axora_app;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_company_deletion_impact_v2(uuid,uuid,uuid,timestamptz),
+      public.axora_delete_or_archive_company_v2(uuid,uuid,uuid,uuid,text,text,timestamptz),
+      public.axora_company_deletion_command_status(uuid,uuid,uuid,timestamptz)
+    TO axora_app;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_cleanup_worker') THEN
+    REVOKE ALL ON TABLE
+      public.company_deletion_ownership_rules,
+      public.company_deletion_ownership_dag,
+      public.company_deletion_execution_authorizations,
+      public.company_deletion_commands,
+      public.company_deletion_cleanup_tasks,
+      public.company_deletion_tombstones
+    FROM axora_cleanup_worker;
+    REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM axora_cleanup_worker;
+    GRANT USAGE ON SCHEMA public TO axora_cleanup_worker;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_reconcile_company_deletion_cleanup_tasks(timestamptz),
+      public.axora_claim_company_deletion_cleanup_task(text,integer,timestamptz),
+      public.axora_complete_company_deletion_cleanup_task(uuid,uuid,text,jsonb,timestamptz),
+      public.axora_fail_company_deletion_cleanup_task(uuid,uuid,text,text,boolean,timestamptz)
+    TO axora_cleanup_worker;
+  END IF;
+END $$;
+
+-- Visitor identity changed forward-only from a public snapshot, through the
+-- network-era V2 capability, to the cookie-only V3 capability. Deployment and
+-- reset reapply this file at supported intermediate migration points, so grant
+-- exactly the newest capability that exists instead of referencing a function
+-- that has not been created yet (or one that a later migration removed).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app') THEN
+    RETURN;
+  END IF;
+
+  IF to_regprocedure('public.axora_public_visitor_snapshot(text,text,text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_public_visitor_snapshot(text,text,text) FROM axora_app';
+  END IF;
+  IF to_regprocedure('public.axora_public_visitor_snapshot_v2(text,text,text,text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_public_visitor_snapshot_v2(text,text,text,text) FROM axora_app';
+  END IF;
+  IF to_regprocedure('public.axora_public_visitor_snapshot_v3(text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_public_visitor_snapshot_v3(text) FROM axora_app';
+  END IF;
+  IF to_regprocedure('public.axora_claim_public_visitor(text,text,text,text,text,text,text,timestamp with time zone,text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text) FROM axora_app';
+  END IF;
+  IF to_regprocedure('public.axora_claim_public_visitor_v3(text,text,text,timestamp with time zone,text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_claim_public_visitor_v3(text,text,text,timestamptz,text) FROM axora_app';
+  END IF;
+  IF to_regprocedure('public.axora_claim_public_visitor_fallback(text,text,text,text,text,text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_claim_public_visitor_fallback(text,text,text,text,text,text) FROM axora_app';
+  END IF;
+  IF to_regprocedure('public.axora_prune_public_visitor_rate_buckets()') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.axora_prune_public_visitor_rate_buckets() FROM axora_app';
+  END IF;
+
+  IF to_regprocedure('public.axora_public_visitor_snapshot_v3(text)') IS NOT NULL THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_public_visitor_snapshot_v3(text),public.axora_claim_public_visitor_v3(text,text,text,timestamptz,text),public.axora_prune_public_visitor_rate_buckets() TO axora_app';
+  ELSIF to_regprocedure('public.axora_public_visitor_snapshot_v2(text,text,text,text)') IS NOT NULL THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_public_visitor_snapshot_v2(text,text,text,text),public.axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text) TO axora_app';
+    IF to_regprocedure('public.axora_prune_public_visitor_rate_buckets()') IS NOT NULL THEN
+      EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_prune_public_visitor_rate_buckets() TO axora_app';
+    ELSIF to_regprocedure('public.axora_claim_public_visitor_fallback(text,text,text,text,text,text)') IS NOT NULL THEN
+      EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_claim_public_visitor_fallback(text,text,text,text,text,text) TO axora_app';
+    END IF;
+  ELSIF to_regprocedure('public.axora_public_visitor_snapshot(text,text,text)') IS NOT NULL THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_public_visitor_snapshot(text,text,text),public.axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text) TO axora_app';
   END IF;
 END $$;
 

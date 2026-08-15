@@ -10,14 +10,32 @@ Axora uses an ownership-aware deletion gate rather than blanket cascading foreig
 | Draft requests, carts, budgets, approval rules, branches, departments, memberships, role assignments, branding and notifications | Explicit dependency-ordered cascade | Hidden and access-revoked before protected retention | These are tenant-owned disposable records when no protected evidence depends on them. |
 | Finalized invoices and paid payments | Not expected in an empty fixture | Retain and block hard delete | Accounting evidence requires a formally approved retention policy. |
 | Completed deliveries and receipt proof | Not expected in an empty fixture | Retain and block hard delete | Proof and dispute evidence must remain immutable. |
-| Audit and security evidence | Minimal tombstone retained | Minimal tombstone plus existing evidence retained | Accountability must survive tenant removal. |
-| Files, search indexes and caches | Remove only after their owning record is approved for hard deletion | Revoke normal access; retain protected files | Files follow the same classification as their owning record. |
+| Audit and security evidence | Immutable audit snapshots plus a deletion tombstone retained; historical UUIDs are no longer ownership foreign keys | Tombstone plus existing evidence retained | Accountability and the audit integrity chain survive tenant removal without keeping an operational tenant. |
+| Files | Leased cleanup task removes the file after the database transaction | Revoke normal access; retain protected files | A hard-deletion command remains `CLEANUP_PENDING` until every required file task completes. |
+| External cache/search index | No task is created because Axora currently has no persistent tenant cache or external search index | Not applicable | Legacy task kinds fail closed unless an explicit local adapter root is configured; they are never silently acknowledged. |
 
 An unprotected disposable company is not archived merely because it has normal
-children: the ownership graph removes those children and the parent, verifies
-all foreign keys and records external file/cache/search cleanup. A company with
+children: migration 091 removes indirect children and then follows a reviewed,
+dependency-ordered ownership DAG while constraints and triggers remain active.
+It never changes `session_replication_role`. A company with
 finalized financial, completed delivery or proof evidence is archived,
 tombstoned and excluded at the central scoped-authorization boundary while the
 minimum protected evidence remains. The impact capability reports exact child,
 protected and in-flight counts before mutation and requires a mode-specific,
 company-specific typed confirmation plus a unique idempotency command.
+Append-only trigger exceptions require a private authorization row bound to the
+same PostgreSQL backend, transaction, company and running command. Custom GUCs
+are audit context only and cannot authorize deletion.
+
+The cleanup worker leases one task at a time, retries transient failures with
+bounded exponential backoff, recovers expired leases after a crash and records
+terminal failures. `COMPLETE` is impossible while a required task is pending.
+The production worker deletes files only below the mounted Axora uploads root;
+path traversal and directory deletion through a file locator are rejected.
+It connects as the dedicated `axora_cleanup_worker` login using its protected
+secret. The web application role cannot execute cleanup leasing or completion
+capabilities.
+`CACHE` and `SEARCH_INDEX` adapters require `AXORA_COMPANY_CACHE_ROOT` and
+`AXORA_COMPANY_SEARCH_INDEX_ROOT` respectively. Those variables remain unset
+because the current application has no such persistent stores. If either store
+is introduced, configuring and mounting its reviewed root is a release gate.

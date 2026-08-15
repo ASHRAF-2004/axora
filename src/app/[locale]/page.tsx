@@ -7,7 +7,6 @@ import { isDemoMode } from "@/lib/db";
 import {
   buildVisitorIdentity,
   getPublicVisitorSnapshot,
-  normalizedPublicNetworkIdentifier,
   VISITOR_CLAIM_COOKIE,
 } from "@/lib/public-visitor-counter";
 import { cookies, headers } from "next/headers";
@@ -38,14 +37,11 @@ export default async function PublicHome({ params }: { params: Promise<{ locale:
   let initialVisitorSnapshot;
   if (!session && !privacyOptOut) {
     if (isDemoMode()) {
-      initialVisitorSnapshot = { totalCount: 0, earlyBirdCount: 0, nightOwlCount: 0 };
+      initialVisitorSnapshot = { version: 0, totalCount: 0, earlyBirdCount: 0, nightOwlCount: 0 };
     } else {
       try {
         initialVisitorSnapshot = await getPublicVisitorSnapshot(buildVisitorIdentity({
           cookieValue: cookieStore.get(VISITOR_CLAIM_COOKIE)?.value,
-          remoteIp: normalizedPublicNetworkIdentifier(
-            requestHeaders.get("cf-connecting-ip") ?? requestHeaders.get("x-forwarded-for")?.split(",")[0],
-          ),
         }));
       } catch {
         initialVisitorSnapshot = undefined;

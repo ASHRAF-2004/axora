@@ -93,8 +93,9 @@ describe("Axora immersive world V2", () => {
       readFile(path.join(root, "src/components/public/AxoraBrandEmblemCanvas.tsx"), "utf8"),
     ]);
     expect(scene).not.toMatch(/RoundedBox|boxGeometry/);
-    expect(scene).toContain("AbortController");
-    expect(scene).toContain("controller.abort()");
+    expect(scene).toContain("useGLTF.preload");
+    expect(scene).not.toMatch(/fetch\(SEMANTIC_MODEL_PATHS/);
+    expect(scene).toContain("mesh.geometry = mesh.geometry.clone()");
     expect(scene).toContain("material.dispose()");
     expect(scene).toContain('removeEventListener("webglcontextlost"');
     expect(emblem).toContain("extrudeGeometry");

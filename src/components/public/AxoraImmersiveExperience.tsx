@@ -19,6 +19,7 @@ import {
 } from "@/lib/immersive-public-experience";
 import { ImmersiveAudioController, type ImmersiveSoundId } from "@/lib/immersive-audio";
 import { publicSceneStates } from "@/lib/public-scene-states";
+import type { ImmersiveSceneRuntime } from "@/lib/immersive-scene-runtime";
 import { AtmosphereSelector } from "./AtmosphereSelector";
 import { useAtmosphere } from "./AtmosphereProvider";
 import { AxoraSemanticScene } from "./AxoraSemanticScene";
@@ -105,13 +106,18 @@ export function AxoraImmersiveExperience({
   const sound = useStageAudio();
   const routeModels = PUBLIC_SCENE_MODELS[route];
   const sceneStates = useMemo(() => publicSceneStates(route, locale), [locale, route]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [requestedIndex, setRequestedIndex] = useState(0);
+  const [renderedIndex, setRenderedIndex] = useState(0);
+  const [scenePhase, setScenePhase] = useState<ImmersiveSceneRuntime["phase"]>("loading");
   const [sceneEngaged, setSceneEngaged] = useState(false);
   const [interactionReady, setInteractionReady] = useState(false);
-  const activeModel = routeModels[activeIndex] ?? routeModels[0];
-  const nextModel = routeModels[(activeIndex + 1) % routeModels.length];
+  const activeModel = routeModels[requestedIndex] ?? routeModels[0];
+  const nextModel = routeModels[(requestedIndex + 1) % routeModels.length];
   const routeText = route === "home" ? null : copy.routeCopy[route];
   const rootRef = useRef<HTMLDivElement>(null);
+  const requestedIndexRef = useRef(0);
+  const renderedIndexRef = useRef(0);
+  const transitionRequested = useRef(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setInteractionReady(true));
@@ -121,11 +127,33 @@ export function AxoraImmersiveExperience({
   const activate = useCallback((index: number) => {
     const bounded = Math.max(0, Math.min(routeModels.length - 1, index));
     setSceneEngaged(true);
-    if (bounded === activeIndex) return;
-    setActiveIndex(bounded);
-    const model = sceneStates[bounded]?.sound ?? routeModels[bounded];
-    sound.play(model);
-  }, [activeIndex, routeModels, sceneStates, sound]);
+    if (bounded === requestedIndexRef.current) return;
+    transitionRequested.current = true;
+    requestedIndexRef.current = bounded;
+    sound.stop();
+    setRequestedIndex(bounded);
+    setScenePhase("loading");
+  }, [routeModels.length, sound]);
+
+  const handleSceneRuntime = useCallback((runtime: ImmersiveSceneRuntime) => {
+    const expected = routeModels[requestedIndexRef.current];
+    if (runtime.requestedAsset !== expected) return;
+    if (renderedIndexRef.current === requestedIndexRef.current
+      && runtime.renderedAsset === expected
+      && runtime.phase !== "ready"
+      && runtime.phase !== "fallback") return;
+    setScenePhase(runtime.phase);
+    if ((runtime.phase !== "ready" && runtime.phase !== "fallback")
+      || runtime.renderedAsset !== expected) return;
+    const nextIndex = requestedIndexRef.current;
+    if (renderedIndexRef.current === nextIndex) return;
+    renderedIndexRef.current = nextIndex;
+    setRenderedIndex(nextIndex);
+    if (transitionRequested.current) {
+      sound.play(sceneStates[nextIndex]?.sound ?? expected);
+      transitionRequested.current = false;
+    }
+  }, [routeModels, sceneStates, sound]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -152,11 +180,15 @@ export function AxoraImmersiveExperience({
     return () => window.removeEventListener("keydown", keyboard);
   }, [activate, route, routeModels.length]);
 
-  const sceneDescription = sceneStates[activeIndex]?.description ?? copy.sceneAlternative;
+  const sceneDescription = sceneStates[renderedIndex]?.description ?? copy.sceneAlternative;
   const heading = routeText?.title ?? copy.title;
   const lead = routeText?.lead ?? copy.lead;
   const eyebrow = routeText?.eyebrow ?? copy.eyebrow;
   const controlItems = sceneStates;
+  const requestedLabel = controlItems[requestedIndex]?.label ?? "";
+  const loadingLabel = locale === "ar"
+    ? `جارٍ تحميل ${requestedLabel}`
+    : locale === "ms" ? `Memuatkan ${requestedLabel}` : `Loading ${requestedLabel}`;
 
   return (
     <div
@@ -165,6 +197,9 @@ export function AxoraImmersiveExperience({
       data-interaction-ready={interactionReady}
       data-locale={locale}
       data-public-scene={route}
+      data-requested-stage={routeModels[requestedIndex]}
+      data-rendered-stage={routeModels[renderedIndex]}
+      data-scene-phase={scenePhase}
       dir={locale === "ar" ? "rtl" : "ltr"}
       ref={rootRef}
     >
@@ -192,10 +227,12 @@ export function AxoraImmersiveExperience({
             route={route}
             direction={locale === "ar" ? "rtl" : "ltr"}
             engaged={sceneEngaged}
+            loadingLabel={loadingLabel}
+            onRuntimeChange={handleSceneRuntime}
           />
-          <div className={styles.sceneCaption} aria-live="polite">
-            <span>{String(activeIndex + 1).padStart(2, "0")}</span>
-            <strong>{controlItems[activeIndex]?.label}</strong>
+          <div className={styles.sceneCaption} data-testid="scene-caption" aria-live="polite">
+            <span>{String(renderedIndex + 1).padStart(2, "0")}</span>
+            <strong>{controlItems[renderedIndex]?.label}</strong>
             <p>{sceneDescription}</p>
           </div>
         </div>
@@ -220,14 +257,16 @@ export function AxoraImmersiveExperience({
             route={`${route}-workflow`}
             direction={locale === "ar" ? "rtl" : "ltr"}
             engaged={sceneEngaged}
+            loadingLabel={loadingLabel}
+            onRuntimeChange={handleSceneRuntime}
           />
         </div>
         <div className={styles.workflowSteps} role="list" aria-label={copy.consoleLabel}>
           {controlItems.map((item, index) => (
-            <article role="listitem" key={`${item.model}-${index}`} data-scene-step={index} className={styles.workflowStep} data-active={activeIndex === index}>
+            <article role="listitem" key={`${item.model}-${index}`} data-scene-step={index} className={styles.workflowStep} data-active={requestedIndex === index} data-rendered={renderedIndex === index}>
               <button
                 type="button"
-                aria-pressed={activeIndex === index}
+                aria-pressed={requestedIndex === index}
                 aria-label={`${String(index + 1).padStart(2, "0")} · ${item.label}`}
                 onClick={() => activate(index)}
               >

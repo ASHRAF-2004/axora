@@ -55,13 +55,19 @@ constrained-data users.
 
 ## Visitor choice and live information
 
-The visitor choice is a homepage-only required dialog for eligible unclaimed
-visitors. It traps focus, blocks premature dismissal, uses a bounded Turnstile
-verification, and records an atomic idempotent server claim. After success,
-only compact aggregate counters remain. SSE provides authoritative versioned
-snapshots with safe polling fallbacks, visibility cleanup and reconnect
-handling. The same snapshot pattern powers driver availability and authorized
-delivery tracking.
+The visitor choice is a homepage-only required dialog for eligible anonymous,
+unclaimed visitors. It traps focus, blocks premature dismissal, uses a bounded
+Turnstile verification, and records an atomic idempotent server claim. Signed-in
+and privacy-ineligible visitors are rejected before identity work. The versioned,
+HTTP-only first-party cookie is the only durable anonymous identity; clearing it
+or changing browser/device can permit another anonymous choice. Hourly rotating
+network HMACs exist only in short-lived abuse-rate buckets.
+
+After success, only compact aggregate counters remain. The browser performs one
+bounded authoritative snapshot poll every 30 seconds, pauses while hidden or
+offline, applies only monotonic database versions, and backs off after failures.
+The retired EventSource endpoint returns 204 so old clients stop reconnecting.
+This is honest near-live polling, not database-event push.
 
 ## Dependencies and assets
 

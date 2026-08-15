@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, relative, resolve } from "node:path";
+import { readPublicSceneModelInventory } from "./read-public-scene-inventory.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const baseline = JSON.parse(readFileSync(join(root, "docs/immersive-world-v2-performance-baseline.json"), "utf8"));
@@ -25,16 +26,10 @@ const categoryTextures = filesUnder(join(root, "public/catalog/categories"), new
 const audio = filesUnder(join(root, "public/immersive/sounds"), new Set([".ogg", ".wav"]));
 const maps = filesUnder(join(root, "public/maps"), new Set([".json", ".geojson"]));
 const modelBytes = new Map(models.map((file) => [file.path.split("/").at(-1)?.replace(/\.(glb|gltf)$/, ""), file.bytes]));
-const routeModels = {
-  home: ["request", "approve", "pay", "invoice", "prepare", "deliver", "track", "complete"],
-  "how-it-works": ["request", "approve", "pay", "invoice", "deliver", "complete"],
-  "procurement-process": ["request", "approve", "prepare", "invoice", "deliver", "complete"],
-  "solutions-by-role": ["person", "workspace", "company"],
-  "security-and-privacy": ["shield", "vault", "network"],
-  about: ["company", "network", "flag"],
-};
+const routeModels = readPublicSceneModelInventory(root);
 const routes = Object.fromEntries(Object.entries(routeModels).map(([route, ids]) => [route, {
   models: ids,
+  stateCount: ids.length,
   modelBytes: ids.reduce((sum, id) => sum + (modelBytes.get(id) ?? 0), 0),
 }]));
 const current = {

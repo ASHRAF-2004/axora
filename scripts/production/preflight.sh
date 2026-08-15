@@ -45,6 +45,17 @@ if [[ ! "$AXORA_DEPLOY_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] \
   die "AXORA_DEPLOY_TIMEOUT_SECONDS must be at least 30."
 fi
 
+[[ "${AXORA_DRIVER_MAP_OPERATIONAL_READY:-false}" == "true" ]] \
+  || die "Operational driver mapping is a release blocker until an approved self-hosted local-context provider is configured."
+env \
+  AXORA_DRIVER_MAP_OPERATIONAL_READY="${AXORA_DRIVER_MAP_OPERATIONAL_READY:-false}" \
+  NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID="${NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID:-}" \
+  NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME="${NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME:-}" \
+  NEXT_PUBLIC_AXORA_MAP_STYLE_URL="${NEXT_PUBLIC_AXORA_MAP_STYLE_URL:-}" \
+  NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION="${NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION:-}" \
+  NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL="${NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL:-}" \
+  node "$SCRIPT_DIR/check-driver-map-config.mjs" --check
+
 [[ -d "$AXORA_RUNTIME_ROOT" && ! -L "$AXORA_RUNTIME_ROOT" ]] \
   || die "Runtime root is missing or is a symlink: $AXORA_RUNTIME_ROOT"
 [[ -d "$AXORA_SECRETS_DIR" && ! -L "$AXORA_SECRETS_DIR" ]] \

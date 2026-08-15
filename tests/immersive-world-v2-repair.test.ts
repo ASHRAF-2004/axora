@@ -1,10 +1,8 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { driverLiveMapInternals } from "@/components/role-portals/DriverLiveMap";
 import { ImmersiveAudioController, type AudioLike } from "@/lib/immersive-audio";
 import { PUBLIC_SCENE_MODELS, STAGE_SOUND_PATHS, WORKFLOW_STAGE_IDS } from "@/lib/immersive-public-experience";
 import { publicSceneStates, validatePublicSceneStates } from "@/lib/public-scene-states";
+import { cameraDistanceForBounds, normalizationScale, projectedBoundsAreUsable } from "@/lib/immersive-scene-runtime";
 
 function audioFixture() {
   const created: Array<{ path: string; audio: AudioLike; play: ReturnType<typeof vi.fn>; pause: ReturnType<typeof vi.fn> }> = [];
@@ -21,6 +19,14 @@ function audioFixture() {
 }
 
 describe("immersive world V2 audited repairs", () => {
+  it("normalizes every semantic object and rejects clipped or tiny render bounds", () => {
+    expect(normalizationScale({ x: 12, y: 3, z: 4 })).toBeCloseTo(3.2 / 12);
+    expect(() => normalizationScale({ x: 0, y: 0, z: 0 })).toThrow("no usable bounds");
+    expect(cameraDistanceForBounds({ x: 3.2, y: 1.2, z: 1 }, 16 / 9)).toBeGreaterThanOrEqual(4.8);
+    expect(projectedBoundsAreUsable({ left: .2, top: .2, right: .8, bottom: .8, width: .6, height: .6 })).toBe(true);
+    expect(projectedBoundsAreUsable({ left: -.1, top: .2, right: 1.2, bottom: .8, width: 1.3, height: .6 })).toBe(false);
+    expect(projectedBoundsAreUsable({ left: .49, top: .49, right: .51, bottom: .51, width: .02, height: .02 })).toBe(false);
+  });
   it("keeps sound locked until consent and maps every stage to its own cue", () => {
     const fixture = audioFixture();
     fixture.controller.setEnabled(true);
@@ -66,22 +72,5 @@ describe("immersive world V2 audited repairs", () => {
         }
       }
     }
-  });
-
-  it("loads a real self-hosted MapLibre style and exact route geometry", async () => {
-    const style = JSON.parse(await readFile(path.join(process.cwd(), "public/maps/axora-operational-style.json"), "utf8"));
-    expect(driverLiveMapInternals.usableStyle(style)).toBe(true);
-    expect(Object.keys(style.sources)).toEqual(expect.arrayContaining(["natural-earth-countries", "natural-earth-places"]));
-    expect(style.layers.some((layer: { type?: string; source?: string }) => layer.type !== "background" && layer.source)).toBe(true);
-    for (const source of Object.values(style.sources) as Array<{ data?: string }>) {
-      expect(source.data).toMatch(/^\/maps\/.+\.geojson$/);
-      const data = JSON.parse(await readFile(path.join(process.cwd(), "public", source.data!.slice(1)), "utf8"));
-      expect(data.features.length).toBeGreaterThan(0);
-    }
-    const points = [
-      { latitude: 3.139, longitude: 101.6869, accuracy: 8, capturedAt: "2026-08-15T00:00:00Z" },
-      { latitude: 3.1412, longitude: 101.69, accuracy: 7, capturedAt: "2026-08-15T00:01:00Z" },
-    ];
-    expect(driverLiveMapInternals.routeFeature(points).geometry.coordinates).toEqual([[101.6869, 3.139], [101.69, 3.1412]]);
   });
 });

@@ -20,7 +20,29 @@ export type CompanyDeletionImpact = {
     protectedAction: "HARD_DELETE" | "CASCADE_DELETE" | "ANONYMIZE_AND_RETAIN" | "RETAIN_WITH_ACCESS_REVOKED" | "BLOCK";
   }>;
   externalFileCount: number;
+  externalCleanupRequired: boolean;
   retentionPolicy: string;
+};
+
+export type CompanyDeletionCommandStatus = {
+  commandId: string;
+  companyId: string;
+  companyCode: string;
+  mode: "HARD_DELETE" | "ARCHIVE_RETAIN";
+  status: "RUNNING" | "DATABASE_COMPLETE" | "CLEANUP_PENDING" | "COMPLETE" | "FAILED";
+  createdAt: string;
+  completedAt: string | null;
+  result: Record<string, unknown> | null;
+  tasks: Array<{
+    taskId: string;
+    kind: "FILE" | "CACHE" | "SEARCH_INDEX";
+    status: "PENDING" | "LEASED" | "RETRY_WAIT" | "COMPLETE" | "TERMINAL_FAILED";
+    attempts: number;
+    maximumAttempts: number;
+    availableAt: string;
+    lastError: string | null;
+    completedAt: string | null;
+  }>;
 };
 
 function assignment(actor: AuthenticatedSessionUser) {
@@ -29,12 +51,25 @@ function assignment(actor: AuthenticatedSessionUser) {
 }
 
 export async function getCompanyDeletionImpact(actor: AuthenticatedSessionUser, companyId: string) {
-  if (isDemoMode()) return { companyId, companyCode: "DEMO", confirmation: "PERMANENTLY DELETE DEMO", users: 0, memberships: 0, branches: 0, departments: 0, roleAssignments: 0, sessions: 0, requests: 0, budgets: 0, approvalPolicies: 0, invoices: 0, finalizedInvoices: 0, paidPayments: 0, deliveries: 0, completedDeliveries: 0, receipts: 0, documents: 0, branding: 0, notifications: 0, workflowEvents: 0, lifecycleHistory: 0, pendingInvitations: 0, pendingWorkflowEmails: 0, inFlightWork: 0, protectedEvidence: 0, hardDeleteEligible: true, recommendedMode: "HARD_DELETE", ownership: {}, externalFileCount: 0, retentionPolicy: "Demo mode contains no protected evidence." } satisfies CompanyDeletionImpact;
+  if (isDemoMode()) return { companyId, companyCode: "DEMO", confirmation: "PERMANENTLY DELETE DEMO", users: 0, memberships: 0, branches: 0, departments: 0, roleAssignments: 0, sessions: 0, requests: 0, budgets: 0, approvalPolicies: 0, invoices: 0, finalizedInvoices: 0, paidPayments: 0, deliveries: 0, completedDeliveries: 0, receipts: 0, documents: 0, branding: 0, notifications: 0, workflowEvents: 0, lifecycleHistory: 0, pendingInvitations: 0, pendingWorkflowEmails: 0, inFlightWork: 0, protectedEvidence: 0, hardDeleteEligible: true, recommendedMode: "HARD_DELETE", ownership: {}, externalFileCount: 0, externalCleanupRequired: false, retentionPolicy: "Demo mode contains no protected evidence." } satisfies CompanyDeletionImpact;
   const result = await query<{ value: CompanyDeletionImpact }>(
     "SELECT public.axora_company_deletion_impact_v2($1,$2,$3,$4) AS value",
     [actor.id, assignment(actor), companyId, new Date()],
   );
   if (!result.rows[0]?.value) throw new Error("Company deletion is unavailable.");
+  return result.rows[0].value;
+}
+
+export async function getCompanyDeletionCommandStatus(
+  actor: AuthenticatedSessionUser,
+  commandId: string,
+) {
+  if (isDemoMode()) return null;
+  const result = await query<{ value: CompanyDeletionCommandStatus }>(
+    "SELECT public.axora_company_deletion_command_status($1,$2,$3,$4) AS value",
+    [actor.id, assignment(actor), commandId, new Date()],
+  );
+  if (!result.rows[0]?.value) throw new Error("Deletion command is unavailable.");
   return result.rows[0].value;
 }
 

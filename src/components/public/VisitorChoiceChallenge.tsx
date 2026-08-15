@@ -9,7 +9,7 @@ import Script from "next/script";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./VisitorChoiceChallenge.module.css";
 
-type Phase = "loading" | "ready" | "verifying" | "claimed" | "unavailable" | "error";
+type Phase = "loading" | "ready" | "verifying" | "claimed" | "unavailable" | "error" | "ineligible";
 type TurnstileWidgetId = string;
 type TurnstileApi = {
   render: (container: HTMLElement, options: Record<string, unknown>) => TurnstileWidgetId | undefined;
@@ -17,28 +17,74 @@ type TurnstileApi = {
   reset: (widgetId: TurnstileWidgetId) => void;
   remove: (widgetId: TurnstileWidgetId) => void;
 };
+type SnapshotLoadResult =
+  | { status: "success" }
+  | { status: "ineligible" }
+  | { status: "aborted" }
+  | { status: "error"; retryAfterMs?: number };
 
 declare global { interface Window { turnstile?: TurnstileApi } }
 
 const GET_TIMEOUT_MS = 10_000;
 const VERIFY_TIMEOUT_MS = 18_000;
 const POST_TIMEOUT_MS = 12_000;
-const emptySnapshot: VisitorCounterSnapshot = { totalCount: 0, earlyBirdCount: 0, nightOwlCount: 0 };
+const POLL_INTERVAL_MS = 30_000;
+const MAX_POLL_BACKOFF_MS = 120_000;
+const emptySnapshot: VisitorCounterSnapshot = {
+  version: 0,
+  totalCount: 0,
+  earlyBirdCount: 0,
+  nightOwlCount: 0,
+};
 
-function isSnapshot(value: unknown): value is VisitorCounterSnapshot {
-  if (!value || typeof value !== "object") return false;
+class SnapshotRequestError extends Error {
+  constructor(readonly retryAfterMs?: number) {
+    super("snapshot");
+  }
+}
+
+function parseSnapshot(value: unknown): VisitorCounterSnapshot | undefined {
+  if (!value || typeof value !== "object") return undefined;
   const item = value as Partial<VisitorCounterSnapshot>;
-  return [item.totalCount, item.earlyBirdCount, item.nightOwlCount].every((count) => Number.isSafeInteger(count) && Number(count) >= 0)
-    && item.totalCount === Number(item.earlyBirdCount) + Number(item.nightOwlCount)
-    && (item.choice === undefined || item.choice === "EARLY_BIRD" || item.choice === "NIGHT_OWL")
-    && ((item.choice === undefined) === (item.visitorNumber === undefined));
+  const version = item.version ?? item.totalCount;
+  if (![version, item.totalCount, item.earlyBirdCount, item.nightOwlCount]
+    .every((count) => Number.isSafeInteger(count) && Number(count) >= 0)
+    || item.totalCount !== Number(item.earlyBirdCount) + Number(item.nightOwlCount)
+    || Number(version) < Number(item.totalCount)
+    || (item.choice !== undefined && item.choice !== "EARLY_BIRD" && item.choice !== "NIGHT_OWL")
+    || ((item.choice === undefined) !== (item.visitorNumber === undefined))) {
+    return undefined;
+  }
+  return { ...item, version: Number(version) } as VisitorCounterSnapshot;
+}
+
+function retryAfterMilliseconds(response: Response) {
+  const value = response.headers.get("retry-after")?.trim();
+  if (!value) return undefined;
+  const seconds = Number(value);
+  const milliseconds = Number.isFinite(seconds)
+    ? seconds * 1_000
+    : Date.parse(value) - Date.now();
+  if (!Number.isFinite(milliseconds)) return undefined;
+  return Math.min(MAX_POLL_BACKOFF_MS, Math.max(5_000, milliseconds));
 }
 
 async function requestSnapshot(signal?: AbortSignal) {
-  const response = await fetch("/api/public/visitor-choice", { credentials: "same-origin", cache: "no-store", signal });
-  const payload: unknown = await response.json();
-  if (!response.ok || !isSnapshot(payload)) throw new Error("snapshot");
-  return payload;
+  const response = await fetch("/api/public/visitor-choice", {
+    credentials: "same-origin",
+    cache: "no-store",
+    signal,
+  });
+  const payload: unknown = await response.json().catch(() => null);
+  if (response.status === 403
+    || (payload && typeof payload === "object" && (payload as { eligible?: unknown }).eligible === false)) {
+    return { eligible: false as const };
+  }
+  const snapshot = parseSnapshot(payload);
+  if (!response.ok || !snapshot) {
+    throw new SnapshotRequestError(retryAfterMilliseconds(response));
+  }
+  return { eligible: true as const, snapshot };
 }
 
 export function visitorChoicePercentages(snapshot: VisitorCounterSnapshot) {
@@ -60,10 +106,15 @@ export function VisitorChoiceChallenge({
   const validSiteKey = Boolean(siteKey && /^[A-Za-z0-9_-]{10,100}$/.test(siteKey));
   const [snapshot, setSnapshot] = useState<VisitorCounterSnapshot>(initialSnapshot ?? emptySnapshot);
   const [phase, setPhase] = useState<Phase>(
-    initialSnapshot?.choice ? "claimed" : initialSnapshot && validSiteKey ? "ready" : "loading",
+    initialSnapshot?.choice
+      ? "claimed"
+      : initialSnapshot
+        ? validSiteKey ? "ready" : "unavailable"
+        : "loading",
   );
   const [pendingChoice, setPendingChoice] = useState<VisitorChoice | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [pollGeneration, setPollGeneration] = useState(0);
   const modalRef = useRef<HTMLElement>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
   const widgetId = useRef<TurnstileWidgetId | null>(null);
@@ -72,7 +123,6 @@ export function VisitorChoiceChallenge({
   const attempting = useRef(false);
   const busy = useRef(false);
   const verificationTimer = useRef<number | null>(null);
-  const sequence = useRef(0);
   const numberFormatter = useMemo(() => new Intl.NumberFormat(locale === "ms" ? "ms-MY" : locale), [locale]);
   const percentages = useMemo(() => visitorChoicePercentages(snapshot), [snapshot]);
   const claimed = Boolean(snapshot.choice);
@@ -86,77 +136,123 @@ export function VisitorChoiceChallenge({
     };
   }, []);
 
-  const load = useCallback(async (resetInteraction = false) => {
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), GET_TIMEOUT_MS);
+  const applySnapshot = useCallback((next: VisitorCounterSnapshot) => {
+    setSnapshot((current) => {
+      if (next.version < current.version) return current;
+      if (next.choice) return next;
+      return current.choice
+        ? { ...next, choice: current.choice, visitorNumber: current.visitorNumber }
+        : next;
+    });
+  }, []);
+
+  const load = useCallback(async (resetInteraction = false, signal?: AbortSignal): Promise<SnapshotLoadResult> => {
     try {
-      const next = await requestSnapshot(controller.signal);
-      setSnapshot(next);
+      const result = await requestSnapshot(signal);
+      if (!result.eligible) {
+        setPhase("ineligible");
+        return { status: "ineligible" };
+      }
+      applySnapshot(result.snapshot);
       setPhase((current) => {
-        if (next.choice) return "claimed";
+        if (result.snapshot.choice) return "claimed";
         if (resetInteraction || current === "loading" || current === "unavailable") {
           return validSiteKey ? "ready" : "unavailable";
         }
         return current;
       });
-    } catch {
-      setPhase((current) => {
-        if (!resetInteraction && current !== "loading" && current !== "ready") return current;
+      return { status: "success" };
+    } catch (error) {
+      if (signal?.aborted) return { status: "aborted" };
+      if (resetInteraction) {
         setErrorMessage(copy.unavailable);
-        return "error";
-      });
-    } finally {
-      window.clearTimeout(timer);
+        setPhase("error");
+      }
+      return {
+        status: "error",
+        ...(error instanceof SnapshotRequestError && error.retryAfterMs
+          ? { retryAfterMs: error.retryAfterMs }
+          : {}),
+      };
     }
-  }, [copy.unavailable, validSiteKey]);
+  }, [applySnapshot, copy.unavailable, validSiteKey]);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => void load());
-    return () => window.cancelAnimationFrame(frame);
-  }, [load]);
+    let timer: number | undefined;
+    let controller: AbortController | undefined;
+    let stopped = false;
+    let requestNumber = 0;
+    let failures = 0;
 
-  useEffect(() => {
-    let source: EventSource | null = null;
-    let fallback: number | undefined;
-    const connect = () => {
-      if (document.hidden || source) return;
-      if (typeof globalThis.EventSource !== "function") {
-        if (!fallback) fallback = window.setInterval(() => void load(), 15_000);
+    const cancel = () => {
+      requestNumber += 1;
+      controller?.abort();
+      controller = undefined;
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = undefined;
+    };
+    const schedule = (delay: number) => {
+      if (stopped || document.hidden || navigator.onLine === false) return;
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = window.setTimeout(() => void run(false), delay);
+    };
+    const run = async (resetInteraction: boolean) => {
+      if (stopped || document.hidden || navigator.onLine === false) return;
+      cancel();
+      const currentRequest = requestNumber;
+      controller = new AbortController();
+      let timedOut = false;
+      const timeout = window.setTimeout(() => {
+        timedOut = true;
+        controller?.abort();
+      }, GET_TIMEOUT_MS);
+      const result = await load(resetInteraction, controller.signal);
+      window.clearTimeout(timeout);
+      if (stopped || currentRequest !== requestNumber) return;
+      controller = undefined;
+      if (result.status === "ineligible") return;
+      if (result.status === "success") {
+        failures = 0;
+        schedule(POLL_INTERVAL_MS);
         return;
       }
-      source = new EventSource("/api/public/visitor-choice/stream", { withCredentials: true });
-      source.addEventListener("snapshot", (event) => {
-        try {
-          const payload = JSON.parse((event as MessageEvent<string>).data) as { sequence?: number; snapshot?: VisitorCounterSnapshot };
-          if (!isSnapshot(payload.snapshot) || !Number.isSafeInteger(payload.sequence) || Number(payload.sequence) <= sequence.current) return;
-          sequence.current = Number(payload.sequence);
-          setSnapshot((current) => ({ ...payload.snapshot!, ...(current.choice ? { choice: current.choice, visitorNumber: current.visitorNumber } : {}) }));
-        } catch {
-          // EventSource reconnects and the next event is an authoritative snapshot.
-        }
-      });
+      if (result.status === "aborted" && timedOut) {
+        failures += 1;
+        schedule(Math.min(
+          MAX_POLL_BACKOFF_MS,
+          POLL_INTERVAL_MS * (2 ** Math.min(failures - 1, 2)),
+        ));
+        return;
+      }
+      if (result.status === "error") {
+        failures += 1;
+        schedule(result.retryAfterMs ?? Math.min(
+          MAX_POLL_BACKOFF_MS,
+          POLL_INTERVAL_MS * (2 ** Math.min(failures - 1, 2)),
+        ));
+      }
     };
     const visibility = () => {
-      if (document.hidden) {
-        source?.close(); source = null;
-        if (fallback) window.clearInterval(fallback);
-        fallback = undefined;
-      } else connect();
+      if (document.hidden) cancel();
+      else void run(false);
     };
-    const online = () => connect();
+    const online = () => void run(false);
+    const offline = () => cancel();
     document.addEventListener("visibilitychange", visibility);
     window.addEventListener("online", online);
-    connect();
+    window.addEventListener("offline", offline);
+    void run(pollGeneration > 0 || !initialSnapshot);
     return () => {
+      stopped = true;
+      cancel();
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("online", online);
-      source?.close();
-      if (fallback) window.clearInterval(fallback);
+      window.removeEventListener("offline", offline);
     };
-  }, [load]);
+  }, [initialSnapshot, load, pollGeneration]);
 
   useEffect(() => {
-    if (claimed || phase === "loading" || phase === "unavailable") return;
+    if (claimed || phase === "loading" || phase === "unavailable" || phase === "ineligible") return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const target = modalRef.current;
@@ -214,8 +310,9 @@ export function VisitorChoiceChallenge({
         if (response.status >= 500) throw new Error("unavailable");
         throw new Error("verify");
       }
-      if (!isSnapshot(payload) || !payload.choice || !payload.visitorNumber) throw new Error("verify");
-      setSnapshot(payload);
+      const claimedSnapshot = parseSnapshot(payload);
+      if (!claimedSnapshot?.choice || !claimedSnapshot.visitorNumber) throw new Error("verify");
+      setSnapshot(claimedSnapshot);
       setPendingChoice(null);
       choiceRef.current = null;
       setPhase("claimed");
@@ -320,8 +417,11 @@ export function VisitorChoiceChallenge({
       window.turnstile.remove(widgetId.current);
       widgetId.current = null;
     }
-    void load(true);
-  }, [load]);
+    setPhase("loading");
+    setPollGeneration((current) => current + 1);
+  }, []);
+
+  if (phase === "ineligible") return null;
 
   if (claimed) {
     return (

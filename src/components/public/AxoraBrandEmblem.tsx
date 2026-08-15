@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
 import styles from "./ImmersiveWorld.module.css";
 
 type EmblemCanvasProps = { activation: number; onReady: () => void };
@@ -11,6 +11,7 @@ export function AxoraBrandEmblem({ href, label, className }: { href: string; lab
   const [activation, setActivation] = useState(0);
   const [canvasReady, setCanvasReady] = useState(false);
   const [EmblemCanvas, setEmblemCanvas] = useState<ComponentType<EmblemCanvasProps> | null>(null);
+  const lastActivation = useRef(0);
   useEffect(() => {
     let active = true;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
@@ -35,7 +36,12 @@ export function AxoraBrandEmblem({ href, label, className }: { href: string; lab
       window.cancelAnimationFrame(frame);
     };
   }, []);
-  const activate = () => setActivation((value) => value + 1);
+  const activate = useCallback(() => {
+    const now = performance.now();
+    if (now - lastActivation.current < 180) return;
+    lastActivation.current = now;
+    setActivation((value) => value + 1);
+  }, []);
   return (
     <Link className={`${styles.brandEmblem}${className ? ` ${className}` : ""}`} href={href} aria-label={label}
       onPointerEnter={activate} onFocus={activate} onClick={activate}

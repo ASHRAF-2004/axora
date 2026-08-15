@@ -13,9 +13,19 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 
 FROM base AS builder
+ARG AXORA_DRIVER_MAP_OPERATIONAL_READY=false
+ARG NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID
+ARG NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME
+ARG NEXT_PUBLIC_AXORA_MAP_STYLE_URL
+ARG NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION
+ARG NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL
 ENV NODE_ENV=production
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+RUN if [ "$AXORA_DRIVER_MAP_OPERATIONAL_READY" = "true" ]; then \
+      node scripts/production/check-driver-map-config.mjs \
+        --render public/maps/driver-map-config.json public; \
+    fi
 RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 FROM node:${NODE_VERSION} AS runner

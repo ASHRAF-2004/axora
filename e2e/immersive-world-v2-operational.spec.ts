@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { expect, test, type Page } from "@playwright/test";
 import { signInAsDemoOwner, signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
 
 const companyAdmin: DemoRoleSession = {
@@ -19,6 +20,61 @@ const deliveryGuy: DemoRoleSession = {
   accountKind: "DELIVERY",
   scopeType: "DELIVERY",
 };
+
+async function installReviewedMapFixture(page: Page) {
+  const tile = await readFile(new URL("../public/brand/axora-icon-192.png", import.meta.url));
+  await page.route("**/maps/driver-map-config.json", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      version: 1,
+      status: "configured",
+      providerId: "e2e-reviewed-map",
+      providerName: "E2E reviewed map fixture",
+      styleUrl: "/maps/e2e-provider/style.json",
+      attribution: { label: "E2E licensed map fixture", url: "https://example.test/map-licence" },
+    }),
+  }));
+  await page.route("**/maps/e2e-provider/style.json", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      version: 8,
+      metadata: { "axora:map-purpose": "operational-street" },
+      sources: {
+        streets: {
+          type: "raster",
+          tiles: ["/maps/e2e-provider/tiles/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: "E2E licensed map fixture",
+        },
+      },
+      layers: [
+        { id: "background", type: "background", paint: { "background-color": "#dbeafe" } },
+        { id: "street-context", type: "raster", source: "streets" },
+      ],
+    }),
+  }));
+  await page.route("**/maps/e2e-provider/tiles/**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: tile }));
+}
+
+async function visibleAtmosphereButton(page: Page, atmosphere: "Aurora" | "Ember") {
+  const desktopButton = page.locator(`.app-desktop-atmosphere button[title="Atmosphere: ${atmosphere}"]`);
+  const usesDrawer = await page.evaluate(() => matchMedia("(max-width: 720px)").matches);
+  if (!usesDrawer) {
+    await expect(desktopButton).toBeVisible();
+    return desktopButton;
+  }
+
+  const openDrawer = page.locator("dialog.app-drawer[open]");
+  if (!await openDrawer.isVisible()) {
+    await page.locator(".app-menu-button").click();
+  }
+  await expect(openDrawer).toBeVisible();
+  const drawerButton = openDrawer.locator(`button[title="Atmosphere: ${atmosphere}"]`);
+  await expect(drawerButton).toBeVisible();
+  return drawerButton;
+}
 
 test("owner create routes are single-purpose and obsolete budget access is unavailable", async ({ page }, testInfo) => {
   await signInAsDemoOwner(page);
@@ -51,6 +107,7 @@ test("owner sees Manage Drivers, a live driver detail map, and no normal assignm
   await expect(page.getByText(/assign or reassign/i)).toHaveCount(0);
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-manage-drivers-${testInfo.project.name}.png`, fullPage: true });
 
+  await installReviewedMapFixture(page);
   await page.addInitScript(() => {
     class FixtureEventSource {
       private listeners = new Map<string, Array<(event: MessageEvent<string>) => void>>();
@@ -60,7 +117,7 @@ test("owner sees Manage Drivers, a live driver detail map, and no normal assignm
             { latitude: 3.139, longitude: 101.6869, accuracy: 8, capturedAt: new Date().toISOString() },
             { latitude: 3.1412, longitude: 101.69, accuracy: 6, capturedAt: new Date().toISOString() },
           ] };
-          const event = new MessageEvent("snapshot", { data: JSON.stringify({ sequence: 2, version: "fixture-map", snapshot }) });
+          const event = new MessageEvent("snapshot", { data: JSON.stringify({ sequence: 2, version: "a".repeat(64), snapshot }) });
           this.listeners.get("snapshot")?.forEach((listener) => listener(event));
         }, 200);
       }
@@ -73,33 +130,60 @@ test("owner sees Manage Drivers, a live driver detail map, and no normal assignm
   });
   const sourceResponses: string[] = [];
   page.on("response", (response) => {
-    if (response.url().includes("/maps/") && response.url().endsWith(".geojson") && response.ok()) sourceResponses.push(response.url());
+    if (response.url().includes("/maps/e2e-provider/tiles/") && response.ok()) sourceResponses.push(response.url());
   });
   await page.goto("/deliveries/drivers/44444444-4444-4444-8444-444444444444");
   await expect(page.getByRole("heading", { level: 1, name: "Demo Delivery Guy" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Live driver map" })).toBeVisible();
-  const map = page.locator('[data-map-provider="natural-earth-self-hosted"]');
+  const map = page.locator('[data-map-provider="e2e-reviewed-map"]');
   await expect(map).toHaveAttribute("data-map-state", "ready", { timeout: 15_000 });
   await expect(map).toHaveAttribute("data-route-point-count", "2");
   await expect(map).toHaveAttribute("data-latest-coordinate", "3.141200,101.690000");
   await expect(page.locator(".maplibregl-marker")).toHaveCount(1);
-  await expect(page.getByRole("link", { name: "Natural Earth" })).toBeVisible();
-  expect(sourceResponses.length).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole("link", { name: "E2E licensed map fixture" }).first()).toBeVisible();
+  expect(sourceResponses.length).toBeGreaterThan(0);
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-driver-detail-${testInfo.project.name}.png`, fullPage: true });
-  await map.screenshot({ animations: "disabled", path: `output/playwright/v2-populated-driver-map-${testInfo.project.name}.png` });
+  await map.screenshot({ animations: "disabled", path: `output/playwright/v2-driver-map-provider-fixture-${testInfo.project.name}.png` });
 });
 
-test("missing map configuration is honest and customer sessions cannot read raw driver coordinates", async ({ page }) => {
+test("missing map configuration is honest and customer sessions cannot read raw driver coordinates", async ({ page }, testInfo) => {
   await signInAsDemoOwner(page);
-  await page.route("**/maps/axora-operational-style.json", (route) => route.fulfill({ status: 503, contentType: "application/json", body: "{}" }));
+  await page.route("**/maps/driver-map-config.json", (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"version":1,"status":"unconfigured"}' }));
   await page.goto("/deliveries/drivers/44444444-4444-4444-8444-444444444444");
-  await expect(page.locator('[data-map-state="failed"]')).toBeVisible();
-  await expect(page.getByRole("alert").filter({ hasText: "The map is unavailable" })).toBeVisible();
+  await expect(page.locator('[data-map-provider="unconfigured"]')).toHaveAttribute("data-map-state", "unconfigured");
+  await expect(page.getByRole("alert").filter({ hasText: "Operational street mapping is not configured" })).toBeVisible();
+  await expect(page.locator(".maplibregl-map")).toHaveCount(0);
+  await page.screenshot({
+    animations: "disabled",
+    path: `output/playwright/v2-driver-map-unconfigured-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
 
   await page.context().clearCookies();
   await signInAsDemoRole(page, companyAdmin);
   const response = await page.request.get("/api/drivers/44444444-4444-4444-8444-444444444444");
   expect([403, 404]).toContain(response.status());
+});
+
+test("a configured map provider failure shows an honest unavailable state", async ({ page }) => {
+  await signInAsDemoOwner(page);
+  await page.route("**/maps/driver-map-config.json", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      version: 1,
+      status: "configured",
+      providerId: "failed-provider",
+      providerName: "Failed provider fixture",
+      styleUrl: "/maps/failed-provider/style.json",
+      attribution: { label: "Failed map fixture", url: "https://example.test/map-licence" },
+    }),
+  }));
+  await page.route("**/maps/failed-provider/style.json", (route) => route.fulfill({ status: 503, contentType: "application/json", body: "{}" }));
+  await page.goto("/deliveries/drivers/44444444-4444-4444-8444-444444444444");
+  await expect(page.locator('[data-map-provider="failed-provider"]')).toHaveAttribute("data-map-state", "failed");
+  await expect(page.getByRole("alert").filter({ hasText: "approved map source is unavailable" })).toBeVisible();
+  await expect(page.locator(".maplibregl-map")).toHaveCount(0);
 });
 
 test("delivery users receive the live self-claim pool without owner assignment controls", async ({ page }, testInfo) => {
@@ -113,15 +197,21 @@ test("delivery users receive the live self-claim pool without owner assignment c
 test("staff can select an atmosphere while company users remain on tenant branding", async ({ page }, testInfo) => {
   await signInAsDemoOwner(page);
   await page.goto("/dashboard");
-  if (!await page.getByRole("button", { name: "Aurora" }).isVisible()) {
-    await page.locator(".app-menu-button").click();
-  }
-  await expect(page.getByRole("button", { name: "Aurora" })).toBeVisible();
-  const ember = page.getByRole("button", { name: "Ember" });
+  await visibleAtmosphereButton(page, "Aurora");
+  const ember = await visibleAtmosphereButton(page, "Ember");
   const alreadyPersisted = await ember.getAttribute("aria-pressed") === "true";
-  if (!alreadyPersisted) await ember.click();
+  if (!alreadyPersisted) {
+    const persisted = page.waitForResponse((response) => (
+      response.url().endsWith("/api/profile/atmosphere")
+        && response.request().method() === "PATCH"
+    ));
+    await ember.click();
+    const response = await persisted;
+    expect(response.status()).toBe(200);
+    expect(await response.json()).toEqual({ atmosphere: "Ember" });
+    await expect(ember.locator("xpath=parent::fieldset")).toHaveAttribute("data-persistence-state", "saved");
+  }
   await expect(page.locator("html")).toHaveAttribute("data-atmosphere", "ember");
-  if (!alreadyPersisted) await expect(page.locator('fieldset[data-persistence-state="saved"]')).toBeVisible();
   const staffTheme = await page.locator(".app-shell").evaluate((element) => {
     const style = getComputedStyle(element);
     return { background: style.backgroundColor, brand: style.getPropertyValue("--axora-brand").trim() };

@@ -9,6 +9,9 @@ async function rememberLocale(context: BrowserContext, locale: "en" | "ar" | "ms
 async function installVisitorFixture(page: Page, options: { claimed?: boolean } = {}) {
   let claimed = options.claimed ?? false;
   let posts = 0;
+  let gets = 0;
+  let streamRequests = 0;
+  let aggregate = { version: claimed ? 13 : 12, totalCount: claimed ? 13 : 12, earlyBirdCount: claimed ? 8 : 7, nightOwlCount: 5 };
   await page.addInitScript(() => {
     let options: Record<string, unknown> | undefined;
     window.turnstile = {
@@ -23,18 +26,24 @@ async function installVisitorFixture(page: Page, options: { claimed?: boolean } 
     if (route.request().method() === "POST") {
       posts += 1;
       claimed = true;
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ totalCount: 13, earlyBirdCount: 8, nightOwlCount: 5, visitorNumber: 13, choice: "EARLY_BIRD", claimedNew: true }) });
+      aggregate = { version: 13, totalCount: 13, earlyBirdCount: 8, nightOwlCount: 5 };
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...aggregate, visitorNumber: 13, choice: "EARLY_BIRD", claimedNew: true }) });
     }
+    gets += 1;
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(claimed
-      ? { totalCount: 13, earlyBirdCount: 8, nightOwlCount: 5, visitorNumber: 13, choice: "EARLY_BIRD" }
-      : { totalCount: 12, earlyBirdCount: 7, nightOwlCount: 5 }) });
+      ? { ...aggregate, visitorNumber: 13, choice: "EARLY_BIRD", eligible: true }
+      : { ...aggregate, eligible: true }) });
   });
-  await page.route("**/api/public/visitor-choice/stream", (route) => route.fulfill({
-    status: 200,
-    headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-store" },
-    body: `retry: 60000\nevent: snapshot\ndata: ${JSON.stringify({ sequence: 12, version: "fixture", snapshot: { totalCount: 12, earlyBirdCount: 7, nightOwlCount: 5 } })}\n\n`,
-  }));
-  return { postCount: () => posts };
+  await page.route("**/api/public/visitor-choice/stream", (route) => {
+    streamRequests += 1;
+    return route.fulfill({ status: 204 });
+  });
+  return {
+    postCount: () => posts,
+    getCount: () => gets,
+    streamCount: () => streamRequests,
+    updateAggregate: (next: typeof aggregate) => { aggregate = next; },
+  };
 }
 
 const localeCases = [
@@ -106,6 +115,37 @@ test("an anonymous visitor with a valid recorded claim sees only compact live re
   await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
   await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-visitor-claimed-counters-${testInfo.project.name}.png`, fullPage: false });
+});
+
+test("near-live polling applies monotonic snapshots and never opens EventSource", async ({ context, page }) => {
+  await rememberLocale(context, "en");
+  const fixture = await installVisitorFixture(page);
+  await page.goto("/en");
+  const dialog = page.getByRole("dialog", { name: "Which side are you on?" });
+  await expect(dialog.locator("strong").first()).toHaveText("12");
+  const initialGets = fixture.getCount();
+  expect(fixture.streamCount()).toBe(0);
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", { configurable: true, value: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  fixture.updateAggregate({ version: 13, totalCount: 13, earlyBirdCount: 7, nightOwlCount: 6 });
+  await page.waitForTimeout(250);
+  expect(fixture.getCount()).toBe(initialGets);
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", { configurable: true, value: false });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(dialog.locator("strong").first()).toHaveText("13");
+  expect(fixture.getCount()).toBe(initialGets + 1);
+  expect(fixture.streamCount()).toBe(0);
+
+  fixture.updateAggregate({ version: 12, totalCount: 12, earlyBirdCount: 7, nightOwlCount: 5 });
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await page.waitForTimeout(250);
+  await expect(dialog.locator("strong").first()).toHaveText("13");
 });
 
 test("authenticated owner, delivery, and company users never receive the public choice modal", async ({ page }) => {

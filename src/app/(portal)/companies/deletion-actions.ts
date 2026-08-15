@@ -12,5 +12,5 @@ export async function deleteOrArchiveCompanyAction(companyId: string, formData: 
   await deleteOrArchiveCompany(actor, input);
   revalidatePath("/companies");
   revalidatePath("/dashboard");
-  redirect("/companies?notice=company-removed");
+  redirect(`/companies?deletionCommand=${encodeURIComponent(input.commandId)}`);
 }

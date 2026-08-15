@@ -42,10 +42,34 @@ async function makePaymentDeliverable(db: PGlite, paymentId: string) {
 }
 
 describe("immersive world V2 repair migrations", () => {
+  it("never disables trigger or constraint enforcement in the V2 migration chain", async () => {
+    for (const migration of [
+      "083_immersive_world_preferences_and_visitor_readiness.sql",
+      "084_driver_self_claim_and_management.sql",
+      "085_company_deletion_guardrails.sql",
+      "086_customer_catalog_public_references.sql",
+      "087_visitor_cookie_primary_identity.sql",
+      "088_delivery_recovery_and_paid_backfill.sql",
+      "089_company_deletion_ownership_graph.sql",
+      "090_current_internal_role_scope_contract.sql",
+      "091_company_deletion_constraints_and_cleanup.sql",
+      "092_visitor_cookie_privacy_and_rate_limits.sql",
+    ]) {
+      const sql = await readFile(
+        new URL(`../database/migrations/${migration}`, import.meta.url),
+        "utf8",
+      );
+      expect(sql, migration).not.toMatch(
+        /(?:set_config\s*\(\s*['"]session_replication_role['"]\s*,\s*['"]replica['"]|set(?:\s+local)?\s+session_replication_role\s*=\s*replica)/i,
+      );
+    }
+  });
+
   it("backfills pre-existing paid finalized work exactly once", async () => {
     const db = new PGlite();
     try {
       await db.exec("CREATE ROLE axora_app");
+      await db.exec("CREATE ROLE axora_cleanup_worker");
       await applyMigrations(db, { through: "083_immersive_world_preferences_and_visitor_readiness.sql" });
       await applyDemoSeed(db);
       await installOwner(db);
@@ -94,6 +118,7 @@ describe("immersive world V2 repair migrations", () => {
     const db = new PGlite();
     try {
       await db.exec("CREATE ROLE axora_app");
+      await db.exec("CREATE ROLE axora_cleanup_worker");
       await applyMigrations(db);
       await applyDemoSeed(db);
       await installOwner(db);
@@ -183,6 +208,7 @@ describe("immersive world V2 repair migrations", () => {
     const db = new PGlite();
     try {
       await db.exec("CREATE ROLE axora_app");
+      await db.exec("CREATE ROLE axora_cleanup_worker");
       await applyMigrations(db);
       await applyDemoSeed(db);
       await installOwner(db);
@@ -199,9 +225,9 @@ describe("immersive world V2 repair migrations", () => {
       const logoId = "db000000-0000-4000-8000-000000000011";
       const themeId = "db000000-0000-4000-8000-000000000012";
       const commandId = "db000000-0000-4000-8000-000000000013";
+      const workflowEventId = "db000000-0000-4000-8000-000000000015";
       const pendingHash = "$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By";
 
-      await db.exec("SET session_replication_role=replica");
       await db.query(`INSERT INTO companies
         SELECT (jsonb_populate_record(NULL::companies,
           to_jsonb(source)||jsonb_build_object(
@@ -218,12 +244,12 @@ describe("immersive world V2 repair migrations", () => {
       await db.query(`INSERT INTO users(id,email,display_name,password_hash,role_id,company_id,account_kind,account_status,account_setup_completed_at)
         SELECT $1,'disposable@fixture.invalid','Disposable member',$2,id,$3,'COMPANY','INVITED',NULL
         FROM roles WHERE role_key='COMPANY_ADMIN'`, [userId, pendingHash, companyId]);
+      await db.query("INSERT INTO company_memberships(user_id,company_id,status,is_primary,joined_at,created_by) VALUES($1,$2,'ACTIVE',true,now(),$3)", [userId, companyId, ownerId]);
       await db.query(`INSERT INTO role_assignments(id,user_id,role_id,scope_type,company_id,active,assigned_by)
         SELECT $1,$2,id,'COMPANY',$3,true,$4 FROM roles WHERE role_key='COMPANY_ADMIN'`, [userAssignmentId, userId, companyId, ownerId]);
       await db.query("INSERT INTO user_sessions(user_id,token_hash,expires_at) VALUES($1,repeat('a',64),now()+interval '1 day')", [userId]);
       await db.query(`INSERT INTO account_setup_invitations(user_id,company_id,token_hash,expires_at,created_by,intended_role_id,intended_scope_type)
         SELECT $1,$2,repeat('b',64),now()+interval '1 day',$3,id,'COMPANY' FROM roles WHERE role_key='COMPANY_ADMIN'`, [userId, companyId, ownerId]);
-      await db.query("INSERT INTO company_memberships(user_id,company_id,status,is_primary,joined_at,created_by) VALUES($1,$2,'ACTIVE',true,now(),$3)", [userId, companyId, ownerId]);
       await db.query("INSERT INTO departments(id,company_id,branch_id,department_code,name,created_by) VALUES($1,$2,$3,'TEST-D','Disposable department',$4)", [departmentId, companyId, branchId, ownerId]);
       await db.query(`INSERT INTO budget_accounts
         SELECT (jsonb_populate_record(NULL::budget_accounts,
@@ -240,7 +266,8 @@ describe("immersive world V2 repair migrations", () => {
       await db.query(`INSERT INTO request_approval_policies
         SELECT (jsonb_populate_record(NULL::request_approval_policies,
           to_jsonb(source)||jsonb_build_object('id',$1::uuid,'company_id',$2::uuid,
-            'name','Disposable policy','created_by',$3::uuid))).*
+            'name','Disposable policy','policy_version',99,'status','RETIRED',
+            'retired_at',now(),'created_by',$3::uuid))).*
         FROM request_approval_policies source WHERE source.company_id='10000000-0000-4000-8000-000000000001' LIMIT 1`, [policyId, companyId, ownerId]);
       await db.query(`INSERT INTO requests
         SELECT (jsonb_populate_record(NULL::requests,
@@ -254,6 +281,13 @@ describe("immersive world V2 repair migrations", () => {
           to_jsonb(source)||jsonb_build_object('id',$1::uuid,
             'request_line_code','TEST-REQUEST-LINE','request_id',$2::uuid))).*
         FROM request_lines source WHERE source.id='60000000-0000-4000-8000-000000000001'`, [lineId, requestId]);
+      await db.query(`INSERT INTO workflow_events(
+          id,company_id,branch_id,request_id,aggregate_type,aggregate_id,event_key,
+          event_version,actor_user_id,actor_kind,correlation_id,idempotency_key,
+          occurred_at,metadata)
+        VALUES($1,$2,$3,$4,'request',$4,'fixture.created',1,$5,'PLATFORM',
+          'db000000-0000-4000-8000-000000000016','delete-fixture-event',now(),'{}')`,
+      [workflowEventId, companyId, branchId, requestId, ownerId]);
       await db.query("INSERT INTO company_logos(id,company_id,version,file_name,content_type,logo_content,sha256,width,height,active,uploaded_by) VALUES($1,$2,1,'fixture.png','image/png',decode('89504e47','hex'),repeat('c',64),1,1,true,$3)", [logoId, companyId, ownerId]);
       await db.query(`INSERT INTO company_brand_themes(id,company_id,source_logo_id,version,algorithm_version,
           primary_color,secondary_color,accent_color,primary_foreground,secondary_foreground,
@@ -262,9 +296,8 @@ describe("immersive world V2 repair migrations", () => {
         VALUES($1,$2,$3,1,'fixture','#174F42','#276B5D','#D99B2B','#FFFFFF','#FFFFFF',
           '#F5F7F6','#FFFFFF','#EDF3F1','#CCD8D4','#14804A','#9A6700','#B42318','#174F42','#174F42',
           ARRAY['#174F42','#276B5D','#D99B2B'],$4)`, [themeId, companyId, logoId, ownerId]);
-      await db.query("INSERT INTO in_app_notifications(company_id,recipient_user_id,event_key,dedupe_key,title,body,category,workflow_event_id,expires_at) VALUES($1,$2,'fixture.created','delete-fixture','Fixture','Fixture','WORKFLOW','db000000-0000-4000-8000-000000000015',now()+interval '1 day')", [companyId, userId]);
-      await db.exec("SET session_replication_role=origin");
-
+      await db.query("INSERT INTO in_app_notifications(company_id,recipient_user_id,event_key,dedupe_key,title,body,category,workflow_event_id,expires_at) VALUES($1,$2,'fixture.created','delete-fixture','Fixture','Fixture','WORKFLOW',$3,now()+interval '1 day')", [companyId, userId, workflowEventId]);
+      await db.query("INSERT INTO attachments(entity_type,record_id,file_name,content_type,storage_path,uploaded_by,company_id,request_id,visibility) VALUES('request',$1,'fixture.txt','text/plain',$2,$3,$4,$1,'INTERNAL')", [requestId, `generated-documents/${companyId}/${requestId}/fixture.pdf`, userId, companyId]);
       const impact = (await db.query<{ value: { confirmation: string; recommendedMode: string; users: number; requests: number } }>(
         "SELECT axora_company_deletion_impact_v2($1,$2,$3,now()) AS value", [ownerId, ownerAssignmentId, companyId],
       )).rows[0]!.value;
@@ -278,6 +311,32 @@ describe("immersive world V2 repair migrations", () => {
         [ownerId, ownerAssignmentId, companyId, commandId, impact.confirmation, "Remove disposable TEST fixture"],
       );
       expect(repeated.rows[0]?.value).toEqual(deleted.rows[0]?.value);
+      expect(await db.query("SHOW session_replication_role")).toMatchObject({ rows: [{ session_replication_role: "origin" }] });
+      const cleanupPending = await db.query<{ status: string; cleanup_status: string; tasks: number }>(`
+        SELECT command.status,tombstone.cleanup_status,
+          (SELECT count(*)::int FROM company_deletion_cleanup_tasks task
+            WHERE task.command_id=command.command_id) AS tasks
+        FROM company_deletion_commands command
+        JOIN company_deletion_tombstones tombstone ON tombstone.command_id=command.command_id
+        WHERE command.command_id=$1
+      `, [commandId]);
+      expect(cleanupPending.rows[0]).toEqual({ status: "CLEANUP_PENDING", cleanup_status: "PENDING", tasks: 1 });
+      await db.query("SELECT set_config('axora.system_identity','company-deletion-cleanup-worker',false)");
+      const claimed = await db.query<{ task_id: string; lease_id: string }>(
+        "SELECT task_id::text,lease_id::text FROM axora_claim_company_deletion_cleanup_task('fixture-worker',90,now())",
+      );
+      expect(claimed.rows).toHaveLength(1);
+      await db.query(
+        "SELECT axora_complete_company_deletion_cleanup_task($1,$2,'fixture-worker',$3,now())",
+        [claimed.rows[0]!.task_id, claimed.rows[0]!.lease_id, { removed: true, adapter: "FILE" }],
+      );
+      const cleanupComplete = await db.query<{ status: string; cleanup_status: string }>(`
+        SELECT command.status,tombstone.cleanup_status
+        FROM company_deletion_commands command
+        JOIN company_deletion_tombstones tombstone ON tombstone.command_id=command.command_id
+        WHERE command.command_id=$1
+      `, [commandId]);
+      expect(cleanupComplete.rows[0]).toEqual({ status: "COMPLETE", cleanup_status: "COMPLETE" });
       const gone = await db.query<{ companies: number; users: number; branches: number; departments: number; requests: number; budgets: number; invitations: number; sessions: number; notifications: number; themes: number; other_tenant: number; tombstones: number }>(`
         SELECT
           (SELECT count(*)::int FROM companies WHERE id=$1) AS companies,
@@ -313,6 +372,167 @@ describe("immersive world V2 repair migrations", () => {
         FROM companies company WHERE company.id=$1
       `, [protectedCompanyId]);
       expect(retained.rows[0]).toEqual({ active: false, lifecycle_status: "ARCHIVED", invoices: invoiceCount, tombstones: 1 });
+    } finally {
+      await db.close();
+    }
+  }, 30_000);
+
+  it("keeps deletion constraints active and recovers cleanup leases with bounded retries", async () => {
+    const db = new PGlite();
+    try {
+      await db.exec("CREATE ROLE axora_app");
+      await db.exec("CREATE ROLE axora_cleanup_worker");
+      await applyMigrations(db);
+      await applyDemoSeed(db);
+      await installOwner(db);
+
+      const inventory = await db.query<{ unclassified: number; missing_dag: number }>(`
+        SELECT
+          (SELECT count(*)::int FROM information_schema.columns column_row
+            JOIN information_schema.tables table_row
+              ON table_row.table_schema=column_row.table_schema
+             AND table_row.table_name=column_row.table_name
+            WHERE column_row.table_schema='public' AND column_row.column_name='company_id'
+              AND table_row.table_type='BASE TABLE'
+              AND NOT EXISTS (SELECT 1 FROM company_deletion_ownership_rules rule
+                WHERE rule.table_name=column_row.table_name)) AS unclassified,
+          (SELECT count(*)::int FROM company_deletion_ownership_rules rule
+            WHERE rule.table_name NOT IN ('companies','company_deletion_tombstones','audit_logs')
+              AND NOT EXISTS (SELECT 1 FROM company_deletion_ownership_dag dag
+                WHERE dag.table_name=rule.table_name)) AS missing_dag
+      `);
+      expect(inventory.rows[0]).toEqual({ unclassified: 0, missing_dag: 0 });
+      const cleanupPrivileges = await db.query<{ app_can_execute: boolean; worker_can_execute: boolean }>(`
+        SELECT
+          has_function_privilege('axora_app',
+            'axora_claim_company_deletion_cleanup_task(text,integer,timestamptz)','EXECUTE')
+            AS app_can_execute,
+          has_function_privilege('axora_cleanup_worker',
+            'axora_claim_company_deletion_cleanup_task(text,integer,timestamptz)','EXECUTE')
+            AS worker_can_execute
+      `);
+      expect(cleanupPrivileges.rows[0]).toEqual({
+        app_can_execute: false,
+        worker_can_execute: true,
+      });
+
+      const functionBody = (await db.query<{ body: string }>(`
+        SELECT pg_get_functiondef(
+          'axora_delete_or_archive_company_v2(uuid,uuid,uuid,uuid,text,text,timestamptz)'::regprocedure
+        ) AS body
+      `)).rows[0]!.body;
+      expect(functionBody).not.toMatch(/set_config\s*\(\s*'session_replication_role'/i);
+      expect(await db.query("SHOW session_replication_role"))
+        .toMatchObject({ rows: [{ session_replication_role: "origin" }] });
+
+      const companyId = "10000000-0000-4000-8000-000000000001";
+      const spoofedCommand = "dc100000-0000-4000-8000-000000000006";
+      await db.query(`INSERT INTO company_deletion_commands(
+          command_id,requested_company_id,company_code,actor_user_id,
+          requested_mode,status,reason,impact,created_at
+        ) SELECT $1,id,company_code,$2,'HARD_DELETE','RUNNING',
+          'Spoof resistance fixture','{}'::jsonb,now()
+        FROM companies WHERE id=$3`, [spoofedCommand, ownerId, companyId]);
+      await db.query(
+        "SELECT set_config('axora.company_deletion_command_id',$1,false)",
+        [spoofedCommand],
+      );
+      await expect(db.query(
+        "DELETE FROM company_status_history WHERE company_id=$1",
+        [companyId],
+      )).rejects.toThrow(/append-only|evidence/i);
+      expect((await db.query<{ count: number }>(
+        "SELECT count(*)::int AS count FROM company_deletion_execution_authorizations",
+      )).rows[0]?.count).toBe(0);
+      await db.query("DELETE FROM company_deletion_commands WHERE command_id=$1", [spoofedCommand]);
+
+      const commandA = "dc100000-0000-4000-8000-000000000001";
+      const commandB = "dc100000-0000-4000-8000-000000000002";
+      const taskA = "dc100000-0000-4000-8000-000000000003";
+      const taskB = "dc100000-0000-4000-8000-000000000004";
+      const insertCleanupCommand = async (commandId: string, taskId: string, locator: string) => {
+        await db.query(`INSERT INTO company_deletion_commands(
+            command_id,requested_company_id,company_code,actor_user_id,requested_mode,
+            status,reason,impact,result,created_at
+          ) SELECT $1,id,company_code,$2,'HARD_DELETE','CLEANUP_PENDING',
+            'Cleanup lifecycle fixture','{}'::jsonb,'{"cleanupStatus":"PENDING"}'::jsonb,now()
+          FROM companies WHERE id=$3`, [commandId, ownerId, companyId]);
+        await db.query(`INSERT INTO company_deletion_cleanup_tasks(
+          id,command_id,task_kind,locator) VALUES($1,$2,'FILE',$3)`, [taskId, commandId, locator]);
+      };
+      await insertCleanupCommand(commandA, taskA, "generated-documents/crash-recovery.pdf");
+      await db.query("SELECT set_config('axora.system_identity','company-deletion-cleanup-worker',false)");
+      const at = (seconds: number) => new Date(Date.UTC(2030, 0, 1, 0, 0, seconds));
+
+      const firstLease = await db.query<{ task_id: string; lease_id: string; attempts: number }>(
+        "SELECT task_id::text,lease_id::text,attempts FROM axora_claim_company_deletion_cleanup_task('worker-a',30,$1)",
+        [at(0)],
+      );
+      expect(firstLease.rows[0]).toMatchObject({ task_id: taskA, attempts: 1 });
+      expect((await db.query<{ value: number }>(
+        "SELECT axora_reconcile_company_deletion_cleanup_tasks($1) AS value", [at(31)],
+      )).rows[0]?.value).toBe(1);
+      expect((await db.query(
+        "SELECT * FROM axora_claim_company_deletion_cleanup_task('worker-b',30,$1)", [at(40)],
+      )).rows).toHaveLength(0);
+
+      const recovered = await db.query<{ task_id: string; lease_id: string; attempts: number }>(
+        "SELECT task_id::text,lease_id::text,attempts FROM axora_claim_company_deletion_cleanup_task('worker-b',30,$1)",
+        [at(42)],
+      );
+      expect(recovered.rows[0]).toMatchObject({ task_id: taskA, attempts: 2 });
+      await db.query(
+        "SELECT axora_fail_company_deletion_cleanup_task($1,$2,'worker-b','temporary fixture failure',true,$3)",
+        [taskA, recovered.rows[0]!.lease_id, at(42)],
+      );
+      expect((await db.query(
+        "SELECT * FROM axora_claim_company_deletion_cleanup_task('worker-c',30,$1)", [at(61)],
+      )).rows).toHaveLength(0);
+      const retried = await db.query<{ task_id: string; lease_id: string; attempts: number }>(
+        "SELECT task_id::text,lease_id::text,attempts FROM axora_claim_company_deletion_cleanup_task('worker-c',30,$1)",
+        [at(63)],
+      );
+      expect(retried.rows[0]).toMatchObject({ task_id: taskA, attempts: 3 });
+      await db.query(
+        "SELECT axora_complete_company_deletion_cleanup_task($1,$2,'worker-c',$3,$4)",
+        [taskA, retried.rows[0]!.lease_id, { removed: true }, at(63)],
+      );
+      expect((await db.query<{ status: string }>(
+        "SELECT status FROM company_deletion_commands WHERE command_id=$1", [commandA],
+      )).rows[0]?.status).toBe("COMPLETE");
+
+      await insertCleanupCommand(commandB, taskB, "generated-documents/terminal-failure.pdf");
+      const terminalLease = await db.query<{ task_id: string; lease_id: string }>(
+        "SELECT task_id::text,lease_id::text FROM axora_claim_company_deletion_cleanup_task('worker-d',30,$1)",
+        [at(100)],
+      );
+      expect(terminalLease.rows[0]?.task_id).toBe(taskB);
+      await db.query(
+        "SELECT axora_fail_company_deletion_cleanup_task($1,$2,'worker-d',$3,false,$4)",
+        [taskB, terminalLease.rows[0]!.lease_id, "permanent\nfixture failure", at(100)],
+      );
+      const terminal = await db.query<{ command_status: string; task_status: string; last_error: string; completed: boolean }>(`
+        SELECT command.status AS command_status,task.status AS task_status,
+          task.last_error,(command.completed_at IS NOT NULL AND task.completed_at IS NOT NULL) AS completed
+        FROM company_deletion_commands command
+        JOIN company_deletion_cleanup_tasks task ON task.command_id=command.command_id
+        WHERE command.command_id=$1
+      `, [commandB]);
+      expect(terminal.rows[0]).toEqual({
+        command_status: "FAILED", task_status: "TERMINAL_FAILED",
+        last_error: "permanent fixture failure", completed: true,
+      });
+
+      await expect(db.query("DELETE FROM company_status_history WHERE company_id=$1", [companyId]))
+        .rejects.toThrow(/append-only|evidence/i);
+      await expect(db.query(`INSERT INTO branches
+        SELECT (jsonb_populate_record(NULL::branches,
+          to_jsonb(source)||jsonb_build_object(
+            'id','dc100000-0000-4000-8000-000000000005','company_id','dc100000-0000-4000-8000-000000000006',
+            'branch_code_id','ORPHAN-FIXTURE','branch_code','ORPHAN-FIXTURE','name','Orphan fixture'))).*
+        FROM branches source LIMIT 1`)).rejects.toThrow(/foreign key/i);
+      expect(await db.query("SHOW session_replication_role"))
+        .toMatchObject({ rows: [{ session_replication_role: "origin" }] });
     } finally {
       await db.close();
     }

@@ -6,7 +6,7 @@ const NEXT_NOT_FOUND_STYLE_HASH = "'sha256-Z5XTK23DFuEMs0PwnyZDO9SWxemQ5HxcpVaBN
 export function buildContentSecurityPolicy(nonce: string, development = false) {
   const directives = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${development ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com`,
     `style-src-elem 'self' 'nonce-${nonce}' ${NEXT_NOT_FOUND_STYLE_HASH}`,
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' blob: data:",

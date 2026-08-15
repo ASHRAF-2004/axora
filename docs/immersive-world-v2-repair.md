@@ -21,23 +21,24 @@ missing or unusable style displays a localized unavailable state.
 
 ## Near-live transport
 
-Axora currently uses bounded authoritative database snapshot polling transported
-over Server-Sent Events, with a polling fallback when EventSource is unavailable.
-This is near-live delivery without a page refresh, not database-event push. Each
-stream starts with an authoritative snapshot, includes a content-derived version
-and monotonic connection sequence, rejects out-of-order updates, reconnects after
-visibility/network changes and is scoped through the same authenticated reader.
-Customer streams never include raw driver coordinates or internal purchasing
-states.
+The public visitor counter uses bounded authoritative HTTP snapshot polling, not
+database-event push and not EventSource. It polls at most once every 30 seconds
+during normal visible/online use, pauses while hidden or offline, aborts stale
+requests, backs off to two minutes after failures, and applies only monotonic
+database counter versions. The retired visitor EventSource endpoint returns 204
+so previously loaded clients stop reconnecting instead of generating a 429 loop.
 
 ## Visitor identity and privacy
 
-The signed, HTTP-only anonymous claim cookie is the primary anonymous identity.
-Network-derived values are bounded abuse-rate buckets only and are not used as a
-permanent person identity. A choice persists while the signed credential remains
-available. Clearing site data or changing devices cannot preserve anonymous
-cross-device identity without an account or another consented identity. Axora
-does not use browser fingerprinting to claim otherwise.
+The versioned, signed, HTTP-only anonymous claim cookie is the only durable
+anonymous identity. Version 1 cookies rotate in place to version 2 without
+changing the claim token. Network-derived values are hourly rotating HMACs in
+short-lived abuse-rate buckets only and are never sent to claim/snapshot database
+capabilities. Migration 092 removes the historical network mapping table and
+network/device fingerprint columns while preserving claims and totals. A choice
+persists for this browser while its signed credential remains available for up
+to one year. Clearing site data or changing browsers/devices can produce another
+anonymous choice; Axora does not use fingerprinting to pretend otherwise.
 
 ## Company deletion ownership matrix
 

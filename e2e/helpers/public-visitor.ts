@@ -7,6 +7,7 @@ export async function installClaimedPublicVisitor(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
+        version: 42,
         totalCount: 42,
         earlyBirdCount: 24,
         nightOwlCount: 18,

@@ -12,6 +12,23 @@ describe("immersive and catalogue asset provenance", () => {
     expect(new Set(manifest.assets.map((asset) => asset.path)).size).toBe(56);
   });
 
+  it("restores software notices and verifies every local licence reference", () => {
+    const output = execFileSync(process.execPath, ["scripts/validate-third-party-notices.mjs"], { cwd: process.cwd(), encoding: "utf8" });
+    expect(output).toContain("Validated 13 third-party notice sections");
+  });
+
+  it("documents unavailable original checksums instead of inventing them", async () => {
+    const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as {
+      assets: Array<{ path: string; originalFileSha256: string | null; originalChecksumReason?: string }>;
+    };
+    const unavailable = manifest.assets.filter((asset) => asset.originalFileSha256 === null);
+    expect(unavailable.map((asset) => asset.path)).toEqual([
+      "public/maps/natural-earth-southeast-asia-countries.geojson",
+      "public/maps/natural-earth-southeast-asia-places.geojson",
+    ]);
+    expect(unavailable.every((asset) => Boolean(asset.originalChecksumReason?.trim()))).toBe(true);
+  });
+
   it("maps every category derivative to one exact source item", async () => {
     const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as {
       assets: Array<{ path: string; canonicalSource: string; originalFilename: string; exactPackOrItem: string }>;

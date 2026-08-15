@@ -23,9 +23,22 @@ async function useLocale(context: Parameters<typeof test>[0] extends never ? nev
   await context.addCookies([{ name: "axora_locale", value: locale, url: baseURL }]);
 }
 
-async function expectWorkflowSceneReady(page: Page) {
-  const readyScene = page.locator('[data-scene-route] [data-context-loss-ready="true"]').first();
+async function expectWorkflowSceneReady(page: Page, expectedAsset?: string) {
+  const assetSelector = expectedAsset ? `[data-rendered-asset="${expectedAsset}"]` : "[data-rendered-asset]";
+  const readyScene = page.locator(`[data-scene-route] [data-context-loss-ready="true"][data-scene-phase="ready"]${assetSelector}`).first();
   await expect(readyScene).toBeVisible({ timeout: 15_000 });
+  await expect(readyScene).toHaveAttribute("data-attached-asset", expectedAsset ?? /.+/);
+  await expect(readyScene).toHaveAttribute("data-model-inside-frustum", "true");
+  await expect(readyScene).toHaveAttribute("data-model-bounds", /.+/);
+  const bounds = (await readyScene.getAttribute("data-model-bounds"))!.split(",").map(Number);
+  expect(bounds).toHaveLength(4);
+  expect(bounds.every(Number.isFinite)).toBe(true);
+  expect(bounds[0]).toBeGreaterThanOrEqual(0.015);
+  expect(bounds[1]).toBeGreaterThanOrEqual(0.015);
+  expect(bounds[2]).toBeLessThanOrEqual(0.985);
+  expect(bounds[3]).toBeLessThanOrEqual(0.985);
+  expect(bounds[2] - bounds[0]).toBeGreaterThanOrEqual(0.08);
+  expect(bounds[3] - bounds[1]).toBeGreaterThanOrEqual(0.08);
   const canvas = readyScene.locator("canvas");
   await expect(canvas).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => canvas.evaluate((element) => {
@@ -33,6 +46,7 @@ async function expectWorkflowSceneReady(page: Page) {
     const context = scene.getContext("webgl2") ?? scene.getContext("webgl");
     return Boolean(context && context.drawingBufferWidth > 0 && context.drawingBufferHeight > 0);
   })).toBe(true);
+  return readyScene;
 }
 
 async function engageDeferredMobileScene(page: Page, stageName: RegExp) {
@@ -80,10 +94,12 @@ test("desktop loads the 3D console and keeps every control accessible", async ({
   const approve = page.getByRole("button", { name: /02.*Approve/ });
   await approve.click();
   await expect(approve).toHaveAttribute("aria-pressed", "true");
+  await expectWorkflowSceneReady(page, "approve");
   await expect(page.locator('[data-scene-step="1"]')).toContainText("budget and approval limits");
   await page.locator("body").click({ position: { x: 4, y: 4 } });
   await page.keyboard.press("3");
   await expect(page.getByRole("button", { name: /03.*Pay/ })).toHaveAttribute("aria-pressed", "true");
+  await expectWorkflowSceneReady(page, "pay");
   await expect(page.getByRole("button", { name: "Enable interface sound" })).toHaveAttribute("aria-pressed", "false");
   expect(errors).toEqual([]);
 });
@@ -120,6 +136,7 @@ test("opted-in scroll activation plays Delivery engine then door exactly once", 
   const delivery = page.locator('[data-scene-step="5"]');
   await delivery.scrollIntoViewIfNeeded();
   await expect(delivery.getByRole("button", { name: /06.*Deliver/ })).toHaveAttribute("aria-pressed", "true");
+  await expectWorkflowSceneReady(page, "deliver");
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __axoraAudioEvents: Array<{ type: string; path: string }> }).__axoraAudioEvents
     .filter((event) => event.type === "play").map((event) => event.path))).toEqual(expect.arrayContaining([
       "/immersive/sounds/delivery-engine.ogg",
@@ -256,11 +273,31 @@ test("every public route presents and transforms its own semantic 3D sequence", 
       const world = page.locator(`[data-public-scene="${item.route}"]`);
       await expect(world).toBeVisible();
       await expect(world).toHaveAttribute("data-interaction-ready", "true");
-      await expect(world.locator(`[data-scene-route="${item.route}"]`).first()).toHaveAttribute("data-semantic-model", item.initial);
+      await expectWorkflowSceneReady(page, item.initial);
+      await expect(world).toHaveAttribute("data-rendered-stage", item.initial);
     await world.locator("[data-scene-step]").nth(1).getByRole("button").click();
-    await expect(world.locator(`[data-scene-route="${item.route}"]`).first()).toHaveAttribute("data-semantic-model", item.next);
+    await expectWorkflowSceneReady(page, item.next);
+    await expect(world).toHaveAttribute("data-rendered-stage", item.next);
     await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/v2-${item.file}.png`, fullPage: true });
   }
+});
+
+test("all homepage stages attach the selected semantic object inside usable bounds", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "The full cold-to-settled semantic sequence is verified once in desktop Chromium.");
+  await useLocale(context, "en");
+  await page.goto("/en");
+  const expected = ["request", "approve", "pay", "invoice", "prepare", "deliver", "track", "complete"] as const;
+  for (let index = 0; index < expected.length; index += 1) {
+    const step = page.locator(`[data-scene-step="${index}"]`);
+    await step.getByRole("button").click();
+    await expect(step.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+    await expectWorkflowSceneReady(page, expected[index]);
+    await expect(page.locator('[data-public-scene="home"]')).toHaveAttribute("data-rendered-stage", expected[index]);
+    await expect(page.getByTestId("scene-caption")).toContainText((await step.getByRole("button").locator("strong").textContent()) ?? "");
+  }
+  await page.getByRole("button", { name: /03.*Pay/ }).click();
+  await expectWorkflowSceneReady(page, "pay");
+  await expect(page.locator('[data-public-scene="home"]')).toHaveAttribute("data-rendered-stage", "pay");
 });
 
 test("desktop and theme visual evidence is captured once in Chromium", async ({ context, page }, testInfo) => {
@@ -269,7 +306,7 @@ test("desktop and theme visual evidence is captured once in Chromium", async ({ 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/en");
   await expect(page.getByTestId("workflow-console")).toBeVisible();
-  await expectWorkflowSceneReady(page);
+  await expectWorkflowSceneReady(page, "request");
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-default-${testInfo.project.name}.png`, fullPage: true });
   const computedThemes = new Set<string>();
   for (const theme of ["Aurora", "Solar", "Ember", "Midnight"] as const) {
@@ -288,6 +325,7 @@ test("desktop and theme visual evidence is captured once in Chromium", async ({ 
   }
   expect(computedThemes.size).toBe(4);
   await page.getByRole("button", { name: /06.*Deliver/ }).click();
+  await expectWorkflowSceneReady(page, "deliver");
   await page.locator("#workflow").screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-workflow-${testInfo.project.name}.png` });
 
   await page.goto("/login");
@@ -303,7 +341,7 @@ test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mob
   await expect(page.getByTestId("workflow-console")).toBeVisible();
   await expect(page.locator('[data-testid="workflow-fallback"][data-reason="mobile-deferred"]').first()).toBeVisible();
   await engageDeferredMobileScene(page, /02.*Approve/);
-  await expectWorkflowSceneReady(page);
+  await expectWorkflowSceneReady(page, "approve");
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-mobile-${testInfo.project.name}.png`, fullPage: false });
 
   await useLocale(context, "ar");
@@ -311,7 +349,7 @@ test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mob
   await expect(page.locator('[data-locale="ar"]')).toBeVisible();
   await expect(page.locator('[data-testid="workflow-fallback"][data-reason="mobile-deferred"]').first()).toBeVisible();
   await engageDeferredMobileScene(page, /02.*الموافقة/);
-  await expectWorkflowSceneReady(page);
+  await expectWorkflowSceneReady(page, "approve");
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-arabic-${testInfo.project.name}.png`, fullPage: false });
 
   await useLocale(context, "ms");
@@ -362,7 +400,7 @@ test("records the reviewable immersive interaction tour", async ({ browser }, te
   await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toBeVisible();
   await page.getByRole("button", { name: "Choose Early Birds" }).click();
   await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
-  await expectWorkflowSceneReady(page);
+  await expectWorkflowSceneReady(page, "request");
   const emblem = page.getByRole("link", { name: /Home.*Axora/i }).first();
   await emblem.focus();
   await emblem.press("Enter");
@@ -375,6 +413,7 @@ test("records the reviewable immersive interaction tour", async ({ browser }, te
       await step.getByRole("button").click();
     }
     await expect(step.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+    await expectWorkflowSceneReady(page, ["request", "approve", "pay", "invoice", "prepare", "deliver", "track", "complete"][index]);
   }
   await page.getByRole("button", { name: "Ember", exact: true }).click();
   await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();

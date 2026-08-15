@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const port = 3100;
 const baseURL = `http://127.0.0.1:${port}`;
+const useStandalone = Boolean(process.env.CI)
+  || process.env.AXORA_PLAYWRIGHT_STANDALONE === "true";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -9,9 +11,8 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  // Every project shares one Next development server. Serial workers avoid
-  // Turbopack route-compilation races while still exercising concurrent work
-  // inside the application/unit/database suites and the production build.
+  // CI and release-parity runs use the Docker-equivalent standalone artifact.
+  // Local authoring may still use Next development mode explicitly.
   workers: 1,
   reporter: [
     ["line"],
@@ -34,18 +35,22 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+    command: useStandalone
+      ? "node output/standalone/server.js"
+      : `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
     url: `${baseURL}/api/health/live`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
       APP_BASE_URL: baseURL,
+      HOSTNAME: "127.0.0.1",
+      PORT: String(port),
+      NODE_ENV: useStandalone ? "production" : "development",
       DEMO_MODE: "true",
       DEMO_EMAIL: "owner@axora.e2e",
       DEMO_PASSWORD: "public-e2e-fixture-password",
       SESSION_SECRET: "public-e2e-session-key-not-for-production-0001",
       TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
-      NEXT_PUBLIC_AXORA_MAP_STYLE_URL: "/maps/axora-operational-style.json",
       NEXT_TELEMETRY_DISABLED: "1",
     },
   },

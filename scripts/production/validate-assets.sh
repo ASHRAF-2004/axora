@@ -25,6 +25,7 @@ node --check "$REPOSITORY_DIR/server-tools/email-template-catalogue.mjs"
 node --check "$REPOSITORY_DIR/server-tools/email-sender.mjs"
 node --check "$REPOSITORY_DIR/server-tools/document-renderer.mjs"
 node --check "$REPOSITORY_DIR/server-tools/document-worker.mjs"
+node --check "$REPOSITORY_DIR/server-tools/company-deletion-cleanup-worker.mjs"
 node --check "$REPOSITORY_DIR/scripts/production/check-email-service.mjs"
 node "$REPOSITORY_DIR/scripts/validate-third-party-assets.mjs"
 
@@ -60,6 +61,10 @@ rollback_document_worker_cleanup_line="$(
   grep -nF 'remove_document_worker_if_release_lacks_it "$target_release"' \
     "$SCRIPT_DIR/rollback.sh" | cut -d: -f1
 )"
+rollback_company_cleanup_worker_line="$(
+  grep -nF 'remove_company_deletion_cleanup_worker_if_release_lacks_it "$target_release"' \
+    "$SCRIPT_DIR/rollback.sh" | cut -d: -f1
+)"
 rollback_swap_line="$(
   grep -nF 'compose_release "$target_release" up' "$SCRIPT_DIR/rollback.sh" | cut -d: -f1
 )"
@@ -72,6 +77,9 @@ rollback_swap_line="$(
 [[ "$rollback_document_worker_cleanup_line" =~ ^[0-9]+$ ]] \
   && (( rollback_document_worker_cleanup_line > rollback_swap_line )) \
   || die "Rollback must remove a pre-worker target's orphan document worker only after its gated Compose swap."
+[[ "$rollback_company_cleanup_worker_line" =~ ^[0-9]+$ ]] \
+  && (( rollback_company_cleanup_worker_line > rollback_swap_line )) \
+  || die "Rollback must remove a pre-worker target's orphan company deletion cleanup worker only after its gated Compose swap."
 
 validation_dir="$(mktemp -d)"
 cleanup() {
@@ -85,14 +93,18 @@ legacy_release="$validation_dir/legacy-release"
 email_release="$validation_dir/email-release"
 worker_release="$validation_dir/worker-release"
 document_worker_release="$validation_dir/document-worker-release"
-mkdir "$legacy_release" "$email_release" "$worker_release" "$document_worker_release"
+company_cleanup_worker_release="$validation_dir/company-cleanup-worker-release"
+mkdir "$legacy_release" "$email_release" "$worker_release" "$document_worker_release" \
+  "$company_cleanup_worker_release"
 for compose_file in compose.yaml compose.hybrid.yaml compose.production.yaml; do
   touch "$legacy_release/$compose_file" "$email_release/$compose_file" \
-    "$worker_release/$compose_file" "$document_worker_release/$compose_file"
+    "$worker_release/$compose_file" "$document_worker_release/$compose_file" \
+    "$company_cleanup_worker_release/$compose_file"
 done
 printf 'services:\n  email-sender:\n    image: fixture\n' > "$email_release/compose.yaml"
 printf 'services:\n  budget-worker:\n    image: fixture\n' > "$worker_release/compose.yaml"
 printf 'services:\n  document-worker:\n    image: fixture\n' > "$document_worker_release/compose.yaml"
+printf 'services:\n  company-deletion-cleanup-worker:\n    image: fixture\n' > "$company_cleanup_worker_release/compose.yaml"
 AXORA_COMPOSE_FILES=compose.yaml:compose.hybrid.yaml:compose.production.yaml
 email_sender_removals=0
 remove_ephemeral_email_sender() {
@@ -124,6 +136,16 @@ remove_document_worker_if_release_lacks_it "$legacy_release"
 remove_document_worker_if_release_lacks_it "$document_worker_release"
 [[ "$document_worker_removals" -eq 1 ]] \
   || die "A release that defines document-worker must retain the service."
+company_cleanup_worker_removals=0
+remove_ephemeral_company_deletion_cleanup_worker() {
+  company_cleanup_worker_removals=$(( company_cleanup_worker_removals + 1 ))
+}
+remove_company_deletion_cleanup_worker_if_release_lacks_it "$legacy_release"
+[[ "$company_cleanup_worker_removals" -eq 1 ]] \
+  || die "A release without company-deletion-cleanup-worker must trigger orphan cleanup."
+remove_company_deletion_cleanup_worker_if_release_lacks_it "$company_cleanup_worker_release"
+[[ "$company_cleanup_worker_removals" -eq 1 ]] \
+  || die "A release that defines company-deletion-cleanup-worker must retain the service."
 
 release_export_dir="$validation_dir/release-export"
 release_bare_repository="$validation_dir/repository.git"
@@ -154,6 +176,7 @@ mkdir -p "$secrets_dir" "$uploads_dir"
 for secret in \
   postgres_admin_password \
   axora_app_password \
+  axora_cleanup_worker_password \
   session_secret \
   tailscale_db_auth_key \
   cloudflare_tunnel_token \
@@ -203,7 +226,7 @@ jq --exit-status \
   --arg uploads "$uploads_dir" \
   '
     (.services | keys | sort) ==
-      ["app","budget-worker","caddy","cloudflared","db","document-worker","email-sender","migrate","tailscale-db"]
+      ["app","budget-worker","caddy","cloudflared","company-deletion-cleanup-worker","db","document-worker","email-sender","migrate","tailscale-db"]
     and .services.app.environment.DEMO_MODE == "false"
     and .services.app.environment.DB_NAME == "axora_hybrid"
     and .services.app.environment.APP_BASE_URL == "https://axora.management"
@@ -228,6 +251,10 @@ jq --exit-status \
     and .services["document-worker"].environment.DB_NAME == "axora_hybrid"
     and .services["document-worker"].environment.DB_PASSWORD_FILE == "/run/secrets/axora_app_password"
     and .services["document-worker"].environment.AXORA_UPLOADS_CONTAINER_DIR == "/app/data/uploads"
+    and .services["company-deletion-cleanup-worker"].environment.DB_NAME == "axora_hybrid"
+    and .services["company-deletion-cleanup-worker"].environment.DB_USER == "axora_cleanup_worker"
+    and .services["company-deletion-cleanup-worker"].environment.DB_PASSWORD_FILE == "/run/secrets/axora_cleanup_worker_password"
+    and .services["company-deletion-cleanup-worker"].environment.AXORA_UPLOADS_CONTAINER_DIR == "/app/data/uploads"
     and .services.db.environment.POSTGRES_DB == "axora_hybrid"
     and .services.migrate.environment.POSTGRES_DB == "axora_hybrid"
     and .networks.backend.internal == true
@@ -239,6 +266,7 @@ jq --exit-status \
     and (.services["email-sender"].ports // []) == []
     and (.services["budget-worker"].ports // []) == []
     and (.services["document-worker"].ports // []) == []
+    and (.services["company-deletion-cleanup-worker"].ports // []) == []
     and ([.services.app.secrets[].source] | index("axora_email_service_auth_key")) != null
     and ([.services.app.secrets[].source] | index("resend_webhook_secret")) != null
     and ([.services.app.secrets[].source] | index("turnstile_secret")) != null
@@ -248,6 +276,8 @@ jq --exit-status \
       ["axora_app_password"]
     and ([.services["document-worker"].secrets[].source] | sort) ==
       ["axora_app_password"]
+    and ([.services["company-deletion-cleanup-worker"].secrets[].source] | sort) ==
+      ["axora_cleanup_worker_password"]
     and (
       [
         .services
@@ -275,24 +305,29 @@ jq --exit-status \
     and (.services.app.networks | keys | sort) == ["backend","frontend","mail"]
     and (.services["budget-worker"].networks | keys) == ["backend"]
     and (.services["document-worker"].networks | keys) == ["backend"]
+    and (.services["company-deletion-cleanup-worker"].networks | keys) == ["backend"]
     and (.services["email-sender"].networks | keys | sort) == ["email-egress","mail"]
     and .services["email-sender"].networks["email-egress"].gw_priority == 1
     and .services.app.read_only == true
     and .services["email-sender"].read_only == true
     and .services["budget-worker"].read_only == true
     and .services["document-worker"].read_only == true
+    and .services["company-deletion-cleanup-worker"].read_only == true
     and .services.cloudflared.read_only == true
     and (.services.app.cap_drop | index("ALL")) != null
     and (.services["email-sender"].cap_drop | index("ALL")) != null
     and (.services["budget-worker"].cap_drop | index("ALL")) != null
     and (.services["document-worker"].cap_drop | index("ALL")) != null
+    and (.services["company-deletion-cleanup-worker"].cap_drop | index("ALL")) != null
     and (.services.caddy.cap_drop | index("ALL")) != null
     and .services.caddy.cap_add == ["NET_BIND_SERVICE"]
     and (.services.cloudflared.cap_drop | index("ALL")) != null
     and (.services.app.volumes[0].source == $uploads)
     and (.services["document-worker"].volumes[0].source == $uploads)
+    and (.services["company-deletion-cleanup-worker"].volumes[0].source == $uploads)
     and (.secrets.postgres_admin_password.file == ($secrets + "/postgres_admin_password"))
     and (.secrets.axora_app_password.file == ($secrets + "/axora_app_password"))
+    and (.secrets.axora_cleanup_worker_password.file == ($secrets + "/axora_cleanup_worker_password"))
     and (.secrets.session_secret.file == ($secrets + "/session_secret"))
     and (.secrets.tailscale_db_auth_key.file == ($secrets + "/tailscale_db_auth_key"))
     and (.secrets.cloudflare_tunnel_token.file == ($secrets + "/cloudflare_tunnel_token"))
@@ -305,7 +340,7 @@ jq --exit-status \
     and (.secrets.turnstile_secret.file == ($secrets + "/turnstile_secret"))
     and (
       . as $root
-      | ["app","budget-worker","caddy","cloudflared","db","document-worker","email-sender","tailscale-db"]
+      | ["app","budget-worker","caddy","cloudflared","company-deletion-cleanup-worker","db","document-worker","email-sender","tailscale-db"]
       | all(
           . as $service
           | $root.services[$service].restart == "unless-stopped"

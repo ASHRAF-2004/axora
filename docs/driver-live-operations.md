@@ -27,16 +27,38 @@ and only a privacy-safe ETA/status is returned.
 
 ## Map source
 
-`NEXT_PUBLIC_AXORA_MAP_STYLE_URL` may select a reviewed MapLibre style used by
-the owner-only live map. The configured style must be production-supported or
-self-hosted and its sources must declare all legally required attribution; the
-public OpenStreetMap community tile endpoint is not an approved production
-dependency. Without an external provider, Axora uses the genuine self-hosted
-`/maps/axora-operational-style.json` regional basemap. Its country and
-populated-place sources are Natural Earth public-domain GeoJSON, while the
-authorized driver marker and route remain application-owned overlays. This is
-honest regional operational context, not street-level navigation. An unusable
-style produces a localized unavailable state rather than a blank rectangle.
+The owner-only live map is release-gated by a browser-visible provider contract
+generated from root-owned `deploy.env`. Set all of the following only after a
+production-capable dataset and its licence/attribution have been reviewed:
+
+* `AXORA_DRIVER_MAP_OPERATIONAL_READY=true`
+* `NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID`
+* `NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME`
+* `NEXT_PUBLIC_AXORA_MAP_STYLE_URL`
+* `NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION`
+* `NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL`
+
+The style URL and all style sources must be same-origin assets under `/maps`.
+They are public browser configuration and must not contain a private provider
+credential. A hosted provider therefore requires an approved same-origin tile
+publication/proxy design or an approved self-hosted regional vector/raster
+dataset. The public OpenStreetMap community tile endpoint is not an approved
+production backend.
+
+`/maps/axora-operational-style.json` is retained only as an offline/regional
+Natural Earth overview. Despite its legacy filename, metadata marks it
+`regional-overview-only`; runtime and deployment readiness reject it as an
+operational street map. It has country and populated-place context, but not the
+roads or local labels required at operational zoom.
+
+Until an approved provider/dataset is configured, `preflight.sh` fails with an
+explicit release blocker and the UI shows a localized unavailable state. It
+does not render an empty rectangle or present the Natural Earth overview as
+street navigation. A configured style is accepted only when it has usable
+MapLibre sources, road/local-label or raster context, declared attribution,
+successful source loading, and reviewed metadata declaring
+`axora:map-purpose=operational-street`. Driver markers and route overlays remain
+application-owned.
 
 ## Live transport
 

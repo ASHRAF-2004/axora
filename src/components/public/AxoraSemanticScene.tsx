@@ -1,23 +1,29 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Component, useEffect, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { PublicAtmosphereId, SemanticModelId } from "@/lib/immersive-public-experience";
+import type { ImmersiveSceneRuntime } from "@/lib/immersive-scene-runtime";
 import styles from "./ImmersiveWorld.module.css";
 
 const SceneCanvas = dynamic(() => import("./AxoraSemanticSceneCanvas"), {
   ssr: false,
-  loading: () => <div className={styles.sceneLoading} role="status" aria-label="Loading interactive workflow" />,
+  loading: () => <div className={styles.sceneLoading} aria-hidden="true" />,
 });
 
 class SceneErrorBoundary extends Component<{
   children: ReactNode;
   fallback: ReactNode;
+  onError: () => void;
 }, { failed: boolean }> {
   state = { failed: false };
 
   static getDerivedStateFromError() {
     return { failed: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError();
   }
 
   render() {
@@ -57,6 +63,8 @@ export function AxoraSemanticScene({
   route,
   direction,
   engaged,
+  loadingLabel,
+  onRuntimeChange,
 }: {
   model: SemanticModelId;
   nextModel?: SemanticModelId;
@@ -65,12 +73,28 @@ export function AxoraSemanticScene({
   route: string;
   direction: "ltr" | "rtl";
   engaged: boolean;
+  loadingLabel: string;
+  onRuntimeChange?: (runtime: ImmersiveSceneRuntime) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const contextLost = useRef(false);
   const [active, setActive] = useState(true);
   const [fallbackReason, setFallbackReason] = useState<string | null>("checking");
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [runtime, setRuntime] = useState<ImmersiveSceneRuntime>({
+    phase: "loading",
+    requestedAsset: model,
+    attachedAsset: null,
+    renderedAsset: null,
+    transitionFrom: null,
+    bounds: null,
+    insideFrustum: false,
+  });
+
+  const reportRuntime = useCallback((next: ImmersiveSceneRuntime) => {
+    setRuntime(next);
+    onRuntimeChange?.(next);
+  }, [onRuntimeChange]);
 
   useEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -119,12 +143,39 @@ export function AxoraSemanticScene({
     };
   }, []);
 
+  useEffect(() => {
+    if (!fallbackReason || fallbackReason === "checking") return;
+    const frame = window.requestAnimationFrame(() => {
+      reportRuntime({
+        phase: "fallback",
+        requestedAsset: model,
+        attachedAsset: model,
+        renderedAsset: model,
+        transitionFrom: null,
+        bounds: null,
+        insideFrustum: true,
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [fallbackReason, model, reportRuntime]);
+
   return (
-    <div className={styles.scene} ref={container} data-scene-route={route} data-semantic-model={model}>
+    <div
+      className={styles.scene}
+      ref={container}
+      data-scene-route={route}
+      data-semantic-model={runtime.renderedAsset ?? model}
+      data-scene-status={runtime.phase}
+      data-requested-asset={runtime.requestedAsset}
+      data-rendered-asset={runtime.renderedAsset ?? undefined}
+    >
       {fallbackReason ? (
         <SceneFallback alternative={alternative} model={model} reason={fallbackReason} />
       ) : (
-        <SceneErrorBoundary fallback={<SceneFallback alternative={alternative} model={model} reason="scene-failed" />}>
+        <SceneErrorBoundary
+          fallback={<SceneFallback alternative={alternative} model={model} reason="scene-failed" />}
+          onError={() => setFallbackReason("scene-failed")}
+        >
           <SceneCanvas
             model={model}
             nextModel={nextModel}
@@ -136,9 +187,11 @@ export function AxoraSemanticScene({
               setFallbackReason("context-lost");
             }}
             direction={direction}
+            onRuntimeChange={reportRuntime}
           />
         </SceneErrorBoundary>
       )}
+      {runtime.phase === "loading" && !fallbackReason ? <div className={styles.sceneRuntimeStatus} role="status">{loadingLabel}…</div> : null}
     </div>
   );
 }
