@@ -195,6 +195,9 @@ test("delivery users receive the live self-claim pool without owner assignment c
 });
 
 test("staff can select an atmosphere while company users remain on tenant branding", async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("axora-public-atmosphere:v2", "Aurora");
+  });
   await signInAsDemoOwner(page);
   await page.goto("/dashboard");
   await visibleAtmosphereButton(page, "Aurora");
@@ -219,6 +222,7 @@ test("staff can select an atmosphere while company users remain on tenant brandi
   expect(staffTheme.brand).toBe("#bd3f32");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-atmosphere", "ember");
+  expect(await page.evaluate(() => window.localStorage.getItem("axora-public-atmosphere:v2"))).toBe("Aurora");
   expect((await page.locator(".app-shell").evaluate((element) => getComputedStyle(element).getPropertyValue("--axora-brand").trim()))).toBe("#bd3f32");
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-staff-theme-${testInfo.project.name}.png`, fullPage: true });
 

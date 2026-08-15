@@ -288,6 +288,7 @@ export function AppShell({
   return (
     <div
       className="app-shell"
+      data-atmosphere-authority="authenticated"
       lang={locale}
       dir={LOCALE_NAMES[locale].dir}
       style={brand.style}

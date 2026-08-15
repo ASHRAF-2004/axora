@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { PUBLIC_ATMOSPHERES, type PublicAtmosphere } from "@/lib/immersive-public-experience";
 import { useAtmosphere } from "./AtmosphereProvider";
@@ -36,7 +36,7 @@ export function AtmosphereSelector({
   const initialized = useRef(false);
   const [persistenceState, setPersistenceState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!staffUserId || !initialAtmosphere || initialized.current) return;
     initialized.current = true;
     setAtmosphere(initialAtmosphere, false);

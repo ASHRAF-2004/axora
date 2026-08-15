@@ -5,6 +5,7 @@ import { PUBLIC_ATMOSPHERES, type PublicAtmosphere } from "@/lib/immersive-publi
 
 const PUBLIC_STORAGE_KEY = "axora-public-atmosphere:v2";
 const PUBLIC_COOKIE_KEY = "axora_public_atmosphere";
+const AUTHENTICATED_AUTHORITY_SELECTOR = '[data-atmosphere-authority="authenticated"]';
 
 type AtmosphereContextValue = {
   atmosphere: PublicAtmosphere;
@@ -36,6 +37,10 @@ export function AtmosphereProvider({
 
   useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(() => {
+      // Authenticated shells own their theme. Restoring a public preference
+      // here would race the server-persisted staff preference and could also
+      // leak a visitor atmosphere into a company-branded portal.
+      if (document.querySelector(AUTHENTICATED_AUTHORITY_SELECTOR)) return;
       let saved: string | null = null;
       try { saved = window.localStorage.getItem(PUBLIC_STORAGE_KEY); } catch { /* Use the server-rendered value. */ }
       setAtmosphere(validAtmosphere(saved) ? saved : initialAtmosphere, false);
@@ -63,4 +68,9 @@ export function useAtmosphere() {
   return value;
 }
 
-export const atmosphereProviderInternals = { PUBLIC_COOKIE_KEY, PUBLIC_STORAGE_KEY, validAtmosphere };
+export const atmosphereProviderInternals = {
+  AUTHENTICATED_AUTHORITY_SELECTOR,
+  PUBLIC_COOKIE_KEY,
+  PUBLIC_STORAGE_KEY,
+  validAtmosphere,
+};
