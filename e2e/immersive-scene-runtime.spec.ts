@@ -31,12 +31,15 @@ test.beforeEach(async ({ context, page }) => {
   }));
 });
 
-function runtimeFor(page: Page, asset: string) {
-  return page.locator(`[data-testid="workflow-webgl"][data-scene-phase="ready"][data-rendered-asset="${asset}"]`).first();
+function runtimeFor(page: Page, asset: string, route?: string) {
+  const scene = `[data-testid="workflow-webgl"][data-scene-phase="ready"][data-rendered-asset="${asset}"]`;
+  return route
+    ? page.locator(`[data-scene-route="${route}"]`).locator(scene).first()
+    : page.locator(scene).first();
 }
 
-async function expectRenderedAsset(page: Page, asset: string) {
-  const runtime = runtimeFor(page, asset);
+async function expectRenderedAsset(page: Page, asset: string, route?: string) {
+  const runtime = runtimeFor(page, asset, route);
   await expect(runtime).toBeVisible({ timeout: 20_000 });
   await expect(runtime).toHaveAttribute("data-requested-asset", asset);
   await expect(runtime).toHaveAttribute("data-attached-asset", asset);
@@ -121,8 +124,8 @@ test("every settled stage has visible pixels, matching copy, and one opted-in cu
     Object.defineProperty(window, "Audio", { configurable: true, value: TestAudio });
   });
   await page.goto("/en");
-  await expectRenderedAsset(page, "request");
   await page.locator('[data-scene-route="home-workflow"]').scrollIntoViewIfNeeded();
+  await expectRenderedAsset(page, "request", "home-workflow");
   await page.screenshot({ animations: "disabled", caret: "initial", path: "output/playwright/v2-home-stage-request.png" });
   expect(await page.evaluate(() => (window as typeof window & { __axoraSceneAudio: unknown[] }).__axoraSceneAudio)).toEqual([]);
   await page.getByRole("button", { name: "Enable interface sound" }).click();
@@ -131,7 +134,7 @@ test("every settled stage has visible pixels, matching copy, and one opted-in cu
     if (index === 0) continue;
     const control = page.locator(`[data-scene-step="${index}"]`).getByRole("button");
     await control.click();
-    await expectRenderedAsset(page, stage);
+    await expectRenderedAsset(page, stage, "home-workflow");
     await expect(page.getByTestId("scene-caption")).toContainText((await control.locator("strong").textContent()) ?? "");
     await page.screenshot({
       animations: "disabled",
@@ -150,7 +153,7 @@ test("every settled stage has visible pixels, matching copy, and one opted-in cu
   }
 
   await page.locator('[data-scene-step="0"]').getByRole("button").click();
-  await expectRenderedAsset(page, "request");
+  await expectRenderedAsset(page, "request", "home-workflow");
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __axoraSceneAudio: Array<{ type: string; path: string }> }).__axoraSceneAudio
     .filter((event) => event.type === "play" && event.path === "/immersive/sounds/request.ogg").length)).toBe(1);
   await page.getByRole("button", { name: "Mute interface sound" }).click();
