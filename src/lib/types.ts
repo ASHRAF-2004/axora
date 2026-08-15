@@ -152,6 +152,7 @@ export interface Product {
   companyId?: string;
   companyName?: string;
   code: string;
+  publicReference?: string;
   name: string;
   category: string;
   subcategory: string;

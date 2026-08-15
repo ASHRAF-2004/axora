@@ -191,6 +191,8 @@ describe("request isolation service", () => {
       lines: [{
         id: "80000000-0000-4000-8000-000000000045",
         code: "REQ-045",
+        productId: "81000000-0000-4000-8000-000000000045",
+        productCode: "INTERNAL-PRODUCT-045",
         productName: "A4 paper",
         category: "Office",
         quantity: 5,
@@ -218,6 +220,8 @@ describe("request isolation service", () => {
       invoiceNumber: undefined,
     });
     expect(minimized.lines[0]).toMatchObject({
+      productId: undefined,
+      productCode: undefined,
       supplierId: undefined,
       supplierName: undefined,
       quotationReference: undefined,

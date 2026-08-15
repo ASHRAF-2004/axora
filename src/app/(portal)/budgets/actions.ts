@@ -23,6 +23,14 @@ function field(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
 }
 
+async function requireCompanyBudgetActor() {
+  const actor = await requireSession();
+  if (actor.accountKind !== "COMPANY") {
+    throw new Error("Company budget administration is unavailable.");
+  }
+  return actor;
+}
+
 function positiveAmount(formData: FormData) {
   const amount = Number(field(formData, "amount"));
   if (!Number.isFinite(amount) || amount<=0 || amount>999_999_999_999) {
@@ -65,7 +73,7 @@ function boundedNumber(
 }
 
 export async function adjustBudgetAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     const direction = field(formData, "direction") === "REDUCE" ? "REDUCE" : "INCREASE";
     await adjustBudgetAllocation({
@@ -85,7 +93,7 @@ export async function adjustBudgetAction(formData: FormData) {
 }
 
 export async function transferBudgetAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     await transferBudgetAllocation({
       actor,
@@ -104,7 +112,7 @@ export async function transferBudgetAction(formData: FormData) {
 }
 
 export async function refreshBudgetAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     await refreshBudgetPeriod({
       actor,
@@ -120,7 +128,7 @@ export async function refreshBudgetAction(formData: FormData) {
 }
 
 export async function setCompanyCeilingAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     await setCompanyCeiling({
       actor,
@@ -139,7 +147,7 @@ export async function setCompanyCeilingAction(formData: FormData) {
 }
 
 export async function requestBudgetCycleChangeAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     const frequency = field(formData, "frequency").toUpperCase();
     const rolloverMode = field(formData, "rolloverMode").toUpperCase();
@@ -179,7 +187,7 @@ export async function requestBudgetCycleChangeAction(formData: FormData) {
 }
 
 export async function decideBudgetCycleChangeAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     const decision = field(formData, "decision").toUpperCase();
     if (decision !== "APPROVE" && decision !== "REJECT") {
@@ -200,7 +208,7 @@ export async function decideBudgetCycleChangeAction(formData: FormData) {
 }
 
 export async function requestVariancePolicyChangeAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     const toleranceMode = field(formData, "toleranceMode").toUpperCase();
     if (!["NONE","FIXED","PERCENTAGE","LOWER_ONLY"].includes(toleranceMode)) {
@@ -226,7 +234,7 @@ export async function requestVariancePolicyChangeAction(formData: FormData) {
 }
 
 export async function decideVariancePolicyChangeAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     const decision = field(formData, "decision").toUpperCase();
     if (decision !== "APPROVE" && decision !== "REJECT") {
@@ -247,7 +255,7 @@ export async function decideVariancePolicyChangeAction(formData: FormData) {
 }
 
 export async function requestBudgetAdjustmentAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     const adjustmentType = field(formData, "adjustmentType").toUpperCase();
     if (!["ONE_TIME","TEMPORARY","PERMANENT","TRANSFER"].includes(adjustmentType)) {
@@ -273,7 +281,7 @@ export async function requestBudgetAdjustmentAction(formData: FormData) {
 }
 
 export async function decideBudgetAdjustmentAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     const decision = field(formData, "decision").toUpperCase();
     if (!["APPROVE","REJECT","RETURN"].includes(decision)) {
@@ -294,7 +302,7 @@ export async function decideBudgetAdjustmentAction(formData: FormData) {
 }
 
 export async function rerunBudgetRefreshJobAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requireCompanyBudgetActor();
   try {
     await rerunBudgetRefreshJob({
       actor,

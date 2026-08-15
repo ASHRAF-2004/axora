@@ -1,5 +1,3 @@
-import type { Product } from "./types";
-
 export type CatalogSort =
   | "relevance"
   | "name-asc"
@@ -34,8 +32,33 @@ export interface CatalogFacetOption {
   count: number;
 }
 
+/**
+ * The only product representation that may cross into a customer browser.
+ * `publicRef` is a dedicated opaque customer reference; database UUIDs,
+ * internal product codes and all supplier,
+ * cost, margin and purchasing fields intentionally do not exist here.
+ */
+export interface CustomerCatalogProduct {
+  publicRef: string;
+  name: string;
+  category: string;
+  subcategory: string;
+  brand?: string;
+  size?: string;
+  unit: string;
+  description?: string;
+  defaultSellPrice: number;
+  priceRuleVersion?: number;
+  priceEffectiveFrom?: string;
+  priceChangedAt?: string;
+  priceCurrency?: string;
+  deliverySlaDays: number;
+  hasImage: boolean;
+  imageAltText?: string;
+}
+
 export interface CatalogSearchResult {
-  products: Product[];
+  products: CustomerCatalogProduct[];
   total: number;
   page: number;
   limit: number;
@@ -53,12 +76,12 @@ export interface CatalogSearchResult {
 export interface ShopSubcategorySummary {
   name: string;
   count: number;
-  sampleProduct: Product;
+  sampleProduct: CustomerCatalogProduct;
 }
 
 export interface ShopCategorySummary {
   name: string;
   count: number;
-  sampleProduct: Product;
+  sampleProduct: CustomerCatalogProduct;
   subcategories: ShopSubcategorySummary[];
 }

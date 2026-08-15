@@ -1,0 +1,19 @@
+{"type":"FeatureCollection", "features": [
+{"type":"Feature","geometry":{"type":"Point","coordinates":[120.569943,16.429991]},"properties":{"name":"Baguio","nameascii":"Baguio City","adm0name":"Philippines","min_zoom":5.6,"latitude":16.429991,"longitude":120.569943}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[125.579456,-8.559388]},"properties":{"name":"Dili","nameascii":"Dili","adm0name":"East Timor","min_zoom":5,"latitude":-8.559388,"longitude":125.579456}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[102.59998,17.966693]},"properties":{"name":"Vientiane","nameascii":"Vientiane","adm0name":"Laos","min_zoom":5,"latitude":17.966693,"longitude":102.59998}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[114.933284,4.883331]},"properties":{"name":"Bandar Seri Begawan","nameascii":"Bandar Seri Begawan","adm0name":"Brunei","min_zoom":5,"latitude":4.883331,"longitude":114.933284}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[104.914689,11.551976]},"properties":{"name":"Phnom Penh","nameascii":"Phnom Penh","adm0name":"Cambodia","min_zoom":5,"latitude":11.551976,"longitude":104.914689}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[96.116673,19.768503]},"properties":{"name":"Naypyidaw","nameascii":"Naypyidaw","adm0name":"Myanmar","min_zoom":5,"latitude":19.768503,"longitude":96.116673}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[105.848068,21.035273]},"properties":{"name":"Hanoi","nameascii":"Hanoi","adm0name":"Vietnam","min_zoom":4,"latitude":21.035273,"longitude":105.848068}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[101.688699,3.139797]},"properties":{"name":"Kuala Lumpur","nameascii":"Kuala Lumpur","adm0name":"Malaysia","min_zoom":4,"latitude":3.168612,"longitude":101.698037}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[90.406634,23.725006]},"properties":{"name":"Dhaka","nameascii":"Dhaka","adm0name":"Bangladesh","min_zoom":4,"latitude":23.725006,"longitude":90.406634}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[96.164732,16.7853]},"properties":{"name":"Yangon","nameascii":"Rangoon","adm0name":"Myanmar","min_zoom":4,"latitude":16.7853,"longitude":96.164732}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[100.514699,13.751945]},"properties":{"name":"Bangkok","nameascii":"Bangkok","adm0name":"Thailand","min_zoom":3,"latitude":13.751945,"longitude":100.514699}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[120.980271,14.606105]},"properties":{"name":"Manila","nameascii":"Manila","adm0name":"Philippines","min_zoom":2.7,"latitude":14.606105,"longitude":120.980271}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[121.568333,25.035833]},"properties":{"name":"Taipei","nameascii":"Taipei","adm0name":"Taiwan","min_zoom":3.7,"latitude":25.035833,"longitude":121.568333}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[106.827492,-6.172472]},"properties":{"name":"Jakarta","nameascii":"Jakarta","adm0name":"Indonesia","min_zoom":2.1,"latitude":-6.172472,"longitude":106.827492}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[88.369126,22.569579]},"properties":{"name":"Kolkata","nameascii":"Kolkata","adm0name":"India","min_zoom":3.7,"latitude":22.496915,"longitude":88.32273}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[103.853875,1.294979]},"properties":{"name":"Singapore","nameascii":"Singapore","adm0name":"Singapore","min_zoom":2.1,"latitude":1.294979,"longitude":103.853875}},
+{"type":"Feature","geometry":{"type":"Point","coordinates":[114.183064,22.306927]},"properties":{"name":"Hong Kong","nameascii":"Hong Kong","adm0name":"Hong Kong S.A.R.","min_zoom":3,"latitude":22.306927,"longitude":114.183064}}
+]}

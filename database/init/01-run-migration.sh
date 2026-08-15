@@ -5,6 +5,12 @@ if [ -r /run/secrets/postgres_admin_password ]; then
   PGPASSWORD="$(cat /run/secrets/postgres_admin_password)"
   export PGPASSWORD
 fi
+if [ ! -r /run/secrets/axora_cleanup_worker_password ]; then
+  echo "Cleanup-worker database secret is unavailable." >&2
+  exit 1
+fi
+AXORA_CLEANUP_ROLE_PASSWORD="$(cat /run/secrets/axora_cleanup_worker_password)"
+export AXORA_CLEANUP_ROLE_PASSWORD
 
 migration_plan="$(mktemp)"
 cleanup() {
@@ -14,6 +20,14 @@ trap cleanup EXIT HUP INT TERM
 
 cat > "$migration_plan" <<'PSQL'
 \set ON_ERROR_STOP on
+\getenv cleanup_worker_password AXORA_CLEANUP_ROLE_PASSWORD
+
+SELECT format(
+  'CREATE ROLE axora_cleanup_worker LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+  :'cleanup_worker_password'
+)
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_cleanup_worker') \gexec
+SELECT format('ALTER ROLE axora_cleanup_worker PASSWORD %L', :'cleanup_worker_password') \gexec
 
 SELECT pg_try_advisory_lock(
   hashtextextended(current_database() || ':axora:schema_migrations', 0)
@@ -95,3 +109,4 @@ psql \
   --username "$POSTGRES_USER" \
   --dbname "$POSTGRES_DB" \
   --file="$migration_plan"
+unset AXORA_CLEANUP_ROLE_PASSWORD

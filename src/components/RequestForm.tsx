@@ -14,7 +14,8 @@ import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { budgetApprovalMessages } from "@/lib/budget-approval-i18n";
-import type { Branch, Company, Product } from "@/lib/types";
+import type { Branch, Company } from "@/lib/types";
+import type { CustomerCatalogProduct } from "@/lib/catalog-contracts";
 import { readRequestDraft } from "@/lib/request-draft";
 import {
   AlertCircle,
@@ -36,7 +37,7 @@ import {
 import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
 
 interface SelectedLine {
-  productId: string;
+  publicRef: string;
   quantity: number;
   specification: string;
 }
@@ -71,7 +72,7 @@ export function RequestForm({
   companies: Company[];
   branches: Branch[];
   budgetAccounts?: RequestBudgetChoice[];
-  initialProduct?: Product;
+  initialProduct?: CustomerCatalogProduct;
   locale?: SupportedLocale;
 }) {
   const company =
@@ -107,14 +108,14 @@ export function RequestForm({
     return actor.branchId ?? "";
   };
 
-  const [knownProducts, setKnownProducts] = useState<Product[]>(
+  const [knownProducts, setKnownProducts] = useState<CustomerCatalogProduct[]>(
     initialProduct ? [initialProduct] : [],
   );
 
-  const productById = useMemo(
+  const productByRef = useMemo(
     () =>
       new Map(
-        knownProducts.map((product) => [product.id, product]),
+        knownProducts.map((product) => [product.publicRef, product]),
       ),
     [knownProducts],
   );
@@ -123,7 +124,7 @@ export function RequestForm({
     initialProduct
       ? [
           {
-            productId: initialProduct.id,
+            publicRef: initialProduct.publicRef,
             quantity: 1,
             specification: "",
           },
@@ -156,7 +157,7 @@ export function RequestForm({
   );
 
   const subtotal = selected.reduce((total, line) => {
-    const product = productById.get(line.productId);
+    const product = productByRef.get(line.publicRef);
 
     return (
       total +
@@ -190,17 +191,17 @@ export function RequestForm({
     const timer = window.setTimeout(async () => {
       const cart = readRequestCart();
       const cartById = new Map(
-        cart.map((item) => [item.product.id, item]),
+        cart.map((item) => [item.product.publicRef, item]),
       );
 
-      const productIds = [
+      const productRefs = [
         ...new Set([
-          ...cart.map((item) => item.product.id),
-          ...(initialProduct ? [initialProduct.id] : []),
+          ...cart.map((item) => item.product.publicRef),
+          ...(initialProduct ? [initialProduct.publicRef] : []),
         ]),
       ];
 
-      if (!productIds.length) {
+      if (!productRefs.length) {
         setKnownProducts([]);
         setSelected([]);
         setCartHydrated(true);
@@ -213,12 +214,12 @@ export function RequestForm({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ productIds }),
+          body: JSON.stringify({ productRefs }),
           signal: controller.signal,
         });
 
         const payload = await response.json() as {
-          products?: Product[];
+          products?: CustomerCatalogProduct[];
           error?: string;
         };
 
@@ -233,24 +234,24 @@ export function RequestForm({
           : [];
 
         const authoritativeById = new Map(
-          products.map((product) => [product.id, product]),
+          products.map((product) => [product.publicRef, product]),
         );
 
         const changedPrices = products
           .filter((product) => {
-            const saved = cartById.get(product.id);
+            const saved = cartById.get(product.publicRef);
             return Boolean(saved && productPriceChanged(saved.product, product));
           })
           .map((product) => product.name);
 
-        const lines = productIds.flatMap((productId) => {
-          const product = authoritativeById.get(productId);
+        const lines = productRefs.flatMap((publicRef) => {
+          const product = authoritativeById.get(publicRef);
           if (!product) return [];
 
-          const saved = cartById.get(productId);
+          const saved = cartById.get(publicRef);
 
           return [{
-            productId,
+            publicRef,
             quantity: Math.max(Math.ceil(saved?.quantity ?? 1), 1),
             specification: saved?.specification ?? "",
           }];
@@ -262,7 +263,7 @@ export function RequestForm({
         setPricesAcknowledged(changedPrices.length === 0);
         setCartHydrated(true);
 
-        const removedCount = productIds.length - products.length;
+        const removedCount = productRefs.length - products.length;
 
         if (removedCount > 0) {
           notify(
@@ -283,7 +284,7 @@ export function RequestForm({
         setSelected(
           initialProduct
             ? [{
-                productId: initialProduct.id,
+                publicRef: initialProduct.publicRef,
                 quantity: 1,
                 specification: "",
               }]
@@ -311,13 +312,12 @@ export function RequestForm({
 
     const items = selected
       .map<RequestCartItem | null>((line) => {
-        const product = productById.get(line.productId);
+        const product = productByRef.get(line.publicRef);
         if (!product) return null;
 
         return {
           product: {
-            id: product.id,
-            code: product.code,
+            publicRef: product.publicRef,
             name: product.name,
             category: product.category,
             subcategory: product.subcategory,
@@ -340,7 +340,7 @@ export function RequestForm({
       .filter((item): item is RequestCartItem => item !== null);
 
     writeRequestCart(items);
-  }, [cartHydrated, productById, selected]);
+  }, [cartHydrated, productByRef, selected]);
 
   function clearError(field: RequestField) {
     setErrors((current) => {
@@ -352,30 +352,30 @@ export function RequestForm({
     });
   }
 
-  function toggleProduct(product: Product) {
+  function toggleProduct(product: CustomerCatalogProduct) {
     clearError("products");
 
     setKnownProducts((current) =>
-      current.some((item) => item.id === product.id)
+      current.some((item) => item.publicRef === product.publicRef)
         ? current
         : [...current, product],
     );
 
     setSelected((current) => {
       const alreadySelected = current.some(
-        (item) => item.productId === product.id,
+        (item) => item.publicRef === product.publicRef,
       );
 
       if (alreadySelected) {
         return current.filter(
-          (item) => item.productId !== product.id,
+          (item) => item.publicRef !== product.publicRef,
         );
       }
 
       return [
         ...current,
         {
-          productId: product.id,
+          publicRef: product.publicRef,
           quantity: 1,
           specification: "",
         },
@@ -384,14 +384,14 @@ export function RequestForm({
   }
 
   function updateLine(
-    productId: string,
+    publicRef: string,
     patch: Partial<SelectedLine>,
   ) {
     clearError("quantity");
 
     setSelected((current) =>
       current.map((item) =>
-        item.productId === productId
+        item.publicRef === publicRef
           ? { ...item, ...patch }
           : item,
       ),
@@ -462,7 +462,7 @@ export function RequestForm({
     }
 
     const invalidQuantity = selected.find((line) => {
-      const product = productById.get(line.productId);
+      const product = productByRef.get(line.publicRef);
 
       if (!product) return true;
 
@@ -817,19 +817,19 @@ export function RequestForm({
 
             <div className="request-cart-lines">
               {selected.map((line) => {
-                const product = productById.get(line.productId);
+                const product = productByRef.get(line.publicRef);
 
                 if (!product) return null;
 
                 return (
                   <article
-                    key={line.productId}
+                    key={line.publicRef}
                     className="request-cart-line"
                   >
                     <div className="request-cart-product">
                       <strong>{product.name}</strong>
                       <span>
-                        {product.code} · {product.category}
+                        {product.publicRef} · {product.category}
                       </span>
                       <small>
                         {formatCurrency(product.defaultSellPrice, locale)} {copy.per}{" "}
@@ -838,9 +838,9 @@ export function RequestForm({
                     </div>
 
                     <input
-                      name="productId"
+                      name="publicRef"
                       type="hidden"
-                      value={product.id}
+                      value={product.publicRef}
                     />
 
                     <label className="request-cart-quantity">
@@ -858,7 +858,7 @@ export function RequestForm({
                         }
                         aria-invalid={Boolean(errors.quantity)}
                         onChange={(event) =>
-                          updateLine(product.id, {
+                          updateLine(product.publicRef, {
                             quantity: Number(event.target.value),
                           })
                         }
@@ -871,7 +871,7 @@ export function RequestForm({
                         name="specification"
                         value={line.specification}
                         onChange={(event) =>
-                          updateLine(product.id, {
+                          updateLine(product.publicRef, {
                             specification: event.target.value,
                           })
                         }

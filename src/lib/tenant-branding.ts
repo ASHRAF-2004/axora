@@ -784,7 +784,20 @@ export async function getActiveCompanyBrand(
   companyId: string,
   actor: SessionUser,
 ): Promise<ActiveCompanyBrand | null> {
-  if (isDemoMode()) return null;
+  if (isDemoMode()) {
+    if (!actor.companyId || actor.companyId !== companyId) return null;
+    return {
+      companyId: z.uuid().parse(companyId),
+      companyName: "Northstar Facilities",
+      logoId: "11111111-1111-4111-8111-111111111118",
+      logoContentType: "image/svg+xml",
+      themeVersion: 1,
+      logoVariant: "ORIGINAL",
+      logoPlacement: "HEADER_START",
+      themePreference: "LIGHT",
+      tokens: buildBrandThemeTokens(),
+    };
+  }
   const result = await query<{ snapshot: unknown }>(
     "SELECT public.axora_active_company_brand($1,$2,$3,$4) AS snapshot",
     [

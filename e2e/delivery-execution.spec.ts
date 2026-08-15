@@ -23,7 +23,6 @@ const receiver: DemoRoleSession = {
 
 const jobId = "10000000-0000-4000-8000-000000000001";
 const assignmentId = "20000000-0000-4000-8000-000000000001";
-const roleAssignmentId = "30000000-0000-4000-8000-000000000001";
 
 test("Arabic mobile Delivery Guy retains a versioned command offline with reduced motion", async ({ page, context }, testInfo) => {
   await page.route("**/api/driver/workspace", async (route) => route.fulfill({ json: {
@@ -61,35 +60,30 @@ test("Arabic mobile Delivery Guy retains a versioned command offline with reduce
   expect(queued).toContain('"commandId"');
 });
 
-test("owner assignment captures workload, destination time, proof policy and expected version", async ({ page }) => {
-  let command: Record<string, unknown> | null = null;
-  const workspace = {
-    capturedAt: "2026-08-09T01:00:00Z",
-    agents: [{ userId: driver.id, roleAssignmentId, name: "Assigned agent", email: driver.email, activeJobs: 2, overdueJobs: 1 }],
-    requests: [{ id: "60000000-0000-4000-8000-000000000001", number: "REQ-MEETING-001", companyName: "Meeting company", branchName: "Kuala Lumpur", branchTimezone: "Asia/Kuala_Lumpur", neededByDate: "2026-08-10" }],
-    jobs: [{ id: jobId, code: "DEL-MEETING-001", status: "AWAITING_ASSIGNMENT", workflowVersion: 4, requestNumber: "REQ-MEETING-001", companyName: "Meeting company", branchName: "Kuala Lumpur", destinationTimezone: "Asia/Kuala_Lumpur", scheduledWindowStart: "2026-08-09T02:00:00Z", scheduledWindowEnd: "2026-08-09T04:00:00Z", scheduledLocalStart: "2026-08-09T10:00:00", scheduledLocalEnd: "2026-08-09T12:00:00", scheduledLocalDate: "2026-08-09", acceptanceDeadline: "2026-08-09T02:30:00Z", slaDueAt: "2026-08-09T04:00:00Z", proofPolicy: ["PHOTO"], proofSatisfied: false, assignment: null, history: [] }],
-  };
-  await page.route("**/api/deliveries/workspace", async (route) => route.fulfill({ json: workspace }));
-  await page.route("**/api/deliveries/commands", async (route) => {
-    command = route.request().postDataJSON() as Record<string, unknown>;
-    await route.fulfill({ json: { status: "ASSIGNED", workflowVersion: 5 } });
-  });
+test("owner manages drivers without normal assignment or budget controls", async ({ page }) => {
   await signInAsDemoOwner(page);
   await page.goto("/deliveries");
+  await expect(page.getByRole("heading", { level: 1, name: "Manage Drivers" })).toBeVisible();
+  await expect(page.getByText(/assign or reassign/i)).toHaveCount(0);
+  await expect(page.getByText(/monthly budget/i)).toHaveCount(0);
+});
 
-  await expect(page.getByRole("heading", { level: 1, name: "Delivery control tower" })).toBeVisible();
-  await expect(page.getByText("2", { exact: true })).toBeVisible();
-  await expect(page.getByText("Asia/Kuala_Lumpur").last()).toBeVisible();
-  const assignment = page.locator("details").filter({ hasText: "Assign or reassign" }).first();
-  await assignment.getByLabel("Agent").selectOption(roleAssignmentId);
-  await assignment.getByLabel("Reason or note").fill("Meeting route workload assignment");
-  await assignment.getByRole("button", { name: "Assign or reassign" }).click();
-  await expect.poll(() => command).not.toBeNull();
-  expect(command).toMatchObject({
-    action: "ASSIGN", jobId, driverRoleAssignmentId: roleAssignmentId,
-    expectedVersion: 4, destinationTimezone: "Asia/Kuala_Lumpur",
-    proofPolicy: ["PHOTO"],
+test("Delivery Guy claims exactly one paid available job through the self-claim path", async ({ page }) => {
+  let jobs = [{ id: jobId, code: "DEL-MEETING-001", requestReference: "REQ-MEETING-001", companyName: "Meeting company", branchName: "Kuala Lumpur", area: "Kuala Lumpur", destinationTimezone: "Asia/Kuala_Lumpur", lineCount: 2, status: "AVAILABLE" }];
+  let postCount = 0;
+  await page.route(/\/api\/driver\/jobs$/, async (route) => {
+    if (route.request().method() === "POST") { postCount += 1; jobs = []; return route.fulfill({ json: { assignmentId, jobId, status: "ASSIGNED", created: true } }); }
+    return route.fulfill({ json: { sequence: 1 + postCount, capturedAt: "2026-08-09T01:00:00Z", jobs } });
   });
+  await page.route("**/api/driver/jobs/live", (route) => route.fulfill({ status: 200, headers: { "Content-Type": "text/event-stream" }, body: "retry: 60000\n\n" }));
+  await page.route("**/api/driver/workspace", (route) => route.fulfill({ json: { actorId: driver.id, capturedAt: "2026-08-09T01:00:00Z", jobs: [] } }));
+  await signInAsDemoRole(page, { ...driver, preferredLocale: "en" });
+  await page.goto("/driver");
+  await expect(page.getByRole("heading", { name: "Available delivery jobs" })).toBeVisible();
+  await expect(page.getByText("DEL-MEETING-001")).toBeVisible();
+  await page.getByRole("button", { name: "Claim" }).click();
+  await expect(page.getByText("No paid jobs are available.")).toBeVisible();
+  expect(postCount).toBe(1);
 });
 
 test("customer recipient sees a one-time OTP without purchasing internals", async ({ page }) => {

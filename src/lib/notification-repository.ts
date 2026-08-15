@@ -7,6 +7,8 @@ import {
   type NotificationDigestMode,
   type NotificationPriority,
 } from "./notifications";
+import { customerNotificationKind, customerNotificationPresentation } from "./customer-notification-privacy";
+import { isSupportedLocale } from "./i18n";
 
 const uuid = z.uuid();
 const statusFilterSchema = z.enum(["ALL", "UNREAD", "READ", "ARCHIVED"]);
@@ -150,6 +152,9 @@ export async function notificationCenterSnapshot(
       .catch("ALL").parse(filters.category ?? "ALL"),
     limit: Math.min(Math.max(Math.trunc(filters.limit ?? 100), 1), 200),
   };
+  if (actor.accountKind === "COMPANY" && normalizedFilters.category === "SOURCING") {
+    normalizedFilters.category = "ALL";
+  }
   if (isDemoMode()) {
     return {
       capturedAt: new Date().toISOString(),
@@ -181,7 +186,16 @@ export async function notificationCenterSnapshot(
       ]);
       const parsed = snapshotSchema.safeParse(result.rows[0]?.snapshot);
       if (!parsed.success) throw new Error("Notifications are unavailable.");
-      return parsed.data;
+      if (actor.accountKind !== "COMPANY") return parsed.data;
+      const locale = isSupportedLocale(actor.preferredLocale) ? actor.preferredLocale : "en";
+      return {
+        ...parsed.data,
+        notifications: parsed.data.notifications.map((notification) => {
+          const presentation = customerNotificationPresentation(notification.eventKey, locale);
+          return presentation ? { ...notification, ...presentation } : notification;
+        }),
+        preferences: parsed.data.preferences.filter((preference) => !customerNotificationKind(preference.eventKey)),
+      };
     },
   );
 }

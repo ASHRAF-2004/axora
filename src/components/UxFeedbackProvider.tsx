@@ -199,6 +199,11 @@ export function UxFeedbackProvider({ children }: { children: ReactNode }) {
   }, [confirmation, closeConfirmation]);
 
   useEffect(() => {
+    const handleFormActionOutcome = () => {
+      clearFormPending();
+      setFeedback((current) => current?.tone === "loading" ? null : current);
+    };
+
     const handleSubmit = (event: SubmitEvent) => {
       if (event.defaultPrevented) return;
 
@@ -286,11 +291,13 @@ export function UxFeedbackProvider({ children }: { children: ReactNode }) {
 
     document.addEventListener("submit", handleSubmit);
     document.addEventListener("click", handleClick);
+    window.addEventListener("axora:form-action-outcome", handleFormActionOutcome);
     window.addEventListener("pageshow", handlePageShow);
 
     return () => {
       document.removeEventListener("submit", handleSubmit);
       document.removeEventListener("click", handleClick);
+      window.removeEventListener("axora:form-action-outcome", handleFormActionOutcome);
       window.removeEventListener("pageshow", handlePageShow);
     };
   }, [clearFormPending, clearNavigationPending, showLoading]);

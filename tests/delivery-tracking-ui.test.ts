@@ -40,14 +40,14 @@ describe("delivery tracking interfaces", () => {
     }
   });
 
-  it("integrates tracking only into established driver, supervisor and receiving surfaces", async () => {
-    const [driver, supervisor, receiver] = await Promise.all([
+  it("integrates tracking only into established driver, owner-detail and receiving surfaces", async () => {
+    const [driver, ownerMap, receiver] = await Promise.all([
       readFile(new URL(
         "../src/components/role-portals/DeliveryExecutionPanel.tsx",
         import.meta.url,
       ), "utf8"),
       readFile(new URL(
-        "../src/components/role-portals/DeliverySupervisorPanel.tsx",
+        "../src/components/role-portals/DriverLiveMap.tsx",
         import.meta.url,
       ), "utf8"),
       readFile(new URL(
@@ -56,7 +56,9 @@ describe("delivery tracking interfaces", () => {
       ), "utf8"),
     ]);
     expect(driver).toContain("<DriverTrackingPanel");
-    expect(supervisor).toContain('audience="supervisor"');
-    expect(receiver).toContain('audience="company"');
+    expect(ownerMap).toContain("/api/drivers/");
+    expect(ownerMap).toContain("EventSource");
+    expect(receiver).toContain("<DeliveryTrackingBoard");
+    expect(receiver).not.toContain("audience=");
   });
 });

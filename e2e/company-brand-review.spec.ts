@@ -8,6 +8,13 @@ import {
 const companyId = "10000000-0000-4000-8000-000000000001";
 
 test("owner previews reviewed company branding across device, Arabic, and reduced motion", async ({ page }, testInfo) => {
+  const optimizedOfficialLogoRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname === "/_next/image" && url.searchParams.get("url")?.startsWith("/brand/axora-")) {
+      optimizedOfficialLogoRequests.push(request.url());
+    }
+  });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await signInAsDemoOwner(page);
   await page.goto("/companies/" + companyId + "/theme");
@@ -18,12 +25,19 @@ test("owner previews reviewed company branding across device, Arabic, and reduce
   })).toBeVisible();
   await expect(page.getByText("Review required", { exact: true }).first())
     .toBeVisible();
-  await expect(page.getByText("WCAG contrast evidence")).toBeVisible();
+  const contrastHeading = page.getByRole("heading", {
+    level: 2,
+    name: "WCAG contrast evidence",
+  });
+  await expect(contrastHeading).toHaveCount(1);
+  await expect(contrastHeading).toBeVisible();
 
-  await page.getByLabel("Tablet").check();
+  const deviceChoices = page.getByRole("group", { name: "Preview device" });
+  await deviceChoices.getByRole("radio", { name: "Tablet", exact: true }).check();
   await expect(page.locator('section[data-device="tablet"]')).toBeVisible();
-  await page.getByLabel("Mobile").check();
-  await page.getByLabel("العربية").check();
+  await deviceChoices.getByRole("radio", { name: "Mobile", exact: true }).check();
+  const languageChoices = page.getByRole("group", { name: "Preview language" });
+  await languageChoices.getByRole("radio", { name: "العربية", exact: true }).check();
   const preview = page.locator('section[lang="ar"][dir="rtl"]');
   await expect(preview).toBeVisible();
   await expect(preview.getByText("مشتريات الشركة")).toBeVisible();
@@ -47,6 +61,7 @@ test("owner previews reviewed company branding across device, Arabic, and reduce
     level: 1,
     name: /Onboarding workspace: YourUni/,
   })).toBeVisible();
+  expect(optimizedOfficialLogoRequests).toEqual([]);
   await page.screenshot({
     path: `output/playwright/company-onboarding-${testInfo.project.name}.png`,
     fullPage: true,

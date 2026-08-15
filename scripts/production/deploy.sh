@@ -132,6 +132,30 @@ ensure_document_worker_for_release() {
     || die "Production document-worker is not healthy (status: $health)."
 }
 
+ensure_company_deletion_cleanup_worker_for_release() {
+  local release="$1" expected_image="$2" expected_image_id="$3"
+  local container health
+  if ! release_has_company_deletion_cleanup_worker "$release"; then
+    remove_company_deletion_cleanup_worker_if_release_lacks_it "$release"
+    return
+  fi
+  if ! container="$(find_service_container company-deletion-cleanup-worker)"; then
+    [[ "$(docker image inspect --format '{{.Id}}' "$expected_image")" == "$expected_image_id" ]] \
+      || die "Recorded application image no longer resolves to its recorded content digest."
+    log "Production company deletion cleanup worker is missing; reconciling only that ephemeral service."
+    export AXORA_IMAGE="$expected_image"
+    compose_release "$release" up -d --no-deps --no-build --wait \
+      --wait-timeout "$AXORA_DEPLOY_TIMEOUT_SECONDS" company-deletion-cleanup-worker
+    container="$(find_service_container company-deletion-cleanup-worker)" \
+      || die "Expected one running company deletion cleanup worker after reconciliation."
+  fi
+  [[ "$(docker inspect --format '{{.Image}}' "$container")" == "$expected_image_id" ]] \
+    || die "Running company deletion cleanup worker image differs from the recorded content digest."
+  health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container")"
+  [[ "$health" == "healthy" ]] \
+    || die "Production company deletion cleanup worker is not healthy (status: $health)."
+}
+
 automatic_revert() {
   if ! "$swapped" || ! valid_image_reference "$old_image" || [[ ! -d "$old_release" ]]; then
     return
@@ -150,6 +174,11 @@ automatic_revert() {
   else
     remove_ephemeral_document_worker
   fi
+  if release_has_company_deletion_cleanup_worker "$old_release"; then
+    services+=(company-deletion-cleanup-worker)
+  else
+    remove_ephemeral_company_deletion_cleanup_worker
+  fi
   if release_has_email_sender "$old_release"; then
     services+=(email-sender)
   fi
@@ -163,6 +192,7 @@ automatic_revert() {
       remove_email_sender_if_release_lacks_it "$old_release"
       remove_budget_worker_if_release_lacks_it "$old_release"
       remove_document_worker_if_release_lacks_it "$old_release"
+      remove_company_deletion_cleanup_worker_if_release_lacks_it "$old_release"
     else
       warn "The automatic app-only rollback also failed its local health gate."
     fi
@@ -210,6 +240,7 @@ if [[ "$current_sha" == "$target_sha" ]]; then
     || die "Running application image differs from the recorded content digest."
   ensure_budget_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
   ensure_document_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
+  ensure_company_deletion_cleanup_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
   log "Commit $target_sha is already deployed; running health gates only."
   "$SCRIPT_DIR/health-check.sh" --local
   if bool_is_true "$AXORA_REQUIRE_EXTERNAL"; then
@@ -320,13 +351,25 @@ else
 fi
 
 export AXORA_IMAGE="${AXORA_IMAGE_REPOSITORY}:${target_sha}"
+map_build_args=(
+  --build-arg "AXORA_DRIVER_MAP_OPERATIONAL_READY=${AXORA_DRIVER_MAP_OPERATIONAL_READY:-false}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID=${NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID:-}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME=${NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME:-}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_STYLE_URL=${NEXT_PUBLIC_AXORA_MAP_STYLE_URL:-}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION=${NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION:-}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL=${NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL:-}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS=${NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS:-}"
+  --build-arg "NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL=${NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL:-}"
+)
 log "Running Dockerfile static build checks against the sanitized build context."
 docker buildx build --check \
   --build-arg "AXORA_REVISION=$target_sha" \
+  "${map_build_args[@]}" \
   "$release"
 log "Building immutable application image $AXORA_IMAGE."
 docker build \
   --build-arg "AXORA_REVISION=$target_sha" \
+  "${map_build_args[@]}" \
   --label "org.opencontainers.image.revision=$target_sha" \
   --label "org.opencontainers.image.source=https://github.com/ASHRAF-2004/axora" \
   --tag "$AXORA_IMAGE" \
@@ -468,7 +511,7 @@ if [[ "$deployment_mode" == "bootstrap" ]]; then
   fi
 fi
 
-services=(app budget-worker document-worker email-sender caddy)
+services=(app budget-worker document-worker company-deletion-cleanup-worker email-sender caddy)
 if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
   services+=(cloudflared)
 fi

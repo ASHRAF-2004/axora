@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  if (compact) return <Image src="/brand/axora-mark-512.png" width={42} height={42} alt="Axora" priority />;
+  if (compact) return <Image src="/brand/axora-mark-512.png" width={42} height={42} alt="Axora" priority unoptimized />;
   return (
     <Image
       className="brand-approved-lockup"
@@ -10,6 +10,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       height={35}
       alt="Axora"
       priority
+      unoptimized
     />
   );
 }

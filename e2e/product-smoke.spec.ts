@@ -5,7 +5,7 @@ const authenticatedRoutes = [
   { path: "/dashboard", heading: /Good (morning|afternoon|evening),/ },
   { path: "/products", heading: "Products" },
   { path: "/requests", heading: "Purchase requests" },
-  { path: "/deliveries", heading: "Delivery control tower" },
+  { path: "/deliveries", heading: "Manage Drivers" },
   { path: "/receiving", heading: "Confirm delivered quantities" },
   { path: "/finance", heading: "Invoices and payments" },
   { path: "/companies", heading: "Company lifecycle" },
@@ -65,12 +65,12 @@ test("keeps customer approval decisions outside the platform-owner role", async 
 
 test("creates one catalogue product without losing the route after insertion", async ({ page }, testInfo) => {
   await signInAsDemoOwner(page);
-  await page.goto("/products");
+  await page.goto("/products/new");
   const name = `E2E catalogue product ${Date.now()}`;
   const form = page.locator('form[data-draft-id="create-product"]');
   await form.getByLabel("Product name").fill(name);
   await form.getByLabel("Subcategory").fill("Regression fixtures");
-  await form.getByLabel("Axora buying cost (RM)").fill("12.50");
+  await form.getByLabel("Axora internal cost (RM)").fill("12.50");
   await form.getByLabel("Description / specification").fill("Catalogue route-recovery regression fixture");
   await form.getByRole("button", { name: "Create product" }).click();
 

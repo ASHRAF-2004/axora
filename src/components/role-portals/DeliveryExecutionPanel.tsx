@@ -167,6 +167,12 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
     return () => window.clearTimeout(timer);
   }, [copy.workspaceUnavailable, refresh]);
 
+  useEffect(() => {
+    const claimed = () => { void refresh().catch(() => setError(copy.workspaceUnavailable)); };
+    window.addEventListener("axora:delivery-claimed", claimed);
+    return () => window.removeEventListener("axora:delivery-claimed", claimed);
+  }, [copy.workspaceUnavailable, refresh]);
+
   const persist = useCallback((next: QueuedCommand[]) => {
     if (!workspace) return;
     const serialized = JSON.stringify(next);
@@ -270,7 +276,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
   const jobs = useMemo(() => workspace?.jobs ?? [], [workspace]);
   return <section className={styles.shell} aria-label={copy.driverTitle}>
     <div className={styles.toolbar}>
-      <div><span className={styles.eyebrow}>P1-08 · P1-09 · P1-10</span><strong>{copy.driverTitle}</strong></div>
+      <div><span className={styles.eyebrow}>{copy.driverTitle}</span><strong>{copy.driverTitle}</strong></div>
       <button className={styles.compactButton} type="button" onClick={() => void refresh()}>{copy.refresh}</button>
     </div>
     {queue.length ? <p className={styles.notice} role="status">{copy.offline} ({queue.length})</p> : null}

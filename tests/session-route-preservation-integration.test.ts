@@ -71,7 +71,7 @@ describe("P0-03 route and session integration", () => {
       source("src/components/SessionContinuity.tsx"),
       source("src/app/(portal)/requests/new/page.tsx"),
     ]);
-    expect(cart).toContain('const REQUEST_CART_STORAGE_PREFIX = "axora-request-cart:v2"');
+    expect(cart).toContain('const REQUEST_CART_STORAGE_PREFIX = "axora-request-cart:v3"');
     expect(cart).toContain("scopedBrowserStorageKey(");
     expect(draft).toContain('const REQUEST_DRAFT_PREFIX = "axora-request-draft:v1"');
     expect(shell).toContain("data-session-user-id={user.id}");

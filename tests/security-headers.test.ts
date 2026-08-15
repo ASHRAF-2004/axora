@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { buildContentSecurityPolicy } from "@/proxy";
 
+function directiveSources(policy: string, directive: string) {
+  const value = policy.split("; ").find((entry) => entry.startsWith(`${directive} `));
+  if (!value) throw new Error(`Missing ${directive}.`);
+  return value.split(" ").slice(1);
+}
+
 describe("content security policy", () => {
   it("uses a request nonce and blocks unsafe embedding and object content", () => {
     const policy = buildContentSecurityPolicy("known-nonce", false);
@@ -18,14 +24,26 @@ describe("content security policy", () => {
     expect(policy).not.toContain("'unsafe-eval'");
   });
 
-  it("allows development evaluation without weakening production", () => {
+  it("permits only CSP3 WebAssembly compilation for the self-hosted Meshopt decoder", () => {
+    const sources = directiveSources(buildContentSecurityPolicy("prod", false), "script-src");
+    expect(sources).toContain("'wasm-unsafe-eval'");
+    expect(sources).not.toContain("'unsafe-eval'");
+    expect(sources).not.toContain("*");
+    expect(sources.filter((source) => source.startsWith("http"))).toEqual([
+      "https://challenges.cloudflare.com",
+    ]);
+    expect(sources.join(" ")).not.toMatch(/(?:unpkg|jsdelivr|meshopt|draco|gstatic|cdn\.)/i);
+  });
+
+  it("allows development evaluation without broadening production evaluation", () => {
     expect(buildContentSecurityPolicy("dev", true)).toContain("'unsafe-eval'");
     expect(buildContentSecurityPolicy("prod", false)).not.toContain("'unsafe-eval'");
+    expect(buildContentSecurityPolicy("prod", false)).toContain("'wasm-unsafe-eval'");
   });
 
   it("allows only the official Turnstile origin for third-party challenge content", () => {
     const policy = buildContentSecurityPolicy("turnstile", false);
     expect(policy).toContain("frame-src https://challenges.cloudflare.com");
-    expect(policy).toContain("connect-src 'self' https://challenges.cloudflare.com");
+    expect(policy).toContain("connect-src 'self' blob: https://challenges.cloudflare.com");
   });
 });

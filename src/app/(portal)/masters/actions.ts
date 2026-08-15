@@ -53,7 +53,7 @@ function productInput(formData: FormData) {
     brand: readFormText(formData, "brand"),
     size: readFormText(formData, "size"),
     unit: readFormText(formData, "unit"),
-    packaging: readFormText(formData, "packaging"),
+    packaging: "",
     description: readFormText(formData, "description"),
     defaultBuyPrice,
     defaultSellPrice: calculateCommercialSellingPrice(defaultBuyPrice),
@@ -68,7 +68,16 @@ function files(formData: FormData, key: string) {
 function revalidateProduct(productId?: string) {
   revalidatePath("/products");
   revalidatePath("/requests/new");
-  if (productId) revalidatePath(`/products/${productId}/edit`);
+  if (productId) {
+    revalidatePath(`/products/${productId}`);
+    revalidatePath(`/products/${productId}/edit`);
+  }
+}
+
+function revalidateProductAfterEditorUpdate(productId: string) {
+  revalidatePath("/products");
+  revalidatePath("/requests/new");
+  revalidatePath(`/products/${productId}`);
 }
 
 export async function createCompanyAction(formData: FormData) {
@@ -311,7 +320,10 @@ export async function createBranchAction(formData: FormData) {
   redirect("/branches?notice=branch-created");
 }
 
-export interface ProductActionState { status: "idle" | "error"; message?: string }
+export type ProductActionState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "success"; redirectTo: string };
 
 export async function createProductAction(
   _previous: ProductActionState,
@@ -346,11 +358,17 @@ export async function createProductAction(
       }, user);
     } catch {
       revalidateProduct(productId);
-      redirect(`/products/${productId}/edit?notice=product-created-image-retry`);
+      return {
+        status: "success",
+        redirectTo: `/products/${productId}/edit?notice=product-created-image-retry`,
+      };
     }
   }
   revalidateProduct(productId);
-  redirect(`/products/${productId}/edit?notice=product-created`);
+  return {
+    status: "success",
+    redirectTo: `/products/${productId}/edit?notice=product-created`,
+  };
 }
 
 export async function updateProductAction(
@@ -367,8 +385,11 @@ export async function updateProductAction(
   } catch (error) {
     return { status: "error", message: validationMessage(error) };
   }
-  revalidateProduct(productId);
-  redirect("/products?notice=product-updated");
+  // Do not invalidate the currently mounted editor segment here. Next applies
+  // Server Action revalidation before ProductActionForm handles redirectTo;
+  // refreshing this exact segment can supersede and abort that navigation.
+  revalidateProductAfterEditorUpdate(productId);
+  return { status: "success", redirectTo: "/products?notice=product-updated" };
 }
 
 export async function deleteProductAction(productId: string) {
@@ -413,6 +434,7 @@ export async function setMasterActiveAction(entity: MasterEntity, id: string, ac
   const user = await requirePermission(permission);
   await setMasterActive(entity, id, active, user);
   revalidatePath(`/${entity}`); revalidatePath("/dashboard");
+  if (entity === "branches") revalidatePath(`/branches/${id}`);
 }
 
 export async function replaceProductImageAction(productId: string, formData: FormData) {

@@ -12,6 +12,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import {
   deliveryTrackingMessages,
   deliveryTrackingStatusLabel,
+  customerDeliveryStatusLabel,
   type DeliveryTrackingLocale,
 } from "@/lib/delivery-tracking-i18n";
 import styles from "./DeliveryTracking.module.css";
@@ -30,6 +31,7 @@ type TrackingSession = {
   stale?: boolean;
   latitude?: number | null;
   longitude?: number | null;
+  locationAvailable?: boolean;
   accuracyMeters?: number | null;
   destinationLatitude?: number | null;
   destinationLongitude?: number | null;
@@ -158,6 +160,7 @@ export function DriverTrackingPanel({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [endReason, setEndReason] = useState("");
+  const [sharingEnabled, setSharingEnabled] = useState(false);
   const failureReported = useRef("");
 
   const refresh = useCallback(async () => {
@@ -191,6 +194,7 @@ export function DriverTrackingPanel({
       if (workspaceLoaded) writeQueue(actorId, []);
       return;
     }
+    if (!sharingEnabled) return;
     let disposed = false;
     let flushing = false;
     let lastSampleAt = 0;
@@ -304,6 +308,7 @@ export function DriverTrackingPanel({
     copy.offlineBuffered,
     copy.permissionDenied,
     refresh,
+    sharingEnabled,
     workspaceLoaded,
   ]);
 
@@ -328,7 +333,7 @@ export function DriverTrackingPanel({
 
   return <section className={styles.driverPanel} aria-label={copy.driverTitle}>
     <header className={styles.panelHeader}>
-      <div><span>P2-02</span><h2>{copy.driverTitle}</h2></div>
+      <div><span>{copy.status}</span><h2>{copy.driverTitle}</h2></div>
       {active ? <strong className={styles.liveIndicator} role="status">
         <span aria-hidden="true" />{copy.activeIndicator}
       </strong> : null}
@@ -361,6 +366,7 @@ export function DriverTrackingPanel({
           </form> : null}
         </article>,
       )}</div>}
+    {active && !sharingEnabled ? <button type="button" onClick={() => setSharingEnabled(true)}>{copy.startSharing}</button> : null}
   </section>;
 }
 
@@ -372,12 +378,14 @@ function RouteFigure({
   locale: DeliveryTrackingLocale;
 }) {
   const copy = deliveryTrackingMessages(locale);
-  const hasPoint = session.latitude !== null && session.latitude !== undefined
-    && session.longitude !== null && session.longitude !== undefined;
-  const hasDestination = session.destinationLatitude !== null
+  const hasPoint = session.locationAvailable === true || (
+    session.latitude !== null && session.latitude !== undefined
+    && session.longitude !== null && session.longitude !== undefined
+  );
+  const hasDestination = session.locationAvailable === true || (session.destinationLatitude !== null
     && session.destinationLatitude !== undefined
     && session.destinationLongitude !== null
-    && session.destinationLongitude !== undefined;
+    && session.destinationLongitude !== undefined);
   if (!hasPoint) return <p className={styles.empty}>{copy.awaitingPoint}</p>;
   if (!hasDestination) return <p className={styles.warning}>{copy.destinationUnavailable}</p>;
   return <figure className={styles.routeFigure} data-stale={session.stale}>
@@ -401,20 +409,15 @@ function RouteFigure({
 }
 
 export function DeliveryTrackingBoard({
-  audience,
   locale = "en",
 }: {
-  audience: "supervisor" | "company";
   locale?: DeliveryTrackingLocale;
 }) {
   const copy = deliveryTrackingMessages(locale);
-  const endpoint = audience === "supervisor"
-    ? "/api/deliveries/tracking"
-    : "/api/receiving/delivery-tracking";
+  const endpoint = "/api/receiving/delivery-tracking";
   const [workspace, setWorkspace] = useState<TrackingWorkspace | null>(null);
-  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const sequence = useRef(0);
 
   const refresh = useCallback(async () => {
     const response = await fetch(endpoint, { cache: "no-store" });
@@ -423,66 +426,55 @@ export function DeliveryTrackingBoard({
   }, [endpoint]);
 
   useEffect(() => {
-    const start = window.setTimeout(() => {
-      void refresh().catch(() => setError(copy.unavailable));
-    }, 0);
-    const interval = window.setInterval(() => {
-      void refresh().catch(() => setError(copy.unavailable));
-    }, REFRESH_INTERVAL_MS);
+    let source: EventSource | null = null;
+    let fallback: number | undefined;
+    let disposed = false;
+    const connect = async () => {
+      if (disposed || document.hidden) return;
+      await refresh().catch(() => setError(copy.unavailable));
+      if (typeof globalThis.EventSource !== "function") {
+        fallback = window.setInterval(() => void refresh().catch(() => setError(copy.unavailable)), REFRESH_INTERVAL_MS);
+        return;
+      }
+      source = new EventSource("/api/receiving/delivery-tracking/live");
+      source.addEventListener("snapshot", (event) => {
+        const message = JSON.parse((event as MessageEvent<string>).data) as {
+          sequence: number;
+          snapshot: TrackingWorkspace;
+        };
+        if (message.sequence <= sequence.current) return;
+        sequence.current = message.sequence;
+        setWorkspace(message.snapshot);
+        setError("");
+      });
+      source.onerror = () => {
+        source?.close();
+        source = null;
+        if (!fallback) fallback = window.setInterval(() => void refresh().catch(() => setError(copy.unavailable)), REFRESH_INTERVAL_MS);
+      };
+    };
+    const visibility = () => {
+      source?.close();
+      source = null;
+      if (fallback) window.clearInterval(fallback);
+      fallback = undefined;
+      if (!document.hidden) void connect();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    void connect();
     return () => {
-      window.clearTimeout(start);
-      window.clearInterval(interval);
+      disposed = true;
+      document.removeEventListener("visibilitychange", visibility);
+      source?.close();
+      if (fallback) window.clearInterval(fallback);
     };
   }, [copy.unavailable, refresh]);
 
-  const command = async (body: Record<string, unknown>, success: string) => {
-    setError("");
-    const response = await postJson(endpoint, body);
-    if (!response.ok) {
-      setError(copy.commandFailed);
-      return;
-    }
-    setNotice(success);
-    await refresh();
-  };
-
-  const configure = (event: FormEvent<HTMLFormElement>, session: TrackingSession) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const latitude = String(form.get("destinationLatitude") ?? "").trim();
-    const longitude = String(form.get("destinationLongitude") ?? "").trim();
-    void command({
-      action: "CONFIGURE",
-      sessionId: session.sessionId,
-      destinationLatitude: latitude === "" ? null : Number(latitude),
-      destinationLongitude: longitude === "" ? null : Number(longitude),
-      visibilityPrecision: form.get("visibilityPrecision"),
-      showVehicleDetails: form.get("showVehicleDetails") === "on",
-      contactMode: form.get("contactMode"),
-      rawRetentionDays: Number(form.get("rawRetentionDays")),
-      vehicleType: form.get("vehicleType"),
-      vehicleColour: form.get("vehicleColour"),
-      vehicleRegistration: form.get("vehicleRegistration"),
-      reason: form.get("reason"),
-    }, copy.configured);
-  };
-
-  const control = (session: TrackingSession, action: "PAUSE" | "RESUME" | "END") => {
-    void command({
-      action,
-      sessionId: session.sessionId,
-      reason: reasons[session.sessionId] ?? "",
-    }, copy.commandSaved);
-  };
-
-  return <section className={styles.board} aria-label={
-    audience === "supervisor" ? copy.supervisorTitle : copy.companyTitle
-  }>
+  return <section className={styles.board} aria-label={copy.companyTitle}>
     <header className={styles.panelHeader}>
-      <div><span>P2-02</span><h2>{audience === "supervisor" ? copy.supervisorTitle : copy.companyTitle}</h2></div>
+      <div><span>{copy.status}</span><h2>{copy.companyTitle}</h2></div>
       <button type="button" onClick={() => void refresh()}>{copy.lastUpdated}</button>
     </header>
-    {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
     {error ? <p className={styles.warning} role="alert">{error}</p> : null}
     {!workspace ? <p>{copy.loading}</p> : workspace.sessions.length === 0
       ? <p className={styles.empty}>{copy.noActiveDeliveries}</p>
@@ -504,7 +496,7 @@ export function DeliveryTrackingBoard({
             <div><dt>{copy.lastUpdated}</dt><dd>{formattedTime(session.lastUpdatedAt, locale)}</dd></div>
             <div><dt>{copy.eta}</dt><dd>{session.stale ? copy.etaUnavailable : formattedEta(session.etaSeconds, locale) ?? copy.etaUnavailable}</dd></div>
             <div><dt>{copy.precision}</dt><dd>{session.visibilityPrecision === "EXACT" ? copy.exact : copy.approximate}</dd></div>
-            <div><dt>{copy.status}</dt><dd>{session.jobStatus}</dd></div>
+            <div><dt>{copy.status}</dt><dd>{customerDeliveryStatusLabel(session.jobStatus, locale)}</dd></div>
           </dl>
           {session.stale ? <p className={styles.warning} role="status">{copy.stale} · {copy.lastUpdated}: {formattedTime(session.lastUpdatedAt, locale)}</p> : null}
           {session.lastFailureCode ? <p className={styles.warning}>{copy.failure}: {session.lastFailureCode}</p> : null}
@@ -514,30 +506,6 @@ export function DeliveryTrackingBoard({
           {session.contactMode === "AXORA_RELAY" && session.contactPath
             ? <a className={styles.contactLink} href={session.contactPath}>{copy.relay}</a>
             : null}
-          {audience === "supervisor" ? <>
-            <details className={styles.configuration}>
-              <summary>{copy.configure}</summary>
-              <form onSubmit={(event) => configure(event, session)}>
-                <label>{copy.destinationLatitude}<input name="destinationLatitude" type="number" min="-90" max="90" step="0.000001" defaultValue={session.destinationLatitude ?? ""} /></label>
-                <label>{copy.destinationLongitude}<input name="destinationLongitude" type="number" min="-180" max="180" step="0.000001" defaultValue={session.destinationLongitude ?? ""} /></label>
-                <label>{copy.precision}<select name="visibilityPrecision" defaultValue={session.visibilityPrecision}><option value="APPROXIMATE">{copy.approximate}</option><option value="EXACT">{copy.exact}</option></select></label>
-                <label>{copy.contactMode}<select name="contactMode" defaultValue={session.contactMode ?? "AXORA_RELAY"}><option value="AXORA_RELAY">{copy.relay}</option><option value="NONE">{copy.noContact}</option></select></label>
-                <label>{copy.retention}<select name="rawRetentionDays" defaultValue={session.rawRetentionDays}>{[7, 14, 30, 60, 90].map((days) => <option key={days} value={days}>{days} {copy.days}</option>)}</select></label>
-                <label>{copy.vehicleType}<input name="vehicleType" maxLength={80} defaultValue={session.vehicleType ?? ""} /></label>
-                <label>{copy.vehicleColour}<input name="vehicleColour" maxLength={80} defaultValue={session.vehicleColour ?? ""} /></label>
-                <label>{copy.vehicleRegistration}<input name="vehicleRegistration" maxLength={80} defaultValue={session.vehicleRegistration ?? ""} /></label>
-                <label className={styles.checkbox}><input name="showVehicleDetails" type="checkbox" defaultChecked={session.showVehicleDetails} />{copy.showVehicle}</label>
-                <label>{copy.reason}<input name="reason" minLength={3} maxLength={1000} required /></label>
-                <button type="submit">{copy.savePolicy}</button>
-              </form>
-            </details>
-            <div className={styles.controls}>
-              <label>{copy.reason}<input value={reasons[session.sessionId] ?? ""} onChange={(event) => setReasons((current) => ({ ...current, [session.sessionId]: event.target.value }))} minLength={3} maxLength={1000} /></label>
-              {session.status === "ACTIVE" ? <button type="button" disabled={(reasons[session.sessionId]?.trim().length ?? 0) < 3} onClick={() => control(session, "PAUSE")}>{copy.pause}</button> : null}
-              {session.status === "PAUSED" ? <button type="button" disabled={(reasons[session.sessionId]?.trim().length ?? 0) < 3} onClick={() => control(session, "RESUME")}>{copy.resume}</button> : null}
-              {session.status !== "NOT_STARTED" ? <button type="button" disabled={(reasons[session.sessionId]?.trim().length ?? 0) < 3} onClick={() => control(session, "END")}>{copy.end}</button> : null}
-            </div>
-          </> : null}
         </article>,
       )}</div>}
   </section>;

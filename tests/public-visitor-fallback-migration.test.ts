@@ -96,7 +96,9 @@ describe("public visitor network fallback migration", () => {
   it("preserves Turnstile claims and records fallback evidence without raw identifiers", async () => {
     const db = new PGlite();
     try {
-      await applyMigrations(db);
+      await applyMigrations(db, {
+        through: "086_customer_catalog_public_references.sql",
+      });
 
       const first = await fallbackClaim(db, {
         token: hash("a"),
@@ -205,7 +207,9 @@ describe("public visitor network fallback migration", () => {
   it("requires complete irreversible fallback fingerprints and keeps claims append-only", async () => {
     const db = new PGlite();
     try {
-      await applyMigrations(db);
+      await applyMigrations(db, {
+        through: "086_customer_catalog_public_references.sql",
+      });
 
       await expect(db.query(`
         SELECT * FROM axora_claim_public_visitor_fallback(

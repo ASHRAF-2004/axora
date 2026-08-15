@@ -11,7 +11,7 @@ export async function GET(
 ) {
   const actor = await getSession();
   if (!actor) return Response.json({ error: "Authentication required" }, { status: 401 });
-  if (!canAccess(actor, "view_catalog")) {
+  if ((!actor.isOwner && actor.accountKind !== "PLATFORM") || !canAccess(actor, "view_catalog")) {
     return Response.json({ error: "Catalog access denied" }, { status: 403 });
   }
 

@@ -45,7 +45,7 @@ describe("locale selection and public dictionaries", () => {
       expect(dictionary.nav.login.length).toBeGreaterThan(0);
       expect(dictionary.nav.contact.length).toBeGreaterThan(0);
       expect(dictionary.contact.submit.length).toBeGreaterThan(0);
-      expect(dictionary.home.stages).toHaveLength(9);
+      expect(dictionary.home.stages).toHaveLength(8);
       for (const slug of PUBLIC_PAGE_SLUGS) {
         expect(dictionary.pages[slug].title.length).toBeGreaterThan(0);
         expect(dictionary.pages[slug].sections.length).toBeGreaterThan(0);

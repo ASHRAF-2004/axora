@@ -57,10 +57,11 @@ function turnstileScript(executeBody = "") {
 }
 
 async function visitorSection(page: Page, locale: "en" | "ar" | "ms") {
-  const section = page.getByRole("region", {
+  const section = page.getByRole("dialog", {
     name: publicVisitorCopy[locale].title,
   });
   await expect(section).toBeVisible();
+  await expect(section).toHaveAttribute("data-interactive", "true");
   return section;
 }
 
@@ -110,6 +111,9 @@ test.describe("visitor-choice verification recovery", () => {
       await page.goto(`/${locale}`);
 
       const section = await visitorSection(page, locale);
+      await section.getByRole("button", {
+        name: publicVisitorCopy[locale].chooseEarly,
+      }).click();
       await expect(section).toHaveAttribute("data-phase", "error");
       await expect(section.getByRole("alert")).toContainText(
         publicVisitorCopy[locale].scriptError,
@@ -122,6 +126,46 @@ test.describe("visitor-choice verification recovery", () => {
     });
   }
 
+  test("a late snapshot refresh cannot erase a Turnstile script failure", async ({
+    context,
+    page,
+  }) => {
+    let releaseSnapshot = () => {};
+    const snapshotReleased = new Promise<void>((resolve) => {
+      releaseSnapshot = resolve;
+    });
+    await rememberLocale(context, "ms");
+    await page.route("**/api/public/visitor-choice", async (route) => {
+      if (route.request().method() === "GET") await snapshotReleased;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json; charset=utf-8",
+        body: JSON.stringify({
+          totalCount: 0,
+          earlyBirdCount: 0,
+          nightOwlCount: 0,
+        }),
+      });
+    });
+    await page.route(turnstileScriptUrl, (route) =>
+      route.abort("blockedbyclient"));
+    await page.goto("/ms");
+
+    const section = await visitorSection(page, "ms");
+    await section.getByRole("button", {
+      name: publicVisitorCopy.ms.chooseEarly,
+    }).click();
+    await expect(section.getByRole("alert")).toContainText(
+      publicVisitorCopy.ms.scriptError,
+    );
+
+    releaseSnapshot();
+    await expect(section).toHaveAttribute("data-phase", "error");
+    await expect(section.getByRole("alert")).toContainText(
+      publicVisitorCopy.ms.scriptError,
+    );
+  });
+
   test("window.turnstile unavailable becomes a retryable error", async ({
     context,
     page,
@@ -131,6 +175,9 @@ test.describe("visitor-choice verification recovery", () => {
     await page.goto("/en");
 
     const section = await visitorSection(page, "en");
+    await section.getByRole("button", {
+      name: publicVisitorCopy.en.chooseEarly,
+    }).click();
     await expect(section).toHaveAttribute("data-phase", "error");
     await expect(section.getByRole("alert")).toContainText(
       publicVisitorCopy.en.scriptError,
@@ -157,6 +204,9 @@ test.describe("visitor-choice verification recovery", () => {
     await page.goto("/en");
 
     const section = await visitorSection(page, "en");
+    await section.getByRole("button", {
+      name: publicVisitorCopy.en.chooseEarly,
+    }).click();
     await expect(section).toHaveAttribute("data-phase", "error");
     await expect(section.getByRole("alert")).toContainText(
       publicVisitorCopy.en.scriptError,
@@ -178,11 +228,12 @@ test.describe("visitor-choice verification recovery", () => {
     `);
 
     const section = await openReadyVisitorChoice(page, context);
-    await expect(
-      section.getByRole("button", {
-        name: publicVisitorCopy.en.chooseEarly,
-      }),
-    ).toBeEnabled();
+    const early = section.getByRole("button", {
+      name: publicVisitorCopy.en.chooseEarly,
+    });
+    await expect(early).toBeEnabled();
+    await early.click();
+    await expect(section).toHaveAttribute("data-phase", "verifying");
   });
 
   test("execute exceptions leave a clear retryable error", async ({
@@ -347,10 +398,12 @@ test.describe("visitor-choice verification recovery", () => {
     await section.getByRole("button", {
       name: publicVisitorCopy.en.chooseEarly,
     }).click();
-    await expect(section).toHaveAttribute("data-phase", "claimed");
+    const counters = page.locator('[data-visitor-claimed="true"]');
+    await expect(section).toHaveCount(0);
+    await expect(counters).toBeVisible();
     await page.clock.fastForward(20_000);
 
-    await expect(section).toHaveAttribute("data-phase", "claimed");
+    await expect(counters).toBeVisible();
     await expect(section.getByRole("alert")).toHaveCount(0);
   });
 
@@ -386,9 +439,9 @@ test.describe("visitor-choice verification recovery", () => {
       name: publicVisitorCopy.en.retry,
     }).click();
 
-    await expect(section).toHaveAttribute("data-phase", "claimed");
-    await expect(section).toContainText(
-      publicVisitorCopy.en.result("EARLY_BIRD", 1),
+    await expect(section).toHaveCount(0);
+    await expect(page.locator('[data-visitor-claimed="true"]')).toContainText(
+      publicVisitorCopy.en.totalLabel,
     );
     expect(postCount).toBe(1);
   });
@@ -431,7 +484,8 @@ test.describe("visitor-choice verification recovery", () => {
     await section.getByRole("button", {
       name: publicVisitorCopy.en.chooseEarly,
     }).click();
-    await expect(section).toHaveAttribute("data-phase", "claimed");
+    await expect(section).toHaveCount(0);
+    await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
     expect(postCount).toBe(2);
   });
 

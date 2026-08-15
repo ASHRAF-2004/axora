@@ -5,6 +5,7 @@ import { getAccountLifecycleSession } from "@/lib/auth";
 import { canAccess } from "@/lib/permissions";
 import { requestLocaleDecision } from "@/lib/locale-server";
 import { getActiveCompanyBrand } from "@/lib/tenant-branding";
+import { isDemoMode } from "@/lib/db";
 import { getMyProfile, myProfileMeetsRequiredOnboarding } from "@/lib/profile";
 import { unreadNotificationCount } from "@/lib/notification-repository";
 import { landingPathForSession } from "@/lib/session-landing";
@@ -13,6 +14,7 @@ import {
   SESSION_RETURN_HEADER,
 } from "@/lib/session-return";
 import type { CSSProperties } from "react";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -22,6 +24,7 @@ import {
   PRIMARY_NAVIGATION,
   visiblePortalNavigation,
 } from "@/lib/portal-navigation";
+import { canChooseStaffAtmosphere, getStaffAtmosphere } from "@/lib/staff-atmosphere";
 
 export const metadata: Metadata = { robots: { index: false, follow: false, noarchive: true } };
 
@@ -62,6 +65,10 @@ export default async function PortalLayout({ children }: { children: React.React
   const companyBrandPromise = user.companyId
     ? getActiveCompanyBrand(user.companyId, user)
     : Promise.resolve(null);
+  const staffCanChooseAtmosphere = canChooseStaffAtmosphere(user);
+  const staffAtmospherePromise = staffCanChooseAtmosphere
+    ? getStaffAtmosphere(user)
+    : Promise.resolve(undefined);
   const [localeDecision, profile] = await Promise.all([
     requestLocaleDecision(),
     getMyProfile(user),
@@ -76,9 +83,10 @@ export default async function PortalLayout({ children }: { children: React.React
     redirect(`/profile?${params.toString()}`);
   }
 
-  const [companyBrand, unreadNotifications] = await Promise.all([
+  const [companyBrand, unreadNotifications, staffAtmosphere] = await Promise.all([
     companyBrandPromise,
     onboardingComplete ? unreadNotificationCount(user) : Promise.resolve(0),
+    staffAtmospherePromise,
   ]);
   const theme = companyBrand?.tokens;
   const messages = portalMessages(locale);
@@ -154,7 +162,11 @@ export default async function PortalLayout({ children }: { children: React.React
         locale={locale}
         brand={{
           name: companyBrand?.companyName ?? "Axora",
-          logoUrl: companyBrand ? `/api/company-brand/${companyBrand.companyId}/logo?v=${companyBrand.themeVersion}` : "/brand/axora-logo.png",
+          logoUrl: companyBrand
+            ? isDemoMode()
+              ? "/brand/demo-company-logo.svg"
+              : `/api/company-brand/${companyBrand.companyId}/logo?v=${companyBrand.themeVersion}`
+            : "/brand/axora-logo.png",
           tenant: Boolean(companyBrand),
           themeVersion: companyBrand?.themeVersion,
           logoVariant: companyBrand?.logoVariant,
@@ -163,6 +175,8 @@ export default async function PortalLayout({ children }: { children: React.React
         }}
         unreadNotifications={unreadNotifications}
         profileRequired={!onboardingComplete}
+        staffAtmosphere={staffAtmosphere}
+        allowAtmosphere={staffCanChooseAtmosphere}
       >
         {children}
       </AppShell>

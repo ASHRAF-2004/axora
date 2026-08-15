@@ -122,10 +122,10 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                   </tr>
                 </thead>
                 <tbody>
-                  {request.lines.map((line) => {
+                  {request.lines.map((line, index) => {
                     const amount = calculateLineAmounts(line);
                     return <tr key={line.id}>
-                      <td><strong>{line.code}</strong><br /><span className="subtle">{line.productCode}</span></td>
+                      <td>{platformView ? <><strong>{line.code}</strong><br /><span className="subtle">{line.productCode}</span></> : <strong>{index + 1}</strong>}</td>
                       <td><strong>{line.productName}</strong><br /><span className="subtle">{line.specification || line.category}</span></td>
                       <td>{line.quantity} {line.unit}</td>
                       {canViewCost ? <td>{formatCurrency(amount.buyingCost, locale)}</td> : null}

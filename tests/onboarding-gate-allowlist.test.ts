@@ -35,8 +35,11 @@ describe("pre-onboarding route allowlist", () => {
       "src/app/(portal)/profile/actions.ts",
       "src/app/(portal)/profile/language-action.ts",
       "src/app/(portal)/profile/page.tsx",
+      "src/app/[locale]/page.tsx",
       "src/app/api/company-brand/[companyId]/logo/route.ts",
       "src/app/api/profile/avatar/route.ts",
+      "src/app/api/public/visitor-choice/route.ts",
+      "src/app/api/public/visitor-choice/stream/route.ts",
       "src/app/login/page.tsx",
     ]);
   });

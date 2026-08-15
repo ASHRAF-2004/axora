@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth";
-import { getCatalogProductsByIds } from "@/lib/catalog";
+import { getCustomerCatalogProductsByPublicRefs } from "@/lib/catalog";
 import { canAccess } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
@@ -23,21 +23,21 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const productIds = body?.productIds;
+    const productRefs = body?.productRefs;
 
     if (
-      !Array.isArray(productIds) ||
-      productIds.length > 100 ||
-      productIds.some((id) => typeof id !== "string")
+      !Array.isArray(productRefs) ||
+      productRefs.length > 100 ||
+      productRefs.some((ref) => typeof ref !== "string")
     ) {
       return Response.json(
-        { error: "Provide up to 100 valid product IDs." },
+        { error: "Provide up to 100 valid product references." },
         { status: 400 },
       );
     }
 
-    const products = await getCatalogProductsByIds(
-      productIds,
+    const products = await getCustomerCatalogProductsByPublicRefs(
+      productRefs,
       actor,
     );
 

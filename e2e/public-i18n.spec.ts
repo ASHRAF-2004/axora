@@ -1,6 +1,9 @@
 import { expect, test, type BrowserContext } from "@playwright/test";
+import { installClaimedPublicVisitor } from "./helpers/public-visitor";
 
 const baseURL = "http://127.0.0.1:3100";
+
+test.beforeEach(async ({ page }) => installClaimedPublicVisitor(page));
 
 async function rememberLocale(
   context: BrowserContext,
@@ -24,7 +27,10 @@ test.describe("first-visit language decision", () => {
     await expect(page).toHaveURL(/\/ar$/);
     await expect(page.locator(".public-site")).toHaveAttribute("lang", "ar");
     await expect(page.locator(".public-site")).toHaveAttribute("dir", "rtl");
-    await expect(page.getByRole("dialog")).toBeVisible();
+    const languageDialog = page.getByRole("dialog", {
+      name: "هل تريد استخدام لغة المتصفح؟",
+    });
+    await expect(languageDialog).toBeVisible();
     await expect(
       page.getByRole("heading", {
         level: 2,
@@ -34,7 +40,7 @@ test.describe("first-visit language decision", () => {
 
     await page.getByRole("button", { name: /Bahasa Melayu/ }).click();
     await expect(page).toHaveURL(/\/ms$/);
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(languageDialog).toHaveCount(0);
     await expect
       .poll(
         async () =>
@@ -45,7 +51,7 @@ test.describe("first-visit language decision", () => {
       .toBe("ms");
 
     await page.reload();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(languageDialog).toHaveCount(0);
     await page.goto("/");
     await expect(page).toHaveURL(/\/ms$/);
   });
@@ -55,7 +61,7 @@ const localeCases = [
   {
     locale: "en" as const,
     viewport: { width: 1440, height: 900 },
-    heading: "One clear path from business need to verified delivery.",
+    heading: "Enter the Axora world",
     direction: "ltr",
     navigation: "Primary navigation",
     menu: null,
@@ -63,8 +69,7 @@ const localeCases = [
   {
     locale: "ms" as const,
     viewport: { width: 834, height: 1112 },
-    heading:
-      "Satu laluan jelas daripada keperluan perniagaan kepada penghantaran yang disahkan.",
+    heading: "Masuki dunia Axora",
     direction: "ltr",
     navigation: "Navigasi mudah alih",
     menu: "Buka menu",
@@ -72,7 +77,7 @@ const localeCases = [
   {
     locale: "ar" as const,
     viewport: { width: 320, height: 568 },
-    heading: "مسار واحد واضح من احتياج الشركة إلى تسليم موثّق.",
+    heading: "ادخل عالم أكسورا",
     direction: "rtl",
     navigation: "التنقل عبر الجوال",
     menu: "فتح القائمة",
@@ -166,6 +171,7 @@ test("small-phone skip link moves keyboard focus to public content", async ({
   await page.goto("/en");
 
   const skipLink = page.getByRole("link", { name: "Skip to main content" });
+  await expect(skipLink).toHaveAttribute("data-focus-ready", "true");
   await skipLink.focus();
   await expect(skipLink).toBeFocused();
   await expect(skipLink).toBeVisible();
@@ -187,11 +193,13 @@ test("small-phone keyboard flow exposes language, login, and menu controls", asy
   await page
     .locator("nextjs-portal")
     .evaluateAll((portals) => portals.forEach((portal) => portal.remove()));
+  await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
   const skipLink = page.getByRole("link", { name: "Skip to main content" });
+  await expect(skipLink).toHaveAttribute("data-focus-ready", "true");
   await skipLink.focus();
   await expect(skipLink).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.locator(".public-brand")).toBeFocused();
+  await expect(page.getByRole("link", { name: "Home - Axora" })).toBeFocused();
   await page.keyboard.press("Tab");
   const language = page.getByRole("combobox", { name: "Language" });
   await expect(language).toBeFocused();
@@ -269,16 +277,15 @@ test("reduced-motion preference removes meaningful public transition motion", as
       ),
     )
     .toBe(true);
-  const roleCard = page.getByTestId("public-role-card").first();
-  await roleCard.hover();
-  const styles = await roleCard.evaluate((element) => {
+  const fallback = page.getByTestId("workflow-fallback").first();
+  const styles = await fallback.evaluate((element) => {
     const style = getComputedStyle(element);
     return {
-      transform: style.transform,
+      animationDuration: style.animationDuration,
       transitionDuration: style.transitionDuration,
     };
   });
-  expect(styles.transform).toBe("none");
+  expect(Number.parseFloat(styles.animationDuration)).toBeLessThanOrEqual(0.001);
   expect(Number.parseFloat(styles.transitionDuration)).toBeLessThanOrEqual(
     0.001,
   );

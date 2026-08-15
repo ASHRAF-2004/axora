@@ -31,20 +31,13 @@ test("login stays clear, responsive, interactive, and free of recovery errors", 
   expect(pageErrors).toEqual([]);
 });
 
-test("pointer depth is decorative and reduced motion removes animation", async ({ page }, testInfo) => {
+test("the removed cursor-following light never renders", async ({ page }) => {
   await page.goto("/login");
-  if (testInfo.project.name === "mobile-chrome") {
-    await expect(page.locator(".interaction-pointer-light")).toHaveCSS("display", "none");
-    return;
-  }
-  const light = page.locator(".interaction-pointer-light");
-  const before = await light.evaluate((element) => getComputedStyle(element).transform);
+  await expect(page.locator(".interaction-pointer-light")).toHaveCount(0);
   await page.mouse.move(180, 210);
-  await expect.poll(() => light.evaluate((element) => getComputedStyle(element).transform)).not.toBe(before);
-
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload();
-  await expect(page.locator(".interaction-pointer-light")).toHaveCSS("display", "none");
+  await expect(page.locator(".interaction-pointer-light")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sign in" })).toBeEnabled();
 });
 

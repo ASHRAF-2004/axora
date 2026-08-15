@@ -9,6 +9,9 @@ import {
 } from "./notifications";
 import { canAccess } from "./permissions";
 import { enqueueWorkflowEmail } from "./workflow-email";
+import { sanitizeCustomerWorkflowEvent } from "./customer-workflow-privacy";
+import { customerNotificationPresentation } from "./customer-notification-privacy";
+import { isSupportedLocale } from "./i18n";
 import {
   renderWorkflowNotification,
   type WorkflowNotificationMessage,
@@ -261,16 +264,19 @@ export async function notifyWorkflowUsers(
       digestMode: "IMMEDIATE" | "DAILY" | "WEEKLY";
       mutedUntil?: string;
       recipientLocale: string;
+      recipientAccountKind: string;
     }>(`
-      SELECT global_in_app_enabled AS "globalInAppEnabled",
-        global_email_enabled AS "globalEmailEnabled",
-        event_preference_exists AS "eventPreferenceExists",
-        event_in_app_enabled AS "eventInAppEnabled",
-        event_email_enabled AS "eventEmailEnabled",
-        delivery_schedule AS "digestMode",
-        muted_until::text AS "mutedUntil",
-        recipient_locale AS "recipientLocale"
-      FROM axora_workflow_notification_preference($1,$2,$3,$4)
+      SELECT preference.global_in_app_enabled AS "globalInAppEnabled",
+        preference.global_email_enabled AS "globalEmailEnabled",
+        preference.event_preference_exists AS "eventPreferenceExists",
+        preference.event_in_app_enabled AS "eventInAppEnabled",
+        preference.event_email_enabled AS "eventEmailEnabled",
+        preference.delivery_schedule AS "digestMode",
+        preference.muted_until::text AS "mutedUntil",
+        preference.recipient_locale AS "recipientLocale",
+        recipient.account_kind AS "recipientAccountKind"
+      FROM axora_workflow_notification_preference($1,$2,$3,$4) preference
+      JOIN public.users recipient ON recipient.id=$3
     `, [event.companyId, event.id, recipientUserId, event.eventKey]);
     const saved = preference.rows[0];
     if (!saved) continue;
@@ -287,7 +293,13 @@ export async function notifyWorkflowUsers(
         ...(saved.mutedUntil ? { mutedUntil: saved.mutedUntil } : {}),
       } : undefined,
     );
-    const content = renderWorkflowNotification(input.message, saved.recipientLocale);
+    const safePresentation = saved.recipientAccountKind === "COMPANY"
+      ? customerNotificationPresentation(
+          event.eventKey,
+          isSupportedLocale(saved.recipientLocale) ? saved.recipientLocale : "en",
+        )
+      : null;
+    const content = safePresentation ?? renderWorkflowNotification(input.message, saved.recipientLocale);
     const draft = buildInAppNotification({
       id: randomUUID(),
       companyId: event.companyId,
@@ -359,18 +371,23 @@ export async function listRequestWorkflowEvents(
         WHERE event.request_id=$1
         ORDER BY event.occurred_at,event.event_version,event.id
       `, [requestId]);
-      return result.rows.map((row) => ({
-        id: row.id,
-        eventKey: row.eventKey,
-        ...(metadataText(row.metadata, "previousState") ? { previousState: metadataText(row.metadata, "previousState") } : {}),
-        ...(metadataText(row.metadata, "newState") ? { newState: metadataText(row.metadata, "newState") } : {}),
-        ...(metadataText(row.metadata, "reason") ? { reason: metadataText(row.metadata, "reason") } : {}),
-        source: metadataText(row.metadata, "source") ?? "SYSTEM",
-        ...(customerVisibleActorName(row.actorKind, row.actorName) ? { actorName: row.actorName } : {}),
-        ...(metadataText(row.metadata, "actorRole") ? { actorRole: metadataText(row.metadata, "actorRole") } : {}),
-        occurredAt: row.occurredAt,
-        recordedAt: row.recordedAt,
-      }));
+      return result.rows.map((row) => {
+        const event: RequestWorkflowEvent = {
+          id: row.id,
+          eventKey: row.eventKey,
+          ...(metadataText(row.metadata, "previousState") ? { previousState: metadataText(row.metadata, "previousState") } : {}),
+          ...(metadataText(row.metadata, "newState") ? { newState: metadataText(row.metadata, "newState") } : {}),
+          ...(metadataText(row.metadata, "reason") ? { reason: metadataText(row.metadata, "reason") } : {}),
+          source: metadataText(row.metadata, "source") ?? "SYSTEM",
+          ...(customerVisibleActorName(row.actorKind, row.actorName) ? { actorName: row.actorName } : {}),
+          ...(metadataText(row.metadata, "actorRole") ? { actorRole: metadataText(row.metadata, "actorRole") } : {}),
+          occurredAt: row.occurredAt,
+          recordedAt: row.recordedAt,
+        };
+        return actor.accountKind === "COMPANY"
+          ? sanitizeCustomerWorkflowEvent(event,row.actorKind)
+          : event;
+      });
     },
   );
 }

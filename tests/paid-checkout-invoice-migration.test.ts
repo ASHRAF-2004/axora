@@ -32,6 +32,8 @@ describe("paid checkout and finalized invoice", () => {
     assignmentId = "76000000-0000-4000-8000-000000000002";
     const otherActorId = "76000000-0000-4000-8000-000000000003";
     const otherAssignmentId = "76000000-0000-4000-8000-000000000004";
+    const platformServiceId = "76000000-0000-4000-8000-000000000005";
+    const platformAssignmentId = "76000000-0000-4000-8000-000000000006";
     const otherScope = await db.query<{ company_id: string; branch_id: string }>(`
       SELECT company.id::text AS company_id,branch.id::text AS branch_id
       FROM companies company JOIN branches branch ON branch.company_id=company.id
@@ -58,6 +60,16 @@ describe("paid checkout and finalized invoice", () => {
     `, [actorId, otherActorId, candidate.rows[0].company_id,
       otherScope.rows[0].company_id]);
     await db.query(`
+      INSERT INTO users(
+        id,email,display_name,password_hash,role_id,is_owner,
+        account_setup_completed_at,email_verified_at,account_kind,
+        account_status,active,auth_version
+      )
+      SELECT $1,'checkout-service@example.test','Checkout service',
+        'not-a-real-hash',id,false,now(),now(),'PLATFORM','ACTIVE',true,1
+      FROM roles WHERE role_key='PLATFORM_OPERATIONS'
+    `, [platformServiceId]);
+    await db.query(`
       INSERT INTO branch_assignments(user_id,company_id,branch_id,status,is_primary)
       VALUES ($1,$3,$4,'ACTIVE',true),($2,$5,$6,'ACTIVE',true)
     `, [actorId, otherActorId, candidate.rows[0].company_id,
@@ -74,6 +86,13 @@ describe("paid checkout and finalized invoice", () => {
     `, [assignmentId, otherAssignmentId, actorId, otherActorId,
       candidate.rows[0].company_id, candidate.rows[0].branch_id,
       otherScope.rows[0].company_id, otherScope.rows[0].branch_id]);
+    await db.query(`
+      INSERT INTO role_assignments(
+        id,user_id,role_id,scope_type,active,assigned_at
+      )
+      SELECT $1,$2,id,'PLATFORM',true,now()
+      FROM roles WHERE role_key='PLATFORM_OPERATIONS'
+    `, [platformAssignmentId, platformServiceId]);
     await db.query(`
       UPDATE requests SET approval_state='APPROVED',created_by=$2,
         approval_decided_at=now()

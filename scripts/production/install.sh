@@ -43,7 +43,7 @@ for protected_path in "$CONFIG_DIR" "$STATE_DIR" "$CONTROLLER_HOME" "$LOG_DIR" "
   [[ ! -L "$protected_path" ]] || fail "Refusing symlinked production path: $protected_path"
 done
 
-for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs; do
+for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs check-retention-mode.mjs; do
   [[ -f "$SOURCE_DIR/$source_file" ]] || fail "Missing source script: $source_file"
 done
 [[ -f "$SOURCE_DIR/owner-retaining-reset.sql" ]] \
@@ -175,6 +175,25 @@ copy_secret_if_absent() {
 copy_secret_if_absent "$LEGACY_SECRETS_DIR/postgres_admin_password" "$SECRETS_DIR/postgres_admin_password"
 copy_secret_if_absent "$LEGACY_SECRETS_DIR/axora_app_password" "$SECRETS_DIR/axora_app_password"
 copy_secret_if_absent "$LEGACY_SECRETS_DIR/tailscale_db_auth_key" "$SECRETS_DIR/tailscale_db_auth_key"
+
+cleanup_worker_password_file="$SECRETS_DIR/axora_cleanup_worker_password"
+[[ ! -L "$cleanup_worker_password_file" ]] \
+  || fail "Cleanup-worker database password must not be a symlink."
+if [[ ! -e "$cleanup_worker_password_file" ]]; then
+  cleanup_worker_password_temporary="$(mktemp "$CONFIG_DIR/.cleanup-worker-password.XXXXXX")"
+  trap 'rm -f -- "$cleanup_worker_password_temporary"' EXIT
+  node -e 'process.stdout.write(require("node:crypto").randomBytes(48).toString("base64url"))' \
+    > "$cleanup_worker_password_temporary"
+  install -o root -g "$RUNTIME_GID" -m 0640 \
+    "$cleanup_worker_password_temporary" "$cleanup_worker_password_file"
+  rm -f -- "$cleanup_worker_password_temporary"
+  trap - EXIT
+else
+  [[ -f "$cleanup_worker_password_file" && -s "$cleanup_worker_password_file" ]] \
+    || fail "Cleanup-worker database password must be a non-empty regular file."
+  chown root:"$RUNTIME_GID" "$cleanup_worker_password_file"
+  chmod 0640 "$cleanup_worker_password_file"
+fi
 
 render_environment_record="$LEGACY_SECRETS_DIR/render_env_before_hybrid.json"
 [[ -f "$render_environment_record" && ! -L "$render_environment_record" ]] \
@@ -359,7 +378,7 @@ chown -R root:"$RUNTIME_GID" "$UPLOADS_DIR"
 find "$UPLOADS_DIR" -type d -exec chmod 0770 {} +
 find "$UPLOADS_DIR" -type f -exec chmod 0660 {} +
 
-for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs; do
+for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs check-retention-mode.mjs; do
   install -o root -g root -m 0750 "$SOURCE_DIR/$source_file" "$LIBEXEC_DIR/$source_file"
 done
 install -o root -g root -m 0640 \

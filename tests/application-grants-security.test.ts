@@ -141,6 +141,8 @@ async function expectSensitiveBoundary(db: PGlite) {
     session_audit_trigger: boolean;
     visitor_counter_trigger: boolean;
     visitor_claim_trigger: boolean;
+    deletion_cleanup_claim: boolean;
+    deletion_cleanup_table: boolean;
   }>(`
     SELECT
       has_function_privilege(
@@ -164,11 +166,11 @@ async function expectSensitiveBoundary(db: PGlite) {
       ) AS provider_record,
       has_function_privilege(
         'axora_app',
-        'axora_public_visitor_snapshot(text,text,text)','EXECUTE'
+        'axora_public_visitor_snapshot_v3(text)','EXECUTE'
       ) AS visitor_snapshot,
       has_function_privilege(
         'axora_app',
-        'axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text)',
+        'axora_claim_public_visitor_v3(text,text,text,timestamptz,text)',
         'EXECUTE'
       ) AS visitor_claim,
       has_function_privilege(
@@ -261,7 +263,15 @@ async function expectSensitiveBoundary(db: PGlite) {
       ) AS visitor_counter_trigger,
       has_function_privilege(
         'axora_app','reject_public_visitor_claim_mutation()','EXECUTE'
-      ) AS visitor_claim_trigger
+      ) AS visitor_claim_trigger,
+      has_function_privilege(
+        'axora_app',
+        'axora_claim_company_deletion_cleanup_task(text,integer,timestamptz)',
+        'EXECUTE'
+      ) AS deletion_cleanup_claim,
+      has_table_privilege(
+        'axora_app','company_deletion_cleanup_tasks','SELECT'
+      ) AS deletion_cleanup_table
   `);
   expect(functions.rows[0]).toEqual({
     workflow_enqueue: true,
@@ -293,6 +303,8 @@ async function expectSensitiveBoundary(db: PGlite) {
     session_audit_trigger: false,
     visitor_counter_trigger: false,
     visitor_claim_trigger: false,
+    deletion_cleanup_claim: false,
+    deletion_cleanup_table: false,
   });
 }
 
@@ -328,7 +340,7 @@ describe("application database grant boundaries", () => {
       );
       expect(source).toContain("public.audit_user_session_revocation()");
       expect(source).toContain(
-        "public.axora_public_visitor_snapshot(text,text,text)",
+        "public.axora_public_visitor_snapshot_v3(text)",
       );
       expect(source).toContain(
         "public.axora_access_administration_snapshot(",

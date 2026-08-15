@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/LoginForm";
+import { AtmosphereSelector } from "@/components/public/AtmosphereSelector";
 import styles from "@/components/LoginForm.module.css";
 import { getAccountLifecycleSession } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
@@ -81,6 +82,9 @@ export default async function LoginPage({
       dir={locale === "ar" ? "rtl" : "ltr"}
       aria-label="Axora login"
     >
+      <div className="auth-atmosphere-control">
+        <AtmosphereSelector locale={locale} compact />
+      </div>
       <Link
         className={styles.backLink}
         href={`/${locale}`}

@@ -90,9 +90,10 @@ test("Platform Owner retains full authority and financial visibility", async ({ 
   await page.goto("/companies");
   await expect(page.locator("main h1")).toBeVisible();
   await page.goto("/reports");
-  await expect(page.getByText("Customer sales", { exact: true })).toBeVisible();
-  await expect(page.getByText(/^(Supplier buying cost|Internal buying cost)$/i).first()).toBeVisible();
-  await expect(page.getByText("Gross margin", { exact: true })).toBeVisible();
+  const reports = page.getByRole("main");
+  await expect(reports.getByText("Customer sales", { exact: true })).toBeVisible();
+  await expect(reports.getByText(/^(Supplier buying cost|Internal buying cost)$/i).first()).toBeVisible();
+  await expect(reports.getByText("Gross margin", { exact: true })).toBeVisible();
 });
 
 test("Arabic company dashboard remains RTL, mobile-safe and reduced-motion aware", async ({ page }) => {

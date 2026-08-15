@@ -45,7 +45,7 @@ export function BudgetCycleManagement({
     <>
       <section className={styles.card}>
         <div className={styles.cardHeader}>
-          <div><span className={styles.state}>P1-06</span><h2>{messages.cycleTitle}</h2></div>
+          <div><span className={styles.state}>{messages.cycleTitle}</span><h2>{messages.cycleTitle}</h2></div>
         </div>
         <p className={styles.muted}>{messages.cycleIntro}</p>
       </section>

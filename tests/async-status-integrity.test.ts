@@ -36,6 +36,7 @@ describe("real asynchronous operation status", () => {
     expect(provider).toContain("navigationUncertain");
     expect(provider).toContain("frameworkPendingSeen");
     expect(provider).toContain("uxRequestPending");
+    expect(provider).toContain('window.addEventListener("axora:form-action-outcome"');
     expect(provider).not.toContain("12000");
     expect(provider).not.toContain("8000");
     expect(css).toContain("ux-indeterminate");

@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 45
     env:
       NEXT_TELEMETRY_DISABLED: "1"
+      AXORA_EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
     steps:
       - name: Check out the tested commit
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -57,8 +59,19 @@ jobs:
       - name: Test
         run: npm run test
 
+      - name: Verify native PostgreSQL migrations, RLS, and grants
+        run: npm run test:postgres-native
+
       - name: Build the production application
         run: npm run build
+
+      - name: Stage the Docker-equivalent standalone application
+        run: npm run standalone:stage
+
+      - name: Validate licensed runtime assets and record bundle evidence
+        run: |
+          npm run assets:validate
+          npm run evidence:report
 
       - name: Install the browser used by interaction checks
         run: npx playwright install --with-deps chromium
@@ -66,13 +79,50 @@ jobs:
       - name: Test critical browser journeys
         run: npm run test:e2e
 
-      - name: Retain browser evidence after a failure
-        if: failure()
+      - name: Reject generated Next.js type-path drift
+        run: git diff --exit-code -- next-env.d.ts
+
+      - name: Audit public Lighthouse budgets and links
+        env:
+          APP_BASE_URL: http://127.0.0.1:3100
+          AXORA_EVIDENCE_BASE_URL: http://127.0.0.1:3100
+          DEMO_MODE: "true"
+          DEMO_EMAIL: owner@axora.e2e
+          DEMO_PASSWORD: public-e2e-fixture-password
+          SESSION_SECRET: public-e2e-session-key-not-for-production-0001
+        run: |
+          mkdir -p output/lighthouse output/reports
+          (
+            cd output/standalone
+            NODE_ENV=production HOSTNAME=127.0.0.1 PORT=3100 node server.js
+          ) >output/reports/production-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3100/en >/dev/null; then break; fi
+            if [ "$attempt" -eq 60 ]; then exit 1; fi
+            sleep 1
+          done
+          npm run standalone:validate
+          export CHROME_PATH="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          npx --no-install lighthouse http://127.0.0.1:3100/en --quiet --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" --output=json --output=html --output-path=output/lighthouse/mobile
+          npx --no-install lighthouse http://127.0.0.1:3100/en --quiet --preset=desktop --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" --output=json --output=html --output-path=output/lighthouse/desktop
+          npm run evidence:lighthouse
+          npm run links:validate
+          npm run evidence:manifest
+          npm run evidence:validate
+
+      - name: Retain reviewable browser and performance evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: playwright-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: output/playwright
-          if-no-files-found: ignore
+          name: immersive-world-v2-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/playwright
+            output/lighthouse
+            output/reports
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   container:
@@ -106,3 +156,36 @@ jobs:
           --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
           "axora-ci:${GITHUB_SHA}")"
           = "${GITHUB_SHA}"
+
+      - name: Smoke-test public and login routes in the production image
+        env:
+          DEMO_MODE: "true"
+          DEMO_EMAIL: owner@axora.e2e
+          DEMO_PASSWORD: public-e2e-fixture-password
+          SESSION_SECRET: public-e2e-session-key-not-for-production-0001
+          TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
+        run: |
+          container_name="axora-ci-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker run --detach --name "$container_name" \
+            --publish 127.0.0.1:3101:3000 \
+            --env DEMO_MODE --env DEMO_EMAIL --env DEMO_PASSWORD \
+            --env SESSION_SECRET --env TURNSTILE_SITE_KEY \
+            "axora-ci:${GITHUB_SHA}"
+          trap 'docker rm --force "$container_name" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 60); do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3101/en || true)"
+            if [ "$status" = "200" ]; then break; fi
+            if [ "$attempt" -eq 60 ]; then
+              docker logs "$container_name"
+              exit 1
+            fi
+            sleep 1
+          done
+          for route in /en /login; do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:3101${route}" || true)"
+            if [ "$status" != "200" ]; then
+              printf '%s returned HTTP %s in the production image.\n' "$route" "$status" >&2
+              docker logs "$container_name"
+              exit 1
+            fi
+          done

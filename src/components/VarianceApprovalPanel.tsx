@@ -21,7 +21,7 @@ export function VarianceApprovalPanel({
   return (
     <section className={styles.card}>
       <div className={styles.cardHeader}>
-        <div><span className={styles.state}>P1-07</span><h2>{messages.varianceApprovalTitle}</h2></div>
+        <div><span className={styles.state}>{messages.varianceApprovalTitle}</span><h2>{messages.varianceApprovalTitle}</h2></div>
       </div>
       <p className={styles.muted}>{messages.varianceApprovalIntro}</p>
       {!workspace.submissions.length ? <p>{messages.noVarianceApprovals}</p> : (

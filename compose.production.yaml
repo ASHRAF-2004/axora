@@ -152,6 +152,19 @@ services:
         bind:
           create_host_path: false
 
+  company-deletion-cleanup-worker:
+    image: "${AXORA_IMAGE:?Set AXORA_IMAGE to an immutable Axora image reference}"
+    cpus: "0.50"
+    mem_limit: 384m
+    pids_limit: 96
+    stop_grace_period: 30s
+    volumes: !override
+      - type: bind
+        source: "${AXORA_UPLOADS_DIR:?Set AXORA_UPLOADS_DIR to the persistent uploads directory}"
+        target: /app/data/uploads
+        bind:
+          create_host_path: false
+
   cloudflared:
     image: cloudflare/cloudflared:2026.7.3@sha256:e39ee8da81ad5e05d77f38d2f51c60ca51bf2a8450ac3abab50c17fdb91d91bf
     restart: unless-stopped
@@ -211,6 +224,8 @@ secrets:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/postgres_admin_password"
   axora_app_password:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_app_password"
+  axora_cleanup_worker_password:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_cleanup_worker_password"
   session_secret:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/session_secret"
   tailscale_db_auth_key:

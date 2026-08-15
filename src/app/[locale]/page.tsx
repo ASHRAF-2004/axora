@@ -2,7 +2,14 @@ import { AxoraImmersiveExperience } from "@/components/public/AxoraImmersiveExpe
 import { VisitorChoiceChallenge } from "@/components/public/VisitorChoiceChallenge";
 import type { Metadata } from "next";
 import { isSupportedLocale, publicMessages, type SupportedLocale } from "@/lib/i18n";
-import { immersivePublicCopy } from "@/lib/immersive-public-experience";
+import { getAccountLifecycleSession } from "@/lib/auth";
+import { isDemoMode } from "@/lib/db";
+import {
+  buildVisitorIdentity,
+  getPublicVisitorSnapshot,
+  VISITOR_CLAIM_COOKIE,
+} from "@/lib/public-visitor-counter";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -21,24 +28,35 @@ export default async function PublicHome({ params }: { params: Promise<{ locale:
   const { locale: rawLocale } = await params;
   if (!isSupportedLocale(rawLocale)) notFound();
   const locale = rawLocale as SupportedLocale;
-  const messages = publicMessages(locale);
-  const immersiveCopy = immersivePublicCopy(locale);
-  const prefix = `/${locale}`;
-  const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY?.trim();
+  const [session, requestHeaders, cookieStore] = await Promise.all([
+    getAccountLifecycleSession(),
+    headers(),
+    cookies(),
+  ]);
+  const privacyOptOut = requestHeaders.get("sec-gpc") === "1" || requestHeaders.get("dnt") === "1";
+  let initialVisitorSnapshot;
+  if (!session && !privacyOptOut) {
+    if (isDemoMode()) {
+      initialVisitorSnapshot = { version: 0, totalCount: 0, earlyBirdCount: 0, nightOwlCount: 0 };
+    } else {
+      try {
+        initialVisitorSnapshot = await getPublicVisitorSnapshot(buildVisitorIdentity({
+          cookieValue: cookieStore.get(VISITOR_CLAIM_COOKIE)?.value,
+        }));
+      } catch {
+        initialVisitorSnapshot = undefined;
+      }
+    }
+  }
   return (
     <AxoraImmersiveExperience
       locale={locale}
-      prefix={prefix}
-      copy={immersiveCopy}
-      hero={{
-        eyebrow: messages.home.eyebrow,
-        title: messages.home.title,
-        lead: messages.home.lead,
-        primaryAction: messages.home.primaryAction,
-        secondaryAction: messages.home.secondaryAction,
-        trustNote: messages.home.trustNote,
-      }}
-      challenge={<VisitorChoiceChallenge locale={locale} siteKey={turnstileSiteKey} />}
+      route="home"
+      challenge={!session && !privacyOptOut ? <VisitorChoiceChallenge
+        locale={locale}
+        siteKey={process.env.TURNSTILE_SITE_KEY?.trim()}
+        initialSnapshot={initialVisitorSnapshot}
+      /> : null}
     />
   );
 }

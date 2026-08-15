@@ -54,6 +54,11 @@ const catalog = {
     configured: "Tracking policy saved.",
     commandSaved: "Tracking command recorded.",
     commandFailed: "Tracking command conflicted with current server state.",
+    startSharing: "Start location sharing",
+    preparing: "Preparing",
+    outForDelivery: "Out for delivery",
+    delivered: "Delivered",
+    completed: "Completed",
   },
   ar: {
     driverTitle: "مشاركة الموقع",
@@ -108,6 +113,11 @@ const catalog = {
     configured: "تم حفظ سياسة التتبع.",
     commandSaved: "تم تسجيل أمر التتبع.",
     commandFailed: "يتعارض أمر التتبع مع حالة الخادم الحالية.",
+    startSharing: "بدء مشاركة الموقع",
+    preparing: "جارٍ التجهيز",
+    outForDelivery: "في الطريق للتسليم",
+    delivered: "تم التسليم",
+    completed: "مكتمل",
   },
   ms: {
     driverTitle: "Perkongsian lokasi",
@@ -162,6 +172,11 @@ const catalog = {
     configured: "Dasar penjejakan disimpan.",
     commandSaved: "Arahan penjejakan direkodkan.",
     commandFailed: "Arahan penjejakan bercanggah dengan keadaan pelayan semasa.",
+    startSharing: "Mula berkongsi lokasi",
+    preparing: "Sedang disediakan",
+    outForDelivery: "Dalam penghantaran",
+    delivered: "Dihantar",
+    completed: "Selesai",
   },
 } as const;
 
@@ -174,4 +189,12 @@ export function deliveryTrackingStatusLabel(status: string, locale?: string | nu
   if (status === "ACTIVE") return copy.activeIndicator;
   if (status === "PAUSED") return copy.pausedIndicator;
   return copy.waitingIndicator;
+}
+
+export function customerDeliveryStatusLabel(status: string, locale?: string | null) {
+  const copy = deliveryTrackingMessages(locale);
+  if (status === "OUT_FOR_DELIVERY") return copy.outForDelivery;
+  if (status === "DELIVERED") return copy.delivered;
+  if (status === "COMPLETED") return copy.completed;
+  return copy.preparing;
 }

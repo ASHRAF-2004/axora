@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useCallback, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useRef, type ReactNode } from "react";
 import {
   type ProductActionState,
 } from "@/app/(portal)/masters/actions";
@@ -15,34 +16,25 @@ export function ProductActionForm({
   submitLabel: string;
   draftId?: string;
 }) {
-  const resilientAction = useCallback(async (
-    state: ProductActionState,
-    formData: FormData,
-  ) => {
-    try {
-      return await action(state, formData);
-    } catch (error) {
-      const digest = error && typeof error === "object" && "digest" in error
-        ? String(error.digest)
-        : "";
-      if (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_NOT_FOUND")) {
-        throw error;
-      }
-      // A tab opened before a deployment can hold an obsolete Next.js Server
-      // Action identifier. Refresh the document to load the current action
-      // manifest; PortalDraftManager preserves the safe product fields.
-      window.location.reload();
-      return {
-        status: "error" as const,
-        message: "Axora refreshed this form to use the latest application version. Your saved progress is preserved.",
-      };
-    }
-  }, [action]);
-  const [state, formAction, pending] = useActionState(
-    resilientAction,
-    INITIAL_PRODUCT_ACTION_STATE,
-  );
-  return <form action={formAction} className="panel form-panel" data-draft-id={draftId}>
+  const router = useRouter();
+  const handledState = useRef<ProductActionState | null>(null);
+  const [state, formAction, pending] = useActionState(action, INITIAL_PRODUCT_ACTION_STATE);
+
+  useEffect(() => {
+    if (state.status === "idle" || handledState.current === state) return;
+    handledState.current = state;
+    window.dispatchEvent(new CustomEvent("axora:form-action-outcome", {
+      detail: { outcome: state.status },
+    }));
+    if (state.status === "success") router.push(state.redirectTo);
+  }, [router, state]);
+
+  return <form
+    action={formAction}
+    className="panel form-panel"
+    data-action-status={state.status}
+    data-draft-id={draftId}
+  >
     {children}
     {state.status === "error"
       ? <p className="callout callout-warning" role="alert">{state.message}</p>

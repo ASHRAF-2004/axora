@@ -1,0 +1,18 @@
+{
+  "version": 8,
+  "name": "Axora Regional Overview - Natural Earth",
+  "metadata": { "axora:map-purpose": "regional-overview-only" },
+  "center": [101.6869, 3.139],
+  "zoom": 8,
+  "sources": {
+    "natural-earth-countries": { "type": "geojson", "data": "/maps/natural-earth-southeast-asia-countries.geojson", "attribution": "Map data: Natural Earth (public domain)" },
+    "natural-earth-places": { "type": "geojson", "data": "/maps/natural-earth-southeast-asia-places.geojson", "attribution": "Place data: Natural Earth (public domain)" }
+  },
+  "layers": [
+    { "id": "ocean", "type": "background", "paint": { "background-color": "#dbeafe" } },
+    { "id": "countries", "type": "fill", "source": "natural-earth-countries", "paint": { "fill-color": "#eef4f1", "fill-opacity": 1 } },
+    { "id": "country-borders", "type": "line", "source": "natural-earth-countries", "paint": { "line-color": "#8ba2ad", "line-width": 0.9 } },
+    { "id": "places", "type": "circle", "source": "natural-earth-places", "paint": { "circle-color": "#126782", "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 1.5, 10, 4], "circle-stroke-color": "#ffffff", "circle-stroke-width": 1 } },
+    { "id": "place-labels", "type": "symbol", "source": "natural-earth-places", "layout": { "text-field": ["coalesce", ["get", "nameascii"], ["get", "name"]], "text-size": ["interpolate", ["linear"], ["zoom"], 4, 9, 10, 13], "text-offset": [0, 1.1], "text-allow-overlap": false }, "paint": { "text-color": "#183447", "text-halo-color": "#ffffff", "text-halo-width": 1.2 } }
+  ]
+}

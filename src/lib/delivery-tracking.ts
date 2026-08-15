@@ -126,8 +126,65 @@ export function getSupervisorDeliveryTracking(actor: AuthenticatedSessionUser) {
   return readWorkspace(actor, "axora_supervisor_delivery_tracking_workspace");
 }
 
-export function getCompanyDeliveryTracking(actor: AuthenticatedSessionUser) {
-  return readWorkspace(actor, "axora_company_delivery_tracking_workspace");
+const CUSTOMER_DELIVERY_STATUS: Record<string, string> = {
+  AWAITING_ASSIGNMENT: "PREPARING",
+  ASSIGNED: "PREPARING",
+  ACCEPTED: "PREPARING",
+  SHOPPING: "PREPARING",
+  PURCHASING: "PREPARING",
+  ITEMS_ACQUIRED: "PREPARING",
+  AWAITING_DELIVERY: "PREPARING",
+  OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
+  ARRIVED: "OUT_FOR_DELIVERY",
+  DELIVERED: "DELIVERED",
+  PARTIALLY_DELIVERED: "DELIVERED",
+  COMPLETED: "COMPLETED",
+};
+
+export function customerVisibleDeliveryStatus(status: unknown) {
+  if (typeof status !== "string") return "PREPARING";
+  return CUSTOMER_DELIVERY_STATUS[status.toUpperCase()] ?? "PREPARING";
+}
+
+function customerTrackingWorkspace(workspace: TrackingWorkspace): TrackingWorkspace {
+  return {
+    capturedAt: workspace.capturedAt,
+    sessions: workspace.sessions.map((session) => ({
+      sessionId: session.sessionId,
+      jobId: "",
+      jobCode: session.jobCode,
+      branchName: session.branchName,
+      companyName: session.companyName,
+      status: session.status,
+      jobStatus: customerVisibleDeliveryStatus(session.jobStatus),
+      startedAt: session.startedAt,
+      pausedAt: session.pausedAt,
+      lastUpdatedAt: session.lastUpdatedAt,
+      stale: Boolean(session.stale),
+      locationAvailable: Number.isFinite(session.latitude)
+        && Number.isFinite(session.longitude),
+      latitude: null,
+      longitude: null,
+      destinationLatitude: null,
+      destinationLongitude: null,
+      remainingMeters: session.remainingMeters,
+      etaSeconds: session.etaSeconds,
+      visibilityPrecision: "APPROXIMATE",
+      showVehicleDetails: Boolean(session.showVehicleDetails),
+      contactMode: session.contactMode === "AXORA_RELAY" ? "AXORA_RELAY" : "NONE",
+      contactPath: session.contactMode === "AXORA_RELAY" ? session.contactPath : null,
+      rawRetentionDays: 0,
+      vehicleType: session.showVehicleDetails ? session.vehicleType : null,
+      vehicleColour: session.showVehicleDetails ? session.vehicleColour : null,
+      vehicleRegistration: session.showVehicleDetails ? session.vehicleRegistration : null,
+    })),
+  };
+}
+
+export async function getCompanyDeliveryTracking(actor: AuthenticatedSessionUser) {
+  return customerTrackingWorkspace(
+    await readWorkspace(actor, "axora_company_delivery_tracking_workspace"),
+  );
 }
 
 export async function recordDeliveryTrackingPoint(

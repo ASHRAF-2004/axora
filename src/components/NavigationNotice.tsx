@@ -4,8 +4,8 @@ import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import { clearRequestCart } from "@/lib/request-cart";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 type Notice = {
   message: string;
@@ -78,13 +78,19 @@ const notices: Record<string, Notice> = {
 
 export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }) {
   const { notify } = useUxFeedback();
-  const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const handledLocation = useRef<string | null>(null);
 
   useEffect(() => {
     const notice = searchParams.get("notice");
-    if (!notice) return;
+    if (!notice) {
+      handledLocation.current = null;
+      return;
+    }
+
+    const locationKey = `${window.location.pathname}?${searchParams.toString()}`;
+    if (handledLocation.current === locationKey) return;
+    handledLocation.current = locationKey;
 
     const feedback = corePortalMessages(locale).notices[notice] ?? notices[notice];
 
@@ -100,14 +106,12 @@ export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }
       }));
     }
 
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.delete("notice");
-
-    const query = nextParams.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, {
-      scroll: false,
-    });
-  }, [locale, notify, pathname, router, searchParams]);
+    // Keep the presentation-only query in the current history entry. Mutating
+    // browser history from this effect competes with a later Server Action
+    // redirect in Next.js, which can restore this stale route after the action
+    // has already committed. The ref prevents duplicate feedback without
+    // creating any navigation or changing router state.
+  }, [locale, notify, searchParams]);
 
   return null;
 }

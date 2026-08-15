@@ -4,8 +4,10 @@ import {
   CATALOG_SORTS,
   type CatalogSearchResult,
   type CatalogSort,
+  type CustomerCatalogProduct,
   type ShopCategorySummary,
 } from "@/lib/catalog-contracts";
+import { categoryImage } from "@/lib/category-images";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
@@ -16,7 +18,6 @@ import {
   type RequestCartItem,
 } from "@/lib/request-cart";
 import { shopMessages } from "@/lib/shop-i18n";
-import type { Product } from "@/lib/types";
 import {
   ArrowLeft,
   ArrowRight,
@@ -63,7 +64,7 @@ export function ShopCategoryHub({
   const [searchText,setSearchText]=useState(query);
   const [searchQuery,setSearchQuery]=useState(query);
   const [catalog,setCatalog]=useState<CatalogSearchResult|null>(null);
-  const [products,setProducts]=useState<Product[]>([]);
+  const [products,setProducts]=useState<CustomerCatalogProduct[]>([]);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
   const [cartItems,setCartItems]=useState<RequestCartItem[]>([]);
@@ -148,7 +149,7 @@ export function ShopCategoryHub({
     focusAfterLoad.current=true;
     updateUrl({subcategory:name,view:null,sort:null,page:null});
   }
-  function addToCart(product:Product) {
+  function addToCart(product:CustomerCatalogProduct) {
     const result=addProductToRequestCart(product);setCartItems(result.items);
     notify(result.added ? shopCopy.addedNotice(product.name) : shopCopy.duplicateNotice(product.name),result.added ? "success" : "info");
   }
@@ -160,7 +161,7 @@ export function ShopCategoryHub({
     if (view==="all") return categoryName ? shopCopy.allIn(categoryName) : shopCopy.allProducts;
     return "";
   },[categoryName,query,selectedSubcategory,shopCopy,view]);
-  const cartProductIds=useMemo(() => new Set(cartItems.map((item) => item.product.id)),[cartItems]);
+  const cartProductRefs=useMemo(() => new Set(cartItems.map((item) => item.product.publicRef)),[cartItems]);
   const cartQuantity=cartItems.reduce((total,item) => total+item.quantity,0);
   const cartSubtotal=cartItems.reduce((total,item) => total+roundMoney(item.quantity*item.product.defaultSellPrice),0);
   const from=catalog?.total ? (catalog.page-1)*catalog.limit+1 : 0;
@@ -188,10 +189,10 @@ export function ShopCategoryHub({
         <div className="shop-section-heading"><div><span>{shopCopy.browse}</span><h2>{shopCopy.byCategory}</h2><p>{shopCopy.chooseDepartment}</p></div>
           <div className="shop-section-actions"><strong>{departments.length} {departments.length===1 ? shopCopy.department : shopCopy.departments}</strong><Link className="button button-primary" href="/products?view=all" onClick={() => {focusAfterLoad.current=true;}}><Grid3X3 size={17} />{shopCopy.seeAllProducts}</Link></div>
         </div>
-        <div className="shop-department-grid">{departments.map((department) => <button key={department.name} type="button" className="shop-department-card" data-ux-silent="true" onClick={() => openCategory(department)}>
-          <div className="shop-department-image"><ProductImage product={department.sampleProduct} showControls={false} locale={locale} /><span className="shop-department-count">{department.count} {department.count===1 ? shopCopy.product : shopCopy.products}</span></div>
+        <div className="shop-department-grid">{departments.map((department) => { const art=categoryImage(department.name,locale); return <button key={department.name} type="button" className="shop-department-card" data-ux-silent="true" onClick={() => openCategory(department)}>
+          <div className="shop-department-image"><picture><source srcSet={art.avif} type="image/avif" /><img src={art.webp} alt={art.alt} loading="lazy" width="640" height="400" /></picture><span className="shop-department-count">{department.count} {department.count===1 ? shopCopy.product : shopCopy.products}</span></div>
           <div className="shop-department-content"><h3>{department.name}</h3><div className="shop-subcategory-preview">{department.subcategories.slice(0,5).map((subcategory) => <span key={subcategory.name}>{subcategory.name}</span>)}</div><div className="shop-department-action">{shopCopy.browseDepartment}<ArrowRight className="directional-icon" size={17} aria-hidden="true" /></div></div>
-        </button>)}</div>
+        </button>; })}</div>
       </> : null}
       {selectedCategory && !showingProducts && !query ? <>
         <div className="shop-category-banner"><button type="button" className="shop-back-button" data-ux-silent="true" onClick={returnToDepartments}><ArrowLeft className="directional-icon" size={17} />{shopCopy.allDepartments}</button>
@@ -199,7 +200,7 @@ export function ShopCategoryHub({
           <button type="button" className="button button-primary" data-ux-silent="true" onClick={() => {focusAfterLoad.current=true;updateUrl({subcategory:null,view:"category",page:null});}}><Grid3X3 size={17} />{shopCopy.viewAll(selectedCategory.count)}</button>
         </div>
         <div className="shop-section-heading"><div><span>{selectedCategory.name}</span><h2>{shopCopy.chooseSubcategory}</h2></div></div>
-        <div className="shop-subcategory-grid">{selectedCategory.subcategories.map((subcategory) => <button key={subcategory.name} type="button" className="shop-subcategory-card" data-ux-silent="true" onClick={() => openSubcategory(subcategory.name)}><div className="shop-subcategory-image"><ProductImage product={subcategory.sampleProduct} showControls={false} locale={locale} /></div><div><h3>{subcategory.name}</h3><span>{subcategory.count} {subcategory.count===1 ? shopCopy.product : shopCopy.products}</span></div><ChevronRight className="directional-icon" size={19} aria-hidden="true" /></button>)}</div>
+        <div className="shop-subcategory-grid">{selectedCategory.subcategories.map((subcategory) => { const art=categoryImage(selectedCategory.name,locale); return <button key={subcategory.name} type="button" className="shop-subcategory-card" data-ux-silent="true" onClick={() => openSubcategory(subcategory.name)}><div className="shop-subcategory-image"><picture><source srcSet={art.avif} type="image/avif" /><img src={art.webp} alt={art.alt} loading="lazy" width="640" height="400" /></picture></div><div><h3>{subcategory.name}</h3><span>{subcategory.count} {subcategory.count===1 ? shopCopy.product : shopCopy.products}</span></div><ChevronRight className="directional-icon" size={19} aria-hidden="true" /></button>; })}</div>
       </> : null}
       {showingProducts ? <div className="shop-product-view">
         <div className="shop-product-toolbar"><div><button type="button" data-ux-silent="true" onClick={() => {if (query) {setSearchText("");updateUrl({q:null,page:null});return;} if (selectedSubcategory || view==="category") {updateUrl({subcategory:null,view:null,page:null});return;} returnToDepartments();}}><ArrowLeft className="directional-icon" size={16} />{shopCopy.back}</button><h2 ref={productHeading} tabIndex={-1}>{pageTitle}</h2><span aria-live="polite">{catalog ? shopCopy.found(catalog.total) : shopCopy.loadingProducts}</span></div>
@@ -207,11 +208,11 @@ export function ShopCategoryHub({
             <label>{shopCopy.sortBy}<select value={sort} onChange={(event) => {focusAfterLoad.current=true;updateUrl({sort:event.target.value==="relevance" ? null : event.target.value,page:null});}}><option value="relevance">{shopCopy.recommended}</option><option value="name-asc">{shopCopy.nameAsc}</option><option value="price-asc">{shopCopy.priceAsc}</option><option value="price-desc">{shopCopy.priceDesc}</option><option value="delivery-asc">{shopCopy.fastest}</option></select></label></div>
         </div>
         {error ? <div className="request-section-error" role="alert">{error}</div> : null}
-        <div className={loading ? "shop-product-grid is-loading" : "shop-product-grid"} aria-busy={loading}>{products.map((product) => <article key={product.id} className="shop-product-card" tabIndex={0}>
-          <div className="shop-product-image"><ProductImage product={product} locale={locale} /></div><div className="shop-product-content"><div className="shop-product-meta"><span>{product.subcategory}</span><small>{product.code}</small></div><h3>{product.name}</h3>{product.brand || product.size ? <p>{[product.brand,product.size].filter(Boolean).join(" · ")}</p> : null}
+        <div className={loading ? "shop-product-grid is-loading" : "shop-product-grid"} aria-busy={loading}>{products.map((product) => <article key={product.publicRef} className="shop-product-card" tabIndex={0}>
+          <div className="shop-product-image"><ProductImage product={product} locale={locale} /></div><div className="shop-product-content"><div className="shop-product-meta"><span>{product.subcategory}</span></div><h3>{product.name}</h3>{product.brand || product.size ? <p>{[product.brand,product.size].filter(Boolean).join(" · ")}</p> : null}
             <div className="shop-product-price"><strong>{formatCurrency(product.defaultSellPrice,locale)}</strong><span>{shopCopy.per} {product.unit}</span></div>
             <div className="shop-product-facts"><span>{product.deliverySlaDays===0 ? shopCopy.sameDay : shopCopy.days(product.deliverySlaDays)}</span></div>
-            {canRequest ? <button type="button" className={cartProductIds.has(product.id) ? "button button-secondary" : "button button-primary"} data-ux-silent="true" disabled={cartProductIds.has(product.id)} onClick={() => addToCart(product)}>{cartProductIds.has(product.id) ? <><Check size={16} />{shopCopy.added}</> : <><ShoppingBag size={16} />{shopCopy.add}</>}</button> : <span className="button button-secondary">{shopCopy.viewOnly}</span>}
+            {canRequest ? <button type="button" className={cartProductRefs.has(product.publicRef) ? "button button-secondary" : "button button-primary"} data-ux-silent="true" disabled={cartProductRefs.has(product.publicRef)} onClick={() => addToCart(product)}>{cartProductRefs.has(product.publicRef) ? <><Check size={16} />{shopCopy.added}</> : <><ShoppingBag size={16} />{shopCopy.add}</>}</button> : <span className="button button-secondary">{shopCopy.viewOnly}</span>}
           </div></article>)}</div>
         {!loading && !products.length ? <div className="shop-empty-state"><PackageSearch size={40} /><strong>{shopCopy.noMatch}</strong><p>{shopCopy.noMatchBody}</p></div> : null}
         {catalog && catalog.totalPages>1 ? <nav className="shop-pagination" aria-label={shopCopy.pagination}><button type="button" className="button button-secondary" disabled={page<=1} onClick={() => {focusAfterLoad.current=true;updateUrl({page:String(page-1)});}}><ChevronLeft className="directional-icon" size={16} />{shopCopy.previousPage}</button><div><strong>{shopCopy.pageStatus(catalog.page,catalog.totalPages)}</strong><span>{shopCopy.showingRange(from,to,catalog.total)}</span></div><button type="button" className="button button-secondary" disabled={page>=catalog.totalPages} onClick={() => {focusAfterLoad.current=true;updateUrl({page:String(page+1)});}}>{shopCopy.nextPage}<ChevronRight className="directional-icon" size={16} /></button></nav> : null}
