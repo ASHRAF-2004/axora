@@ -84,7 +84,7 @@ test("creates one catalogue product without losing the route after insertion", a
     "Catalogue route-recovery regression fixture updated",
   );
   await editor.getByRole("button", { name: "Save product" }).click();
-  await expect(page).toHaveURL(/\/products(?:\?.*)?$/);
+  await expect(page).toHaveURL(/\/products\/[0-9a-f-]+\/edit(?:\?.*)?$/i);
   await expect(page.getByText("This page could not be restored")).toHaveCount(0);
   await expect(page.getByText("Product changes saved successfully.")).toBeVisible();
 

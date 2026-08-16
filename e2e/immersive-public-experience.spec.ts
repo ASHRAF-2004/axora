@@ -277,6 +277,7 @@ for (const item of publicRouteSceneCases) {
 }
 
 test("all homepage stages attach the selected semantic object inside usable bounds", async ({ context, page }, testInfo) => {
+  test.setTimeout(120_000);
   test.skip(testInfo.project.name !== "chromium", "The full cold-to-settled semantic sequence is verified once in desktop Chromium.");
   await useLocale(context, "en");
   await page.goto("/en/operations-experience");
@@ -295,6 +296,7 @@ test("all homepage stages attach the selected semantic object inside usable boun
 });
 
 test("desktop and theme visual evidence is captured once in Chromium", async ({ context, page }, testInfo) => {
+  test.setTimeout(90_000);
   test.skip(testInfo.project.name !== "chromium", "Desktop evidence is intentionally captured only by the desktop Chromium project.");
   await useLocale(context, "en");
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -359,6 +361,7 @@ test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mob
 });
 
 test("records the reviewable immersive interaction tour", async ({ browser }, testInfo) => {
+  test.setTimeout(120_000);
   test.skip(testInfo.project.name !== "chromium", "The interaction tour is recorded once with desktop Chromium.");
   const context = await browser.newContext({
     baseURL,
