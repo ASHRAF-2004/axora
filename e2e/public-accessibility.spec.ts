@@ -40,11 +40,7 @@ test("public account routes expose a main landmark and page heading", async ({
         level: 1,
         name: route.heading,
       });
-      if (route.path === "/login") {
-        await expect(heading).toBeAttached();
-      } else {
-        await expect(heading).toBeVisible();
-      }
+      await expect(heading).toBeVisible();
       const overflow = await page.evaluate(
         () =>
           document.documentElement.scrollWidth -
@@ -81,16 +77,9 @@ test("login uses the Axora public website palette", async ({ page }) => {
 
   const email = page.getByLabel("Email");
   await email.focus();
-  await expect(email).toHaveCSS("border-color", "rgb(154, 91, 8)");
-
-  await expect(page.locator(".login-guide .mySVG > circle")).toHaveCSS(
-    "fill",
-    "rgb(232, 163, 61)",
-  );
-  await expect(page.locator(".login-guide .bodyBGnormal")).toHaveCSS(
-    "stroke",
-    "rgb(11, 45, 82)",
-  );
+  await expect(email).toHaveCSS("border-color", "rgb(21, 94, 157)");
+  await expect(page.locator(".login-guide")).toHaveCount(0);
+  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(248, 250, 252)");
 });
 
 test("the authenticated shell exposes named navigation and profile controls", async ({
@@ -170,7 +159,7 @@ test("public content and sign-in remain usable while noncritical media is slow",
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Enter the Axora world",
+      name: "One clear path from business need to verified delivery.",
     }),
   ).toBeVisible();
   await expect(page.locator(".public-login-link")).toBeVisible();

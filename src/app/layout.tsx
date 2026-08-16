@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { InteractionMagic } from "@/components/InteractionMagic";
 import { UxFeedbackProvider } from "@/components/UxFeedbackProvider";
 import { AtmosphereProvider } from "@/components/public/AtmosphereProvider";
 import { isSupportedLocale, LOCALE_NAMES } from "@/lib/i18n";
@@ -8,7 +7,6 @@ import type { PublicAtmosphere } from "@/lib/immersive-public-experience";
 import { cookies, headers } from "next/headers";
 import "./globals.css";
 import "./atmosphere-tokens.css";
-import "./interaction-magic.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://axora.management"),
@@ -48,7 +46,6 @@ export default async function RootLayout({
       <body>
         <AtmosphereProvider initialAtmosphere={initialAtmosphere}>
           <UxFeedbackProvider>
-            <InteractionMagic />
             {children}
           </UxFeedbackProvider>
         </AtmosphereProvider>

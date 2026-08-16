@@ -89,7 +89,7 @@ test("cold and delayed models never blank or commit stale semantic state", async
     await payGate;
     await route.continue();
   });
-  await page.goto("/en");
+  await page.goto("/en/operations-experience");
   await expectRenderedAsset(page, "request");
   const requestControl = page.getByRole("button", { name: /01.*Request/ });
   const payControl = page.getByRole("button", { name: /03.*Pay/ });
@@ -141,7 +141,7 @@ for (const [index, stage] of stages.entries()) {
   test(`${stage} settles with visible pixels, matching copy, and one opted-in cue`, async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "Each stage's complete audio/render proof runs once in desktop Chromium.");
     await installAudioRecorder(page);
-    await page.goto("/en");
+    await page.goto("/en/operations-experience");
     await page.locator('[data-scene-route="home-workflow"]').scrollIntoViewIfNeeded();
     await expectRenderedAsset(page, "request", "home-workflow");
     expect(await page.evaluate(() => (window as typeof window & { __axoraSceneAudio: unknown[] }).__axoraSceneAudio)).toEqual([]);

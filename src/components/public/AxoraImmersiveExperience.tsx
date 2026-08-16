@@ -239,7 +239,7 @@ export function AxoraImmersiveExperience({
         <AtmosphereSelector
           locale={locale}
           onThemeSelect={() => sound.play("theme")}
-          showThemes={false}
+          showThemes
           soundEnabled={sound.enabled}
           onSoundToggle={sound.toggle}
         />

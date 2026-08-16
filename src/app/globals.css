@@ -3506,6 +3506,63 @@ html[data-ux-navigating="true"] .ux-navigation-progress::after {
 
 .skip-link:focus { transform: translateY(0); }
 .public-site { min-height: 100vh; overflow-x: clip; background: white; color: var(--slate-950); }
+
+/* Simple Axora UI: restrained defaults for public and account surfaces. */
+.simple-auth-page {
+  min-height: 100svh;
+  padding: 64px 24px;
+  display: grid;
+  place-items: center;
+  background: #f8fafc;
+  overflow-x: hidden;
+}
+.simple-auth-wrap { width: min(460px, 100%); display: grid; gap: 20px; }
+.simple-auth-brand { width: fit-content; margin-inline: auto; display: block; }
+.simple-auth-brand img { width: 170px; height: auto; }
+.simple-auth-wrap .login-card { width: 100%; padding: clamp(26px, 5vw, 36px); border-radius: 16px; box-shadow: 0 18px 48px rgba(15, 42, 67, .09); }
+
+.simple-public-hero { min-height: 590px; grid-template-columns: minmax(0, 1.05fr) minmax(380px, .75fr); }
+.simple-public-hero h1 { max-width: 760px; font-size: clamp(42px, 5.2vw, 72px); line-height: 1.02; text-wrap: balance; }
+.public-hero-lead { max-width: 680px; margin: 24px 0 0; color: var(--slate-600); font-size: clamp(17px, 1.5vw, 20px); line-height: 1.65; }
+.public-trust-note { margin: 22px 0 0; display: flex; align-items: flex-start; gap: 9px; color: var(--slate-600); font-size: 14px; line-height: 1.55; }
+.public-trust-note svg { flex: none; margin-top: 2px; color: var(--blue-700); }
+.simple-lifecycle-card { padding: 26px; border: 1px solid var(--slate-200); border-radius: 18px; background: #fff; box-shadow: 0 22px 58px rgba(15, 42, 67, .11); }
+.simple-lifecycle-header { padding-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--navy-900); font-weight: 800; border-bottom: 1px solid var(--slate-200); }
+.simple-lifecycle-list { margin: 0; padding: 18px 0; display: grid; gap: 12px; list-style: none; }
+.simple-lifecycle-list li { min-height: 76px; padding: 14px; display: flex; align-items: center; gap: 14px; border: 1px solid var(--slate-200); border-radius: 12px; background: #f8fafc; }
+.simple-lifecycle-list svg { flex: none; color: var(--blue-700); }
+.simple-lifecycle-list span { display: grid; gap: 3px; }
+.simple-lifecycle-list strong { color: var(--navy-900); }
+.simple-lifecycle-list small { color: var(--slate-600); font-size: 13px; }
+.simple-lifecycle-foot { padding-top: 16px; display: flex; align-items: center; gap: 9px; color: #17613c; font-weight: 800; border-top: 1px solid var(--slate-200); }
+.simple-process-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.simple-process-grid li { min-height: 210px; }
+.simple-process-grid li svg { color: var(--blue-700); }
+.simple-role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.simple-role-grid > a { min-height: 270px; }
+.simple-assurance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.simple-assurance-grid article { padding: 34px; border: 1px solid var(--slate-200); border-radius: 16px; background: #fff; }
+.simple-assurance-grid article > svg { color: var(--blue-700); }
+.simple-assurance-grid h2 { margin: 8px 0 12px; color: var(--navy-900); font-size: clamp(25px, 3vw, 36px); text-wrap: balance; }
+.simple-assurance-grid article > p:last-child { margin: 0; color: var(--slate-600); line-height: 1.65; }
+.simple-public-cta { margin-bottom: 64px; padding: 38px; display: flex; align-items: center; justify-content: space-between; gap: 28px; border-radius: 18px; background: var(--navy-900); color: #fff; }
+.simple-public-cta h2 { margin: 7px 0 10px; max-width: 720px; color: #fff; font-size: clamp(28px, 4vw, 44px); }
+.simple-public-cta p { margin: 0; max-width: 720px; color: #dce8f2; line-height: 1.6; }
+.simple-public-cta .eyebrow { color: #a9c9e5; }
+.simple-public-cta .button-primary { flex: none; background: #fff; border-color: #fff; color: var(--navy-900); }
+
+@media (max-width: 980px) {
+  .simple-public-hero { grid-template-columns: 1fr; min-height: auto; }
+  .simple-process-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .simple-auth-page { padding: 38px 16px; }
+  .simple-public-hero { width: min(100% - 32px, 1400px); padding-block: 54px 62px; gap: 40px; }
+  .simple-public-hero h1 { font-size: clamp(38px, 12vw, 54px); }
+  .simple-lifecycle-card { padding: 18px; }
+  .simple-process-grid, .simple-role-grid, .simple-assurance-grid { grid-template-columns: 1fr; }
+  .simple-public-cta { margin-inline: 16px; padding: 28px 22px; align-items: flex-start; flex-direction: column; }
+}
 .public-header { position: sticky; top: 0; z-index: 100; height: 72px; background: rgba(255, 255, 255, .94); border-bottom: 1px solid rgba(203, 213, 225, .78); backdrop-filter: blur(16px); }
 .public-header-inner { width: min(1440px, calc(100% - 48px)); height: 100%; margin: auto; display: flex; align-items: center; gap: 32px; }
 .public-brand { display: flex; flex: 0 0 auto; align-items: center; }

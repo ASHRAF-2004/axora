@@ -9,15 +9,16 @@ import {
   safeInternalReturnPath,
   type SessionReturnReason,
 } from "@/lib/session-return";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
+import Image from "next/image";
 import Link from "next/link";
 import styles from "./LoginForm.module.css";
-import { YetiGuide, type GuideFocus } from "./login/YetiGuide";
 
 const loginCopy = {
   en: {
     title: "Sign in to Axora",
+    welcome: "Secure access to your procurement workspace.",
     email: "Email",
     password: "Password",
     emailHint: "email@domain.com",
@@ -49,6 +50,7 @@ const loginCopy = {
   },
   ar: {
     title: "تسجيل الدخول إلى Axora",
+    welcome: "وصول آمن إلى مساحة عمل المشتريات.",
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
     emailHint: "email@domain.com",
@@ -78,6 +80,7 @@ const loginCopy = {
   },
   ms: {
     title: "Log masuk ke Axora",
+    welcome: "Akses selamat ke ruang kerja perolehan anda.",
     email: "E-mel",
     password: "Kata laluan",
     emailHint: "email@domain.com",
@@ -151,12 +154,9 @@ export function LoginForm({
   const copy = loginCopy[locale];
   const initialEmail = demo ? (demoEmail ?? "") : "";
   const initialPassword = demo ? (demoPassword ?? "") : "";
-  const emailRef = useRef<HTMLInputElement | null>(null);
-  const [focus, setFocus] = useState<GuideFocus>(null);
   const [emailValue, setEmailValue] = useState(initialEmail);
   const [passwordValue, setPasswordValue] = useState(initialPassword);
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [caretIndex, setCaretIndex] = useState(initialEmail.length);
 
   const mergedReturnTo = useMemo(() => {
     // Merge any browser-stored fragment into the same server-provided path.
@@ -189,25 +189,6 @@ export function LoginForm({
     return null;
   }, [copy, error, reason, resetComplete, setupComplete]);
 
-  const syncCaret = (input: HTMLInputElement) => {
-    setCaretIndex(input.selectionEnd ?? input.value.length);
-  };
-
-  const keepPasswordFocus = () => {
-    window.setTimeout(() => {
-      const active = document.activeElement;
-      if (
-        active instanceof HTMLElement &&
-        (active.id === "loginPassword" ||
-          active.id === "showPasswordToggle")
-      ) {
-        setFocus("password");
-      } else {
-        setFocus(null);
-      }
-    }, 100);
-  };
-
   return (
     <form
       action={loginAction}
@@ -215,21 +196,15 @@ export function LoginForm({
       aria-label={copy.title}
       data-feedback-label={copy.feedback}
     >
-      <h1 className={styles.srOnly}>{copy.title}</h1>
+      <div className={styles.brand}>
+        <Image src="/brand/axora-logo-light-background.png" width={174} height={49} alt="Axora" priority unoptimized />
+        <h1>{copy.title}</h1>
+        <p>{copy.welcome}</p>
+      </div>
       <input
         name="returnTo"
         type="hidden"
         defaultValue={safeInternalReturnPath(mergedReturnTo, "/dashboard")}
-      />
-
-      <YetiGuide
-        focus={focus}
-        emailValue={emailValue}
-        caretIndex={caretIndex}
-        emailRef={emailRef}
-        passwordVisible={passwordVisible}
-        error={error}
-        success={setupComplete || resetComplete}
       />
 
       {feedback ? (
@@ -244,39 +219,28 @@ export function LoginForm({
       ) : null}
 
       <div
-        className={`${styles.inputGroup} ${styles.inputGroup1} ${
-          focus === "email" || emailValue ? styles.focusWithText : ""
-        }`}
+        className={styles.inputGroup}
       >
         <label htmlFor="loginEmail" id="loginEmailLabel">
           {copy.email}
         </label>
         <input
-          ref={emailRef}
           type="email"
           id="loginEmail"
           name="email"
           maxLength={254}
           value={emailValue}
           autoComplete="username"
+          spellCheck={false}
           onChange={(event) => {
             setEmailValue(event.target.value);
-            syncCaret(event.target);
           }}
-          onSelect={(event) => syncCaret(event.currentTarget)}
-          onClick={(event) => syncCaret(event.currentTarget)}
-          onKeyUp={(event) => syncCaret(event.currentTarget)}
-          onFocus={(event) => {
-            setFocus("email");
-            syncCaret(event.currentTarget);
-          }}
-          onBlur={() => setFocus(null)}
           required
         />
         <p className={styles.helper}>{copy.emailHint}</p>
       </div>
 
-      <div className={`${styles.inputGroup} ${styles.inputGroup2}`}>
+      <div className={styles.inputGroup}>
         <label htmlFor="loginPassword" id="loginPasswordLabel">
           {copy.password}
         </label>
@@ -287,8 +251,6 @@ export function LoginForm({
           value={passwordValue}
           onChange={(event) => setPasswordValue(event.target.value)}
           autoComplete="current-password"
-          onFocus={() => setFocus("password")}
-          onBlur={keepPasswordFocus}
           required
         />
         <button
@@ -299,11 +261,8 @@ export function LoginForm({
             passwordVisible ? copy.hidePassword : copy.showPassword
           }
           aria-pressed={passwordVisible}
-          onFocus={() => setFocus("password")}
-          onBlur={keepPasswordFocus}
           onClick={() => {
             setPasswordVisible((visible) => !visible);
-            setFocus("password");
           }}
         >
           <span className={styles.indicator} aria-hidden="true">
@@ -315,7 +274,7 @@ export function LoginForm({
         </button>
       </div>
 
-      <div className={`${styles.inputGroup} ${styles.inputGroup3}`}>
+      <div className={styles.inputGroup}>
         <LoginButton locale={locale} />
       </div>
       <div className={styles.inputGroup}>

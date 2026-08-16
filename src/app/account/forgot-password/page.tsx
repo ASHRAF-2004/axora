@@ -1,5 +1,5 @@
 import { Brand } from "@/components/Brand";
-import { KeyRound, MailCheck, ShieldCheck } from "lucide-react";
+import { KeyRound, MailCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requestPasswordResetAction } from "./actions";
@@ -27,21 +27,9 @@ export default async function ForgotPasswordPage({
   const copy = accountLifecycleMessages(locale);
 
   return (
-    <main className="login-shell account-setup-shell" lang={locale} dir={LOCALE_NAMES[locale].dir}>
-      <section className="login-story">
-        <div className="login-brand"><Brand /></div>
-        <div>
-          <span className="pilot-chip"><ShieldCheck size={15} /> {copy.forgot.recovery}</span>
-          <h1>{copy.forgot.storyTitle}</h1>
-          <p>{copy.forgot.storyBody}</p>
-          <ul className="feature-list">
-            {copy.forgot.benefits.map((benefit) => <li key={benefit}><ShieldCheck /> {benefit}</li>)}
-          </ul>
-        </div>
-        <small>{copy.common.operations}</small>
-      </section>
-
-      <section className="login-panel">
+    <main className="simple-auth-page" lang={locale} dir={LOCALE_NAMES[locale].dir}>
+      <section className="simple-auth-wrap">
+        <Link className="simple-auth-brand" href={`/${locale}`} aria-label="Axora"><Brand /></Link>
         <article className="login-card" aria-labelledby="forgot-password-title">
           <div className="login-icon">{requested ? <MailCheck size={24} /> : <KeyRound size={24} />}</div>
           <p className="eyebrow">{copy.forgot.eyebrow}</p>
@@ -64,7 +52,7 @@ export default async function ForgotPasswordPage({
               <p className="muted">{copy.forgot.emailHelp}</p>
               <label>
                 {copy.forgot.emailLabel}
-                <input name="email" type="email" autoComplete="email" inputMode="email" maxLength={254} required autoFocus />
+                <input name="email" type="email" autoComplete="email" inputMode="email" spellCheck={false} maxLength={254} required />
               </label>
               <label>
                 {copy.forgot.languageLabel}
