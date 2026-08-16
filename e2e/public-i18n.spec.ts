@@ -61,7 +61,7 @@ const localeCases = [
   {
     locale: "en" as const,
     viewport: { width: 1440, height: 900 },
-    heading: "Enter the Axora world",
+    heading: "One clear path from business need to verified delivery.",
     direction: "ltr",
     navigation: "Primary navigation",
     menu: null,
@@ -69,7 +69,7 @@ const localeCases = [
   {
     locale: "ms" as const,
     viewport: { width: 834, height: 1112 },
-    heading: "Masuki dunia Axora",
+    heading: "Satu laluan jelas daripada keperluan perniagaan kepada penghantaran yang disahkan.",
     direction: "ltr",
     navigation: "Navigasi mudah alih",
     menu: "Buka menu",
@@ -77,7 +77,7 @@ const localeCases = [
   {
     locale: "ar" as const,
     viewport: { width: 320, height: 568 },
-    heading: "ادخل عالم أكسورا",
+    heading: "مسار واحد واضح من احتياج الشركة إلى تسليم موثّق.",
     direction: "rtl",
     navigation: "التنقل عبر الجوال",
     menu: "فتح القائمة",
@@ -277,8 +277,8 @@ test("reduced-motion preference removes meaningful public transition motion", as
       ),
     )
     .toBe(true);
-  const fallback = page.getByTestId("workflow-fallback").first();
-  const styles = await fallback.evaluate((element) => {
+  const roleCard = page.locator(".public-role-grid > a").first();
+  const styles = await roleCard.evaluate((element) => {
     const style = getComputedStyle(element);
     return {
       animationDuration: style.animationDuration,
@@ -310,7 +310,7 @@ test("the public login entry resolves to the themed sign-in form with return nav
   await expect(page.getByRole("link")).toHaveCount(4);
 });
 
-test("login guide reacts to password privacy and respects reduced motion", async ({
+test("simple login preserves password visibility controls and respects reduced motion", async ({
   context,
   page,
 }) => {
@@ -318,15 +318,13 @@ test("login guide reacts to password privacy and respects reduced motion", async
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/login");
 
-  const guide = page.locator(".login-guide");
   const password = page.getByLabel("Password", { exact: true });
-  await expect(guide).toHaveAttribute("data-state", "idle");
+  await expect(page.locator(".login-guide")).toHaveCount(0);
   await password.focus();
-  await expect(guide).toHaveAttribute("data-state", "private");
+  await password.fill("private-value");
   await page.getByRole("button", { name: "Show password" }).click();
-  await expect(guide).toHaveAttribute("data-state", "peek");
   await expect(password).toHaveAttribute("type", "text");
-  await expect(guide).toHaveAttribute("data-reduced-motion", "true");
+  await expect(password).toHaveValue("private-value");
 });
 
 test("Arabic login keeps localized controls and return navigation", async ({

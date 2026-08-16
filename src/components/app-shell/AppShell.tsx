@@ -25,7 +25,6 @@ import {
   SessionContinuity,
 } from "@/components/SessionContinuity";
 import { AtmosphereSelector } from "@/components/public/AtmosphereSelector";
-import { AxoraBrandEmblem } from "@/components/public/AxoraBrandEmblem";
 import type { PublicAtmosphere } from "@/lib/immersive-public-experience";
 
 export interface AppNavigationItem {
@@ -327,11 +326,9 @@ export function AppShell({
                 ? { filter: "brightness(0) invert(1)" }
                 : undefined}
           />
-        </Link> : <AxoraBrandEmblem
-          href={homeHref}
-          label={messages.shell.home(brand.name)}
-          className="app-active-brand"
-        />}
+        </Link> : <Link href={homeHref} className="app-active-brand" aria-label={messages.shell.home(brand.name)}>
+          <Image src="/brand/axora-logo-light-background.png" width={152} height={43} alt="Axora" priority unoptimized />
+        </Link>}
         <nav className="app-primary-nav" aria-label={messages.shell.primaryNavigation}>
           {primaryItems.map((item) => (
             <Link key={item.href} href={item.href} data-tour={tourName(item.href)} data-mobile-tour={tourName(item.href)} aria-current={isActive(pathname, item.href) ? "page" : undefined}>

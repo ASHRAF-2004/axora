@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "skills": {
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "ref": "a38d04c3d5c298c851dbe5e6ee1965ee3de42cb5",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "86f90354dfba5795be33babae9e5404cde6fefa1270ed563797e2779eb81b762"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "ref": "b8caa260a420a73042e35521de4b5c8baf6446cc",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+    }
+  }
+}

@@ -19,8 +19,9 @@ test("login stays clear, responsive, interactive, and free of recovery errors", 
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   await page.goto("/login");
-  await expect(page.locator(".interaction-atmosphere")).toBeAttached();
-  await expect(page.locator(".login-guide svg")).toBeVisible();
+  await expect(page.locator(".interaction-atmosphere")).toHaveCount(0);
+  await expect(page.locator(".login-guide")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name: "Sign in to Axora" })).toBeVisible();
   await expect(page.getByText("This page could not be restored")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Forgot password?" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Register your company/ })).toBeVisible();

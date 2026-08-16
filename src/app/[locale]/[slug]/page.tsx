@@ -1,18 +1,8 @@
-import { AxoraImmersiveExperience } from "@/components/public/AxoraImmersiveExperience";
-import type { PublicSceneRoute } from "@/lib/immersive-public-experience";
 import type { Metadata } from "next";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isSupportedLocale, PUBLIC_PAGE_SLUGS, publicMessages, type PublicPageSlug, type SupportedLocale } from "@/lib/i18n";
-
-const immersiveRoutes = new Set<PublicSceneRoute>([
-  "how-it-works",
-  "procurement-process",
-  "solutions-by-role",
-  "security-and-privacy",
-  "about",
-]);
 
 function isPublicSlug(value: string): value is PublicPageSlug {
   return (PUBLIC_PAGE_SLUGS as readonly string[]).includes(value);
@@ -38,9 +28,6 @@ export default async function PublicContentPage({ params }: { params: Promise<{ 
   const { locale: rawLocale, slug } = await params;
   if (!isSupportedLocale(rawLocale) || !isPublicSlug(slug)) notFound();
   const locale = rawLocale as SupportedLocale;
-  if (immersiveRoutes.has(slug as PublicSceneRoute)) {
-    return <AxoraImmersiveExperience locale={locale} route={slug as PublicSceneRoute} />;
-  }
   const messages = publicMessages(locale);
   const page = messages.pages[slug];
   return <>

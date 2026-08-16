@@ -6,8 +6,12 @@ import { LOCALE_NAMES, publicMessages, type SupportedLocale } from "@/lib/i18n";
 import { LanguagePreference } from "./LanguagePreference";
 import { PublicMobileMenu } from "./PublicMobileMenu";
 import { PublicSkipLink } from "./PublicSkipLink";
-import { AxoraBrandEmblem } from "./AxoraBrandEmblem";
-import { AtmosphereSelector } from "./AtmosphereSelector";
+
+const experienceLabels = {
+  en: "Operations Experience",
+  ar: "تجربة العمليات",
+  ms: "Pengalaman Operasi",
+} as const;
 
 interface PublicShellProps {
   locale: SupportedLocale;
@@ -22,6 +26,7 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
   const navigation = [
     { href: prefix, label: messages.nav.home },
     { href: `${prefix}/how-it-works`, label: messages.nav.how },
+    { href: `${prefix}/operations-experience`, label: experienceLabels[locale] },
     { href: `${prefix}/procurement-process`, label: messages.nav.process },
     { href: `${prefix}/solutions-by-role`, label: messages.nav.roles },
     { href: `${prefix}/security-and-privacy`, label: messages.nav.security },
@@ -33,12 +38,13 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
       <PublicSkipLink>{messages.skipToContent}</PublicSkipLink>
       <header className="public-header">
         <div className="public-header-inner">
-          <AxoraBrandEmblem href={prefix} label={`${messages.nav.home} - Axora`} />
+          <Link className="public-brand" href={prefix} aria-label={`${messages.nav.home} - Axora`}>
+            <Image src="/brand/axora-logo-light-background.png" width={152} height={43} alt="Axora" priority unoptimized />
+          </Link>
           <nav className="public-desktop-nav" aria-label={messages.nav.primaryNavigation}>
             {navigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
           </nav>
           <div className="public-header-actions">
-            <div className="public-desktop-atmosphere"><AtmosphereSelector locale={locale} compact /></div>
             <LanguagePreference
               locale={locale}
               detectedLocale={detectedLocale}
@@ -72,6 +78,7 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
           <div>
             <strong>{messages.footer.product}</strong>
             <Link href={`${prefix}/how-it-works`}>{messages.nav.how}</Link>
+            <Link href={`${prefix}/operations-experience`}>{experienceLabels[locale]}</Link>
             <Link href={`${prefix}/procurement-process`}>{messages.nav.process}</Link>
             <Link href={`${prefix}/solutions-by-role`}>{messages.nav.roles}</Link>
           </div>
