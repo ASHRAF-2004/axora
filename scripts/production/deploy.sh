@@ -450,6 +450,11 @@ log "Candidate image passed its database readiness gate."
 "$SCRIPT_DIR/backup.sh" --commit "$target_sha"
 
 log "Applying pending transactional migrations from the exact release."
+for migration_secret in postgres_admin_password axora_cleanup_worker_password; do
+  migration_secret_path="$AXORA_SECRETS_DIR/$migration_secret"
+  [[ -f "$migration_secret_path" && ! -L "$migration_secret_path" && -s "$migration_secret_path" ]] \
+    || die "Required migration secret is missing or unsafe: $migration_secret"
+done
 docker run \
   --rm \
   --label "axora.deployment.migration=$target_sha" \
@@ -462,6 +467,7 @@ docker run \
   --env "POSTGRES_DB=$AXORA_DATABASE_NAME" \
   --env PGHOST=db \
   --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
+  --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_cleanup_worker_password,target=/run/secrets/axora_cleanup_worker_password,readonly" \
   --mount "type=bind,source=$release/database/init,target=/database/init,readonly" \
   --mount "type=bind,source=$release/database/migrations,target=/migrations,readonly" \
   --entrypoint /bin/sh \

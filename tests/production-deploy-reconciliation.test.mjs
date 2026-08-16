@@ -2,6 +2,41 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("production deployment reconciliation", () => {
+  it("mounts every migration-entrypoint secret read-only from the protected secret directory", async () => {
+    const [deploy, entrypoint, dockerIgnore] = await Promise.all([
+      readFile(new URL("../scripts/production/deploy.sh", import.meta.url), "utf8"),
+      readFile(new URL("../database/init/01-run-migration.sh", import.meta.url), "utf8"),
+      readFile(new URL("../.dockerignore", import.meta.url), "utf8"),
+    ]);
+    const requiredSecrets = [...new Set(
+      entrypoint.match(/\/run\/secrets\/[a-z0-9_]+/g) ?? [],
+    )].sort();
+    const migrationStart = deploy.indexOf('log "Applying pending transactional migrations from the exact release."');
+    const migrationEnd = deploy.indexOf("\nif ! docker exec", migrationStart);
+    expect(migrationStart).toBeGreaterThanOrEqual(0);
+    expect(migrationEnd).toBeGreaterThan(migrationStart);
+    const migrationCommand = deploy.slice(migrationStart, migrationEnd);
+    const mounts = [...migrationCommand.matchAll(
+      /--mount "type=bind,source=\$AXORA_SECRETS_DIR\/([a-z0-9_]+),target=(\/run\/secrets\/[a-z0-9_]+),readonly"/g,
+    )].map((match) => ({ source: match[1], target: match[2] }));
+
+    expect(requiredSecrets).toEqual([
+      "/run/secrets/axora_cleanup_worker_password",
+      "/run/secrets/postgres_admin_password",
+    ]);
+    expect(mounts.map(({ target }) => target).sort()).toEqual(requiredSecrets);
+    for (const { source, target } of mounts) {
+      expect(target).toBe(`/run/secrets/${source}`);
+    }
+    expect(migrationCommand).toContain(
+      '[[ -f "$migration_secret_path" && ! -L "$migration_secret_path" && -s "$migration_secret_path" ]]',
+    );
+    expect(entrypoint).toContain('if [ ! -r /run/secrets/axora_cleanup_worker_password ]; then');
+    expect(entrypoint).not.toMatch(/echo .*PASSWORD|printf .*PASSWORD/);
+    expect(dockerIgnore).toMatch(/^secrets$/m);
+    expect(dockerIgnore).toMatch(/^\*\*\/secrets$/m);
+  });
+
   it("starts newly introduced isolated workers without replacing stateful services", async () => {
     const deploy = await readFile(
       new URL("../scripts/production/deploy.sh", import.meta.url),
