@@ -4,6 +4,60 @@ BEGIN;
 -- reintroduces the legacy v2 compatibility API signatures after the cookie-only
 -- rollout in migration 092.
 
+CREATE OR REPLACE FUNCTION public.axora_public_visitor_snapshot_v3(
+  p_token_hash text
+)
+RETURNS TABLE(
+  snapshot_version bigint,
+  total_count bigint,
+  early_bird_count bigint,
+  night_owl_count bigint,
+  visitor_number bigint,
+  choice text
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+  matched_number bigint;
+  matched_choice text;
+  state_total bigint;
+BEGIN
+  IF p_token_hash IS NOT NULL AND p_token_hash !~ '^[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'Public visitor token fingerprint is invalid';
+  END IF;
+
+  SELECT claim.visitor_number, claim.choice
+  INTO matched_number, matched_choice
+  FROM public.public_visitor_claim_tokens token
+  JOIN public.public_visitor_claims claim ON claim.id=token.claim_id
+  WHERE p_token_hash IS NOT NULL
+    AND token.token_hash=p_token_hash
+  LIMIT 1;
+
+  SELECT state.total_count
+  INTO state_total
+  FROM public.public_visitor_counter_state state
+  WHERE state.singleton=true;
+
+  IF state_total IS NULL THEN
+    RAISE EXCEPTION 'Public visitor counter state is unavailable';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    state_total,
+    state.total_count,
+    state.early_bird_count,
+    state.night_owl_count,
+    matched_number,
+    matched_choice
+  FROM public.public_visitor_counter_state state
+  WHERE state.singleton=true;
+END $$;
+
 DO $$
 DECLARE
   v_claim_count bigint;
@@ -233,14 +287,6 @@ BEGIN
       p_locale,
       p_turnstile_challenge_at,
       p_turnstile_hostname
-    ) AS claim_result(
-      snapshot_version bigint,
-      total_count bigint,
-      early_bird_count bigint,
-      night_owl_count bigint,
-      visitor_number bigint,
-      choice text,
-      claimed_new boolean
     );
 
   -- Legacy parameters are accepted for compatibility only and are not persisted or
