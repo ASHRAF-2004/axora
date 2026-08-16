@@ -25,9 +25,13 @@ describe("P0-12 global RTL and mixed-direction closure", () => {
     expect(audit).toContain('className="subtle bidi-ltr" dir="ltr"');
   });
 
-  it("uses a logical offscreen position for the login trap field", async () => {
-    const css = await readFile(new URL("../src/components/LoginForm.module.css", import.meta.url), "utf8");
-    expect(css).toContain("inset-inline-start: -10000px");
+  it("keeps the login heading visible without physical offscreen positioning", async () => {
+    const [form, css] = await Promise.all([
+      readFile(new URL("../src/components/LoginForm.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/components/LoginForm.module.css", import.meta.url), "utf8"),
+    ]);
+    expect(form).toContain("<h1>{copy.title}</h1>");
+    expect(css).not.toContain("inset-inline-start: -10000px");
     expect(css).not.toContain("left: -10000px");
   });
 });
