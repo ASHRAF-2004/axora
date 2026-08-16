@@ -7,12 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 092 to an empty database", async () => {
+  it("applies every numbered migration through 093 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
       expect(available.slice(-52)).toEqual([
-        "041_delegated_access_management.sql",
         "042_role_scope_lifecycle.sql",
         "043_access_administration_snapshot.sql",
         "044_organization_resource_isolation.sql",
@@ -64,6 +63,7 @@ describe("complete forward migration chain", () => {
         "090_current_internal_role_scope_contract.sql",
         "091_company_deletion_constraints_and_cleanup.sql",
         "092_visitor_cookie_privacy_and_rate_limits.sql",
+        "093_public_visitor_counter_state_and_compatibility.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)

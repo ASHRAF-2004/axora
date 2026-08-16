@@ -67,35 +67,47 @@ describe("visitor network-identity retirement", () => {
     }
   }, 30_000);
 
-  it("grants only cookie capabilities and keeps direct tables inaccessible", async () => {
+  it("grants required v3 and compatibility v2 visitor capabilities", async () => {
     const db = new PGlite();
     try {
       await db.exec("CREATE ROLE axora_app NOLOGIN");
       await applyMigrations(db);
       const boundary = await db.query<{
-        appSnapshot: boolean;
-        appClaim: boolean;
+        appSnapshotV3: boolean;
+        appClaimV3: boolean;
+        appSnapshotV2: boolean;
+        appClaimV2: boolean;
         appClaimsSelect: boolean;
-        legacySnapshotGone: boolean;
-        legacyClaimGone: boolean;
+        legacySnapshotExists: boolean;
+        legacyClaimExists: boolean;
         fallbackGone: boolean;
         networkTableGone: boolean;
       }>(`
         SELECT
-          has_function_privilege('axora_app','axora_public_visitor_snapshot_v3(text)','EXECUTE') AS "appSnapshot",
-          has_function_privilege('axora_app','axora_claim_public_visitor_v3(text,text,text,timestamptz,text)','EXECUTE') AS "appClaim",
+          has_function_privilege('axora_app','axora_public_visitor_snapshot_v3(text)','EXECUTE') AS "appSnapshotV3",
+          has_function_privilege('axora_app','axora_claim_public_visitor_v3(text,text,text,timestamptz,text)','EXECUTE') AS "appClaimV3",
+          has_function_privilege('axora_app','axora_public_visitor_snapshot_v2(text,text,text,text)','EXECUTE') AS "appSnapshotV2",
+        has_function_privilege('axora_app','axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text)','EXECUTE') AS "appClaimV2",
           has_table_privilege('axora_app','public_visitor_claims','SELECT') AS "appClaimsSelect",
-          to_regprocedure('public.axora_public_visitor_snapshot_v2(text,text,text,text)') IS NULL AS "legacySnapshotGone",
-          to_regprocedure('public.axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text)') IS NULL AS "legacyClaimGone",
-          to_regprocedure('public.axora_claim_public_visitor_fallback(text,text,text,text,text,text)') IS NULL AS "fallbackGone",
+          to_regprocedure('public.axora_public_visitor_snapshot_v2(text,text,text,text)')::text IS NOT NULL AS "legacySnapshotExists",
+          to_regprocedure('public.axora_claim_public_visitor(text,text,text,text,text,text,text,timestamptz,text)')::text IS NOT NULL AS "legacyClaimExists",
+          NOT EXISTS (
+            SELECT 1 FROM pg_proc proc
+            JOIN pg_namespace ns ON ns.oid=proc.pronamespace
+            WHERE ns.nspname='public'
+              AND proc.proname='axora_claim_public_visitor_fallback'
+              AND pg_get_function_identity_arguments(proc.oid)='text, text, text, text, text, text'
+          ) AS "fallbackGone",
           to_regclass('public.public_visitor_network_claims') IS NULL AS "networkTableGone"
       `);
       expect(boundary.rows[0]).toEqual({
-        appSnapshot: true,
-        appClaim: true,
+        appSnapshotV3: true,
+        appClaimV3: true,
+        appSnapshotV2: true,
+        appClaimV2: true,
         appClaimsSelect: false,
-        legacySnapshotGone: true,
-        legacyClaimGone: true,
+        legacySnapshotExists: true,
+        legacyClaimExists: true,
         fallbackGone: true,
         networkTableGone: true,
       });
