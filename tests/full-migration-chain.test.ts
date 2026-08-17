@@ -77,6 +77,8 @@ describe("complete forward migration chain", () => {
       const state = await db.query<{
         table_count: number;
         policy_count: number;
+        deletion_forced_rls_count: number;
+        deletion_policy_count: number;
         company_nullable: string;
         customer_match_table: string | null;
         request_department_column: string | null;
@@ -91,6 +93,26 @@ describe("complete forward migration chain", () => {
             WHERE table_schema='public') AS table_count,
           (SELECT count(*)::int FROM pg_policies
             WHERE schemaname='public') AS policy_count,
+          (SELECT count(*)::int
+            FROM pg_class relation
+            JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
+            WHERE namespace.nspname='public'
+              AND relation.relname IN (
+                'user_deletion_commands',
+                'user_deletion_cleanup_tasks',
+                'user_deletion_execution_authorizations'
+              )
+              AND relation.relrowsecurity
+              AND relation.relforcerowsecurity
+          ) AS deletion_forced_rls_count,
+          (SELECT count(*)::int FROM pg_policies
+            WHERE schemaname='public'
+              AND tablename IN (
+                'user_deletion_commands',
+                'user_deletion_cleanup_tasks',
+                'user_deletion_execution_authorizations'
+              )
+          ) AS deletion_policy_count,
           (SELECT is_nullable FROM information_schema.columns
             WHERE table_schema='public'
               AND table_name='account_setup_invitations'
@@ -123,6 +145,8 @@ describe("complete forward migration chain", () => {
       expect(state.rows[0]).toMatchObject({
         table_count: expect.any(Number),
         policy_count: expect.any(Number),
+        deletion_forced_rls_count: 3,
+        deletion_policy_count: 0,
         company_nullable: "YES",
         customer_match_table: "customer_three_way_matches",
         request_department_column: "YES",
@@ -136,7 +160,7 @@ describe("complete forward migration chain", () => {
           "axora_lock_user_creation_scope(uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamp with time zone)",
       });
       expect(state.rows[0].table_count).toBeGreaterThanOrEqual(68);
-      expect(state.rows[0].policy_count).toBeGreaterThanOrEqual(38);
+      expect(state.rows[0].policy_count).toBeGreaterThanOrEqual(35);
 
       await expect(db.query(`
         INSERT INTO public_request_rate_buckets(
