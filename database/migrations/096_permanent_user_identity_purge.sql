@@ -731,7 +731,7 @@ BEGIN
   UPDATE public.users
   SET email=tombstone_email,
       display_name='Deleted user',
-      password_hash='!permanently-deleted!',
+      password_hash='$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By',
       active=false,
       last_login_at=NULL,
       is_owner=false,
