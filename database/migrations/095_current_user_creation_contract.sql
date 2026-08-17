@@ -397,11 +397,24 @@ BEGIN
 
     IF has_column_privilege(
       'axora_app','public.delivery_agent_profiles','phone','SELECT'
-    ) OR has_column_privilege(
-      'axora_app','public.delivery_agent_profiles','vehicle_plate','SELECT'
     ) THEN
       RAISE EXCEPTION
         'axora_app must not receive private delivery profile column access';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema='public'
+        AND table_name='delivery_agent_profiles'
+        AND column_name='vehicle_plate'
+    ) THEN
+      IF has_column_privilege(
+        'axora_app','public.delivery_agent_profiles','vehicle_plate','SELECT'
+      ) THEN
+        RAISE EXCEPTION
+          'axora_app must not receive private delivery profile column access';
+      END IF;
     END IF;
   END IF;
 END $$;
