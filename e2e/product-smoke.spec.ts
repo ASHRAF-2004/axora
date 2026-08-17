@@ -83,12 +83,12 @@ test("creates one catalogue product without losing the route after insertion", a
   await editor.getByLabel("Description / specification").fill(
     "Catalogue route-recovery regression fixture updated",
   );
-  await editor.getByRole("button", { name: "Save product" }).click();
-  await expect(page).toHaveURL(/\/products\/[0-9a-f-]+\/edit(?:\?.*)?$/i);
+  await Promise.all([
+    page.waitForURL(/\/products\?notice=product-updated$/),
+    editor.getByRole("button", { name: "Save product" }).click(),
+  ]);
   await expect(page.getByText("This page could not be restored")).toHaveCount(0);
   await expect(page.getByText("Product changes saved successfully.")).toBeVisible();
-
-  await page.goto("/products");
   await expect(page.getByRole("cell", { name }).first()).toBeVisible();
   await page.screenshot({
     path: `output/playwright/catalogue-product-created-${testInfo.project.name}.png`,
