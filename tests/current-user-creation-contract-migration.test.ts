@@ -5,10 +5,11 @@ import { applyMigrations } from "./helpers/pglite";
 const ids = {
   owner: "95000000-0000-4000-8000-000000000001",
   ownerAssignment: "95000000-0000-4000-8000-000000000002",
-  backupOwner: "95000000-0000-4000-8000-000000000003",
-  backupOwnerAssignment: "95000000-0000-4000-8000-000000000004",
-  support: "95000000-0000-4000-8000-000000000005",
-  supportAssignment: "95000000-0000-4000-8000-000000000006",
+  support: "95000000-0000-4000-8000-000000000003",
+  supportAssignment: "95000000-0000-4000-8000-000000000004",
+  company: "95000000-0000-4000-8000-000000000005",
+  companyAdmin: "95000000-0000-4000-8000-000000000006",
+  companyAdminAssignment: "95000000-0000-4000-8000-000000000007",
 } as const;
 
 interface SnapshotRow {
@@ -24,59 +25,76 @@ async function fixture() {
   const roles = await db.query<{
     owner: string;
     support: string;
+    companyAdmin: string;
   }>(`
     SELECT
       (SELECT id::text FROM roles WHERE role_key='PLATFORM_OWNER') AS owner,
-      (SELECT id::text FROM roles WHERE role_key='TECHNICAL_SUPPORT') AS support
+      (SELECT id::text FROM roles WHERE role_key='TECHNICAL_SUPPORT') AS support,
+      (SELECT id::text FROM roles WHERE role_key='COMPANY_ADMIN') AS "companyAdmin"
   `);
   const role = roles.rows[0];
-  if (!role?.owner || !role.support) {
+  if (!role?.owner || !role.support || !role.companyAdmin) {
     throw new Error("Current role fixture is unavailable");
   }
 
   await db.query(`
+    INSERT INTO companies(id,company_code,name,active)
+    VALUES ($1,'USER-CREATION-095','User Creation Fixture',true)
+  `, [ids.company]);
+  await db.query(`
     INSERT INTO users(
-      id,email,display_name,password_hash,role_id,is_owner,
+      id,email,display_name,password_hash,role_id,company_id,is_owner,
       account_setup_completed_at,account_kind,account_status,active,auth_version
     ) VALUES
-      ($1,'owner-095@example.test','Owner 095','not-a-real-hash',$4,true,
+      ($1,'owner-095@example.test','Owner 095','not-a-real-hash',$4,NULL,true,
        now(),'PLATFORM','ACTIVE',true,1),
-      ($2,'backup-owner-095@example.test','Backup owner 095','not-a-real-hash',$4,true,
+      ($2,'support-095@example.test','Support 095','not-a-real-hash',$5,NULL,false,
        now(),'PLATFORM','ACTIVE',true,1),
-      ($3,'support-095@example.test','Support 095','not-a-real-hash',$5,false,
-       now(),'PLATFORM','ACTIVE',true,1)
-  `, [ids.owner, ids.backupOwner, ids.support, role.owner, role.support]);
-  await db.query(`
-    INSERT INTO role_assignments(
-      id,user_id,role_id,scope_type,active,assigned_by,assigned_at
-    ) VALUES
-      ($1,$4,$7,'PLATFORM',true,$4,now()),
-      ($2,$5,$7,'PLATFORM',true,$4,now()),
-      ($3,$6,$8,'PLATFORM',true,$4,now())
+      ($3,'company-admin-095@example.test','Company Admin 095','not-a-real-hash',
+       $6,$7,false,now(),'COMPANY','ACTIVE',true,1)
   `, [
-    ids.ownerAssignment,
-    ids.backupOwnerAssignment,
-    ids.supportAssignment,
     ids.owner,
-    ids.backupOwner,
     ids.support,
+    ids.companyAdmin,
     role.owner,
     role.support,
+    role.companyAdmin,
+    ids.company,
+  ]);
+  await db.query(`
+    INSERT INTO company_memberships(
+      user_id,company_id,status,is_primary,joined_at,created_by
+    ) VALUES ($1,$2,'ACTIVE',true,now(),$3)
+  `, [ids.companyAdmin, ids.company, ids.owner]);
+  await db.query(`
+    INSERT INTO role_assignments(
+      id,user_id,role_id,scope_type,company_id,active,assigned_by,assigned_at
+    ) VALUES
+      ($1,$4,$7,'PLATFORM',NULL,true,$4,now()),
+      ($2,$5,$8,'PLATFORM',NULL,true,$4,now()),
+      ($3,$6,$9,'COMPANY',$10,true,$4,now())
+  `, [
+    ids.ownerAssignment,
+    ids.supportAssignment,
+    ids.companyAdminAssignment,
+    ids.owner,
+    ids.support,
+    ids.companyAdmin,
+    role.owner,
+    role.support,
+    role.companyAdmin,
+    ids.company,
   ]);
   return db;
 }
 
-async function creationSnapshot(
-  db: PGlite,
-  actorId: string,
-  assignmentId: string,
-) {
+async function companyAdminCreationSnapshot(db: PGlite) {
   const result = await db.query<{ snapshot: unknown }>(`
     SELECT axora_lock_user_creation_scope(
-      $1,$2,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
-      NULL,NULL,NULL,NULL,now()
+      $1,$2,'COMPANY_ADMIN','COMPANY',
+      $3,NULL,NULL,NULL,now()
     ) AS snapshot
-  `, [actorId, assignmentId]);
+  `, [ids.companyAdmin, ids.companyAdminAssignment, ids.company]);
   return result.rows[0]?.snapshot;
 }
 
@@ -162,21 +180,27 @@ describe("current canonical user-creation database contract", () => {
         SELECT
           axora_lock_user_creation_scope(
             $1,$2,'HUMAN_RESOURCES_MANAGEMENT','COMPANY',
-            '10000000-0000-4000-8000-000000000001',NULL,NULL,NULL,now()
+            $5,NULL,NULL,NULL,now()
           ) AS "wrongScope",
           axora_lock_user_creation_scope(
             $1,$2,'CLIENT_ACCOUNT_MANAGER','PLATFORM',
-            '10000000-0000-4000-8000-000000000001',NULL,NULL,NULL,now()
+            $5,NULL,NULL,NULL,now()
           ) AS "platformTenant",
           axora_lock_user_creation_scope(
             $1,$2,'DELIVERY_GUY','DELIVERY',
-            '10000000-0000-4000-8000-000000000001',NULL,NULL,NULL,now()
+            $5,NULL,NULL,NULL,now()
           ) AS "deliveryTenant",
           axora_lock_user_creation_scope(
             $3,$4,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
             NULL,NULL,NULL,NULL,now()
           ) AS unauthorized
-      `, [ids.owner, ids.ownerAssignment, ids.support, ids.supportAssignment]);
+      `, [
+        ids.owner,
+        ids.ownerAssignment,
+        ids.support,
+        ids.supportAssignment,
+        ids.company,
+      ]);
       expect(malformed.rows[0]).toEqual({
         wrongScope: null,
         platformTenant: null,
@@ -184,11 +208,7 @@ describe("current canonical user-creation database contract", () => {
         unauthorized: null,
       });
 
-      expect(await creationSnapshot(
-        db,
-        ids.backupOwner,
-        ids.backupOwnerAssignment,
-      )).not.toBeNull();
+      expect(await companyAdminCreationSnapshot(db)).not.toBeNull();
 
       const permissions = await db.query<{
         createId: string;
@@ -209,45 +229,33 @@ describe("current canonical user-creation database contract", () => {
         DELETE FROM role_permissions
         WHERE role_id=(SELECT role_id FROM role_assignments WHERE id=$1)
           AND permission_id=$2
-      `, [ids.backupOwnerAssignment, permission.createId]);
-      expect(await creationSnapshot(
-        db,
-        ids.backupOwner,
-        ids.backupOwnerAssignment,
-      )).toBeNull();
+      `, [ids.companyAdminAssignment, permission.createId]);
+      expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
       await db.query(`
         INSERT INTO role_permissions(role_id,permission_id)
         SELECT role_id,$2 FROM role_assignments WHERE id=$1
         ON CONFLICT DO NOTHING
-      `, [ids.backupOwnerAssignment, permission.createId]);
+      `, [ids.companyAdminAssignment, permission.createId]);
       await db.query(`
         DELETE FROM role_permissions
         WHERE role_id=(SELECT role_id FROM role_assignments WHERE id=$1)
           AND permission_id=$2
-      `, [ids.backupOwnerAssignment, permission.inviteId]);
-      expect(await creationSnapshot(
-        db,
-        ids.backupOwner,
-        ids.backupOwnerAssignment,
-      )).toBeNull();
+      `, [ids.companyAdminAssignment, permission.inviteId]);
+      expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
       await db.query(`
         INSERT INTO role_permissions(role_id,permission_id)
         SELECT role_id,$2 FROM role_assignments WHERE id=$1
         ON CONFLICT DO NOTHING
-      `, [ids.backupOwnerAssignment, permission.inviteId]);
+      `, [ids.companyAdminAssignment, permission.inviteId]);
       await db.query(`
         UPDATE role_assignments
         SET active=false,revoked_at=now(),revoked_by=$2,
           revoke_reason='Revoked actor fixture'
         WHERE id=$1
-      `, [ids.backupOwnerAssignment, ids.owner]);
-      expect(await creationSnapshot(
-        db,
-        ids.backupOwner,
-        ids.backupOwnerAssignment,
-      )).toBeNull();
+      `, [ids.companyAdminAssignment, ids.owner]);
+      expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
       const after = await db.query<{
         users: number;
