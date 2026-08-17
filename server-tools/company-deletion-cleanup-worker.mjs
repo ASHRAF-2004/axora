@@ -170,20 +170,35 @@ async function workerQuery(pool, text, values = []) {
 export function createCompanyDeletionCleanupStore(pool) {
   return {
     async claim(workerId, leaseSeconds, now) {
-      const result = await workerQuery(pool,
+      // User profile-image removal is identity privacy work and receives first
+      // claim priority. The same hardened FILE adapter then handles both queues.
+      const userResult = await workerQuery(pool,
+        "SELECT * FROM public.axora_claim_user_deletion_cleanup_task($1,$2,$3)",
+        [workerId, leaseSeconds, now]);
+      const userTask = userResult.rows[0];
+      if (userTask) return { ...userTask, cleanup_scope: "USER" };
+
+      const companyResult = await workerQuery(pool,
         "SELECT * FROM public.axora_claim_company_deletion_cleanup_task($1,$2,$3)",
         [workerId, leaseSeconds, now]);
-      return result.rows[0] ?? null;
+      const companyTask = companyResult.rows[0];
+      return companyTask ? { ...companyTask, cleanup_scope: "COMPANY" } : null;
     },
     async complete(task, outcome, workerId, now) {
+      const userTask = task.cleanup_scope === "USER";
       const result = await workerQuery(pool,
-        "SELECT public.axora_complete_company_deletion_cleanup_task($1,$2,$3,$4,$5) AS value",
+        userTask
+          ? "SELECT public.axora_complete_user_deletion_cleanup_task($1,$2,$3,$4,$5) AS value"
+          : "SELECT public.axora_complete_company_deletion_cleanup_task($1,$2,$3,$4,$5) AS value",
         [task.task_id, task.lease_id, workerId, outcome, now]);
       return result.rows[0]?.value;
     },
     async fail(task, message, retryable, workerId, now) {
+      const userTask = task.cleanup_scope === "USER";
       const result = await workerQuery(pool,
-        "SELECT public.axora_fail_company_deletion_cleanup_task($1,$2,$3,$4,$5,$6) AS value",
+        userTask
+          ? "SELECT public.axora_fail_user_deletion_cleanup_task($1,$2,$3,$4,$5,$6) AS value"
+          : "SELECT public.axora_fail_company_deletion_cleanup_task($1,$2,$3,$4,$5,$6) AS value",
         [task.task_id, task.lease_id, workerId, message, retryable, now]);
       return result.rows[0]?.value;
     },
@@ -263,10 +278,10 @@ export function startCompanyDeletionCleanupWorker({ env = process.env } = {}) {
       const results = await pollCompanyDeletionCleanupOnce({ store, adapters, workerId });
       state.lastSuccessfulPollAt = Date.now();
       for (const result of results) {
-        console.info(JSON.stringify({ event: "company_deletion_cleanup_processed", status: result.status }));
+        console.info(JSON.stringify({ event: "deletion_cleanup_processed", status: result.status }));
       }
     } catch (error) {
-      console.error(JSON.stringify({ event: "company_deletion_cleanup_poll_failed", error: safeError(error) }));
+      console.error(JSON.stringify({ event: "deletion_cleanup_poll_failed", error: safeError(error) }));
     } finally {
       state.active = false;
     }
@@ -304,7 +319,7 @@ export function startCompanyDeletionCleanupWorker({ env = process.env } = {}) {
   process.once("SIGTERM", () => void shutdown());
   process.once("SIGINT", () => void shutdown());
   server.listen(port, "0.0.0.0", () => {
-    console.log(JSON.stringify({ event: "company_deletion_cleanup_worker_started", port }));
+    console.log(JSON.stringify({ event: "deletion_cleanup_worker_started", port }));
   });
   return { server, state, shutdown };
 }
