@@ -30,7 +30,9 @@ async function fixture() {
       (SELECT id::text FROM roles WHERE role_key='TECHNICAL_SUPPORT') AS support
   `);
   const role = roles.rows[0];
-  if (!role?.owner || !role.support) throw new Error("Current role fixture is unavailable");
+  if (!role?.owner || !role.support) {
+    throw new Error("Current role fixture is unavailable");
+  }
 
   await db.query(`
     INSERT INTO users(
@@ -51,9 +53,31 @@ async function fixture() {
       ($1,$4,$7,'PLATFORM',true,$4,now()),
       ($2,$5,$7,'PLATFORM',true,$4,now()),
       ($3,$6,$8,'PLATFORM',true,$4,now())
-  `, [ids.ownerAssignment, ids.backupOwnerAssignment, ids.supportAssignment,
-    ids.owner, ids.backupOwner, ids.support, role.owner, role.support]);
+  `, [
+    ids.ownerAssignment,
+    ids.backupOwnerAssignment,
+    ids.supportAssignment,
+    ids.owner,
+    ids.backupOwner,
+    ids.support,
+    role.owner,
+    role.support,
+  ]);
   return db;
+}
+
+async function creationSnapshot(
+  db: PGlite,
+  actorId: string,
+  assignmentId: string,
+) {
+  const result = await db.query<{ snapshot: unknown }>(`
+    SELECT axora_lock_user_creation_scope(
+      $1,$2,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
+      NULL,NULL,NULL,NULL,now()
+    ) AS snapshot
+  `, [actorId, assignmentId]);
+  return result.rows[0]?.snapshot;
 }
 
 describe("current canonical user-creation database contract", () => {
@@ -118,7 +142,11 @@ describe("current canonical user-creation database contract", () => {
   it("denies malformed scopes, missing permissions, revoked actors, and unauthorized managers without writes", async () => {
     const db = await fixture();
     try {
-      const baseline = await db.query<{ users: number; assignments: number; invitations: number }>(`
+      const baseline = await db.query<{
+        users: number;
+        assignments: number;
+        invitations: number;
+      }>(`
         SELECT
           (SELECT count(*)::int FROM users) AS users,
           (SELECT count(*)::int FROM role_assignments) AS assignments,
@@ -156,89 +184,76 @@ describe("current canonical user-creation database contract", () => {
         unauthorized: null,
       });
 
-      await db.exec(`
-        INSERT INTO role_assignment_management_rules(
-          manager_role_id,target_role_id,scope_type
-        )
-        SELECT manager.id,target.id,'PLATFORM'
-        FROM roles manager CROSS JOIN roles target
-        WHERE manager.role_key='TECHNICAL_SUPPORT'
-          AND target.role_key='HUMAN_RESOURCES_MANAGEMENT'
-        ON CONFLICT DO NOTHING;
+      expect(await creationSnapshot(
+        db,
+        ids.backupOwner,
+        ids.backupOwnerAssignment,
+      )).not.toBeNull();
 
-        INSERT INTO role_permissions(role_id,permission_id)
-        SELECT role.id,permission.id
-        FROM roles role CROSS JOIN permissions permission
-        WHERE role.role_key='TECHNICAL_SUPPORT'
-          AND permission.permission_code IN ('user.create','user.invite')
-        ON CONFLICT DO NOTHING;
+      const permissions = await db.query<{
+        createId: string;
+        inviteId: string;
+      }>(`
+        SELECT
+          (SELECT id::text FROM permissions
+            WHERE permission_code='user.create') AS "createId",
+          (SELECT id::text FROM permissions
+            WHERE permission_code='user.invite') AS "inviteId"
       `);
+      const permission = permissions.rows[0];
+      if (!permission?.createId || !permission.inviteId) {
+        throw new Error("User-creation permissions are unavailable");
+      }
 
-      const allowedSupport = await db.query<{ snapshot: unknown }>(`
-        SELECT axora_lock_user_creation_scope(
-          $1,$2,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
-          NULL,NULL,NULL,NULL,now()
-        ) AS snapshot
-      `, [ids.support, ids.supportAssignment]);
-      expect(allowedSupport.rows[0]?.snapshot).not.toBeNull();
-
-      const userCreate = await db.query<{ id: string }>(`
-        SELECT id::text FROM permissions WHERE permission_code='user.create'
-      `);
       await db.query(`
         DELETE FROM role_permissions
         WHERE role_id=(SELECT role_id FROM role_assignments WHERE id=$1)
           AND permission_id=$2
-      `, [ids.supportAssignment, userCreate.rows[0]?.id]);
-      const noCreate = await db.query<{ snapshot: unknown }>(`
-        SELECT axora_lock_user_creation_scope(
-          $1,$2,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
-          NULL,NULL,NULL,NULL,now()
-        ) AS snapshot
-      `, [ids.support, ids.supportAssignment]);
-      expect(noCreate.rows[0]?.snapshot).toBeNull();
+      `, [ids.backupOwnerAssignment, permission.createId]);
+      expect(await creationSnapshot(
+        db,
+        ids.backupOwner,
+        ids.backupOwnerAssignment,
+      )).toBeNull();
 
       await db.query(`
         INSERT INTO role_permissions(role_id,permission_id)
         SELECT role_id,$2 FROM role_assignments WHERE id=$1
         ON CONFLICT DO NOTHING
-      `, [ids.supportAssignment, userCreate.rows[0]?.id]);
-      const userInvite = await db.query<{ id: string }>(`
-        SELECT id::text FROM permissions WHERE permission_code='user.invite'
-      `);
+      `, [ids.backupOwnerAssignment, permission.createId]);
       await db.query(`
         DELETE FROM role_permissions
         WHERE role_id=(SELECT role_id FROM role_assignments WHERE id=$1)
           AND permission_id=$2
-      `, [ids.supportAssignment, userInvite.rows[0]?.id]);
-      const noInvite = await db.query<{ snapshot: unknown }>(`
-        SELECT axora_lock_user_creation_scope(
-          $1,$2,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
-          NULL,NULL,NULL,NULL,now()
-        ) AS snapshot
-      `, [ids.support, ids.supportAssignment]);
-      expect(noInvite.rows[0]?.snapshot).toBeNull();
+      `, [ids.backupOwnerAssignment, permission.inviteId]);
+      expect(await creationSnapshot(
+        db,
+        ids.backupOwner,
+        ids.backupOwnerAssignment,
+      )).toBeNull();
 
       await db.query(`
         INSERT INTO role_permissions(role_id,permission_id)
         SELECT role_id,$2 FROM role_assignments WHERE id=$1
         ON CONFLICT DO NOTHING
-      `, [ids.supportAssignment, userInvite.rows[0]?.id]);
+      `, [ids.backupOwnerAssignment, permission.inviteId]);
       await db.query(`
         UPDATE role_assignments
         SET active=false,revoked_at=now(),revoked_by=$2,
           revoke_reason='Revoked actor fixture'
         WHERE id=$1
-      `, [ids.supportAssignment, ids.backupOwner]);
-      const revoked = await db.query<{ snapshot: unknown }>(`
-        SELECT axora_lock_user_creation_scope(
-          $1,$2,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
-          NULL,NULL,NULL,NULL,now()
-        ) AS snapshot
-      `, [ids.support, ids.supportAssignment]);
-      expect(revoked.rows[0]?.snapshot).toBeNull();
+      `, [ids.backupOwnerAssignment, ids.owner]);
+      expect(await creationSnapshot(
+        db,
+        ids.backupOwner,
+        ids.backupOwnerAssignment,
+      )).toBeNull();
 
-      const after = await db.query<{ users: number; assignments: number; invitations: number }>(`
+      const after = await db.query<{
+        users: number;
+        assignments: number;
+        invitations: number;
+      }>(`
         SELECT
           (SELECT count(*)::int FROM users) AS users,
           (SELECT count(*)::int FROM role_assignments) AS assignments,
