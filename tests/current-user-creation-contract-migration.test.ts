@@ -37,15 +37,13 @@ async function fixture() {
       id,email,display_name,password_hash,role_id,is_owner,
       account_setup_completed_at,account_kind,account_status,active,auth_version
     ) VALUES
-      ($1,'owner-095@example.test','Owner 095','not-a-real-hash',$7,true,
+      ($1,'owner-095@example.test','Owner 095','not-a-real-hash',$4,true,
        now(),'PLATFORM','ACTIVE',true,1),
-      ($2,'backup-owner-095@example.test','Backup owner 095','not-a-real-hash',$7,true,
+      ($2,'backup-owner-095@example.test','Backup owner 095','not-a-real-hash',$4,true,
        now(),'PLATFORM','ACTIVE',true,1),
-      ($3,'support-095@example.test','Support 095','not-a-real-hash',$8,false,
+      ($3,'support-095@example.test','Support 095','not-a-real-hash',$5,false,
        now(),'PLATFORM','ACTIVE',true,1)
-  `, [ids.owner, ids.backupOwner, ids.support,
-    ids.ownerAssignment, ids.backupOwnerAssignment, ids.supportAssignment,
-    role.owner, role.support]);
+  `, [ids.owner, ids.backupOwner, ids.support, role.owner, role.support]);
   await db.query(`
     INSERT INTO role_assignments(
       id,user_id,role_id,scope_type,active,assigned_by,assigned_at
