@@ -108,11 +108,11 @@ SET search_path=pg_catalog,public,pg_temp
 AS $$
   SELECT EXISTS (
     SELECT 1
-    FROM public.user_deletion_execution_authorizations authorization
+    FROM public.user_deletion_execution_authorizations deletion_authorization
     JOIN public.user_deletion_commands deletion_command
-      ON deletion_command.command_id=authorization.command_id
-    WHERE authorization.backend_pid=pg_backend_pid()
-      AND authorization.transaction_id=txid_current()
+      ON deletion_command.command_id=deletion_authorization.command_id
+    WHERE deletion_authorization.backend_pid=pg_backend_pid()
+      AND deletion_authorization.transaction_id=txid_current()
       AND deletion_command.status='RUNNING'
   )
 $$;
