@@ -16,6 +16,8 @@ const ids = {
 } as const;
 
 const originalEmail = "target-082@example.test";
+const pendingPasswordHash =
+  "$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By";
 
 describe("deletion and access regressions", () => {
   it("keeps every live database permission parseable by the application catalog", async () => {
@@ -54,9 +56,16 @@ describe("deletion and access regressions", () => {
           ($1,'owner-096@example.test','Owner 096','not-a-real-hash',$3,true,
            now(),'PLATFORM','ACTIVE',true,1,now(),now()),
           ($2,$5,'Personal Name To Remove',
-           '$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By',
+           $6,
            $4,false,now(),'PLATFORM','ACTIVE',true,3,now(),now())
-      `, [ids.owner, ids.target, role.ownerRole, role.operationsRole, originalEmail]);
+      `, [
+        ids.owner,
+        ids.target,
+        role.ownerRole,
+        role.operationsRole,
+        originalEmail,
+        pendingPasswordHash,
+      ]);
       await db.query(`
         INSERT INTO role_assignments(
           id,user_id,role_id,scope_type,active,assigned_by,assigned_at
@@ -78,7 +87,7 @@ describe("deletion and access regressions", () => {
         INSERT INTO account_credentials(
           user_id,password_hash,password_algorithm,password_changed_at
         ) VALUES (
-          $1,'$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By',
+          $1,$3,
           'bcrypt',now()
         ) ON CONFLICT(user_id) DO UPDATE SET
           password_hash=EXCLUDED.password_hash,
@@ -94,10 +103,17 @@ describe("deletion and access regressions", () => {
           sent_at,delivery_attempted_at,delivery_attempt_count,
           provider_message_id
         ) VALUES (
-          $3,$1,repeat('a',64),now()+interval '1 day','en',$4,$5,'PLATFORM',
+          $4,$1,repeat('a',64),now()+interval '1 day','en',$5,$6,'PLATFORM',
           now(),'SENT',now(),now(),1,'provider-private-identifier'
         );
-      `, [ids.target, ids.session, ids.invitation, ids.owner, role.operationsRole]);
+      `, [
+        ids.target,
+        ids.session,
+        pendingPasswordHash,
+        ids.invitation,
+        ids.owner,
+        role.operationsRole,
+      ]);
       const permission = await db.query<{ id: string }>(`
         SELECT id::text FROM permissions WHERE permission_code='dashboard.view'
       `);
@@ -164,7 +180,7 @@ describe("deletion and access regressions", () => {
       expect(state.rows[0]).toEqual({
         email: `deleted-${ids.target.replaceAll("-", "")}@deleted.invalid`,
         displayName: "Deleted user",
-        passwordHash: "!permanently-deleted!",
+        passwordHash: pendingPasswordHash,
         active: false,
         accountStatus: "DEACTIVATED",
         accountKind: "PLATFORM",
@@ -183,10 +199,10 @@ describe("deletion and access regressions", () => {
           id,email,display_name,password_hash,role_id,is_owner,
           account_setup_completed_at,account_kind,account_status,active,auth_version
         ) VALUES (
-          $1,$2,'Completely New Identity','new-unrelated-hash',$3,false,
+          $1,$2,'Completely New Identity',$4,$3,false,
           NULL,'PLATFORM','INVITED',true,1
         )
-      `, [ids.replacement, originalEmail, role.operationsRole]))
+      `, [ids.replacement, originalEmail, role.operationsRole, pendingPasswordHash]))
         .resolves.not.toThrow();
 
       const replacement = await db.query<{
