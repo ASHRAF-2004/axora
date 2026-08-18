@@ -55,9 +55,9 @@ async function invitationFixture() {
     INSERT INTO role_assignments(
       id,user_id,role_id,scope_type,active,assigned_by,assigned_at
     ) VALUES
-      ($1,$4,$7,'PLATFORM',true,$4,now()),
-      ($2,$5,$8,'PLATFORM',true,$4,now()),
-      ($3,$6,$9,'PLATFORM',true,$4,now())
+      ($1,$4,$7,'PLATFORM',true,$4,now()-interval '1 day'),
+      ($2,$5,$8,'PLATFORM',true,$4,now()-interval '1 day'),
+      ($3,$6,$9,'PLATFORM',true,$4,now()-interval '1 day')
   `, [
     ids.ownerAssignment,
     ids.targetAssignment,
