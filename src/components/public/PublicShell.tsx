@@ -1,8 +1,9 @@
 import { LogIn } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Brand } from "@/components/Brand";
 import { LOCALE_NAMES, publicMessages, type SupportedLocale } from "@/lib/i18n";
+import { AppearanceSelector } from "./AppearanceSelector";
 import { LanguagePreference } from "./LanguagePreference";
 import { PublicMobileMenu } from "./PublicMobileMenu";
 import { PublicSkipLink } from "./PublicSkipLink";
@@ -39,12 +40,13 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
       <header className="public-header">
         <div className="public-header-inner">
           <Link className="public-brand" href={prefix} aria-label={`${messages.nav.home} - Axora`}>
-            <Image src="/brand/axora-logo-light-background.png" width={152} height={43} alt="Axora" priority unoptimized />
+            <Brand size="header" />
           </Link>
           <nav className="public-desktop-nav" aria-label={messages.nav.primaryNavigation}>
             {navigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
           </nav>
           <div className="public-header-actions">
+            <div className="public-desktop-appearance"><AppearanceSelector compact locale={locale} /></div>
             <LanguagePreference
               locale={locale}
               detectedLocale={detectedLocale}
@@ -72,7 +74,7 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
       <footer className="public-footer">
         <div className="public-footer-grid">
           <div>
-            <Image src="/brand/axora-logo-dark-background.png" width={190} height={54} alt="Axora" unoptimized />
+            <Brand appearance="dark" size="marketing" priority={false} />
             <p>{messages.footer.summary}</p>
           </div>
           <div>
