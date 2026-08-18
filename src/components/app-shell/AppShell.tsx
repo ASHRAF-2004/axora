@@ -128,10 +128,6 @@ export function AppShell({
   }, [locale]);
 
   useEffect(() => {
-    setCurrentAppearance(appearance);
-  }, [appearance]);
-
-  useEffect(() => {
     document.documentElement.dataset.appearance = currentAppearance;
   }, [currentAppearance]);
 
