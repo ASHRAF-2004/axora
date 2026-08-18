@@ -70,9 +70,10 @@ describe("immersive world V2 database boundaries", () => {
     expect(sql).toContain("ALTER TABLE public.user_appearance_preferences ENABLE ROW LEVEL SECURITY");
     expect(sql).toContain("ALTER TABLE public.user_appearance_preferences FORCE ROW LEVEL SECURITY");
     expect(sql).toContain("REVOKE ALL ON public.user_appearance_preferences FROM PUBLIC");
+    expect(sql).toContain("REVOKE ALL ON public.user_appearance_preferences FROM axora_app");
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.axora_get_user_appearance");
     expect(sql).toContain("CREATE OR REPLACE FUNCTION public.axora_set_user_appearance");
-    expect(sql).toContain("desired_appearance NOT IN ('light','dark')");
+    expect(sql).toContain("p_appearance IS NULL OR p_appearance NOT IN ('light','dark')");
     expect(sql).toContain("CREATE TRIGGER mirror_legacy_atmosphere_preference");
     expect(sql).toContain("AFTER INSERT OR UPDATE OR DELETE ON public.user_atmosphere_preferences");
     expect(sql).toContain("DELETE FROM public.user_appearance_preferences WHERE user_id=OLD.user_id");
