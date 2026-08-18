@@ -5,6 +5,7 @@ import {
   replaceUserPermissionSetInTransaction,
 } from "@/lib/access-management";
 import type { SessionUser } from "@/lib/auth";
+// @ts-expect-error The production email renderer is an intentional JavaScript module.
 import { renderAccountSetupEmail } from "../server-tools/account-setup-email.mjs";
 
 const currentInvitationRoles = [
