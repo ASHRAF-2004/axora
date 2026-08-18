@@ -1,3 +1,4 @@
+import type { AppearanceMode } from "@/lib/appearance";
 import type { SupportedLocale } from "@/lib/i18n";
 
 export const WORKFLOW_STAGE_IDS = [
@@ -12,9 +13,6 @@ export const WORKFLOW_STAGE_IDS = [
 ] as const;
 
 export type WorkflowStageId = (typeof WORKFLOW_STAGE_IDS)[number];
-export const PUBLIC_ATMOSPHERES = ["Aurora", "Solar", "Ember", "Midnight"] as const;
-export type PublicAtmosphere = (typeof PUBLIC_ATMOSPHERES)[number];
-export type PublicAtmosphereId = "aurora" | "solar" | "ember" | "midnight";
 export type PublicSceneRoute =
   | "home"
   | "how-it-works"
@@ -33,6 +31,15 @@ export type SemanticModelId =
   | "company"
   | "network"
   | "flag";
+
+export type PublicScenePalette = {
+  background: string;
+  surface: string;
+  primary: string;
+  secondary: string;
+  glow: string;
+  ink: string;
+};
 
 export const SEMANTIC_MODEL_PATHS: Record<SemanticModelId, string> = {
   request: "/immersive/models/request.glb",
@@ -73,52 +80,30 @@ export const STAGE_SOUND_PATHS: Record<SemanticModelId | "theme", string> = {
   theme: "/immersive/sounds/theme.ogg",
 };
 
-export const PUBLIC_ATMOSPHERE_SCENES = [
+export const PUBLIC_APPEARANCE_SCENES = [
   {
-    id: "aurora" as const,
+    id: "light",
     scene: {
-      background: "#061a2f",
-      surface: "#102f49",
-      primary: "#48d6c5",
-      secondary: "#61a7ff",
-      glow: "#92fff1",
-      ink: "#f2fbff",
+      background: "#eaf0f5",
+      surface: "#ffffff",
+      primary: "#0b3157",
+      secondary: "#eaa63a",
+      glow: "#8aa8be",
+      ink: "#173149",
     },
   },
   {
-    id: "solar" as const,
+    id: "dark",
     scene: {
-      background: "#231506",
-      surface: "#4a2a0b",
-      primary: "#ffbf47",
-      secondary: "#ff774d",
-      glow: "#ffe4a1",
-      ink: "#fff9eb",
+      background: "#071521",
+      surface: "#0d2233",
+      primary: "#4a89b6",
+      secondary: "#eaa63a",
+      glow: "#89a9c0",
+      ink: "#f7fafc",
     },
   },
-  {
-    id: "ember" as const,
-    scene: {
-      background: "#250f13",
-      surface: "#4b1820",
-      primary: "#ff6e4a",
-      secondary: "#ffb34f",
-      glow: "#ffd0a6",
-      ink: "#fff6f1",
-    },
-  },
-  {
-    id: "midnight" as const,
-    scene: {
-      background: "#050a18",
-      surface: "#121b38",
-      primary: "#82a7ff",
-      secondary: "#44d4ea",
-      glow: "#b8c9ff",
-      ink: "#f7f9ff",
-    },
-  },
-] as const;
+] as const satisfies ReadonlyArray<{ id: AppearanceMode; scene: PublicScenePalette }>;
 
 export const PUBLIC_SCENE_MODELS: Record<PublicSceneRoute, readonly SemanticModelId[]> = {
   home: WORKFLOW_STAGE_IDS,
@@ -145,7 +130,6 @@ type ImmersiveCopy = {
   sceneAlternative: string;
   soundOn: string;
   soundOff: string;
-  themes: Record<PublicAtmosphereId, string>;
   stages: StageCopy[];
   sections: {
     howTitle: string;
@@ -296,11 +280,6 @@ export function immersivePublicCopy(locale: SupportedLocale): ImmersiveCopy {
 
   return {
     ...common,
-    themes: locale === "ar"
-      ? { aurora: "الشفق", solar: "الشمس", ember: "الجمر", midnight: "منتصف الليل" }
-      : locale === "ms"
-        ? { aurora: "Aurora", solar: "Suria", ember: "Bara", midnight: "Tengah malam" }
-        : { aurora: "Aurora", solar: "Solar", ember: "Ember", midnight: "Midnight" },
     stages: stageCopy[locale],
     routeCopy: routeCopy[locale],
   };
