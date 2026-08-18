@@ -115,10 +115,12 @@ describe("deletion and access regressions", () => {
           id,user_id,token_hash,expires_at,email_locale,created_by,
           intended_role_id,intended_scope_type,consumed_at,delivery_status,
           sent_at,delivery_attempted_at,delivery_attempt_count,
-          provider_message_id
+          provider_message_id,terms_policy_version,terms_accepted_at,
+          privacy_policy_version,privacy_accepted_at
         ) VALUES (
           $1,$2,repeat('a',64),now()+interval '1 day','en',$3,$4,'PLATFORM',
-          now(),'SENT',now(),now(),1,'provider-private-identifier'
+          now(),'SENT',now(),now(),1,'provider-private-identifier',
+          'fixture-terms-v1',now(),'fixture-privacy-v1',now()
         )
       `, [ids.invitation, ids.target, ids.owner, role.operationsRole]);
 
