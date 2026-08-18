@@ -1,16 +1,16 @@
 .page {
-  --login-primary: #0b2d52;
-  --login-primary-hover: #123e68;
-  --login-accent: #155e9d;
-  --login-surface: #ffffff;
-  --login-border: #cbd5e1;
-  --login-ink: #0f172a;
-  --login-muted: #526274;
+  --login-primary: var(--axora-brand);
+  --login-primary-hover: var(--axora-brand-hover);
+  --login-accent: var(--axora-link);
+  --login-surface: var(--axora-surface);
+  --login-border: var(--axora-border);
+  --login-ink: var(--axora-text);
+  --login-muted: var(--axora-text-muted);
   position: relative;
   min-height: 100svh;
   padding: 72px 24px 32px;
   overflow-x: hidden;
-  background: #f8fafc;
+  background: var(--axora-page-bg);
   color: var(--login-ink);
   font-family: "Source Sans Pro", "Source Sans 3", system-ui, sans-serif;
 }
@@ -31,47 +31,48 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--login-primary);
+  color: var(--login-accent);
   border: 1px solid transparent;
   border-radius: 10px;
   font-weight: 750;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.backLink:hover { background: #eef4f9; border-color: #d8e3ec; }
-.backLink:focus-visible { outline: 3px solid rgba(21, 94, 157, 0.28); outline-offset: 3px; }
+.backLink:hover { background: var(--axora-surface-muted); border-color: var(--axora-border); }
+.backLink:focus-visible { outline: 3px solid var(--axora-focus); outline-offset: 3px; }
 
 .form {
   width: min(440px, 100%);
   padding: clamp(26px, 4vw, 38px);
   display: grid;
   gap: 20px;
-  border: 1px solid #dbe3ea;
+  border: 1px solid var(--axora-border);
   border-radius: 16px;
   background: var(--login-surface);
-  box-shadow: 0 18px 48px rgba(15, 42, 67, 0.09);
+  box-shadow: var(--axora-shadow-lg);
 }
 
+.appearanceControl { display: flex; justify-content: flex-end; }
 .brand { display: grid; justify-items: center; gap: 10px; text-align: center; }
 .brand img { width: min(174px, 55vw); height: auto; }
-.brand h1 { margin: 8px 0 0; color: var(--login-primary); font-size: clamp(1.65rem, 4vw, 2rem); line-height: 1.15; letter-spacing: -0.025em; text-wrap: balance; }
+.brand h1 { margin: 8px 0 0; color: var(--axora-text); font-size: clamp(1.65rem, 4vw, 2rem); line-height: 1.15; letter-spacing: -0.025em; text-wrap: balance; }
 .brand p { margin: 0; max-width: 34ch; color: var(--login-muted); line-height: 1.55; }
 
 .inputGroup { display: grid; gap: 8px; }
-.inputGroup label { color: #24364a; font-size: 0.92rem; font-weight: 750; }
+.inputGroup label { color: var(--axora-text-secondary); font-size: 0.92rem; font-weight: 750; }
 .inputGroup input,
 .inputGroup select {
   width: 100%;
   min-height: 48px;
   padding: 0 13px;
   color: var(--login-ink);
-  background: #ffffff;
+  background: var(--axora-surface-elevated);
   border: 1px solid var(--login-border);
   border-radius: 10px;
   font: inherit;
 }
 .inputGroup input:focus,
-.inputGroup select:focus { border-color: var(--login-accent); outline: 3px solid rgba(21, 94, 157, 0.18); outline-offset: 1px; }
+.inputGroup select:focus { border-color: var(--axora-focus); outline: 3px solid color-mix(in srgb, var(--axora-focus) 28%, transparent); outline-offset: 1px; }
 .inputGroup a { width: fit-content; color: var(--login-accent); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 
 .helper { margin: 0; color: var(--login-muted); font-size: 0.82rem; line-height: 1.45; }
@@ -92,16 +93,16 @@
   cursor: pointer;
   touch-action: manipulation;
 }
-.showPasswordToggle:hover { background: #eef4f9; }
-.showPasswordToggle:focus-visible { outline: 3px solid rgba(21, 94, 157, 0.24); }
-.indicator { width: 18px; height: 18px; display: grid; place-items: center; border: 1.5px solid #8191a2; border-radius: 5px; }
+.showPasswordToggle:hover { background: var(--axora-surface-muted); }
+.showPasswordToggle:focus-visible { outline: 3px solid var(--axora-focus); outline-offset: 2px; }
+.indicator { width: 18px; height: 18px; display: grid; place-items: center; border: 1.5px solid var(--axora-border-strong); border-radius: 5px; }
 .indicator > span { width: 8px; height: 4px; border-inline-start: 2px solid transparent; border-bottom: 2px solid transparent; transform: rotate(-45deg); }
 .indicator > .checkVisible { border-color: var(--login-accent); }
 
 .loginButton {
   min-height: 48px;
   padding: 0 18px;
-  color: #ffffff;
+  color: var(--axora-brand-foreground);
   background: var(--login-primary);
   border: 1px solid var(--login-primary);
   border-radius: 10px;
@@ -112,13 +113,13 @@
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .loginButton:hover { background: var(--login-primary-hover); border-color: var(--login-primary-hover); }
-.loginButton:focus-visible { outline: 3px solid rgba(21, 94, 157, 0.28); outline-offset: 3px; }
+.loginButton:focus-visible { outline: 3px solid var(--axora-focus); outline-offset: 3px; }
 .loginButton:disabled { cursor: wait; opacity: 0.68; }
 
 .error,
 .success { padding: 12px 14px; border-radius: 10px; font-size: 0.92rem; line-height: 1.45; }
-.error { color: #8a1c1c; background: #fff1f1; border: 1px solid #f3c4c4; }
-.success { color: #175c3a; background: #edfaf3; border: 1px solid #bce6cf; }
+.error { color: var(--axora-danger); background: var(--axora-danger-bg); border: 1px solid var(--axora-danger-border); }
+.success { color: var(--axora-success); background: var(--axora-success-bg); border: 1px solid var(--axora-success-border); }
 
 @media (max-width: 520px) {
   .page { padding: 68px 16px 20px; }
