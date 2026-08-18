@@ -31,8 +31,8 @@ SET appearance=EXCLUDED.appearance,
     updated_at=EXCLUDED.updated_at;
 
 CREATE OR REPLACE FUNCTION public.axora_get_user_appearance(
-  requested_user_id uuid,
-  current_time timestamptz
+  p_user_id uuid,
+  p_at timestamptz
 ) RETURNS text
 LANGUAGE plpgsql
 STABLE
@@ -41,8 +41,8 @@ SET search_path=pg_catalog,public,pg_temp
 AS $$
 DECLARE chosen text;
 BEGIN
-  IF requested_user_id IS NULL OR current_time IS NULL
-    OR current_time > clock_timestamp() + interval '5 minutes'
+  IF p_user_id IS NULL OR p_at IS NULL
+    OR p_at > clock_timestamp() + interval '5 minutes'
   THEN
     RAISE EXCEPTION 'Appearance preference unavailable';
   END IF;
@@ -50,7 +50,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM public.users
-    WHERE id=requested_user_id
+    WHERE id=p_user_id
       AND active
       AND account_status='ACTIVE'
   ) THEN
@@ -59,25 +59,25 @@ BEGIN
 
   SELECT appearance INTO chosen
   FROM public.user_appearance_preferences
-  WHERE user_id=requested_user_id;
+  WHERE user_id=p_user_id;
 
   RETURN chosen;
 END
 $$;
 
 CREATE OR REPLACE FUNCTION public.axora_set_user_appearance(
-  requested_user_id uuid,
-  desired_appearance text,
-  current_time timestamptz
+  p_user_id uuid,
+  p_appearance text,
+  p_at timestamptz
 ) RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=pg_catalog,public,pg_temp
 AS $$
 BEGIN
-  IF desired_appearance IS NULL OR desired_appearance NOT IN ('light','dark')
-    OR requested_user_id IS NULL OR current_time IS NULL
-    OR current_time > clock_timestamp() + interval '5 minutes'
+  IF p_appearance IS NULL OR p_appearance NOT IN ('light','dark')
+    OR p_user_id IS NULL OR p_at IS NULL
+    OR p_at > clock_timestamp() + interval '5 minutes'
   THEN
     RAISE EXCEPTION 'Appearance preference unavailable';
   END IF;
@@ -85,7 +85,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM public.users
-    WHERE id=requested_user_id
+    WHERE id=p_user_id
       AND active
       AND account_status='ACTIVE'
   ) THEN
@@ -93,12 +93,12 @@ BEGIN
   END IF;
 
   INSERT INTO public.user_appearance_preferences(user_id,appearance,updated_at)
-  VALUES(requested_user_id,desired_appearance,current_time)
+  VALUES(p_user_id,p_appearance,p_at)
   ON CONFLICT (user_id) DO UPDATE
   SET appearance=EXCLUDED.appearance,
       updated_at=EXCLUDED.updated_at;
 
-  RETURN desired_appearance;
+  RETURN p_appearance;
 END
 $$;
 
