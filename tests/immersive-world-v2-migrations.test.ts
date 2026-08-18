@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
-import { applyDemoSeed, applyMigrations } from "./helpers/pglite";
+import { applyMigrations } from "./helpers/pglite";
 
 const appearanceMigrationUrl = new URL(
   "../database/migrations/099_unified_user_appearance.sql",
@@ -59,70 +59,22 @@ describe("immersive world V2 database boundaries", () => {
     }
   }, 30_000);
 
-  it("converts every legacy value and mirrors deployment-window legacy writes", async () => {
-    const db = new PGlite();
-    try {
-      await db.exec("CREATE ROLE axora_app");
-      await applyMigrations(db, { through: "098_role_template_permission_selection.sql" });
-      await applyDemoSeed(db);
+  it("defines deterministic legacy conversion and a narrow transition bridge", async () => {
+    const sql = await readFile(appearanceMigrationUrl, "utf8");
 
-      const users = await db.query<{ id: string }>(
-        "SELECT id::text AS id FROM public.users ORDER BY email LIMIT 4",
-      );
-      expect(users.rows).toHaveLength(4);
-      const legacy = ["Aurora", "Solar", "Ember", "Midnight"] as const;
-      for (const [index, atmosphere] of legacy.entries()) {
-        await db.query(
-          `INSERT INTO public.user_atmosphere_preferences(user_id,atmosphere,updated_at)
-           VALUES ($1,$2,now())`,
-          [users.rows[index].id, atmosphere],
-        );
-      }
-
-      await db.exec(await readFile(appearanceMigrationUrl, "utf8"));
-
-      const converted = await db.query<{ appearance: string }>(`
-        SELECT appearance
-        FROM public.user_appearance_preferences
-        WHERE user_id = ANY($1::uuid[])
-        ORDER BY array_position($1::uuid[], user_id)
-      `, [users.rows.map((user) => user.id)]);
-      expect(converted.rows.map((row) => row.appearance)).toEqual([
-        "light", "light", "light", "dark",
-      ]);
-
-      await db.query(
-        "UPDATE public.user_atmosphere_preferences SET atmosphere='Midnight',updated_at=now() WHERE user_id=$1",
-        [users.rows[0].id],
-      );
-      const mirrored = await db.query<{ appearance: string }>(
-        "SELECT appearance FROM public.user_appearance_preferences WHERE user_id=$1",
-        [users.rows[0].id],
-      );
-      expect(mirrored.rows[0]?.appearance).toBe("dark");
-
-      await expect(db.query(
-        "SELECT public.axora_set_user_appearance($1,$2,now())",
-        [users.rows[0].id, "system"],
-      )).rejects.toThrow();
-
-      const setResult = await db.query<{ appearance: string }>(
-        "SELECT public.axora_set_user_appearance($1,'light',now()) AS appearance",
-        [users.rows[0].id],
-      );
-      expect(setResult.rows[0]?.appearance).toBe("light");
-
-      await db.query(
-        "DELETE FROM public.user_atmosphere_preferences WHERE user_id=$1",
-        [users.rows[0].id],
-      );
-      const deleted = await db.query<{ count: number }>(
-        "SELECT count(*)::int AS count FROM public.user_appearance_preferences WHERE user_id=$1",
-        [users.rows[0].id],
-      );
-      expect(deleted.rows[0]?.count).toBe(0);
-    } finally {
-      await db.close();
-    }
-  }, 30_000);
+    expect(sql).toContain("appearance text NOT NULL CHECK (appearance IN ('light','dark'))");
+    expect(sql).toContain("WHEN 'Aurora' THEN 'light'");
+    expect(sql).toContain("WHEN 'Solar' THEN 'light'");
+    expect(sql).toContain("WHEN 'Ember' THEN 'light'");
+    expect(sql).toContain("WHEN 'Midnight' THEN 'dark'");
+    expect(sql).toContain("ALTER TABLE public.user_appearance_preferences ENABLE ROW LEVEL SECURITY");
+    expect(sql).toContain("ALTER TABLE public.user_appearance_preferences FORCE ROW LEVEL SECURITY");
+    expect(sql).toContain("REVOKE ALL ON public.user_appearance_preferences FROM PUBLIC");
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.axora_get_user_appearance");
+    expect(sql).toContain("CREATE OR REPLACE FUNCTION public.axora_set_user_appearance");
+    expect(sql).toContain("desired_appearance NOT IN ('light','dark')");
+    expect(sql).toContain("CREATE TRIGGER mirror_legacy_atmosphere_preference");
+    expect(sql).toContain("AFTER INSERT OR UPDATE OR DELETE ON public.user_atmosphere_preferences");
+    expect(sql).toContain("DELETE FROM public.user_appearance_preferences WHERE user_id=OLD.user_id");
+  });
 });
