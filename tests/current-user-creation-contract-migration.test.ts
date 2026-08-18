@@ -110,9 +110,9 @@ async function permissionFixtureIds(db: PGlite) {
       (SELECT id::text FROM roles
         WHERE role_key='COMPANY_ADMIN') AS "companyAdminRoleId",
       (SELECT id::text FROM permissions
-        WHERE permission_code='user.create') AS "createPermissionId",
+        WHERE permission_code='company_user.create') AS "createPermissionId",
       (SELECT id::text FROM permissions
-        WHERE permission_code='user.invite') AS "invitePermissionId"
+        WHERE permission_code='company_user.invite') AS "invitePermissionId"
   `);
   const value = result.rows[0];
   if (!value?.companyAdminRoleId
