@@ -24,8 +24,9 @@ import {
   clearBrowserSessionWorkspace,
   SessionContinuity,
 } from "@/components/SessionContinuity";
-import { AtmosphereSelector } from "@/components/public/AtmosphereSelector";
-import type { PublicAtmosphere } from "@/lib/immersive-public-experience";
+import { AppearanceSelector } from "@/components/public/AppearanceSelector";
+import { Brand } from "@/components/Brand";
+import type { AppearanceMode } from "@/lib/appearance";
 
 export interface AppNavigationItem {
   href: string;
@@ -50,6 +51,7 @@ interface AppShellProps {
   drawerItems: AppNavigationItem[];
   quickAction?: AppNavigationItem;
   locale: SupportedLocale;
+  appearance: AppearanceMode;
   brand: {
     name: string;
     logoUrl: string;
@@ -61,8 +63,6 @@ interface AppShellProps {
   };
   unreadNotifications?: number;
   profileRequired?: boolean;
-  allowAtmosphere?: boolean;
-  staffAtmosphere?: PublicAtmosphere;
 }
 
 function tourName(href: string) {
@@ -97,11 +97,10 @@ export function AppShell({
   drawerItems,
   quickAction,
   locale,
+  appearance,
   brand,
   unreadNotifications = 0,
   profileRequired = false,
-  allowAtmosphere = false,
-  staffAtmosphere,
 }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -109,6 +108,7 @@ export function AppShell({
   const profileControlRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [currentAppearance, setCurrentAppearance] = useState<AppearanceMode>(appearance);
   const [polledNotifications, setPolledNotifications] = useState<{
     userId: string;
     serverCount: number;
@@ -126,6 +126,14 @@ export function AppShell({
   useEffect(() => {
     persistBrowserLocale(locale);
   }, [locale]);
+
+  useEffect(() => {
+    setCurrentAppearance(appearance);
+  }, [appearance]);
+
+  useEffect(() => {
+    document.documentElement.dataset.appearance = currentAppearance;
+  }, [currentAppearance]);
 
   const notificationUnreadCount = polledNotifications?.userId === user.id
     && polledNotifications.serverCount === unreadNotifications
@@ -278,6 +286,28 @@ export function AppShell({
     });
   }
 
+  async function changeAppearance(next: AppearanceMode) {
+    if (next === currentAppearance) return true;
+    const previous = currentAppearance;
+    setCurrentAppearance(next);
+    document.documentElement.dataset.appearance = next;
+    try {
+      const response = await fetch("/api/profile/appearance", {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appearance: next }),
+      });
+      const result = await response.json() as { appearance?: unknown };
+      if (!response.ok || result.appearance !== next) throw new Error("Appearance update rejected");
+      return true;
+    } catch {
+      setCurrentAppearance(previous);
+      document.documentElement.dataset.appearance = previous;
+      return false;
+    }
+  }
+
   const grouped = drawerItems.reduce<Record<string, AppNavigationItem[]>>((result, item) => {
     const group = item.group ?? "workspace";
     (result[group] ??= []).push(item);
@@ -287,7 +317,8 @@ export function AppShell({
   return (
     <div
       className="app-shell"
-      data-atmosphere-authority="authenticated"
+      data-appearance-authority="authenticated"
+      data-appearance={currentAppearance}
       lang={locale}
       dir={LOCALE_NAMES[locale].dir}
       style={brand.style}
@@ -327,7 +358,7 @@ export function AppShell({
                 : undefined}
           />
         </Link> : <Link href={homeHref} className="app-active-brand" aria-label={messages.shell.home(brand.name)}>
-          <Image src="/brand/axora-logo-light-background.png" width={152} height={43} alt="Axora" priority unoptimized />
+          <Brand appearance={currentAppearance} size="header" />
         </Link>}
         <nav className="app-primary-nav" aria-label={messages.shell.primaryNavigation}>
           {primaryItems.map((item) => (
@@ -337,7 +368,9 @@ export function AppShell({
           ))}
         </nav>
         <div className="app-topbar-actions">
-          {allowAtmosphere ? <div className="app-desktop-atmosphere"><AtmosphereSelector compact locale={locale} staffUserId={user.id} initialAtmosphere={staffAtmosphere} /></div> : null}
+          <div className="app-desktop-appearance">
+            <AppearanceSelector compact locale={locale} appearance={currentAppearance} onAppearanceChange={changeAppearance} />
+          </div>
           {quickAction ? <Link className="button app-quick-action" href={quickAction.href}>{quickAction.label}</Link> : null}
           {!profileRequired ? (
             <Link className="app-notification-button" href="/notifications" aria-label={messages.shell.notifications(notificationUnreadCount)}>
@@ -395,7 +428,9 @@ export function AppShell({
           </div>
           <button type="button" onClick={() => drawerRef.current?.close()} aria-label={messages.shell.closeMenu}><X size={20} aria-hidden="true" /></button>
         </div>
-        {allowAtmosphere ? <div className="app-drawer-atmosphere"><AtmosphereSelector compact locale={locale} staffUserId={user.id} initialAtmosphere={staffAtmosphere} /></div> : null}
+        <div className="app-drawer-appearance">
+          <AppearanceSelector compact locale={locale} appearance={currentAppearance} onAppearanceChange={changeAppearance} />
+        </div>
         <nav aria-label={messages.shell.completeNavigation}>
           {Object.entries(grouped).map(([group, items]) => (
             <section key={group}>
