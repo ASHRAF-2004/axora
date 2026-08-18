@@ -48,12 +48,26 @@ html[data-appearance="light"],
   --axora-map-route: #0b568f;
   --axora-map-marker: #eaa63a;
 
-  /* Transitional aliases let existing shared UI consume the new palette without a broad rewrite. */
+  /* Transitional aliases let existing shared UI consume semantic intent. */
   --brand: var(--axora-brand);
   --brand-soft: var(--axora-brand-soft);
-  --amber-500: #eaa63a;
-  --navy-900: #0b3157;
-  --white: #ffffff;
+  --amber-500: var(--axora-brand-accent);
+  --navy-950: var(--axora-navigation);
+  --navy-900: var(--axora-brand-anchor);
+  --navy-800: #16456f;
+  --blue-700: var(--axora-link);
+  --blue-600: #155e9d;
+  --blue-100: var(--axora-brand-soft);
+  --slate-950: var(--axora-text);
+  --slate-700: var(--axora-text-secondary);
+  --slate-600: var(--axora-text-secondary);
+  --slate-500: var(--axora-text-muted);
+  --slate-400: #8091a0;
+  --slate-300: var(--axora-border-strong);
+  --slate-200: var(--axora-border);
+  --slate-100: var(--axora-surface-muted);
+  --slate-50: var(--axora-page-bg);
+  --white: var(--axora-surface);
 }
 
 html[data-appearance="dark"],
@@ -107,11 +121,29 @@ html[data-appearance="dark"],
 
   --brand: var(--axora-brand);
   --brand-soft: var(--axora-brand-soft);
-  --amber-500: #eaa63a;
-  --navy-900: #0b3157;
+  --amber-500: var(--axora-brand-accent);
+  --navy-950: var(--axora-navigation);
+  --navy-900: var(--axora-text);
+  --navy-800: var(--axora-text-secondary);
+  --blue-700: var(--axora-link);
+  --blue-600: var(--axora-link);
+  --blue-100: var(--axora-brand-soft);
+  --slate-950: var(--axora-text);
+  --slate-700: var(--axora-text-secondary);
+  --slate-600: var(--axora-text-secondary);
+  --slate-500: var(--axora-text-muted);
+  --slate-400: var(--axora-text-muted);
+  --slate-300: var(--axora-border-strong);
+  --slate-200: var(--axora-border);
+  --slate-100: var(--axora-surface-muted);
+  --slate-50: var(--axora-page-bg);
   --white: var(--axora-surface);
 }
 
+html[data-appearance] {
+  background: var(--axora-page-bg);
+  color: var(--axora-text);
+}
 body,
 .public-site {
   background: var(--axora-page-bg);
