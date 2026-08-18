@@ -1,13 +1,18 @@
 # Immersive World V2 repair contracts
 
-## Atmospheres and company branding
+## Appearance and company branding
 
-`data-atmosphere` is the single document-level atmosphere contract. Public and
-authentication pages use the locally saved Aurora, Solar, Ember or Midnight
-preference. Axora staff preferences are stored per account in PostgreSQL.
-Customer-company shells do not expose the selector: reviewed logo-derived
-tokens are scoped on `data-tenant-theme="company"` and override document
-atmosphere tokens without changing semantic danger, warning or success colours.
+The current application supports exactly `light` and `dark` through the
+appearance contract. Public first paint uses the SSR-readable
+`axora_appearance` cookie, while authenticated shells resolve the user's
+Light/Dark database preference before rendering. The historical Aurora, Solar,
+Ember and Midnight values survive only in forward-migration compatibility logic.
+
+Company shells remain scoped with `data-tenant-theme="company"`. Their reviewed
+logo-derived brand identity is authoritative in both modes: Light selects the
+approved light surface/text tokens and Dark selects the approved dark
+surface/text tokens. Appearance never replaces semantic danger, warning,
+success or tenant-identity colors.
 
 ## Operational map
 
