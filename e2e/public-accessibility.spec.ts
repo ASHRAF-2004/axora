@@ -77,7 +77,7 @@ test("login uses the Axora public website palette", async ({ page }) => {
 
   const email = page.getByLabel("Email");
   await email.focus();
-  await expect(email).toHaveCSS("border-color", "rgb(21, 94, 157)");
+  await expect(email).toHaveCSS("border-color", "rgb(11, 90, 151)");
   await expect(page.locator(".login-guide")).toHaveCount(0);
   await expect(page.locator("main")).toHaveCSS("background-color", "rgb(248, 250, 252)");
 });
