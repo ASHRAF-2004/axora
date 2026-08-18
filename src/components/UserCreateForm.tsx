@@ -181,6 +181,11 @@ export function UserCreateForm({
 
   return (
     <form action={createUserAction} data-draft-id="create-user">
+      <input
+        type="hidden"
+        name="permissionsCustomized"
+        value={permissionsCustomized ? "true" : "false"}
+      />
       <div className="form-grid">
         <label>{copy.fullName}<input name="displayName" required autoComplete="name" /></label>
         <label>{copy.workEmail}<input name="email" type="email" required autoComplete="username" /></label>
