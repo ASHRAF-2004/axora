@@ -771,7 +771,8 @@ export async function inspectAccountSetupToken(
          (i.intended_scope_type='PLATFORM'
            AND u.account_kind='PLATFORM'
            AND intended_role.role_key IN (
-             'PLATFORM_OWNER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
+             'PLATFORM_OWNER','HUMAN_RESOURCES_MANAGEMENT',
+             'CLIENT_ACCOUNT_MANAGER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
            )
            AND u.is_owner=(intended_role.role_key='PLATFORM_OWNER'))
          OR (i.intended_scope_type='COMPANY'
@@ -916,7 +917,8 @@ export async function consumeAccountSetupToken(
              (i.intended_scope_type='PLATFORM'
                AND u.account_kind='PLATFORM'
                AND intended_role.role_key IN (
-                 'PLATFORM_OWNER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
+                 'PLATFORM_OWNER','HUMAN_RESOURCES_MANAGEMENT',
+                 'CLIENT_ACCOUNT_MANAGER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
                )
                AND u.is_owner=(intended_role.role_key='PLATFORM_OWNER'))
              OR (i.intended_scope_type='COMPANY'
