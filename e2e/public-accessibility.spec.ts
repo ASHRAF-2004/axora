@@ -72,7 +72,7 @@ test("login uses the Axora public website palette", async ({ page }) => {
   await page.goto("/login");
 
   const button = page.locator("#login");
-  await expect(button).toHaveCSS("background-color", "rgb(11, 45, 82)");
+  await expect(button).toHaveCSS("background-color", "rgb(11, 49, 87)");
   await expect(button).toHaveCSS("color", "rgb(255, 255, 255)");
 
   const email = page.getByLabel("Email");
