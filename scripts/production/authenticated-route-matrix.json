@@ -1037,9 +1037,9 @@
       "mode": "stream"
     },
     {
-      "route": "/api/profile/atmosphere",
+      "route": "/api/profile/appearance",
       "authentication": "authenticated",
-      "scope": "staff-self",
+      "scope": "self",
       "mode": "mutating"
     },
     {
