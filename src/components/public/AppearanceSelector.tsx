@@ -55,11 +55,11 @@ export function AppearanceSelector({
   }
 
   return (
-    <div className={`${styles.atmosphereControls} ${compact ? styles.compactControls : ""}`} data-appearance-control>
+    <div className={`${styles.appearanceControls} ${compact ? styles.compactControls : ""}`} data-appearance-control>
       {showModes ? (
-        <fieldset className={styles.themeFieldset} disabled={saving} data-persistence-state={failed ? "failed" : saving ? "saving" : "ready"}>
+        <fieldset className={styles.appearanceFieldset} disabled={saving} data-persistence-state={failed ? "failed" : saving ? "saving" : "ready"}>
           <legend>{copy.appearance}</legend>
-          <div className={styles.themeOptions} role="group" aria-label={copy.appearance}>
+          <div className={styles.appearanceOptions} role="group" aria-label={copy.appearance}>
             {APPEARANCE_MODES.map((mode) => {
               const selected = currentAppearance === mode;
               const label = mode === "light" ? copy.light : copy.dark;
