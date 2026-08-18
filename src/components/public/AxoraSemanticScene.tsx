@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import type { PublicAtmosphereId, SemanticModelId } from "@/lib/immersive-public-experience";
+import type { AppearanceMode } from "@/lib/appearance";
+import type { SemanticModelId } from "@/lib/immersive-public-experience";
 import type { ImmersiveSceneRuntime } from "@/lib/immersive-scene-runtime";
 import styles from "./ImmersiveWorld.module.css";
 
@@ -58,7 +59,7 @@ function supportsWebGL() {
 export function AxoraSemanticScene({
   model,
   nextModel,
-  atmosphere,
+  appearance,
   alternative,
   route,
   direction,
@@ -68,7 +69,7 @@ export function AxoraSemanticScene({
 }: {
   model: SemanticModelId;
   nextModel?: SemanticModelId;
-  atmosphere: PublicAtmosphereId;
+  appearance: AppearanceMode;
   alternative: string;
   route: string;
   direction: "ltr" | "rtl";
@@ -179,7 +180,7 @@ export function AxoraSemanticScene({
           <SceneCanvas
             model={model}
             nextModel={nextModel}
-            atmosphere={atmosphere}
+            appearance={appearance}
             reducedMotion={reducedMotion}
             active={active}
             onContextLost={() => {
