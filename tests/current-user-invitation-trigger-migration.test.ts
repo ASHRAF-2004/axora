@@ -98,20 +98,24 @@ async function fixture() {
       ($1,'HR 097','en'),
       ($2,'Manager 097','en'),
       ($3,'Delivery 097','en')
-    ON CONFLICT(user_id) DO NOTHING;
+    ON CONFLICT(user_id) DO NOTHING
+  `, [ids.hr, ids.manager, ids.delivery]);
 
+  await db.query(`
     INSERT INTO account_credentials(
       user_id,password_hash,password_algorithm
     ) VALUES
       ($1,NULL,NULL),
       ($2,NULL,NULL),
       ($3,NULL,NULL)
-    ON CONFLICT(user_id) DO NOTHING;
-
-    INSERT INTO delivery_agent_profiles(user_id,agent_code,active)
-    VALUES ($3,'DRV-971000000000',true)
-    ON CONFLICT(user_id) DO UPDATE SET active=true;
+    ON CONFLICT(user_id) DO NOTHING
   `, [ids.hr, ids.manager, ids.delivery]);
+
+  await db.query(`
+    INSERT INTO delivery_agent_profiles(user_id,agent_code,active)
+    VALUES ($1,'DRV-971000000000',true)
+    ON CONFLICT(user_id) DO UPDATE SET active=true
+  `, [ids.delivery]);
 
   return { db, role };
 }
@@ -127,9 +131,9 @@ describe("current-role invitation trigger", () => {
             id,user_id,token_hash,expires_at,email_locale,created_by,
             intended_role_id,intended_scope_type
           ) VALUES
-            ($1,$4,repeat('a',64),now()+interval '1 day','en',$7,$10,'PLATFORM'),
-            ($2,$5,repeat('b',64),now()+interval '1 day','en',$7,$11,'PLATFORM'),
-            ($3,$6,repeat('c',64),now()+interval '1 day','en',$7,$12,'DELIVERY')
+            ($1,$4,repeat('a',64),now()+interval '1 day','en',$7,$8,'PLATFORM'),
+            ($2,$5,repeat('b',64),now()+interval '1 day','en',$7,$9,'PLATFORM'),
+            ($3,$6,repeat('c',64),now()+interval '1 day','en',$7,$10,'DELIVERY')
         `, [
           ids.hrInvitation,
           ids.managerInvitation,
@@ -138,8 +142,6 @@ describe("current-role invitation trigger", () => {
           ids.manager,
           ids.delivery,
           ids.owner,
-          ids.ownerAssignment,
-          pendingPasswordHash,
           role.hr,
           role.manager,
           role.delivery,
