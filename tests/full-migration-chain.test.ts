@@ -7,11 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 094 to an empty database", async () => {
+  it("applies every numbered migration through 097 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-53)).toEqual([
+      expect(available.slice(-56)).toEqual([
         "042_role_scope_lifecycle.sql",
         "043_access_administration_snapshot.sql",
         "044_organization_resource_isolation.sql",
@@ -21,20 +21,20 @@ describe("complete forward migration chain", () => {
         "048_isolation_transaction_lock_hardening.sql",
         "049_active_request_write_boundary.sql",
         "050_request_submission_idempotency.sql",
-      "051_company_lifecycle.sql",
-      "052_company_lead_intake.sql",
-      "053_account_access_completion.sql",
-      "054_company_onboarding_completion.sql",
-      "055_organization_structure_completion.sql",
-      "056_transactional_budget_ledger.sql",
-      "057_request_approval_state_machine.sql",
-      "058_provider_neutral_transactional_email.sql",
-      "059_immutable_accountability_and_scope_closure.sql",
-      "060_supplier_quantity_and_commercial_pricing.sql",
-      "061_budget_cycles_and_actual_variance.sql",
-      "062_budget_worker_claim_disambiguation.sql",
-      "063_fulfilment_delivery_execution.sql",
-      "064_versioned_generated_documents.sql",
+        "051_company_lifecycle.sql",
+        "052_company_lead_intake.sql",
+        "053_account_access_completion.sql",
+        "054_company_onboarding_completion.sql",
+        "055_organization_structure_completion.sql",
+        "056_transactional_budget_ledger.sql",
+        "057_request_approval_state_machine.sql",
+        "058_provider_neutral_transactional_email.sql",
+        "059_immutable_accountability_and_scope_closure.sql",
+        "060_supplier_quantity_and_commercial_pricing.sql",
+        "061_budget_cycles_and_actual_variance.sql",
+        "062_budget_worker_claim_disambiguation.sql",
+        "063_fulfilment_delivery_execution.sql",
+        "064_versioned_generated_documents.sql",
         "065_permission_scoped_procurement_discovery.sql",
         "066_private_profile_image_lifecycle.sql",
         "067_reviewed_company_branding.sql",
@@ -65,6 +65,9 @@ describe("complete forward migration chain", () => {
         "092_visitor_cookie_privacy_and_rate_limits.sql",
         "093_public_visitor_counter_state_and_compatibility.sql",
         "094_restore_password_reset_rate_limit_grants.sql",
+        "095_current_user_creation_contract.sql",
+        "096_permanent_user_identity_purge.sql",
+        "097_current_invitation_scope_enforcement.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -75,6 +78,8 @@ describe("complete forward migration chain", () => {
       const state = await db.query<{
         table_count: number;
         policy_count: number;
+        deletion_forced_rls_count: number;
+        deletion_policy_count: number;
         company_nullable: string;
         customer_match_table: string | null;
         request_department_column: string | null;
@@ -89,6 +94,26 @@ describe("complete forward migration chain", () => {
             WHERE table_schema='public') AS table_count,
           (SELECT count(*)::int FROM pg_policies
             WHERE schemaname='public') AS policy_count,
+          (SELECT count(*)::int
+            FROM pg_class relation
+            JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
+            WHERE namespace.nspname='public'
+              AND relation.relname IN (
+                'user_deletion_commands',
+                'user_deletion_cleanup_tasks',
+                'user_deletion_execution_authorizations'
+              )
+              AND relation.relrowsecurity
+              AND relation.relforcerowsecurity
+          ) AS deletion_forced_rls_count,
+          (SELECT count(*)::int FROM pg_policies
+            WHERE schemaname='public'
+              AND tablename IN (
+                'user_deletion_commands',
+                'user_deletion_cleanup_tasks',
+                'user_deletion_execution_authorizations'
+              )
+          ) AS deletion_policy_count,
           (SELECT is_nullable FROM information_schema.columns
             WHERE table_schema='public'
               AND table_name='account_setup_invitations'
@@ -121,6 +146,8 @@ describe("complete forward migration chain", () => {
       expect(state.rows[0]).toMatchObject({
         table_count: expect.any(Number),
         policy_count: expect.any(Number),
+        deletion_forced_rls_count: 3,
+        deletion_policy_count: 0,
         company_nullable: "YES",
         customer_match_table: "customer_three_way_matches",
         request_department_column: "YES",
@@ -133,7 +160,7 @@ describe("complete forward migration chain", () => {
         user_creation_capability:
           "axora_lock_user_creation_scope(uuid,uuid,text,text,uuid,uuid,uuid,uuid,timestamp with time zone)",
       });
-      expect(state.rows[0].table_count).toBeGreaterThanOrEqual(65);
+      expect(state.rows[0].table_count).toBeGreaterThanOrEqual(68);
       expect(state.rows[0].policy_count).toBeGreaterThanOrEqual(35);
 
       await expect(db.query(`

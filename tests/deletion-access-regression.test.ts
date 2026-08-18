@@ -11,7 +11,14 @@ const ids = {
   targetAssignment: "82000000-0000-4000-8000-000000000004",
   invitation: "82000000-0000-4000-8000-000000000005",
   override: "82000000-0000-4000-8000-000000000006",
+  replacement: "82000000-0000-4000-8000-000000000007",
+  session: "82000000-0000-4000-8000-000000000008",
 } as const;
+
+const originalEmail = "target-082@example.test";
+const pendingPasswordHash =
+  "$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By";
+const activePasswordHash = "not-a-real-hash";
 
 describe("deletion and access regressions", () => {
   it("keeps every live database permission parseable by the application catalog", async () => {
@@ -30,7 +37,7 @@ describe("deletion and access regressions", () => {
     }
   }, 30_000);
 
-  it("permanently removes a non-owner while preserving invitation evidence", async () => {
+  it("permanently erases a non-owner identity and immediately releases its email", async () => {
     const db = new PGlite();
     try {
       await applyMigrations(db);
@@ -44,14 +51,22 @@ describe("deletion and access regressions", () => {
       await db.query(`
         INSERT INTO users(
           id,email,display_name,password_hash,role_id,is_owner,
-          account_setup_completed_at,account_kind,account_status,active,auth_version
+          account_setup_completed_at,account_kind,account_status,active,
+          auth_version,email_verified_at,last_login_at
         ) VALUES
-          ($1,'owner-082@example.test','Owner 082','not-a-real-hash',$3,true,
-           now(),'PLATFORM','ACTIVE',true,1),
-          ($2,'target-082@example.test','Target 082',
-           '$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By',
-           $4,false,NULL,'PLATFORM','INVITED',true,3)
-      `, [ids.owner, ids.target, role.ownerRole, role.operationsRole]);
+          ($1,'owner-096@example.test','Owner 096','not-a-real-hash',$3,true,
+           now(),'PLATFORM','ACTIVE',true,1,now(),now()),
+          ($2,$5,'Personal Name To Remove',
+           $6,
+           $4,false,now(),'PLATFORM','ACTIVE',true,3,now(),now())
+      `, [
+        ids.owner,
+        ids.target,
+        role.ownerRole,
+        role.operationsRole,
+        originalEmail,
+        activePasswordHash,
+      ]);
       await db.query(`
         INSERT INTO role_assignments(
           id,user_id,role_id,scope_type,active,assigned_by,assigned_at
@@ -60,12 +75,55 @@ describe("deletion and access regressions", () => {
           ($2,$4,$6,'PLATFORM',true,$3,now())
       `, [ids.ownerAssignment, ids.targetAssignment, ids.owner, ids.target,
         role.ownerRole, role.operationsRole]);
+
+      await db.query(`
+        INSERT INTO user_profiles(
+          user_id,display_name,job_title,phone,preferred_locale,
+          profile_completed_at
+        ) VALUES (
+          $1,'Personal Name To Remove','Private role',
+          '+60123456789','en',now()
+        )
+        ON CONFLICT(user_id) DO UPDATE SET
+          display_name=EXCLUDED.display_name,
+          job_title=EXCLUDED.job_title,
+          phone=EXCLUDED.phone,
+          profile_completed_at=EXCLUDED.profile_completed_at
+      `, [ids.target]);
+
+      await db.query(`
+        INSERT INTO account_credentials(
+          user_id,password_hash,password_algorithm,password_changed_at
+        ) VALUES ($1,$2,'bcrypt',now())
+        ON CONFLICT(user_id) DO UPDATE SET
+          password_hash=EXCLUDED.password_hash,
+          password_algorithm=EXCLUDED.password_algorithm
+      `, [ids.target, activePasswordHash]);
+
+      await db.query(`
+        INSERT INTO user_sessions(
+          id,user_id,token_hash,issued_at,last_seen_at,expires_at,
+          network_hash,user_agent_summary
+        ) VALUES (
+          $1,$2,repeat('b',64),now(),now(),now()+interval '1 day',
+          repeat('c',64),'Private browser description'
+        )
+      `, [ids.session, ids.target]);
+
       await db.query(`
         INSERT INTO account_setup_invitations(
           id,user_id,token_hash,expires_at,email_locale,created_by,
-          intended_role_id,intended_scope_type
-        ) VALUES ($1,$2,repeat('a',64),now()+interval '1 day','en',$3,$4,'PLATFORM')
+          intended_role_id,intended_scope_type,consumed_at,delivery_status,
+          sent_at,delivery_attempted_at,delivery_attempt_count,
+          provider_message_id,terms_policy_version,terms_accepted_at,
+          privacy_policy_version,privacy_accepted_at
+        ) VALUES (
+          $1,$2,repeat('a',64),now()+interval '1 day','en',$3,$4,'PLATFORM',
+          now(),'SENT',now(),now(),1,'provider-private-identifier',
+          'fixture-terms-v1',now(),'fixture-privacy-v1',now()
+        )
       `, [ids.invitation, ids.target, ids.owner, role.operationsRole]);
+
       const permission = await db.query<{ id: string }>(`
         SELECT id::text FROM permissions WHERE permission_code='dashboard.view'
       `);
@@ -77,7 +135,7 @@ describe("deletion and access regressions", () => {
 
       const removed = await db.query<{ snapshot: Record<string, unknown> }>(`
         SELECT axora_remove_user_account($1,$2,$3,$4,now()) AS snapshot
-      `, [ids.owner, ids.ownerAssignment, ids.target, "Owner removed obsolete account"]);
+      `, [ids.owner, ids.ownerAssignment, ids.target, "Owner permanently deleted obsolete account"]);
       expect(removed.rows[0]?.snapshot).toMatchObject({
         removed: true,
         userId: ids.target,
@@ -86,28 +144,107 @@ describe("deletion and access regressions", () => {
         revokedInvitations: 1,
         disabledOverrides: 1,
       });
+
       const state = await db.query<{
-        active: boolean; accountStatus: string; authVersion: number;
-        activeAssignments: number; activeOverrides: number;
-        invitations: number; activeInvitations: number;
+        email: string;
+        displayName: string;
+        passwordHash: string;
+        active: boolean;
+        accountStatus: string;
+        accountKind: string;
+        authVersion: number;
+        verified: boolean;
+        setupComplete: boolean;
+        hasLastLogin: boolean;
+        personalRows: number;
+        activeAssignments: number;
+        activeOverrides: number;
+        originalEmailRows: number;
       }>(`
-        SELECT account.active,account.account_status AS "accountStatus",
+        SELECT account.email,
+          account.display_name AS "displayName",
+          account.password_hash AS "passwordHash",
+          account.active,
+          account.account_status AS "accountStatus",
+          account.account_kind AS "accountKind",
           account.auth_version AS "authVersion",
-          (SELECT count(*)::int FROM role_assignments WHERE user_id=account.id AND active) AS "activeAssignments",
-          (SELECT count(*)::int FROM user_permission_overrides WHERE user_id=account.id AND active) AS "activeOverrides",
-          (SELECT count(*)::int FROM account_setup_invitations WHERE user_id=account.id) AS invitations,
-          (SELECT count(*)::int FROM account_setup_invitations WHERE user_id=account.id AND revoked_at IS NULL AND consumed_at IS NULL) AS "activeInvitations"
+          account.email_verified_at IS NOT NULL AS verified,
+          account.account_setup_completed_at IS NOT NULL AS "setupComplete",
+          account.last_login_at IS NOT NULL AS "hasLastLogin",
+          (
+            (SELECT count(*) FROM user_profiles WHERE user_id=account.id)
+            +(SELECT count(*) FROM account_credentials WHERE user_id=account.id)
+            +(SELECT count(*) FROM user_sessions WHERE user_id=account.id)
+            +(SELECT count(*) FROM account_setup_invitations WHERE user_id=account.id)
+            +(SELECT count(*) FROM password_reset_tokens WHERE user_id=account.id)
+            +(SELECT count(*) FROM email_verification_tokens WHERE user_id=account.id)
+          )::int AS "personalRows",
+          (SELECT count(*)::int FROM role_assignments
+            WHERE user_id=account.id AND active) AS "activeAssignments",
+          (SELECT count(*)::int FROM user_permission_overrides
+            WHERE user_id=account.id AND active) AS "activeOverrides",
+          (SELECT count(*)::int FROM users
+            WHERE lower(email)=lower($2)) AS "originalEmailRows"
         FROM users account WHERE account.id=$1
-      `, [ids.target]);
+      `, [ids.target, originalEmail]);
       expect(state.rows[0]).toEqual({
+        email: `deleted-${ids.target.replaceAll("-", "")}@deleted.invalid`,
+        displayName: "Deleted user",
+        passwordHash: pendingPasswordHash,
         active: false,
         accountStatus: "DEACTIVATED",
+        accountKind: "PLATFORM",
         authVersion: 4,
+        verified: false,
+        setupComplete: false,
+        hasLastLogin: false,
+        personalRows: 0,
         activeAssignments: 0,
         activeOverrides: 0,
-        invitations: 1,
-        activeInvitations: 0,
+        originalEmailRows: 0,
       });
+
+      await expect(db.query(`
+        INSERT INTO users(
+          id,email,display_name,password_hash,role_id,is_owner,
+          account_setup_completed_at,account_kind,account_status,active,auth_version
+        ) VALUES (
+          $1,$2,'Completely New Identity',$4,$3,false,
+          NULL,'PLATFORM','INVITED',true,1
+        )
+      `, [ids.replacement, originalEmail, role.operationsRole, pendingPasswordHash]))
+        .resolves.not.toThrow();
+
+      const replacement = await db.query<{
+        count: number;
+        inheritedAssignments: number;
+        inheritedInvitations: number;
+      }>(`
+        SELECT count(*)::int AS count,
+          (SELECT count(*)::int FROM role_assignments WHERE user_id=$1)
+            AS "inheritedAssignments",
+          (SELECT count(*)::int FROM account_setup_invitations WHERE user_id=$1)
+            AS "inheritedInvitations"
+        FROM users WHERE id=$1 AND lower(email)=lower($2)
+      `, [ids.replacement, originalEmail]);
+      expect(replacement.rows[0]).toEqual({
+        count: 1,
+        inheritedAssignments: 0,
+        inheritedInvitations: 0,
+      });
+
+      const integrity = await db.query<{ valid: boolean }>(`
+        SELECT COALESCE(bool_and(check_result.is_valid),true) AS valid
+        FROM (
+          SELECT DISTINCT integrity_partition AS partition
+          FROM audit_logs
+        ) partitions
+        CROSS JOIN LATERAL axora_verify_audit_integrity(
+          partitions.partition
+        ) AS check_result
+      `);
+      expect(integrity.rows[0]?.valid ?? true).toBe(true);
+
       await expect(db.query(`
         UPDATE users SET active=true,account_status='ACTIVE' WHERE id=$1
       `, [ids.target])).rejects.toThrow(/cannot be reactivated/i);
@@ -117,9 +254,9 @@ describe("deletion and access regressions", () => {
     } finally {
       await db.close();
     }
-  }, 30_000);
+  }, 45_000);
 
-  it("exposes explicit archived-company and owner-removal controls without hard deletion", async () => {
+  it("exposes explicit irreversible owner deletion controls", async () => {
     const [companies, users, lifecycle] = await Promise.all([
       readFile(new URL("../src/app/(portal)/companies/page.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/app/(portal)/users/page.tsx", import.meta.url), "utf8"),
