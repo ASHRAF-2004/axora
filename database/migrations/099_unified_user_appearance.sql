@@ -108,6 +108,7 @@ REVOKE ALL ON FUNCTION public.axora_set_user_appearance(uuid,text,timestamptz) F
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app') THEN
+    REVOKE ALL ON public.user_appearance_preferences FROM axora_app;
     GRANT EXECUTE ON FUNCTION public.axora_get_user_appearance(uuid,timestamptz) TO axora_app;
     GRANT EXECUTE ON FUNCTION public.axora_set_user_appearance(uuid,text,timestamptz) TO axora_app;
   END IF;
