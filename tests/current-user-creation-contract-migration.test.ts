@@ -10,8 +10,6 @@ const ids = {
   company: "95000000-0000-4000-8000-000000000005",
   companyAdmin: "95000000-0000-4000-8000-000000000006",
   companyAdminAssignment: "95000000-0000-4000-8000-000000000007",
-  createDenyOverride: "95000000-0000-4000-8000-000000000008",
-  inviteDenyOverride: "95000000-0000-4000-8000-000000000009",
 } as const;
 
 interface SnapshotRow {
@@ -98,6 +96,36 @@ async function companyAdminCreationSnapshot(db: PGlite) {
     ) AS snapshot
   `, [ids.companyAdmin, ids.companyAdminAssignment, ids.company]);
   return result.rows[0]?.snapshot;
+}
+
+async function setCompanyAdminDenial(db: PGlite, permission: string) {
+  await db.query(`
+    SELECT * FROM axora_set_user_permission_override(
+      $1,$2,$3,$4,$5,'DENY','COMPANY',$6,
+      NULL,NULL,NULL,now()-interval '1 minute',NULL,$7
+    )
+  `, [
+    ids.owner,
+    ids.ownerAssignment,
+    ids.companyAdmin,
+    ids.companyAdminAssignment,
+    permission,
+    ids.company,
+    `Fixture denies ${permission}`,
+  ]);
+}
+
+async function clearCompanyAdminDenial(db: PGlite, permission: string) {
+  await db.query(`
+    DELETE FROM user_permission_overrides
+    WHERE user_id=$1
+      AND permission_id=(
+        SELECT id FROM permissions WHERE permission_code=$2
+      )
+      AND effect='DENY'
+      AND scope_type='COMPANY'
+      AND company_id=$3
+  `, [ids.companyAdmin, permission, ids.company]);
 }
 
 describe("current canonical user-creation database contract", () => {
@@ -212,63 +240,16 @@ describe("current canonical user-creation database contract", () => {
 
       expect(await companyAdminCreationSnapshot(db)).not.toBeNull();
 
-      const permissions = await db.query<{
-        createId: string;
-        inviteId: string;
-      }>(`
-        SELECT
-          (SELECT id::text FROM permissions
-            WHERE permission_code='user.create') AS "createId",
-          (SELECT id::text FROM permissions
-            WHERE permission_code='user.invite') AS "inviteId"
-      `);
-      const permission = permissions.rows[0];
-      if (!permission?.createId || !permission.inviteId) {
-        throw new Error("User-creation permissions are unavailable");
-      }
-
-      await db.query(`
-        INSERT INTO user_permission_overrides(
-          id,user_id,permission_id,effect,scope_type,company_id,
-          starts_at,active,reason,changed_by
-        ) VALUES (
-          $1,$2,$3,'DENY','COMPANY',$4,
-          now()-interval '1 minute',true,'Fixture denies user creation',$5
-        )
-      `, [
-        ids.createDenyOverride,
-        ids.companyAdmin,
-        permission.createId,
-        ids.company,
-        ids.owner,
-      ]);
+      await setCompanyAdminDenial(db, "user.create");
       expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
-      await db.query(`
-        DELETE FROM user_permission_overrides WHERE id=$1
-      `, [ids.createDenyOverride]);
+      await clearCompanyAdminDenial(db, "user.create");
       expect(await companyAdminCreationSnapshot(db)).not.toBeNull();
 
-      await db.query(`
-        INSERT INTO user_permission_overrides(
-          id,user_id,permission_id,effect,scope_type,company_id,
-          starts_at,active,reason,changed_by
-        ) VALUES (
-          $1,$2,$3,'DENY','COMPANY',$4,
-          now()-interval '1 minute',true,'Fixture denies user invitation',$5
-        )
-      `, [
-        ids.inviteDenyOverride,
-        ids.companyAdmin,
-        permission.inviteId,
-        ids.company,
-        ids.owner,
-      ]);
+      await setCompanyAdminDenial(db, "user.invite");
       expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
-      await db.query(`
-        DELETE FROM user_permission_overrides WHERE id=$1
-      `, [ids.inviteDenyOverride]);
+      await clearCompanyAdminDenial(db, "user.invite");
       expect(await companyAdminCreationSnapshot(db)).not.toBeNull();
 
       await db.query(`
