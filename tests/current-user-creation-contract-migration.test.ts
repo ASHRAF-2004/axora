@@ -233,7 +233,7 @@ describe("current canonical user-creation database contract", () => {
           starts_at,active,reason,changed_by
         ) VALUES (
           $1,$2,$3,'DENY','COMPANY',$4,
-          now(),true,'Fixture denies user creation',$5
+          now()-interval '1 minute',true,'Fixture denies user creation',$5
         )
       `, [
         ids.createDenyOverride,
@@ -255,7 +255,7 @@ describe("current canonical user-creation database contract", () => {
           starts_at,active,reason,changed_by
         ) VALUES (
           $1,$2,$3,'DENY','COMPANY',$4,
-          now(),true,'Fixture denies user invitation',$5
+          now()-interval '1 minute',true,'Fixture denies user invitation',$5
         )
       `, [
         ids.inviteDenyOverride,
