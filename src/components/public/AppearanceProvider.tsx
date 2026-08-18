@@ -111,7 +111,9 @@ export function AppearanceProvider({
   useLayoutEffect(() => {
     if (document.querySelector(AUTHENTICATED_AUTHORITY_SELECTOR)) return;
     const resolved = migrateLegacyBrowserPreference(initialAppearance);
-    if (resolved !== initialAppearance) applyAppearance(resolved);
+    if (resolved === initialAppearance) return;
+    const frame = window.requestAnimationFrame(() => applyAppearance(resolved));
+    return () => window.cancelAnimationFrame(frame);
   }, [applyAppearance, initialAppearance]);
 
   useLayoutEffect(() => {
