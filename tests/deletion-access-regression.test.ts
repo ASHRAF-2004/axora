@@ -75,46 +75,53 @@ describe("deletion and access regressions", () => {
           ($2,$4,$6,'PLATFORM',true,$3,now())
       `, [ids.ownerAssignment, ids.targetAssignment, ids.owner, ids.target,
         role.ownerRole, role.operationsRole]);
+
       await db.query(`
         INSERT INTO user_profiles(
           user_id,display_name,job_title,phone,preferred_locale,
           profile_completed_at
-        ) VALUES ($1,'Personal Name To Remove','Private role','+60123456789','en',now())
+        ) VALUES (
+          $1,'Personal Name To Remove','Private role',
+          '+60123456789','en',now()
+        )
         ON CONFLICT(user_id) DO UPDATE SET
           display_name=EXCLUDED.display_name,
           job_title=EXCLUDED.job_title,
           phone=EXCLUDED.phone,
-          profile_completed_at=EXCLUDED.profile_completed_at;
+          profile_completed_at=EXCLUDED.profile_completed_at
+      `, [ids.target]);
+
+      await db.query(`
         INSERT INTO account_credentials(
           user_id,password_hash,password_algorithm,password_changed_at
-        ) VALUES (
-          $1,$3,
-          'bcrypt',now()
-        ) ON CONFLICT(user_id) DO UPDATE SET
+        ) VALUES ($1,$2,'bcrypt',now())
+        ON CONFLICT(user_id) DO UPDATE SET
           password_hash=EXCLUDED.password_hash,
-          password_algorithm=EXCLUDED.password_algorithm;
+          password_algorithm=EXCLUDED.password_algorithm
+      `, [ids.target, activePasswordHash]);
+
+      await db.query(`
         INSERT INTO user_sessions(
           id,user_id,token_hash,issued_at,last_seen_at,expires_at,
           network_hash,user_agent_summary
-        ) VALUES ($2,$1,repeat('b',64),now(),now(),now()+interval '1 day',
-          repeat('c',64),'Private browser description');
+        ) VALUES (
+          $1,$2,repeat('b',64),now(),now(),now()+interval '1 day',
+          repeat('c',64),'Private browser description'
+        )
+      `, [ids.session, ids.target]);
+
+      await db.query(`
         INSERT INTO account_setup_invitations(
           id,user_id,token_hash,expires_at,email_locale,created_by,
           intended_role_id,intended_scope_type,consumed_at,delivery_status,
           sent_at,delivery_attempted_at,delivery_attempt_count,
           provider_message_id
         ) VALUES (
-          $4,$1,repeat('a',64),now()+interval '1 day','en',$5,$6,'PLATFORM',
+          $1,$2,repeat('a',64),now()+interval '1 day','en',$3,$4,'PLATFORM',
           now(),'SENT',now(),now(),1,'provider-private-identifier'
-        );
-      `, [
-        ids.target,
-        ids.session,
-        activePasswordHash,
-        ids.invitation,
-        ids.owner,
-        role.operationsRole,
-      ]);
+        )
+      `, [ids.invitation, ids.target, ids.owner, role.operationsRole]);
+
       const permission = await db.query<{ id: string }>(`
         SELECT id::text FROM permissions WHERE permission_code='dashboard.view'
       `);
