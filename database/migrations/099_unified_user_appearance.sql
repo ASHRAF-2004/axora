@@ -51,7 +51,7 @@ BEGIN
     SELECT 1
     FROM public.users
     WHERE id=requested_user_id
-      AND status='active'
+      AND active
       AND account_status='ACTIVE'
   ) THEN
     RAISE EXCEPTION 'Appearance preference unavailable';
@@ -86,7 +86,7 @@ BEGIN
     SELECT 1
     FROM public.users
     WHERE id=requested_user_id
-      AND status='active'
+      AND active
       AND account_status='ACTIVE'
   ) THEN
     RAISE EXCEPTION 'Appearance preference unavailable';
