@@ -18,6 +18,7 @@ const ids = {
 const originalEmail = "target-082@example.test";
 const pendingPasswordHash =
   "$2b$12$WuY.R47gEaitrj7J5zwZzutoX6T8co.PmnoE28TzRlWv93Cmxd0By";
+const activePasswordHash = "not-a-real-hash";
 
 describe("deletion and access regressions", () => {
   it("keeps every live database permission parseable by the application catalog", async () => {
@@ -64,7 +65,7 @@ describe("deletion and access regressions", () => {
         role.ownerRole,
         role.operationsRole,
         originalEmail,
-        pendingPasswordHash,
+        activePasswordHash,
       ]);
       await db.query(`
         INSERT INTO role_assignments(
@@ -109,7 +110,7 @@ describe("deletion and access regressions", () => {
       `, [
         ids.target,
         ids.session,
-        pendingPasswordHash,
+        activePasswordHash,
         ids.invitation,
         ids.owner,
         role.operationsRole,
