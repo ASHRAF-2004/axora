@@ -4,8 +4,7 @@ import {
   isAppearanceMode,
   type AppearanceMode,
 } from "@/lib/appearance";
-import { isDemoMode } from "@/lib/demo";
-import { query } from "@/lib/db";
+import { isDemoMode, query } from "@/lib/db";
 
 const DEMO_APPEARANCE_KEY = Symbol.for("axora.demo.userAppearances");
 
