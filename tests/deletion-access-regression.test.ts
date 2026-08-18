@@ -234,14 +234,14 @@ describe("deletion and access regressions", () => {
       });
 
       const integrity = await db.query<{ valid: boolean }>(`
-        SELECT bool_and(valid) AS valid
+        SELECT COALESCE(bool_and(check_result.is_valid),true) AS valid
         FROM (
-          SELECT (axora_verify_audit_integrity(partition)).valid
-          FROM (
-            SELECT DISTINCT integrity_partition AS partition
-            FROM audit_logs
-          ) partitions
-        ) checks
+          SELECT DISTINCT integrity_partition AS partition
+          FROM audit_logs
+        ) partitions
+        CROSS JOIN LATERAL axora_verify_audit_integrity(
+          partitions.partition
+        ) AS check_result
       `);
       expect(integrity.rows[0]?.valid ?? true).toBe(true);
 
