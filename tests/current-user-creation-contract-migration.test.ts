@@ -10,6 +10,8 @@ const ids = {
   company: "95000000-0000-4000-8000-000000000005",
   companyAdmin: "95000000-0000-4000-8000-000000000006",
   companyAdminAssignment: "95000000-0000-4000-8000-000000000007",
+  backupCompanyAdmin: "95000000-0000-4000-8000-000000000008",
+  backupCompanyAdminAssignment: "95000000-0000-4000-8000-000000000009",
 } as const;
 
 interface SnapshotRow {
@@ -52,16 +54,19 @@ async function fixture() {
       id,email,display_name,password_hash,role_id,company_id,is_owner,
       account_setup_completed_at,account_kind,account_status,active,auth_version
     ) VALUES
-      ($1,'owner-095@example.test','Owner 095','not-a-real-hash',$4,NULL,true,
+      ($1,'owner-095@example.test','Owner 095','not-a-real-hash',$5,NULL,true,
        now(),'PLATFORM','ACTIVE',true,1),
-      ($2,'support-095@example.test','Support 095','not-a-real-hash',$5,NULL,false,
+      ($2,'support-095@example.test','Support 095','not-a-real-hash',$6,NULL,false,
        now(),'PLATFORM','ACTIVE',true,1),
       ($3,'company-admin-095@example.test','Company Admin 095','not-a-real-hash',
-       $6,$7,false,now(),'COMPANY','ACTIVE',true,1)
+       $7,$8,false,now(),'COMPANY','ACTIVE',true,1),
+      ($4,'backup-company-admin-095@example.test','Backup Company Admin 095',
+       'not-a-real-hash',$7,$8,false,now(),'COMPANY','ACTIVE',true,1)
   `, [
     ids.owner,
     ids.support,
     ids.companyAdmin,
+    ids.backupCompanyAdmin,
     role.owner,
     role.support,
     role.companyAdmin,
@@ -70,22 +75,32 @@ async function fixture() {
   await db.query(`
     INSERT INTO company_memberships(
       user_id,company_id,status,is_primary,joined_at,created_by
-    ) VALUES ($1,$2,'ACTIVE',true,now(),$3)
-  `, [ids.companyAdmin, ids.company, ids.owner]);
+    ) VALUES
+      ($1,$3,'ACTIVE',true,now(),$4),
+      ($2,$3,'ACTIVE',true,now(),$4)
+  `, [
+    ids.companyAdmin,
+    ids.backupCompanyAdmin,
+    ids.company,
+    ids.owner,
+  ]);
   await db.query(`
     INSERT INTO role_assignments(
       id,user_id,role_id,scope_type,company_id,active,assigned_by,assigned_at
     ) VALUES
-      ($1,$4,$7,'PLATFORM',NULL,true,$4,now()),
-      ($2,$5,$8,'PLATFORM',NULL,true,$4,now()),
-      ($3,$6,$9,'COMPANY',$10,true,$4,now())
+      ($1,$5,$9,'PLATFORM',NULL,true,$5,now()),
+      ($2,$6,$10,'PLATFORM',NULL,true,$5,now()),
+      ($3,$7,$11,'COMPANY',$12,true,$5,now()),
+      ($4,$8,$11,'COMPANY',$12,true,$5,now())
   `, [
     ids.ownerAssignment,
     ids.supportAssignment,
     ids.companyAdminAssignment,
+    ids.backupCompanyAdminAssignment,
     ids.owner,
     ids.support,
     ids.companyAdmin,
+    ids.backupCompanyAdmin,
     role.owner,
     role.support,
     role.companyAdmin,
