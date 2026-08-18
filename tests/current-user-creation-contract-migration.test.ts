@@ -19,7 +19,6 @@ interface SnapshotRow {
 }
 
 interface PermissionFixtureIds {
-  supportRoleId: string;
   companyAdminRoleId: string;
   createPermissionId: string;
   invitePermissionId: string;
@@ -95,21 +94,19 @@ async function fixture() {
   return db;
 }
 
-async function supportCreationSnapshot(db: PGlite) {
+async function companyAdminCreationSnapshot(db: PGlite) {
   const result = await db.query<{ snapshot: unknown }>(`
     SELECT axora_lock_user_creation_scope(
-      $1,$2,'COMPANY_ADMIN','COMPANY',
+      $1,$2,'COMPANY_APPROVER','COMPANY',
       $3,NULL,NULL,NULL,now()
     ) AS snapshot
-  `, [ids.support, ids.supportAssignment, ids.company]);
+  `, [ids.companyAdmin, ids.companyAdminAssignment, ids.company]);
   return result.rows[0]?.snapshot;
 }
 
 async function permissionFixtureIds(db: PGlite) {
   const result = await db.query<PermissionFixtureIds>(`
     SELECT
-      (SELECT id::text FROM roles
-        WHERE role_key='TECHNICAL_SUPPORT') AS "supportRoleId",
       (SELECT id::text FROM roles
         WHERE role_key='COMPANY_ADMIN') AS "companyAdminRoleId",
       (SELECT id::text FROM permissions
@@ -118,7 +115,7 @@ async function permissionFixtureIds(db: PGlite) {
         WHERE permission_code='user.invite') AS "invitePermissionId"
   `);
   const value = result.rows[0];
-  if (!value?.supportRoleId || !value.companyAdminRoleId
+  if (!value?.companyAdminRoleId
     || !value.createPermissionId || !value.invitePermissionId) {
     throw new Error("User-creation permission fixture is unavailable");
   }
@@ -237,17 +234,11 @@ describe("current canonical user-creation database contract", () => {
 
       const permission = await permissionFixtureIds(db);
       await db.query(`
-        INSERT INTO role_assignment_management_rules(
-          manager_role_id,target_role_id,scope_type
-        ) VALUES ($1,$2,'COMPANY')
-        ON CONFLICT DO NOTHING
-      `, [permission.supportRoleId, permission.companyAdminRoleId]);
-      await db.query(`
         DELETE FROM role_permissions
         WHERE role_id=$1
           AND permission_id IN ($2,$3)
       `, [
-        permission.supportRoleId,
+        permission.companyAdminRoleId,
         permission.createPermissionId,
         permission.invitePermissionId,
       ]);
@@ -256,36 +247,36 @@ describe("current canonical user-creation database contract", () => {
         INSERT INTO role_permissions(role_id,permission_id)
         VALUES ($1,$2)
         ON CONFLICT DO NOTHING
-      `, [permission.supportRoleId, permission.invitePermissionId]);
-      expect(await supportCreationSnapshot(db)).toBeNull();
+      `, [permission.companyAdminRoleId, permission.invitePermissionId]);
+      expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
       await db.query(`
         INSERT INTO role_permissions(role_id,permission_id)
         VALUES ($1,$2)
         ON CONFLICT DO NOTHING
-      `, [permission.supportRoleId, permission.createPermissionId]);
-      expect(await supportCreationSnapshot(db)).not.toBeNull();
+      `, [permission.companyAdminRoleId, permission.createPermissionId]);
+      expect(await companyAdminCreationSnapshot(db)).not.toBeNull();
 
       await db.query(`
         DELETE FROM role_permissions
         WHERE role_id=$1 AND permission_id=$2
-      `, [permission.supportRoleId, permission.invitePermissionId]);
-      expect(await supportCreationSnapshot(db)).toBeNull();
+      `, [permission.companyAdminRoleId, permission.invitePermissionId]);
+      expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
       await db.query(`
         INSERT INTO role_permissions(role_id,permission_id)
         VALUES ($1,$2)
         ON CONFLICT DO NOTHING
-      `, [permission.supportRoleId, permission.invitePermissionId]);
-      expect(await supportCreationSnapshot(db)).not.toBeNull();
+      `, [permission.companyAdminRoleId, permission.invitePermissionId]);
+      expect(await companyAdminCreationSnapshot(db)).not.toBeNull();
 
       await db.query(`
         UPDATE role_assignments
         SET active=false,revoked_at=now(),revoked_by=$2,
           revoke_reason='Revoked actor fixture'
         WHERE id=$1
-      `, [ids.supportAssignment, ids.owner]);
-      expect(await supportCreationSnapshot(db)).toBeNull();
+      `, [ids.companyAdminAssignment, ids.owner]);
+      expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
       const after = await db.query<{
         users: number;
