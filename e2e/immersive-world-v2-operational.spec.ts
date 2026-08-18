@@ -169,6 +169,14 @@ test("authenticated users select Light or Dark while company branding remains au
   await signInAsDemoOwner(page);
   await page.goto("/dashboard");
   const light = await visibleAppearanceButton(page, "Light");
+  if (await light.getAttribute("aria-pressed") !== "true") {
+    const normalized = page.waitForResponse((response) => (
+      response.url().endsWith("/api/profile/appearance")
+        && response.request().method() === "PATCH"
+    ));
+    await light.click();
+    expect((await normalized).status()).toBe(200);
+  }
   await expect(light).toHaveAttribute("aria-pressed", "true");
   const dark = await visibleAppearanceButton(page, "Dark");
   const persisted = page.waitForResponse((response) => (
