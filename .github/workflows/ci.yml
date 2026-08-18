@@ -73,8 +73,12 @@ jobs:
           npm run assets:validate
           npm run evidence:report
 
+      # The hosted Ubuntu image already provides Chromium's runtime libraries.
+      # Avoid Playwright's --with-deps path because it mutates apt state and can
+      # block indefinitely when an Ubuntu archive mirror is slow or unavailable.
       - name: Install the browser used by interaction checks
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 10
+        run: npx playwright install chromium
 
       - name: Test critical browser journeys
         run: npm run test:e2e
