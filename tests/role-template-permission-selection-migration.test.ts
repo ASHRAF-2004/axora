@@ -44,20 +44,19 @@ async function fixture() {
       account_setup_completed_at,account_kind,account_status,active,
       auth_version,email_verified_at
     ) VALUES
-      ($1,'owner-098@example.test','Owner 098','not-a-real-hash',$7,true,
+      ($1,'owner-098@example.test','Owner 098','not-a-real-hash',$4,true,
        now(),'PLATFORM','ACTIVE',true,1,now()),
-      ($2,'hr-098@example.test','HR 098',$8,$5,false,
+      ($2,'hr-098@example.test','HR 098',$7,$5,false,
        NULL,'PLATFORM','INVITED',true,1,NULL),
-      ($3,'manager-098@example.test','Manager 098',$8,$6,false,
+      ($3,'manager-098@example.test','Manager 098',$7,$6,false,
        NULL,'PLATFORM','INVITED',true,1,NULL)
   `, [
     ids.owner,
     ids.hr,
     ids.manager,
-    ids.ownerAssignment,
+    role.owner,
     role.hr,
     role.manager,
-    role.owner,
     pendingPasswordHash,
   ]);
 
