@@ -10,6 +10,8 @@ const ids = {
   company: "95000000-0000-4000-8000-000000000005",
   companyAdmin: "95000000-0000-4000-8000-000000000006",
   companyAdminAssignment: "95000000-0000-4000-8000-000000000007",
+  createDenyOverride: "95000000-0000-4000-8000-000000000008",
+  inviteDenyOverride: "95000000-0000-4000-8000-000000000009",
 } as const;
 
 interface SnapshotRow {
@@ -226,29 +228,49 @@ describe("current canonical user-creation database contract", () => {
       }
 
       await db.query(`
-        DELETE FROM role_permissions
-        WHERE role_id=(SELECT role_id FROM role_assignments WHERE id=$1)
-          AND permission_id=$2
-      `, [ids.companyAdminAssignment, permission.createId]);
+        INSERT INTO user_permission_overrides(
+          id,user_id,permission_id,effect,scope_type,company_id,
+          starts_at,active,reason,changed_by
+        ) VALUES (
+          $1,$2,$3,'DENY','COMPANY',$4,
+          now(),true,'Fixture denies user creation',$5
+        )
+      `, [
+        ids.createDenyOverride,
+        ids.companyAdmin,
+        permission.createId,
+        ids.company,
+        ids.owner,
+      ]);
       expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
       await db.query(`
-        INSERT INTO role_permissions(role_id,permission_id)
-        SELECT role_id,$2 FROM role_assignments WHERE id=$1
-        ON CONFLICT DO NOTHING
-      `, [ids.companyAdminAssignment, permission.createId]);
+        DELETE FROM user_permission_overrides WHERE id=$1
+      `, [ids.createDenyOverride]);
+      expect(await companyAdminCreationSnapshot(db)).not.toBeNull();
+
       await db.query(`
-        DELETE FROM role_permissions
-        WHERE role_id=(SELECT role_id FROM role_assignments WHERE id=$1)
-          AND permission_id=$2
-      `, [ids.companyAdminAssignment, permission.inviteId]);
+        INSERT INTO user_permission_overrides(
+          id,user_id,permission_id,effect,scope_type,company_id,
+          starts_at,active,reason,changed_by
+        ) VALUES (
+          $1,$2,$3,'DENY','COMPANY',$4,
+          now(),true,'Fixture denies user invitation',$5
+        )
+      `, [
+        ids.inviteDenyOverride,
+        ids.companyAdmin,
+        permission.inviteId,
+        ids.company,
+        ids.owner,
+      ]);
       expect(await companyAdminCreationSnapshot(db)).toBeNull();
 
       await db.query(`
-        INSERT INTO role_permissions(role_id,permission_id)
-        SELECT role_id,$2 FROM role_assignments WHERE id=$1
-        ON CONFLICT DO NOTHING
-      `, [ids.companyAdminAssignment, permission.inviteId]);
+        DELETE FROM user_permission_overrides WHERE id=$1
+      `, [ids.inviteDenyOverride]);
+      expect(await companyAdminCreationSnapshot(db)).not.toBeNull();
+
       await db.query(`
         UPDATE role_assignments
         SET active=false,revoked_at=now(),revoked_by=$2,
