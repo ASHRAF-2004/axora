@@ -1,27 +1,34 @@
 "use client";
 
-import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, House, RefreshCw, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSyncExternalStore } from "react";
+import { safeErrorReference } from "@/lib/error-reference";
 
 const copy = {
   en: {
-    title: "This page could not be restored",
-    body: "Your secure session and current route were not discarded. Check the connection, then retry this page.",
-    offline: "You are offline. Reconnect before retrying.",
-    retry: "Retry this page",
+    title: "Something went wrong",
+    body: "We couldn't complete this page request. Try again, or return to the dashboard.",
+    offline: "You're offline. Reconnect, then try again.",
+    reference: "Reference",
+    retry: "Try again",
+    dashboard: "Return to dashboard",
   },
   ar: {
-    title: "تعذر استعادة هذه الصفحة",
-    body: "لم يتم حذف جلستك الآمنة أو مسارك الحالي. تحقق من الاتصال ثم أعد محاولة الصفحة.",
-    offline: "أنت غير متصل بالإنترنت. أعد الاتصال قبل المحاولة.",
-    retry: "إعادة محاولة الصفحة",
+    title: "حدث خطأ ما",
+    body: "تعذر إكمال طلب هذه الصفحة. أعد المحاولة أو ارجع إلى لوحة التحكم.",
+    offline: "أنت غير متصل بالإنترنت. أعد الاتصال ثم حاول مرة أخرى.",
+    reference: "المرجع",
+    retry: "إعادة المحاولة",
+    dashboard: "العودة إلى لوحة التحكم",
   },
   ms: {
-    title: "Halaman ini tidak dapat dipulihkan",
-    body: "Sesi selamat dan laluan semasa anda tidak dibuang. Semak sambungan, kemudian cuba semula halaman ini.",
-    offline: "Anda di luar talian. Sambung semula sebelum mencuba.",
-    retry: "Cuba semula halaman",
+    title: "Sesuatu tidak kena",
+    body: "Permintaan halaman ini tidak dapat diselesaikan. Cuba lagi atau kembali ke papan pemuka.",
+    offline: "Anda di luar talian. Sambung semula, kemudian cuba lagi.",
+    reference: "Rujukan",
+    retry: "Cuba lagi",
+    dashboard: "Kembali ke papan pemuka",
   },
 } as const;
 
@@ -55,6 +62,7 @@ function subscribeLocale(callback: () => void) {
 }
 
 export default function PortalError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -72,18 +80,25 @@ export default function PortalError({
     () => "en" as const,
   );
   const messages = copy[locale];
-  const retryPage = () => {
-    reset();
-    router.refresh();
-  };
+  const reference = safeErrorReference(error.digest);
 
   return (
-    <main className="content-shell" role="alert" aria-live="assertive">
+    <main
+      className="content-shell"
+      role="alert"
+      aria-live="assertive"
+      data-testid="portal-error-boundary"
+    >
       <section className="panel form-panel" style={{ maxWidth: 720, margin: "48px auto" }}>
         <div className="panel-header">
           <div>
-            <h1>{messages.title}</h1>
-            <p>{online ? messages.body : messages.offline}</p>
+            <h1>{online ? messages.title : messages.offline}</h1>
+            {online ? <p>{messages.body}</p> : null}
+            {reference ? (
+              <p>
+                <strong>{messages.reference}:</strong> <code>{reference}</code>
+              </p>
+            ) : null}
           </div>
           {online
             ? <AlertTriangle size={30} aria-hidden="true" />
@@ -94,10 +109,18 @@ export default function PortalError({
             className="button button-primary"
             type="button"
             disabled={!online}
-            onClick={retryPage}
+            onClick={reset}
           >
             <RefreshCw size={17} aria-hidden="true" />
             {messages.retry}
+          </button>
+          <button
+            className="button button-secondary"
+            type="button"
+            onClick={() => router.push("/dashboard")}
+          >
+            <House size={17} aria-hidden="true" />
+            {messages.dashboard}
           </button>
         </div>
       </section>
