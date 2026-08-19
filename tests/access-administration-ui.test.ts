@@ -59,7 +59,21 @@ describe("access administration UI contract", () => {
     expect(actions).toContain("targetRoleAssignmentId: string");
     expect(actions).not.toContain("user_permission_overrides");
     expect(actions).not.toMatch(/^export\s+(const|let|var|class)\s/m);
-    expect(actions.match(/^export\s+async\s+function\s/gm)).toHaveLength(3);
+
+    const exportedActions = Array.from(
+      actions.matchAll(/^export\s+async\s+function\s+(\w+)/gm),
+      (match) => match[1],
+    );
+    expect(exportedActions).toEqual([
+      "updateManagedUserProfileAction",
+      "replaceRoleScopeAction",
+      "setManagedApprovalLimitAction",
+      "removeManagedApprovalLimitAction",
+      "setManagedUserActiveAction",
+      "setPermissionOverrideAction",
+      "removePermissionOverrideAction",
+      "replacePermissionSetAction",
+    ]);
   });
 
   it("links established user rows to access administration without replacing protected-account controls", async () => {
