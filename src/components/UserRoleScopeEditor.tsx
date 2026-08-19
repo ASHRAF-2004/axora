@@ -82,7 +82,7 @@ export function UserRoleScopeEditor({
     departmentId?: string;
   };
   companies: Company[];
-  branches: Branch[];
+  branches: Array<Pick<Branch, "id" | "companyId" | "name" | "status">>;
   departments: OrganizationDepartment[];
   roleOptions: ManagedRoleOption[];
   locale: SupportedLocale;

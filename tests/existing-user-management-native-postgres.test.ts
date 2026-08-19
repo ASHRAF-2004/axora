@@ -17,7 +17,7 @@ import { removeApprovalLimit, setApprovalLimit } from "@/lib/approval-limit-mana
 import type { AuthenticatedSessionUser } from "@/lib/auth";
 import { updateManagedUserProfile } from "@/lib/existing-user-management";
 import { replaceUserRoleScope } from "@/lib/role-scope-management";
-import type { AccountKind, RoleScopeType, UserRole } from "@/lib/types";
+import type { AccountKind, KnownUserRole, RoleScopeType } from "@/lib/types";
 import { listAuthorizedUsers, setAuthorizedUserActive } from "@/lib/user-isolation";
 
 const nativeDescribe = process.env.AXORA_NATIVE_POSTGRES_INTEGRATION === "true"
@@ -100,7 +100,7 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
 
   async function createActiveUser(input: {
     name: string;
-    role: UserRole;
+    role: KnownUserRole;
     accountKind: AccountKind;
     scopeType: RoleScopeType;
     companyId?: string;
