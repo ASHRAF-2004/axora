@@ -30,10 +30,9 @@ The active outbound provider-event route is:
 /api/email/provider-events/resend
 ```
 
-The retired outbound Cloudflare Email Sending lifecycle route and the retired
-ZeptoMail route are not current endpoints. Cloudflare remains in Axora for
-**inbound** email routing/receiving and for Tunnel, DNS, networking and security
-infrastructure.
+Retired outbound-provider lifecycle routes are not current endpoints. Cloudflare
+remains in Axora for **inbound** email routing/receiving and for Tunnel, DNS,
+networking and security infrastructure.
 
 ## Authentication and request handling
 
