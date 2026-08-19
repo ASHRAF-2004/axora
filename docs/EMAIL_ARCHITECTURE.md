@@ -53,13 +53,13 @@ business action
   -> Resend API
 ```
 
-### Retired: ZeptoMail
+### Retired outbound providers
 
-ZeptoMail is not an active sender, webhook target, runtime option, readiness
-state, operations option, or production configuration requirement. Historical
-migrations and immutable historical delivery evidence may still contain the
-provider name because those records describe what existed at that point in
-Axora history.
+Earlier outbound providers are not active senders, webhook targets, runtime
+options, readiness states, operations options, or production configuration
+requirements. Historical migrations and immutable historical delivery evidence
+may still contain their provider names because those records describe what
+existed at that point in Axora history.
 
 ## Cloudflare classification rule
 
