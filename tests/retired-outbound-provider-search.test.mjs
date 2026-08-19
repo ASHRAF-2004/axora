@@ -6,8 +6,6 @@ const retiredProvider = ["zepto", "mail"].join("");
 const allowed = [
   /^database\/migrations\//,
   /^database\/admin\/apply-app-grants\.sql$/,
-  /^tests\/provider-neutral-email-migration\.test\.ts$/,
-  /^tests\/email-operations-migration\.test\.ts$/,
 ];
 
 function trackedFiles() {
@@ -22,7 +20,7 @@ function isText(bytes) {
 }
 
 describe("retired outbound provider repository gate", () => {
-  it("allows the retired provider name only in immutable migration/compatibility evidence", () => {
+  it("allows the retired provider name only in immutable migration/forward-compatibility evidence", () => {
     const matches = [];
     for (const path of trackedFiles()) {
       const bytes = readFileSync(path);
