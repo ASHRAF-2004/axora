@@ -37,8 +37,8 @@ async function fixture() {
       id,user_id,role_id,scope_type,company_id,active,assigned_by
     ) VALUES
       ($1,$2,(SELECT id FROM roles WHERE role_key='PLATFORM_OWNER'),'PLATFORM',NULL,true,$2),
-      ($3,$4,(SELECT id FROM roles WHERE role_key='CLIENT_ACCOUNT_MANAGER'),'COMPANY',$5,true,$2)
-  `, [ids.ownerAssignment, ids.owner, ids.managerAssignment, ids.manager, companyId]);
+      ($3,$4,(SELECT id FROM roles WHERE role_key='CLIENT_ACCOUNT_MANAGER'),'PLATFORM',NULL,true,$2)
+  `, [ids.ownerAssignment, ids.owner, ids.managerAssignment, ids.manager]);
   await db.query(`
     UPDATE companies SET active=false,portal_access_enabled=false,
       lifecycle_status='COMPANY_REVIEW',verification_status='DRAFT',

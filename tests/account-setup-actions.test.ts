@@ -82,7 +82,7 @@ const invitation = {
   recipientName: "New User",
   recipientEmail: "new@example.test",
   companyName: "Example Company",
-  role: "VIEWER",
+  role: "COMPANY_ADMIN",
   expiresAt: "2026-08-03T00:00:00.000Z",
   rawToken: "A".repeat(43),
 };
@@ -91,7 +91,8 @@ function userForm() {
   const form = new FormData();
   form.set("email", "new@example.test");
   form.set("displayName", "New User");
-  form.set("role", "VIEWER");
+  form.set("role", "COMPANY_ADMIN");
+  form.set("companyId", actor.companyId);
   form.set("preferredLocale", "ar");
   return form;
 }
@@ -123,7 +124,8 @@ describe("account invitation actions", () => {
     expect(mocks.createInvitedUser).toHaveBeenCalledWith(expect.objectContaining({
       email: "new@example.test",
       displayName: "New User",
-      role: "VIEWER",
+      role: "COMPANY_ADMIN",
+      companyId: actor.companyId,
       preferredLocale: "ar",
       permissions: undefined,
     }), actor);

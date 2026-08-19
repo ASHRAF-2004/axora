@@ -10,6 +10,7 @@ import {
 import type { AuthenticatedSessionUser } from "@/lib/auth";
 import { canAccess } from "@/lib/permissions";
 import { creatableAccountRoles } from "@/lib/role-catalog";
+import { accessGroupsForPermissions } from "@/lib/user-provisioning";
 
 function platformActor(
   effectivePermissions: AuthenticatedSessionUser["effectivePermissions"],
@@ -62,7 +63,7 @@ describe("granular role templates and effective access", () => {
     expect(canAccess(actor, "create_platform_users")).toBe(false);
   });
 
-  it("renders role-derived access summary without a create-time permission matrix", () => {
+  it("keeps initial Create User progressive and derives access without a permission matrix", () => {
     const code: PermissionCode = "company_user.create";
     const markup = renderToStaticMarkup(createElement(UserCreateForm, {
       actorIsOwner: false,
@@ -79,10 +80,10 @@ describe("granular role templates and effective access", () => {
         defaultPermissions: [code],
       }],
     }));
-    expect(markup).toContain("Access included");
-    expect(markup).toContain("User Management");
+    expect(markup).not.toContain("Access included");
     expect(markup).not.toContain("Reset to role defaults");
     expect(markup).not.toContain('name="permissions"');
+    expect(accessGroupsForPermissions([code])).toEqual(["User Management"]);
   });
 });
 
