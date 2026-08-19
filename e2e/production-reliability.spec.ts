@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { signInAsDemoOwner } from "./helpers/auth";
 import { installReliabilityGuard } from "./helpers/reliability";
 
-function countServerActionPosts(page: Parameters<typeof installReliabilityGuard>[0]) {
+function countServerActionPosts(page: Page) {
   let count = 0;
   page.on("request", (request) => {
     if (request.method() === "POST" && request.headers()["next-action"]) count += 1;
