@@ -33,7 +33,7 @@ node "$REPOSITORY_DIR/scripts/validate-third-party-assets.mjs"
 
 checker_install_mentions="$(grep -cF 'check-email-service.mjs' "$SCRIPT_DIR/install.sh")"
 (( checker_install_mentions >= 2 )) \
-  || die "Installer must validate and install the Cloudflare email checker."
+  || die "Installer must validate and install the Resend email checker."
 map_checker_install_mentions="$(grep -cF 'check-driver-map-config.mjs' "$SCRIPT_DIR/install.sh")"
 (( map_checker_install_mentions >= 2 )) \
   || die "Installer must validate and install the driver-map readiness checker."
@@ -52,8 +52,9 @@ for required_asset in \
 done
 for runtime_key in \
   AXORA_EMAIL_DELIVERY_ENABLED \
-  CLOUDFLARE_ACCOUNT_ID \
-  CLOUDFLARE_ZONE_ID \
+  AXORA_EMAIL_EVENTS_ENABLED \
+  RESEND_DOMAIN_VERIFIED \
+  RESEND_WEBHOOK_VERIFIED \
   AXORA_EMAIL_FROM_ADDRESS \
   AXORA_EMAIL_FROM_NAME \
   AXORA_EMAIL_REPLY_TO \
@@ -198,14 +199,12 @@ for secret in \
   session_secret \
   tailscale_db_auth_key \
   cloudflare_tunnel_token \
-  cloudflare_email_api_token \
   resend_api_key \
   resend_webhook_secret \
   axora_email_service_auth_key \
   turnstile_secret; do
   touch "$secrets_dir/$secret"
 done
-touch "$secrets_dir/zeptomail_send_token" "$secrets_dir/zeptomail_send_token_next"
 
 export AXORA_HOST=axora.management
 export LAN_IP=127.0.0.1
@@ -216,12 +215,13 @@ export AXORA_SECRETS_DIR="$secrets_dir"
 export AXORA_UPLOADS_DIR="$uploads_dir"
 export AXORA_IMAGE=axora-app:0123456789012345678901234567890123456789
 export AXORA_EMAIL_DELIVERY_ENABLED=false
-export CLOUDFLARE_ACCOUNT_ID=00000000000000000000000000000000
-export CLOUDFLARE_ZONE_ID=00000000000000000000000000000000
+export AXORA_EMAIL_EVENTS_ENABLED=false
+export RESEND_DOMAIN_VERIFIED=false
+export RESEND_WEBHOOK_VERIFIED=false
 export AXORA_EMAIL_FROM_ADDRESS=noreply@axora.management
 export AXORA_EMAIL_FROM_NAME=Axora
 export AXORA_EMAIL_REPLY_TO=support@axora.management
-export AXORA_EMAIL_PROVIDER=cloudflare-email-service
+export AXORA_EMAIL_PROVIDER=resend
 export TURNSTILE_SITE_KEY=
 export TURNSTILE_HOSTNAMES=axora.management
 export AXORA_TURNSTILE_EXPECTED_HOSTNAME=axora.management
@@ -249,19 +249,21 @@ jq --exit-status \
     and .services.app.environment.DB_NAME == "axora_hybrid"
     and .services.app.environment.APP_BASE_URL == "https://axora.management"
     and .services.app.environment.AXORA_EMAIL_DELIVERY_ENABLED == "false"
+    and .services.app.environment.AXORA_EMAIL_EVENTS_ENABLED == "false"
+    and .services.app.environment.AXORA_EMAIL_PROVIDER == "resend"
     and .services.app.environment.AXORA_EMAIL_SENDER_URL == "http://email-sender:3100"
     and .services.app.environment.AXORA_EMAIL_SERVICE_AUTH_KEY_FILE == "/run/secrets/axora_email_service_auth_key"
+    and .services.app.environment.RESEND_DOMAIN_VERIFIED == "false"
+    and .services.app.environment.RESEND_WEBHOOK_VERIFIED == "false"
+    and .services.app.environment.RESEND_WEBHOOK_SECRET_FILE == "/run/secrets/resend_webhook_secret"
     and .services.app.environment.ACCOUNT_SETUP_TTL_HOURS == "24"
     and .services.app.environment.AXORA_EMAIL_REPLY_TO == "support@axora.management"
     and .services.app.environment.AXORA_UPLOADS_CONTAINER_DIR == "/app/data/uploads"
     and .services.app.environment.TURNSTILE_SECRET_FILE == "/run/secrets/turnstile_secret"
     and .services.app.environment.TURNSTILE_HOSTNAMES == "axora.management"
     and .services.app.environment.AXORA_TURNSTILE_EXPECTED_HOSTNAME == "axora.management"
-    and .services["email-sender"].environment.AXORA_EMAIL_PROVIDER == "cloudflare-email-service"
-    and .services["email-sender"].environment.ZEPTOMAIL_SEND_TOKEN_FILE == "/run/secrets/zeptomail_send_token"
-    and .services["email-sender"].environment.ZEPTOMAIL_SEND_TOKEN_NEXT_FILE == "/run/secrets/zeptomail_send_token_next"
+    and .services["email-sender"].environment.AXORA_EMAIL_PROVIDER == "resend"
     and .services["email-sender"].environment.RESEND_API_KEY_FILE == "/run/secrets/resend_api_key"
-    and .services.app.environment.RESEND_WEBHOOK_SECRET_FILE == "/run/secrets/resend_webhook_secret"
     and .services["email-sender"].environment.AXORA_EMAIL_OUTBOX_URL == "http://app:3000/account/email-outbox"
     and .services["email-sender"].environment.AXORA_EMAIL_SERVICE_AUTH_KEY_FILE == "/run/secrets/axora_email_service_auth_key"
     and .services["budget-worker"].environment.DB_NAME == "axora_hybrid"
@@ -289,7 +291,7 @@ jq --exit-status \
     and ([.services.app.secrets[].source] | index("resend_webhook_secret")) != null
     and ([.services.app.secrets[].source] | index("turnstile_secret")) != null
     and ([.services["email-sender"].secrets[].source] | sort) ==
-      ["axora_email_service_auth_key","cloudflare_email_api_token","resend_api_key","zeptomail_send_token","zeptomail_send_token_next"]
+      ["axora_email_service_auth_key","resend_api_key"]
     and ([.services["budget-worker"].secrets[].source] | sort) ==
       ["axora_app_password"]
     and ([.services["document-worker"].secrets[].source] | sort) ==
@@ -349,11 +351,8 @@ jq --exit-status \
     and (.secrets.session_secret.file == ($secrets + "/session_secret"))
     and (.secrets.tailscale_db_auth_key.file == ($secrets + "/tailscale_db_auth_key"))
     and (.secrets.cloudflare_tunnel_token.file == ($secrets + "/cloudflare_tunnel_token"))
-    and (.secrets.cloudflare_email_api_token.file == ($secrets + "/cloudflare_email_api_token"))
     and (.secrets.resend_api_key.file == ($secrets + "/resend_api_key"))
     and (.secrets.resend_webhook_secret.file == ($secrets + "/resend_webhook_secret"))
-    and (.secrets.zeptomail_send_token.file == ($secrets + "/zeptomail_send_token"))
-    and (.secrets.zeptomail_send_token_next.file == ($secrets + "/zeptomail_send_token_next"))
     and (.secrets.axora_email_service_auth_key.file == ($secrets + "/axora_email_service_auth_key"))
     and (.secrets.turnstile_secret.file == ($secrets + "/turnstile_secret"))
     and (
