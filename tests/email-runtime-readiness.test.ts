@@ -22,6 +22,7 @@ describe("email operations runtime readiness", () => {
 
   it("fails closed for a retired provider selection", () => {
     expect(emailProviderRuntimeReadiness({
+      NODE_ENV: "test",
       AXORA_EMAIL_PROVIDER: "legacy-provider",
       AXORA_EMAIL_DELIVERY_ENABLED: "false",
       AXORA_EMAIL_EVENTS_ENABLED: "false",
