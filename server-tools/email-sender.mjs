@@ -13,16 +13,12 @@ import { renderAccountSetupEmail } from "./account-setup-email.mjs";
 import { renderTransactionalEmail } from "./transactional-email.mjs";
 
 const MAX_BODY_BYTES = 32 * 1024;
-const CLOUDFLARE_ENDPOINT = "https://api.cloudflare.com/client/v4";
-const ZEPTOMAIL_ENDPOINT = "https://api.zeptomail.com/v1.1/email";
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
-const ZEPTOMAIL_MAX_MESSAGE_BYTES = 12 * 1024 * 1024;
 const RESEND_MAX_MESSAGE_BYTES = 40 * 1024 * 1024;
-const ACCOUNT_ID_PATTERN = /^[a-f0-9]{32}$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SIGNATURE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
-const MIN_API_TOKEN_LENGTH = 20;
+const MIN_API_TOKEN_LENGTH = 23;
 const MAX_API_TOKEN_LENGTH = 4_096;
 const MIN_SERVICE_SECRET_LENGTH = 32;
 const SERVICE_CLOCK_SKEW_SECONDS = 90;
@@ -34,23 +30,13 @@ const PROVIDER_AGENTS = [
   "axora-auth", "axora-procurement", "axora-budget", "axora-delivery",
   "axora-documents", "axora-platform",
 ];
-const ZEPTOMAIL_AGENT_TOKEN_ENV = {
-  "axora-auth": "ZEPTOMAIL_AUTH_SEND_TOKEN_FILE",
-  "axora-procurement": "ZEPTOMAIL_PROCUREMENT_SEND_TOKEN_FILE",
-  "axora-budget": "ZEPTOMAIL_BUDGET_SEND_TOKEN_FILE",
-  "axora-delivery": "ZEPTOMAIL_DELIVERY_SEND_TOKEN_FILE",
-  "axora-documents": "ZEPTOMAIL_DOCUMENTS_SEND_TOKEN_FILE",
-  "axora-platform": "ZEPTOMAIL_PLATFORM_SEND_TOKEN_FILE",
-};
 const INLINE_ASSETS = [
   ["axora-logo", "axora-email.png", new URL("../public/brand/axora-email.png", import.meta.url)],
   ["account-envelope", "account-envelope.png", new URL("../public/email/account-setup/account-envelope.png", import.meta.url)],
 ];
 
-// Provider requests are intentionally single-attempt. A connection failure or
-// 5xx can occur after acceptance, so replaying it could duplicate an email.
-// Account setup is one-shot and a retry always issues a fresh invitation;
-// password-reset, verification, and workflow messages use durable queues.
+// Provider requests are intentionally single-attempt. Resend receives a stable
+// idempotency key per Axora delivery, while durable queues own retry scheduling.
 export const MAX_PROVIDER_ATTEMPTS = 1;
 export const PROVIDER_ATTEMPT_TIMEOUT_MS = 7_000;
 export const PROVIDER_RETRY_DELAY_MS = 60_000;
@@ -115,26 +101,10 @@ async function readBoundedSecret(filename, {
 export function apiToken({
   env = process.env,
   readFileImpl = readFile,
-  provider = String(env.AXORA_EMAIL_PROVIDER ?? "cloudflare-email-service").trim(),
-  providerAgent = "axora-auth",
+  provider = String(env.AXORA_EMAIL_PROVIDER ?? "resend").trim(),
 } = {}) {
-  let filename;
-  if (provider === "zeptomail") {
-    if (!PROVIDER_AGENTS.includes(providerAgent)) throw new Error("email_not_configured");
-    const activeSlot = String(env.AXORA_ZEPTOMAIL_TOKEN_SLOT ?? "primary").trim();
-    if (!["primary", "next"].includes(activeSlot)) throw new Error("email_not_configured");
-    const agentKey = ZEPTOMAIL_AGENT_TOKEN_ENV[providerAgent];
-    filename = activeSlot === "next"
-      ? String(env[`${agentKey}_NEXT`] ?? env.ZEPTOMAIL_SEND_TOKEN_NEXT_FILE ?? "").trim()
-      : String(env[agentKey] ?? env.ZEPTOMAIL_SEND_TOKEN_FILE ?? "").trim();
-  } else if (provider === "cloudflare-email-service") {
-    filename = String(env.CLOUDFLARE_EMAIL_API_TOKEN_FILE ?? "").trim();
-  } else if (provider === "resend") {
-    filename = String(env.RESEND_API_KEY_FILE ?? "").trim();
-  } else {
-    throw new Error("email_not_configured");
-  }
-  return readBoundedSecret(filename, {
+  if (provider !== "resend") throw new Error("email_not_configured");
+  return readBoundedSecret(String(env.RESEND_API_KEY_FILE ?? "").trim(), {
     readFileImpl,
     minimumLength: MIN_API_TOKEN_LENGTH,
   });
@@ -219,14 +189,12 @@ async function inlineAttachments() {
 }
 
 export function senderConfiguration(env = process.env) {
-  const accountId = String(env.CLOUDFLARE_ACCOUNT_ID ?? "").trim();
   const fromAddress = String(env.AXORA_EMAIL_FROM_ADDRESS ?? "").trim().toLowerCase();
   const fromName = String(env.AXORA_EMAIL_FROM_NAME ?? "Axora").trim();
   const supportEmail = String(env.AXORA_EMAIL_REPLY_TO ?? "").trim().toLowerCase();
   const appBaseUrl = String(env.APP_BASE_URL ?? "https://axora.management").trim();
-  const provider = String(env.AXORA_EMAIL_PROVIDER ?? "cloudflare-email-service").trim();
-  if ((provider === "cloudflare-email-service" && !ACCOUNT_ID_PATTERN.test(accountId))
-    || !["cloudflare-email-service", "zeptomail", "resend"].includes(provider)
+  const provider = String(env.AXORA_EMAIL_PROVIDER ?? "resend").trim();
+  if (provider !== "resend"
     || !EMAIL_PATTERN.test(fromAddress)
     || !EMAIL_PATTERN.test(supportEmail) || !fromName || fromName.length > 100
     || /[\r\n]/.test(fromName)) {
@@ -250,7 +218,6 @@ export function senderConfiguration(env = process.env) {
     throw new Error("email_not_configured");
   }
   return {
-    accountId,
     fromAddress,
     fromName,
     supportEmail,
@@ -289,216 +256,13 @@ export async function fetchWithRetry(url, options, {
   }
 }
 
-export function parseProviderMessageId(provider) {
-  const messageId = provider?.result?.message_id;
-  if (messageId === undefined) return undefined;
-  if (typeof messageId !== "string" || messageId.length === 0
-    || messageId.length > 255 || /[\r\n]/.test(messageId)) {
-    throw emailError("provider_rejected", undefined, "uncertain");
-  }
-  return messageId;
-}
-
-function normalizedProviderRecipient(value) {
-  if (typeof value !== "string") return undefined;
-  const normalized = value.trim().toLowerCase();
-  if (!normalized || normalized.length > 254 || !EMAIL_PATTERN.test(normalized)
-    || /[\r\n]/.test(normalized)) {
-    return undefined;
-  }
-  return normalized;
-}
-
-/**
- * Cloudflare's REST response is recipient-grouped. Axora sends exactly one
- * recipient per request, so accepting an unrelated, missing, or contradictory
- * result would corrupt delivery state. A malformed HTTP 2xx result is
- * deliberately uncertain: the provider may already have accepted the message.
- */
-export function parseProviderDeliveryResult(provider, recipient, statusCode = 200) {
-  const expectedRecipient = normalizedProviderRecipient(recipient);
-  const result = provider?.result;
-  if (!expectedRecipient || !result || typeof result !== "object"
-    || !Array.isArray(result.delivered)
-    || !Array.isArray(result.queued)
-    || !Array.isArray(result.permanent_bounces)) {
-    throw emailError("provider_rejected", statusCode, "uncertain");
-  }
-
-  const recipientGroups = {
-    delivered: result.delivered.map(normalizedProviderRecipient),
-    queued: result.queued.map(normalizedProviderRecipient),
-    permanent_bounces: result.permanent_bounces.map(normalizedProviderRecipient),
-  };
-  const allRecipients = Object.values(recipientGroups).flat();
-  if (allRecipients.some((value) => value === undefined)
-    || allRecipients.length !== 1
-    || allRecipients[0] !== expectedRecipient) {
-    throw emailError("provider_rejected", statusCode, "uncertain");
-  }
-  if (recipientGroups.permanent_bounces.length === 1) {
-    throw emailError("provider_rejected", statusCode, "failed");
-  }
-  return recipientGroups.delivered.length === 1 ? "delivered" : "queued";
-}
-
-export function createCloudflareEmailProvider({
-  configuration,
-  token,
-  fetchImpl = globalThis.fetch,
-} = {}) {
-  if (!configuration || !token) throw new Error("email_not_configured");
-  return {
-    name: "cloudflare-email-service",
-    async send(message) {
-      const response = await fetchWithRetry(
-        `${CLOUDFLARE_ENDPOINT}/accounts/${configuration.accountId}/email/sending/send`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(message),
-        },
-        { fetchImpl },
-      );
-      let providerResponse;
-      try {
-        providerResponse = await response.json();
-      } catch {
-        providerResponse = undefined;
-      }
-      if (!response.ok) {
-        if (response.status === 429) {
-          throw emailError("provider_rate_limited", response.status, "retry");
-        }
-        if (response.status >= 500) {
-          throw emailError("provider_unavailable", response.status, "uncertain");
-        }
-        throw emailError("provider_rejected", response.status, "failed");
-      }
-      if (!providerResponse || typeof providerResponse !== "object"
-        || !("success" in providerResponse)) {
-        throw emailError("provider_rejected", response.status, "uncertain");
-      }
-      if (providerResponse.success !== true) {
-        throw emailError("provider_rejected", response.status, "failed");
-      }
-      const status = parseProviderDeliveryResult(
-        providerResponse,
-        message.to,
-        response.status,
-      );
-      return {
-        status,
-        messageId: parseProviderMessageId(providerResponse),
-      };
-    },
-  };
-}
-
-function zeptoMailAddress(address, name) {
+function resendAddress(address, name) {
   if (typeof address !== "string" || address.length > 254 || !EMAIL_PATTERN.test(address)
     || /[\r\n]/.test(address) || typeof name !== "string" || !name.trim()
     || name.length > 200 || /[\r\n]/.test(name)) {
     throw emailError("provider_rejected", undefined, "failed");
   }
   return { address: address.toLowerCase(), name: name.trim() };
-}
-
-function zeptoMailBody(message) {
-  if (!UUID_PATTERN.test(String(message.deliveryId ?? ""))
-    || !PROVIDER_AGENTS.includes(message.providerAgent)
-    || typeof message.subject !== "string" || !message.subject.trim()
-    || message.subject.length > 500 || /[\r\n]/.test(message.subject)
-    || typeof message.html !== "string" || !message.html
-    || typeof message.text !== "string" || !message.text) {
-    throw emailError("provider_rejected", undefined, "failed");
-  }
-  const body = {
-    from: zeptoMailAddress(message.from?.address, message.from?.name),
-    to: [{ email_address: zeptoMailAddress(message.to, message.recipientName) }],
-    reply_to: [zeptoMailAddress(message.reply_to?.address, message.reply_to?.name)],
-    subject: message.subject,
-    htmlbody: message.html,
-    textbody: message.text,
-    client_reference: message.deliveryId,
-    mime_headers: message.headers ?? {},
-    track_clicks: false,
-    track_opens: false,
-    attachments: (message.attachments ?? [])
-      .filter((attachment) => attachment.disposition !== "inline")
-      .map((attachment) => ({
-        content: attachment.content,
-        mime_type: attachment.type,
-        name: attachment.filename,
-      })),
-    inline_images: (message.attachments ?? [])
-      .filter((attachment) => attachment.disposition === "inline")
-      .map((attachment) => ({
-        content: attachment.content,
-        mime_type: attachment.type,
-        cid: attachment.content_id,
-      })),
-  };
-  const serialized = JSON.stringify(body);
-  if (Buffer.byteLength(serialized, "utf8") > ZEPTOMAIL_MAX_MESSAGE_BYTES) {
-    throw emailError("provider_content_too_large", 413, "failed");
-  }
-  return serialized;
-}
-
-export function parseZeptoMailRequestId(provider) {
-  const requestId = provider?.request_id;
-  if (typeof requestId !== "string" || !requestId.trim()
-    || requestId.length > 255 || /[\r\n]/.test(requestId)) {
-    throw emailError("provider_rejected", undefined, "uncertain");
-  }
-  return requestId.trim();
-}
-
-export function createZeptoMailProvider({ token, fetchImpl = globalThis.fetch } = {}) {
-  if (!token) throw new Error("email_not_configured");
-  return {
-    name: "zeptomail",
-    async send(message) {
-      const response = await fetchWithRetry(ZEPTOMAIL_ENDPOINT, {
-        method: "POST",
-        headers: {
-          Authorization: `Zoho-enczapikey ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: zeptoMailBody(message),
-      }, { fetchImpl });
-      let providerResponse;
-      try {
-        providerResponse = await response.json();
-      } catch {
-        providerResponse = undefined;
-      }
-      if (!response.ok) {
-        if (response.status === 429) {
-          throw emailError("provider_rate_limited", response.status, "retry");
-        }
-        if ([401, 402, 403].includes(response.status)) {
-          throw emailError(
-            "provider_configuration_incident",
-            response.status,
-            "configuration",
-          );
-        }
-        if (response.status >= 500) {
-          throw emailError("provider_unavailable", response.status, "retry");
-        }
-        throw emailError("provider_rejected", response.status, "failed");
-      }
-      return {
-        status: "submitted",
-        messageId: parseZeptoMailRequestId(providerResponse),
-      };
-    },
-  };
 }
 
 function resendBody(message) {
@@ -510,9 +274,9 @@ function resendBody(message) {
     || typeof message.text !== "string" || !message.text) {
     throw emailError("provider_rejected", undefined, "failed");
   }
-  const from = zeptoMailAddress(message.from?.address, message.from?.name);
-  const replyTo = zeptoMailAddress(message.reply_to?.address, message.reply_to?.name);
-  const recipient = zeptoMailAddress(message.to, message.recipientName);
+  const from = resendAddress(message.from?.address, message.from?.name);
+  const replyTo = resendAddress(message.reply_to?.address, message.reply_to?.name);
+  const recipient = resendAddress(message.to, message.recipientName);
   const body = {
     from: `${from.name} <${from.address}>`,
     to: [recipient.address],
@@ -595,10 +359,6 @@ export function createResendEmailProvider({ token, fetchImpl = globalThis.fetch 
 }
 
 export function resolveEmailProvider(name, dependencies) {
-  if (name === "cloudflare-email-service") {
-    return createCloudflareEmailProvider(dependencies);
-  }
-  if (name === "zeptomail") return createZeptoMailProvider(dependencies);
   if (name === "resend") return createResendEmailProvider(dependencies);
   throw new Error("email_not_configured");
 }
@@ -610,15 +370,8 @@ export async function readinessStatus({ env = process.env, readFileImpl = readFi
     }
     const configuration = senderConfiguration(env);
     outboxConfiguration(env);
-    const agents = configuration.provider === "zeptomail"
-      ? PROVIDER_AGENTS : ["axora-auth"];
     await Promise.all([
-      ...agents.map((providerAgent) => apiToken({
-        env,
-        readFileImpl,
-        provider: configuration.provider,
-        providerAgent,
-      })),
+      apiToken({ env, readFileImpl, provider: configuration.provider }),
       serviceAuthSecret({ env, readFileImpl }),
       loadInlineAttachments({ readFileImpl }),
     ]);
@@ -644,15 +397,14 @@ export async function sendAccountSetup(payload, {
     ? await inlineAttachments()
     : await loadInlineAttachments({ readFileImpl });
   const selectedProvider = provider ?? resolveEmailProvider(configuration.provider, {
-    configuration,
     token: await apiToken({
       env,
       readFileImpl,
       provider: configuration.provider,
-      providerAgent: "axora-auth",
     }),
     fetchImpl,
   });
+  if (selectedProvider.name !== "resend") throw new Error("email_not_configured");
   const result = await selectedProvider.send({
     deliveryId: payload.deliveryId,
     providerAgent: "axora-auth",
@@ -672,9 +424,8 @@ export async function sendAccountSetup(payload, {
   return {
     succeeded: true,
     status: result.status,
-    ...(["zeptomail", "resend"].includes(selectedProvider.name)
-      ? { providerName: selectedProvider.name, providerAgent: "axora-auth" }
-      : {}),
+    providerName: "resend",
+    providerAgent: "axora-auth",
     ...(result.messageId === undefined ? {} : { messageId: result.messageId }),
   };
 }
@@ -706,15 +457,14 @@ export async function sendTransactionalEmail(payload, {
     ? payload.providerAgent : rendered.providerAgent;
   if (!PROVIDER_AGENTS.includes(providerAgent)) throw new Error("email_not_configured");
   const selectedProvider = provider ?? resolveEmailProvider(configuration.provider, {
-    configuration,
     token: await apiToken({
       env,
       readFileImpl,
       provider: configuration.provider,
-      providerAgent,
     }),
     fetchImpl,
   });
+  if (selectedProvider.name !== "resend") throw new Error("email_not_configured");
   const result = await selectedProvider.send({
     deliveryId: payload.deliveryId,
     providerAgent,
@@ -731,9 +481,8 @@ export async function sendTransactionalEmail(payload, {
   return {
     succeeded: true,
     status: result.status,
-    ...(["zeptomail", "resend"].includes(selectedProvider.name)
-      ? { providerName: selectedProvider.name, providerAgent }
-      : {}),
+    providerName: "resend",
+    providerAgent,
     ...(result.messageId === undefined ? {} : { messageId: result.messageId }),
   };
 }
@@ -841,8 +590,6 @@ async function idempotentDelivery(payload, rawBody, sendAccountSetupImpl) {
   try {
     return await promise;
   } catch (error) {
-    // Preserve ambiguous outcomes against request replay. Definite failures can
-    // be handled by a new invitation or by the appropriate durable queue.
     if (error?.disposition !== "uncertain") deliveryCache.delete(payload.deliveryId);
     throw error;
   }
@@ -904,15 +651,18 @@ export function createEmailSenderHandler({
         "provider_rate_limited",
         "provider_rejected",
         "provider_unavailable",
+        "provider_content_too_large",
         "invalid_request",
       ].includes(error.message) ? error.message : "invalid_request";
       const disposition = error?.disposition === "retry" ? "retry"
-        : error?.disposition === "uncertain" ? "uncertain" : "failed";
+        : error?.disposition === "uncertain" ? "uncertain"
+          : error?.disposition === "configuration" ? "configuration" : "failed";
       const status = category === "request_too_large" ? 413
         : category === "invalid_request" ? 400
           : category === "email_not_configured" ? 503
             : 502;
-      // Never log rawBody: it contains the one-time bearer token.
+      // Never log rawBody: account-setup and security messages may contain
+      // short-lived bearer links or private workflow content.
       console.error(JSON.stringify({
         event: request.url === "/v1/transactional"
           ? "transactional_email_failed"
@@ -983,9 +733,8 @@ function providerFailureOutcome(error) {
 }
 
 function completionProviderName(env) {
-  const value = String(env?.AXORA_EMAIL_PROVIDER ?? "unconfigured").trim();
-  return ["zeptomail", "resend", "cloudflare-email-service", "test"].includes(value)
-    ? value : "unconfigured";
+  const value = String(env?.AXORA_EMAIL_PROVIDER ?? "resend").trim();
+  return ["resend", "test"].includes(value) ? value : "unconfigured";
 }
 
 export async function pollTransactionalEmailOutboxOnce(dependencies = {}) {
@@ -1109,7 +858,7 @@ export function startEmailSender({ env = process.env } = {}) {
   const port = senderPort(env);
   const server = createEmailSenderServer();
   server.listen(port, "0.0.0.0", () => {
-    console.log(JSON.stringify({ event: "email_sender_started", port }));
+    console.log(JSON.stringify({ event: "email_sender_started", port, provider: "resend" }));
   });
   const pollTimer = scheduleOutboxPoll(env);
   server.on("close", () => clearInterval(pollTimer));
