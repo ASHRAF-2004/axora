@@ -46,7 +46,7 @@ describe("access administration UI contract", () => {
     expect(copy).toContain("Penafian jelas");
   });
 
-  it("binds mutation scope on the server without routine password step-up and exposes only async server actions", async () => {
+  it("binds mutation scope on the server without routine password step-up and exposes only approved async server actions", async () => {
     const actions = await readFile(actionsUrl, "utf8");
     expect(actions).toContain('"use server"');
     expect(actions).toContain('requirePermission("manage_users")');
@@ -54,19 +54,37 @@ describe("access administration UI contract", () => {
     expect(actions).toContain("setUserPermissionOverride(actor");
     expect(actions).toContain("removeUserPermissionOverride(actor");
     expect(actions).toContain("replaceUserPermissionSet(actor");
+    expect(actions).toContain("replaceUserRoleScope(actor");
+    expect(actions).toContain("updateManagedUserProfile(actor");
+    expect(actions).toContain("setApprovalLimit(actor");
+    expect(actions).toContain("removeApprovalLimit(actor");
+    expect(actions).toContain("setAuthorizedUserActive(targetUserId,active,actor)");
     expect(actions).toContain("scopeType: string");
     expect(actions).toContain("companyId: string | undefined");
     expect(actions).toContain("targetRoleAssignmentId: string");
     expect(actions).not.toContain("user_permission_overrides");
     expect(actions).not.toMatch(/^export\s+(const|let|var|class)\s/m);
-    expect(actions.match(/^export\s+async\s+function\s/gm)).toHaveLength(3);
+    const exportedActions = [...actions.matchAll(
+      /^export\s+async\s+function\s+(\w+)/gm,
+    )].map((match) => match[1]).sort();
+    expect(exportedActions).toEqual([
+      "removeManagedApprovalLimitAction",
+      "removePermissionOverrideAction",
+      "replacePermissionSetAction",
+      "replaceRoleScopeAction",
+      "setManagedApprovalLimitAction",
+      "setManagedUserActiveAction",
+      "setPermissionOverrideAction",
+      "updateManagedUserProfileAction",
+    ].sort());
   });
 
-  it("links established user rows to access administration without replacing protected-account controls", async () => {
+  it("links active, invited, and suspended user rows to the same access workspace without replacing protected-account controls", async () => {
     const users = await readFile(usersUrl, "utf8");
     expect(users).toContain("accessAdministrationMessages(locale)");
     expect(users).toContain("`/users/${user.id}/access`");
     expect(users).toContain("canOpenAccess");
+    expect(users).toContain('user.accountStatus !== "DEACTIVATED"');
     expect(users).toContain("protectedLabel");
     expect(users).toContain("setUserActiveAction");
   });
