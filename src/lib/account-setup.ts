@@ -465,7 +465,10 @@ export async function resendAccountSetupInvitation(
 
       const rate = await client.query<{ tooSoon: boolean; lastHour: number }>(
         `SELECT
-           bool_or(created_at > now() - make_interval(secs => $2::integer)) AS "tooSoon",
+           bool_or(
+             created_at > now() - make_interval(secs => $2::integer)
+             AND revoked_at IS NULL
+           ) AS "tooSoon",
            count(*) FILTER (WHERE created_at > now() - interval '1 hour')::integer AS "lastHour"
          FROM account_setup_invitations
          WHERE user_id=$1`,

@@ -1,5 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
+import { PermissionEditorForm } from "@/components/PermissionEditorForm";
 import { StatusBadge } from "@/components/StatusBadge";
+import { UserManagementControls } from "@/components/UserManagementControls";
 import {
   accessAdministrationMessages,
   accessAdministrationNotice,
@@ -22,7 +24,6 @@ import {
   setPermissionOverrideAction,
   replacePermissionSetAction,
 } from "./actions";
-import { PermissionEditorForm } from "@/components/PermissionEditorForm";
 
 type Scope = AccessAdministrationSnapshot["selectedScope"];
 type PermissionOption = AccessAdministrationSnapshot["permissionOptions"][number];
@@ -45,11 +46,7 @@ function scopeLabel(
     : copy.scopeTypes[scope.type];
 }
 
-function formatMoney(
-  amount: string,
-  currency: string,
-  locale: SupportedLocale,
-) {
+function formatMoney(amount: string, currency: string, locale: SupportedLocale) {
   const regionalLocale = locale === "ar" ? "ar-MY"
     : locale === "ms" ? "ms-MY" : "en-MY";
   return new Intl.NumberFormat(regionalLocale, {
@@ -98,21 +95,13 @@ function PermissionOverrideForm({
           <small>{timeZone}</small>
         </label>
         <label className="field-full">{copy.reason}
-          <textarea
-            name="reason"
-            required
-            minLength={3}
-            maxLength={500}
-            placeholder={copy.reasonPlaceholder}
-          />
+          <textarea name="reason" required minLength={3} maxLength={500}
+            placeholder={copy.reasonPlaceholder} />
         </label>
       </div>
       <div className="form-actions">
-        <button
-          className="button button-primary"
-          type="submit"
-          data-feedback-label={copy.applying}
-        >{copy.apply}</button>
+        <button className="button button-primary" type="submit"
+          data-feedback-label={copy.applying}>{copy.apply}</button>
       </div>
     </form>
   );
@@ -155,10 +144,7 @@ export default async function UserAccessPage({
     selectedScope.departmentId,
     selectedScope.supplierId,
   ] as const;
-  const setOverrideAction = setPermissionOverrideAction.bind(
-    null,
-    ...actionArguments,
-  );
+  const setOverrideAction = setPermissionOverrideAction.bind(null, ...actionArguments);
   const grantableOptions = snapshot.permissionOptions.filter((permission) => (
     permission.actorCanGrant
   ));
@@ -191,7 +177,7 @@ export default async function UserAccessPage({
           <div className="panel-header"><div><h2>{copy.identity}</h2><p>{snapshot.identity.email}</p></div></div>
           <div className="panel-body">
             <dl className="detail-list">
-              <div><dt>{copy.account}</dt><dd>{snapshot.identity.accountKind}</dd></div>
+              <div><dt>{copy.account}</dt><dd>{snapshot.identity.accountKind} · {snapshot.identity.accountStatus}</dd></div>
               <div><dt>{copy.jobTitle}</dt><dd>{snapshot.identity.jobTitle ?? "—"}</dd></div>
               <div><dt>{copy.assignment}</dt><dd>{localizedAccountRole(selectedAssignment.roleKey, locale)?.label ?? selectedAssignment.roleLabel}</dd></div>
               <div><dt>{copy.scopeTypes[selectedScope.type]}</dt><dd>{scopeLabel(selectedAssignment.scope, locale)}</dd></div>
@@ -210,10 +196,10 @@ export default async function UserAccessPage({
                   <div className="action-row">
                     {assignment.selected
                       ? <StatusBadge status="Active">{copy.selected}</StatusBadge>
-                      : <Link
-                          className="button button-secondary"
-                          href={`/users/${snapshot.identity.id}/access?assignment=${assignment.id}`}
-                        >{copy.assignment}</Link>}
+                      : <Link className="button button-secondary"
+                          href={`/users/${snapshot.identity.id}/access?assignment=${assignment.id}`}>
+                          {copy.assignment}
+                        </Link>}
                     <span className="subtle">{assignment.manageable ? copy.manageable : copy.viewOnly}</span>
                   </div>
                 </div>
@@ -222,6 +208,8 @@ export default async function UserAccessPage({
           </div>
         </article>
       </section>
+
+      <UserManagementControls actor={actor} snapshot={snapshot} noticeCode={query.notice} />
 
       <section className="panel" style={{ marginBlockStart: 17 }}>
         <div className="panel-header"><div><h2>{copy.permissions}</h2><p>{copy.permissionsDescription}</p></div></div>
