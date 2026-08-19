@@ -109,9 +109,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    # The official Caddy binary carries cap_net_bind_service. Keep only that
-    # capability in the bounding set so exec succeeds under no-new-privileges;
-    # the production listener itself remains unprivileged on port 8080.
     cap_add:
       - NET_BIND_SERVICE
     networks:
@@ -232,18 +229,10 @@ secrets:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/tailscale_db_auth_key"
   cloudflare_tunnel_token:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/cloudflare_tunnel_token"
-  cloudflare_email_api_token:
-    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/cloudflare_email_api_token"
   resend_api_key:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/resend_api_key"
-  zeptomail_send_token:
-    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/zeptomail_send_token"
-  zeptomail_send_token_next:
-    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/zeptomail_send_token_next"
   axora_email_service_auth_key:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_email_service_auth_key"
-  axora_email_events_webhook_secret:
-    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_email_events_webhook_secret"
   resend_webhook_secret:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/resend_webhook_secret"
   turnstile_secret:

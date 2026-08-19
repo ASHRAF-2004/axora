@@ -21,6 +21,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isPermissionCode, type PermissionCode } from "@/lib/authorization-policy";
+import { validateProvisioningOrganizationShape } from "@/lib/user-provisioning";
 
 const userSchema = z.object({ email: z.email(), displayName: z.string().trim().min(2).max(200),
   role: z.custom<UserRole>((value) => isUserRole(value), "Choose an approved account role."),
@@ -98,6 +99,7 @@ export async function createUserAction(formData: FormData) {
         )
         : undefined,
     });
+    validateProvisioningOrganizationShape(input);
   } catch {
     redirect("/users?notice=user-creation-invalid");
   }

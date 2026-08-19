@@ -57,7 +57,7 @@ describe("core portal internationalization", () => {
     expect(loading).not.toContain("Please wait while Axora prepares");
   });
 
-  it("renders localized user creation while preserving canonical role values", () => {
+  it("renders localized progressive user creation while preserving canonical role values", () => {
     const html = renderToStaticMarkup(createElement(UserCreateForm, {
       actorIsOwner: false,
       actorCompanyId: "10000000-0000-4000-8000-000000000001",
@@ -65,7 +65,12 @@ describe("core portal internationalization", () => {
       companies: [],
       departments: [],
       defaultLocale: "ar",
-      roleOptions: [{ value: "REQUESTER", label: "Purchase requester", description: "Canonical fallback", category: "Company", accountKind: "COMPANY", allowedScopes: ["BRANCH"] }],
+      roleOptions: [{
+        value: "REQUESTER",
+        label: "Purchase requester",
+        description: "Canonical fallback",
+        category: "Company",
+      }],
     }));
     expect(html).toContain("مقدم طلب شراء");
     expect(html).toContain("إنشاء الحساب وإرسال الدعوة");

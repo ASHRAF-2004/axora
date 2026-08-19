@@ -8,7 +8,8 @@ const KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{1,119}$/;
 const ERROR_PATTERN = /^[a-z0-9_]{1,64}$/;
 const DOMAIN_PATTERN = /^[a-z0-9.-]{3,253}$/;
 
-export const EMAIL_PROVIDER_AGENTS = [
+/** Logical Axora queue streams. These are not external-provider accounts. */
+export const EMAIL_DELIVERY_STREAMS = [
   "axora-auth",
   "axora-procurement",
   "axora-budget",
@@ -27,14 +28,14 @@ export const EMAIL_DELIVERY_STATUSES = [
   "CANCELLED",
 ] as const;
 
-export type EmailProviderAgent = (typeof EMAIL_PROVIDER_AGENTS)[number];
+export type EmailDeliveryStream = (typeof EMAIL_DELIVERY_STREAMS)[number];
 export type EmailDeliveryStatus = (typeof EMAIL_DELIVERY_STATUSES)[number];
 export type EmailDeliveryKind = "ACCOUNT_SETUP" | "TRANSACTIONAL" | "WORKFLOW";
 
 export interface EmailOperationsFilters {
   from?: string;
   to?: string;
-  agent?: EmailProviderAgent;
+  agent?: EmailDeliveryStream;
   event?: string;
   template?: string;
   status?: EmailDeliveryStatus;
@@ -56,7 +57,7 @@ export interface EmailOperationsRecord {
   templateKey: string;
   templateVersion: number;
   priority: string;
-  providerAgent: EmailProviderAgent;
+  providerAgent: EmailDeliveryStream;
   status: EmailDeliveryStatus;
   attemptCount: number;
   maximumAttempts: number;
@@ -81,8 +82,8 @@ export interface EmailOperationsRecord {
   canReveal: boolean;
 }
 
-export interface EmailAgentSummary {
-  providerAgent: EmailProviderAgent;
+export interface EmailStreamSummary {
+  providerAgent: EmailDeliveryStream;
   paused: boolean;
   changedAt: string;
   revision: number;
@@ -92,12 +93,10 @@ export interface EmailAgentSummary {
   oldestQueuedAt?: string;
 }
 
+/** Current provider health deliberately excludes provider-credit semantics. */
 export interface EmailProviderHealth {
   providerName?: string;
   source: "SUPPORTED_API" | "MANUAL" | "MISSING";
-  remainingRecipientUnits?: number;
-  allowanceRenewsAt?: string;
-  creditExpiresAt?: string;
   accountState: string;
   domainName?: string;
   domainState: string;
@@ -105,15 +104,11 @@ export interface EmailProviderHealth {
   lastProviderSubmissionAt?: string;
   lastProviderWebhookAt?: string;
   capturedAt?: string;
-  forecastDays?: number;
-  threshold: string;
 }
 
 export type EmailProviderRuntimeState =
   | "DELIVERY_DISABLED"
-  | "WEBHOOK_BOOTSTRAP"
   | "SIGNED_WEBHOOK_CONFIGURED"
-  | "ACCOUNT_REVIEW_PENDING"
   | "READY_FOR_CONTROLLED_SEND"
   | "FULLY_ENABLED"
   | "MISCONFIGURED";
@@ -123,10 +118,7 @@ export interface EmailProviderRuntimeReadiness {
   state: EmailProviderRuntimeState;
   deliveryEnabled: boolean;
   eventsEnabled: boolean;
-  bootstrapEnabled: boolean;
-  accountReviewed?: boolean;
   domainVerified: boolean;
-  creditsReady?: boolean;
   webhookVerified: boolean;
 }
 
@@ -154,7 +146,7 @@ export interface EmailOperationsWorkspace {
     webhookFailures: number;
   };
   records: EmailOperationsRecord[];
-  agents: EmailAgentSummary[];
+  agents: EmailStreamSummary[];
   dailyUsage: Array<{ day: string; recipientUnits: number; attempts: number }>;
   providerRuntime: EmailProviderRuntimeReadiness;
   providerHealth?: EmailProviderHealth;
@@ -195,7 +187,7 @@ export interface EmailOperationsCommand {
   action: EmailOperationsCommandAction;
   deliveryKind?: EmailDeliveryKind;
   deliveryId?: string;
-  providerAgent?: EmailProviderAgent;
+  providerAgent?: EmailDeliveryStream;
   reason: string;
   details?: Record<string, unknown>;
 }
@@ -235,7 +227,7 @@ export function normalizeEmailOperationsFilters(
 ): EmailOperationsFilters {
   const from = validDate(first(input.from));
   const to = validDate(first(input.to));
-  const agentValue = first(input.agent);
+  const streamValue = first(input.agent);
   const statusValue = first(input.status)?.toUpperCase();
   const companyId = first(input.companyId)?.trim().toLowerCase();
   const correlation = first(input.correlation)?.trim().toLowerCase();
@@ -249,8 +241,8 @@ export function normalizeEmailOperationsFilters(
   const template = cleanKey(first(input.template));
   return {
     ...(from && to && from > to ? {} : { from, to }),
-    ...(EMAIL_PROVIDER_AGENTS.includes(agentValue as EmailProviderAgent)
-      ? { agent: agentValue as EmailProviderAgent } : {}),
+    ...(EMAIL_DELIVERY_STREAMS.includes(streamValue as EmailDeliveryStream)
+      ? { agent: streamValue as EmailDeliveryStream } : {}),
     ...(EMAIL_DELIVERY_STATUSES.includes(statusValue as EmailDeliveryStatus)
       ? { status: statusValue as EmailDeliveryStatus } : {}),
     ...(companyId && UUID_PATTERN.test(companyId) ? { companyId } : {}),
@@ -280,41 +272,23 @@ export function emailProviderRuntimeReadiness(
   const providerName = env.AXORA_EMAIL_PROVIDER?.trim() || "unconfigured";
   const deliveryEnabled = env.AXORA_EMAIL_DELIVERY_ENABLED === "true";
   const eventsEnabled = env.AXORA_EMAIL_EVENTS_ENABLED === "true";
-  const isResend = providerName === "resend";
-  const bootstrapEnabled = !isResend
-    && env.ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED === "true";
-  const accountReviewed = isResend
-    ? undefined : env.ZEPTOMAIL_ACCOUNT_REVIEWED === "true";
-  const domainVerified = isResend
-    ? env.RESEND_DOMAIN_VERIFIED === "true"
-    : env.ZEPTOMAIL_DOMAIN_VERIFIED === "true";
-  const creditsReady = isResend
-    ? undefined : env.ZEPTOMAIL_CREDITS_READY === "true";
-  const webhookVerified = isResend
-    ? env.RESEND_WEBHOOK_VERIFIED === "true"
-    : env.ZEPTOMAIL_WEBHOOK_VERIFIED === "true";
-  const allProviderGates = (accountReviewed ?? true) && domainVerified
-    && (creditsReady ?? true) && webhookVerified;
-  const invalid = bootstrapEnabled && (deliveryEnabled || eventsEnabled)
-    || deliveryEnabled && (!eventsEnabled || !allProviderGates)
-    || webhookVerified && !eventsEnabled
-    || !["resend", "zeptomail", "cloudflare-email-service"].includes(providerName);
+  const domainVerified = env.RESEND_DOMAIN_VERIFIED === "true";
+  const webhookVerified = env.RESEND_WEBHOOK_VERIFIED === "true";
+  const gatesReady = domainVerified && webhookVerified;
+  const invalid = providerName !== "resend"
+    || (deliveryEnabled && (!eventsEnabled || !gatesReady))
+    || (webhookVerified && !eventsEnabled);
   let state: EmailProviderRuntimeState = "DELIVERY_DISABLED";
   if (invalid) state = "MISCONFIGURED";
-  else if (bootstrapEnabled) state = "WEBHOOK_BOOTSTRAP";
   else if (deliveryEnabled) state = "FULLY_ENABLED";
   else if (eventsEnabled && !webhookVerified) state = "SIGNED_WEBHOOK_CONFIGURED";
-  else if (eventsEnabled && allProviderGates) state = "READY_FOR_CONTROLLED_SEND";
-  else if (providerName === "zeptomail" && !accountReviewed) state = "ACCOUNT_REVIEW_PENDING";
+  else if (eventsEnabled && gatesReady) state = "READY_FOR_CONTROLLED_SEND";
   return {
     providerName,
     state,
     deliveryEnabled,
     eventsEnabled,
-    bootstrapEnabled,
-    accountReviewed,
     domainVerified,
-    creditsReady,
     webhookVerified,
   };
 }
@@ -356,7 +330,7 @@ function demoWorkspace(actor: SessionUser, filters: EmailOperationsFilters): Ema
       maskedRecipient: "ap***@example.invalid",
       recipientDomain: "example.invalid",
       recipientSuppressed: false,
-      providerName: "zeptomail",
+      providerName: "resend",
       attemptOutcome: "retry",
       lastError: "provider_rate_limited",
       correlationId: "71000000-0000-4000-8000-000000000001",
@@ -386,7 +360,7 @@ function demoWorkspace(actor: SessionUser, filters: EmailOperationsFilters): Ema
       maskedRecipient: "ow***@axora.invalid",
       recipientDomain: "axora.invalid",
       recipientSuppressed: false,
-      providerName: "zeptomail",
+      providerName: "resend",
       attemptOutcome: "sent",
       providerStatus: "MESSAGE_DELIVERED",
       correlationId: "71000000-0000-4000-8000-000000000002",
@@ -433,7 +407,7 @@ function demoWorkspace(actor: SessionUser, filters: EmailOperationsFilters): Ema
       webhookFailures: 1,
     },
     records,
-    agents: EMAIL_PROVIDER_AGENTS.map((providerAgent) => ({
+    agents: EMAIL_DELIVERY_STREAMS.map((providerAgent) => ({
       providerAgent,
       paused: providerAgent === "axora-documents",
       changedAt: new Date(now.getTime() - 3_600_000).toISOString(),
@@ -447,21 +421,25 @@ function demoWorkspace(actor: SessionUser, filters: EmailOperationsFilters): Ema
       failures: 0,
     })),
     dailyUsage: [{ day: now.toISOString(), recipientUnits: 18, attempts: 19 }],
-    providerRuntime: emailProviderRuntimeReadiness(),
+    providerRuntime: {
+      providerName: "resend",
+      state: "FULLY_ENABLED",
+      deliveryEnabled: true,
+      eventsEnabled: true,
+      domainVerified: true,
+      webhookVerified: true,
+    },
     providerHealth: canManage ? {
-      providerName: "zeptomail",
+      providerName: "resend",
       source: "MANUAL",
-      remainingRecipientUnits: 8_420,
       accountState: "HEALTHY",
       domainName: "axora.management",
       domainState: "VERIFIED",
       configurationState: "HEALTHY",
       capturedAt: new Date(now.getTime() - 3_600_000).toISOString(),
-      forecastDays: 27,
-      threshold: "HEALTHY",
     } : undefined,
     webhooks: canManage ? [{
-      providerName: "zeptomail",
+      providerName: "resend",
       periodStart: now.toISOString(),
       accepted: 18,
       rejected: 0,
@@ -516,6 +494,10 @@ export async function executeEmailOperationsCommand(
     || (command.deliveryId && !UUID_PATTERN.test(command.deliveryId))) {
     throw new Error("email_operation_invalid");
   }
+  if (command.details?.providerName !== undefined
+    && command.details.providerName !== "resend") {
+    throw new Error("email_operation_invalid");
+  }
   if (isDemoMode()) {
     return command.action === "REVEAL"
       ? {
@@ -553,13 +535,13 @@ export async function executeEmailOperationsCommand(
 }
 
 export async function recordEmailWebhookProcessingFailure(
-  providerName: "resend" | "zeptomail" | "cloudflare-email-service",
+  providerName: "resend",
   errorCode: "invalid_payload" | "processing_failed",
 ) {
   if (isDemoMode()) return;
   await withAuditTransaction(
     {
-      reason: "Validated email provider webhook processing failed",
+      reason: "Validated Resend webhook processing failed",
       systemIdentity: "EMAIL_PROVIDER_WEBHOOK",
       reasonCode: "EMAIL_WEBHOOK_FAILURE",
       outcome: "FAILURE",

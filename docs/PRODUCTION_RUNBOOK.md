@@ -33,6 +33,11 @@ recorded before automatic deployment is enabled:
       the ignored, access-restricted production secret file outside tracked
       content.
 - [ ] Current DNS and Tunnel configuration is recorded for rollback.
+- [ ] Cloudflare Email Routing/MX state for Axora inbound mail is recorded and
+      will be preserved independently of outbound-email changes.
+- [ ] Resend outbound sender-domain records, protected API key, signed webhook
+      secret, monitored Reply-To mailbox, and controlled real-message test are
+      verified before outbound delivery is enabled.
 - [ ] An encrypted off-machine backup destination is mounted and writable only
       by the backup operator.
 - [ ] Ubuntu LVM capacity, free space, time synchronization, and reboot window
@@ -51,11 +56,6 @@ recorded before automatic deployment is enabled:
 - [ ] The recorded active Render session secret has been copied into the stable
       production `session_secret` file without displaying it; the old local
       secret remains preserved separately for rollback.
-- [ ] Cloudflare Email Sending is still disabled, or its paid-plan eligibility,
-      exact sending-domain DNS, dedicated account-owned token, monitored
-      Reply-To mailbox, Queue/DLQ, event subscription, queue-only Worker,
-      HMAC secret, and controlled real-message test have all passed the
-      separate email runbooks.
 
 ## Paths and commands
 
@@ -191,53 +191,55 @@ sudo /usr/local/libexec/axora-production/health-check.sh --external
 The live endpoint proves the process responds. The ready endpoint must return
 success only when the application can query PostgreSQL.
 
-### Operate transactional email safely
+### Operate email safely
 
-Production installs `email-sender` as an isolated service even while delivery
-is disabled. A `disabled` sender readiness result is expected and healthy when
-`AXORA_EMAIL_DELIVERY_ENABLED=false`; it does not prove a provider token,
-sending domain, DNS, Queue subscription, Worker, webhook, monitored mailbox,
-or real email.
+Axora deliberately separates inbound and outbound email:
 
-Do not enable delivery by editing only one flag. ZeptoMail signed provider
-events may run while delivery is disabled so the webhook can be proven first;
-delivery still requires signed events and every provider readiness gate. The
-developer-only `email-preview` Mailpit profile is
-not part of the production Compose invocation and must never be published
-through Caddy or the Tunnel.
+```text
+INBOUND
+Cloudflare Email Routing / receiving -> Axora receiving destination/workflow
 
-Resend uses the same provider-neutral queues but its own domain and signed
-webhook evidence. Follow [RESEND_TRANSACTIONAL_EMAIL.md](./RESEND_TRANSACTIONAL_EMAIL.md);
-the Resend API key stays sender-only, the Svix signing secret stays app-only,
-and no allowance value is inferred when the provider has no supported balance
-API.
+OUTBOUND TRANSACTIONAL
+Axora business event -> durable outbox/private account-setup request
+-> central email-sender -> Resend -> customer/user inbox
+```
 
-For ZeptoMail's initial URL reachability check only, set
-`ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED=true` while both delivery and events remain
-`false`. Bootstrap accepts only a bounded ZeptoMail direct-JSON event (or the
-legacy form transport) with exactly one event and message for
-`ZEPTOMAIL_MAIL_AGENT_KEY`, returns HTTP 200, and records nothing. It must be
-disabled after the webhook exists. Configure the provider Authentication Key,
-set events to `true`, and accept a real signed provider test before setting
-`ZEPTOMAIL_WEBHOOK_VERIFIED=true`. Bootstrap and delivery can never coexist.
+Cloudflare inbound Email Routing, MX records, DNS, Tunnel, `cloudflared`, proxy
+and security infrastructure are retained. Do not alter inbound routing as an
+outbound-email rollback technique.
 
-The six `axora-*` names are internal delivery streams. They use one provider
-Agent when the shared Send Mail Token is configured, so production needs one
-`ZEPTOMAIL_MAIL_AGENT_KEY`, not six manufactured ZeptoMail Agents.
-Copy this value from the top-level `mailagent_key` in the selected Agent's
-Webhook data preview. It is an opaque, period-separated provider identifier,
-not the human-readable Agent display name or alias. Axora accepts only non-empty
-ASCII alphanumeric, underscore, or hyphen segments separated by single periods,
-with a maximum total length of 200 characters, and compares the value exactly.
+Production installs `email-sender` as an isolated outbound service even while
+delivery is disabled. A `disabled` sender readiness result is expected and
+healthy when `AXORA_EMAIL_DELIVERY_ENABLED=false`; it does not prove a Resend
+API key, verified sender domain, signed webhook, monitored mailbox, or real
+email.
 
-Before any email enablement or provider-side mutation, follow:
+Resend is the only active outbound transactional provider. Do not enable
+outbound delivery by editing only one flag. Signed Resend provider events may be
+proved first while delivery remains disabled; outbound delivery still requires
+all current Resend readiness gates. Follow
+[RESEND_TRANSACTIONAL_EMAIL.md](./RESEND_TRANSACTIONAL_EMAIL.md). The Resend API
+key stays sender-only, the Svix signing secret stays app-only, and Axora does
+not invent provider credit/allowance semantics.
+
+The six `axora-*` values are internal Axora delivery streams used for queue
+partitioning and operational pause/resume controls. They are not external
+provider accounts.
+
+The developer-only `email-preview` Mailpit profile is not part of the production
+Compose invocation and must never be published through Caddy or the Tunnel.
+
+Before any outbound email enablement or provider-side mutation, follow:
 
 - [Transactional email runbook](ACCOUNT_EMAILS.md)
-- [Provider, DNS, and credential gates](refactor/EMAIL_PROVIDER_AND_DNS.md)
-- [Provider events and suppression](refactor/EMAIL_PROVIDER_EVENTS.md)
+- [Directional provider, DNS, and credential gates](refactor/EMAIL_PROVIDER_AND_DNS.md)
+- [Outbound provider events and suppression](refactor/EMAIL_PROVIDER_EVENTS.md)
+- [Email architecture](EMAIL_ARCHITECTURE.md)
 
-Until a real provider message and lifecycle-event checks succeed, describe
-the feature as implemented and locally testable—not production email verified.
+Until a real Resend message and signed lifecycle-event checks succeed, describe
+the outbound feature as implemented and locally testable—not production email
+verified. Separately verify that Cloudflare inbound Email Routing still receives
+mail after any approved sender-domain DNS change.
 
 ### View logs
 
@@ -440,11 +442,12 @@ During an approved window:
 | Deployment fails after migration | Keep current compatible app, inspect migration/ready logs, do not restore blindly | Schema/app compatibility |
 | Disk pressure | `df -h`, Docker/backup/release inventory | LVM capacity or retention |
 | Login loops on phone | Public HTTPS, cookie attributes, `APP_BASE_URL`, proxy headers, server time | Edge/proxy/session config |
-| Sender readiness is `disabled` | Confirm both email flags intentionally remain false | Expected pre-enablement state |
-| Sender readiness is `not_ready` | Production runtime values, secret-file ownership/mode, read-only provider preflight | Email configuration; do not expose secret contents |
-| Provider-event endpoint returns 401 | Host time and equality of the independently mounted Worker/application HMAC secret | Event authentication; never print the secret |
-| Email Queue retries or DLQ is nonempty | Worker bounded outcome logs, Axora readiness/5xx, Queue metrics | Disable outbound email until lifecycle processing is repaired |
-| Recipient is suppressed | Provider event history and approved address-correction process | Hard bounce/complaint; never bypass suppression |
+| Sender readiness is `disabled` | Confirm outbound email flags intentionally remain false | Expected pre-enablement state |
+| Sender readiness is `not_ready` | Resend runtime values and protected secret-file ownership/mode | Outbound email configuration; do not expose secret contents |
+| Resend provider-event endpoint returns 401 | Host time, `svix-*` headers, and protected Resend webhook signing secret | Outbound event authentication; never print the secret |
+| Outbox retries remain nonempty | Durable queue outcomes, Resend response class, Axora readiness | Disable outbound delivery until lifecycle processing is repaired |
+| Recipient is suppressed | Resend provider event history and approved address-correction process | Hard bounce/complaint/provider suppression; never bypass suppression |
+| Inbound mail stops arriving | Cloudflare Email Routing state, MX records, destination/routing rules | Inbound Cloudflare email; do not change Resend sender code |
 
 Do not prune Docker, delete releases/backups, alter DNS, restart PostgreSQL, or
 restore data merely to clear an alert. Identify the failing boundary first.

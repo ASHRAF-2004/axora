@@ -116,7 +116,8 @@ async function expectSensitiveBoundary(db: PGlite) {
     workflow_claim: boolean;
     received_quantity: boolean;
     suppression_check: boolean;
-    provider_record: boolean;
+    resend_provider_record: boolean;
+    retired_cloudflare_provider_record: boolean;
     visitor_snapshot: boolean;
     visitor_claim: boolean;
     access_administration_snapshot: boolean;
@@ -161,9 +162,14 @@ async function expectSensitiveBoundary(db: PGlite) {
       ) AS suppression_check,
       has_function_privilege(
         'axora_app',
+        'axora_record_resend_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)',
+        'EXECUTE'
+      ) AS resend_provider_record,
+      has_function_privilege(
+        'axora_app',
         'axora_record_cloudflare_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)',
         'EXECUTE'
-      ) AS provider_record,
+      ) AS retired_cloudflare_provider_record,
       has_function_privilege(
         'axora_app',
         'axora_public_visitor_snapshot_v3(text)','EXECUTE'
@@ -278,7 +284,8 @@ async function expectSensitiveBoundary(db: PGlite) {
     workflow_claim: true,
     received_quantity: true,
     suppression_check: true,
-    provider_record: true,
+    resend_provider_record: true,
+    retired_cloudflare_provider_record: false,
     visitor_snapshot: true,
     visitor_claim: true,
     access_administration_snapshot: true,
@@ -361,6 +368,7 @@ describe("application database grant boundaries", () => {
       expect(source).toContain(
         "public.axora_lock_request_creation_scope(",
       );
+      expect(source).toContain("public.axora_record_resend_email_event(");
       await expectSensitiveBoundary(db);
     } finally {
       await db.close();

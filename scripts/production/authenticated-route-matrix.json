@@ -935,18 +935,6 @@
       "mode": "removed"
     },
     {
-      "route": "/api/email/provider-events/cloudflare",
-      "authentication": "signed-provider-event",
-      "scope": "provider",
-      "mode": "mutating"
-    },
-    {
-      "route": "/api/email/provider-events/zeptomail",
-      "authentication": "signed-provider-event",
-      "scope": "provider",
-      "mode": "mutating"
-    },
-    {
       "route": "/api/email/provider-events/resend",
       "authentication": "signed-provider-event",
       "scope": "provider",

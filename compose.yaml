@@ -82,26 +82,12 @@ services:
       APP_BASE_URL: "https://${AXORA_HOST:?Set AXORA_HOST in .env}"
       AXORA_EMAIL_DELIVERY_ENABLED: "${AXORA_EMAIL_DELIVERY_ENABLED:-false}"
       AXORA_EMAIL_EVENTS_ENABLED: "${AXORA_EMAIL_EVENTS_ENABLED:-false}"
-      ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED: "${ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED:-false}"
-      AXORA_EMAIL_PROVIDER: "${AXORA_EMAIL_PROVIDER:-cloudflare-email-service}"
+      AXORA_EMAIL_PROVIDER: "${AXORA_EMAIL_PROVIDER:-resend}"
       AXORA_EMAIL_SENDER_URL: "http://email-sender:3100"
       AXORA_EMAIL_SERVICE_AUTH_KEY_FILE: /run/secrets/axora_email_service_auth_key
-      AXORA_EMAIL_EVENTS_WEBHOOK_SECRET_FILE: /run/secrets/axora_email_events_webhook_secret
-      ZEPTOMAIL_WEBHOOK_AUTH_KEY_FILE: /run/secrets/axora_email_events_webhook_secret
-      ZEPTOMAIL_MAIL_AGENT_KEY: "${ZEPTOMAIL_MAIL_AGENT_KEY:-}"
-      ZEPTOMAIL_ACCOUNT_REVIEWED: "${ZEPTOMAIL_ACCOUNT_REVIEWED:-false}"
-      ZEPTOMAIL_DOMAIN_VERIFIED: "${ZEPTOMAIL_DOMAIN_VERIFIED:-false}"
-      ZEPTOMAIL_CREDITS_READY: "${ZEPTOMAIL_CREDITS_READY:-false}"
-      ZEPTOMAIL_WEBHOOK_VERIFIED: "${ZEPTOMAIL_WEBHOOK_VERIFIED:-false}"
       RESEND_DOMAIN_VERIFIED: "${RESEND_DOMAIN_VERIFIED:-false}"
       RESEND_WEBHOOK_VERIFIED: "${RESEND_WEBHOOK_VERIFIED:-false}"
       RESEND_WEBHOOK_SECRET_FILE: /run/secrets/resend_webhook_secret
-      ZEPTOMAIL_AUTH_AGENT_KEY: "${ZEPTOMAIL_AUTH_AGENT_KEY:-}"
-      ZEPTOMAIL_PROCUREMENT_AGENT_KEY: "${ZEPTOMAIL_PROCUREMENT_AGENT_KEY:-}"
-      ZEPTOMAIL_BUDGET_AGENT_KEY: "${ZEPTOMAIL_BUDGET_AGENT_KEY:-}"
-      ZEPTOMAIL_DELIVERY_AGENT_KEY: "${ZEPTOMAIL_DELIVERY_AGENT_KEY:-}"
-      ZEPTOMAIL_DOCUMENTS_AGENT_KEY: "${ZEPTOMAIL_DOCUMENTS_AGENT_KEY:-}"
-      ZEPTOMAIL_PLATFORM_AGENT_KEY: "${ZEPTOMAIL_PLATFORM_AGENT_KEY:-}"
       ACCOUNT_SETUP_TTL_HOURS: "${ACCOUNT_SETUP_TTL_HOURS:-24}"
       AXORA_EMAIL_REPLY_TO: "${AXORA_EMAIL_REPLY_TO:-support@axora.management}"
       AXORA_UPLOADS_CONTAINER_DIR: /app/data/uploads
@@ -115,7 +101,6 @@ services:
       - axora_app_password
       - session_secret
       - axora_email_service_auth_key
-      - axora_email_events_webhook_secret
       - resend_webhook_secret
       - turnstile_secret
     depends_on:
@@ -154,23 +139,15 @@ services:
       EMAIL_SENDER_PORT: "3100"
       AXORA_EMAIL_DELIVERY_ENABLED: "${AXORA_EMAIL_DELIVERY_ENABLED:-false}"
       APP_BASE_URL: "https://${AXORA_HOST:?Set AXORA_HOST in .env}"
-      CLOUDFLARE_ACCOUNT_ID: "${CLOUDFLARE_ACCOUNT_ID:-}"
-      CLOUDFLARE_EMAIL_API_TOKEN_FILE: /run/secrets/cloudflare_email_api_token
       RESEND_API_KEY_FILE: /run/secrets/resend_api_key
-      ZEPTOMAIL_SEND_TOKEN_FILE: /run/secrets/zeptomail_send_token
-      ZEPTOMAIL_SEND_TOKEN_NEXT_FILE: /run/secrets/zeptomail_send_token_next
-      AXORA_ZEPTOMAIL_TOKEN_SLOT: "${AXORA_ZEPTOMAIL_TOKEN_SLOT:-primary}"
       AXORA_EMAIL_SERVICE_AUTH_KEY_FILE: /run/secrets/axora_email_service_auth_key
       AXORA_EMAIL_OUTBOX_URL: "http://app:3000/account/email-outbox"
-      AXORA_EMAIL_PROVIDER: "${AXORA_EMAIL_PROVIDER:-cloudflare-email-service}"
+      AXORA_EMAIL_PROVIDER: "${AXORA_EMAIL_PROVIDER:-resend}"
       AXORA_EMAIL_FROM_ADDRESS: "${AXORA_EMAIL_FROM_ADDRESS:-noreply@axora.management}"
       AXORA_EMAIL_FROM_NAME: "${AXORA_EMAIL_FROM_NAME:-Axora}"
       AXORA_EMAIL_REPLY_TO: "${AXORA_EMAIL_REPLY_TO:-support@axora.management}"
     secrets:
-      - cloudflare_email_api_token
       - resend_api_key
-      - zeptomail_send_token
-      - zeptomail_send_token_next
       - axora_email_service_auth_key
     expose:
       - "3100"
@@ -351,8 +328,6 @@ services:
       - "127.0.0.1:0"
     tmpfs:
       - /tmp:size=64m,mode=1777
-    # Host networking avoids Docker port-publishing differences while the
-    # explicit loopback listener above keeps the viewer private to this PC.
     network_mode: host
     security_opt:
       - no-new-privileges:true
@@ -417,18 +392,10 @@ secrets:
     file: ./secrets/axora_cleanup_worker_password
   session_secret:
     file: ./secrets/session_secret
-  cloudflare_email_api_token:
-    file: ./secrets/cloudflare_email_api_token
   resend_api_key:
     file: ./secrets/resend_api_key
-  zeptomail_send_token:
-    file: ./secrets/zeptomail_send_token
-  zeptomail_send_token_next:
-    file: ./secrets/zeptomail_send_token_next
   axora_email_service_auth_key:
     file: ./secrets/axora_email_service_auth_key
-  axora_email_events_webhook_secret:
-    file: ./secrets/axora_email_events_webhook_secret
   resend_webhook_secret:
     file: ./secrets/resend_webhook_secret
   turnstile_secret:

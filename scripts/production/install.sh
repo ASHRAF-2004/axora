@@ -234,41 +234,9 @@ fi
 rm -f -- "$session_temporary"
 trap - EXIT
 
-# Compose always mounts this path into the isolated email-sender service. An
-# empty, permission-hardened placeholder keeps delivery disabled without
-# weakening deployment; the operator later installs the dedicated token in
-# place after Cloudflare Email Service is verified.
-email_token_file="$SECRETS_DIR/cloudflare_email_api_token"
-[[ ! -L "$email_token_file" ]] || fail "Cloudflare email token must not be a symlink."
-if [[ ! -e "$email_token_file" ]]; then
-  install -o root -g "$RUNTIME_GID" -m 0640 /dev/null "$email_token_file"
-else
-  [[ -f "$email_token_file" ]] || fail "Cloudflare email token path must be a regular file."
-  chown root:"$RUNTIME_GID" "$email_token_file"
-  chmod 0640 "$email_token_file"
-fi
-
-# ZeptoMail uses a dedicated primary/next pair so token rotation never
-# overwrites the Cloudflare rollback credential. Empty hardened placeholders
-# keep delivery disabled until the provider launch gate is completed.
-for zeptomail_token_name in zeptomail_send_token zeptomail_send_token_next; do
-  zeptomail_token_file="$SECRETS_DIR/$zeptomail_token_name"
-  [[ ! -L "$zeptomail_token_file" ]] \
-    || fail "ZeptoMail token must not be a symlink: $zeptomail_token_name"
-  if [[ ! -e "$zeptomail_token_file" ]]; then
-    install -o root -g "$RUNTIME_GID" -m 0640 /dev/null "$zeptomail_token_file"
-  else
-    [[ -f "$zeptomail_token_file" ]] \
-      || fail "ZeptoMail token path must be a regular file: $zeptomail_token_name"
-    chown root:"$RUNTIME_GID" "$zeptomail_token_file"
-    chmod 0640 "$zeptomail_token_file"
-  fi
-done
-
-# Resend credentials are provider-specific protected files. The API key may
-# already be installed; the webhook secret remains an empty fail-closed
-# placeholder until the production endpoint is registered in Resend. Existing
-# regular files are never rewritten or truncated.
+# Resend is the only active transactional provider. Existing regular files are
+# never rewritten or truncated; empty hardened placeholders keep the launch
+# fail-closed until an operator installs the protected credentials.
 for resend_secret_name in resend_api_key resend_webhook_secret; do
   resend_secret_file="$SECRETS_DIR/$resend_secret_name"
   [[ ! -L "$resend_secret_file" ]] \
@@ -282,23 +250,6 @@ for resend_secret_name in resend_api_key resend_webhook_secret; do
     chmod 0640 "$resend_secret_file"
   fi
 done
-
-# The Queue consumer and application share this single-purpose HMAC key. The
-# installer creates only a hardened empty placeholder; an operator generates
-# and installs the value, then enters the same value through `wrangler secret
-# put` without writing it to runtime.env or Git.
-email_events_webhook_secret_file="$SECRETS_DIR/axora_email_events_webhook_secret"
-[[ ! -L "$email_events_webhook_secret_file" ]] \
-  || fail "Email event webhook secret must not be a symlink."
-if [[ ! -e "$email_events_webhook_secret_file" ]]; then
-  install -o root -g "$RUNTIME_GID" -m 0640 /dev/null \
-    "$email_events_webhook_secret_file"
-else
-  [[ -f "$email_events_webhook_secret_file" ]] \
-    || fail "Email event webhook secret path must be a regular file."
-  chown root:"$RUNTIME_GID" "$email_events_webhook_secret_file"
-  chmod 0640 "$email_events_webhook_secret_file"
-fi
 
 # The Contact Us widget remains visibly unavailable until an operator installs
 # the dedicated Turnstile widget secret and its non-secret site key. Compose
@@ -421,21 +372,12 @@ ensure_runtime_default() {
 }
 ensure_runtime_default AXORA_EMAIL_DELIVERY_ENABLED false
 ensure_runtime_default AXORA_EMAIL_EVENTS_ENABLED false
-ensure_runtime_default ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED false
-ensure_runtime_default AXORA_ZEPTOMAIL_TOKEN_SLOT primary
-ensure_runtime_default ZEPTOMAIL_MAIL_AGENT_KEY ""
-ensure_runtime_default ZEPTOMAIL_ACCOUNT_REVIEWED false
-ensure_runtime_default ZEPTOMAIL_DOMAIN_VERIFIED false
-ensure_runtime_default ZEPTOMAIL_CREDITS_READY false
-ensure_runtime_default ZEPTOMAIL_WEBHOOK_VERIFIED false
 ensure_runtime_default RESEND_DOMAIN_VERIFIED false
 ensure_runtime_default RESEND_WEBHOOK_VERIFIED false
-ensure_runtime_default CLOUDFLARE_ACCOUNT_ID ""
-ensure_runtime_default CLOUDFLARE_ZONE_ID ""
 ensure_runtime_default AXORA_EMAIL_FROM_ADDRESS noreply@axora.management
 ensure_runtime_default AXORA_EMAIL_FROM_NAME Axora
 ensure_runtime_default AXORA_EMAIL_REPLY_TO support@axora.management
-ensure_runtime_default AXORA_EMAIL_PROVIDER cloudflare-email-service
+ensure_runtime_default AXORA_EMAIL_PROVIDER resend
 ensure_runtime_default ACCOUNT_SETUP_TTL_HOURS 24
 ensure_runtime_default TURNSTILE_SITE_KEY ""
 ensure_runtime_default TURNSTILE_HOSTNAMES axora.management
@@ -486,8 +428,9 @@ printf '  3. Review %s/deploy.env and %s/runtime.env.\n' "$CONFIG_DIR" "$CONFIG_
 printf '  4. Create a DEDICATED Axora production Tunnel, then install only its token at:\n'
 printf '     %s/cloudflare_tunnel_token (root:GID %s, mode 0640).\n' "$SECRETS_DIR" "$RUNTIME_GID"
 printf '     Never reuse the existing /etc/cloudflared/token; it belongs to bekal-production.\n'
-printf '  5. Run: sudo %s/preflight.sh\n' "$LIBEXEC_DIR"
-printf '  6. Email delivery stays disabled until the dedicated Cloudflare Email Sending token and non-secret runtime values are installed.\n'
+printf '  5. Install and verify the Resend API key and webhook secret in %s.\n' "$SECRETS_DIR"
+printf '  6. Run: sudo %s/preflight.sh\n' "$LIBEXEC_DIR"
+printf '  7. Email delivery stays disabled until Resend domain and signed webhook gates are verified.\n'
 
 if [[ "${1:-}" == "--enable" ]]; then
   "$LIBEXEC_DIR/preflight.sh" --for-automation

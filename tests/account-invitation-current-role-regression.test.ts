@@ -75,7 +75,7 @@ describe("current account invitation contract", () => {
     }
   });
 
-  it("posts role defaults as defaults and marks only explicit edits as customized", () => {
+  it("keeps Create User access read-only while server-side explicit overrides remain gated", () => {
     const form = readFileSync(
       new URL("../src/components/UserCreateForm.tsx", import.meta.url),
       "utf8",
@@ -85,8 +85,9 @@ describe("current account invitation contract", () => {
       "utf8",
     );
 
-    expect(form).toContain('name="permissionsCustomized"');
-    expect(form).toContain('value={permissionsCustomized ? "true" : "false"}');
+    expect(form).not.toContain("PermissionChecklist");
+    expect(form).not.toContain('name="permissions"');
+    expect(form).not.toContain('name="permissionsCustomized"');
     expect(action).toContain('readFormText(\n    formData,\n    "permissionsCustomized"');
     expect(action).toContain("permissions: permissionsCustomized");
     expect(action).toContain(": undefined");

@@ -17,7 +17,7 @@ const transactionalFingerprint = createHash("sha256")
   .update(transactionalRecipient)
   .digest("hex");
 
-describe("Email Sending provider-event suppression migration", () => {
+describe("Resend provider-event suppression migration", () => {
   let db: PGlite;
 
   beforeAll(async () => {
@@ -37,7 +37,7 @@ describe("Email Sending provider-event suppression migration", () => {
   ) {
     return db.query<{ recorded: boolean; suppressed: boolean }>(`
       SELECT recorded,suppressed
-      FROM axora_record_cloudflare_email_event($1,$2,$3,$4,$5,$6,$7,1)
+      FROM axora_record_resend_email_event($1,$2,$3,$4,$5,$6,$7,1)
     `, [
       eventId,
       eventType,
@@ -116,7 +116,7 @@ describe("Email Sending provider-event suppression migration", () => {
 
     const event = await db.query<{ recorded: boolean; suppressed: boolean }>(`
       SELECT recorded,suppressed
-      FROM axora_record_cloudflare_email_event(
+      FROM axora_record_resend_email_event(
         'e8200000-0000-4000-8000-000000000004',
         'MESSAGE_BOUNCED',$1,$2,'HARD',true,$3,1
       )

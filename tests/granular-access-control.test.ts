@@ -10,6 +10,7 @@ import {
 import type { AuthenticatedSessionUser } from "@/lib/auth";
 import { canAccess } from "@/lib/permissions";
 import { creatableAccountRoles } from "@/lib/role-catalog";
+import { accessGroupsForPermissions } from "@/lib/user-provisioning";
 
 function platformActor(
   effectivePermissions: AuthenticatedSessionUser["effectivePermissions"],
@@ -62,7 +63,7 @@ describe("granular role templates and effective access", () => {
     expect(canAccess(actor, "create_platform_users")).toBe(false);
   });
 
-  it("renders grouped permission checkboxes and role-reset controls", () => {
+  it("keeps initial Create User progressive and derives access without a permission matrix", () => {
     const code: PermissionCode = "company_user.create";
     const markup = renderToStaticMarkup(createElement(UserCreateForm, {
       actorIsOwner: false,
@@ -71,27 +72,18 @@ describe("granular role templates and effective access", () => {
       companies: [],
       departments: [],
       defaultLocale: "en",
-      permissionOptions: [{
-        code,
-        group: "Company people",
-        label: "Create company users",
-        description: "Create customer-company accounts in assigned scope.",
-        highRisk: true,
-      }],
       roleOptions: [{
         value: "COMPANY_ADMIN",
         label: "Company administrator",
         description: "Company administration",
         category: "Company",
-        accountKind: "COMPANY",
-        allowedScopes: ["COMPANY"],
         defaultPermissions: [code],
       }],
     }));
-    expect(markup).toContain("Effective access");
-    expect(markup).toContain("Reset to role defaults");
-    expect(markup).toContain('name="permissions"');
-    expect(markup).toContain('value="company_user.create"');
+    expect(markup).not.toContain("Access included");
+    expect(markup).not.toContain("Reset to role defaults");
+    expect(markup).not.toContain('name="permissions"');
+    expect(accessGroupsForPermissions([code])).toEqual(["User Management"]);
   });
 });
 
