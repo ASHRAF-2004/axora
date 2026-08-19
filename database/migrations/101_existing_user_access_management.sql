@@ -364,7 +364,7 @@ BEGIN
 
   INSERT INTO public.permission_change_history(
     actor_user_id,target_user_id,change_type,
-    previous_value,new_value,reason,correlation_id
+    previous_value,new_value,reason
   ) VALUES (
     p_actor_user_id,p_target_user_id,'ROLE_REVOKED',
     jsonb_strip_nulls(jsonb_build_object(
@@ -375,7 +375,7 @@ BEGIN
       'supplierId',current_supplier_id,'active',true
     )),
     jsonb_build_object('active',false,'revokedAt',now()),
-    clean_reason,NULL
+    clean_reason
   );
   INSERT INTO public.permission_change_history(
     actor_user_id,target_user_id,change_type,
