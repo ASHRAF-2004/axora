@@ -14,6 +14,13 @@ function deploymentRevision() {
   return "unknown";
 }
 
+function errorReference(error: unknown) {
+  if (!error || typeof error !== "object" || !("digest" in error)) {
+    return undefined;
+  }
+  return safeErrorReference((error as { digest?: unknown }).digest);
+}
+
 /**
  * Privacy-minimized production error telemetry. This deliberately excludes
  * request headers, cookies, query strings, raw error messages, stack traces,
@@ -24,7 +31,7 @@ export const onRequestError: Instrumentation.onRequestError = (
   request,
   context,
 ) => {
-  const reference = safeErrorReference(error.digest);
+  const reference = errorReference(error);
   const event = {
     event: "next_request_error",
     timestamp: new Date().toISOString(),
