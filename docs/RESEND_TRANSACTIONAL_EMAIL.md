@@ -1,8 +1,9 @@
 # Resend transactional email
 
-Axora uses Resend only through the existing private email sender and the
-provider-neutral durable outboxes. The six `axora-*` provider-agent names remain
-internal Axora streams; they share one protected Resend API key.
+Axora sends all current transactional email through the existing private email
+sender and provider-neutral durable outboxes. The six `axora-*` delivery-stream
+names are internal Axora queue partitions; they all use the same protected
+Resend provider implementation.
 
 ## Protected files
 
@@ -12,8 +13,8 @@ internal Axora streams; they share one protected Resend API key.
   application as `/run/secrets/resend_webhook_secret`.
 - Both files must be regular, non-symlink files owned by `root:GID-1000` with
   mode `0640` or stricter. Neither value belongs in `runtime.env`.
-- The installer preserves an existing API key byte-for-byte and creates only an
-  empty webhook-secret placeholder when that file is absent.
+- The installer preserves existing regular files byte-for-byte and creates only
+  hardened empty placeholders when provider secrets are absent.
 
 ## Safe disabled state
 
@@ -36,9 +37,9 @@ After the fail-closed production endpoint is deployed:
 
 1. In Resend, open **Webhooks** and choose **Add Endpoint**.
 2. Use `https://axora.management/api/email/provider-events/resend`.
-3. Select `email.sent`, `email.delivered`, `email.bounced`,
-   `email.complained`, `email.delivery_delayed`, `email.failed`, and
-   `email.suppressed`. Do not select open or click events.
+3. Select only event types supported by the current Axora Resend adapter:
+   `email.sent`, `email.delivered`, `email.bounced`, `email.complained`,
+   `email.delivery_delayed`, `email.failed`, and `email.suppressed`.
 4. Create the endpoint, reveal its signing secret once, and install it through a
    protected root terminal into `resend_webhook_secret`; never put it in shell
    arguments, output, Git, or `runtime.env`.
@@ -52,15 +53,33 @@ The callback verifies `svix-id`, `svix-timestamp`, and `svix-signature` against
 the exact raw body before parsing. Disabled events, missing secrets, missing or
 invalid signatures, stale signatures, and oversized requests fail closed.
 
+## Central sending path
+
+Current business code does not call the Resend API directly:
+
+```text
+business workflow
+  -> transactional/workflow outbox (or private account-setup sender request)
+  -> server-tools/email-sender.mjs
+  -> Resend adapter
+  -> Resend API
+```
+
+Password reset, email verification, password-change security notices, contact
+mail, invoice/document mail, procurement/budget/delivery workflow mail and
+account invitations therefore share one provider boundary. Durable outboxes own
+retry scheduling and keep provider failure separate from completed business
+transactions.
+
 ## Operations and rollback
 
 Axora records submitted, delivered, delayed, failed, bounced, complained, and
 provider-suppressed lifecycle evidence without retaining recipient plaintext,
-subjects, or message bodies. Hard bounces, complaints, and provider suppression
-derive the existing recipient deny-list atomically. Provider allowance remains
-`MANUAL` or `MISSING` unless Resend exposes a supported authoritative balance
-API; Axora's own daily and monthly recipient-unit counters remain automatic.
+subjects, or message bodies in provider-event logs. Hard bounces, complaints,
+and provider suppression derive the existing recipient deny-list atomically.
+Axora's own daily/monthly recipient-unit metrics and any configured internal
+operating limit are not presented as a Resend credit balance.
 
-Rollback means setting delivery and events to `false` and redeploying the last
-known-good image. Preserve the Resend secret files and existing ZeptoMail
-rollback artifacts until a later approved cleanup.
+Rollback means disabling delivery/events and redeploying a known-good Resend
+release. Provider secrets remain protected server files and are never copied
+into Git or browser-visible configuration.
