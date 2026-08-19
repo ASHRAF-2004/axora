@@ -1,7 +1,5 @@
 export const EMAIL_COMPLETION_PROVIDER_NAMES = [
   "resend",
-  "zeptomail",
-  "cloudflare-email-service",
   "test",
   "unconfigured",
 ] as const;
