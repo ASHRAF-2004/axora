@@ -8,15 +8,18 @@ import {
 const enabledEnvironment = {
   AXORA_EMAIL_DELIVERY_ENABLED: "true",
   APP_BASE_URL: "https://axora.management",
-  CLOUDFLARE_ACCOUNT_ID: "0123456789abcdef0123456789abcdef",
-  CLOUDFLARE_EMAIL_API_TOKEN_FILE: "/run/secrets/cloudflare_email_api_token",
+  RESEND_API_KEY_FILE: "/run/secrets/resend_api_key",
   AXORA_EMAIL_SERVICE_AUTH_KEY_FILE: "/run/secrets/axora_email_service_auth_key",
   AXORA_EMAIL_OUTBOX_URL: "http://app:3000/account/email-outbox",
-  AXORA_EMAIL_PROVIDER: "cloudflare-email-service",
+  AXORA_EMAIL_PROVIDER: "resend",
   AXORA_EMAIL_FROM_ADDRESS: "noreply@axora.management",
   AXORA_EMAIL_FROM_NAME: "Axora",
   AXORA_EMAIL_REPLY_TO: "support@axora.management",
 };
+
+function readFileImpl(_filename, encoding) {
+  return Promise.resolve(encoding === "utf8" ? "s".repeat(48) : Buffer.from("png"));
+}
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -25,12 +28,12 @@ afterEach(() => {
 });
 
 describe("workflow email sender", () => {
-  it("renders a role-aware workflow message with the shared provider adapter", async () => {
-    const provider = { send: vi.fn().mockResolvedValue({ status: "queued" }) };
-    const readFileImpl = vi.fn().mockResolvedValue(Buffer.from("png"));
+  it("renders a role-aware workflow message with the shared Resend adapter", async () => {
+    const provider = { name: "resend", send: vi.fn().mockResolvedValue({ status: "submitted" }) };
     await expect(sendTransactionalEmail({
       deliveryId: "00000000-0000-4000-8000-000000000041",
       messageKind: "WORKFLOW_UPDATE",
+      providerAgent: "axora-procurement",
       locale: "en",
       recipientEmail: "person@example.test",
       recipientName: "Aisha Rahman",
@@ -43,7 +46,12 @@ describe("workflow email sender", () => {
       env: enabledEnvironment,
       provider,
       readFileImpl,
-    })).resolves.toEqual({ succeeded: true, status: "queued" });
+    })).resolves.toMatchObject({
+      succeeded: true,
+      status: "submitted",
+      providerName: "resend",
+      providerAgent: "axora-procurement",
+    });
 
     expect(provider.send).toHaveBeenCalledOnce();
     const message = provider.send.mock.calls[0][0];
@@ -60,6 +68,7 @@ describe("workflow email sender", () => {
       deliveryId: "00000000-0000-4000-8000-000000000042",
       leaseId: "00000000-0000-4000-8000-000000000043",
       messageKind: "WORKFLOW_UPDATE",
+      providerAgent: "axora-procurement",
       locale: "en",
       recipientEmail: "person@example.test",
       recipientName: "Aisha Rahman",
@@ -78,14 +87,9 @@ describe("workflow email sender", () => {
         : new Response(JSON.stringify({ recorded: true }), { status: 200 });
     });
     const provider = {
-      send: vi.fn().mockResolvedValue({
-        status: "delivered",
-        messageId: "cloudflare-workflow-1",
-      }),
+      name: "resend",
+      send: vi.fn().mockResolvedValue({ status: "submitted", messageId: "re-workflow-1" }),
     };
-    const readFileImpl = vi.fn(async (_filename, encoding) => (
-      encoding === "utf8" ? "t".repeat(40) : Buffer.from("png")
-    ));
 
     await expect(pollWorkflowEmailOutboxOnce({
       env: enabledEnvironment,
@@ -101,18 +105,21 @@ describe("workflow email sender", () => {
         deliveryId: job.deliveryId,
         leaseId: job.leaseId,
         outcome: "sent",
-        providerMessageId: "cloudflare-workflow-1",
+        providerMessageId: "re-workflow-1",
+        providerName: "resend",
+        providerAgent: "axora-procurement",
       },
     ]);
     expect(JSON.stringify(requests[1])).not.toContain(job.recipientEmail);
     expect(JSON.stringify(requests[1])).not.toContain(job.workflow.body);
   });
 
-  it("leaves a throttled provider outcome to the durable bounded retry", async () => {
+  it("leaves a throttled Resend outcome to the durable bounded retry", async () => {
     const job = {
       deliveryId: "00000000-0000-4000-8000-000000000045",
       leaseId: "00000000-0000-4000-8000-000000000046",
       messageKind: "WORKFLOW_UPDATE",
+      providerAgent: "axora-delivery",
       locale: "en",
       recipientEmail: "person@example.test",
       recipientName: "Aisha Rahman",
@@ -129,10 +136,7 @@ describe("workflow email sender", () => {
     const providerError = Object.assign(new Error("provider_rate_limited"), {
       disposition: "retry",
     });
-    const provider = { send: vi.fn().mockRejectedValue(providerError) };
-    const readFileImpl = vi.fn(async (_filename, encoding) => (
-      encoding === "utf8" ? "t".repeat(40) : Buffer.from("png")
-    ));
+    const provider = { name: "resend", send: vi.fn().mockRejectedValue(providerError) };
 
     await expect(pollWorkflowEmailOutboxOnce({
       env: enabledEnvironment,
@@ -144,6 +148,8 @@ describe("workflow email sender", () => {
       queue: "workflow",
       outcome: "retry",
       errorCode: "provider_rate_limited",
+      providerName: "resend",
+      providerAgent: "axora-delivery",
     });
   });
 });
