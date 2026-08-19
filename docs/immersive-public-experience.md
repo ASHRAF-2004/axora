@@ -36,13 +36,25 @@ assembly rather than claiming incompatible meshes are true morph targets.
 - Arabic direction mirrors spatial movement while all localized text remains
   shaped HTML rather than WebGL texture text.
 
-## Atmosphere and identity precedence
+## Appearance and identity precedence
 
-Aurora, Solar, Ember and Midnight are centralized design-token themes. A
-visitor preference follows public and authentication routes in local storage.
-Eligible Axora staff can persist a preference against their account. Customer
-users do not receive the selector; reviewed company-logo tokens remain
-authoritative for their authenticated portal and override any public choice.
+Axora supports exactly two application appearance modes: **Light** and **Dark**.
+The public first render is driven by the SSR-readable `axora_appearance` cookie;
+`axora-appearance:v1` local storage is a synchronized browser cache and cross-tab
+signal. The retired Aurora, Solar, Ember and Midnight values are accepted only
+for one-time migration to Light/Dark and are not product choices.
+
+Authenticated users have a database-backed Light/Dark preference that is
+resolved on the server before the application shell renders. For company users,
+the reviewed company appearance is the default when no individual preference
+exists. Selecting Light or Dark changes only which approved company
+surface/text set is used; the company's reviewed logo and brand colors remain
+authoritative and tenant-scoped.
+
+The 3D experience follows the same Light/Dark appearance using two restrained
+scene palettes. Geometry, semantic models, camera behavior, interactions,
+reduced-motion fallback and WebGL failure behavior are independent of the
+appearance mode.
 
 ## Sound
 

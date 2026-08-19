@@ -20,8 +20,8 @@ const deliveryGuy: DemoRoleSession = {
   scopeType: "DELIVERY",
 };
 
-async function visibleAtmosphereButton(page: Page, atmosphere: "Aurora" | "Ember") {
-  const desktopButton = page.locator(`.app-desktop-atmosphere button[title="Atmosphere: ${atmosphere}"]`);
+async function visibleAppearanceButton(page: Page, appearance: "Light" | "Dark") {
+  const desktopButton = page.locator(`.app-desktop-appearance button[aria-label="Appearance: ${appearance}"]`);
   const usesDrawer = await page.evaluate(() => matchMedia("(max-width: 720px)").matches);
   if (!usesDrawer) {
     await expect(desktopButton).toBeVisible();
@@ -33,7 +33,7 @@ async function visibleAtmosphereButton(page: Page, atmosphere: "Aurora" | "Ember
     await page.locator(".app-menu-button").click();
   }
   await expect(openDrawer).toBeVisible();
-  const drawerButton = openDrawer.locator(`button[title="Atmosphere: ${atmosphere}"]`);
+  const drawerButton = openDrawer.locator(`.app-drawer-appearance button[aria-label="Appearance: ${appearance}"]`);
   await expect(drawerButton).toBeVisible();
   return drawerButton;
 }
@@ -165,56 +165,86 @@ test("delivery users receive the live self-claim pool without owner assignment c
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-available-job-pool-${testInfo.project.name}.png`, fullPage: true });
 });
 
-test("staff can select an atmosphere while company users remain on tenant branding", async ({ page }, testInfo) => {
-  await page.addInitScript(() => {
-    window.localStorage.setItem("axora-public-atmosphere:v2", "Aurora");
-  });
+test("authenticated users select Light or Dark while company branding remains authoritative", async ({ page }, testInfo) => {
   await signInAsDemoOwner(page);
   await page.goto("/dashboard");
-  await visibleAtmosphereButton(page, "Aurora");
-  const ember = await visibleAtmosphereButton(page, "Ember");
-  const alreadyPersisted = await ember.getAttribute("aria-pressed") === "true";
-  if (!alreadyPersisted) {
-    const persisted = page.waitForResponse((response) => (
-      response.url().endsWith("/api/profile/atmosphere")
+  const light = await visibleAppearanceButton(page, "Light");
+  if (await light.getAttribute("aria-pressed") !== "true") {
+    const normalized = page.waitForResponse((response) => (
+      response.url().endsWith("/api/profile/appearance")
         && response.request().method() === "PATCH"
     ));
-    await ember.click();
-    const response = await persisted;
-    expect(response.status()).toBe(200);
-    expect(await response.json()).toEqual({ atmosphere: "Ember" });
-    await expect(ember.locator("xpath=parent::fieldset")).toHaveAttribute("data-persistence-state", "saved");
+    await light.click();
+    expect((await normalized).status()).toBe(200);
   }
-  await expect(page.locator("html")).toHaveAttribute("data-atmosphere", "ember");
-  const staffTheme = await page.locator(".app-shell").evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { background: style.backgroundColor, brand: style.getPropertyValue("--axora-brand").trim() };
-  });
-  expect(staffTheme.brand).toBe("#bd3f32");
+  await expect(light).toHaveAttribute("aria-pressed", "true");
+  const dark = await visibleAppearanceButton(page, "Dark");
+  const persisted = page.waitForResponse((response) => (
+    response.url().endsWith("/api/profile/appearance")
+      && response.request().method() === "PATCH"
+  ));
+  await dark.click();
+  const response = await persisted;
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({ appearance: "dark" });
+  await expect(dark.locator("xpath=ancestor::fieldset")).toHaveAttribute("data-persistence-state", "ready");
+  const staffShell = page.locator('.app-shell[data-tenant-theme="axora"]');
+  await expect(staffShell).toHaveAttribute("data-appearance", "dark");
+  expect((await staffShell.evaluate((element) => getComputedStyle(element).getPropertyValue("--axora-page-bg").trim()))).toBe("#071521");
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-atmosphere", "ember");
-  expect(await page.evaluate(() => window.localStorage.getItem("axora-public-atmosphere:v2"))).toBe("Aurora");
-  expect((await page.locator(".app-shell").evaluate((element) => getComputedStyle(element).getPropertyValue("--axora-brand").trim()))).toBe("#bd3f32");
-  await page.screenshot({ animations: "disabled", path: `output/playwright/v2-staff-theme-${testInfo.project.name}.png`, fullPage: true });
+  await expect(staffShell).toHaveAttribute("data-appearance", "dark");
+  await page.screenshot({ animations: "disabled", path: `output/playwright/v2-staff-appearance-${testInfo.project.name}.png`, fullPage: true });
 
   await page.context().clearCookies();
   await signInAsDemoRole(page, companyAdmin);
   await page.goto("/dashboard");
-  await expect(page.getByRole("button", { name: "Aurora" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Ember" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Aurora|Solar|Ember|Midnight/ })).toHaveCount(0);
   const companyShell = page.locator('.app-shell[data-tenant-theme="company"]');
   await expect(companyShell).toBeVisible();
-  const companyTheme = await companyShell.evaluate((element) => {
+  const initialAppearance = await companyShell.getAttribute("data-appearance");
+  expect(["light", "dark"]).toContain(initialAppearance);
+  const initialTheme = await companyShell.evaluate((element) => {
     const style = getComputedStyle(element);
     return {
       brand: style.getPropertyValue("--axora-brand").trim(),
       tenantBrand: style.getPropertyValue("--tenant-primary").trim(),
-      rootBrand: getComputedStyle(document.documentElement).getPropertyValue("--axora-brand").trim(),
+      surface: style.getPropertyValue("--axora-surface").trim(),
+      lightSurface: style.getPropertyValue("--tenant-surface-light").trim(),
+      darkSurface: style.getPropertyValue("--tenant-surface-dark").trim(),
+      colorScheme: style.colorScheme,
     };
   });
-  expect(companyTheme.brand).toBe(companyTheme.tenantBrand);
-  expect(companyTheme.brand).not.toBe(companyTheme.rootBrand);
-  await page.screenshot({ animations: "disabled", path: `output/playwright/v2-company-theme-precedence-${testInfo.project.name}.png`, fullPage: true });
+  expect(initialTheme.brand).toBe(initialTheme.tenantBrand);
+  expect(initialTheme.surface).toBe(initialAppearance === "dark" ? initialTheme.darkSurface : initialTheme.lightSurface);
+  expect(initialTheme.colorScheme).toBe(initialAppearance);
+
+  const nextAppearance = initialAppearance === "dark" ? "Light" : "Dark";
+  const nextButton = await visibleAppearanceButton(page, nextAppearance);
+  const companyPersisted = page.waitForResponse((nextResponse) => (
+    nextResponse.url().endsWith("/api/profile/appearance")
+      && nextResponse.request().method() === "PATCH"
+  ));
+  await nextButton.click();
+  expect((await companyPersisted).status()).toBe(200);
+  const expectedAppearance = nextAppearance.toLowerCase();
+  await expect(companyShell).toHaveAttribute("data-appearance", expectedAppearance);
+  const switchedTheme = await companyShell.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      brand: style.getPropertyValue("--axora-brand").trim(),
+      tenantBrand: style.getPropertyValue("--tenant-primary").trim(),
+      surface: style.getPropertyValue("--axora-surface").trim(),
+      lightSurface: style.getPropertyValue("--tenant-surface-light").trim(),
+      darkSurface: style.getPropertyValue("--tenant-surface-dark").trim(),
+      colorScheme: style.colorScheme,
+    };
+  });
+  expect(switchedTheme.brand).toBe(switchedTheme.tenantBrand);
+  expect(switchedTheme.brand).toBe(initialTheme.brand);
+  expect(switchedTheme.surface).toBe(expectedAppearance === "dark" ? switchedTheme.darkSurface : switchedTheme.lightSurface);
+  expect(switchedTheme.surface).not.toBe(initialTheme.surface);
+  expect(switchedTheme.colorScheme).toBe(expectedAppearance);
+  await page.screenshot({ animations: "disabled", path: `output/playwright/v2-company-appearance-precedence-${testInfo.project.name}.png`, fullPage: true });
 });
 
 test("customer catalogue uses licensed local category artwork and no product identifiers", async ({ page }, testInfo) => {

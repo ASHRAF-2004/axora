@@ -10,10 +10,8 @@ export const REQUIRED_REVIEW_EVIDENCE = [
   ["output/playwright/v2-about.png", immersiveSource],
   ...["request", "approve", "pay", "invoice", "prepare", "deliver", "track", "complete"].map((stage) => [`output/playwright/v2-home-stage-${stage}.png`, immersiveSource]),
   ["output/playwright/immersive-default-chromium.png", immersiveSource],
-  ["output/playwright/immersive-theme-aurora-chromium.png", immersiveSource],
-  ["output/playwright/immersive-theme-solar-chromium.png", immersiveSource],
-  ["output/playwright/immersive-theme-ember-chromium.png", immersiveSource],
-  ["output/playwright/immersive-theme-midnight-chromium.png", immersiveSource],
+  ["output/playwright/immersive-appearance-light-chromium.png", immersiveSource],
+  ["output/playwright/immersive-appearance-dark-chromium.png", immersiveSource],
   ["output/playwright/immersive-mobile-mobile-chrome.png", immersiveSource],
   ["output/playwright/immersive-arabic-mobile-chrome.png", immersiveSource],
   ["output/playwright/immersive-malay-mobile-chrome.png", immersiveSource],
@@ -32,8 +30,8 @@ export const REQUIRED_REVIEW_EVIDENCE = [
   ["output/playwright/v2-available-job-pool-chromium.png", operationalSource],
   ["output/playwright/v2-add-company-chromium.png", operationalSource],
   ["output/playwright/v2-catalogue-chromium.png", operationalSource],
-  ["output/playwright/v2-staff-theme-chromium.png", operationalSource],
-  ["output/playwright/v2-company-theme-precedence-chromium.png", operationalSource],
+  ["output/playwright/v2-staff-appearance-chromium.png", operationalSource],
+  ["output/playwright/v2-company-appearance-precedence-chromium.png", operationalSource],
 ].map(([path, testSource]) => ({ path, kind: "image", testSource, minWidth: 640, minHeight: 300, minEntropy: 0.1 }));
 
 REQUIRED_REVIEW_EVIDENCE.push({

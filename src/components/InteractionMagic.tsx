@@ -46,7 +46,7 @@ export function InteractionMagic() {
   }, [pathname]);
 
   return (
-    <div className="interaction-atmosphere" aria-hidden="true">
+    <div className="interaction-ambient" aria-hidden="true">
       <span className="interaction-orbit interaction-orbit-one" />
       <span className="interaction-orbit interaction-orbit-two" />
     </div>

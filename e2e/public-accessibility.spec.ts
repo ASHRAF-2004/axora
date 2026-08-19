@@ -72,14 +72,14 @@ test("login uses the Axora public website palette", async ({ page }) => {
   await page.goto("/login");
 
   const button = page.locator("#login");
-  await expect(button).toHaveCSS("background-color", "rgb(11, 45, 82)");
+  await expect(button).toHaveCSS("background-color", "rgb(11, 49, 87)");
   await expect(button).toHaveCSS("color", "rgb(255, 255, 255)");
 
   const email = page.getByLabel("Email");
   await email.focus();
-  await expect(email).toHaveCSS("border-color", "rgb(21, 94, 157)");
+  await expect(email).toHaveCSS("border-color", "rgb(11, 90, 151)");
   await expect(page.locator(".login-guide")).toHaveCount(0);
-  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(248, 250, 252)");
+  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(243, 246, 249)");
 });
 
 test("the authenticated shell exposes named navigation and profile controls", async ({

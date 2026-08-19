@@ -15,13 +15,12 @@ import {
   PUBLIC_SCENE_MODELS,
   immersivePublicCopy,
   type PublicSceneRoute,
-  type PublicAtmosphereId,
 } from "@/lib/immersive-public-experience";
 import { ImmersiveAudioController, type ImmersiveSoundId } from "@/lib/immersive-audio";
 import { publicSceneStates } from "@/lib/public-scene-states";
 import type { ImmersiveSceneRuntime } from "@/lib/immersive-scene-runtime";
-import { AtmosphereSelector } from "./AtmosphereSelector";
-import { useAtmosphere } from "./AtmosphereProvider";
+import { AppearanceSelector } from "./AppearanceSelector";
+import { useAppearance } from "./AppearanceProvider";
 import { AxoraSemanticScene } from "./AxoraSemanticScene";
 import styles from "./ImmersiveWorld.module.css";
 
@@ -101,8 +100,7 @@ export function AxoraImmersiveExperience({
   challenge?: ReactNode;
 }) {
   const copy = immersivePublicCopy(locale);
-  const { atmosphere } = useAtmosphere();
-  const atmosphereId = atmosphere.toLowerCase() as PublicAtmosphereId;
+  const { appearance } = useAppearance();
   const sound = useStageAudio();
   const routeModels = PUBLIC_SCENE_MODELS[route];
   const sceneStates = useMemo(() => publicSceneStates(route, locale), [locale, route]);
@@ -193,7 +191,7 @@ export function AxoraImmersiveExperience({
   return (
     <div
       className={styles.world}
-      data-atmosphere={atmosphereId}
+      data-appearance={appearance}
       data-interaction-ready={interactionReady}
       data-locale={locale}
       data-public-scene={route}
@@ -222,7 +220,7 @@ export function AxoraImmersiveExperience({
           <AxoraSemanticScene
             model={activeModel}
             nextModel={nextModel}
-            atmosphere={atmosphereId}
+            appearance={appearance}
             alternative={copy.sceneAlternative}
             route={route}
             direction={locale === "ar" ? "rtl" : "ltr"}
@@ -236,10 +234,9 @@ export function AxoraImmersiveExperience({
             <p>{sceneDescription}</p>
           </div>
         </div>
-        <AtmosphereSelector
+        <AppearanceSelector
           locale={locale}
-          onThemeSelect={() => sound.play("theme")}
-          showThemes
+          onModeSelect={() => sound.play("theme")}
           soundEnabled={sound.enabled}
           onSoundToggle={sound.toggle}
         />
@@ -252,7 +249,7 @@ export function AxoraImmersiveExperience({
           <AxoraSemanticScene
             model={activeModel}
             nextModel={nextModel}
-            atmosphere={atmosphereId}
+            appearance={appearance}
             alternative={copy.sceneAlternative}
             route={`${route}-workflow`}
             direction={locale === "ar" ? "rtl" : "ltr"}

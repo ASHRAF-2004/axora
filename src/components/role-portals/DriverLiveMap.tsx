@@ -164,6 +164,11 @@ function fitRoute(map: MapLibreMap, points: LocationPoint[]) {
   );
 }
 
+function semanticMapColor(container: HTMLElement, property: "--axora-map-route" | "--axora-map-marker", fallback: string) {
+  const scope = container.closest<HTMLElement>(".app-shell") ?? document.documentElement;
+  return window.getComputedStyle(scope).getPropertyValue(property).trim() || fallback;
+}
+
 export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: string; points: LocationPoint[]; locale?: SupportedLocale }) {
   const copy = driverManagementMessages(locale);
   const host = useRef<HTMLDivElement>(null);
@@ -304,6 +309,7 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
     if (!livePoints.length) return;
     if (!coverageContainsPoints(runtimeConfig.coverage, livePoints)) return;
     let disposed = false;
+    let appearanceObserver: MutationObserver | null = null;
     const controller = new AbortController();
     const start = async () => {
       try {
@@ -320,8 +326,9 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
         }
         const { default: maplibregl } = await import("maplibre-gl");
         if (disposed || !host.current) return;
+        const mapHost = host.current;
         const map = new maplibregl.Map({
-          container: host.current,
+          container: mapHost,
           style: style as StyleSpecification,
           center: [latestPointsRef.current.at(-1)!.longitude, latestPointsRef.current.at(-1)!.latitude],
           zoom: 14,
@@ -341,12 +348,29 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
             id: ROUTE_LAYER_ID,
             type: "line",
             source: ROUTE_SOURCE_ID,
-            paint: { "line-color": "#0284c7", "line-width": 4, "line-opacity": 0.82 },
+            paint: {
+              "line-color": semanticMapColor(mapHost, "--axora-map-route", "#0B568F"),
+              "line-width": 4,
+              "line-opacity": 0.82,
+            },
           });
           const latest = latestPointsRef.current.at(-1)!;
-          markerRef.current = new maplibregl.Marker({ color: "#0ea5e9" })
+          const markerElement = document.createElement("div");
+          markerElement.className = "axora-map-marker";
+          markerElement.setAttribute("aria-hidden", "true");
+          markerRef.current = new maplibregl.Marker({ element: markerElement, anchor: "center" })
             .setLngLat([latest.longitude, latest.latitude])
             .addTo(map);
+          const appearanceScope = mapHost.closest<HTMLElement>(".app-shell") ?? document.documentElement;
+          appearanceObserver = new MutationObserver(() => {
+            if (!map.isStyleLoaded() || !map.getLayer(ROUTE_LAYER_ID)) return;
+            map.setPaintProperty(
+              ROUTE_LAYER_ID,
+              "line-color",
+              semanticMapColor(mapHost, "--axora-map-route", "#0B568F"),
+            );
+          });
+          appearanceObserver.observe(appearanceScope, { attributes: true, attributeFilter: ["data-appearance"] });
           fitRoute(map, latestPointsRef.current);
           map.once("idle", () => { if (!disposed) setMapState("ready"); });
         });
@@ -357,6 +381,7 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
     void start();
     return () => {
       disposed = true;
+      appearanceObserver?.disconnect();
       controller.abort();
       markerRef.current?.remove();
       markerRef.current = null;
@@ -415,5 +440,6 @@ export const driverLiveMapInternals = {
   coverageContainsPoints,
   parseRuntimeConfig,
   routeFeature,
+  semanticMapColor,
   usableStyle,
 };

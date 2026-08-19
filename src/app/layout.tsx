@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
 import { UxFeedbackProvider } from "@/components/UxFeedbackProvider";
-import { AtmosphereProvider } from "@/components/public/AtmosphereProvider";
+import { AppearanceProvider } from "@/components/public/AppearanceProvider";
+import {
+  APPEARANCE_COOKIE_KEY,
+  DEFAULT_APPEARANCE,
+  LEGACY_APPEARANCE_COOKIE_KEY,
+  isAppearanceMode,
+  legacyAppearanceToMode,
+} from "@/lib/appearance";
 import { isSupportedLocale, LOCALE_NAMES } from "@/lib/i18n";
 import { requestLocaleDecision } from "@/lib/locale-server";
-import type { PublicAtmosphere } from "@/lib/immersive-public-experience";
 import { cookies, headers } from "next/headers";
 import "./globals.css";
-import "./atmosphere-tokens.css";
+import "./appearance-tokens.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://axora.management"),
@@ -33,22 +39,21 @@ export default async function RootLayout({
   const locale = isSupportedLocale(routeLocale)
     ? routeLocale
     : (await requestLocaleDecision()).locale;
-  const savedAtmosphere = (await cookies()).get("axora_public_atmosphere")?.value;
-  const initialAtmosphere: PublicAtmosphere = savedAtmosphere === "solar"
-    ? "Solar"
-    : savedAtmosphere === "ember"
-      ? "Ember"
-      : savedAtmosphere === "midnight"
-        ? "Midnight"
-        : "Aurora";
+  const cookieStore = await cookies();
+  const savedAppearance = cookieStore.get(APPEARANCE_COOKIE_KEY)?.value;
+  const legacyAppearance = cookieStore.get(LEGACY_APPEARANCE_COOKIE_KEY)?.value;
+  const initialAppearance = isAppearanceMode(savedAppearance)
+    ? savedAppearance
+    : legacyAppearanceToMode(legacyAppearance) ?? DEFAULT_APPEARANCE;
+
   return (
-    <html lang={locale} dir={LOCALE_NAMES[locale].dir} data-atmosphere={initialAtmosphere.toLowerCase()}>
+    <html lang={locale} dir={LOCALE_NAMES[locale].dir} data-appearance={initialAppearance}>
       <body>
-        <AtmosphereProvider initialAtmosphere={initialAtmosphere}>
+        <AppearanceProvider initialAppearance={initialAppearance}>
           <UxFeedbackProvider>
             {children}
           </UxFeedbackProvider>
-        </AtmosphereProvider>
+        </AppearanceProvider>
       </body>
     </html>
   );

@@ -41,7 +41,7 @@ describe("deterministic tenant branding", () => {
   it("falls back safely when a logo contains no opaque non-white pixels", () => {
     const result = analyzeLogoPixels(new Uint8Array([255, 255, 255, 0, 255, 255, 255, 0]), 4);
     expect(result.usedFallback).toBe(true);
-    expect(result.tokens.primary).toBe("#0B2D52");
+    expect(result.tokens.primary).toBe("#0B3157");
   });
 
   it("emits only bounded trusted CSS custom properties", () => {

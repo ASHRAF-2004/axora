@@ -1,0 +1,438 @@
+/* Axora application appearance tokens. This is the single Light/Dark palette source. */
+html[data-appearance="light"],
+.app-shell[data-tenant-theme="axora"][data-appearance="light"] {
+  color-scheme: light;
+  --axora-brand-anchor: #0b3157;
+  --axora-brand: #0b3157;
+  --axora-brand-hover: #082744;
+  --axora-brand-active: #061e35;
+  --axora-brand-foreground: #ffffff;
+  --axora-brand-accent: #eaa63a;
+  --axora-brand-accent-hover: #d88e20;
+  --axora-brand-accent-text: #9a5b08;
+  --axora-brand-soft: #e8f0f7;
+  --axora-accent-soft: #fff4df;
+  --axora-page-bg: #f3f6f9;
+  --axora-surface: #ffffff;
+  --axora-surface-elevated: #f9fbfd;
+  --axora-surface-muted: #eaf0f5;
+  --axora-border: #cfd9e3;
+  --axora-border-strong: #a9bac9;
+  --axora-text: #10283e;
+  --axora-text-secondary: #40566b;
+  --axora-text-muted: #607286;
+  --axora-text-inverse: #ffffff;
+  --axora-focus: #0b5a97;
+  --axora-link: #0b568f;
+  --axora-navigation: #0b3157;
+  --axora-navigation-text: #ffffff;
+  --axora-success: #166534;
+  --axora-success-bg: #dcfce7;
+  --axora-success-border: #86efac;
+  --axora-warning: #854d0e;
+  --axora-warning-bg: #fff3d6;
+  --axora-warning-border: #eab308;
+  --axora-danger: #b42318;
+  --axora-danger-bg: #fee4e2;
+  --axora-danger-border: #fda29b;
+  --axora-info: #175cd3;
+  --axora-info-bg: #eff8ff;
+  --axora-info-border: #84caff;
+  --axora-overlay: rgba(7, 21, 33, 0.58);
+  --axora-shadow-sm: 0 1px 3px rgba(15, 42, 67, 0.08);
+  --axora-shadow-md: 0 10px 30px rgba(15, 42, 67, 0.1);
+  --axora-shadow-lg: 0 22px 58px rgba(15, 42, 67, 0.14);
+  --axora-chart-1: #0b3157;
+  --axora-chart-2: #eaa63a;
+  --axora-chart-3: #2e7d7a;
+  --axora-chart-4: #7256a5;
+  --axora-map-route: #0b568f;
+  --axora-map-marker: #eaa63a;
+
+  /* Transitional aliases let existing shared UI consume semantic intent. */
+  --brand: var(--axora-brand);
+  --brand-soft: var(--axora-brand-soft);
+  --amber-500: var(--axora-brand-accent);
+  --navy-950: var(--axora-navigation);
+  --navy-900: var(--axora-brand-anchor);
+  --navy-800: #16456f;
+  --blue-700: var(--axora-link);
+  --blue-600: #155e9d;
+  --blue-100: var(--axora-brand-soft);
+  --slate-950: var(--axora-text);
+  --slate-700: var(--axora-text-secondary);
+  --slate-600: var(--axora-text-secondary);
+  --slate-500: var(--axora-text-muted);
+  --slate-400: #8091a0;
+  --slate-300: var(--axora-border-strong);
+  --slate-200: var(--axora-border);
+  --slate-100: var(--axora-surface-muted);
+  --slate-50: var(--axora-page-bg);
+  --white: var(--axora-surface);
+}
+
+html[data-appearance="dark"],
+.app-shell[data-tenant-theme="axora"][data-appearance="dark"] {
+  color-scheme: dark;
+  --axora-brand-anchor: #0b3157;
+  --axora-brand: #2f77ab;
+  --axora-brand-hover: #4389ba;
+  --axora-brand-active: #5a9aca;
+  --axora-brand-foreground: #ffffff;
+  --axora-brand-accent: #eaa63a;
+  --axora-brand-accent-hover: #f2b85c;
+  --axora-brand-accent-text: #eaa63a;
+  --axora-brand-soft: #173a55;
+  --axora-accent-soft: #3d301b;
+  --axora-page-bg: #071521;
+  --axora-surface: #0d2233;
+  --axora-surface-elevated: #142b3d;
+  --axora-surface-muted: #193549;
+  --axora-border: #2a465c;
+  --axora-border-strong: #49657a;
+  --axora-text: #f7fafc;
+  --axora-text-secondary: #d7e1ea;
+  --axora-text-muted: #a6b6c4;
+  --axora-text-inverse: #071521;
+  --axora-focus: #eaa63a;
+  --axora-link: #9ccbf0;
+  --axora-navigation: #081b2a;
+  --axora-navigation-text: #ffffff;
+  --axora-success: #86efac;
+  --axora-success-bg: #123c2c;
+  --axora-success-border: #2f855a;
+  --axora-warning: #f6c768;
+  --axora-warning-bg: #4b3418;
+  --axora-warning-border: #a96d18;
+  --axora-danger: #fda29b;
+  --axora-danger-bg: #4b1f25;
+  --axora-danger-border: #b54751;
+  --axora-info: #84caff;
+  --axora-info-bg: #12344a;
+  --axora-info-border: #2e77a6;
+  --axora-overlay: rgba(2, 9, 15, 0.72);
+  --axora-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.32);
+  --axora-shadow-md: 0 12px 34px rgba(0, 0, 0, 0.38);
+  --axora-shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.45);
+  --axora-chart-1: #8fc3ea;
+  --axora-chart-2: #eaa63a;
+  --axora-chart-3: #6fc0b6;
+  --axora-chart-4: #b9a3e2;
+  --axora-map-route: #79b8e7;
+  --axora-map-marker: #eaa63a;
+
+  --brand: var(--axora-brand);
+  --brand-soft: var(--axora-brand-soft);
+  --amber-500: var(--axora-brand-accent);
+  --navy-950: var(--axora-navigation);
+  --navy-900: var(--axora-text);
+  --navy-800: var(--axora-text-secondary);
+  --blue-700: var(--axora-link);
+  --blue-600: var(--axora-link);
+  --blue-100: var(--axora-brand-soft);
+  --slate-950: var(--axora-text);
+  --slate-700: var(--axora-text-secondary);
+  --slate-600: var(--axora-text-secondary);
+  --slate-500: var(--axora-text-muted);
+  --slate-400: var(--axora-text-muted);
+  --slate-300: var(--axora-border-strong);
+  --slate-200: var(--axora-border);
+  --slate-100: var(--axora-surface-muted);
+  --slate-50: var(--axora-page-bg);
+  --white: var(--axora-surface);
+}
+
+html[data-appearance] {
+  background: var(--axora-page-bg);
+  color: var(--axora-text);
+}
+body,
+.public-site {
+  background: var(--axora-page-bg);
+  color: var(--axora-text);
+}
+
+body > main,
+.public-site main {
+  color: var(--axora-text);
+}
+
+:where(a) { color: var(--axora-link); }
+
+:where(button, a, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--axora-focus);
+  outline-offset: 2px;
+}
+
+:where(input, textarea, select) {
+  color: var(--axora-text);
+  background: var(--axora-surface);
+  border-color: var(--axora-border);
+}
+
+:where(input, textarea, select):disabled,
+:where(button):disabled {
+  opacity: 0.62;
+}
+
+.brand-appearance-pair {
+  display: inline-grid;
+  line-height: 0;
+  vertical-align: middle;
+}
+.brand-appearance-pair > img { grid-area: 1 / 1; max-width: 100%; height: auto; }
+html[data-appearance="light"] .brand-appearance-dark { display: none; }
+html[data-appearance="dark"] .brand-appearance-light { display: none; }
+
+:where(.panel, .metric-card, .card, .table-wrap, .empty-state, .profile-menu, .notification-centre) {
+  color: var(--axora-text);
+  background: var(--axora-surface);
+  border-color: var(--axora-border);
+  box-shadow: var(--axora-shadow-sm);
+}
+
+:where(.panel, .metric-card, .card, .table-wrap, .empty-state) :where(h1, h2, h3, h4, strong) {
+  color: var(--axora-text);
+}
+
+:where(.panel, .metric-card, .card, .table-wrap, .empty-state) :where(p, small, .muted) {
+  color: var(--axora-text-muted);
+}
+
+.page-heading h1,
+.metric-value,
+.panel-header h2,
+.panel-header h3,
+.data-table td strong,
+.callout strong { color: var(--axora-text); }
+.page-heading > div > p:last-child,
+.metric-label,
+.metric-note,
+.panel-header p,
+.chart-row span,
+.subtle,
+.callout p { color: var(--axora-text-muted); }
+
+.button-primary,
+.app-quick-action {
+  color: var(--axora-brand-foreground);
+  background: var(--axora-brand);
+  border-color: var(--axora-brand);
+  box-shadow: var(--axora-shadow-sm);
+}
+.button-primary:hover,
+.app-quick-action:hover { background: var(--axora-brand-hover); border-color: var(--axora-brand-hover); }
+.button-secondary { color: var(--axora-text); background: var(--axora-surface); border-color: var(--axora-border); }
+
+.status-success { color: var(--axora-success); background: var(--axora-success-bg); border-color: var(--axora-success-border); }
+.status-danger { color: var(--axora-danger); background: var(--axora-danger-bg); border-color: var(--axora-danger-border); }
+.status-warning { color: var(--axora-warning); background: var(--axora-warning-bg); border-color: var(--axora-warning-border); }
+.status-info { color: var(--axora-info); background: var(--axora-info-bg); border-color: var(--axora-info-border); }
+.status-neutral { color: var(--axora-text-secondary); background: var(--axora-surface-muted); border-color: var(--axora-border); }
+
+.chart-track { background: var(--axora-surface-muted); }
+.chart-fill { background: linear-gradient(90deg, var(--axora-chart-1), var(--axora-chart-2)); }
+.chart-row strong { color: var(--axora-text); }
+
+.toolbar,
+.data-table,
+.table-action-stack details form {
+  color: var(--axora-text);
+  background: var(--axora-surface);
+  border-color: var(--axora-border);
+}
+.data-table th { color: var(--axora-text-muted); background: var(--axora-surface-muted); border-color: var(--axora-border); }
+.data-table td { color: var(--axora-text-secondary); border-color: var(--axora-border); }
+.data-table tbody tr:hover { background: var(--axora-surface-elevated); }
+.search-input,
+.toolbar select { color: var(--axora-text); background: var(--axora-surface-elevated); border-color: var(--axora-border); }
+
+.public-header {
+  color: var(--axora-text);
+  background: color-mix(in srgb, var(--axora-surface) 94%, transparent);
+  border-color: var(--axora-border);
+  box-shadow: var(--axora-shadow-sm);
+}
+
+.public-header a,
+.public-mobile-menu nav a { color: var(--axora-text); }
+.public-header a:hover,
+.public-mobile-menu nav a:hover { color: var(--axora-link); }
+.public-header .public-login-link,
+.public-header .public-login-link:hover {
+  color: var(--axora-brand-foreground);
+  background: var(--axora-brand);
+  border-color: var(--axora-brand);
+}
+.public-trust-note { color: var(--axora-text-secondary); }
+.public-desktop-appearance,
+.public-mobile-appearance,
+.app-desktop-appearance,
+.app-drawer-appearance { flex: 0 0 auto; }
+.public-mobile-appearance { margin-block-end: 8px; }
+.app-drawer-appearance { display: none; padding: 16px 18px 0; }
+
+.public-mobile-menu nav {
+  color: var(--axora-text);
+  background: var(--axora-surface-elevated);
+  border-color: var(--axora-border);
+  box-shadow: var(--axora-shadow-lg);
+}
+
+.public-footer {
+  color: var(--axora-navigation-text);
+  background: var(--axora-navigation);
+  border-color: var(--axora-border-strong);
+}
+.public-footer a,
+.public-footer p,
+.public-footer span { color: color-mix(in srgb, var(--axora-navigation-text) 82%, transparent); }
+.public-footer strong { color: var(--axora-navigation-text); }
+
+.app-shell[data-tenant-theme="axora"] {
+  --tenant-primary: var(--axora-brand);
+  --tenant-primary-hover: var(--axora-brand-hover);
+  --tenant-primary-active: var(--axora-brand-active);
+  --tenant-primary-foreground: var(--axora-brand-foreground);
+  --tenant-secondary: var(--axora-navigation);
+  --tenant-accent: var(--axora-brand-accent);
+  --tenant-page: var(--axora-page-bg);
+  --tenant-surface: var(--axora-surface);
+  --tenant-muted: var(--axora-surface-muted);
+  --tenant-border: var(--axora-border);
+  --tenant-text: var(--axora-text);
+  --tenant-icon: var(--axora-text-secondary);
+  --tenant-success: var(--axora-success);
+  --tenant-warning: var(--axora-warning);
+  --tenant-danger: var(--axora-danger);
+  --tenant-focus: var(--axora-focus);
+  --tenant-link: var(--axora-link);
+  background: var(--axora-page-bg);
+  color: var(--axora-text);
+}
+
+.app-shell[data-tenant-theme="company"][data-appearance="light"] {
+  color-scheme: light;
+  --axora-page-bg: var(--tenant-page-light);
+  --axora-surface: var(--tenant-surface-light);
+  --axora-surface-elevated: color-mix(in srgb, var(--tenant-surface-light) 94%, var(--tenant-page-light));
+  --axora-surface-muted: var(--tenant-muted-surface);
+  --axora-border: var(--tenant-border-light);
+  --axora-border-strong: color-mix(in srgb, var(--tenant-border-light) 72%, var(--tenant-text-light));
+  --axora-text: var(--tenant-text-light);
+  --axora-text-secondary: color-mix(in srgb, var(--tenant-text-light) 78%, transparent);
+  --axora-text-muted: color-mix(in srgb, var(--tenant-text-light) 62%, transparent);
+  --axora-text-inverse: var(--tenant-primary-foreground);
+  --axora-icon: var(--tenant-icon-light);
+  --axora-navigation: var(--tenant-primary);
+  --axora-navigation-text: var(--tenant-primary-foreground);
+}
+
+.app-shell[data-tenant-theme="company"][data-appearance="dark"] {
+  color-scheme: dark;
+  --axora-page-bg: var(--tenant-page-dark);
+  --axora-surface: var(--tenant-surface-dark);
+  --axora-surface-elevated: color-mix(in srgb, var(--tenant-surface-dark) 88%, var(--tenant-text-dark));
+  --axora-surface-muted: color-mix(in srgb, var(--tenant-surface-dark) 84%, var(--tenant-text-dark));
+  --axora-border: var(--tenant-border-dark);
+  --axora-border-strong: color-mix(in srgb, var(--tenant-border-dark) 68%, var(--tenant-text-dark));
+  --axora-text: var(--tenant-text-dark);
+  --axora-text-secondary: color-mix(in srgb, var(--tenant-text-dark) 82%, transparent);
+  --axora-text-muted: color-mix(in srgb, var(--tenant-text-dark) 66%, transparent);
+  --axora-text-inverse: var(--tenant-primary-foreground);
+  --axora-icon: var(--tenant-icon-dark);
+  --axora-navigation: color-mix(in srgb, var(--tenant-page-dark) 82%, #000000);
+  --axora-navigation-text: var(--tenant-text-dark);
+}
+
+.app-shell[data-tenant-theme="company"] {
+  --axora-brand: var(--tenant-primary);
+  --axora-brand-hover: var(--tenant-primary-hover);
+  --axora-brand-active: var(--tenant-primary-active);
+  --axora-brand-foreground: var(--tenant-primary-foreground);
+  --axora-brand-accent: var(--tenant-accent);
+  --axora-brand-accent-hover: color-mix(in srgb, var(--tenant-accent) 84%, var(--axora-text));
+  --axora-brand-soft: color-mix(in srgb, var(--tenant-primary) 13%, var(--axora-surface));
+  --axora-accent-soft: color-mix(in srgb, var(--tenant-accent) 15%, var(--axora-surface));
+  --axora-focus: var(--tenant-focus);
+  --axora-link: var(--tenant-link);
+  --axora-success: var(--tenant-success);
+  --axora-warning: var(--tenant-warning);
+  --axora-danger: var(--tenant-danger);
+  --axora-info: var(--tenant-link);
+  --axora-overlay: rgba(2, 9, 15, 0.68);
+  --axora-shadow-sm: 0 1px 3px color-mix(in srgb, var(--axora-text) 10%, transparent);
+  --axora-shadow-md: 0 10px 30px color-mix(in srgb, var(--axora-text) 14%, transparent);
+  --axora-shadow-lg: 0 22px 58px color-mix(in srgb, var(--axora-text) 18%, transparent);
+  --axora-chart-1: var(--tenant-chart-1);
+  --axora-chart-2: var(--tenant-chart-2);
+  --axora-chart-3: var(--tenant-chart-3);
+  --axora-chart-4: var(--tenant-chart-4);
+  --axora-map-route: var(--tenant-link);
+  --axora-map-marker: var(--tenant-accent);
+  --tenant-page: var(--axora-page-bg);
+  --tenant-surface: var(--axora-surface);
+  --tenant-muted: var(--axora-surface-muted);
+  --tenant-border: var(--axora-border);
+  --tenant-text: var(--axora-text);
+  --tenant-icon: var(--axora-icon);
+  background: var(--axora-page-bg);
+  color: var(--axora-text);
+}
+
+.app-shell :where(.app-topbar, .app-mobile-header, .app-drawer, .app-profile-menu, .profile-menu, .notification-centre, dialog) {
+  color: var(--axora-text);
+  background: var(--axora-surface);
+  border-color: var(--axora-border);
+}
+.app-shell dialog::backdrop { background: var(--axora-overlay); }
+
+.app-shell .app-primary-nav a,
+.app-shell .app-drawer a,
+.app-shell .app-profile-button,
+.app-shell .app-notification-button,
+.app-shell .app-language-control { color: var(--axora-text-secondary); }
+.app-shell .app-primary-nav a:hover,
+.app-shell .app-drawer a:hover,
+.app-shell .app-primary-nav a[aria-current="page"],
+.app-shell .app-drawer a[aria-current="page"] {
+  color: var(--axora-text);
+  background: var(--axora-brand-soft);
+}
+.app-shell .app-primary-nav a[aria-current="page"]::after { background: var(--axora-brand-accent); }
+
+.app-shell :where(table) { color: var(--axora-text); background: var(--axora-surface); }
+.app-shell :where(th) { color: var(--axora-text-secondary); background: var(--axora-surface-muted); }
+.app-shell :where(td, th) { border-color: var(--axora-border); }
+
+.app-shell .maplibregl-ctrl-group,
+.app-shell .maplibregl-ctrl-attrib {
+  color: var(--axora-text);
+  background: var(--axora-surface);
+  border-color: var(--axora-border);
+  box-shadow: var(--axora-shadow-sm);
+}
+.app-shell .maplibregl-ctrl-group button { background-color: var(--axora-surface); }
+.app-shell .maplibregl-ctrl-group button + button { border-color: var(--axora-border); }
+.app-shell .maplibregl-ctrl-icon { filter: none; opacity: .82; }
+.app-shell[data-appearance="dark"] .maplibregl-ctrl-icon { filter: invert(1); }
+.app-shell .maplibregl-ctrl-attrib a { color: var(--axora-link); }
+
+@media (max-width: 1500px) {
+  .public-header-inner { gap: 18px; }
+  .public-desktop-nav { gap: 14px; }
+  .public-contact-link { display: none; }
+}
+
+@media (max-width: 720px) {
+  .app-desktop-appearance { display: none; }
+  .app-drawer-appearance { display: block; }
+  .public-desktop-appearance { display: none; }
+}
+
+@media (forced-colors: active) {
+  :where(button, a, input, textarea, select, [role="button"], [role="tab"]):focus-visible {
+    outline: 2px solid Highlight;
+  }
+  .brand-appearance-pair > img { forced-color-adjust: none; }
+}
