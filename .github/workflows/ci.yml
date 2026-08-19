@@ -26,12 +26,14 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       AXORA_EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      NEXT_DEPLOYMENT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
       TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
     steps:
       - name: Check out the tested commit
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Use Node.js 24
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -136,11 +138,14 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    env:
+      AXORA_BUILD_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Check out the tested commit
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Validate production deployment assets
         run: scripts/production/validate-assets.sh
@@ -148,7 +153,7 @@ jobs:
       - name: Build without production secrets
         run: >-
           docker build
-          --build-arg "AXORA_REVISION=${GITHUB_SHA}"
+          --build-arg "AXORA_REVISION=${AXORA_BUILD_REVISION}"
           --file Dockerfile
           --tag "axora-ci:${GITHUB_SHA}"
           .
@@ -159,7 +164,7 @@ jobs:
           "$(docker image inspect
           --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
           "axora-ci:${GITHUB_SHA}")"
-          = "${GITHUB_SHA}"
+          = "${AXORA_BUILD_REVISION}"
 
       - name: Smoke-test public and login routes in the production image
         env:
@@ -193,3 +198,8 @@ jobs:
               exit 1
             fi
           done
+          if ! curl --fail --silent http://127.0.0.1:3101/en \
+            | grep --fixed-strings --quiet "data-dpl-id=\"${AXORA_BUILD_REVISION}\""; then
+            printf 'Production image did not expose the exact deployment identity.\n' >&2
+            exit 1
+          fi
