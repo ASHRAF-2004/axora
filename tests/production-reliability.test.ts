@@ -25,11 +25,13 @@ describe("production reliability contracts", () => {
     expect(boundary).toContain("You're offline");
     expect(boundary).toContain("safeErrorReference(error.digest)");
     expect(boundary).toContain('data-testid="portal-error-boundary"');
+    expect(boundary).toContain("const retryPage");
+    expect(boundary).toContain("reset();");
+    expect(boundary).toContain("router.refresh();");
     expect(boundary).not.toContain("This page could not be restored");
     expect(boundary).not.toContain("Check the connection");
     expect(boundary).not.toContain("error.message");
     expect(boundary).not.toContain("error.stack");
-    expect(boundary).not.toContain("router.refresh()");
   });
 
   it("logs privacy-minimized request-error correlation data without browser secrets", async () => {
@@ -38,7 +40,9 @@ describe("production reliability contracts", () => {
     expect(instrumentation).toContain('event: "next_request_error"');
     expect(instrumentation).toContain("deploymentRevision");
     expect(instrumentation).toContain("context.routePath");
-    expect(instrumentation).toContain("safeErrorReference(error.digest)");
+    expect(instrumentation).toContain("const reference = errorReference(error)");
+    expect(instrumentation).toContain('"digest" in error');
+    expect(instrumentation).toContain("safeErrorReference((error as { digest?: unknown }).digest)");
     expect(instrumentation).not.toContain("error.message");
     expect(instrumentation).not.toContain("error.stack");
     expect(instrumentation).not.toContain("request.headers");

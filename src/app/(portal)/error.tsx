@@ -81,6 +81,10 @@ export default function PortalError({
   );
   const messages = copy[locale];
   const reference = safeErrorReference(error.digest);
+  const retryPage = () => {
+    reset();
+    router.refresh();
+  };
 
   return (
     <main
@@ -109,7 +113,7 @@ export default function PortalError({
             className="button button-primary"
             type="button"
             disabled={!online}
-            onClick={reset}
+            onClick={retryPage}
           >
             <RefreshCw size={17} aria-hidden="true" />
             {messages.retry}
