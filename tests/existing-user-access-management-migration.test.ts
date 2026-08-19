@@ -21,6 +21,17 @@ describe("Prompt 5 existing-user access management migration", () => {
     expect(sql).toContain("Cross-account-kind role conversion is unavailable");
   });
 
+  it("keeps both audit rows valid while reserving the command correlation id for ROLE_ASSIGNED idempotency", async () => {
+    const sql = await migration();
+    const revokedAudit = sql.slice(
+      sql.indexOf("p_actor_user_id,p_target_user_id,'ROLE_REVOKED'"),
+      sql.indexOf("p_actor_user_id,p_target_user_id,'ROLE_ASSIGNED'"),
+    );
+    expect(revokedAudit).not.toContain("clean_reason,NULL");
+    expect(revokedAudit).toContain("previous_value,new_value,reason");
+    expect(sql).toContain("clean_reason,p_command_id");
+  });
+
   it("reuses an existing matching assignment instead of accumulating duplicate live roles", async () => {
     const sql = await migration();
     expect(sql).toContain("existing_matching_assignment_id");

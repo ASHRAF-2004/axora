@@ -562,10 +562,6 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
     }, owner);
     const current = await activeAssignment(invited.userId);
     expect((await inspectAccountSetupToken(invited.rawToken)).valid).toBe(true);
-    await admin.query(
-      "UPDATE public.account_setup_invitations SET created_at=now()-interval '2 minutes' WHERE user_id=$1",
-      [invited.userId],
-    );
     const changed = await replaceUserRoleScope(owner, {
       commandId: randomUUID(),targetUserId: invited.userId,currentRoleAssignmentId: current.current.id,
       role: "CLIENT_ACCOUNT_MANAGER",scope: { type: "PLATFORM" },
@@ -595,10 +591,6 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
       preferredLocale: "en",
     }, owner);
     const current = await activeAssignment(invited.userId);
-    await admin.query(
-      "UPDATE public.account_setup_invitations SET created_at=now()-interval '2 minutes' WHERE user_id=$1",
-      [invited.userId],
-    );
     const changed = await replaceUserRoleScope(owner, {
       commandId: randomUUID(),targetUserId: invited.userId,currentRoleAssignmentId: current.current.id,
       role: "REQUESTER",scope: {
@@ -645,15 +637,10 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
   }, 40_000);
 
   it("deactivation invalidates pending setup and reactivation cannot revive the old bearer", async () => {
-    if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
     const invited = await createInvitedUser({
       email: `prompt5-deactivate-${randomUUID()}@example.test`,displayName: "Prompt 5 Pending Deactivation",
       role: "CLIENT_ACCOUNT_MANAGER",preferredLocale: "en",
     }, owner);
-    await admin.query(
-      "UPDATE public.account_setup_invitations SET created_at=now()-interval '2 minutes' WHERE user_id=$1",
-      [invited.userId],
-    );
     const before = await accountState(invited.userId);
     await setAuthorizedUserActive(invited.userId,false,owner);
     const suspended = await accountState(invited.userId);

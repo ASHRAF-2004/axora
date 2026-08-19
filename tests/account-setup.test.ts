@@ -239,6 +239,21 @@ describe("secure account setup primitives", () => {
     }
   });
 
+  it("keeps the resend cooldown on live invitations while allowing authorization-revoked history to be replaced immediately", () => {
+    const source = readFileSync(
+      new URL("../src/lib/account-setup.ts", import.meta.url),
+      "utf8",
+    );
+    const rateQuery = source.slice(
+      source.indexOf("const rate = await client.query"),
+      source.indexOf("if (rate.rows[0]?.tooSoon)"),
+    );
+    expect(rateQuery).toContain("AND revoked_at IS NULL");
+    expect(rateQuery).toContain(
+      "count(*) FILTER (WHERE created_at > now() - interval '1 hour')",
+    );
+  });
+
   it("validates department setup scope through the least-privilege capability", () => {
     const source = readFileSync(
       new URL("../src/lib/account-setup.ts", import.meta.url),
