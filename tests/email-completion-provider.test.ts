@@ -5,11 +5,9 @@ import {
 } from "@/lib/email-completion-provider";
 
 describe("email completion provider validation", () => {
-  it("accepts every provider supported by the shared completion path", () => {
+  it("accepts only the current Resend path plus test/unconfigured states", () => {
     expect(EMAIL_COMPLETION_PROVIDER_NAMES).toEqual([
       "resend",
-      "zeptomail",
-      "cloudflare-email-service",
       "test",
       "unconfigured",
     ]);
@@ -21,15 +19,14 @@ describe("email completion provider validation", () => {
     }
   });
 
-  it("normalizes an omitted provider without accepting arbitrary values", () => {
+  it("normalizes an omitted provider without accepting arbitrary or retired values", () => {
     expect(
       normalizeEmailCompletionProviderName(undefined, "invalid provider"),
     ).toBe("unconfigured");
-    expect(() =>
-      normalizeEmailCompletionProviderName("resend\r\nforged", "invalid provider"),
-    ).toThrow("invalid provider");
-    expect(() =>
-      normalizeEmailCompletionProviderName("unknown", "invalid provider"),
-    ).toThrow("invalid provider");
+    for (const value of ["cloudflare-email-service", "legacy-provider", "resend\r\nforged", "unknown"]) {
+      expect(() =>
+        normalizeEmailCompletionProviderName(value, "invalid provider"),
+      ).toThrow("invalid provider");
+    }
   });
 });
