@@ -2,11 +2,11 @@
 
 import { requirePermission } from "@/lib/auth";
 import {
-  EMAIL_PROVIDER_AGENTS,
+  EMAIL_DELIVERY_STREAMS,
   executeEmailOperationsCommand,
   type EmailDeliveryKind,
+  type EmailDeliveryStream,
   type EmailOperationsCommandAction,
-  type EmailProviderAgent,
 } from "@/lib/email-operations";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,7 +20,7 @@ const commandSchema = z.object({
   ]),
   deliveryKind: z.enum(["ACCOUNT_SETUP", "TRANSACTIONAL", "WORKFLOW"]).optional(),
   deliveryId: z.uuid().optional(),
-  providerAgent: z.enum(EMAIL_PROVIDER_AGENTS).optional(),
+  providerAgent: z.enum(EMAIL_DELIVERY_STREAMS).optional(),
   reason: z.string().trim().min(10).max(1_000),
 });
 
@@ -49,11 +49,8 @@ function commandDetails(formData: FormData, action: EmailOperationsCommandAction
   }
   if (action === "RECONCILE" || action === "RECORD_PROVIDER_HEALTH") {
     return {
-      providerName: textValue(formData, "providerName") || "resend",
+      providerName: "resend",
       source: textValue(formData, "source") || "MANUAL",
-      remainingRecipientUnits: optionalText(formData, "remainingRecipientUnits"),
-      allowanceRenewsAt: optionalText(formData, "allowanceRenewsAt"),
-      creditExpiresAt: optionalText(formData, "creditExpiresAt"),
       accountState: textValue(formData, "accountState") || "UNKNOWN",
       domainName: optionalText(formData, "domainName"),
       domainState: textValue(formData, "domainState") || "UNKNOWN",
@@ -80,7 +77,7 @@ export async function performEmailOperationAction(formData: FormData) {
     const result = await executeEmailOperationsCommand(actor, {
       ...parsed.data,
       deliveryKind: parsed.data.deliveryKind as EmailDeliveryKind | undefined,
-      providerAgent: parsed.data.providerAgent as EmailProviderAgent | undefined,
+      providerAgent: parsed.data.providerAgent as EmailDeliveryStream | undefined,
       action: parsed.data.action as EmailOperationsCommandAction,
       details: commandDetails(formData, parsed.data.action),
     });
