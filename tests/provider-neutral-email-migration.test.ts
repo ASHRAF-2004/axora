@@ -9,11 +9,13 @@ describe("P0-09 provider-neutral email migration", () => {
     db = new PGlite();
     const applied = await applyMigrations(db);
     expect(applied).toContain("070_transactional_email_operations.sql");
+    expect(applied).toContain("075_resend_transactional_email.sql");
+    expect(applied).toContain("100_role_scoped_user_creation_resend_consolidation.sql");
   }, 30_000);
 
   afterAll(async () => db.close());
 
-  it("installs six retry intervals, priority claims, and atomic approval fan-out", async () => {
+  it("installs six retry intervals, priority claims, Resend events, and atomic approval fan-out", async () => {
     const delays = await db.query<{ attempt: number; seconds: number }>(`
       SELECT attempt,extract(epoch FROM axora_email_retry_delay(attempt))::int AS seconds
       FROM generate_series(1,6) attempt ORDER BY attempt
@@ -21,13 +23,13 @@ describe("P0-09 provider-neutral email migration", () => {
     expect(delays.rows.map((row) => row.seconds)).toEqual([60, 300, 900, 3600, 14400, 43200]);
     const contracts = await db.query<{
       workflowClaim: string | null;
-      zeptoRecorder: string | null;
+      resendRecorder: string | null;
       approvalTrigger: number;
       attemptConstraint: string;
     }>(`
       SELECT
         to_regprocedure('public.axora_claim_workflow_email_v2(integer,integer)')::text AS "workflowClaim",
-        to_regprocedure('public.axora_record_zeptomail_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)')::text AS "zeptoRecorder",
+        to_regprocedure('public.axora_record_resend_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)')::text AS "resendRecorder",
         (SELECT count(*)::int FROM pg_trigger
           WHERE tgname='dispatch_request_approval_notification' AND NOT tgisinternal)
           AS "approvalTrigger",
@@ -37,14 +39,14 @@ describe("P0-09 provider-neutral email migration", () => {
     `);
     expect(contracts.rows[0]).toMatchObject({
       workflowClaim: "axora_claim_workflow_email_v2(integer,integer)",
-      zeptoRecorder:
-        "axora_record_zeptomail_email_event(uuid,text,text,text,text,boolean,timestamp with time zone,integer)",
+      resendRecorder:
+        "axora_record_resend_email_event(uuid,text,text,text,text,boolean,timestamp with time zone,integer)",
       approvalTrigger: 1,
     });
     expect(contracts.rows[0].attemptConstraint).toContain("7");
   });
 
-  it("records ZeptoMail lifecycle events idempotently and suppresses only hard bounce", async () => {
+  it("records Resend lifecycle events idempotently and suppresses only hard bounce", async () => {
     const occurredAt = "2026-08-08T12:00:00.000Z";
     const values = [
       "40000000-0000-4000-8000-000000000901",
@@ -57,16 +59,16 @@ describe("P0-09 provider-neutral email migration", () => {
       1,
     ];
     const first = await db.query<{ recorded: boolean; suppressed: boolean }>(`
-      SELECT * FROM axora_record_zeptomail_email_event($1,$2,$3,$4,$5,$6,$7,$8)
+      SELECT * FROM axora_record_resend_email_event($1,$2,$3,$4,$5,$6,$7,$8)
     `, values);
     expect(first.rows[0]).toEqual({ recorded: true, suppressed: true });
     const duplicate = await db.query<{ recorded: boolean; suppressed: boolean }>(`
-      SELECT * FROM axora_record_zeptomail_email_event($1,$2,$3,$4,$5,$6,$7,$8)
+      SELECT * FROM axora_record_resend_email_event($1,$2,$3,$4,$5,$6,$7,$8)
     `, values);
     expect(duplicate.rows[0]).toEqual({ recorded: false, suppressed: true });
 
     const soft = await db.query<{ recorded: boolean; suppressed: boolean }>(`
-      SELECT * FROM axora_record_zeptomail_email_event(
+      SELECT * FROM axora_record_resend_email_event(
         '40000000-0000-4000-8000-000000000902','MESSAGE_BOUNCED',$1,$2,
         'SOFT',true,'2026-08-08T11:59:00.000Z',1
       )
@@ -79,13 +81,13 @@ describe("P0-09 provider-neutral email migration", () => {
     expect(suppression.rows[0]).toEqual({ count: 1, hard: 1 });
   });
 
-  it("keeps privacy-minimized attempt evidence append-only and counts recipients", async () => {
+  it("keeps privacy-minimized Resend attempt evidence append-only and counts recipients", async () => {
     await db.query(`
       INSERT INTO email_delivery_attempts(
         id,delivery_kind,delivery_id,event_type,template_key,template_version,
         provider_name,provider_agent,attempt_number,outcome,correlation_id
       ) VALUES ($1,'WORKFLOW',$2,'request.approved','request-approved',1,
-        'zeptomail','axora-procurement',1,'sent',$3)
+        'resend','axora-procurement',1,'sent',$3)
     `, [
       "40000000-0000-4000-8000-000000000911",
       "40000000-0000-4000-8000-000000000912",
