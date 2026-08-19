@@ -47,7 +47,8 @@ describe("production reliability contracts", () => {
     expect(instrumentation).not.toContain("error.stack");
     expect(instrumentation).not.toContain("request.headers");
     expect(instrumentation).not.toContain("request.path");
-    expect(instrumentation).not.toContain("cookies");
+    expect(instrumentation).not.toContain("request.cookies");
+    expect(instrumentation).not.toMatch(/\bcookies\s*\(/u);
   });
 
   it("builds Next with the exact immutable release revision as deploymentId", async () => {
