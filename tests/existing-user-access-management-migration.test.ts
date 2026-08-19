@@ -21,6 +21,38 @@ describe("Prompt 5 existing-user access management migration", () => {
     expect(sql).toContain("Cross-account-kind role conversion is unavailable");
   });
 
+  it("reconciles the invitation scope checks so canonical department invitations can be issued", async () => {
+    const sql = await migration();
+    const checks = sql.slice(
+      sql.indexOf("DROP CONSTRAINT IF EXISTS account_setup_invitation_scope_type_check"),
+      sql.indexOf("CREATE OR REPLACE FUNCTION public.axora_replace_user_role_scope"),
+    );
+    expect(checks).toContain("DROP CONSTRAINT IF EXISTS account_setup_invitation_platform_scope_check");
+    expect(checks).toContain("'PLATFORM','COMPANY','BRANCH','DEPARTMENT','SUPPLIER','DELIVERY'");
+    expect(checks).toContain("intended_scope_type='DEPARTMENT'");
+    expect(checks).toContain("intended_department_id IS NOT NULL");
+    expect(checks).toContain("intended_supplier_id IS NULL");
+  });
+
+  it("revokes a stale pending invitation before mutating its bound role assignment", async () => {
+    const sql = await migration();
+    const replacement = sql.slice(
+      sql.indexOf("CREATE OR REPLACE FUNCTION public.axora_replace_user_role_scope"),
+      sql.indexOf("REVOKE ALL ON FUNCTION public.axora_replace_user_role_scope"),
+    );
+    const noOpReturn = replacement.indexOf(
+      "RETURN QUERY SELECT p_current_role_assignment_id,target_auth_version,0,false",
+    );
+    const invitationRevocation = replacement.indexOf(
+      "UPDATE public.account_setup_invitations invitation",
+    );
+    const assignmentInsert = replacement.indexOf("INSERT INTO public.role_assignments(");
+    expect(noOpReturn).toBeGreaterThan(-1);
+    expect(invitationRevocation).toBeGreaterThan(noOpReturn);
+    expect(assignmentInsert).toBeGreaterThan(invitationRevocation);
+    expect(replacement.match(/UPDATE public\.account_setup_invitations invitation/g)).toHaveLength(1);
+  });
+
   it("keeps both audit rows valid while reserving the command correlation id for ROLE_ASSIGNED idempotency", async () => {
     const sql = await migration();
     const revokedAudit = sql.slice(
