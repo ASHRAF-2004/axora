@@ -32,6 +32,7 @@ printf '%s' "$CLEANUP_PASSWORD" > "$TEMP_DIR/axora_cleanup_worker_password"
 chmod 0444 "$TEMP_DIR"/*
 
 docker run --detach --name "$CONTAINER_NAME" \
+  --publish 127.0.0.1::5432 \
   --env "POSTGRES_DB=$DATABASE_NAME" \
   --env "POSTGRES_USER=$ADMIN_USER" \
   --env "POSTGRES_PASSWORD=$ADMIN_PASSWORD" \
@@ -83,6 +84,38 @@ docker exec \
   "$CONTAINER_NAME" psql --quiet --set=ON_ERROR_STOP=1 \
     --username "$ADMIN_USER" --dbname "$DATABASE_NAME" \
     --file /database/admin/apply-app-grants.sql >/dev/null
+
+host_port="$(docker port "$CONTAINER_NAME" 5432/tcp \
+  | sed -n 's/^127\.0\.0\.1:\([0-9][0-9]*\)$/\1/p' \
+  | head -n 1)"
+case "$host_port" in
+  ''|*[!0-9]*)
+    printf 'Native PostgreSQL loopback port could not be resolved.\n' >&2
+    exit 1
+    ;;
+esac
+
+# Exercise application account creation against the same real PostgreSQL
+# schema/grants. This catches prepared-query type inference failures that
+# PGlite or mocked client.query coverage cannot reproduce.
+(
+  cd "$ROOT_DIR"
+  env -u DATABASE_URL -u DB_PASSWORD_FILE \
+    AXORA_NATIVE_POSTGRES_INTEGRATION=true \
+    AXORA_NATIVE_POSTGRES_HOST=127.0.0.1 \
+    AXORA_NATIVE_POSTGRES_PORT="$host_port" \
+    AXORA_NATIVE_POSTGRES_DATABASE="$DATABASE_NAME" \
+    AXORA_NATIVE_POSTGRES_ADMIN_USER="$ADMIN_USER" \
+    AXORA_NATIVE_POSTGRES_ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+    DEMO_MODE=false \
+    DATABASE_SSL=false \
+    DB_HOST=127.0.0.1 \
+    DB_PORT="$host_port" \
+    DB_NAME="$DATABASE_NAME" \
+    DB_USER=axora_app \
+    DB_PASSWORD="$APP_PASSWORD" \
+    npx --no-install vitest run tests/delivery-guy-invitation-native-postgres.test.ts
+)
 
 docker exec --interactive \
   --env "PGPASSWORD=$ADMIN_PASSWORD" \
