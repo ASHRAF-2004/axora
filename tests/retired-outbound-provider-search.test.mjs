@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const retiredProvider = ["zepto", "mail"].join("");
+const retiredProviderToken = ["zep", "to"].join("");
 const allowed = [
   /^database\/migrations\//,
   /^database\/admin\/apply-app-grants\.sql$/,
@@ -20,12 +20,12 @@ function isText(bytes) {
 }
 
 describe("retired outbound provider repository gate", () => {
-  it("allows the retired provider name only in immutable migration/forward-compatibility evidence", () => {
+  it("allows the retired provider token only in immutable migration/forward-compatibility evidence", () => {
     const matches = [];
     for (const path of trackedFiles()) {
       const bytes = readFileSync(path);
       if (!isText(bytes)) continue;
-      if (!bytes.toString("utf8").toLowerCase().includes(retiredProvider)) continue;
+      if (!bytes.toString("utf8").toLowerCase().includes(retiredProviderToken)) continue;
       matches.push(path);
     }
 
