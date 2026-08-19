@@ -8,7 +8,7 @@ import {
 const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
 
-const retiredProviderName = ["zepto", "mail"].join("");
+const retiredProviderName = ["zep", "to", "mail"].join("");
 const retiredOutboundPattern = new RegExp(
   `${retiredProviderName}|cloudflare-email-service|cloudflare_email_api_token|CLOUDFLARE_EMAIL_API_TOKEN_FILE`,
   "i",
