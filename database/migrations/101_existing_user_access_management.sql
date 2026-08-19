@@ -21,6 +21,64 @@ JOIN public.roles manager_role ON manager_role.role_key=rule.manager_role_key
 JOIN public.roles target_role ON target_role.role_key=rule.target_role_key
 ON CONFLICT(manager_role_id,target_role_id,scope_type) DO NOTHING;
 
+-- Department invitations became a supported canonical lifecycle after the
+-- original generic invitation CHECK constraints were created. Reconcile those
+-- older checks here rather than editing historical migrations. The dedicated
+-- department/company FK and exact-assignment enforcement remain authoritative.
+ALTER TABLE public.account_setup_invitations
+  DROP CONSTRAINT IF EXISTS account_setup_invitation_scope_type_check,
+  DROP CONSTRAINT IF EXISTS account_setup_invitation_platform_scope_check;
+
+ALTER TABLE public.account_setup_invitations
+  ADD CONSTRAINT account_setup_invitation_scope_type_check CHECK (
+    intended_scope_type IN (
+      'PLATFORM','COMPANY','BRANCH','DEPARTMENT','SUPPLIER','DELIVERY'
+    )
+  ),
+  ADD CONSTRAINT account_setup_invitation_platform_scope_check CHECK (
+    (
+      intended_scope_type='PLATFORM'
+      AND company_id IS NULL
+      AND intended_branch_id IS NULL
+      AND intended_department_id IS NULL
+      AND intended_supplier_id IS NULL
+    )
+    OR (
+      intended_scope_type='COMPANY'
+      AND company_id IS NOT NULL
+      AND intended_branch_id IS NULL
+      AND intended_department_id IS NULL
+      AND intended_supplier_id IS NULL
+    )
+    OR (
+      intended_scope_type='BRANCH'
+      AND company_id IS NOT NULL
+      AND intended_branch_id IS NOT NULL
+      AND intended_department_id IS NULL
+      AND intended_supplier_id IS NULL
+    )
+    OR (
+      intended_scope_type='DEPARTMENT'
+      AND company_id IS NOT NULL
+      AND intended_department_id IS NOT NULL
+      AND intended_supplier_id IS NULL
+    )
+    OR (
+      intended_scope_type='SUPPLIER'
+      AND company_id IS NULL
+      AND intended_branch_id IS NULL
+      AND intended_department_id IS NULL
+      AND intended_supplier_id IS NOT NULL
+    )
+    OR (
+      intended_scope_type='DELIVERY'
+      AND company_id IS NULL
+      AND intended_branch_id IS NULL
+      AND intended_department_id IS NULL
+      AND intended_supplier_id IS NULL
+    )
+  );
+
 -- Replace one explicitly selected effective assignment. Assignment identity is
 -- append-only: reuse an already-live identical assignment or insert a new one,
 -- revoke only the selected assignment, update the preferred identity, retire
@@ -280,6 +338,23 @@ BEGIN
     RETURN;
   END IF;
 
+  -- An unconsumed setup bearer is bound to the old role/scope assignment. It
+  -- must be revoked while that binding is still valid, before the old role is
+  -- revoked or the preferred identity changes. This update is part of the same
+  -- transaction, so any later replacement failure restores the invitation.
+  IF target_setup_completed_at IS NULL THEN
+    UPDATE public.account_setup_invitations invitation
+    SET revoked_at=COALESCE(invitation.revoked_at,now()),
+        delivery_status=CASE
+          WHEN invitation.delivery_status IN ('PENDING','SENDING')
+            THEN 'CANCELLED'
+          ELSE invitation.delivery_status
+        END
+    WHERE invitation.user_id=p_target_user_id
+      AND invitation.consumed_at IS NULL
+      AND invitation.revoked_at IS NULL;
+  END IF;
+
   -- If the user legitimately already carries the desired live assignment,
   -- reuse it instead of accumulating a duplicate role. The exact selected old
   -- assignment is still the only one revoked by this operation.
@@ -399,22 +474,6 @@ BEGIN
     )),
     clean_reason,p_command_id
   );
-
-  -- An unconsumed setup bearer is bound to the previous authorization intent.
-  -- Revoke it explicitly so the existing resend lifecycle can create exactly
-  -- one replacement random token/hash for the new role/scope.
-  IF target_setup_completed_at IS NULL THEN
-    UPDATE public.account_setup_invitations invitation
-    SET revoked_at=COALESCE(invitation.revoked_at,now()),
-        delivery_status=CASE
-          WHEN invitation.delivery_status IN ('PENDING','SENDING')
-            THEN 'CANCELLED'
-          ELSE invitation.delivery_status
-        END
-    WHERE invitation.user_id=p_target_user_id
-      AND invitation.consumed_at IS NULL
-      AND invitation.revoked_at IS NULL;
-  END IF;
 
   SELECT * INTO invalidation
   FROM public.axora_invalidate_authorization_sessions(
