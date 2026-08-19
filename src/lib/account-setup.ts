@@ -348,7 +348,11 @@ async function initializeInvitedIdentity(
   if (input.accountKind === "DELIVERY") {
     await client.query(
       `INSERT INTO delivery_agent_profiles(user_id,agent_code,active)
-       VALUES ($1,'DRV-' || upper(substr(replace($1::text,'-',''),1,12)),true)
+       VALUES (
+         $1::uuid,
+         'DRV-' || upper(substr(replace(($1::uuid)::text,'-',''),1,12)),
+         true
+       )
        ON CONFLICT(user_id) DO UPDATE SET active=true`,
       [userId],
     );
