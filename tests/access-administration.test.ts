@@ -38,7 +38,7 @@ const actor: AuthenticatedSessionUser = {
   authVersion: 5,
 };
 
-function validSnapshot() {
+function validSnapshot(status: "ACTIVE" | "INVITED" | "SUSPENDED" = "ACTIVE") {
   const scope = {
     type: "BRANCH",
     companyId: ids.company,
@@ -57,10 +57,10 @@ function validSnapshot() {
       displayName: "Purchase requester",
       email: "requester@example.test",
       accountKind: "COMPANY",
-      accountStatus: "ACTIVE",
-      active: true,
+      accountStatus: status,
+      active: status !== "SUSPENDED",
       authVersion: 8,
-      setupCompleted: true,
+      setupCompleted: status !== "INVITED",
       preferredLocale: "en",
       jobTitle: "Purchasing assistant",
     },
@@ -102,47 +102,63 @@ describe("access administration read service", () => {
     });
   });
 
-  it("loads and strictly validates the scoped database snapshot", async () => {
+  it("loads and strictly validates the active scoped database snapshot", async () => {
     const result = await loadAccessAdministration(
       actor,
       ids.target,
       ids.targetAssignment,
       capturedAt,
     );
-
     expect(result.identity.displayName).toBe("Purchase requester");
+    expect(result.identity.accountStatus).toBe("ACTIVE");
     expect(result.capturedAt).toEqual(capturedAt);
     expect(result.assignments[0].assignedAt).toBeInstanceOf(Date);
+    expect(mocks.query).toHaveBeenCalledTimes(1);
     expect(mocks.query).toHaveBeenCalledWith(
       expect.stringContaining("axora_access_administration_snapshot"),
-      [
-        ids.actor,
-        ids.actorAssignment,
-        ids.target,
-        ids.targetAssignment,
-        capturedAt,
-      ],
+      [ids.actor,ids.actorAssignment,ids.target,ids.targetAssignment,capturedAt],
     );
   });
 
-  it("rejects mismatched identities, inconsistent assignment selection, and malformed private data", async () => {
+  it("falls back to the separate pending-management capability without making the target authentically active", async () => {
+    mocks.query
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ snapshot: null }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ snapshot: validSnapshot("INVITED") }] });
+    const result = await loadAccessAdministration(
+      actor,ids.target,ids.targetAssignment,capturedAt,
+    );
+    expect(result.identity).toMatchObject({
+      accountStatus: "INVITED",
+      active: true,
+      setupCompleted: false,
+    });
+    expect(mocks.query).toHaveBeenCalledTimes(2);
+    expect(mocks.query.mock.calls[1]?.[0]).toContain(
+      "axora_pending_access_administration_snapshot",
+    );
+  });
+
+  it("rejects mismatched identities, inconsistent assignment selection, and malformed private data after both read paths fail closed", async () => {
     const mismatched = validSnapshot();
     mismatched.identity.id = ids.actor;
-    mocks.query.mockResolvedValueOnce({ rows: [{ snapshot: mismatched }] });
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ snapshot: mismatched }] })
+      .mockResolvedValueOnce({ rows: [{ snapshot: mismatched }] });
     await expect(loadAccessAdministration(actor, ids.target))
       .rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
 
     const inconsistent = validSnapshot();
     inconsistent.assignments[0].selected = false;
-    mocks.query.mockResolvedValueOnce({ rows: [{ snapshot: inconsistent }] });
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ snapshot: inconsistent }] })
+      .mockResolvedValueOnce({ rows: [{ snapshot: inconsistent }] });
     await expect(loadAccessAdministration(actor, ids.target))
       .rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
 
-    const leaked = {
-      ...validSnapshot(),
-      passwordHash: "must-never-parse",
-    };
-    mocks.query.mockResolvedValueOnce({ rows: [{ snapshot: leaked }] });
+    const leaked = { ...validSnapshot(), passwordHash: "must-never-parse" };
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ snapshot: leaked }] })
+      .mockResolvedValueOnce({ rows: [{ snapshot: leaked }] });
     await expect(loadAccessAdministration(actor, ids.target))
       .rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
   });
@@ -150,18 +166,14 @@ describe("access administration read service", () => {
   it("treats malformed route identifiers as unavailable without querying policy state", async () => {
     await expect(loadAccessAdministration(actor, "not-a-uuid"))
       .rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
-    await expect(loadAccessAdministration(
-      actor,
-      ids.target,
-      "not-a-role-assignment-uuid",
-    )).rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
+    await expect(loadAccessAdministration(actor,ids.target,"not-a-role-assignment-uuid"))
+      .rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
     expect(mocks.query).not.toHaveBeenCalled();
   });
 
   it("requires a normalized actor, rejects demo mode, and hides database details", async () => {
     await expect(loadAccessAdministration(
-      { ...actor, roleAssignmentId: undefined },
-      ids.target,
+      { ...actor, roleAssignmentId: undefined },ids.target,
     )).rejects.toBeInstanceOf(AccessAdministrationUnavailableError);
     expect(mocks.query).not.toHaveBeenCalled();
 

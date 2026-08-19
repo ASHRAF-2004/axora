@@ -46,9 +46,7 @@ function invitationStatus(user: Awaited<ReturnType<typeof listAuthorizedUsers>>[
   if (user.accountStatus === "DEACTIVATED") return "Removed";
   if (!user.active) return "Inactive";
   if (user.accountSetupCompletedAt) return "Active";
-  if (user.accountSetupExpiresAt && new Date(user.accountSetupExpiresAt).getTime() <= Date.now()) {
-    return "Invite expired";
-  }
+  if (user.accountSetupExpiresAt && new Date(user.accountSetupExpiresAt).getTime() <= Date.now()) return "Invite expired";
   if (user.accountSetupDeliveryStatus === "SENT") return "Invite sent";
   if (user.accountSetupDeliveryStatus === "SENDING") return "Sending email";
   if (user.accountSetupDeliveryStatus === "DISABLED") return "Delivery disabled";
@@ -67,19 +65,13 @@ function invitationTimeline(user: Awaited<ReturnType<typeof listAuthorizedUsers>
   if (user.accountSetupDeliveryStatus === "FAILED" && user.accountSetupDeliveryAttemptedAt) {
     return copy.failedAt(formatDateTime(user.accountSetupDeliveryAttemptedAt, locale, timeZone));
   }
-  if (user.accountSetupDeliveryStatus === "UNCERTAIN") {
-    return copy.deliveryUnknown;
-  }
+  if (user.accountSetupDeliveryStatus === "UNCERTAIN") return copy.deliveryUnknown;
   if (user.accountSetupDeliveryStatus === "DISABLED") return copy.deliveryNotConfigured;
   if (user.accountSetupExpiresAt) return copy.expiresAt(formatDateTime(user.accountSetupExpiresAt, locale, timeZone));
   return copy.neverSignedIn;
 }
 
-export default async function UsersPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ notice?: string }>;
-}) {
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requirePagePermission("manage_users");
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
@@ -88,10 +80,7 @@ export default async function UsersPage({
   const accessCopy = accessAdministrationMessages(locale);
   const imageCopy = profileImageMessages(locale);
   const deletionCopy = permanentDeletionMessages[locale];
-  const [directoryUsers, params] = await Promise.all([
-    listAuthorizedUsers(actor),
-    searchParams,
-  ]);
+  const [directoryUsers, params] = await Promise.all([listAuthorizedUsers(actor), searchParams]);
   const users = directoryUsers.filter((user) => user.accountStatus !== "DEACTIVATED");
   const notice = params.notice === "user-removed" ? deletionCopy.removedNotice
     : params.notice === "remove-unavailable" ? copy.removeUnavailable : undefined;
@@ -123,7 +112,10 @@ export default async function UsersPage({
             ? copy.lastAdmin : "";
       const setupPending = user.active && !user.accountSetupCompletedAt;
       const canResend = setupPending;
-      const canOpenAccess = user.active && Boolean(user.accountSetupCompletedAt);
+      // Prompt 5 makes the same management workspace available before setup is
+      // complete and for suspended accounts. Mutation capabilities still fail
+      // closed at the server/database boundary.
+      const canOpenAccess = user.accountStatus !== "DEACTIVATED";
       const organizationName = user.companyName ?? user.supplierName
         ?? (user.accountKind === "DELIVERY" ? copy.deliveryNetwork : copy.platform);
       const scope = user.scopeType === "PLATFORM" ? copy.platformWide
@@ -140,8 +132,7 @@ export default async function UsersPage({
         <td><div className="action-row">
           {canOpenAccess ? <Link className="button button-secondary" href={`/users/${user.id}/access`}>{accessCopy.openAccess}</Link> : null}
           {protectedLabel ? <span className="subtle">{protectedLabel}</span> : <>
-            {canResend ? <InvitationResendForm userId={user.id}
-              userName={user.displayName} locale={locale} /> : null}
+            {canResend ? <InvitationResendForm userId={user.id} userName={user.displayName} locale={locale} /> : null}
             <form action={setUserActiveAction.bind(null, user.id, !user.active)}>
               <button className="button button-secondary" type="submit">{user.active ? copy.deactivate : copy.reactivate}</button>
             </form>

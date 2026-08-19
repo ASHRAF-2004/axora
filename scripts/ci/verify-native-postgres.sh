@@ -95,27 +95,33 @@ case "$host_port" in
     ;;
 esac
 
-# Exercise application account creation against the same real PostgreSQL
-# schema/grants. This catches prepared-query type inference failures that
-# PGlite or mocked client.query coverage cannot reproduce.
-(
-  cd "$ROOT_DIR"
-  env -u DATABASE_URL -u DB_PASSWORD_FILE \
-    AXORA_NATIVE_POSTGRES_INTEGRATION=true \
-    AXORA_NATIVE_POSTGRES_HOST=127.0.0.1 \
-    AXORA_NATIVE_POSTGRES_PORT="$host_port" \
-    AXORA_NATIVE_POSTGRES_DATABASE="$DATABASE_NAME" \
-    AXORA_NATIVE_POSTGRES_ADMIN_USER="$ADMIN_USER" \
-    AXORA_NATIVE_POSTGRES_ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-    DEMO_MODE=false \
-    DATABASE_SSL=false \
-    DB_HOST=127.0.0.1 \
-    DB_PORT="$host_port" \
-    DB_NAME="$DATABASE_NAME" \
-    DB_USER=axora_app \
-    DB_PASSWORD="$APP_PASSWORD" \
-    npx --no-install vitest run tests/delivery-guy-invitation-native-postgres.test.ts
-)
+run_native_test() {
+  local test_file="$1"
+  (
+    cd "$ROOT_DIR"
+    env -u DATABASE_URL -u DB_PASSWORD_FILE \
+      AXORA_NATIVE_POSTGRES_INTEGRATION=true \
+      AXORA_NATIVE_POSTGRES_HOST=127.0.0.1 \
+      AXORA_NATIVE_POSTGRES_PORT="$host_port" \
+      AXORA_NATIVE_POSTGRES_DATABASE="$DATABASE_NAME" \
+      AXORA_NATIVE_POSTGRES_ADMIN_USER="$ADMIN_USER" \
+      AXORA_NATIVE_POSTGRES_ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+      DEMO_MODE=false \
+      DATABASE_SSL=false \
+      DB_HOST=127.0.0.1 \
+      DB_PORT="$host_port" \
+      DB_NAME="$DATABASE_NAME" \
+      DB_USER=axora_app \
+      DB_PASSWORD="$APP_PASSWORD" \
+      npx --no-install vitest run "$test_file"
+  )
+}
+
+# Keep these application-level suites sequential. The Prompt 5 suite ends by
+# proving the global last-Platform-Owner invariant and intentionally retires
+# other native owner fixtures only after the PR #137 regression is complete.
+run_native_test tests/delivery-guy-invitation-native-postgres.test.ts
+run_native_test tests/existing-user-management-native-postgres.test.ts
 
 docker exec --interactive \
   --env "PGPASSWORD=$ADMIN_PASSWORD" \
@@ -184,6 +190,20 @@ BEGIN
     RAISE EXCEPTION 'Application deletion capabilities are unavailable';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc
+    WHERE pronamespace='public'::regnamespace
+      AND proname='axora_replace_user_role_scope'
+      AND has_function_privilege('axora_app', oid, 'EXECUTE')
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_proc
+    WHERE pronamespace='public'::regnamespace
+      AND proname='axora_pending_access_administration_snapshot'
+      AND has_function_privilege('axora_app', oid, 'EXECUTE')
+  ) THEN
+    RAISE EXCEPTION 'Prompt 5 application access capabilities are unavailable';
+  END IF;
+
   SELECT array_agg(proname ORDER BY proname)
   INTO exposed_cleanup_functions
   FROM pg_proc
@@ -208,4 +228,4 @@ END
 $verify$;
 SQL
 
-printf 'Native PostgreSQL verified: %s migrations, validated deletion constraints, forced RLS, and least-privilege grants.\n' "$EXPECTED_MIGRATIONS"
+printf 'Native PostgreSQL verified: %s migrations, application authorization lifecycles, forced RLS, and least-privilege grants.\n' "$EXPECTED_MIGRATIONS"
