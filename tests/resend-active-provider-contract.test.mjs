@@ -8,7 +8,11 @@ import {
 const root = new URL("../", import.meta.url);
 const source = (path) => readFile(new URL(path, root), "utf8");
 
-const retiredOutboundPattern = /zeptomail|cloudflare-email-service|cloudflare_email_api_token/i;
+const retiredProviderName = ["zepto", "mail"].join("");
+const retiredOutboundPattern = new RegExp(
+  `${retiredProviderName}|cloudflare-email-service|cloudflare_email_api_token|CLOUDFLARE_EMAIL_API_TOKEN_FILE`,
+  "i",
+);
 
 describe("active outbound email provider contract", () => {
   it("routes every registered transactional template through provider-neutral Axora streams", () => {
@@ -32,17 +36,21 @@ describe("active outbound email provider contract", () => {
     expect(sender).not.toMatch(retiredOutboundPattern);
   });
 
-  it("keeps current runtime, compose and production readiness Resend-only", async () => {
-    const [compose, localEnv, productionEnv, runtimeEnv, checker] = await Promise.all([
-      source("compose.yaml"),
-      source(".env.example"),
-      source(".env.production.example"),
-      source("deploy/systemd/runtime.env.example"),
-      source("scripts/production/check-email-service.mjs"),
-    ]);
-    for (const value of [compose, localEnv, productionEnv, runtimeEnv, checker]) {
-      expect(value).not.toMatch(retiredOutboundPattern);
-    }
+  it("keeps current runtime, compose and production scripts Resend-only for outbound mail", async () => {
+    const paths = [
+      "compose.yaml",
+      ".env.example",
+      ".env.production.example",
+      "deploy/systemd/runtime.env.example",
+      "scripts/production/check-email-service.mjs",
+      "scripts/production/preflight.sh",
+      "scripts/production/install.sh",
+      "scripts/production/validate-assets.sh",
+    ];
+    const values = await Promise.all(paths.map(source));
+    for (const value of values) expect(value).not.toMatch(retiredOutboundPattern);
+
+    const [compose, localEnv, productionEnv, runtimeEnv, checker] = values;
     expect(compose).toContain('AXORA_EMAIL_PROVIDER: "${AXORA_EMAIL_PROVIDER:-resend}"');
     expect(localEnv).toContain("AXORA_EMAIL_PROVIDER=resend");
     expect(productionEnv).toContain("AXORA_EMAIL_PROVIDER=resend");
@@ -62,14 +70,19 @@ describe("active outbound email provider contract", () => {
     expect(providerRoutes).toEqual(["/api/email/provider-events/resend"]);
     expect(caddy).toContain("/api/email/provider-events/resend");
     expect(caddy).not.toContain("/api/email/provider-events/cloudflare");
-    expect(caddy).not.toMatch(/provider-events\/zeptomail/i);
+    expect(caddy.toLowerCase()).not.toContain(`provider-events/${retiredProviderName}`);
   });
 
-  it("preserves Cloudflare inbound Email Routing and networking as a separate direction", async () => {
-    const architecture = await source("docs/EMAIL_ARCHITECTURE.md");
+  it("preserves Cloudflare inbound Email Routing and Cloudflare networking as a separate direction", async () => {
+    const [architecture, productionCompose] = await Promise.all([
+      source("docs/EMAIL_ARCHITECTURE.md"),
+      source("compose.production.yaml"),
+    ]);
     expect(architecture).toContain("Cloudflare Email Routing / inbound receiving");
     expect(architecture).toContain("Cloudflare — preserved");
     expect(architecture).toContain("cloudflared");
     expect(architecture).toContain("Resend is the only active production provider");
+    expect(productionCompose).toContain("cloudflare/cloudflared:");
+    expect(productionCompose).toContain("cloudflare_tunnel_token");
   });
 });
