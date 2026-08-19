@@ -18,7 +18,7 @@ function runtime(overrides = {}) {
 }
 
 describe("Resend production readiness", () => {
-  it("represents the safe deployed state without ZeptoMail-only gates", () => {
+  it("represents the safe deployed state with only Resend gates", () => {
     expect(inspectResendRuntimeState({ runtimeSource: runtime() })).toMatchObject({
       provider: "resend",
       state: "DELIVERY_DISABLED",
@@ -32,12 +32,22 @@ describe("Resend production readiness", () => {
       AXORA_EMAIL_EVENTS_ENABLED: "false",
       RESEND_DOMAIN_VERIFIED: "true",
       RESEND_WEBHOOK_VERIFIED: "false",
-    })).toMatchObject({
+    })).toEqual({
       providerName: "resend",
       state: "DELIVERY_DISABLED",
-      accountReviewed: undefined,
-      creditsReady: undefined,
+      deliveryEnabled: false,
+      eventsEnabled: false,
+      domainVerified: true,
+      webhookVerified: false,
     });
+  });
+
+  it("rejects retired provider selection", () => {
+    for (const provider of ["cloudflare-email-service", "legacy-provider"]) {
+      expect(() => inspectResendRuntimeState({
+        runtimeSource: runtime({ AXORA_EMAIL_PROVIDER: provider }),
+      })).toThrow("AXORA_EMAIL_PROVIDER=resend");
+    }
   });
 
   it("allows signed events before delivery but blocks false verification claims", () => {
