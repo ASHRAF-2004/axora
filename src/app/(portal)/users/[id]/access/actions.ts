@@ -120,33 +120,37 @@ export async function replaceRoleScopeAction(
   formData: FormData,
 ) {
   const actor = await requirePermission("manage_users");
+  const rawRole = readFormText(formData,"role");
+  const rawScopeType = readFormText(formData,"scopeType");
+  if (!isUserRole(rawRole) || !isRoleScopeType(rawScopeType)) {
+    redirect(accessPath(targetUserId,currentRoleAssignmentId,"change-unavailable"));
+  }
+
+  const companyId = readFormText(formData,"companyId") || undefined;
+  const branchId = readFormText(formData,"branchId") || undefined;
+  const departmentId = readFormText(formData,"departmentId") || undefined;
+  const supplierId = readFormText(formData,"supplierId") || undefined;
+  const scope: AuthorizationScope = {
+    type: rawScopeType,
+    ...(companyId ? { companyId } : {}),
+    ...(branchId ? { branchId } : {}),
+    ...(departmentId ? { departmentId } : {}),
+    ...(supplierId ? { supplierId } : {}),
+  };
+
+  let nextRoleAssignmentId = currentRoleAssignmentId;
   try {
-    const rawRole = readFormText(formData,"role");
-    const rawScopeType = readFormText(formData,"scopeType");
-    if (!isUserRole(rawRole) || !isRoleScopeType(rawScopeType)) {
-      redirect(accessPath(targetUserId,currentRoleAssignmentId,"change-unavailable"));
-    }
-    const companyId = readFormText(formData,"companyId") || undefined;
-    const branchId = readFormText(formData,"branchId") || undefined;
-    const departmentId = readFormText(formData,"departmentId") || undefined;
-    const supplierId = readFormText(formData,"supplierId") || undefined;
-    const scope: AuthorizationScope = {
-      type: rawScopeType,
-      ...(companyId ? { companyId } : {}),
-      ...(branchId ? { branchId } : {}),
-      ...(departmentId ? { departmentId } : {}),
-      ...(supplierId ? { supplierId } : {}),
-    };
     const result = await replaceUserRoleScope(actor, {
       commandId,targetUserId,currentRoleAssignmentId,role: rawRole,scope,
       reason: readFormText(formData,"reason"),
     });
-    refreshUserManagement(targetUserId);
-    redirect(accessPath(targetUserId,result.roleAssignmentId,"role-scope-updated"));
-  } catch (error) {
-    if (error && typeof error === "object" && "digest" in error) throw error;
+    nextRoleAssignmentId = result.roleAssignmentId;
+  } catch {
     redirect(accessPath(targetUserId,currentRoleAssignmentId,"change-unavailable"));
   }
+
+  refreshUserManagement(targetUserId);
+  redirect(accessPath(targetUserId,nextRoleAssignmentId,"role-scope-updated"));
 }
 
 export async function setManagedApprovalLimitAction(
