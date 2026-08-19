@@ -114,11 +114,11 @@ receiving. Its removal does not remove Cloudflare Email Routing.
 
 ## Historical provider note
 
-Earlier Axora work evaluated Cloudflare Email Sending and ZeptoMail as outbound
-providers. Those outbound instructions are superseded by the current Resend
-architecture. Historical migrations and immutable provider evidence may retain
-old provider names so the database/audit record remains truthful; they are not
-current provider configuration.
+Earlier Axora work evaluated other outbound providers. Those outbound
+instructions are superseded by the current Resend architecture. Historical
+migrations and immutable provider evidence may retain old provider names so the
+database/audit record remains truthful; they are not current provider
+configuration.
 
 ## Production safety rule
 
