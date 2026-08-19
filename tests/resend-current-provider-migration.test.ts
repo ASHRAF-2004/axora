@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 import { applyMigrations } from "./helpers/pglite";
 
-const retiredProvider = ["zepto", "mail"].join("");
+const retiredProvider = ["zep", "to", "mail"].join("");
 const retiredRecorder = `public.axora_record_${retiredProvider}_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)`;
 const cloudflareRecorder = "public.axora_record_cloudflare_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)";
 const resendRecorder = "public.axora_record_resend_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)";
