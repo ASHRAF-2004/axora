@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
 import {
   EMAIL_DELIVERY_STATUSES,
-  EMAIL_PROVIDER_AGENTS,
+  EMAIL_DELIVERY_STREAMS,
   getEmailOperationsWorkspace,
   normalizeEmailOperationsFilters,
 } from "@/lib/email-operations";
@@ -41,9 +41,9 @@ function statusLabel(value: string, locale: "en" | "ar" | "ms") {
 
 function readinessStateLabel(value: string, locale: "en" | "ar" | "ms") {
   const labels = {
-    en: { DELIVERY_DISABLED: "Delivery disabled", WEBHOOK_BOOTSTRAP: "Webhook bootstrap", SIGNED_WEBHOOK_CONFIGURED: "Signed webhook configured", ACCOUNT_REVIEW_PENDING: "Account review pending", READY_FOR_CONTROLLED_SEND: "Ready for controlled send", FULLY_ENABLED: "Fully enabled", MISCONFIGURED: "Misconfigured" },
-    ar: { DELIVERY_DISABLED: "التسليم معطل", WEBHOOK_BOOTSTRAP: "تهيئة Webhook الأولية", SIGNED_WEBHOOK_CONFIGURED: "Webhook موقّع مهيأ", ACCOUNT_REVIEW_PENDING: "مراجعة الحساب معلقة", READY_FOR_CONTROLLED_SEND: "جاهز لإرسال مضبوط", FULLY_ENABLED: "مفعّل بالكامل", MISCONFIGURED: "تهيئة غير صحيحة" },
-    ms: { DELIVERY_DISABLED: "Penghantaran dilumpuhkan", WEBHOOK_BOOTSTRAP: "Bootstrap webhook", SIGNED_WEBHOOK_CONFIGURED: "Webhook bertandatangan dikonfigurasi", ACCOUNT_REVIEW_PENDING: "Semakan akaun belum selesai", READY_FOR_CONTROLLED_SEND: "Sedia untuk penghantaran terkawal", FULLY_ENABLED: "Didayakan sepenuhnya", MISCONFIGURED: "Salah konfigurasi" },
+    en: { DELIVERY_DISABLED: "Delivery disabled", SIGNED_WEBHOOK_CONFIGURED: "Signed webhook configured", READY_FOR_CONTROLLED_SEND: "Ready for controlled send", FULLY_ENABLED: "Fully enabled", MISCONFIGURED: "Misconfigured" },
+    ar: { DELIVERY_DISABLED: "التسليم معطل", SIGNED_WEBHOOK_CONFIGURED: "Webhook موقّع مهيأ", READY_FOR_CONTROLLED_SEND: "جاهز لإرسال مضبوط", FULLY_ENABLED: "مفعّل بالكامل", MISCONFIGURED: "تهيئة غير صحيحة" },
+    ms: { DELIVERY_DISABLED: "Penghantaran dilumpuhkan", SIGNED_WEBHOOK_CONFIGURED: "Webhook bertandatangan dikonfigurasi", READY_FOR_CONTROLLED_SEND: "Sedia untuk penghantaran terkawal", FULLY_ENABLED: "Didayakan sepenuhnya", MISCONFIGURED: "Salah konfigurasi" },
   } as const;
   return labels[locale][value as keyof (typeof labels)["en"]] ?? value.replaceAll("_", " ");
 }
@@ -97,18 +97,18 @@ export default async function EmailOperationsPage({
   const quotaCopy = locale === "ar" ? {
     title: "سعة البريد للفترة الحالية", total: "الإجمالي", used: "المستخدم",
     remaining: "المتبقي", period: "الفترة", updated: "آخر تحديث",
-    source: "المصدر: حصة إنتاج مضبوطة مع استخدام Axora المسجل",
-    missing: "لم تُضبط حصة إنتاج موثوقة.",
+    source: "المصدر: حد تشغيلي داخلي مضبوط مع استخدام Axora المسجل",
+    missing: "لم يُضبط حد تشغيلي داخلي موثوق.",
   } : locale === "ms" ? {
     title: "Kapasiti e-mel tempoh semasa", total: "Jumlah", used: "Digunakan",
     remaining: "Baki", period: "Tempoh", updated: "Kemas kini terakhir",
-    source: "Sumber: kuota produksi dikonfigurasi dengan penggunaan Axora direkodkan",
-    missing: "Kuota produksi yang dipercayai belum dikonfigurasi.",
+    source: "Sumber: had operasi dalaman dikonfigurasi dengan penggunaan Axora direkodkan",
+    missing: "Had operasi dalaman yang dipercayai belum dikonfigurasi.",
   } : {
     title: "Current-period email capacity", total: "Total", used: "Used",
     remaining: "Remaining", period: "Period", updated: "Last updated",
-    source: "Source: configured production quota with Axora-recorded usage",
-    missing: "No trustworthy production quota is configured.",
+    source: "Source: configured internal operating limit with Axora-recorded usage",
+    missing: "No trustworthy internal operating limit is configured.",
   };
 
   return <div className={styles.workspace} data-email-operations-workspace>
@@ -129,9 +129,9 @@ export default async function EmailOperationsPage({
         <form method="get" className={styles.filterGrid}>
           <label>{messages.from}<input type="date" name="from" defaultValue={filters.from ?? ""} /></label>
           <label>{messages.to}<input type="date" name="to" defaultValue={filters.to ?? ""} /></label>
-          <label>{messages.agent}<select name="agent" defaultValue={filters.agent ?? ""}>
+          <label>{messages.stream}<select name="agent" defaultValue={filters.agent ?? ""}>
             <option value="">{messages.all}</option>
-            {EMAIL_PROVIDER_AGENTS.map((agent) => <option key={agent} value={agent}>{agent}</option>)}
+            {EMAIL_DELIVERY_STREAMS.map((stream) => <option key={stream} value={stream}>{stream}</option>)}
           </select></label>
           <label>{messages.status}<select name="status" defaultValue={filters.status ?? ""}>
             <option value="">{messages.all}</option>
@@ -184,39 +184,36 @@ export default async function EmailOperationsPage({
       <div className={`panel-body ${styles.providerGrid}`}>
         <article className={styles.healthCard}>
           <MailCheck size={28} aria-hidden="true" />
-          <strong>{workspace.providerRuntime.providerName}</strong>
+          <strong>Resend</strong>
           <div className={styles.healthGrid}>
             <div><span>{messages.configState}</span><strong>{readinessStateLabel(workspace.providerRuntime.state, locale)}</strong></div>
             <div><span>{messages.deliveryGate}</span><strong>{workspace.providerRuntime.deliveryEnabled ? messages.enabled : messages.disabled}</strong></div>
             <div><span>{messages.eventsGate}</span><strong>{workspace.providerRuntime.eventsEnabled ? messages.enabled : messages.disabled}</strong></div>
-            <div><span>{messages.bootstrapGate}</span><strong>{workspace.providerRuntime.bootstrapEnabled ? messages.enabled : messages.disabled}</strong></div>
-            <div><span>{messages.accountReviewed}</span><strong>{workspace.providerRuntime.accountReviewed === undefined ? "-" : workspace.providerRuntime.accountReviewed ? messages.enabled : messages.disabled}</strong></div>
             <div><span>{messages.domainVerified}</span><strong>{workspace.providerRuntime.domainVerified ? messages.enabled : messages.disabled}</strong></div>
-            <div><span>{messages.creditsReady}</span><strong>{workspace.providerRuntime.creditsReady === undefined ? "-" : workspace.providerRuntime.creditsReady ? messages.enabled : messages.disabled}</strong></div>
             <div><span>{messages.webhookVerified}</span><strong>{workspace.providerRuntime.webhookVerified ? messages.enabled : messages.disabled}</strong></div>
           </div>
         </article>
       </div>
     </section>
 
-    <section className="panel" aria-labelledby="email-agent-title">
-      <div className="panel-header"><div><h2 id="email-agent-title">{messages.agents}</h2><p>{messages.agentsBody}</p></div></div>
+    <section className="panel" aria-labelledby="email-stream-title">
+      <div className="panel-header"><div><h2 id="email-stream-title">{messages.streams}</h2><p>{messages.streamsBody}</p></div></div>
       <div className={`panel-body ${styles.agentGrid}`}>
-        {workspace.agents.map((agent) => <article className={styles.agent} key={agent.providerAgent}>
-          <div className={styles.agentHead}><strong className="bidi-ltr" dir="ltr">{agent.providerAgent}</strong>
-            <span className={`${styles.state} ${agent.paused ? styles.statePaused : ""}`}>{agent.paused ? messages.paused : messages.active}</span>
+        {workspace.agents.map((stream) => <article className={styles.agent} key={stream.providerAgent}>
+          <div className={styles.agentHead}><strong className="bidi-ltr" dir="ltr">{stream.providerAgent}</strong>
+            <span className={`${styles.state} ${stream.paused ? styles.statePaused : ""}`}>{stream.paused ? messages.paused : messages.active}</span>
           </div>
           <div className={styles.agentMetrics}>
-            <div><span>{messages.queue}</span><strong>{number.format(agent.queueDepth)}</strong></div>
-            <div><span>{messages.retrying}</span><strong>{number.format(agent.retrying)}</strong></div>
-            <div><span>{messages.agentFailures}</span><strong>{number.format(agent.failures)}</strong></div>
+            <div><span>{messages.queue}</span><strong>{number.format(stream.queueDepth)}</strong></div>
+            <div><span>{messages.retrying}</span><strong>{number.format(stream.retrying)}</strong></div>
+            <div><span>{messages.streamFailures}</span><strong>{number.format(stream.failures)}</strong></div>
           </div>
           {workspace.canManage ? <form action={performEmailOperationAction} className={styles.agentForm}>
             <input type="hidden" name="commandId" value={randomUUID()} />
-            <input type="hidden" name="providerAgent" value={agent.providerAgent} />
+            <input type="hidden" name="providerAgent" value={stream.providerAgent} />
             <label>{messages.reason}<input name="reason" required minLength={10} maxLength={1_000} /></label>
-            <button className={`button ${agent.paused ? "button-primary" : "button-secondary"}`} name="action" value={agent.paused ? "RESUME_AGENT" : "PAUSE_AGENT"} type="submit">
-              {agent.paused ? messages.resume : messages.pause}
+            <button className={`button ${stream.paused ? "button-primary" : "button-secondary"}`} name="action" value={stream.paused ? "RESUME_AGENT" : "PAUSE_AGENT"} type="submit">
+              {stream.paused ? messages.resume : messages.pause}
             </button>
           </form> : null}
         </article>)}
@@ -228,26 +225,20 @@ export default async function EmailOperationsPage({
       <div className={`panel-body ${styles.providerGrid}`}>
         <article className={styles.healthCard}>
           <MailCheck size={28} aria-hidden="true" />
-          <strong>{workspace.providerHealth.providerName ?? "provider"}</strong>
+          <strong>Resend</strong>
           <div className={styles.healthGrid}>
-            <div><span>{messages.remaining}</span><strong>{workspace.providerHealth.remainingRecipientUnits === undefined ? "-" : number.format(workspace.providerHealth.remainingRecipientUnits)}</strong></div>
-            <div><span>{messages.forecast}</span><strong>{workspace.providerHealth.forecastDays === undefined ? "-" : number.format(workspace.providerHealth.forecastDays)}</strong></div>
-            <div><span>{messages.threshold}</span><strong>{workspace.providerHealth.threshold}</strong></div>
             <div><span>{messages.accountState}</span><strong>{workspace.providerHealth.accountState}</strong></div>
             <div><span>{messages.domainState}</span><strong>{workspace.providerHealth.domainState}</strong></div>
             <div><span>{messages.configState}</span><strong>{workspace.providerHealth.configurationState}</strong></div>
-            <div><span>{messages.expires}</span><strong>{formatDateTime(workspace.providerHealth.creditExpiresAt, locale, timeZone)}</strong></div>
-            <div><span>{messages.renews}</span><strong>{formatDateTime(workspace.providerHealth.allowanceRenewsAt, locale, timeZone)}</strong></div>
+            <div><span>{messages.lastSubmission}</span><strong>{formatDateTime(workspace.providerHealth.lastProviderSubmissionAt, locale, timeZone)}</strong></div>
+            <div><span>{messages.lastWebhook}</span><strong>{formatDateTime(workspace.providerHealth.lastProviderWebhookAt, locale, timeZone)}</strong></div>
           </div>
         </article>
         {workspace.canManage ? <form action={performEmailOperationAction} className={styles.providerForm}>
           <input type="hidden" name="commandId" value={randomUUID()} />
+          <input type="hidden" name="providerName" value="resend" />
           <input type="hidden" name="source" value="MANUAL" />
-          <label>{messages.source}<select name="providerName" defaultValue="resend"><option value="resend">Resend</option><option value="zeptomail">ZeptoMail</option><option value="cloudflare-email-service">Cloudflare Email Service</option></select></label>
-          <label>{messages.remaining}<input name="remainingRecipientUnits" type="number" min="0" step="1" inputMode="numeric" /></label>
-          <label>{messages.renews}<input name="allowanceRenewsAt" type="date" /></label>
-          <label>{messages.expires}<input name="creditExpiresAt" type="date" /></label>
-          <label>{messages.accountState}<select name="accountState" defaultValue="UNKNOWN"><option>HEALTHY</option><option>DEGRADED</option><option>PAUSED</option><option>EXPIRED</option><option>UNKNOWN</option></select></label>
+          <label>{messages.accountState}<select name="accountState" defaultValue="UNKNOWN"><option>HEALTHY</option><option>DEGRADED</option><option>PAUSED</option><option>UNKNOWN</option></select></label>
           <label>{messages.domain}<input name="domainName" className="bidi-ltr" dir="ltr" maxLength={253} /></label>
           <label>{messages.domainState}<select name="domainState" defaultValue="UNKNOWN"><option>VERIFIED</option><option>PENDING</option><option>FAILED</option><option>UNKNOWN</option></select></label>
           <label>{messages.configState}<select name="configurationState" defaultValue="UNKNOWN"><option>HEALTHY</option><option>DEGRADED</option><option>FAILED</option><option>UNKNOWN</option></select></label>
@@ -269,7 +260,7 @@ export default async function EmailOperationsPage({
             <h3>{record.templateKey} <small>v{number.format(record.templateVersion)}</small></h3>
             <span><strong>{messages.delivery}:</strong> {statusLabel(record.status, locale)} / {record.deliveryKind}</span>
             <span><strong>{messages.recipient}:</strong> <bdi className="bidi-ltr" dir="ltr">{record.maskedRecipient}</bdi></span>
-            <span><strong>{messages.agent}:</strong> <bdi className="bidi-ltr" dir="ltr">{record.providerAgent}</bdi></span>
+            <span><strong>{messages.stream}:</strong> <bdi className="bidi-ltr" dir="ltr">{record.providerAgent}</bdi></span>
           </div>
           <div className={styles.recordMeta}>
             <span><strong>{messages.event}:</strong> {record.eventKey}</span>
