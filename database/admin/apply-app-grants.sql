@@ -282,6 +282,11 @@ BEGIN
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_actor_has_permission(jsonb,uuid,uuid,text,timestamptz) FROM axora_app';
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_actor_can_create(jsonb,text) FROM axora_app';
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_activation_blockers(uuid) FROM axora_app';
+    IF to_regprocedure(
+      'public.axora_company_has_active_administrator(uuid)'
+    ) IS NOT NULL THEN
+      EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_has_active_administrator(uuid) FROM axora_app';
+    END IF;
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_apply_company_status(uuid,text,uuid,text,timestamptz,jsonb) FROM axora_app';
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_notification_recipient_ids(uuid,boolean,timestamptz) FROM axora_app';
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_company_lifecycle_record(uuid,jsonb,uuid,timestamptz) FROM axora_app';

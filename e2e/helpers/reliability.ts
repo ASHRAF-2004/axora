@@ -14,7 +14,10 @@ function safePath(url: string) {
  * receives an unexpected HTTP 5xx. No query strings or payloads are retained
  * in failure evidence.
  */
-export function installReliabilityGuard(page: Page) {
+export function installReliabilityGuard(
+  page: Page,
+  options: { ignoreConsoleError?: (message: string) => boolean } = {},
+) {
   const failures: string[] = [];
 
   page.on("pageerror", (error) => {
@@ -23,7 +26,10 @@ export function installReliabilityGuard(page: Page) {
 
   page.on("console", (message) => {
     if (message.type() === "error") {
-      failures.push(`console.error:${message.text().slice(0, 240)}`);
+      const text = message.text();
+      if (!options.ignoreConsoleError?.(text)) {
+        failures.push(`console.error:${text.slice(0, 240)}`);
+      }
     }
   });
 

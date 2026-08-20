@@ -174,7 +174,10 @@ describe("Platform Owner company verification migration", () => {
           axora_company_activation_blockers(id) AS blockers
         FROM companies WHERE id=$1
       `, [companyId]);
-      expect(approved.rows[0]).toEqual({ status: "VERIFIED", blockers: [] });
+      expect(approved.rows[0]).toEqual({
+        status: "VERIFIED",
+        blockers: ["ADMIN_ACTIVATION"],
+      });
 
       const history = await db.query<{ states: string[] }>(`
         SELECT array_agg(to_status ORDER BY changed_at,id) AS states
