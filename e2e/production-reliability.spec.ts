@@ -11,6 +11,9 @@ function countServerActionPosts(page: Page) {
 }
 
 test.describe("production reliability guard", () => {
+  // First-attempt correctness must never be masked by Playwright's CI retry policy.
+  test.describe.configure({ retries: 0 });
+
   test("a valid profile mutation succeeds on its first and only submission", async ({ page }) => {
     await signInAsDemoOwner(page);
     const reliability = installReliabilityGuard(page);
@@ -23,7 +26,9 @@ test.describe("production reliability guard", () => {
     await page.getByRole("button", { name: "Save profile" }).click();
 
     await expect(page).toHaveURL(/\/profile\?saved=1$/);
-    await expect(page.getByRole("status")).toContainText("profile changes were saved");
+    await expect(page.locator('.profile-feedback[role="status"]')).toContainText(
+      "profile changes were saved",
+    );
     expect(actionPosts()).toBe(1);
     await reliability.assertHealthy();
   });
@@ -43,7 +48,9 @@ test.describe("production reliability guard", () => {
     await page.getByRole("button", { name: "Save profile" }).click();
 
     await expect(page).toHaveURL(/\/profile\?.*error=invalid-profile/);
-    await expect(page.getByRole("alert")).toContainText("Review the highlighted profile fields");
+    await expect(page.locator('.profile-feedback[role="alert"]')).toContainText(
+      "Review the highlighted profile fields",
+    );
     expect(actionPosts()).toBe(1);
     await reliability.assertHealthy();
   });
