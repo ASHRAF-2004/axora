@@ -478,12 +478,11 @@ for unit_file in \
   axora-backup.service axora-backup.timer; do
   install -o root -g root -m 0644 "$REPOSITORY_DIR/deploy/systemd/$unit_file" "$SYSTEMD_DIR/$unit_file"
 done
-# Deployment is triggered by the successful main-branch GitHub Actions job.
-# Remove the former polling timer so it cannot race CI or deploy an untested SHA.
-systemctl disable --now axora-deploy.timer >/dev/null 2>&1 || true
-systemctl disable --now axora-deploy.service >/dev/null 2>&1 || true
-rm -f -- "$SYSTEMD_DIR/axora-deploy.timer" "$SYSTEMD_DIR/axora-deploy.service"
-systemctl daemon-reload
+# Installing the reviewed controller is deliberately non-activating. Keep the
+# former polling deployment available until the explicit production cutover.
+if systemctl is-enabled --quiet axora-deploy.timer 2>/dev/null; then
+  printf 'Legacy polling deployment remains enabled until explicit cutover.\n'
+fi
 
 printf '\nInstalled root-owned Axora production orchestration.\n'
 printf 'The installed service never executes scripts from the mutable repository checkout.\n\n'

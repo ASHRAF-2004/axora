@@ -83,6 +83,16 @@ test("production deployment uses environment-scoped OIDC Tailscale access", asyn
   assert.doesNotMatch(workflow, /secrets\.PRODUCTION_SSH_HOST/);
 });
 
+test("controller installation does not activate the deployment cutover", async () => {
+  const installer = await readFile(
+    new URL("../production/install.sh", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(installer, /systemctl disable --now axora-deploy/);
+  assert.doesNotMatch(installer, /rm -f -- .*axora-deploy\.timer/);
+  assert.match(installer, /Legacy polling deployment remains enabled until explicit cutover/);
+});
+
 test("backs up and migrates only when the immutable ledger requires it", async () => {
   const deploy = await readFile(
     new URL("../production/deploy.sh", import.meta.url),
