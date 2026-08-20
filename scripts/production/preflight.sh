@@ -17,13 +17,19 @@ case "${1:-}" in
 esac
 
 for command in \
-  awk bash curl cut df docker env find flock git grep id jq mkdir node npm realpath rm \
+  awk bash basename cmp comm curl cut df docker env find flock git grep head id jq mkdir node realpath rm \
   rmdir runuser sed sha256sum sort stat tar tr wc; do
   require_command "$command"
 done
 
 valid_database_name "$AXORA_DATABASE_NAME" || die "Unsafe database name: $AXORA_DATABASE_NAME"
 [[ "$AXORA_MAIN_REF" == "refs/heads/main" ]] || die "Only refs/heads/main may trigger production deployments."
+[[ "$AXORA_IMAGE_REPOSITORY" == "ghcr.io/ashraf-2004/axora" ]] \
+  || die "AXORA_IMAGE_REPOSITORY must use the approved private GHCR package."
+[[ "$AXORA_REGISTRY_HOST" == "ghcr.io" ]] || die "Only GHCR is approved for production images."
+[[ "$AXORA_REGISTRY_USERNAME" =~ ^[A-Za-z0-9-]+$ ]] || die "Unsafe registry username."
+[[ "$AXORA_REGISTRY_TOKEN_FILE" == "$AXORA_SECRETS_DIR/ghcr_read_token" ]] \
+  || die "Registry token must use the protected production secret path."
 [[ "$AXORA_PUBLIC_URL" == "https://axora.management" ]] \
   || die "AXORA_PUBLIC_URL must be exactly https://axora.management"
 [[ "$AXORA_ORIGIN_BIND" == "127.0.0.1" || "$AXORA_ORIGIN_BIND" == "::1" ]] \
@@ -343,8 +349,6 @@ docker compose version >/dev/null 2>&1 || die "Docker Compose v2 is unavailable.
 
 node_major="$(node --version | sed -E 's/^v([0-9]+).*/\1/')"
 [[ "$node_major" == "24" ]] || die "Node.js 24 is required; found $(node --version)."
-npm_major="$(npm --version | cut -d. -f1)"
-[[ "$npm_major" =~ ^[0-9]+$ ]] || die "Unable to identify npm version."
 
 available_kb="$(df -Pk "$AXORA_STATE_ROOT" | awk 'NR==2 {print $4}')"
 required_kb=$(( AXORA_MIN_FREE_GB * 1024 * 1024 ))

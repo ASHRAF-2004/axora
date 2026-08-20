@@ -52,7 +52,7 @@ The apex hostname is exactly `axora.management`. Do not add
 | PostgreSQL | Docker Compose | `axora_postgres_data` | Private Docker network |
 | Legacy attachment fallback | Ubuntu bind mount | `/var/lib/axora-production/uploads` | Application only |
 | Production backups | Ubuntu plus off-machine copy | `/var/lib/axora-production/backups` | Operators only |
-| Deployment controller | Ubuntu systemd | `/var/lib/axora-production` and `/var/log/axora-production` | Outbound Git fetch only |
+| Deployment controller | Root-owned Ubuntu scripts triggered over restricted SSH | `/var/lib/axora-production` and `/var/log/axora-production` | Pinned-key SSH trigger plus outbound Git fetch |
 
 Product images and current attachments are primarily stored as PostgreSQL
 bytes. Existing files under `/srv/axora/data/uploads` must be copied and
@@ -65,24 +65,27 @@ checkout.
 ## Deployment flow
 
 ```text
-approved commit reaches protected main
+commit reaches protected main
     |
     v
 GitHub-hosted CI (read-only token)
     |
-    | lint + typecheck + tests + app build + Docker build
+    | one immutable Docker build, tagged by SHA and pushed to private GHCR
     v
-Ubuntu systemd timer polls refs/heads/main
+GitHub Actions joins Tailscale with an ephemeral OIDC identity
     |
-    | exact SHA fetch and verification; one deployment lock
+    | runner tag can reach only production-host tag on TCP/22
     v
-local reproducibility checks and production build
+GitHub Actions opens a host-key-pinned SSH session over Tailscale
+    |
+    | exact tested SHA; restricted non-interactive deploy command
+    v
+exact SHA fetch and verification; one deployment lock; exact digest pull
     |
     v
-verified pre-migration backup
+compare immutable migration ledger
     |
-    v
-pending migrations against axora_hybrid
+    | pending migrations only: verified backup, then migration
     |
     v
 candidate application health/readiness checks
@@ -94,11 +97,16 @@ replace only the application-facing services
 local and external health checks
 ```
 
-There is no inbound deployment webhook and no GitHub Actions self-hosted
-runner. This avoids allowing GitHub-hosted workflow jobs to execute arbitrary
-commands directly on the production PC. The production poller must stay
-disabled until the repository is private, `main` is protected, required CI
-checks are enforced, and force pushes/deletions are blocked.
+There is no inbound deployment webhook, public SSH exposure, or GitHub Actions
+self-hosted runner. The production job uses GitHub OIDC to create an ephemeral
+Tailscale node tagged `tag:axora-github-deploy`; tailnet policy grants that tag
+only TCP/22 access to `tag:axora-production-host`. It then uses a dedicated SSH
+identity, pinned host key, and non-interactive deployment command to trigger
+only the exact tested SHA. The former polling timer is removed during cutover
+so it cannot race CI. Automatic SSH deployment must stay disabled until the
+repository is private, the `production` GitHub Environment and Tailscale
+federated identity are configured, `main` is protected, required CI checks are
+enforced, and force pushes/deletions are blocked.
 
 The installed root-owned deployment controller does not update itself from
 Git. Changes under `scripts/production` or `deploy/systemd` require separate
@@ -128,8 +136,9 @@ path. Never remove it as part of a normal application deployment.
   image build contexts.
 - Node, PostgreSQL, Caddy, Tailscale, and `cloudflared` images are pinned by
   digest; updates require an intentional reviewed digest change.
-- The GitHub CI workflow has `contents: read` and uses commit-pinned official
-  actions.
+- The GitHub CI workflow has `contents: read`, grants `packages: write` only to
+  the image job, grants `id-token: write` only to the production deploy job,
+  and uses commit-pinned official actions.
 - The deployment controller accepts only the exact remote `main` commit and
   serializes deployments. It authenticates with a repository-scoped,
   read-only SSH deploy key and a pinned GitHub host key.

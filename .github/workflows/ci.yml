@@ -1,7 +1,5 @@
 name: CI
 
-# Deliberately verification-only. The locked Ubuntu poller performs deployment
-# after protected main advances and repeats every gate locally.
 on:
   pull_request:
     branches:
@@ -13,183 +11,161 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+env:
+  IMAGE_REPOSITORY: ghcr.io/ashraf-2004/axora
+  AXORA_DRIVER_MAP_OPERATIONAL_READY: "true"
+  NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID: axora-mvp-klang-valley
+  NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME: Axora self-hosted Klang Valley streets
+  NEXT_PUBLIC_AXORA_MAP_STYLE_URL: /maps/axora-mvp-operational-style.json
+  NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION: OpenStreetMap contributors
+  NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL: https://www.openstreetmap.org/copyright
+  NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS: 101.35,2.70,102.00,3.45
+  NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL: Klang Valley, Putrajaya and Cyberjaya pilot region
 
 jobs:
-
-  application:
-    name: Lint, typecheck, test, and build
+  image:
+    name: Build immutable production image
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    env:
-      NEXT_TELEMETRY_DISABLED: "1"
-      AXORA_EVIDENCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
-    steps:
-      - name: Check out the tested commit
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-
-      - name: Use Node.js 24
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "24.13.0"
-          cache: npm
-
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Prepare deterministic manual artifacts
-        run: |
-          mkdir -p output/pdf
-          cp -f public/manuals/*.pdf output/pdf/
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm run test
-
-      - name: Verify native PostgreSQL migrations, RLS, and grants
-        run: npm run test:postgres-native
-
-      - name: Build the production application
-        run: npm run build
-
-      - name: Stage the Docker-equivalent standalone application
-        run: npm run standalone:stage
-
-      - name: Validate licensed runtime assets and record bundle evidence
-        run: |
-          npm run assets:validate
-          npm run evidence:report
-
-      # The hosted Ubuntu image already provides Chromium's runtime libraries.
-      # Avoid Playwright's --with-deps path because it mutates apt state and can
-      # block indefinitely when an Ubuntu archive mirror is slow or unavailable.
-      - name: Install the browser used by interaction checks
-        timeout-minutes: 10
-        run: npx playwright install chromium
-
-      - name: Test critical browser journeys
-        run: npm run test:e2e
-
-      - name: Reject generated Next.js type-path drift
-        run: git diff --exit-code -- next-env.d.ts
-
-      - name: Audit public Lighthouse budgets and links
-        env:
-          APP_BASE_URL: http://127.0.0.1:3100
-          AXORA_EVIDENCE_BASE_URL: http://127.0.0.1:3100
-          DEMO_MODE: "true"
-          DEMO_EMAIL: owner@axora.e2e
-          DEMO_PASSWORD: public-e2e-fixture-password
-          SESSION_SECRET: public-e2e-session-key-not-for-production-0001
-        run: |
-          mkdir -p output/lighthouse output/reports
-          (
-            cd output/standalone
-            NODE_ENV=production HOSTNAME=127.0.0.1 PORT=3100 node server.js
-          ) >output/reports/production-server.log 2>&1 &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:3100/en >/dev/null; then break; fi
-            if [ "$attempt" -eq 60 ]; then exit 1; fi
-            sleep 1
-          done
-          npm run standalone:validate
-          export CHROME_PATH="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
-          npx --no-install lighthouse http://127.0.0.1:3100/en --quiet --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" --output=json --output=html --output-path=output/lighthouse/mobile
-          npx --no-install lighthouse http://127.0.0.1:3100/en --quiet --preset=desktop --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" --output=json --output=html --output-path=output/lighthouse/desktop
-          npm run evidence:lighthouse
-          npm run links:validate
-          npm run evidence:manifest
-          npm run evidence:validate
-
-      - name: Retain reviewable browser and performance evidence
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: immersive-world-v2-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            output/playwright
-            output/lighthouse
-            output/reports
-          if-no-files-found: error
-          include-hidden-files: true
-          retention-days: 14
-
-  container:
-    name: Build production container
-    needs: application
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     permissions:
       contents: read
+      packages: write
+    concurrency:
+      group: production-image-${{ github.ref }}
+      cancel-in-progress: true
+    outputs:
+      digest: ${{ steps.artifact.outputs.digest }}
     steps:
-      - name: Check out the tested commit
+      - name: Check out the commit
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
 
-      - name: Validate production deployment assets
-        run: scripts/production/validate-assets.sh
-
-      - name: Build without production secrets
-        run: >-
-          docker build
-          --build-arg "AXORA_REVISION=${GITHUB_SHA}"
-          --file Dockerfile
-          --tag "axora-ci:${GITHUB_SHA}"
-          .
-
-      - name: Verify the image revision
-        run: >-
-          test
-          "$(docker image inspect
-          --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-          "axora-ci:${GITHUB_SHA}")"
-          = "${GITHUB_SHA}"
-
-      - name: Smoke-test public and login routes in the production image
+      - name: Authenticate to GHCR
+        if: github.event_name == 'push'
         env:
-          DEMO_MODE: "true"
-          DEMO_EMAIL: owner@axora.e2e
-          DEMO_PASSWORD: public-e2e-fixture-password
-          SESSION_SECRET: public-e2e-session-key-not-for-production-0001
-          TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Configure Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Build the production image once
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          platforms: linux/amd64
+          push: ${{ github.event_name == 'push' }}
+          load: ${{ github.event_name != 'push' }}
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
+          labels: org.opencontainers.image.revision=${{ github.sha }}
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            AXORA_REVISION=${{ github.sha }}
+            AXORA_DRIVER_MAP_OPERATIONAL_READY=${{ env.AXORA_DRIVER_MAP_OPERATIONAL_READY }}
+            NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID=${{ env.NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID }}
+            NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME=${{ env.NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME }}
+            NEXT_PUBLIC_AXORA_MAP_STYLE_URL=${{ env.NEXT_PUBLIC_AXORA_MAP_STYLE_URL }}
+            NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION=${{ env.NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION }}
+            NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL=${{ env.NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL }}
+            NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS=${{ env.NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS }}
+            NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL=${{ env.NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL }}
+
+      - name: Record and verify the immutable digest
+        id: artifact
+        if: github.event_name == 'push'
+        shell: bash
         run: |
-          container_name="axora-ci-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          docker run --detach --name "$container_name" \
-            --publish 127.0.0.1:3101:3000 \
-            --env DEMO_MODE --env DEMO_EMAIL --env DEMO_PASSWORD \
-            --env SESSION_SECRET --env TURNSTILE_SITE_KEY \
-            "axora-ci:${GITHUB_SHA}"
-          trap 'docker rm --force "$container_name" >/dev/null 2>&1 || true' EXIT
-          for attempt in $(seq 1 60); do
-            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3101/en || true)"
-            if [ "$status" = "200" ]; then break; fi
-            if [ "$attempt" -eq 60 ]; then
-              docker logs "$container_name"
-              exit 1
-            fi
-            sleep 1
-          done
-          for route in /en /login; do
-            status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:3101${route}" || true)"
-            if [ "$status" != "200" ]; then
-              printf '%s returned HTTP %s in the production image.\n' "$route" "$status" >&2
-              docker logs "$container_name"
-              exit 1
-            fi
-          done
+          digest="${{ steps.build.outputs.digest }}"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            printf 'Build did not produce a valid OCI digest.\n' >&2
+            exit 1
+          }
+          docker buildx imagetools inspect "$IMAGE_REPOSITORY@$digest" >/dev/null
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    env:
+      IMAGE_DIGEST: ${{ needs.image.outputs.digest }}
+      PRODUCTION_SSH_HOST: ${{ vars.PRODUCTION_TAILSCALE_HOST }}
+      PRODUCTION_SSH_USER: ${{ vars.PRODUCTION_SSH_USER || 'axora-deploy' }}
+      PRODUCTION_SSH_PORT: ${{ vars.PRODUCTION_SSH_PORT || '22' }}
+      PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+      PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Join the production tailnet
+        uses: tailscale/github-action@a392da0a182bba0e9613b6243ebd69529b1878aa # v4.1.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:axora-github-deploy
+          version: 1.90.4
+          ping: ${{ vars.PRODUCTION_TAILSCALE_HOST }}
+
+      - name: Configure pinned production SSH access
+        shell: bash
+        run: |
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            printf 'The image job did not provide a valid OCI digest.\n' >&2
+            exit 1
+          }
+          [[ "$PRODUCTION_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || {
+            printf 'PRODUCTION_SSH_HOST is missing or invalid.\n' >&2
+            exit 1
+          }
+          [[ "$PRODUCTION_SSH_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || {
+            printf 'PRODUCTION_SSH_USER is missing or invalid.\n' >&2
+            exit 1
+          }
+          if [[ ! "$PRODUCTION_SSH_PORT" =~ ^[0-9]+$ ]] \
+            || (( PRODUCTION_SSH_PORT < 1 || PRODUCTION_SSH_PORT > 65535 )); then
+            printf 'PRODUCTION_SSH_PORT is invalid.\n' >&2
+            exit 1
+          fi
+          [[ -n "$PRODUCTION_SSH_PRIVATE_KEY" ]] || exit 1
+          [[ -n "$PRODUCTION_SSH_KNOWN_HOSTS" ]] || exit 1
+
+          ssh_dir="$RUNNER_TEMP/axora-ssh"
+          install -d -m 0700 "$ssh_dir"
+          printf '%s\n' "$PRODUCTION_SSH_PRIVATE_KEY" > "$ssh_dir/id_ed25519"
+          printf '%s\n' "$PRODUCTION_SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          chmod 0600 "$ssh_dir/id_ed25519" "$ssh_dir/known_hosts"
+          ssh-keygen -y -f "$ssh_dir/id_ed25519" >/dev/null
+
+          known_host="$PRODUCTION_SSH_HOST"
+          if [[ "$PRODUCTION_SSH_PORT" != "22" ]]; then
+            known_host="[$PRODUCTION_SSH_HOST]:$PRODUCTION_SSH_PORT"
+          fi
+          ssh-keygen -F "$known_host" -f "$ssh_dir/known_hosts" >/dev/null
+
+      - name: Deploy the exact tested image
+        shell: bash
+        run: |
+          ssh_dir="$RUNNER_TEMP/axora-ssh"
+          ssh \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$ssh_dir/known_hosts" \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=12 \
+            -i "$ssh_dir/id_ed25519" \
+            -p "$PRODUCTION_SSH_PORT" \
+            "$PRODUCTION_SSH_USER@$PRODUCTION_SSH_HOST" \
+            "deploy $GITHUB_SHA $IMAGE_DIGEST"

@@ -50,7 +50,7 @@ branch protection or ruleset. This differs from the expected private-repository
 state.
 
 Do not install a GitHub Actions self-hosted runner and do not enable automatic
-production deployment in this state. Before automation is enabled:
+production deployment in this state. Before SSH-triggered automation is enabled:
 
 1. Change the repository to private.
 2. Protect `main`; require pull requests and the `CI` checks.
@@ -60,9 +60,11 @@ production deployment in this state. Before automation is enabled:
 5. Confirm that only intended administrators can change Actions workflows,
    branch rules, collaborators, and repository visibility.
 
-The selected deployment model is an outbound systemd poller, not a self-hosted
-runner or public webhook. It fetches the exact `refs/heads/main` SHA and reruns
-all gates locally before touching production.
+The selected deployment model is a host-key-pinned SSH trigger from the
+successful GitHub Actions `main` workflow, not a self-hosted runner or public
+webhook. A dedicated restricted identity invokes the root-owned controller for
+the exact CI-approved SHA; the controller independently fetches and verifies
+that SHA before touching production.
 
 ## Migration stages and gates
 

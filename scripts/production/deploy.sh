@@ -10,26 +10,33 @@ load_config
 
 deployment_mode=manual
 requested_sha=""
+requested_digest=""
 case "${1:-}" in
   --automatic)
     deployment_mode=automatic
     requested_sha="${2:-}"
-    [[ -z "${3:-}" ]] || die "Usage: $0 [--automatic|--local-bootstrap] [40-character-main-commit-sha]"
+    requested_digest="${3:-}"
+    [[ -z "${4:-}" ]] || die "Usage: $0 --automatic 40-character-main-commit-sha sha256:image-digest"
     ;;
   --local-bootstrap)
     deployment_mode=bootstrap
     requested_sha="${2:-}"
-    [[ -z "${3:-}" ]] || die "Usage: $0 [--automatic|--local-bootstrap] [40-character-main-commit-sha]"
+    requested_digest="${3:-}"
+    [[ -z "${4:-}" ]] || die "Usage: $0 --local-bootstrap 40-character-main-commit-sha sha256:image-digest"
     ;;
   "")
     ;;
   *)
     requested_sha="$1"
-    [[ -z "${2:-}" ]] || die "Usage: $0 [--automatic|--local-bootstrap] [40-character-main-commit-sha]"
+    requested_digest="${2:-}"
+    [[ -z "${3:-}" ]] || die "Usage: $0 40-character-main-commit-sha sha256:image-digest"
     ;;
 esac
 if [[ -n "$requested_sha" ]] && ! valid_sha "$requested_sha"; then
-  die "Usage: $0 [--automatic|--local-bootstrap] [40-character-main-commit-sha]"
+  die "Invalid deployment commit SHA."
+fi
+if ! valid_image_digest "$requested_digest"; then
+  die "Deployment requires a valid sha256 image digest."
 fi
 if [[ "$deployment_mode" == "automatic" ]] && ! bool_is_true "$AXORA_REQUIRE_EXTERNAL"; then
   die "Automatic deployment is disabled while AXORA_REQUIRE_EXTERNAL=false."
@@ -58,19 +65,11 @@ touch "$log_file"
 chmod 0600 "$log_file"
 exec > >(tee -a "$log_file") 2>&1
 
-candidate_container=""
 temporary_release=""
 swapped=false
 old_image=""
 old_image_id=""
 old_release=""
-
-cleanup_candidate() {
-  if [[ -n "$candidate_container" ]] && docker container inspect "$candidate_container" >/dev/null 2>&1; then
-    docker rm --force "$candidate_container" >/dev/null 2>&1 || true
-  fi
-  candidate_container=""
-}
 
 ensure_budget_worker_for_release() {
   local release="$1"
@@ -203,7 +202,6 @@ automatic_revert() {
 
 on_exit() {
   status=$?
-  cleanup_candidate
   if [[ -n "$temporary_release" && -d "$temporary_release" ]]; then
     rm -rf -- "$temporary_release"
   fi
@@ -228,12 +226,15 @@ if [[ -n "$requested_sha" && "$requested_sha" != "$target_sha" ]]; then
   die "Requested commit is not the current trusted main commit."
 fi
 current_sha="$(read_state_file "$AXORA_CURRENT_SHA_FILE")"
+requested_image="$AXORA_IMAGE_REPOSITORY@$requested_digest"
 if [[ "$current_sha" == "$target_sha" ]]; then
   release="$(release_path_for_sha "$target_sha")"
   [[ -d "$release" && ! -L "$release" ]] || die "Current release directory is missing or unsafe."
   recorded_image="$(read_state_file "$AXORA_CURRENT_IMAGE_FILE")"
   recorded_image_id="$(read_state_file "$AXORA_CURRENT_IMAGE_ID_FILE")"
   valid_image_reference "$recorded_image" || die "Current image state is invalid."
+  [[ "$recorded_image" == "$requested_image" ]] \
+    || die "Current commit is recorded with a different immutable image digest."
   valid_image_id "$recorded_image_id" || die "Current image digest state is invalid."
   current_app_container="$(find_service_container app)" || die "Expected one running production app container."
   [[ "$(docker inspect --format '{{.Image}}' "$current_app_container")" == "$recorded_image_id" ]] \
@@ -282,64 +283,7 @@ if [[ ! -d "$release" ]]; then
     grep -Fqx "$ignore_rule" "$temporary_release/.dockerignore" \
       || die ".dockerignore is missing mandatory rule: $ignore_rule"
   done
-  # The deploy unit is already a root-owned, protected controller. Avoid a
-  # host-side UID transition: this Ubuntu/systemd sandbox rejects runuser.
-
-  log "Installing locked dependencies and running lint, type checks, tests, and production build in the disposable workspace."
-  env -i \
-    HOME="$controller_home" \
-    USER=root \
-    LOGNAME=root \
-    PATH=/usr/local/bin:/usr/bin:/bin \
-    CI=true \
-    NEXT_TELEMETRY_DISABLED=1 \
-    npm_config_cache="$controller_home/npm" \
-    XDG_CACHE_HOME="$controller_home/xdg" \
-    npm_config_audit=false \
-    npm_config_fund=false \
-    npm ci --prefix "$temporary_release"
-  if env -i \
-    HOME="$controller_home" \
-    USER=root \
-    LOGNAME=root \
-    PATH=/usr/local/bin:/usr/bin:/bin \
-    CI=true \
-    NEXT_TELEMETRY_DISABLED=1 \
-    npm_config_cache="$controller_home/npm" \
-    XDG_CACHE_HOME="$controller_home/xdg" \
-    command -v uv >/dev/null 2>&1; then
-    env -i \
-      HOME="$controller_home" \
-      USER=root \
-      LOGNAME=root \
-      PATH=/usr/local/bin:/usr/bin:/bin \
-      CI=true \
-      NEXT_TELEMETRY_DISABLED=1 \
-      npm_config_cache="$controller_home/npm" \
-      XDG_CACHE_HOME="$controller_home/xdg" \
-      npm run --prefix "$temporary_release" manuals:build
-  else
-    log "uv is unavailable in deployment controller; using checked-in manuals as publication input."
-    mkdir -p "$temporary_release/output/pdf"
-    cp "$temporary_release/public/manuals"/*.pdf "$temporary_release/output/pdf"/
-  fi
-  env -i \
-    HOME="$controller_home" \
-    USER=root \
-    LOGNAME=root \
-    PATH=/usr/local/bin:/usr/bin:/bin \
-    CI=true \
-    NEXT_TELEMETRY_DISABLED=1 \
-    npm_config_cache="$controller_home/npm" \
-    XDG_CACHE_HOME="$controller_home/xdg" \
-    npm run --prefix "$temporary_release" verify
-
-  # npm lifecycle and verification code can modify its workspace. Discard it,
-  # then export the trusted commit again so the sealed Docker context is the
-  # exact Git tree that passed all checks.
-  rm -rf -- "$temporary_release"
-  temporary_release="$(mktemp -d "$AXORA_BUILD_HOME/.release-${target_sha}.XXXXXX")"
-  materialize_git_tree "$AXORA_REPOSITORY_DIR" "$target_sha" "$temporary_release"
+  log "Sealing the exact CI-approved Git tree as the production build context."
   printf '%s\n' "$target_sha" > "$temporary_release/.axora-commit"
   chmod -R go-w "$temporary_release"
   mv -- "$temporary_release" "$release"
@@ -350,30 +294,16 @@ else
   [[ "$(stat -c '%u' "$release")" == "0" ]] || die "Existing release is not root-owned."
 fi
 
-export AXORA_IMAGE="${AXORA_IMAGE_REPOSITORY}:${target_sha}"
-map_build_args=(
-  --build-arg "AXORA_DRIVER_MAP_OPERATIONAL_READY=${AXORA_DRIVER_MAP_OPERATIONAL_READY:-false}"
-  --build-arg "NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID=${NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID:-}"
-  --build-arg "NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME=${NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME:-}"
-  --build-arg "NEXT_PUBLIC_AXORA_MAP_STYLE_URL=${NEXT_PUBLIC_AXORA_MAP_STYLE_URL:-}"
-  --build-arg "NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION=${NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION:-}"
-  --build-arg "NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL=${NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL:-}"
-  --build-arg "NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS=${NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS:-}"
-  --build-arg "NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL=${NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL:-}"
-)
-log "Running Dockerfile static build checks against the sanitized build context."
-docker buildx build --check \
-  --build-arg "AXORA_REVISION=$target_sha" \
-  "${map_build_args[@]}" \
-  "$release"
-log "Building immutable application image $AXORA_IMAGE."
-docker build \
-  --build-arg "AXORA_REVISION=$target_sha" \
-  "${map_build_args[@]}" \
-  --label "org.opencontainers.image.revision=$target_sha" \
-  --label "org.opencontainers.image.source=https://github.com/ASHRAF-2004/axora" \
-  --tag "$AXORA_IMAGE" \
-  "$release"
+export AXORA_IMAGE="$requested_image"
+assert_safe_root_file "$AXORA_REGISTRY_TOKEN_FILE"
+log "Authenticating to the private image registry and pulling $AXORA_IMAGE."
+docker login "$AXORA_REGISTRY_HOST" \
+  --username "$AXORA_REGISTRY_USERNAME" \
+  --password-stdin < "$AXORA_REGISTRY_TOKEN_FILE" >/dev/null
+docker pull "$AXORA_IMAGE"
+docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$AXORA_IMAGE" \
+  | grep -Fqx "$AXORA_IMAGE" \
+  || die "Pulled image does not expose the requested immutable digest."
 image_revision="$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$AXORA_IMAGE")"
 [[ "$image_revision" == "$target_sha" ]] || die "Built image does not carry the expected revision label."
 image_id="$(docker image inspect --format '{{.Id}}' "$AXORA_IMAGE")"
@@ -397,86 +327,39 @@ fi
 tailscale_health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$tailscale_container")"
 [[ "$tailscale_health" == "healthy" ]] || die "Required tailscale-db service is not healthy."
 
-candidate_container="axora-candidate-${target_sha:0:12}"
-if docker container inspect "$candidate_container" >/dev/null 2>&1; then
-  die "Candidate container name is already in use: $candidate_container"
-fi
-log "Starting an isolated candidate container with no published ports."
-docker run \
-  --detach \
-  --name "$candidate_container" \
-  --label "axora.deployment.candidate=$target_sha" \
-  --network "$AXORA_BACKEND_NETWORK" \
-  --group-add 1000 \
-  --cpus 2 \
-  --memory 2g \
-  --pids-limit 256 \
-  --read-only \
-  --tmpfs /tmp:rw,noexec,nosuid,size=64m \
-  --tmpfs /app/.next/cache:rw,noexec,nosuid,size=128m,uid=1001,gid=1001 \
-  --env NODE_ENV=production \
-  --env DEMO_MODE=false \
-  --env DB_HOST=db \
-  --env DB_PORT=5432 \
-  --env "DB_NAME=$AXORA_DATABASE_NAME" \
-  --env DB_USER=axora_app \
-  --env DB_PASSWORD_FILE=/run/secrets/axora_app_password \
-  --env SESSION_SECRET_FILE=/run/secrets/session_secret \
-  --env AXORA_EMAIL_DELIVERY_ENABLED=false \
-  --env AXORA_EMAIL_SERVICE_AUTH_KEY_FILE=/run/secrets/axora_email_service_auth_key \
-  --env "APP_BASE_URL=$AXORA_PUBLIC_URL" \
-  --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_app_password,target=/run/secrets/axora_app_password,readonly" \
-  --mount "type=bind,source=$AXORA_SECRETS_DIR/session_secret,target=/run/secrets/session_secret,readonly" \
-  --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_email_service_auth_key,target=/run/secrets/axora_email_service_auth_key,readonly" \
-  "$AXORA_IMAGE" >/dev/null
+pending_migrations="$("$SCRIPT_DIR/migration-status.sh" "$release" "$db_container" "$AXORA_DATABASE_NAME")"
+if [[ "$pending_migrations" == "required" ]]; then
+  log "Pending migrations detected; creating a restore-verified backup before database changes."
+  "$SCRIPT_DIR/backup.sh" --commit "$target_sha"
 
-candidate_ready=false
-candidate_attempts=$(( AXORA_DEPLOY_TIMEOUT_SECONDS / 2 ))
-(( candidate_attempts >= 15 )) || candidate_attempts=15
-for (( attempt=1; attempt<=candidate_attempts; attempt++ )); do
-  if docker exec "$candidate_container" node -e \
-    "fetch('http://127.0.0.1:3000/api/health/ready').then(async r=>process.exit(r.ok&&(await r.json()).status==='ready'?0:1)).catch(()=>process.exit(1))"; then
-    candidate_ready=true
-    break
-  fi
-  sleep 2
-done
-if ! "$candidate_ready"; then
-  docker logs --tail 100 "$candidate_container" || true
-  die "Candidate image failed its database readiness gate."
-fi
-log "Candidate image passed its database readiness gate."
-
-"$SCRIPT_DIR/backup.sh" --commit "$target_sha"
-
-log "Applying pending transactional migrations from the exact release."
-for migration_secret in postgres_admin_password axora_cleanup_worker_password; do
-  migration_secret_path="$AXORA_SECRETS_DIR/$migration_secret"
-  [[ -f "$migration_secret_path" && ! -L "$migration_secret_path" && -s "$migration_secret_path" ]] \
-    || die "Required migration secret is missing or unsafe: $migration_secret"
-done
-docker run \
-  --rm \
-  --label "axora.deployment.migration=$target_sha" \
-  --network "$AXORA_BACKEND_NETWORK" \
-  --group-add 1000 \
-  --cpus 2 \
-  --memory 1g \
-  --pids-limit 128 \
-  --env POSTGRES_USER=postgres \
-  --env "POSTGRES_DB=$AXORA_DATABASE_NAME" \
-  --env PGHOST=db \
-  --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
-  --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_cleanup_worker_password,target=/run/secrets/axora_cleanup_worker_password,readonly" \
-  --mount "type=bind,source=$release/database/init,target=/database/init,readonly" \
-  --mount "type=bind,source=$release/database/migrations,target=/migrations,readonly" \
-  --entrypoint /bin/sh \
-  "$AXORA_POSTGRES_IMAGE" \
-  /database/init/01-run-migration.sh
-
-if ! docker exec "$candidate_container" node -e \
-  "fetch('http://127.0.0.1:3000/api/health/ready').then(async r=>process.exit(r.ok&&(await r.json()).status==='ready'?0:1)).catch(()=>process.exit(1))"; then
-  die "Candidate failed readiness after database migrations."
+  log "Applying pending transactional migrations from the exact release."
+  for migration_secret in postgres_admin_password axora_cleanup_worker_password; do
+    migration_secret_path="$AXORA_SECRETS_DIR/$migration_secret"
+    [[ -f "$migration_secret_path" && ! -L "$migration_secret_path" && -s "$migration_secret_path" ]] \
+      || die "Required migration secret is missing or unsafe: $migration_secret"
+  done
+  docker run \
+    --rm \
+    --label "axora.deployment.migration=$target_sha" \
+    --network "$AXORA_BACKEND_NETWORK" \
+    --group-add 1000 \
+    --cpus 2 \
+    --memory 1g \
+    --pids-limit 128 \
+    --env POSTGRES_USER=postgres \
+    --env "POSTGRES_DB=$AXORA_DATABASE_NAME" \
+    --env PGHOST=db \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_cleanup_worker_password,target=/run/secrets/axora_cleanup_worker_password,readonly" \
+    --mount "type=bind,source=$release/database/init,target=/database/init,readonly" \
+    --mount "type=bind,source=$release/database/migrations,target=/migrations,readonly" \
+    --entrypoint /bin/sh \
+    "$AXORA_POSTGRES_IMAGE" \
+    /database/init/01-run-migration.sh
+elif [[ "$pending_migrations" == "none" ]]; then
+  log "Migration ledger matches this release; skipping deployment backup and migration runner."
+else
+  die "Migration status returned an unexpected result."
 fi
 
 latest_main="$(remote_main_sha)"
@@ -547,10 +430,10 @@ atomic_write "$AXORA_CURRENT_IMAGE_FILE" "$AXORA_IMAGE"
 atomic_write "$AXORA_CURRENT_IMAGE_ID_FILE" "$image_id"
 atomic_write "$AXORA_CURRENT_RELEASE_FILE" "$release"
 swapped=false
-cleanup_candidate
-
 log "Deployment succeeded at commit $target_sha."
-log "Verified backup: $(read_state_file "$AXORA_LAST_BACKUP_FILE")"
+if [[ "$pending_migrations" == "required" ]]; then
+  log "Verified pre-migration backup: $(read_state_file "$AXORA_LAST_BACKUP_FILE")"
+fi
 
 mapfile -t release_candidates < <(
   find "$AXORA_RELEASES_ROOT" \
