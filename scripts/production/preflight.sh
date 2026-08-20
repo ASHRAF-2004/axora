@@ -318,6 +318,14 @@ if [[ "$email_events_enabled" == "true" ]]; then
     || die "The Email Sending event webhook secret is malformed."
 fi
 
+[[ -f "$AXORA_REGISTRY_TOKEN_FILE" && ! -L "$AXORA_REGISTRY_TOKEN_FILE" \
+  && -s "$AXORA_REGISTRY_TOKEN_FILE" ]] \
+  || die "GHCR token must be a non-empty regular non-symlink file: $AXORA_REGISTRY_TOKEN_FILE"
+[[ "$(stat -c '%u:%g' "$AXORA_REGISTRY_TOKEN_FILE")" == "0:0" ]] \
+  || die "GHCR token must be owned by root:root: $AXORA_REGISTRY_TOKEN_FILE"
+[[ "$(stat -c '%a' "$AXORA_REGISTRY_TOKEN_FILE")" == "600" ]] \
+  || die "GHCR token must have mode 0600: $AXORA_REGISTRY_TOKEN_FILE"
+
 for secret in $AXORA_REQUIRED_SECRETS; do
   [[ "$secret" =~ ^[A-Za-z0-9_-]+$ ]] || die "Unsafe secret filename in AXORA_REQUIRED_SECRETS."
   secret_path="$AXORA_SECRETS_DIR/$secret"

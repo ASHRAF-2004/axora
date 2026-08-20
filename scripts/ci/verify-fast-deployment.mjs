@@ -110,6 +110,21 @@ test("public source keeps production credentials and GHCR access private", async
   assert.doesNotMatch(runbook, /GitHub repository is private/);
 });
 
+test("GHCR pull credential stays root-only and outside runtime secrets", async () => {
+  const [template, library, preflight] = await Promise.all([
+    readFile(new URL("../../deploy/systemd/deploy.env.example", import.meta.url), "utf8"),
+    readFile(new URL("../production/lib.sh", import.meta.url), "utf8"),
+    readFile(new URL("../production/preflight.sh", import.meta.url), "utf8"),
+  ]);
+  const templateRequired = template.match(/^AXORA_REQUIRED_SECRETS=(.*)$/mu)?.[1] ?? "";
+  const libraryDefault = library.match(/AXORA_REQUIRED_SECRETS:=([^}]*)/u)?.[1] ?? "";
+  assert.doesNotMatch(templateRequired, /ghcr_read_token/);
+  assert.doesNotMatch(libraryDefault, /ghcr_read_token/);
+  assert.match(preflight, /-f "\$AXORA_REGISTRY_TOKEN_FILE" && ! -L "\$AXORA_REGISTRY_TOKEN_FILE"/);
+  assert.match(preflight, /stat -c '%u:%g'.*== "0:0"/);
+  assert.match(preflight, /stat -c '%a'.*== "600"/);
+});
+
 test("backs up and migrates only when the immutable ledger requires it", async () => {
   const deploy = await readFile(
     new URL("../production/deploy.sh", import.meta.url),

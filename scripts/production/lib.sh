@@ -93,7 +93,7 @@ load_config() {
   : "${AXORA_MIN_FREE_GB:=15}"
   : "${AXORA_MIN_TABLE_COUNT:=15}"
   : "${AXORA_DEPLOY_TIMEOUT_SECONDS:=180}"
-  : "${AXORA_REQUIRED_SECRETS:=postgres_admin_password axora_app_password axora_cleanup_worker_password session_secret tailscale_db_auth_key ghcr_read_token}"
+  : "${AXORA_REQUIRED_SECRETS:=postgres_admin_password axora_app_password axora_cleanup_worker_password session_secret tailscale_db_auth_key}"
   : "${AXORA_BACKUP_RETENTION_DAYS:=30}"
   : "${AXORA_RELEASE_RETENTION_COUNT:=5}"
   : "${AXORA_LOG_RETENTION_DAYS:=30}"
