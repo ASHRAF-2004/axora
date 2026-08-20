@@ -43,26 +43,30 @@ changed.
   review must restrict SSH to approved management sources and disable or
   LAN-restrict CUPS according to the server's printing requirement.
 
-## Critical governance finding
+## Critical governance boundary
 
-GitHub currently reports `ASHRAF-2004/axora` as **public**, and `main` has no
-branch protection or ruleset. This differs from the expected private-repository
-state.
+`ASHRAF-2004/axora` intentionally remains public. Public source visibility does
+not authorize public access to production credentials, deployment transport, or
+production images. Do not install a GitHub Actions self-hosted runner. Before
+SSH-triggered automation is enabled:
 
-Do not install a GitHub Actions self-hosted runner and do not enable automatic
-production deployment in this state. Before automation is enabled:
+1. Protect `main`; require pull requests and `Build immutable production image`.
+2. Block force pushes and branch deletion.
+3. Scope SSH and Tailscale deployment credentials to the GitHub `production`
+   Environment and never commit or log them.
+4. Keep `ghcr.io/ashraf-2004/axora` private with granular permissions, disable
+   repository permission inheritance, grant Actions explicit write access, and
+   grant production only read access.
+5. Restrict the Tailscale federated identity to this exact repository,
+   `production` Environment, workflow, `main` ref, and GitHub-hosted runners.
+6. Confirm that only intended administrators can change Actions workflows,
+   branch rules, collaborators, Environments, or package permissions.
 
-1. Change the repository to private.
-2. Protect `main`; require pull requests and the `CI` checks.
-3. Require CODEOWNER review for production-sensitive paths where the GitHub
-   plan and team size permit it.
-4. Block force pushes and branch deletion.
-5. Confirm that only intended administrators can change Actions workflows,
-   branch rules, collaborators, and repository visibility.
-
-The selected deployment model is an outbound systemd poller, not a self-hosted
-runner or public webhook. It fetches the exact `refs/heads/main` SHA and reruns
-all gates locally before touching production.
+The selected deployment model is a host-key-pinned SSH trigger from the
+successful GitHub Actions `main` workflow, not a self-hosted runner or public
+webhook. A dedicated restricted identity invokes the root-owned controller for
+the exact CI-approved SHA; the controller independently fetches and verifies
+that SHA before touching production.
 
 ## Migration stages and gates
 
@@ -149,7 +153,7 @@ Render service automatically.
 
 | Risk | Consequence | Required control |
 | --- | --- | --- |
-| Public, unprotected repository | Unreviewed code can reach production | Private repository, protected `main`, required read-only CI before enabling poller |
+| Public repository workflow tampering | Unreviewed code or credential access can reach production | Protected `main`, exact required image check, environment-scoped secrets, exact OIDC claims, private granular GHCR package |
 | Wrong database selected | Old or incomplete data appears | Production override must name `axora_hybrid`; readiness and workflow checks |
 | Migration incompatible with old app | Rollback application cannot read schema | Backwards-compatible migrations, verified backup, explicit compatibility review |
 | Same-disk backups only | PC/NVMe loss destroys app and backup | Encrypted off-machine copy plus restore drill |

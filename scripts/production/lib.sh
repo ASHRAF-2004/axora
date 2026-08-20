@@ -77,7 +77,10 @@ load_config() {
   : "${AXORA_KNOWN_HOSTS:=/etc/axora-production/github_known_hosts}"
   : "${AXORA_COMPOSE_PROJECT:=axora}"
   : "${AXORA_COMPOSE_FILES:=compose.yaml:compose.hybrid.yaml:compose.production.yaml}"
-  : "${AXORA_IMAGE_REPOSITORY:=axora-app}"
+  : "${AXORA_IMAGE_REPOSITORY:=ghcr.io/ashraf-2004/axora}"
+  : "${AXORA_REGISTRY_HOST:=ghcr.io}"
+  : "${AXORA_REGISTRY_USERNAME:=ASHRAF-2004}"
+  : "${AXORA_REGISTRY_TOKEN_FILE:=$AXORA_SECRETS_DIR/ghcr_read_token}"
   : "${AXORA_DATABASE_NAME:=axora_hybrid}"
   : "${AXORA_POSTGRES_IMAGE:=postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15}"
   : "${AXORA_BACKEND_NETWORK:=axora_backend}"
@@ -107,6 +110,7 @@ load_config() {
   export AXORA_STATE_ROOT AXORA_LOG_ROOT
   export AXORA_BUILD_HOME AXORA_BUILD_USER AXORA_DEPLOY_KEY AXORA_KNOWN_HOSTS
   export AXORA_COMPOSE_PROJECT AXORA_COMPOSE_FILES AXORA_IMAGE_REPOSITORY
+  export AXORA_REGISTRY_HOST AXORA_REGISTRY_USERNAME AXORA_REGISTRY_TOKEN_FILE
   export AXORA_DATABASE_NAME AXORA_POSTGRES_IMAGE AXORA_BACKEND_NETWORK
   export AXORA_PUBLIC_URL AXORA_ORIGIN_BIND AXORA_ORIGIN_PORT
   export AXORA_REQUIRE_EXTERNAL AXORA_ENABLE_TUNNEL AXORA_MAIN_PROTECTION_CONFIRMED
@@ -325,6 +329,10 @@ valid_image_reference() {
 
 valid_image_id() {
   [[ "${1:-}" =~ ^sha256:[0-9a-f]{64}$ ]]
+}
+
+valid_image_digest() {
+  valid_image_id "${1:-}"
 }
 
 read_state_file() {

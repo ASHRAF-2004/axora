@@ -43,13 +43,15 @@ for protected_path in "$CONFIG_DIR" "$STATE_DIR" "$CONTROLLER_HOME" "$LOG_DIR" "
   [[ ! -L "$protected_path" ]] || fail "Refusing symlinked production path: $protected_path"
 done
 
-for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs check-retention-mode.mjs; do
+for source_file in deploy.sh migration-status.sh run-ci-deploy.sh configure-deploy-ssh.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs check-retention-mode.mjs; do
   [[ -f "$SOURCE_DIR/$source_file" ]] || fail "Missing source script: $source_file"
 done
+[[ -f "$SOURCE_DIR/ssh-deploy-command.sh" ]] || fail "Missing source script: ssh-deploy-command.sh"
 [[ -f "$SOURCE_DIR/owner-retaining-reset.sql" ]] \
   || fail "Missing source file: owner-retaining-reset.sql"
+[[ -f "$REPOSITORY_DIR/deploy/sudoers/axora-deploy" ]] \
+  || fail "Missing restricted deployment sudoers policy."
 for unit_file in \
-  axora-deploy.service axora-deploy.timer \
   axora-health.service axora-health.timer \
   axora-backup.service axora-backup.timer; do
   [[ -f "$REPOSITORY_DIR/deploy/systemd/$unit_file" ]] || fail "Missing systemd unit: $unit_file"
@@ -329,9 +331,12 @@ chown -R root:"$RUNTIME_GID" "$UPLOADS_DIR"
 find "$UPLOADS_DIR" -type d -exec chmod 0770 {} +
 find "$UPLOADS_DIR" -type f -exec chmod 0660 {} +
 
-for source_file in deploy.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs check-retention-mode.mjs; do
+for source_file in deploy.sh migration-status.sh run-ci-deploy.sh configure-deploy-ssh.sh rollback.sh backup.sh encrypted-reset-backup.sh reset-baseline.sh verify-encrypted-backup.sh health-check.sh preflight.sh activate-tunnel.sh harden-host.sh lib.sh check-email-service.mjs check-driver-map-config.mjs check-retention-mode.mjs; do
   install -o root -g root -m 0750 "$SOURCE_DIR/$source_file" "$LIBEXEC_DIR/$source_file"
 done
+install -o root -g root -m 0755 "$SOURCE_DIR/ssh-deploy-command.sh" /usr/local/bin/axora-deploy-trigger
+install -o root -g root -m 0640 \
+  "$REPOSITORY_DIR/deploy/sudoers/axora-deploy" "$LIBEXEC_DIR/axora-deploy.sudoers"
 install -o root -g root -m 0640 \
   "$SOURCE_DIR/owner-retaining-reset.sql" "$LIBEXEC_DIR/owner-retaining-reset.sql"
 
@@ -411,12 +416,15 @@ chown root:root "$CONFIG_DIR/github_known_hosts"
 chmod 0644 "$CONFIG_DIR/github_known_hosts"
 
 for unit_file in \
-  axora-deploy.service axora-deploy.timer \
   axora-health.service axora-health.timer \
   axora-backup.service axora-backup.timer; do
   install -o root -g root -m 0644 "$REPOSITORY_DIR/deploy/systemd/$unit_file" "$SYSTEMD_DIR/$unit_file"
 done
-systemctl daemon-reload
+# Installing the reviewed controller is deliberately non-activating. Keep the
+# former polling deployment available until the explicit production cutover.
+if systemctl is-enabled --quiet axora-deploy.timer 2>/dev/null; then
+  printf 'Legacy polling deployment remains enabled until explicit cutover.\n'
+fi
 
 printf '\nInstalled root-owned Axora production orchestration.\n'
 printf 'The installed service never executes scripts from the mutable repository checkout.\n\n'
@@ -424,20 +432,24 @@ printf 'Required one-time steps before enabling automatic deployment:\n'
 printf '  1. Add the following key as a READ-ONLY deploy key for ASHRAF-2004/axora:\n'
 printf '     sudo cat %s/github_deploy_key.pub\n' "$CONFIG_DIR"
 printf '  2. Protect the main branch and require the GitHub-hosted verification workflow.\n'
-printf '  3. Review %s/deploy.env and %s/runtime.env.\n' "$CONFIG_DIR" "$CONFIG_DIR"
-printf '  4. Create a DEDICATED Axora production Tunnel, then install only its token at:\n'
+printf '  3. Configure the pinned production SSH secrets used by .github/workflows/ci.yml.\n'
+printf '     Configure the forced-command identity with:\n'
+printf '     sudo %s/configure-deploy-ssh.sh /secure/path/github-actions-deploy-key.pub\n' "$LIBEXEC_DIR"
+printf '     Install a read-only GHCR token at %s/ghcr_read_token.\n' "$SECRETS_DIR"
+printf '  4. Review %s/deploy.env and %s/runtime.env.\n' "$CONFIG_DIR" "$CONFIG_DIR"
+printf '  5. Create a DEDICATED Axora production Tunnel, then install only its token at:\n'
 printf '     %s/cloudflare_tunnel_token (root:GID %s, mode 0640).\n' "$SECRETS_DIR" "$RUNTIME_GID"
 printf '     Never reuse the existing /etc/cloudflared/token; it belongs to bekal-production.\n'
-printf '  5. Install and verify the Resend API key and webhook secret in %s.\n' "$SECRETS_DIR"
-printf '  6. Run: sudo %s/preflight.sh\n' "$LIBEXEC_DIR"
-printf '  7. Email delivery stays disabled until Resend domain and signed webhook gates are verified.\n'
+printf '  6. Install and verify the Resend API key and webhook secret in %s.\n' "$SECRETS_DIR"
+printf '  7. Run: sudo %s/preflight.sh\n' "$LIBEXEC_DIR"
+printf '  8. Email delivery stays disabled until Resend domain and signed webhook gates are verified.\n'
 
 if [[ "${1:-}" == "--enable" ]]; then
   "$LIBEXEC_DIR/preflight.sh" --for-automation
   "$LIBEXEC_DIR/health-check.sh" --external
-  systemctl enable --now axora-deploy.timer axora-health.timer axora-backup.timer
-  printf 'Automatic deployment, health, and backup timers are enabled.\n'
+  systemctl enable --now axora-health.timer axora-backup.timer
+  printf 'Recurring health and backup timers are enabled; GitHub Actions triggers deployments.\n'
 else
-  printf 'After preflight succeeds, enable timers with:\n'
-  printf '  sudo systemctl enable --now axora-deploy.timer axora-health.timer axora-backup.timer\n'
+  printf 'After preflight succeeds, enable recurring safeguards with:\n'
+  printf '  sudo systemctl enable --now axora-health.timer axora-backup.timer\n'
 fi
