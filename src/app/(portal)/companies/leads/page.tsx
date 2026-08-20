@@ -54,7 +54,9 @@ function actionsForRole(
   status: CompanyLeadStatus,
 ) {
   const allowed = isOwner
-    ? new Set<CompanyLeadAction>(["REVIEW_DUPLICATE", "ANONYMIZE"])
+    ? new Set<CompanyLeadAction>([
+      "ASSIGN", "REASSIGN", "REVIEW_DUPLICATE", "ANONYMIZE",
+    ])
     : role === "HUMAN_RESOURCES_MANAGEMENT"
       ? new Set<CompanyLeadAction>(["ASSIGN", "REASSIGN", "REVIEW_DUPLICATE", "ADD_NOTE", "ADD_TASK"])
       : role === "CLIENT_ACCOUNT_MANAGER"
