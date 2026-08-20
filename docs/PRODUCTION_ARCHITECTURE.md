@@ -103,10 +103,11 @@ Tailscale node tagged `tag:axora-github-deploy`; tailnet policy grants that tag
 only TCP/22 access to `tag:axora-production-host`. It then uses a dedicated SSH
 identity, pinned host key, and non-interactive deployment command to trigger
 only the exact tested SHA. The former polling timer is removed during cutover
-so it cannot race CI. Automatic SSH deployment must stay disabled until the
-repository is private, the `production` GitHub Environment and Tailscale
-federated identity are configured, `main` is protected, required CI checks are
-enforced, and force pushes/deletions are blocked.
+so it cannot race CI. The source repository remains public, but that does not
+make deployment credentials or production images public. Automatic SSH
+deployment must stay disabled until the `production` GitHub Environment and
+Tailscale federated identity are configured, `main` is protected, required CI
+checks are enforced, and force pushes/deletions are blocked.
 
 The installed root-owned deployment controller does not update itself from
 Git. Changes under `scripts/production` or `deploy/systemd` require separate
@@ -139,6 +140,14 @@ path. Never remove it as part of a normal application deployment.
 - The GitHub CI workflow has `contents: read`, grants `packages: write` only to
   the image job, grants `id-token: write` only to the production deploy job,
   and uses commit-pinned official actions.
+- The GHCR package is private and uses granular permissions without inheriting
+  access from the public repository. GitHub Actions has explicit write access;
+  production has a separate `read:packages` credential and pulls only by OCI
+  digest.
+- The Tailscale workload identity requires the exact public repository,
+  `production` Environment, workflow on `refs/heads/main`, GitHub-hosted runner,
+  and `repository_visibility=public` claims. Its tag can reach only the tagged
+  production host on TCP/22.
 - The deployment controller accepts only the exact remote `main` commit and
   serializes deployments. It authenticates with a repository-scoped,
   read-only SSH deploy key and a pinned GitHub host key.

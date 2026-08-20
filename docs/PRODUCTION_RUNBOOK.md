@@ -21,10 +21,20 @@ restores, or secret replacement.
 These checks require an administrator or interactive approval and must be
 recorded before automatic deployment is enabled:
 
-- [ ] GitHub repository is private.
-- [ ] `main` is protected; pull requests and both `CI` jobs are required.
+- [ ] The public repository contains no production credential or secret, and
+      deployment secrets cannot be printed by workflow steps.
+- [ ] `main` is protected; pull requests and `Build immutable production image`
+      are required.
 - [ ] Force pushes and deletion of `main` are blocked.
 - [ ] Repository administrators and CODEOWNERS are reviewed.
+- [ ] The GitHub `production` Environment contains only the required SSH and
+      Tailscale secrets and permits deployment only from `main`.
+- [ ] The Tailscale federated identity matches this repository, the
+      `production` Environment, `.github/workflows/ci.yml` on `main`, and a
+      GitHub-hosted runner; its tag can reach only production TCP/22.
+- [ ] `ghcr.io/ashraf-2004/axora` is private, uses granular permissions without
+      repository inheritance, grants this repository Actions write access, and
+      grants the production pull identity read access only.
 - [ ] The generated Axora production SSH public key is registered in GitHub as
       a read-only deploy key; its private key remains root-only on this PC.
 - [ ] Official Cloudflare MCP OAuth is complete and can read the

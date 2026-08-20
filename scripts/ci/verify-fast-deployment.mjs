@@ -93,6 +93,23 @@ test("controller installation does not activate the deployment cutover", async (
   assert.match(installer, /Legacy polling deployment remains enabled until explicit cutover/);
 });
 
+test("public source keeps production credentials and GHCR access private", async () => {
+  const [architecture, migrationPlan, runbook] = await Promise.all([
+    readFile(new URL("../../docs/PRODUCTION_ARCHITECTURE.md", import.meta.url), "utf8"),
+    readFile(new URL("../../docs/MIGRATION_PLAN.md", import.meta.url), "utf8"),
+    readFile(new URL("../../docs/PRODUCTION_RUNBOOK.md", import.meta.url), "utf8"),
+  ]);
+  assert.match(architecture, /source repository remains public/);
+  assert.match(architecture, /granular permissions without inheriting/);
+  assert.match(architecture, /repository_visibility=public/);
+  assert.match(migrationPlan, /intentionally remains public/);
+  assert.match(migrationPlan, /Build immutable production image/);
+  assert.match(runbook, /public repository contains no production credential or secret/);
+  assert.match(runbook, /production pull identity read access only/);
+  assert.doesNotMatch(migrationPlan, /Change the repository to private/);
+  assert.doesNotMatch(runbook, /GitHub repository is private/);
+});
+
 test("backs up and migrates only when the immutable ledger requires it", async () => {
   const deploy = await readFile(
     new URL("../production/deploy.sh", import.meta.url),
