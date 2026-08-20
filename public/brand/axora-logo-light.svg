@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1000 260"
+     role="img"
+     aria-labelledby="axoraLightTitle axoraLightDesc">
+  <title id="axoraLightTitle">Axora</title>
+  <desc id="axoraLightDesc">Axora logo for light surfaces</desc>
+  <rect x="20" y="25" width="210" height="210" rx="52" fill="#0B3157"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M78 80 L112 113 L154 75"/>
+    <path d="M112 113 L112 158 L76 190"/>
+    <path d="M112 158 L160 190"/>
+  </g>
+  <rect x="83" y="103" width="58" height="58" rx="8" fill="#FFFFFF"/>
+  <circle cx="72" cy="73" r="22" fill="#FFFFFF"/>
+  <circle cx="163" cy="70" r="22" fill="#EAA63A"/>
+  <circle cx="72" cy="194" r="22" fill="#FFFFFF"/>
+  <circle cx="166" cy="194" r="22" fill="#FFFFFF"/>
+  <text x="264" y="183" fill="#0B3157" font-family="Arial, Helvetica, sans-serif" font-size="132" font-weight="900" letter-spacing="12">AXORA</text>
+  <circle cx="446" cy="126" r="10" fill="#EAA63A"/>
+</svg>

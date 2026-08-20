@@ -38,10 +38,7 @@ const scopeSchema = z.object({
       : {}),
   };
   if (!authorizationPolicyInternals.scopeIsStructurallyValid(authorizationScope)) {
-    context.addIssue({
-      code: "custom",
-      message: "Invalid authorization scope",
-    });
+    context.addIssue({ code: "custom", message: "Invalid authorization scope" });
   }
 });
 
@@ -50,10 +47,10 @@ const identitySchema = z.object({
   displayName: z.string().trim().min(1).max(200),
   email: z.email().max(254),
   accountKind: z.enum(ACCOUNT_KINDS),
-  accountStatus: z.literal("ACTIVE"),
-  active: z.literal(true),
+  accountStatus: z.enum(["INVITED", "ACTIVE", "SUSPENDED", "DEACTIVATED"]),
+  active: z.boolean(),
   authVersion: z.coerce.number().int().positive(),
-  setupCompleted: z.literal(true),
+  setupCompleted: z.boolean(),
   preferredLocale: z.enum(["en", "ar", "ms"]).optional(),
   jobTitle: z.string().trim().min(1).max(160).optional(),
 }).strict();
@@ -169,9 +166,7 @@ const accessAdministrationSnapshotSchema = z.object({
   }
 });
 
-interface AccessAdministrationRow {
-  snapshot: unknown;
-}
+interface AccessAdministrationRow { snapshot: unknown }
 
 export type AccessAdministrationSnapshot = z.infer<
   typeof accessAdministrationSnapshotSchema
@@ -185,10 +180,23 @@ export class AccessAdministrationUnavailableError extends Error {
 }
 
 function requireNormalizedActor(actor: AuthenticatedSessionUser) {
-  if (!actor.roleAssignmentId) {
-    throw new AccessAdministrationUnavailableError();
-  }
+  if (!actor.roleAssignmentId) throw new AccessAdministrationUnavailableError();
   return actor.roleAssignmentId;
+}
+
+function parseSnapshot(
+  value: unknown,
+  targetUserId: string,
+  targetRoleAssignmentId?: string,
+) {
+  const parsed = accessAdministrationSnapshotSchema.safeParse(value);
+  if (!parsed.success
+    || parsed.data.identity.id !== targetUserId
+    || (targetRoleAssignmentId
+      && parsed.data.selectedAssignmentId !== targetRoleAssignmentId)) {
+    return undefined;
+  }
+  return parsed.data;
 }
 
 export async function loadAccessAdministration(
@@ -207,28 +215,39 @@ export async function loadAccessAdministration(
       throw new AccessAdministrationUnavailableError();
     }
 
-    const result = await query<AccessAdministrationRow>(
+    const argumentsList = [
+      actor.id,
+      actorRoleAssignmentId,
+      safeTargetUserId,
+      safeTargetRoleAssignmentId ?? null,
+      capturedAt,
+    ];
+    const activeResult = await query<AccessAdministrationRow>(
       `SELECT public.axora_access_administration_snapshot(
-         $1,$2,$3,$4,$5
+         $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::timestamptz
        ) AS snapshot`,
-      [
-        actor.id,
-        actorRoleAssignmentId,
-        safeTargetUserId,
-        safeTargetRoleAssignmentId ?? null,
-        capturedAt,
-      ],
+      argumentsList,
     );
-    const parsed = accessAdministrationSnapshotSchema.safeParse(
-      result.rows[0]?.snapshot,
+    const active = parseSnapshot(
+      activeResult.rows[0]?.snapshot,
+      safeTargetUserId,
+      safeTargetRoleAssignmentId,
     );
-    if (!parsed.success
-      || parsed.data.identity.id !== safeTargetUserId
-      || (safeTargetRoleAssignmentId
-        && parsed.data.selectedAssignmentId !== safeTargetRoleAssignmentId)) {
-      throw new AccessAdministrationUnavailableError();
-    }
-    return parsed.data;
+    if (active) return active;
+
+    const pendingResult = await query<AccessAdministrationRow>(
+      `SELECT public.axora_pending_access_administration_snapshot(
+         $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::timestamptz
+       ) AS snapshot`,
+      argumentsList,
+    );
+    const pending = parseSnapshot(
+      pendingResult.rows[0]?.snapshot,
+      safeTargetUserId,
+      safeTargetRoleAssignmentId,
+    );
+    if (!pending) throw new AccessAdministrationUnavailableError();
+    return pending;
   } catch (error) {
     if (error instanceof AccessAdministrationUnavailableError) throw error;
     throw new AccessAdministrationUnavailableError();

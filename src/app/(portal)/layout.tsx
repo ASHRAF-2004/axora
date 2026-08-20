@@ -13,6 +13,8 @@ import {
   safeInternalReturnPath,
   SESSION_RETURN_HEADER,
 } from "@/lib/session-return";
+import { getUserAppearance } from "@/lib/user-appearance";
+import type { AppearanceMode } from "@/lib/appearance";
 import type { CSSProperties } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Metadata } from "next";
@@ -24,7 +26,6 @@ import {
   PRIMARY_NAVIGATION,
   visiblePortalNavigation,
 } from "@/lib/portal-navigation";
-import { canChooseStaffAtmosphere, getStaffAtmosphere } from "@/lib/staff-atmosphere";
 
 export const metadata: Metadata = { robots: { index: false, follow: false, noarchive: true } };
 
@@ -65,10 +66,6 @@ export default async function PortalLayout({ children }: { children: React.React
   const companyBrandPromise = user.companyId
     ? getActiveCompanyBrand(user.companyId, user)
     : Promise.resolve(null);
-  const staffCanChooseAtmosphere = canChooseStaffAtmosphere(user);
-  const staffAtmospherePromise = staffCanChooseAtmosphere
-    ? getStaffAtmosphere(user)
-    : Promise.resolve(undefined);
   const [localeDecision, profile] = await Promise.all([
     requestLocaleDecision(),
     getMyProfile(user),
@@ -83,14 +80,14 @@ export default async function PortalLayout({ children }: { children: React.React
     redirect(`/profile?${params.toString()}`);
   }
 
-  const [companyBrand, unreadNotifications, staffAtmosphere] = await Promise.all([
+  const [companyBrand, unreadNotifications] = await Promise.all([
     companyBrandPromise,
     onboardingComplete ? unreadNotificationCount(user) : Promise.resolve(0),
-    staffAtmospherePromise,
   ]);
+  const companyDefaultAppearance: AppearanceMode = companyBrand?.themePreference === "DARK" ? "dark" : "light";
+  const appearance = await getUserAppearance(user, companyDefaultAppearance);
   const theme = companyBrand?.tokens;
   const messages = portalMessages(locale);
-  const darkTheme = companyBrand?.themePreference === "DARK";
   const themeStyle = theme ? ({
     "--tenant-primary": theme.primary,
     "--tenant-primary-hover": theme.primaryHover,
@@ -99,15 +96,26 @@ export default async function PortalLayout({ children }: { children: React.React
     "--tenant-secondary": theme.secondary,
     "--tenant-secondary-foreground": theme.secondaryForeground,
     "--tenant-accent": theme.accent,
-    "--tenant-page": darkTheme ? theme.darkPageBackground : theme.pageBackground,
-    "--tenant-surface": darkTheme ? theme.darkSurface : theme.surface,
-    "--tenant-muted": theme.mutedSurface,
-    "--tenant-border": darkTheme ? theme.darkBorder : theme.border,
-    "--tenant-text": darkTheme ? theme.textInverse : theme.text,
-    "--tenant-icon": darkTheme ? theme.iconInverse : theme.icon,
+    "--tenant-page-light": theme.pageBackground,
+    "--tenant-page-dark": theme.darkPageBackground,
+    "--tenant-surface-light": theme.surface,
+    "--tenant-surface-dark": theme.darkSurface,
+    "--tenant-muted-surface": theme.mutedSurface,
+    "--tenant-border-light": theme.border,
+    "--tenant-border-dark": theme.darkBorder,
+    "--tenant-text-light": theme.text,
+    "--tenant-text-dark": theme.textInverse,
+    "--tenant-icon-light": theme.icon,
+    "--tenant-icon-dark": theme.iconInverse,
+    "--tenant-success": theme.success,
+    "--tenant-warning": theme.warning,
+    "--tenant-danger": theme.danger,
     "--tenant-focus": theme.focusRing,
     "--tenant-link": theme.link,
-    color: darkTheme ? theme.textInverse : theme.text,
+    "--tenant-chart-1": theme.chart[0] ?? theme.primary,
+    "--tenant-chart-2": theme.chart[1] ?? theme.accent,
+    "--tenant-chart-3": theme.chart[2] ?? theme.secondary,
+    "--tenant-chart-4": theme.chart[3] ?? theme.link,
   } as CSSProperties) : undefined;
   const roleLabel = user.isOwner
     ? messages.roles.PLATFORM_OWNER
@@ -160,13 +168,14 @@ export default async function PortalLayout({ children }: { children: React.React
         ))}
         quickAction={quickAction}
         locale={locale}
+        appearance={appearance}
         brand={{
           name: companyBrand?.companyName ?? "Axora",
           logoUrl: companyBrand
             ? isDemoMode()
               ? "/brand/demo-company-logo.svg"
               : `/api/company-brand/${companyBrand.companyId}/logo?v=${companyBrand.themeVersion}`
-            : "/brand/axora-logo.png",
+            : "/brand/axora-logo-light.svg",
           tenant: Boolean(companyBrand),
           themeVersion: companyBrand?.themeVersion,
           logoVariant: companyBrand?.logoVariant,
@@ -175,8 +184,6 @@ export default async function PortalLayout({ children }: { children: React.React
         }}
         unreadNotifications={unreadNotifications}
         profileRequired={!onboardingComplete}
-        staffAtmosphere={staffAtmosphere}
-        allowAtmosphere={staffCanChooseAtmosphere}
       >
         {children}
       </AppShell>

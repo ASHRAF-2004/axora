@@ -116,12 +116,8 @@ grep -Fqx "AXORA_UPLOADS_DIR=$AXORA_UPLOADS_DIR" "$AXORA_RUNTIME_ENV_FILE" \
 
 email_delivery_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_DELIVERY_ENABLED)"
 email_events_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_EVENTS_ENABLED)"
-zeptomail_webhook_bootstrap_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED)"
-zeptomail_mail_agent_key="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" ZEPTOMAIL_MAIL_AGENT_KEY)"
 resend_domain_verified="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" RESEND_DOMAIN_VERIFIED)"
 resend_webhook_verified="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" RESEND_WEBHOOK_VERIFIED)"
-cloudflare_account_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" CLOUDFLARE_ACCOUNT_ID)"
-cloudflare_zone_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" CLOUDFLARE_ZONE_ID)"
 email_from_address="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_FROM_ADDRESS)"
 email_from_name="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_FROM_NAME)"
 email_reply_to="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EMAIL_REPLY_TO)"
@@ -135,26 +131,21 @@ turnstile_expected_hostname="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA
   || die "AXORA_EMAIL_DELIVERY_ENABLED must be exactly true or false."
 [[ "$email_events_enabled" == "true" || "$email_events_enabled" == "false" ]] \
   || die "AXORA_EMAIL_EVENTS_ENABLED must be exactly true or false."
-[[ "$zeptomail_webhook_bootstrap_enabled" == "true" || "$zeptomail_webhook_bootstrap_enabled" == "false" ]] \
-  || die "ZEPTOMAIL_WEBHOOK_BOOTSTRAP_ENABLED must be exactly true or false."
+[[ "$email_provider" == "resend" ]] \
+  || die "AXORA_EMAIL_PROVIDER must be exactly resend."
+[[ "$resend_domain_verified" == "true" || "$resend_domain_verified" == "false" ]] \
+  || die "RESEND_DOMAIN_VERIFIED must be exactly true or false."
+[[ "$resend_webhook_verified" == "true" || "$resend_webhook_verified" == "false" ]] \
+  || die "RESEND_WEBHOOK_VERIFIED must be exactly true or false."
 if [[ "$email_delivery_enabled" == "true" && "$email_events_enabled" != "true" ]]; then
-  die "Email delivery requires the Email Sending event consumer and suppression endpoint."
+  die "Resend delivery requires signed provider events to be enabled."
 fi
-if [[ "$email_events_enabled" == "true" && "$email_delivery_enabled" != "true" \
-  && "$email_provider" != "zeptomail" && "$email_provider" != "resend" ]]; then
-  die "Email provider events cannot be enabled while email delivery is disabled."
+if [[ "$resend_webhook_verified" == "true" && "$email_events_enabled" != "true" ]]; then
+  die "RESEND_WEBHOOK_VERIFIED requires signed provider events to be enabled."
 fi
-if [[ "$zeptomail_webhook_bootstrap_enabled" == "true" ]]; then
-  [[ "$email_provider" == "zeptomail" ]] \
-    || die "Webhook bootstrap is available only for ZeptoMail."
-  [[ "$email_delivery_enabled" == "false" && "$email_events_enabled" == "false" ]] \
-    || die "ZeptoMail webhook bootstrap requires delivery and provider events to remain disabled."
-fi
-if [[ -n "$cloudflare_account_id" && ! "$cloudflare_account_id" =~ ^[A-Fa-f0-9]{32}$ ]]; then
-  die "CLOUDFLARE_ACCOUNT_ID must be empty or a 32-character Cloudflare identifier."
-fi
-if [[ -n "$cloudflare_zone_id" && ! "$cloudflare_zone_id" =~ ^[A-Fa-f0-9]{32}$ ]]; then
-  die "CLOUDFLARE_ZONE_ID must be empty or a 32-character Cloudflare identifier."
+if [[ "$email_delivery_enabled" == "true" \
+  && ( "$resend_domain_verified" != "true" || "$resend_webhook_verified" != "true" ) ]]; then
+  die "Resend delivery requires verified domain and signed webhook evidence."
 fi
 [[ "$email_from_address" =~ ^[^[:space:]@]+@([A-Za-z0-9-]+\.)*axora\.management$ ]] \
   || die "AXORA_EMAIL_FROM_ADDRESS must use axora.management or one of its subdomains."
@@ -162,24 +153,9 @@ fi
   || die "AXORA_EMAIL_FROM_NAME must be a non-empty, single-line value of at most 100 characters."
 [[ "$email_reply_to" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] \
   || die "AXORA_EMAIL_REPLY_TO must be a valid email address."
-[[ "$email_provider" == "cloudflare-email-service" || "$email_provider" == "zeptomail" \
-  || "$email_provider" == "resend" ]] \
-  || die "AXORA_EMAIL_PROVIDER must be cloudflare-email-service, zeptomail, or resend."
-[[ "$resend_domain_verified" == "true" || "$resend_domain_verified" == "false" ]] \
-  || die "RESEND_DOMAIN_VERIFIED must be exactly true or false."
-[[ "$resend_webhook_verified" == "true" || "$resend_webhook_verified" == "false" ]] \
-  || die "RESEND_WEBHOOK_VERIFIED must be exactly true or false."
-if [[ -n "$zeptomail_mail_agent_key" ]]; then
-  (( "${#zeptomail_mail_agent_key}" <= 200 )) \
-    || die "ZEPTOMAIL_MAIL_AGENT_KEY exceeds 200 characters."
-  [[ "$zeptomail_mail_agent_key" =~ ^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$ ]] \
-    || die "ZEPTOMAIL_MAIL_AGENT_KEY must be the opaque period-separated webhook mailagent_key."
-fi
-if [[ "$email_provider" == "zeptomail" || "$email_provider" == "resend" ]]; then
-  "$SCRIPT_DIR/check-email-service.mjs" \
-    --runtime-file "$AXORA_RUNTIME_ENV_FILE" \
-    --configuration-only
-fi
+"$SCRIPT_DIR/check-email-service.mjs" \
+  --runtime-file "$AXORA_RUNTIME_ENV_FILE" \
+  --configuration-only
 if [[ ! "$account_setup_ttl" =~ ^[0-9]+$ ]] \
   || (( account_setup_ttl < 1 || account_setup_ttl > 168 )); then
   die "ACCOUNT_SETUP_TTL_HOURS must be a whole number from 1 to 168."
@@ -212,26 +188,6 @@ if [[ -n "$turnstile_site_key" ]]; then
     || die "The dedicated Turnstile secret is malformed."
 fi
 
-email_token_path="$AXORA_SECRETS_DIR/cloudflare_email_api_token"
-[[ -f "$email_token_path" && ! -L "$email_token_path" ]] \
-  || die "Cloudflare email token placeholder is missing or unsafe."
-email_token_mode="$(stat -c '%a' "$email_token_path")"
-[[ "$(stat -c '%u:%g' "$email_token_path")" == "0:1000" ]] \
-  || die "Cloudflare email token must be owned by root:GID-1000."
-(( (8#$email_token_mode & 8#027) == 0 )) \
-  || die "Cloudflare email token permissions are too broad."
-
-for zeptomail_token_name in zeptomail_send_token zeptomail_send_token_next; do
-  zeptomail_token_path="$AXORA_SECRETS_DIR/$zeptomail_token_name"
-  [[ -f "$zeptomail_token_path" && ! -L "$zeptomail_token_path" ]] \
-    || die "ZeptoMail token placeholder is missing or unsafe: $zeptomail_token_name"
-  zeptomail_token_mode="$(stat -c '%a' "$zeptomail_token_path")"
-  [[ "$(stat -c '%u:%g' "$zeptomail_token_path")" == "0:1000" ]] \
-    || die "ZeptoMail token must be owned by root:GID-1000: $zeptomail_token_name"
-  (( (8#$zeptomail_token_mode & 8#027) == 0 )) \
-    || die "ZeptoMail token permissions are too broad: $zeptomail_token_name"
-done
-
 resend_token_path="$AXORA_SECRETS_DIR/resend_api_key"
 [[ -f "$resend_token_path" && ! -L "$resend_token_path" ]] \
   || die "Resend API key placeholder is missing or unsafe."
@@ -249,38 +205,23 @@ resend_webhook_secret_mode="$(stat -c '%a' "$resend_webhook_secret_path")"
   || die "Resend webhook secret must be owned by root:GID-1000."
 (( (8#$resend_webhook_secret_mode & 8#027) == 0 )) \
   || die "Resend webhook secret permissions are too broad."
-if [[ "$email_provider" == "resend" && "$email_events_enabled" == "true" ]]; then
+if [[ "$email_events_enabled" == "true" ]]; then
   [[ -s "$resend_webhook_secret_path" ]] \
     || die "Resend provider events are enabled but the webhook secret is empty."
+  node -e '
+    const fs=require("node:fs");
+    const value=fs.readFileSync(process.argv[1],"utf8").trim();
+    if(!/^whsec_[A-Za-z0-9+/=_-]{16,4096}$/.test(value)) process.exit(1);
+  ' "$resend_webhook_secret_path" \
+    || die "The Resend webhook secret is malformed."
 fi
-
 if [[ "$email_delivery_enabled" == "true" ]]; then
-  if [[ "$email_provider" == "cloudflare-email-service" ]]; then
-    [[ -n "$cloudflare_account_id" ]] \
-      || die "Cloudflare email delivery requires CLOUDFLARE_ACCOUNT_ID."
-    [[ -n "$cloudflare_zone_id" ]] \
-      || die "Cloudflare email delivery requires CLOUDFLARE_ZONE_ID."
-    [[ -s "$email_token_path" ]] \
-      || die "Cloudflare email delivery is enabled but its API token is empty."
-    selected_email_token_path="$email_token_path"
-  elif [[ "$email_provider" == "resend" ]]; then
-    selected_email_token_path="$resend_token_path"
-    [[ -s "$selected_email_token_path" ]] \
-      || die "Resend delivery is enabled but its API key is empty."
-  else
-    zeptomail_token_slot="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_ZEPTOMAIL_TOKEN_SLOT)"
-    [[ "$zeptomail_token_slot" == "primary" || "$zeptomail_token_slot" == "next" ]] \
-      || die "AXORA_ZEPTOMAIL_TOKEN_SLOT must be primary or next."
-    selected_email_token_path="$AXORA_SECRETS_DIR/zeptomail_send_token"
-    [[ "$zeptomail_token_slot" == "primary" ]] \
-      || selected_email_token_path="$AXORA_SECRETS_DIR/zeptomail_send_token_next"
-    [[ -s "$selected_email_token_path" ]] \
-      || die "ZeptoMail delivery is enabled but the active Send Mail Token is empty."
-  fi
+  [[ -s "$resend_token_path" ]] \
+    || die "Resend delivery is enabled but its API key is empty."
   if [[ "$check_mode" != "local" ]]; then
     "$SCRIPT_DIR/check-email-service.mjs" \
       --runtime-file "$AXORA_RUNTIME_ENV_FILE" \
-      --token-file "$selected_email_token_path"
+      --token-file "$resend_token_path"
   fi
 fi
 
@@ -298,25 +239,6 @@ node -e '
   if(value.length<32 || value.length>4096 || /[\s\x00-\x1f\x7f]/.test(value)) process.exit(1);
 ' "$email_service_key_path" \
   || die "The private account email service key is malformed."
-
-email_events_key_path="$AXORA_SECRETS_DIR/axora_email_events_webhook_secret"
-[[ -f "$email_events_key_path" && ! -L "$email_events_key_path" ]] \
-  || die "The Email Sending event webhook secret placeholder is missing or unsafe."
-email_events_key_mode="$(stat -c '%a' "$email_events_key_path")"
-[[ "$(stat -c '%u:%g' "$email_events_key_path")" == "0:1000" ]] \
-  || die "The Email Sending event webhook secret must be owned by root:GID-1000."
-(( (8#$email_events_key_mode & 8#027) == 0 )) \
-  || die "The Email Sending event webhook secret permissions are too broad."
-if [[ "$email_events_enabled" == "true" ]]; then
-  [[ -s "$email_events_key_path" ]] \
-    || die "Email provider events are enabled but their webhook secret is empty."
-  node -e '
-    const fs=require("node:fs");
-    const value=fs.readFileSync(process.argv[1],"utf8").trim();
-    if(!/^[A-Za-z0-9_-]{43,4096}$/.test(value)) process.exit(1);
-  ' "$email_events_key_path" \
-    || die "The Email Sending event webhook secret is malformed."
-fi
 
 [[ -f "$AXORA_REGISTRY_TOKEN_FILE" && ! -L "$AXORA_REGISTRY_TOKEN_FILE" \
   && -s "$AXORA_REGISTRY_TOKEN_FILE" ]] \

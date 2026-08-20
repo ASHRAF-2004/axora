@@ -1,6 +1,6 @@
 export const AXORA_BRAND = {
-  primary: "#0B2D52",
-  accent: "#E8A33D",
+  primary: "#0B3157",
+  accent: "#EAA63A",
   white: "#FFFFFF",
 } as const;
 

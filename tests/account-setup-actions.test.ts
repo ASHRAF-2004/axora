@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
       super(reason);
     }
   },
+  AccessUnavailableError: class AccessUnavailableError extends Error {},
   requirePermission: vi.fn(),
   createInvitedUser: vi.fn(),
   resendInvitation: vi.fn(),
@@ -39,6 +40,10 @@ vi.mock("@/lib/account-setup", () => ({
   createInvitedUser: mocks.createInvitedUser,
   resendAccountSetupInvitation: mocks.resendInvitation,
   recordAccountSetupDelivery: mocks.recordDelivery,
+}));
+
+vi.mock("@/lib/access-management", () => ({
+  AccessManagementUnavailableError: mocks.AccessUnavailableError,
 }));
 
 vi.mock("@/lib/account-email", () => ({
@@ -77,7 +82,7 @@ const invitation = {
   recipientName: "New User",
   recipientEmail: "new@example.test",
   companyName: "Example Company",
-  role: "VIEWER",
+  role: "COMPANY_ADMIN",
   expiresAt: "2026-08-03T00:00:00.000Z",
   rawToken: "A".repeat(43),
 };
@@ -86,7 +91,8 @@ function userForm() {
   const form = new FormData();
   form.set("email", "new@example.test");
   form.set("displayName", "New User");
-  form.set("role", "VIEWER");
+  form.set("role", "COMPANY_ADMIN");
+  form.set("companyId", actor.companyId);
   form.set("preferredLocale", "ar");
   return form;
 }
@@ -118,8 +124,10 @@ describe("account invitation actions", () => {
     expect(mocks.createInvitedUser).toHaveBeenCalledWith(expect.objectContaining({
       email: "new@example.test",
       displayName: "New User",
-      role: "VIEWER",
+      role: "COMPANY_ADMIN",
+      companyId: actor.companyId,
       preferredLocale: "ar",
+      permissions: undefined,
     }), actor);
     expect(mocks.sendEmail).toHaveBeenCalledWith(invitation);
     expect(mocks.recordDelivery).toHaveBeenCalledWith(invitation.invitationId, {
@@ -127,6 +135,56 @@ describe("account invitation actions", () => {
       providerMessageId: undefined,
       status: "sent",
     });
+  });
+
+  it("does not turn unchanged role defaults into explicit permission overrides", async () => {
+    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
+    const form = userForm();
+    form.append("permissions", "dashboard.view");
+    form.append("permissions", "company.view");
+    form.set("permissionsCustomized", "false");
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      "REDIRECT:/users?notice=user-invited",
+    );
+
+    expect(mocks.createInvitedUser).toHaveBeenCalledWith(
+      expect.objectContaining({ permissions: undefined }),
+      actor,
+    );
+  });
+
+  it("passes only an explicitly customized permission selection", async () => {
+    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
+    const form = userForm();
+    form.append("permissions", "dashboard.view");
+    form.append("permissions", "company.view");
+    form.set("permissionsCustomized", "true");
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      "REDIRECT:/users?notice=user-invited",
+    );
+
+    expect(mocks.createInvitedUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permissions: ["dashboard.view", "company.view"],
+      }),
+      actor,
+    );
+  });
+
+  it("shows controlled feedback when a customized access set is unavailable", async () => {
+    const form = userForm();
+    form.set("permissionsCustomized", "true");
+    form.append("permissions", "dashboard.view");
+    mocks.createInvitedUser.mockRejectedValue(
+      new mocks.AccessUnavailableError(),
+    );
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      "REDIRECT:/users?notice=user-permission-selection-unavailable",
+    );
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
 
   it("rejects the removed supplier actor before creating an account", async () => {
@@ -143,7 +201,9 @@ describe("account invitation actions", () => {
   it("rejects an unsupported invitation language before creating an account", async () => {
     const form = userForm();
     form.set("preferredLocale", "xx");
-    await expect(createUserAction(form)).rejects.toThrow();
+    await expect(createUserAction(form)).rejects.toThrow(
+      "REDIRECT:/users?notice=user-creation-invalid",
+    );
     expect(mocks.createInvitedUser).not.toHaveBeenCalled();
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });

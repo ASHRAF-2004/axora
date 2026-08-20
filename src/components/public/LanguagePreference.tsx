@@ -58,12 +58,23 @@ export function LanguagePreference({
 
   return (
     <>
-      <label className={`public-language-select${compact ? " public-language-compact" : ""}`}>
+      <label
+        className={`public-language-select${compact ? " public-language-compact" : ""}`}
+        style={{
+          color: "var(--axora-text)",
+          background: "var(--axora-surface)",
+          borderColor: "var(--axora-border)",
+        }}
+      >
         <Languages size={17} aria-hidden="true" />
         <span className="sr-only">{labels.label}</span>
         <select
           aria-label={labels.label}
           value={locale}
+          style={{
+            color: "var(--axora-text)",
+            backgroundColor: "var(--axora-surface)",
+          }}
           onChange={(event) => remember(event.target.value as SupportedLocale)}
         >
           {SUPPORTED_LOCALES.map((option) => (

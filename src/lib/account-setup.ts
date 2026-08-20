@@ -348,7 +348,11 @@ async function initializeInvitedIdentity(
   if (input.accountKind === "DELIVERY") {
     await client.query(
       `INSERT INTO delivery_agent_profiles(user_id,agent_code,active)
-       VALUES ($1,'DRV-' || upper(substr(replace($1::text,'-',''),1,12)),true)
+       VALUES (
+         $1::uuid,
+         'DRV-' || upper(substr(replace(($1::uuid)::text,'-',''),1,12)),
+         true
+       )
        ON CONFLICT(user_id) DO UPDATE SET active=true`,
       [userId],
     );
@@ -461,7 +465,10 @@ export async function resendAccountSetupInvitation(
 
       const rate = await client.query<{ tooSoon: boolean; lastHour: number }>(
         `SELECT
-           bool_or(created_at > now() - make_interval(secs => $2::integer)) AS "tooSoon",
+           bool_or(
+             created_at > now() - make_interval(secs => $2::integer)
+             AND revoked_at IS NULL
+           ) AS "tooSoon",
            count(*) FILTER (WHERE created_at > now() - interval '1 hour')::integer AS "lastHour"
          FROM account_setup_invitations
          WHERE user_id=$1`,
@@ -771,7 +778,8 @@ export async function inspectAccountSetupToken(
          (i.intended_scope_type='PLATFORM'
            AND u.account_kind='PLATFORM'
            AND intended_role.role_key IN (
-             'PLATFORM_OWNER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
+             'PLATFORM_OWNER','HUMAN_RESOURCES_MANAGEMENT',
+             'CLIENT_ACCOUNT_MANAGER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
            )
            AND u.is_owner=(intended_role.role_key='PLATFORM_OWNER'))
          OR (i.intended_scope_type='COMPANY'
@@ -916,7 +924,8 @@ export async function consumeAccountSetupToken(
              (i.intended_scope_type='PLATFORM'
                AND u.account_kind='PLATFORM'
                AND intended_role.role_key IN (
-                 'PLATFORM_OWNER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
+                 'PLATFORM_OWNER','HUMAN_RESOURCES_MANAGEMENT',
+                 'CLIENT_ACCOUNT_MANAGER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
                )
                AND u.is_owner=(intended_role.role_key='PLATFORM_OWNER'))
              OR (i.intended_scope_type='COMPANY'

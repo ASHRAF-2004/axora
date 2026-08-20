@@ -22,16 +22,21 @@ describe("transactional email operations interface", () => {
     expect(reveal).not.toContain("localStorage");
   });
 
-  it("ships English, Arabic, and Malay operations copy with logical responsive styling", async () => {
-    const [messages, styles, robots] = await Promise.all([
+  it("ships English, Arabic, and Malay Resend operations copy with logical responsive styling", async () => {
+    const [page, messages, styles, robots] = await Promise.all([
+      readFile(new URL("../src/app/(portal)/email-operations/page.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/lib/email-operations-i18n.ts", import.meta.url), "utf8"),
       readFile(new URL("../src/app/(portal)/email-operations/EmailOperations.module.css", import.meta.url), "utf8"),
       readFile(new URL("../src/app/robots.ts", import.meta.url), "utf8"),
     ]);
 
     expect(messages).toContain("Transactional email operations");
+    expect(messages).toContain("Delivery stream controls");
+    expect(messages).toContain("Resend runtime readiness");
     expect(messages).toMatch(/[\u0600-\u06ff]/u);
     expect(messages).toContain("Operasi e-mel transaksi");
+    expect(page).toContain("Resend");
+    expect(page).not.toContain("remaining credits");
     expect(styles).toContain("border-inline-start");
     expect(styles).toContain("@media (max-width:");
     expect(styles).toContain("prefers-reduced-motion: reduce");
@@ -39,15 +44,14 @@ describe("transactional email operations interface", () => {
     expect(robots).toContain('"/email-operations"');
   });
 
-  it("records only provider and normalized error codes on webhook failures", async () => {
-    const [cloudflare, zeptomail] = await Promise.all([
-      readFile(new URL("../src/app/api/email/provider-events/cloudflare/route.ts", import.meta.url), "utf8"),
-      readFile(new URL("../src/app/api/email/provider-events/zeptomail/route.ts", import.meta.url), "utf8"),
-    ]);
-    for (const route of [cloudflare, zeptomail]) {
-      expect(route).toContain("recordEmailWebhookProcessingFailure");
-      expect(route).not.toContain("console.log(payload");
-      expect(route).not.toContain("JSON.stringify(payload");
-    }
+  it("records only normalized Resend webhook failure evidence", async () => {
+    const route = await readFile(
+      new URL("../src/app/api/email/provider-events/resend/route.ts", import.meta.url),
+      "utf8",
+    );
+    expect(route).toContain("recordEmailWebhookProcessingFailure");
+    expect(route).toContain('"resend"');
+    expect(route).not.toContain("console.log(payload");
+    expect(route).not.toContain("JSON.stringify(payload");
   });
 });

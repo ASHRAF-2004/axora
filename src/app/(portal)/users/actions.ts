@@ -10,6 +10,7 @@ import {
   resendAccountSetupInvitation,
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
+import { AccessManagementUnavailableError } from "@/lib/access-management";
 import { requirePermission } from "@/lib/auth";
 import { removeAuthorizedUser, setAuthorizedUserActive } from "@/lib/user-isolation";
 import { deactivateAuthorizedProfileImage } from "@/lib/profile-images";
@@ -20,13 +21,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isPermissionCode, type PermissionCode } from "@/lib/authorization-policy";
+import { validateProvisioningOrganizationShape } from "@/lib/user-provisioning";
 
 const userSchema = z.object({ email: z.email(), displayName: z.string().trim().min(2).max(200),
   role: z.custom<UserRole>((value) => isUserRole(value), "Choose an approved account role."),
   companyId: z.uuid().optional(), branchId: z.uuid().optional(), departmentId: z.uuid().optional(), supplierId: z.uuid().optional(),
   jobTitle: z.string().trim().max(160).optional(),
   preferredLocale: z.enum(SUPPORTED_LOCALES),
-  permissions: z.array(z.string().refine(isPermissionCode).transform((value) => value as PermissionCode)).max(120),
+  permissions: z.array(z.string().refine(isPermissionCode).transform((value) => value as PermissionCode)).max(120).optional(),
 });
 
 type InvitationDelivery = "sent" | "disabled" | "failed" | "unconfirmed";
@@ -77,22 +79,39 @@ function invitationQuotaNotice(error: AccountSetupInvitationQuotaError) {
 
 export async function createUserAction(formData: FormData) {
   const actor = await requirePermission("manage_users");
-  const input = userSchema.parse({ email: readFormText(formData, "email"), displayName: readFormText(formData, "displayName"),
-    role: readFormText(formData, "role"),
-    companyId: readFormText(formData, "companyId") || undefined,
-    branchId: readFormText(formData, "branchId") || undefined,
-    departmentId: readFormText(formData, "departmentId") || undefined,
-    supplierId: readFormText(formData, "supplierId") || undefined,
-    jobTitle: readFormText(formData, "jobTitle") || undefined,
-    preferredLocale: readFormText(formData, "preferredLocale") || "en",
-    permissions: formData.getAll("permissions").filter((value): value is string => typeof value === "string"),
-  });
+  const permissionsCustomized = readFormText(
+    formData,
+    "permissionsCustomized",
+  ) === "true";
+  let input: z.infer<typeof userSchema>;
+  try {
+    input = userSchema.parse({ email: readFormText(formData, "email"), displayName: readFormText(formData, "displayName"),
+      role: readFormText(formData, "role"),
+      companyId: readFormText(formData, "companyId") || undefined,
+      branchId: readFormText(formData, "branchId") || undefined,
+      departmentId: readFormText(formData, "departmentId") || undefined,
+      supplierId: readFormText(formData, "supplierId") || undefined,
+      jobTitle: readFormText(formData, "jobTitle") || undefined,
+      preferredLocale: readFormText(formData, "preferredLocale") || "en",
+      permissions: permissionsCustomized
+        ? formData.getAll("permissions").filter(
+          (value): value is string => typeof value === "string",
+        )
+        : undefined,
+    });
+    validateProvisioningOrganizationShape(input);
+  } catch {
+    redirect("/users?notice=user-creation-invalid");
+  }
   let invitation: AccountSetupInvitationResult;
   try {
     invitation = await createInvitedUser(input, actor);
   } catch (error) {
     if (error instanceof AccountSetupInvitationQuotaError) {
       redirect(`/users?notice=${invitationQuotaNotice(error)}`);
+    }
+    if (error instanceof AccessManagementUnavailableError) {
+      redirect("/users?notice=user-permission-selection-unavailable");
     }
     throw error;
   }

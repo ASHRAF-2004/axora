@@ -23,10 +23,10 @@ import {
   type Object3D,
   type PointsMaterial,
 } from "three";
+import type { AppearanceMode } from "@/lib/appearance";
 import {
-  PUBLIC_ATMOSPHERE_SCENES,
+  PUBLIC_APPEARANCE_SCENES,
   SEMANTIC_MODEL_PATHS,
-  type PublicAtmosphereId,
   type SemanticModelId,
 } from "@/lib/immersive-public-experience";
 import {
@@ -264,14 +264,14 @@ function sampleMeshPoints(root: Object3D, count: number) {
 function DissolveReassembly({
   from,
   to,
-  atmosphere,
+  appearance,
   reducedMotion,
   direction,
   progressRef,
 }: {
   from: SemanticModelId;
   to: SemanticModelId;
-  atmosphere: PublicAtmosphereId;
+  appearance: AppearanceMode;
   reducedMotion: boolean;
   direction: "ltr" | "rtl";
   progressRef: MutableRefObject<number>;
@@ -317,7 +317,7 @@ function DissolveReassembly({
   });
 
   if (!count) return null;
-  const colour = PUBLIC_ATMOSPHERE_SCENES.find((item) => item.id === atmosphere)?.scene.glow ?? "#92fff1";
+  const colour = PUBLIC_APPEARANCE_SCENES.find((item) => item.id === appearance)?.scene.glow ?? "#8aa8be";
   return <points userData={{ transitionKind: "sampled-mesh-dissolve-reassembly", sourceModel: from, targetModel: to }}>
     <bufferGeometry>
       <bufferAttribute
@@ -398,18 +398,18 @@ function ContextLossGuard({ onContextLost, onReady }: { onContextLost: () => voi
 
 function Scene({
   model,
-  atmosphere,
+  appearance,
   reducedMotion,
   direction,
   onRuntime,
 }: {
   model: SemanticModelId;
-  atmosphere: PublicAtmosphereId;
+  appearance: AppearanceMode;
   reducedMotion: boolean;
   direction: "ltr" | "rtl";
   onRuntime: (runtime: ImmersiveSceneRuntime) => void;
 }) {
-  const palette = PUBLIC_ATMOSPHERE_SCENES.find((item) => item.id === atmosphere)?.scene ?? PUBLIC_ATMOSPHERE_SCENES[0].scene;
+  const palette = PUBLIC_APPEARANCE_SCENES.find((item) => item.id === appearance)?.scene ?? PUBLIC_APPEARANCE_SCENES[0].scene;
   const [settledModel, setSettledModel] = useState(model);
   const [transitionTarget, setTransitionTarget] = useState<SemanticModelId | null>(null);
   const [dimensions, setDimensions] = useState(() => new Vector3(MODEL_LONGEST_SIDE, MODEL_LONGEST_SIDE, MODEL_LONGEST_SIDE));
@@ -521,7 +521,7 @@ function Scene({
             key={`transition-${settledModel}-${model}`}
             from={settledModel}
             to={model}
-            atmosphere={atmosphere}
+            appearance={appearance}
             reducedMotion={reducedMotion}
             direction={direction}
             progressRef={transitionProgressRef}
@@ -540,7 +540,7 @@ function Scene({
 export default function AxoraSemanticSceneCanvas({
   model,
   nextModel,
-  atmosphere,
+  appearance,
   reducedMotion,
   active,
   onContextLost,
@@ -549,7 +549,7 @@ export default function AxoraSemanticSceneCanvas({
 }: {
   model: SemanticModelId;
   nextModel?: SemanticModelId;
-  atmosphere: PublicAtmosphereId;
+  appearance: AppearanceMode;
   reducedMotion: boolean;
   active: boolean;
   onContextLost: () => void;
@@ -595,7 +595,7 @@ export default function AxoraSemanticSceneCanvas({
       shadows={reducedMotion ? false : "basic"}
     >
       <ContextLossGuard onContextLost={onContextLost} onReady={() => setContextLossReady(true)} />
-      <Scene model={model} atmosphere={atmosphere} reducedMotion={reducedMotion} direction={direction} onRuntime={handleRuntime} />
+      <Scene model={model} appearance={appearance} reducedMotion={reducedMotion} direction={direction} onRuntime={handleRuntime} />
     </Canvas>
   );
 }

@@ -76,6 +76,42 @@ const notices: Record<string, Notice> = {
   },
 };
 
+const localizedUserCreationNotices: Record<
+  SupportedLocale,
+  Record<string, Notice>
+> = {
+  en: {
+    "user-creation-invalid": {
+      message: "The account details are invalid or no longer match the selected scope. No account was created. Reload the form and try again.",
+      tone: "error",
+    },
+    "user-permission-selection-unavailable": {
+      message: "The selected access template changed or includes unavailable permissions. No account was created. Reload the form and try again.",
+      tone: "error",
+    },
+  },
+  ar: {
+    "user-creation-invalid": {
+      message: "بيانات الحساب غير صالحة أو لم تعد مطابقة للنطاق المحدد. لم يتم إنشاء أي حساب. أعد تحميل النموذج ثم حاول مرة أخرى.",
+      tone: "error",
+    },
+    "user-permission-selection-unavailable": {
+      message: "تغيّر قالب الصلاحيات المحدد أو يتضمن صلاحيات غير متاحة. لم يتم إنشاء أي حساب. أعد تحميل النموذج ثم حاول مرة أخرى.",
+      tone: "error",
+    },
+  },
+  ms: {
+    "user-creation-invalid": {
+      message: "Butiran akaun tidak sah atau tidak lagi sepadan dengan skop yang dipilih. Tiada akaun dicipta. Muat semula borang dan cuba lagi.",
+      tone: "error",
+    },
+    "user-permission-selection-unavailable": {
+      message: "Templat akses yang dipilih telah berubah atau mengandungi kebenaran yang tidak tersedia. Tiada akaun dicipta. Muat semula borang dan cuba lagi.",
+      tone: "error",
+    },
+  },
+};
+
 export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }) {
   const { notify } = useUxFeedback();
   const searchParams = useSearchParams();
@@ -92,7 +128,9 @@ export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }
     if (handledLocation.current === locationKey) return;
     handledLocation.current = locationKey;
 
-    const feedback = corePortalMessages(locale).notices[notice] ?? notices[notice];
+    const feedback = corePortalMessages(locale).notices[notice]
+      ?? localizedUserCreationNotices[locale][notice]
+      ?? notices[notice];
 
     if (notice === "request-submitted") {
       clearRequestCart();

@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth";
-import { setStaffAtmosphere } from "@/lib/staff-atmosphere";
+import { setUserAppearance } from "@/lib/user-appearance";
 
 function expectedOrigin() {
   try { return new URL(process.env.APP_BASE_URL ?? "https://axora.management").origin; }
@@ -36,8 +36,10 @@ export async function PATCH(request: Request) {
   if (!isSameOrigin(request)) {
     return Response.json({ error: "Preference unavailable" }, { status: 403 });
   }
+
   try {
-    return Response.json({ atmosphere: await setStaffAtmosphere(actor, (await request.json())?.atmosphere) }, {
+    const body = await request.json();
+    return Response.json({ appearance: await setUserAppearance(actor, body?.appearance) }, {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch {

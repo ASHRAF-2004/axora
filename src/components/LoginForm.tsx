@@ -1,6 +1,8 @@
 "use client";
 
 import { loginAction } from "@/app/login/actions";
+import { Brand } from "@/components/Brand";
+import { AppearanceSelector } from "@/components/public/AppearanceSelector";
 import type { SupportedLocale } from "@/lib/i18n";
 import { LOCALE_NAMES, persistBrowserLocale, SUPPORTED_LOCALES } from "@/lib/i18n";
 import {
@@ -11,7 +13,6 @@ import {
 } from "@/lib/session-return";
 import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import Image from "next/image";
 import Link from "next/link";
 import styles from "./LoginForm.module.css";
 
@@ -196,8 +197,9 @@ export function LoginForm({
       aria-label={copy.title}
       data-feedback-label={copy.feedback}
     >
+      <div className={styles.appearanceControl}><AppearanceSelector locale={locale} compact /></div>
       <div className={styles.brand}>
-        <Image src="/brand/axora-logo-light-background.png" width={174} height={49} alt="Axora" priority unoptimized />
+        <Brand size="login" />
         <h1>{copy.title}</h1>
         <p>{copy.welcome}</p>
       </div>

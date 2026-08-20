@@ -111,8 +111,9 @@ describe("transactional email operations migration", () => {
     await db.close();
   });
 
-  it("applies last with six provider Agents and private operational evidence", async () => {
+  it("applies with six Axora delivery streams and private operational evidence", async () => {
     expect(applied).toContain("070_transactional_email_operations.sql");
+    expect(applied).toContain("100_role_scoped_user_creation_resend_consolidation.sql");
     const state = await db.query<{
       agents: number;
       event_tables: number;
@@ -184,7 +185,7 @@ describe("transactional email operations migration", () => {
     await reset();
   });
 
-  it("pauses and resumes an Agent idempotently with append-only evidence", async () => {
+  it("pauses and resumes a delivery stream idempotently with append-only evidence", async () => {
     await assume(owner);
     const paused = await db.query<{ value: { changed: boolean; action: string } }>(`
       SELECT axora_email_operations_command(
@@ -228,7 +229,7 @@ describe("transactional email operations migration", () => {
     `, [commandIds.pause])).rejects.toThrow(/append-only/i);
   });
 
-  it("records manual provider health provenance and privacy-minimized webhook failures", async () => {
+  it("records Resend health provenance and privacy-minimized webhook failures without provider credits", async () => {
     await assume(owner);
     const health = await db.query<{ value: { action: string; source: string } }>(`
       SELECT axora_email_operations_command(
@@ -236,16 +237,15 @@ describe("transactional email operations migration", () => {
       ) AS value
     `, [
       commandIds.health,
-      "Record verified provider console health for operations",
+      "Record verified Resend health for operations",
       JSON.stringify({
-        providerName: "zeptomail",
+        providerName: "resend",
         source: "MANUAL",
         accountState: "HEALTHY",
         domainState: "VERIFIED",
         configurationState: "HEALTHY",
-        domainName: "mail.example.test",
-        remainingRecipientUnits: "24000",
-        note: "Verified by an authorized operator in the provider console",
+        domainName: "axora.management",
+        note: "Verified by an authorized operator in the Resend console",
       }),
     ]);
     expect(health.rows[0].value).toMatchObject({
@@ -253,13 +253,13 @@ describe("transactional email operations migration", () => {
       source: "MANUAL",
     });
     await db.query(
-      "SELECT axora_record_email_webhook_failure('zeptomail','signature_invalid')",
+      "SELECT axora_record_email_webhook_failure('resend','signature_invalid')",
     );
     await reset();
 
     const evidence = await db.query<{
       source: string;
-      remaining_units: number;
+      remaining_units: number | null;
       failures: number;
       payload: string;
     }>(`
@@ -275,7 +275,7 @@ describe("transactional email operations migration", () => {
     `, [commandIds.health]);
     expect(evidence.rows[0]).toMatchObject({
       source: "MANUAL",
-      remaining_units: 24000,
+      remaining_units: null,
       failures: 1,
     });
     expect(evidence.rows[0].payload).not.toContain("recipient");

@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
   }));
 });
 
-async function useLocale(context: Parameters<typeof test>[0] extends never ? never : import("@playwright/test").BrowserContext, locale: "en" | "ar" | "ms") {
+async function setLocaleCookie(context: Parameters<typeof test>[0] extends never ? never : import("@playwright/test").BrowserContext, locale: "en" | "ar" | "ms") {
   await context.addCookies([{ name: "axora_locale", value: locale, url: baseURL }]);
 }
 
@@ -63,7 +63,7 @@ async function engageDeferredMobileScene(page: Page, stageName: RegExp) {
   }
 }
 
-async function computedAtmosphere(page: Page, selector = "html") {
+async function computedAppearance(page: Page, selector = "html") {
   return page.locator(selector).evaluate((element) => {
     const style = getComputedStyle(element);
     return {
@@ -77,7 +77,7 @@ async function computedAtmosphere(page: Page, selector = "html") {
 }
 
 test("desktop loads the 3D console and keeps every control accessible", async ({ context, page }) => {
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   const errors: string[] = [];
   page.on("console", (message) => {
     const text = message.text();
@@ -105,7 +105,7 @@ test("desktop loads the 3D console and keeps every control accessible", async ({
 });
 
 test("sound stays silent by default and persists only after explicit activation", async ({ context, page }) => {
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.goto("/en/operations-experience");
   const enable = page.getByRole("button", { name: "Enable interface sound" });
   await expect(enable).toHaveAttribute("aria-pressed", "false");
@@ -116,7 +116,7 @@ test("sound stays silent by default and persists only after explicit activation"
 });
 
 test("opted-in scroll activation plays Delivery engine then door exactly once", async ({ context, page }) => {
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.addInitScript(() => {
     const events: Array<{ type: "play" | "pause"; path: string }> = [];
     Object.assign(window, { __axoraAudioEvents: events });
@@ -150,22 +150,51 @@ test("opted-in scroll activation plays Delivery engine then door exactly once", 
   await expect.poll(() => page.evaluate(() => (window as typeof window & { __axoraAudioEvents: Array<{ type: string; path: string }> }).__axoraAudioEvents.some((event) => event.type === "pause"))).toBe(true);
 });
 
-test("theme persists without enabling sound or overriding document direction", async ({ context, page }) => {
-  await useLocale(context, "en");
+test("appearance persists without enabling sound or overriding document direction", async ({ context, page }) => {
+  await setLocaleCookie(context, "en");
   await page.goto("/en/operations-experience");
-  const emberButton = page.getByRole("button", { name: "Ember" });
-  await expect(emberButton).toBeVisible();
-  await emberButton.click();
-  await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();
-  expect((await computedAtmosphere(page)).brand).toBe("#bd3f32");
+  await expect(page.locator('html[data-appearance="light"]')).toBeVisible();
+  const darkButton = page.getByRole("button", { name: "Appearance: Dark" }).first();
+  await expect(darkButton).toBeVisible();
+  await darkButton.click();
+  await expect(page.locator('html[data-appearance="dark"]')).toBeVisible();
+  expect((await computedAppearance(page)).page).toBe("#071521");
   await page.reload();
-  await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();
-  expect((await computedAtmosphere(page)).page).toBe("#fff3ef");
+  await expect(page.locator('html[data-appearance="dark"]')).toBeVisible();
+  await page.getByRole("button", { name: "Appearance: Light" }).first().click();
+  await expect(page.locator('html[data-appearance="light"]')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('html[data-appearance="light"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "Enable interface sound" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: /Aurora|Solar|Ember|Midnight/ })).toHaveCount(0);
+});
+
+test("legacy public appearance cookies migrate deterministically", async ({ context, page }) => {
+  await setLocaleCookie(context, "en");
+  const mappings = [
+    ["aurora", "light"],
+    ["solar", "light"],
+    ["ember", "light"],
+    ["midnight", "dark"],
+  ] as const;
+  for (const [legacy, expected] of mappings) {
+    await context.clearCookies();
+    await setLocaleCookie(context, "en");
+    await context.addCookies([{ name: "axora_public_atmosphere", value: legacy, url: baseURL }]);
+    await page.goto("/en/operations-experience");
+    await expect(page.locator(`html[data-appearance="${expected}"]`)).toBeVisible();
+    const cookies = await context.cookies(baseURL);
+    expect(cookies.find((cookie) => cookie.name === "axora_appearance")?.value).toBe(expected);
+    expect(cookies.some((cookie) => cookie.name === "axora_public_atmosphere")).toBe(false);
+    await expect.poll(() => page.evaluate(() => ({
+      current: localStorage.getItem("axora-appearance:v1"),
+      legacy: localStorage.getItem("axora-public-atmosphere:v2"),
+    }))).toEqual({ current: expected, legacy: null });
+  }
 });
 
 test("reduced motion receives meaningful static content with no canvas", async ({ context, page }) => {
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/en/operations-experience");
   await expect(page.getByTestId("workflow-fallback").first()).toBeVisible();
@@ -175,7 +204,7 @@ test("reduced motion receives meaningful static content with no canvas", async (
 
 test("forced colours retain meaningful public controls and evidence", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Forced-colour evidence is captured once by desktop Chromium.");
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.emulateMedia({ forcedColors: "active" });
   await page.goto("/en/operations-experience");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -185,7 +214,7 @@ test("forced colours retain meaningful public controls and evidence", async ({ c
 });
 
 test("WebGL unavailability falls back while navigation remains usable", async ({ context, page }, testInfo) => {
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
     Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
@@ -208,7 +237,7 @@ test("WebGL unavailability falls back while navigation remains usable", async ({
 });
 
 test("a failed 3D chunk leaves the full semantic experience available", async ({ context, page }) => {
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.route("**/immersive/models/*.glb", (route) => route.abort("failed"));
   await page.goto("/en/operations-experience");
   await engageDeferredMobileScene(page, /02.*Approve/);
@@ -226,7 +255,7 @@ test("the server-rendered document retains meaningful localized content without 
 });
 
 test("context loss restores the semantic console without losing the route", async ({ context, page }, testInfo) => {
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.goto("/en/operations-experience");
   await engageDeferredMobileScene(page, /02.*Approve/);
   const readyScene = page.locator('[data-scene-route] [data-context-loss-ready="true"]').first();
@@ -240,14 +269,16 @@ test("context loss restores the semantic console without losing the route", asyn
 });
 
 test("Arabic mirrors direction and Malay localizes workflow controls", async ({ context, page }) => {
-  await useLocale(context, "ar");
+  await setLocaleCookie(context, "ar");
   await page.goto("/ar/operations-experience");
   await expect(page.locator('[data-locale="ar"]')).toHaveAttribute("dir", "rtl");
   await expect(page.getByRole("button", { name: /02.*الموافقة/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /المظهر: داكن/ }).first()).toBeVisible();
 
-  await useLocale(context, "ms");
+  await setLocaleCookie(context, "ms");
   await page.goto("/ms/operations-experience");
   await expect(page.getByRole("button", { name: /02.*Lulus/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Penampilan: Gelap" }).first()).toBeVisible();
 });
 
 const publicRouteSceneCases = [
@@ -262,7 +293,7 @@ const publicRouteSceneCases = [
 for (const item of publicRouteSceneCases) {
   test(`${item.route} presents and transforms its semantic 3D sequence`, async ({ context, page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "Each route's complete evidence is captured once by desktop Chromium.");
-    await useLocale(context, "en");
+    await setLocaleCookie(context, "en");
     await page.goto(item.path);
     const world = page.locator(`[data-public-scene="${item.route}"]`);
     await expect(world).toBeVisible();
@@ -279,7 +310,7 @@ for (const item of publicRouteSceneCases) {
 test("all homepage stages attach the selected semantic object inside usable bounds", async ({ context, page }, testInfo) => {
   test.setTimeout(120_000);
   test.skip(testInfo.project.name !== "chromium", "The full cold-to-settled semantic sequence is verified once in desktop Chromium.");
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.goto("/en/operations-experience");
   const expected = ["request", "approve", "pay", "invoice", "prepare", "deliver", "track", "complete"] as const;
   for (let index = 0; index < expected.length; index += 1) {
@@ -295,44 +326,45 @@ test("all homepage stages attach the selected semantic object inside usable boun
   await expect(page.locator('[data-public-scene="home"]')).toHaveAttribute("data-rendered-stage", "pay");
 });
 
-test("desktop and theme visual evidence is captured once in Chromium", async ({ context, page }, testInfo) => {
+test("desktop and Light/Dark visual evidence is captured once in Chromium", async ({ context, page }, testInfo) => {
   test.setTimeout(90_000);
   test.skip(testInfo.project.name !== "chromium", "Desktop evidence is intentionally captured only by the desktop Chromium project.");
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/en/operations-experience");
   await expect(page.getByTestId("workflow-console")).toBeVisible();
   await expectWorkflowSceneReady(page, "request");
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-default-${testInfo.project.name}.png`, fullPage: true });
-  const computedThemes = new Set<string>();
-  for (const theme of ["Aurora", "Solar", "Ember", "Midnight"] as const) {
-    const themeButton = page.getByRole("button", { name: theme, exact: true });
-    const atmosphere = theme.toLowerCase();
-    await themeButton.click();
-    await expect(themeButton).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(`html[data-atmosphere="${atmosphere}"]`)).toBeVisible();
-    const tokens = await computedAtmosphere(page);
+  const computedModes = new Set<string>();
+  for (const mode of ["Light", "Dark"] as const) {
+    const modeButton = page.getByRole("button", { name: `Appearance: ${mode}` }).first();
+    const appearance = mode.toLowerCase();
+    await modeButton.click();
+    await expect(modeButton).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(`html[data-appearance="${appearance}"]`)).toBeVisible();
+    const tokens = await computedAppearance(page);
     expect(tokens.page).not.toBe("");
     expect(tokens.surface).not.toBe("");
     expect(tokens.brand).not.toBe("");
-    computedThemes.add(JSON.stringify(tokens));
+    computedModes.add(JSON.stringify(tokens));
     await expectWorkflowSceneReady(page);
-    await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-theme-${atmosphere}-${testInfo.project.name}.png`, fullPage: false });
+    await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-appearance-${appearance}-${testInfo.project.name}.png`, fullPage: false });
   }
-  expect(computedThemes.size).toBe(4);
+  expect(computedModes.size).toBe(2);
   await page.getByRole("button", { name: /06.*Deliver/ }).click();
   await expectWorkflowSceneReady(page, "deliver");
   await page.locator("#workflow").screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-workflow-${testInfo.project.name}.png` });
 
+  await page.getByRole("button", { name: "Appearance: Light" }).first().click();
   await page.goto("/login");
   await expect(page.locator("main form")).toBeVisible();
-  await expect(page.locator("main")).toHaveCSS("background-color", "rgb(248, 250, 252)");
+  await expect(page.locator('html[data-appearance="light"]')).toBeVisible();
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-login-${testInfo.project.name}.png`, fullPage: false });
 });
 
 test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mobile Chrome", async ({ context, page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chrome", "Mobile evidence is intentionally captured only with the configured Pixel 7 project.");
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.goto("/en/operations-experience");
   await expect(page.getByTestId("workflow-console")).toBeVisible();
   await expect(page.locator('[data-testid="workflow-fallback"][data-reason="mobile-deferred"]').first()).toBeVisible();
@@ -340,7 +372,7 @@ test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mob
   await expectWorkflowSceneReady(page, "approve");
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-mobile-${testInfo.project.name}.png`, fullPage: false });
 
-  await useLocale(context, "ar");
+  await setLocaleCookie(context, "ar");
   await page.goto("/ar/operations-experience");
   await expect(page.locator('[data-locale="ar"]')).toBeVisible();
   await expect(page.locator('[data-testid="workflow-fallback"][data-reason="mobile-deferred"]').first()).toBeVisible();
@@ -348,13 +380,13 @@ test("mobile, Arabic, and reduced-motion visual evidence is captured once in Mob
   await expectWorkflowSceneReady(page, "approve");
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-arabic-${testInfo.project.name}.png`, fullPage: false });
 
-  await useLocale(context, "ms");
+  await setLocaleCookie(context, "ms");
   await page.goto("/ms/operations-experience");
   await expect(page.getByRole("button", { name: /02.*Lulus/ })).toBeVisible();
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-malay-${testInfo.project.name}.png`, fullPage: false });
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.goto("/en/operations-experience");
   await expect(page.getByTestId("workflow-fallback").first()).toBeVisible();
   await page.screenshot({ animations: "disabled", caret: "initial", path: `output/playwright/immersive-reduced-motion-${testInfo.project.name}.png`, fullPage: false });
@@ -368,7 +400,7 @@ test("records the reviewable immersive interaction tour", async ({ browser }, te
     viewport: { width: 1440, height: 900 },
     recordVideo: { dir: "output/playwright/video", size: { width: 1280, height: 800 } },
   });
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   const page = await context.newPage();
   let claimed = false;
   await page.addInitScript(() => {
@@ -405,8 +437,8 @@ test("records the reviewable immersive interaction tour", async ({ browser }, te
     await expect(step.getByRole("button")).toHaveAttribute("aria-pressed", "true");
     await expectWorkflowSceneReady(page, ["request", "approve", "pay", "invoice", "prepare", "deliver", "track", "complete"][index]);
   }
-  await page.getByRole("button", { name: "Ember", exact: true }).click();
-  await expect(page.locator('html[data-atmosphere="ember"]')).toBeVisible();
+  await page.getByRole("button", { name: "Appearance: Dark" }).first().click();
+  await expect(page.locator('html[data-appearance="dark"]')).toBeVisible();
   const video = page.video();
   await page.close();
   await context.close();
@@ -415,7 +447,7 @@ test("records the reviewable immersive interaction tour", async ({ browser }, te
 });
 
 test("public experience passes WCAG A and AA automation", async ({ context, page }) => {
-  await useLocale(context, "en");
+  await setLocaleCookie(context, "en");
   await page.goto("/en/operations-experience");
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
@@ -423,14 +455,12 @@ test("public experience passes WCAG A and AA automation", async ({ context, page
   expect(results.violations.map((item) => item.id)).toEqual([]);
 });
 
-test("every atmosphere retains automated color contrast", async ({ context, page }) => {
-  await useLocale(context, "en");
+test("Light and Dark retain automated color contrast", async ({ context, page }) => {
+  await setLocaleCookie(context, "en");
   await page.goto("/en/operations-experience");
-  const auroraButton = page.getByRole("button", { name: "Aurora", exact: true });
-  await expect(auroraButton).toBeVisible();
-  for (const theme of ["Aurora", "Solar", "Ember", "Midnight"] as const) {
-    await page.getByRole("button", { name: theme, exact: true }).click();
+  for (const mode of ["Light", "Dark"] as const) {
+    await page.getByRole("button", { name: `Appearance: ${mode}` }).first().click();
     const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
-    expect(results.violations.map((item) => item.id), theme).toEqual([]);
+    expect(results.violations.map((item) => item.id), mode).toEqual([]);
   }
 });

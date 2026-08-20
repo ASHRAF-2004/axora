@@ -209,20 +209,25 @@ export async function replaceUserPermissionSetInTransaction(
 ) {
   if (!actor.roleAssignmentId) throw new AccessManagementUnavailableError();
   const parsed = replacePermissionSetSchema.parse(input);
-  const result = await client.query<{ payload: unknown }>(
-    `SELECT public.axora_replace_user_permission_set(
-       $1,$2,$3,$4,$5::text[],$6,now()
-     ) AS payload`,
-    [
-      actor.id,
-      actor.roleAssignmentId,
-      parsed.targetUserId,
-      parsed.targetRoleAssignmentId,
-      [...new Set(parsed.permissions)].sort(),
-      parsed.reason,
-    ],
-  );
-  return permissionSetResultSchema.parse(result.rows[0]?.payload);
+  try {
+    const result = await client.query<{ payload: unknown }>(
+      `SELECT public.axora_replace_user_permission_set(
+         $1,$2,$3,$4,$5::text[],$6,now()
+       ) AS payload`,
+      [
+        actor.id,
+        actor.roleAssignmentId,
+        parsed.targetUserId,
+        parsed.targetRoleAssignmentId,
+        [...new Set(parsed.permissions)].sort(),
+        parsed.reason,
+      ],
+    );
+    return permissionSetResultSchema.parse(result.rows[0]?.payload);
+  } catch (error) {
+    if (error instanceof AccessManagementUnavailableError) throw error;
+    throw new AccessManagementUnavailableError();
+  }
 }
 
 export async function replaceUserPermissionSet(

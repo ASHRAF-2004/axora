@@ -935,18 +935,6 @@
       "mode": "removed"
     },
     {
-      "route": "/api/email/provider-events/cloudflare",
-      "authentication": "signed-provider-event",
-      "scope": "provider",
-      "mode": "mutating"
-    },
-    {
-      "route": "/api/email/provider-events/zeptomail",
-      "authentication": "signed-provider-event",
-      "scope": "provider",
-      "mode": "mutating"
-    },
-    {
       "route": "/api/email/provider-events/resend",
       "authentication": "signed-provider-event",
       "scope": "provider",
@@ -1037,9 +1025,9 @@
       "mode": "stream"
     },
     {
-      "route": "/api/profile/atmosphere",
+      "route": "/api/profile/appearance",
       "authentication": "authenticated",
-      "scope": "staff-self",
+      "scope": "self",
       "mode": "mutating"
     },
     {

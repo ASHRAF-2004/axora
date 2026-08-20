@@ -5,7 +5,8 @@ import {
   type AuthorizationScope,
 } from "./authorization-policy";
 import { query } from "./db";
-import { accountRoleDefinition } from "./role-catalog";
+import { accountRoleDefinition, ACCOUNT_ROLE_CATALOG } from "./role-catalog";
+import type { UserRole } from "./types";
 
 const uuidSchema = z.string().uuid();
 const reasonSchema = z.string().trim().min(3).max(500)
@@ -13,28 +14,22 @@ const reasonSchema = z.string().trim().min(3).max(500)
     message: "Reason cannot contain control characters",
   });
 
-export const MANAGED_ROLE_KEYS = [
-  "PLATFORM_OWNER",
-  "PLATFORM_OPERATIONS",
-  "TECHNICAL_SUPPORT",
-  "CLIENT_ACCOUNT_MANAGER",
-  "COMPANY_ADMIN",
-  "BRANCH_ADMIN",
-  "DEPARTMENT_ADMIN",
-  "COMPANY_APPROVER",
-  "BRANCH_APPROVER",
-  "REQUESTER",
-  "FINANCE_REVIEWER",
-  "AUDITOR",
-  "RECEIVING_USER",
-  "DELIVERY_TEAM_SUPERVISOR",
-  "DELIVERY_AGENT",
-  "DELIVERY_DRIVER",
-] as const;
+/**
+ * Routine role management intentionally follows the same canonical catalogue
+ * used by Create User. Compatibility-only historical roles remain readable but
+ * cannot be selected for a new assignment or replacement.
+ */
+export const MANAGED_ROLE_KEYS = ACCOUNT_ROLE_CATALOG
+  .filter((definition) => definition.availableForCreation !== false)
+  .map((definition) => definition.key) as readonly UserRole[];
 
-export type ManagedRoleKey = (typeof MANAGED_ROLE_KEYS)[number];
+export type ManagedRoleKey = UserRole;
 
-const roleSchema = z.enum(MANAGED_ROLE_KEYS);
+const roleSchema = z.custom<UserRole>(
+  (value) => typeof value === "string"
+    && MANAGED_ROLE_KEYS.includes(value as UserRole),
+  "Choose a current canonical role.",
+);
 const scopeSchema = z.object({
   type: z.enum([
     "PLATFORM",
@@ -53,6 +48,15 @@ const scopeSchema = z.object({
   "Invalid authorization scope",
 );
 
+function roleAndScopeAreCompatible(role: UserRole, scope: AuthorizationScope) {
+  const definition = accountRoleDefinition(role);
+  return Boolean(
+    definition
+      && definition.availableForCreation !== false
+      && definition.allowedScopes.includes(scope.type),
+  );
+}
+
 const assignRoleScopeSchema = z.object({
   commandId: uuidSchema,
   targetUserId: uuidSchema,
@@ -60,8 +64,24 @@ const assignRoleScopeSchema = z.object({
   scope: scopeSchema,
   reason: reasonSchema,
 }).strict().superRefine((value, context) => {
-  const definition = accountRoleDefinition(value.role);
-  if (!definition || !definition.allowedScopes.includes(value.scope.type)) {
+  if (!roleAndScopeAreCompatible(value.role, value.scope)) {
+    context.addIssue({
+      code: "custom",
+      path: ["scope"],
+      message: "The selected role does not support this scope",
+    });
+  }
+});
+
+const replaceRoleScopeSchema = z.object({
+  commandId: uuidSchema,
+  targetUserId: uuidSchema,
+  currentRoleAssignmentId: uuidSchema,
+  role: roleSchema,
+  scope: scopeSchema,
+  reason: reasonSchema,
+}).strict().superRefine((value, context) => {
+  if (!roleAndScopeAreCompatible(value.role, value.scope)) {
     context.addIssue({
       code: "custom",
       path: ["scope"],
@@ -178,6 +198,54 @@ export async function assignUserRoleScope(
   }
 }
 
+export async function replaceUserRoleScope(
+  actor: AuthenticatedSessionUser,
+  input: z.input<typeof replaceRoleScopeSchema>,
+): Promise<RoleScopeChangeResult> {
+  const actorRoleAssignmentId = requireNormalizedActor(actor);
+  const parsed = replaceRoleScopeSchema.parse(input);
+  if (parsed.targetUserId === actor.id) {
+    throw new RoleScopeManagementUnavailableError();
+  }
+  const [scopeType, companyId, branchId, departmentId, supplierId]
+    = scopeArguments(parsed.scope);
+
+  try {
+    const result = await query<RoleScopeChangeRow>(
+      `SELECT
+         role_assignment_id::text AS "roleAssignmentId",
+         auth_version::int AS "authVersion",
+         revoked_sessions::int AS "revokedSessions",
+         changed
+       FROM public.axora_replace_user_role_scope(
+         $1::uuid,$2::uuid,$3::uuid,$4::uuid,$5::uuid,$6::text,$7::text,
+         $8::uuid,$9::uuid,$10::uuid,$11::uuid,$12::text
+       )`,
+      [
+        parsed.commandId,
+        actor.id,
+        actorRoleAssignmentId,
+        parsed.targetUserId,
+        parsed.currentRoleAssignmentId,
+        parsed.role,
+        scopeType,
+        companyId,
+        branchId,
+        departmentId,
+        supplierId,
+        parsed.reason,
+      ],
+    );
+    return normalizeResult(result.rows[0]);
+  } catch (error) {
+    if (error instanceof z.ZodError
+      || error instanceof RoleScopeManagementUnavailableError) {
+      throw error;
+    }
+    throw new RoleScopeManagementUnavailableError();
+  }
+}
+
 export async function revokeUserRoleScope(
   actor: AuthenticatedSessionUser,
   input: z.input<typeof revokeRoleScopeSchema>,
@@ -214,6 +282,8 @@ export async function revokeUserRoleScope(
 export const roleScopeManagementInternals = {
   assignRoleScopeSchema,
   normalizeResult,
+  replaceRoleScopeSchema,
   revokeRoleScopeSchema,
+  roleAndScopeAreCompatible,
   scopeArguments,
 };
