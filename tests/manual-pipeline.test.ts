@@ -60,4 +60,13 @@ describe("production manual publication", () => {
     expect(source).not.toMatch(/sourcing team|supplier selection|three-way matching|Delivery Driver|Receiving User/i);
     expect(source).not.toMatch(/\b(?:sidebar|temporary password|initial password|interactive-experience)\b/i);
   });
+
+  it("provisions deterministic font prerequisites before Nightly regeneration", () => {
+    const workflow = readFileSync(join(root, ".github", "workflows", "quality.yml"), "utf8");
+    const fontStep = workflow.indexOf("fonts-noto-core");
+    const verificationStep = workflow.indexOf("npm run manuals:verify");
+    expect(fontStep).toBeGreaterThan(-1);
+    expect(verificationStep).toBeGreaterThan(fontStep);
+    expect(workflow).toContain("enable-cache: false");
+  });
 });

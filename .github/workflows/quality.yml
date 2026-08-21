@@ -30,10 +30,13 @@ jobs:
       - run: npm ci --prefer-offline
       - name: Lint and explicit typecheck
         run: npm run lint && npm run typecheck
+      - name: Install manual font prerequisites
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-noto-core
       - name: Install pinned uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.4"
+          enable-cache: false
       - name: Verify deterministic published manuals
         run: npm run manuals:verify
       - name: Unit and PGlite migration suite
