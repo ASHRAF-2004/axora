@@ -16,12 +16,12 @@ export function directiveSources(policy, name) {
 export function validateProductionCsp(policy) {
   if (!policy) throw new Error("Production response is missing Content-Security-Policy.");
   const sources = directiveSources(policy, "script-src");
-  if (!sources.includes("'wasm-unsafe-eval'")) throw new Error("Production script-src does not permit the self-hosted Meshopt WebAssembly decoder.");
+  if (sources.includes("'wasm-unsafe-eval'")) throw new Error("Production script-src retains an unused WebAssembly evaluation capability.");
   if (sources.includes("'unsafe-eval'")) throw new Error("Production script-src contains broad unsafe-eval.");
   if (sources.includes("*") || sources.some((source) => source.includes("*"))) throw new Error("Production script-src contains a wildcard source.");
   const unexpected = sources.filter((source) => /^https?:/.test(source) && !allowedExternalScriptOrigins.has(source));
   if (unexpected.length) throw new Error(`Production script-src contains unexpected remote executable origins: ${unexpected.join(", ")}`);
-  if (sources.some((source) => /(?:unpkg|jsdelivr|meshopt|draco|gstatic|cdn\.)/i.test(source))) throw new Error("Production script-src contains a remote model-decoder origin.");
+  if (sources.some((source) => /(?:unpkg|jsdelivr|gstatic|cdn\.)/i.test(source))) throw new Error("Production script-src contains an unexpected remote executable origin.");
   return sources;
 }
 
@@ -40,8 +40,8 @@ async function inspectResource(baseUrl, resourcePath) {
 export async function validateStandaloneRuntime({ baseUrl = process.env.APP_BASE_URL ?? "http://127.0.0.1:3100" } = {}) {
   const routes = await Promise.all(["/en", "/login"].map((route) => inspectRoute(baseUrl, route)));
   const resources = await Promise.all([
-    inspectResource(baseUrl, "/immersive/models/request.glb"),
-    inspectResource(baseUrl, "/immersive/sounds/request.ogg"),
+    inspectResource(baseUrl, "/brand/axora-icon-192.png"),
+    inspectResource(baseUrl, "/catalog/categories/office-supplies.avif"),
   ]);
   const failures = [];
   for (const route of routes) if (route.status !== 200) failures.push(`${route.route} returned HTTP ${route.status}`);

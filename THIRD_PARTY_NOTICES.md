@@ -1,47 +1,10 @@
 # Third-party notices
 
-## Txema Albero 3D portfolio reference
+## Self-hosted public and map assets
 
-The Axora public experience was architecturally inspired by the interaction
-quality of Txema Albero's open-source 3D portfolio. Axora uses original
-procurement content and independently implemented scenes, controls, themes and
-motion; no personal content, images, models, audio or identity assets are
-distributed here.
-
-- Project: https://github.com/Txemalon/3d-portfolio
-- Reference commit: `52cfcb8f8e1c192d9dc44edb3cb70feae79d49d7`
-- License: MIT
-- Copyright: Copyright (c) 2026 Txema Albero
-- Full license text: `licenses/TXEMA-3D-PORTFOLIO-MIT.txt`
-
-## Three.js and React Three Fiber ecosystem
-
-The public semantic scenes use Three.js through React Three Fiber and Drei.
-Models and sounds loaded by those scenes are self-hosted and documented per
-file in `third-party-assets.json`.
-
-- Three.js: https://github.com/mrdoob/three.js, version 0.185.1, MIT
-- React Three Fiber: https://github.com/pmndrs/react-three-fiber, version 9.7.0, MIT
-- Drei: https://github.com/pmndrs/drei, version 10.7.8, MIT
-
-## Meshoptimizer WebAssembly decoder
-
-Three.js ships a Meshopt decoder module used by Drei's `useGLTF` path to decode
-compressed, self-hosted glTF assets. The installed dependency metadata records
-meshoptimizer 1.1.1; the bundled decoder identifies meshoptimizer 1.1 and its
-MIT terms in its source header.
-
-- Project: https://github.com/zeux/meshoptimizer
-- License: MIT
-- Copyright: Copyright (c) 2016-2026 Arseny Kapoulkine
-- Full license text: `licenses/MESHOPTIMIZER-MIT.txt`
-
-## Immersive World V2 self-hosted assets
-
-Runtime model, sound, category-artwork, map dataset and map-font provenance is
-recorded per file in `third-party-assets.json` and summarized in
-`THIRD_PARTY_ASSETS.md`. The referenced CC0 and Natural Earth licence records
-are retained at `third_party/licenses/CC0-1.0.txt` and
+Category artwork, map datasets and map fonts are recorded per file in
+`third-party-assets.json` and summarized in `THIRD_PARTY_ASSETS.md`. Their
+licence records are retained at `third_party/licenses/CC0-1.0.txt`,
 `third_party/licenses/NATURAL_EARTH_PUBLIC_DOMAIN.md`,
 `third_party/licenses/ODbL-1.0.txt` and `third_party/licenses/OFL-1.1.txt`.
 
@@ -102,15 +65,6 @@ production application image.
 - Project: https://github.com/dequelabs/axe-core-npm
 - License: Mozilla Public License 2.0
 - License text: https://www.mozilla.org/MPL/2.0/
-
-## Lighthouse development audit tooling
-
-Lighthouse 12.8.2 is used only in continuous integration to generate mobile
-and desktop performance, accessibility, best-practice and SEO evidence.
-
-- Project: https://github.com/GoogleChrome/lighthouse
-- License: Apache License 2.0
-- Full license text: `licenses/LIGHTHOUSE-APACHE-2.0.txt`
 
 ## Tailscale client
 

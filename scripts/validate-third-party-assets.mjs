@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = path.join(repositoryRoot, "third-party-assets.json");
-const runtimeRoots = ["public/immersive/models", "public/immersive/sounds", "public/catalog/categories", "public/maps"];
-const thirdPartyExtensions = new Set([".glb", ".ogg", ".wav", ".avif", ".webp", ".geojson", ".pbf"]);
+const runtimeRoots = ["public/catalog/categories", "public/maps"];
+const thirdPartyExtensions = new Set([".avif", ".webp", ".geojson", ".pbf"]);
 const forbiddenLicences = /non[- ]?commercial|\bNC\b|no[- ]?derivatives|\bND\b|editorial|unknown|unclear/i;
 const knownAssetHostHotlink = /(?:kenney\.nl|3dicons\.co|opengameart\.org|naturalearthdata\.com|poly\.pizza|sketchfab\.com)/i;
 const remoteRuntimeAsset = /https?:\/\/[^\s"'`)]+\.(?:glb|gltf|bin|ktx2|png|jpe?g|webp|avif|svg|ogg|wav|mp3|woff2?|ttf|otf|geojson)(?:[?#][^\s"'`)]*)?/i;

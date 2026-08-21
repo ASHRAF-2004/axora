@@ -34,6 +34,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  async redirects() {
+    return [{
+      source: "/:locale(en|ar|ms)/operations-experience",
+      destination: "/:locale/how-it-works",
+      permanent: true,
+    }];
+  },
 };
 
 export default nextConfig;

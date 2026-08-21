@@ -3,18 +3,18 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { CATEGORY_IMAGE_CATEGORIES } from "@/lib/category-images";
 
-describe("immersive and catalogue asset provenance", () => {
+describe("catalogue and map asset provenance", () => {
   it("has exactly one validated provenance record for every runtime third-party file", async () => {
     const output = execFileSync(process.execPath, ["scripts/validate-third-party-assets.mjs"], { cwd: process.cwd(), encoding: "utf8" });
-    expect(output).toContain("Validated 60 self-hosted third-party assets");
+    expect(output).toContain("Validated 34 self-hosted third-party assets");
     const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as { assets: Array<{ path: string }> };
-    expect(manifest.assets).toHaveLength(60);
-    expect(new Set(manifest.assets.map((asset) => asset.path)).size).toBe(60);
+    expect(manifest.assets).toHaveLength(34);
+    expect(new Set(manifest.assets.map((asset) => asset.path)).size).toBe(34);
   });
 
   it("restores software notices and verifies every local licence reference", () => {
     const output = execFileSync(process.execPath, ["scripts/validate-third-party-notices.mjs"], { cwd: process.cwd(), encoding: "utf8" });
-    expect(output).toContain("Validated 13 third-party notice sections");
+    expect(output).toContain("Validated 9 third-party notice sections");
   });
 
   it("requires a verified original checksum for every shipped runtime asset", async () => {
@@ -38,13 +38,10 @@ describe("immersive and catalogue asset provenance", () => {
     }
   });
 
-  it("records tracking as Space Kit only and never as City Kit Roads", async () => {
+  it("contains no retired immersive model or sound records", async () => {
     const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as {
       assets: Array<{ path: string; canonicalSource: string; exactPackOrItem: string }>;
     };
-    const track = manifest.assets.filter((asset) => asset.path === "public/immersive/models/track.glb");
-    expect(track).toHaveLength(1);
-    expect(track[0]).toMatchObject({ exactPackOrItem: "Space Kit" });
-    expect(track[0]?.canonicalSource).toBe("https://kenney.nl/assets/space-kit");
+    expect(manifest.assets.filter((asset) => asset.path.startsWith("public/immersive/"))).toEqual([]);
   });
 });

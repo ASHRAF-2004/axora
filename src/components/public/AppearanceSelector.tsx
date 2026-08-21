@@ -1,31 +1,25 @@
 "use client";
 
-import { Moon, Sun, Volume2, VolumeX } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { APPEARANCE_MODES, type AppearanceMode } from "@/lib/appearance";
 import { appearanceMessages } from "@/lib/appearance-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
 import { useAppearance } from "./AppearanceProvider";
-import styles from "./ImmersiveWorld.module.css";
+import styles from "./AppearanceSelector.module.css";
 
 export function AppearanceSelector({
   compact = false,
-  showModes = true,
   locale = "en",
   appearance: controlledAppearance,
   onAppearanceChange,
   onModeSelect,
-  soundEnabled,
-  onSoundToggle,
 }: {
   compact?: boolean;
-  showModes?: boolean;
   locale?: SupportedLocale;
   appearance?: AppearanceMode;
   onAppearanceChange?: (appearance: AppearanceMode) => Promise<boolean | void> | boolean | void;
   onModeSelect?: (appearance: AppearanceMode) => void;
-  soundEnabled?: boolean;
-  onSoundToggle?: () => void;
 }) {
   const publicAppearance = useAppearance();
   const currentAppearance = controlledAppearance ?? publicAppearance.appearance;
@@ -56,8 +50,7 @@ export function AppearanceSelector({
 
   return (
     <div className={`${styles.appearanceControls} ${compact ? styles.compactControls : ""}`} data-appearance-control>
-      {showModes ? (
-        <fieldset className={styles.appearanceFieldset} disabled={saving} data-persistence-state={failed ? "failed" : saving ? "saving" : "ready"}>
+      <fieldset className={styles.appearanceFieldset} disabled={saving} data-persistence-state={failed ? "failed" : saving ? "saving" : "ready"}>
           <legend>{copy.appearance}</legend>
           <div className={styles.appearanceOptions} role="group" aria-label={copy.appearance}>
             {APPEARANCE_MODES.map((mode) => {
@@ -81,19 +74,7 @@ export function AppearanceSelector({
             })}
           </div>
           {failed ? <span className={styles.controlError} role="alert">{copy.saveFailed}</span> : null}
-        </fieldset>
-      ) : null}
-      {onSoundToggle ? (
-        <button
-          type="button"
-          className={styles.soundToggle}
-          aria-pressed={soundEnabled}
-          onClick={onSoundToggle}
-          aria-label={soundEnabled ? (locale === "ar" ? "إيقاف الصوت" : locale === "ms" ? "Matikan bunyi" : "Mute interface sound") : (locale === "ar" ? "تشغيل الصوت" : locale === "ms" ? "Hidupkan bunyi" : "Enable interface sound")}
-        >
-          {soundEnabled ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}
-        </button>
-      ) : null}
+      </fieldset>
     </div>
   );
 }

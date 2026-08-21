@@ -11,11 +11,18 @@ describe("production deployment reconciliation", () => {
     const requiredSecrets = [...new Set(
       entrypoint.match(/\/run\/secrets\/[a-z0-9_]+/g) ?? [],
     )].sort();
-    const migrationStart = deploy.indexOf('log "Applying pending transactional migrations from the exact release."');
-    const migrationEnd = deploy.indexOf("\nif ! docker exec", migrationStart);
+    const migrationBranch = 'if [[ "$pending_migrations" == "required" ]]; then';
+    const migrationStart = deploy.indexOf(migrationBranch);
+    const migrationEnd = deploy.indexOf(
+      '\nelif [[ "$pending_migrations" == "none" ]]; then',
+      migrationStart,
+    );
     expect(migrationStart).toBeGreaterThanOrEqual(0);
     expect(migrationEnd).toBeGreaterThan(migrationStart);
     const migrationCommand = deploy.slice(migrationStart, migrationEnd);
+    expect(migrationCommand).toContain('log "Applying pending transactional migrations from the exact release."');
+    expect(migrationCommand).toContain("docker run \\");
+    expect(migrationCommand).toContain("/database/init/01-run-migration.sh");
     const mounts = [...migrationCommand.matchAll(
       /--mount "type=bind,source=\$AXORA_SECRETS_DIR\/([a-z0-9_]+),target=(\/run\/secrets\/[a-z0-9_]+),readonly"/g,
     )].map((match) => ({ source: match[1], target: match[2] }));

@@ -4,7 +4,7 @@ Status: source of truth for the forward simple-interface redesign.
 
 ## Direction
 
-Axora uses a conventional, trustworthy B2B interface. Operational clarity takes precedence over decorative effects. The normal homepage, authentication pages, and authenticated shell do not load public 3D, audio, particle, or WebAssembly assets. The preserved immersive experience is optional at `/{locale}/operations-experience`.
+Axora uses a conventional, trustworthy B2B interface. Operational clarity takes precedence over decorative effects. The homepage, authentication pages, and authenticated shell do not load public 3D, audio, particle, or WebAssembly assets. Retired Operations Experience URLs permanently redirect to the localized How It Works page.
 
 ## Tokens
 

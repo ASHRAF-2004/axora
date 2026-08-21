@@ -24,21 +24,21 @@ describe("content security policy", () => {
     expect(policy).not.toContain("'unsafe-eval'");
   });
 
-  it("permits only CSP3 WebAssembly compilation for the self-hosted Meshopt decoder", () => {
+  it("does not retain retired WebAssembly or remote executable capabilities", () => {
     const sources = directiveSources(buildContentSecurityPolicy("prod", false), "script-src");
-    expect(sources).toContain("'wasm-unsafe-eval'");
+    expect(sources).not.toContain("'wasm-unsafe-eval'");
     expect(sources).not.toContain("'unsafe-eval'");
     expect(sources).not.toContain("*");
     expect(sources.filter((source) => source.startsWith("http"))).toEqual([
       "https://challenges.cloudflare.com",
     ]);
-    expect(sources.join(" ")).not.toMatch(/(?:unpkg|jsdelivr|meshopt|draco|gstatic|cdn\.)/i);
+    expect(sources.join(" ")).not.toMatch(/(?:unpkg|jsdelivr|gstatic|cdn\.)/i);
   });
 
   it("allows development evaluation without broadening production evaluation", () => {
     expect(buildContentSecurityPolicy("dev", true)).toContain("'unsafe-eval'");
     expect(buildContentSecurityPolicy("prod", false)).not.toContain("'unsafe-eval'");
-    expect(buildContentSecurityPolicy("prod", false)).toContain("'wasm-unsafe-eval'");
+    expect(buildContentSecurityPolicy("prod", false)).not.toContain("'wasm-unsafe-eval'");
   });
 
   it("allows only the official Turnstile origin for third-party challenge content", () => {

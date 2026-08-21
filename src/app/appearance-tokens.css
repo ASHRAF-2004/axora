@@ -64,6 +64,29 @@ html[data-appearance="light"],
   --axora-chart-empty: #607286;
   --axora-map-route: #0b568f;
   --axora-map-marker: #eaa63a;
+  --public-page-bg: #ffffff;
+  --public-surface: #ffffff;
+  --public-surface-elevated: #ffffff;
+  --public-surface-muted: #f8fafc;
+  --public-section-muted: #f6f8fa;
+  --public-text-primary: #0b3157;
+  --public-text-secondary: #40566b;
+  --public-text-muted: #607286;
+  --public-border: #cfd9e3;
+  --public-accent: #155e9d;
+  --public-accent-foreground: #ffffff;
+  --public-success-surface: #dcfce7;
+  --public-success-text: #166534;
+  --public-success-border: #86efac;
+  --public-button-primary: #0b3157;
+  --public-button-primary-foreground: #ffffff;
+  --public-button-secondary: #ffffff;
+  --public-button-secondary-foreground: #10283e;
+  --public-cta-surface: #0b3157;
+  --public-cta-text: #ffffff;
+  --public-cta-text-secondary: #dce8f2;
+  --public-cta-button: #ffffff;
+  --public-cta-button-foreground: #0b3157;
 
   /* Transitional aliases let existing shared UI consume semantic intent. */
   --brand: var(--axora-brand);
@@ -159,6 +182,29 @@ html[data-appearance="dark"],
   --axora-chart-empty: #a6b6c4;
   --axora-map-route: #79b8e7;
   --axora-map-marker: #eaa63a;
+  --public-page-bg: #071521;
+  --public-surface: #0d2233;
+  --public-surface-elevated: #142b3d;
+  --public-surface-muted: #10283a;
+  --public-section-muted: #0a1b29;
+  --public-text-primary: #f7fafc;
+  --public-text-secondary: #d7e1ea;
+  --public-text-muted: #b8c7d3;
+  --public-border: #2a465c;
+  --public-accent: #6eb1e1;
+  --public-accent-foreground: #071521;
+  --public-success-surface: #123c2c;
+  --public-success-text: #86efac;
+  --public-success-border: #2f855a;
+  --public-button-primary: #2f77ab;
+  --public-button-primary-foreground: #ffffff;
+  --public-button-secondary: #10283a;
+  --public-button-secondary-foreground: #f7fafc;
+  --public-cta-surface: #0a2437;
+  --public-cta-text: #f7fafc;
+  --public-cta-text-secondary: #d7e1ea;
+  --public-cta-button: #f7fafc;
+  --public-cta-button-foreground: #071521;
 
   --brand: var(--axora-brand);
   --brand-soft: var(--axora-brand-soft);
@@ -196,6 +242,11 @@ body,
 .public-site {
   background: var(--axora-page-bg);
   color: var(--axora-text);
+}
+
+html[data-appearance] .public-site {
+  background: var(--public-page-bg);
+  color: var(--public-text-primary);
 }
 
 body > main,
@@ -394,6 +445,21 @@ html[data-appearance="dark"] .brand-appearance-light { display: none; }
   border-color: var(--axora-brand);
 }
 .public-trust-note { color: var(--axora-text-secondary); }
+.public-site .button-primary {
+  color: var(--public-button-primary-foreground);
+  background: var(--public-button-primary);
+  border-color: var(--public-button-primary);
+}
+.public-site .button-secondary {
+  color: var(--public-button-secondary-foreground);
+  background: var(--public-button-secondary);
+  border-color: var(--public-border);
+}
+.public-site .status-success {
+  color: var(--public-success-text);
+  background: var(--public-success-surface);
+  border-color: var(--public-success-border);
+}
 .public-desktop-appearance,
 .public-mobile-appearance,
 .app-desktop-appearance,

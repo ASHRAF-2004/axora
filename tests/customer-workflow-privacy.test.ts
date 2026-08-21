@@ -34,9 +34,8 @@ describe("customer workflow privacy", () => {
     expect(safe).toMatchObject({ eventKey: "request.submitted",reason: "Needed for teaching",actorName: "Requester",actorRole: "REQUESTER",source: "WEB" });
   });
 
-  it("does not describe internal buying or driver duties in public workflow copy", async () => {
-    const source = await readFile("src/lib/immersive-public-experience.ts","utf8");
-    expect(source).not.toMatch(/\bid:\s*["']buy["']/i);
+  it("does not describe internal buying or driver duties in public website copy", async () => {
+    const source = await readFile("src/lib/i18n.ts", "utf8");
     expect(source).not.toContain("buys the approved items");
     expect(source).not.toContain("purchasing items");
   });
