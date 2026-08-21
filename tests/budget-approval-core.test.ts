@@ -172,8 +172,8 @@ describe("transactional budget and approval core", () => {
       `, [context.periodId, ids.company]);
       expect(state.rows[0]).toEqual({
         allocated: 5000,
-        available: 5000,
-        pending: 1000,
+        available: 4000,
+        pending: 0,
         policyCount: 1,
       });
       await expect(context.db.query(
@@ -307,7 +307,7 @@ describe("transactional budget and approval core", () => {
         available: 4000,
         reserved: 1000,
         pending: 0,
-        jobs: 4,
+        jobs: 5,
       });
       await expect(approve(context.db, context.requestId, 1, "stale-approval-2"))
         .rejects.toThrow(/changed|no longer/i);
@@ -394,7 +394,7 @@ describe("transactional budget and approval core", () => {
             JOIN budget_periods period ON period.id=balance.budget_period_id
             WHERE period.budget_account_id=$2 AND period.status='ACTIVE') AS target
       `, [context.accountId, target.rows[0].id]);
-      expect(transfer.rows[0]).toEqual({ source: 5000, target: 1300 });
+      expect(transfer.rows[0]).toEqual({ source: 4000, target: 1300 });
       await context.db.query(`
         SELECT axora_set_budget_allocation(
           $1,$2,$3,4500,'Absolute recurring branch authorization',
@@ -419,7 +419,7 @@ describe("transactional budget and approval core", () => {
       expect(absolute.rows[0]).toEqual({
         recurring: 4500,
         projection: 4500,
-        available: 4500,
+        available: 3500,
       });
 
       const current = await context.db.query<{ endsAt: string }>(`
@@ -541,32 +541,23 @@ describe("transactional budget and approval core", () => {
       `, [context.accountId]);
       expect(balances.rows).toEqual([
         { status: "CLOSED", allocated: 5000, available: 0, rollover: 0, expired: 5000 },
-        { status: "ACTIVE", allocated: 5300, available: 5300, rollover: 300, expired: 0 },
+        { status: "ACTIVE", allocated: 6300, available: 5300, rollover: 300, expired: 0 },
       ]);
     } finally {
       await context.db.close();
     }
   }, 45_000);
 
-  it("escalates budget and ceiling exceptions without creating a reservation", async () => {
+  it("rejects an unreservable submission and retains a reserved ceiling exception", async () => {
     const context = await fixture();
     try {
-      const budgetRequest = await insertRequest(context.db, "BUDGET-REQ-OVER", 6000);
-      const budgetResult = await approve(
-        context.db,
-        budgetRequest,
-        1,
-        "over-budget-escalation",
-      );
-      expect(budgetResult.rows[0].payload).toMatchObject({
-        state: "PENDING_COMPANY",
-        escalationType: "BUDGET_AVAILABLE",
-      });
+      await expect(insertRequest(context.db, "BUDGET-REQ-OVER", 6000))
+        .rejects.toMatchObject({ code: "P8207" });
+      const ceilingRequest = await insertRequest(context.db, "BUDGET-REQ-CEILING", 4000);
       await context.db.query(
-        "UPDATE companies SET contractual_ceiling=5000 WHERE id=$1",
+        "UPDATE companies SET contractual_ceiling=3000 WHERE id=$1",
         [ids.company],
       );
-      const ceilingRequest = await insertRequest(context.db, "BUDGET-REQ-CEILING", 5100);
       const ceilingResult = await approve(
         context.db,
         ceilingRequest,
@@ -579,9 +570,9 @@ describe("transactional budget and approval core", () => {
       });
       const reservations = await context.db.query<{ count: number }>(`
         SELECT count(*)::int AS count FROM budget_reservations
-        WHERE request_id IN ($1,$2)
-      `, [budgetRequest, ceilingRequest]);
-      expect(reservations.rows[0].count).toBe(0);
+        WHERE request_id=$1
+      `, [ceilingRequest]);
+      expect(reservations.rows[0].count).toBe(1);
     } finally {
       await context.db.close();
     }
@@ -590,7 +581,13 @@ describe("transactional budget and approval core", () => {
   it("records limit escalation, return, and rejection as immutable transitions", async () => {
     const context = await fixture();
     try {
-      const limitRequest = await insertRequest(context.db, "BUDGET-REQ-LIMIT", 11_000);
+      await context.db.query(`
+        UPDATE approval_limits SET maximum_amount=500
+        WHERE company_id=$1 AND branch_id=$2 AND active
+          AND permission_id=(SELECT id FROM permissions
+            WHERE permission_code='request.approve.other')
+      `, [ids.company, ids.branch]);
+      const limitRequest = await insertRequest(context.db, "BUDGET-REQ-LIMIT", 1000);
       await context.db.query(
         "UPDATE requests SET approval_state='PENDING_DEPARTMENT' WHERE id=$1",
         [limitRequest],

@@ -38,6 +38,7 @@ const ROUTE_PERMISSION_CODES: Readonly<Record<Permission, readonly PermissionCod
     "delivery_user.view", "delivery_user.create", "delivery_user.edit",
   ],
   manage_settings: ["settings.manage"],
+  manage_category_policy: ["procurement.category_policy.manage"],
   manage_commercial_pricing: ["commercial.pricing.manage"],
   view_system_diagnostics: ["system.diagnostics.view"],
   view_email_operations: ["email.operations.view"],

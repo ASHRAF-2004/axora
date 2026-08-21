@@ -4,11 +4,6 @@ import type { RequestBudgetChoice } from "@/lib/budget-ledger";
 
 import { createRequestAction } from "@/app/(portal)/requests/actions";
 import { useUxFeedback } from "@/components/UxFeedbackProvider";
-import {
-  readRequestCart,
-  writeRequestCart,
-  type RequestCartItem,
-} from "@/lib/request-cart";
 import type { SessionUser } from "@/lib/auth";
 import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
@@ -16,6 +11,7 @@ import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { budgetApprovalMessages } from "@/lib/budget-approval-i18n";
 import type { Branch, Company } from "@/lib/types";
 import type { CustomerCatalogProduct } from "@/lib/catalog-contracts";
+import type { ProcurementCartSnapshot } from "@/lib/procurement-cart";
 import { readRequestDraft } from "@/lib/request-draft";
 import {
   AlertCircle,
@@ -24,17 +20,14 @@ import {
   Trash2,
 } from "lucide-react";
 import {
-  useEffect,
   useMemo,
   useRef,
   useState,
   type FormEvent,
 } from "react";
 import Link from "next/link";
-import {
-  productPriceChanged,
-} from "@/lib/procurement-rules";
 import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
+import { shopMessages } from "@/lib/shop-i18n";
 
 interface SelectedLine {
   publicRef: string;
@@ -66,6 +59,7 @@ export function RequestForm({
   branches,
   budgetAccounts = [],
   initialProduct,
+  initialCart,
   locale = "en",
 }: {
   actor: SessionUser;
@@ -73,6 +67,7 @@ export function RequestForm({
   branches: Branch[];
   budgetAccounts?: RequestBudgetChoice[];
   initialProduct?: CustomerCatalogProduct;
+  initialCart: ProcurementCartSnapshot;
   locale?: SupportedLocale;
 }) {
   const company =
@@ -82,6 +77,7 @@ export function RequestForm({
   const { notify } = useUxFeedback();
   const copy = corePortalMessages(locale).requestForm;
   const ruleCopy = procurementRulesMessages(locale);
+  const cartCopy = shopMessages(locale);
   const draftCompanyId = actor.companyId ?? companies[0]?.id;
   const draftScope = useMemo(() => (
     draftCompanyId
@@ -108,9 +104,19 @@ export function RequestForm({
     return actor.branchId ?? "";
   };
 
-  const [knownProducts, setKnownProducts] = useState<CustomerCatalogProduct[]>(
-    initialProduct ? [initialProduct] : [],
-  );
+  const cartProducts = initialCart.items.map<CustomerCatalogProduct>((item) => ({
+    publicRef: item.publicRef, name: item.name, category: item.category,
+    subcategory: item.subcategory, brand: item.brand, size: item.size,
+    unit: item.unit, description: item.description,
+    defaultSellPrice: Number(item.unitPrice),
+    priceRuleVersion: item.priceRuleVersion, priceCurrency: item.currency,
+    deliverySlaDays: item.deliverySlaDays, hasImage: item.hasImage,
+    imageAltText: item.imageAltText,
+  }));
+  if (initialProduct && !cartProducts.some((item) => item.publicRef === initialProduct.publicRef)) {
+    cartProducts.push(initialProduct);
+  }
+  const [knownProducts, setKnownProducts] = useState<CustomerCatalogProduct[]>(cartProducts);
 
   const productByRef = useMemo(
     () =>
@@ -120,21 +126,14 @@ export function RequestForm({
     [knownProducts],
   );
 
-  const [selected, setSelected] = useState<SelectedLine[]>(
-    initialProduct
-      ? [
-          {
-            publicRef: initialProduct.publicRef,
-            quantity: 1,
-            specification: "",
-          },
-        ]
-      : [],
-  );
-  const [cartHydrated, setCartHydrated] = useState(false);
-  const [branchId, setBranchId] = useState(() => resolveDraftBranch(
-    draftState?.branchId,
-  ));
+  const [selected, setSelected] = useState<SelectedLine[]>(initialCart.items.map((item) => ({
+    publicRef: item.publicRef, quantity: item.quantity,
+    specification: item.specification,
+  })));
+  const [cartVersion, setCartVersion] = useState(initialCart.version);
+  const [cartBusy, setCartBusy] = useState(false);
+  const [cartDirty, setCartDirty] = useState(false);
+  const [branchId] = useState(initialCart.branchId || resolveDraftBranch(draftState?.branchId));
   const [department, setDepartment] = useState(draftState?.department ?? "");
   const [neededByDate, setNeededByDate] = useState(() => {
     if (draftState?.neededByDate && draftState.neededByDate >= today) {
@@ -143,10 +142,18 @@ export function RequestForm({
     return today;
   });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [priceChanges, setPriceChanges] = useState<string[]>([]);
-  const [pricesAcknowledged, setPricesAcknowledged] = useState(false);
+  const [priceChanges, setPriceChanges] = useState<string[]>(
+    initialCart.items.filter((item) => item.repriced).map((item) => item.name),
+  );
+  const [pricesAcknowledged, setPricesAcknowledged] = useState(
+    !initialCart.items.some((item) => item.repriced),
+  );
 
   const formRef = useRef<HTMLFormElement | null>(null);
+  const cartVersionRef = useRef(initialCart.version);
+  const cartVersionInputRef = useRef<HTMLInputElement | null>(null);
+  const cartSyncingRef = useRef(false);
+  const cartSubmitReadyRef = useRef(false);
   const branchRef = useRef<HTMLSelectElement | null>(null);
   const departmentRef = useRef<HTMLInputElement | null>(null);
   const dateRef = useRef<HTMLInputElement | null>(null);
@@ -185,163 +192,6 @@ export function RequestForm({
   const budgetAvailable = Number(selectedBudget?.available ?? 0);
   const exceedsBudget = Boolean(selectedBudget) && estimatedTotal > budgetAvailable;
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const timer = window.setTimeout(async () => {
-      const cart = readRequestCart();
-      const cartById = new Map(
-        cart.map((item) => [item.product.publicRef, item]),
-      );
-
-      const productRefs = [
-        ...new Set([
-          ...cart.map((item) => item.product.publicRef),
-          ...(initialProduct ? [initialProduct.publicRef] : []),
-        ]),
-      ];
-
-      if (!productRefs.length) {
-        setKnownProducts([]);
-        setSelected([]);
-        setCartHydrated(true);
-        return;
-      }
-
-      try {
-        const response = await fetch("/api/catalog/cart", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ productRefs }),
-          signal: controller.signal,
-        });
-
-        const payload = await response.json() as {
-          products?: CustomerCatalogProduct[];
-          error?: string;
-        };
-
-        if (!response.ok) {
-          throw new Error(
-            payload.error ?? "Unable to refresh the request cart.",
-          );
-        }
-
-        const products = Array.isArray(payload.products)
-          ? payload.products
-          : [];
-
-        const authoritativeById = new Map(
-          products.map((product) => [product.publicRef, product]),
-        );
-
-        const changedPrices = products
-          .filter((product) => {
-            const saved = cartById.get(product.publicRef);
-            return Boolean(saved && productPriceChanged(saved.product, product));
-          })
-          .map((product) => product.name);
-
-        const lines = productRefs.flatMap((publicRef) => {
-          const product = authoritativeById.get(publicRef);
-          if (!product) return [];
-
-          const saved = cartById.get(publicRef);
-
-          return [{
-            publicRef,
-            quantity: Math.max(Math.ceil(saved?.quantity ?? 1), 1),
-            specification: saved?.specification ?? "",
-          }];
-        });
-
-        setKnownProducts(products);
-        setSelected(lines);
-        setPriceChanges(changedPrices);
-        setPricesAcknowledged(changedPrices.length === 0);
-        setCartHydrated(true);
-
-        const removedCount = productRefs.length - products.length;
-
-        if (removedCount > 0) {
-          notify(
-            `${removedCount} unavailable cart item${
-              removedCount === 1 ? " was" : "s were"
-            } removed.`,
-            "error",
-          );
-        }
-      } catch (error) {
-        if (controller.signal.aborted) return;
-
-        const fallbackProducts = initialProduct
-          ? [initialProduct]
-          : [];
-
-        setKnownProducts(fallbackProducts);
-        setSelected(
-          initialProduct
-            ? [{
-                publicRef: initialProduct.publicRef,
-                quantity: 1,
-                specification: "",
-              }]
-            : [],
-        );
-        setCartHydrated(true);
-
-        notify(
-          error instanceof Error
-            ? error.message
-            : "Unable to refresh the request cart.",
-          "error",
-        );
-      }
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [initialProduct, notify]);
-
-  useEffect(() => {
-    if (!cartHydrated) return;
-
-    const items = selected
-      .map<RequestCartItem | null>((line) => {
-        const product = productByRef.get(line.publicRef);
-        if (!product) return null;
-
-        return {
-          product: {
-            publicRef: product.publicRef,
-            name: product.name,
-            category: product.category,
-            subcategory: product.subcategory,
-            brand: product.brand,
-            size: product.size,
-            unit: product.unit,
-            defaultSellPrice: product.defaultSellPrice,
-            priceRuleVersion: product.priceRuleVersion,
-            priceEffectiveFrom: product.priceEffectiveFrom,
-            priceChangedAt: product.priceChangedAt,
-            priceCurrency: product.priceCurrency,
-            deliverySlaDays: product.deliverySlaDays,
-            hasImage: product.hasImage,
-            imageAltText: product.imageAltText,
-          },
-          quantity: line.quantity,
-          specification: line.specification,
-        };
-      })
-      .filter((item): item is RequestCartItem => item !== null);
-
-    writeRequestCart(items);
-  }, [cartHydrated, productByRef, selected]);
-
   function clearError(field: RequestField) {
     setErrors((current) => {
       if (!current[field]) return current;
@@ -352,35 +202,57 @@ export function RequestForm({
     });
   }
 
-  function toggleProduct(product: CustomerCatalogProduct) {
-    clearError("products");
+  function applyCart(cart: ProcurementCartSnapshot) {
+    cartVersionRef.current = cart.version;
+    if (cartVersionInputRef.current) {
+      cartVersionInputRef.current.value = String(cart.version);
+    }
+    setCartVersion(cart.version);
+    setKnownProducts(cart.items.map((item) => ({
+      publicRef: item.publicRef, name: item.name, category: item.category,
+      subcategory: item.subcategory, brand: item.brand, size: item.size,
+      unit: item.unit, description: item.description,
+      defaultSellPrice: Number(item.unitPrice),
+      priceRuleVersion: item.priceRuleVersion, priceCurrency: item.currency,
+      deliverySlaDays: item.deliverySlaDays, hasImage: item.hasImage,
+      imageAltText: item.imageAltText,
+    })));
+    setSelected(cart.items.map((item) => ({
+      publicRef: item.publicRef, quantity: item.quantity,
+      specification: item.specification,
+    })));
+    const changed = cart.items.filter((item) => item.repriced).map((item) => item.name);
+    setPriceChanges(changed);
+    if (!changed.length) setPricesAcknowledged(true);
+  }
 
-    setKnownProducts((current) =>
-      current.some((item) => item.publicRef === product.publicRef)
-        ? current
-        : [...current, product],
-    );
-
-    setSelected((current) => {
-      const alreadySelected = current.some(
-        (item) => item.publicRef === product.publicRef,
-      );
-
-      if (alreadySelected) {
-        return current.filter(
-          (item) => item.publicRef !== product.publicRef,
-        );
+  async function runCartCommand(input: Record<string, unknown>) {
+    setCartBusy(true);
+    try {
+      const response = await fetch("/api/catalog/cart", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          branchId, expectedVersion: cartVersionRef.current, ...input,
+        }),
+      });
+      const payload = await response.json() as { cart?: ProcurementCartSnapshot; code?: string };
+      if (!response.ok || !payload.cart) {
+        throw new Error(cartCopy.cartError(payload.code));
       }
+      applyCart(payload.cart);
+      return payload.cart;
+    } finally {
+      setCartBusy(false);
+    }
+  }
 
-      return [
-        ...current,
-        {
-          publicRef: product.publicRef,
-          quantity: 1,
-          specification: "",
-        },
-      ];
-    });
+  async function removeProduct(product: CustomerCatalogProduct) {
+    clearError("products");
+    try {
+      await runCartCommand({ operation: "REMOVE", productRef: product.publicRef });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Unable to update the cart.", "error");
+    }
   }
 
   function updateLine(
@@ -388,6 +260,7 @@ export function RequestForm({
     patch: Partial<SelectedLine>,
   ) {
     clearError("quantity");
+    setCartDirty(true);
 
     setSelected((current) =>
       current.map((item) =>
@@ -435,7 +308,7 @@ export function RequestForm({
     });
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     const nextErrors: FormErrors = {};
 
     if (!branchId) {
@@ -487,6 +360,34 @@ export function RequestForm({
 
     if (!firstError) {
       setErrors({});
+      if (cartSubmitReadyRef.current) {
+        cartSubmitReadyRef.current = false;
+        return;
+      }
+      if (!cartDirty) return;
+      event.preventDefault();
+      if (cartSyncingRef.current) return;
+      cartSyncingRef.current = true;
+      const form = event.currentTarget;
+      const submitter = event.nativeEvent instanceof SubmitEvent
+        && event.nativeEvent.submitter instanceof HTMLButtonElement
+        ? event.nativeEvent.submitter : undefined;
+      try {
+        for (const line of selected) {
+          await runCartCommand({
+            operation: "SET", productRef: line.publicRef,
+            quantity: line.quantity, specification: line.specification,
+          });
+        }
+        setCartDirty(false);
+        cartSubmitReadyRef.current = true;
+        form.requestSubmit(submitter);
+      } catch (error) {
+        notify(error instanceof Error
+          ? error.message : "Unable to update the cart.", "error");
+      } finally {
+        cartSyncingRef.current = false;
+      }
       return;
     }
 
@@ -511,6 +412,9 @@ export function RequestForm({
         type="hidden"
         value={company?.id ?? ""}
       />
+      <input name="branchId" type="hidden" value={branchId} />
+      <input name="cartId" type="hidden" value={initialCart.id} />
+      <input ref={cartVersionInputRef} name="cartVersion" type="hidden" value={cartVersion} />
 
       <div
         className="request-summary"
@@ -568,8 +472,16 @@ export function RequestForm({
               type="checkbox"
               checked={pricesAcknowledged}
               onChange={(event) => {
-                setPricesAcknowledged(event.target.checked);
-                if (event.target.checked) clearError("price");
+                const checked = event.target.checked;
+                setPricesAcknowledged(checked);
+                if (checked) {
+                  clearError("price");
+                  void runCartCommand({ operation: "ACKNOWLEDGE_PRICES" })
+                    .catch((error: unknown) => {
+                      setPricesAcknowledged(false);
+                      notify(error instanceof Error ? error.message : "Unable to update the cart.", "error");
+                    });
+                }
               }}
             />
             {ruleCopy.acknowledgePrices}
@@ -582,8 +494,8 @@ export function RequestForm({
           {copy.branch}
           <select
             ref={branchRef}
-            name="branchId"
             value={branchId}
+            disabled
             className={
               errors.branch ? "request-input-error" : undefined
             }
@@ -591,10 +503,6 @@ export function RequestForm({
             aria-describedby={
               errors.branch ? "branch-error" : undefined
             }
-            onChange={(event) => {
-              setBranchId(event.target.value);
-              clearError("branch");
-            }}
           >
             <option value="" disabled>
               {copy.selectBranch}
@@ -895,7 +803,7 @@ export function RequestForm({
                         className="icon-button"
                         data-ux-silent="true"
                         aria-label={copy.remove(product.name)}
-                        onClick={() => toggleProduct(product)}
+                        onClick={() => void removeProduct(product)}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -956,7 +864,7 @@ export function RequestForm({
         <button
           className="button button-primary"
           type="submit"
-          disabled={!selectedBudget}
+          disabled={!selectedBudget || cartBusy}
         >
           {exceedsBudget ? budgetCopy.sendForApproval : copy.submit} ·{" "}
           {formatCurrency(estimatedTotal, locale)}

@@ -5,8 +5,8 @@ describe("sanitized in-memory demonstration data", () => {
   const store = getDemoStore();
 
   it("contains the planned master-data and request counts", () => {
-    expect(store.companies).toHaveLength(3);
-    expect(store.branches).toHaveLength(3);
+    expect(store.companies).toHaveLength(4);
+    expect(store.branches).toHaveLength(4);
     expect(store.suppliers).toHaveLength(10);
     expect(store.products).toHaveLength(25);
     expect(store.requests).toHaveLength(15);

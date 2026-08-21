@@ -33,6 +33,7 @@ export type Permission =
   | "view_audit"
   | "manage_users"
   | "manage_settings"
+  | "manage_category_policy"
   | "manage_commercial_pricing"
   | "view_system_diagnostics"
   | "view_email_operations"
@@ -87,6 +88,7 @@ const platformOwnerPermissions: readonly Permission[] = [
   "view_audit",
   "manage_users",
   "manage_settings",
+  "manage_category_policy",
   "manage_commercial_pricing",
   "view_system_diagnostics",
   "view_email_operations",
@@ -122,6 +124,7 @@ const legacyCompanyAdminPermissions: readonly Permission[] = [
   "view_audit",
   "manage_users",
   "manage_settings",
+  "manage_category_policy",
 ];
 
 const companyAdminPermissions: readonly Permission[] = [
@@ -146,6 +149,7 @@ const companyAdminPermissions: readonly Permission[] = [
   "view_audit",
   "manage_users",
   "manage_settings",
+  "manage_category_policy",
 ];
 
 // Legacy capabilities remain byte-for-byte compatible while active canonical

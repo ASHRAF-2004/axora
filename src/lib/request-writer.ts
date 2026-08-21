@@ -23,6 +23,12 @@ import {
   notifyWorkflowAudience,
 } from "./workflow-repository";
 import { initializeRequestApproval } from "./request-approval";
+import {
+  commandProcurementCart,
+  consumeProcurementCart,
+  consumeDemoProcurementCart,
+  lockProcurementCartForSubmission,
+} from "./procurement-cart";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -45,18 +51,43 @@ export async function createAuthorizedRequest(
   input: NewRequestInput,
   actor: AuthenticatedSessionUser,
   submissionKey: string,
+  cart?: { id: string; version: number },
 ) {
   if (!canAccess(actor, "create_requests")
     || !validSubmissionKey(submissionKey)) {
     throw new RequestAccessUnavailableError();
   }
-  assertUniqueProducts(input);
+  if (!cart) assertUniqueProducts(input);
   const departmentId = actorDepartmentId(actor);
 
   if (isDemoMode()) {
-    await requireDemoRequestCreationScope(actor, {
-      companyId: input.companyId,
+    const canonicalCart = cart ? await commandProcurementCart(actor, {
       branchId: input.branchId,
+      operation: "READ",
+    }) : null;
+    if (cart && (canonicalCart?.id !== cart.id || canonicalCart.version !== cart.version
+      || canonicalCart.status !== "ACTIVE" || !canonicalCart.items.length)) {
+      throw new Error("The cart changed before submission.");
+    }
+    const demoProducts = new Map((canonicalCart ? getDemoStore().products : []).map((product) => [
+      `demo-${product.name.normalize("NFKD").toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64)}`,
+      product,
+    ]));
+    const authoritativeInput: NewRequestInput = canonicalCart ? {
+      ...input,
+      companyId: canonicalCart.companyId,
+      branchId: canonicalCart.branchId,
+      lines: canonicalCart.items.map((item) => ({
+        productId: demoProducts.get(item.publicRef)?.id ?? "",
+        quantity: item.quantity,
+        specification: item.specification || undefined,
+      })),
+    } : input;
+    assertUniqueProducts(authoritativeInput);
+    await requireDemoRequestCreationScope(actor, {
+      companyId: authoritativeInput.companyId,
+      branchId: authoritativeInput.branchId,
       departmentId,
     });
     const existing = getDemoStore().requests.find((request) => (
@@ -64,11 +95,14 @@ export async function createAuthorizedRequest(
       && request.clientSubmissionKey === submissionKey
     ));
     if (existing) return existing.id;
-    const requestId = await createLegacyRequest(input, actor);
+    const requestId = await createLegacyRequest(authoritativeInput, actor);
     const created = getDemoStore().requests.find((request) => (
       request.id === requestId
     ));
     if (created) created.clientSubmissionKey = submissionKey;
+    if (cart) consumeDemoProcurementCart(actor, {
+      cartId: cart.id, expectedVersion: cart.version, requestId,
+    });
     return requestId;
   }
 
@@ -85,10 +119,23 @@ export async function createAuthorizedRequest(
     );
     if (existing.rows[0]?.id) return existing.rows[0].id;
 
+    const lockedCart = cart
+      ? await lockProcurementCartForSubmission(
+        client, actor, cart.id, cart.version,
+      )
+      : null;
+    const authoritativeInput: NewRequestInput = lockedCart ? {
+      ...input,
+      companyId: lockedCart.companyId,
+      branchId: lockedCart.branchId,
+      lines: lockedCart.lines,
+    } : input;
+    assertUniqueProducts(authoritativeInput);
+
     const context = await lockRequestCreationScope(client, actor, {
-      companyId: input.companyId,
-      branchId: input.branchId,
-      departmentId,
+      companyId: authoritativeInput.companyId,
+      branchId: authoritativeInput.branchId,
+      departmentId: lockedCart?.departmentId ?? departmentId,
     });
 
     if (!actor.roleAssignmentId) throw new RequestAccessUnavailableError();
@@ -135,9 +182,9 @@ export async function createAuthorizedRequest(
          AND needs_review=false
          AND (company_id IS NULL OR company_id=$2)
        FOR SHARE`,
-      [input.lines.map((line) => line.productId), context.companyId],
+      [authoritativeInput.lines.map((line) => line.productId), context.companyId],
     );
-    if (selectedProducts.rows.length !== input.lines.length) {
+    if (selectedProducts.rows.length !== authoritativeInput.lines.length) {
       throw new Error(
         "One or more selected products are unavailable or still need review.",
       );
@@ -145,7 +192,7 @@ export async function createAuthorizedRequest(
     const selectedById = new Map(
       selectedProducts.rows.map((product) => [product.id, product]),
     );
-    for (const line of input.lines) {
+    for (const line of authoritativeInput.lines) {
       const product = selectedById.get(line.productId);
       if (!product || !Number.isSafeInteger(line.quantity) || line.quantity < 1) {
         throw new Error("Use a whole quantity of at least 1 for every product.");
@@ -170,16 +217,16 @@ export async function createAuthorizedRequest(
       DO NOTHING
       RETURNING id::text`,
       [
-        input.requestType,
+        authoritativeInput.requestType,
         context.companyId,
         context.branchId,
         context.departmentId ?? null,
-        context.departmentName ?? input.department,
+        context.departmentName ?? authoritativeInput.department,
         actor.name,
         actor.email,
-        input.neededByDate,
-        input.urgency,
-        input.notes ?? null,
+        authoritativeInput.neededByDate,
+        authoritativeInput.urgency,
+        authoritativeInput.notes ?? null,
         actor.id,
         roundMoney(context.estimatedDeliveryFee),
         roundMoney(context.taxRate),
@@ -204,7 +251,7 @@ export async function createAuthorizedRequest(
       throw new RequestAccessUnavailableError();
     }
 
-    for (const item of input.lines) {
+    for (const item of authoritativeInput.lines) {
       const insertedLine = await client.query(
         `INSERT INTO request_lines(
           request_line_code,request_id,product_id,product_name_snapshot,
@@ -232,6 +279,23 @@ export async function createAuthorizedRequest(
       if (!insertedLine.rowCount) {
         throw new Error(
           "A selected product became unavailable. Review the request and try again.",
+        );
+      }
+    }
+
+    if (lockedCart) {
+      const priceSnapshot = await client.query<{
+        matches: boolean;
+      }>(
+        `SELECT public.axora_cart_matches_request_snapshot(
+          $1,$2,$3,$4,now()
+        ) AS matches`,
+        [actor.id, actor.roleAssignmentId, lockedCart.cartId, requestId],
+      );
+      if (!priceSnapshot.rows[0]?.matches) {
+        throw Object.assign(
+          new Error("A cart item price changed and requires review."),
+          { code: "P8202" },
         );
       }
     }
@@ -268,7 +332,7 @@ export async function createAuthorizedRequest(
       previousState: "Draft",
       newState: "Submitted",
       source: "WEB",
-      metadata: { lineCount: input.lines.length, urgency: input.urgency },
+      metadata: { lineCount: authoritativeInput.lines.length, urgency: authoritativeInput.urgency },
     });
     const approvalEvent = await appendWorkflowEvent(client, {
       companyId: context.companyId,
@@ -291,8 +355,17 @@ export async function createAuthorizedRequest(
       audiences: ["REQUEST_APPROVERS"],
       message: { key: "request_needs_approval", actorName: actor.name },
       routePath: `/requests/${requestId}`,
-      priority: input.urgency === "Urgent" ? "HIGH" : "NORMAL",
+      priority: authoritativeInput.urgency === "Urgent" ? "HIGH" : "NORMAL",
     });
+
+    if (lockedCart) {
+      await consumeProcurementCart(client, actor, {
+        cartId: lockedCart.cartId,
+        expectedVersion: lockedCart.version,
+        requestId,
+        commandId: submissionKey,
+      });
+    }
 
     return requestId;
   });

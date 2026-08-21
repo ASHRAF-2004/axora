@@ -771,7 +771,9 @@ describe.sequential("Company Wallet and atomic Approve & Pay migration", () => {
     expect(guardedLocationEvidence.rows[0]).toMatchObject({
       approvalRevision: guardedLocationRequest.revision,
       approvals: 0,
-      reservations: 0,
+      // Prompt 8 reserves the active scoped budget at submission. The guard
+      // failure must not finalize or release that reservation.
+      reservations: 1,
       invoices: 0,
       payments: 0,
     });
@@ -800,33 +802,82 @@ describe.sequential("Company Wallet and atomic Approve & Pay migration", () => {
         'Externally confirmed direct top-up',$5,now()
       )
     `, [owner.userId,owner.assignmentId,ids.company,"10000.00",randomUUID()]));
-    const budgetShortfall = await createRequest({
+    await expect(createRequest({
       code: "WALLET-PAY-BUDGET-SHORT",
       total: "11500.00",
       deliveryFee: "11390.00",
+    })).rejects.toMatchObject({ code: "P8207" });
+    const deniedEvidence = await db.query<{ count: number }>(`
+      SELECT ((SELECT count(*) FROM company_wallet_ledger_entries
+        WHERE request_id=$1 AND entry_type='PAYMENT')
+        +(SELECT count(*) FROM budget_ledger_entries
+          WHERE request_id=$1 AND entry_type='FINAL_SPEND')
+        +(SELECT count(*) FROM invoices
+          WHERE request_id=$1 AND direction='CUSTOMER')
+        +(SELECT count(*) FROM request_approval_decisions
+          WHERE request_id=$1 AND action='APPROVE'))::int AS count
+    `, [walletShortfall.requestId]);
+    expect(deniedEvidence.rows[0]!.count).toBe(0);
+
+    const selfDenied = await createRequest({
+      code: "WALLET-PAY-SELF-DENIED",
+      total: "110.00",
+      deliveryFee: "0.00",
     });
-    const budgetResult = await asApp(() => db.query<{
+    await expect(asApp(() => db.query(`
+      SELECT axora_approve_and_pay(
+        $1,$2,$3,$4,'Self approval requires explicit authority',$5,now()
+      )
+    `, [requester.userId,requester.assignmentId,selfDenied.requestId,
+      selfDenied.revision,randomUUID()])))
+      .rejects.toMatchObject({ code: "42501" });
+    await db.query(`
+      INSERT INTO role_permissions(role_id,permission_id)
+      SELECT role.id,permission.id FROM roles role CROSS JOIN permissions permission
+      WHERE role.role_key='REQUESTER'
+        AND permission.permission_code IN ('request.approve.self','finance.invoice.view')
+      ON CONFLICT DO NOTHING
+    `);
+    await db.query(`
+      INSERT INTO approval_limits(
+        role_id,permission_id,scope_type,company_id,branch_id,currency,
+        maximum_amount,allow_self_approval,starts_at,active,reason,changed_by
+      ) SELECT role.id,permission.id,'BRANCH',$1,$2,'MYR',150,true,
+        now()-interval '1 minute',true,'Explicit Prompt 8 self approval authority',$3
+      FROM roles role CROSS JOIN permissions permission
+      WHERE role.role_key='REQUESTER'
+        AND permission.permission_code='request.approve.self'
+    `, [ids.company,ids.branch,ids.owner]);
+    const selfPaid = await asApp(() => db.query<{
       payload: { status: string };
     }>(`
       SELECT axora_approve_and_pay(
-        $1,$2,$3,$4,'Keep allocation shortfall mutation free',$5,now()
+        $1,$2,$3,$4,'Authorized self approval within explicit limit',$5,now()
       ) AS payload
-    `, [
-      approver.userId,approver.assignmentId,budgetShortfall.requestId,
-      budgetShortfall.revision,randomUUID(),
-    ]));
-    expect(budgetResult.rows[0]!.payload.status).toBe("INSUFFICIENT_BUDGET");
-    const deniedEvidence = await db.query<{ count: number }>(`
-      SELECT ((SELECT count(*) FROM company_wallet_ledger_entries
-        WHERE request_id IN ($1,$2) AND entry_type='PAYMENT')
-        +(SELECT count(*) FROM budget_ledger_entries
-          WHERE request_id IN ($1,$2) AND entry_type='FINAL_SPEND')
-        +(SELECT count(*) FROM invoices
-          WHERE request_id IN ($1,$2) AND direction='CUSTOMER')
-        +(SELECT count(*) FROM request_approval_decisions
-          WHERE request_id IN ($1,$2) AND action='APPROVE'))::int AS count
-    `, [walletShortfall.requestId,budgetShortfall.requestId]);
-    expect(deniedEvidence.rows[0]!.count).toBe(0);
+    `, [requester.userId,requester.assignmentId,selfDenied.requestId,
+      selfDenied.revision,randomUUID()]));
+    expect(selfPaid.rows[0]!.payload.status).toBe("SUCCESS");
+    const selfEvidence = await db.query<{ count: number }>(`
+      SELECT count(*)::int AS count FROM request_approval_decisions
+      WHERE request_id=$1 AND action='APPROVE' AND self_approval
+    `, [selfDenied.requestId]);
+    expect(selfEvidence.rows[0]!.count).toBe(1);
+    const selfOverLimit = await createRequest({
+      code: "WALLET-PAY-SELF-LIMIT",
+      total: "200.00",
+      deliveryFee: "90.00",
+    });
+    const selfLimited = await asApp(() => db.query<{
+      payload: { status: string; requestState: string };
+    }>(`
+      SELECT axora_approve_and_pay(
+        $1,$2,$3,$4,'Self approval must stay within explicit limit',$5,now()
+      ) AS payload
+    `, [requester.userId,requester.assignmentId,selfOverLimit.requestId,
+      selfOverLimit.revision,randomUUID()]));
+    expect(selfLimited.rows[0]!.payload).toMatchObject({
+      status: "NOT_READY", requestState: "FINAL_PAYMENT_AUTHORITY_REQUIRED",
+    });
 
     const preapproved = await createRequest({
       code: "WALLET-PAY-LIVE-AUTHORITY",

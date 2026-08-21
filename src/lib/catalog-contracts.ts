@@ -14,6 +14,7 @@ export const CATALOG_SORTS: readonly CatalogSort[] = [
 ];
 
 export interface CatalogSearchInput {
+  branchId?: string;
   query?: string;
   categories?: string[];
   subcategories?: string[];

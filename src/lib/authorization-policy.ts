@@ -627,6 +627,7 @@ export const ADDITIVE_PERMISSION_CATALOG = [
   { "code": "product.manage", "group": "Catalogue", "label": "Create and edit products", "description": "Create and edit product catalogue records without automatically granting financial reporting.", "highRisk": true },
   { "code": "product.archive", "group": "Catalogue", "label": "Archive products", "description": "Activate, deactivate, or archive product records.", "highRisk": true },
   { "code": "category.manage", "group": "Catalogue", "label": "Manage categories", "description": "Manage product category classifications.", "highRisk": true },
+  { "code": "procurement.category_policy.manage", "group": "Procurement", "label": "Manage category purchasing policy", "description": "Narrow the categories that may be purchased within an authorized company scope.", "highRisk": true },
   { "code": "analytics.revenue.view", "group": "Financial visibility", "label": "View revenue", "description": "View Axora revenue totals and revenue reporting.", "highRisk": true },
   {
     "code": "email.operations.manage",
@@ -656,6 +657,7 @@ const GRANULAR_ROLE_DEFAULT_PERMISSIONS: Readonly<Partial<Record<KnownUserRole, 
     "company_user.view", "company_user.create", "company_user.invite",
     "company_user.edit", "company_user.deactivate", "company_user.permission.manage",
     "finance.wallet.view", "finance.wallet.top_up.request",
+    "procurement.category_policy.manage",
   ],
   BRANCH_ADMIN: [
     "company_user.view", "company_user.create", "company_user.invite",

@@ -60,6 +60,11 @@ export interface WalletMessages {
   approveAndPay: string;
   approveAndPayIntro: string;
   branchLocationRequired: FinanceBusinessResultCopy;
+  categoryPolicyRequired: FinanceBusinessResultCopy;
+  finalAuthorityRequired: FinanceBusinessResultCopy;
+  budgetPeriodRequired: FinanceBusinessResultCopy;
+  companyCeilingRequired: FinanceBusinessResultCopy;
+  intermediateApprovalRequired: FinanceBusinessResultCopy;
   topUpStatuses: Record<TopUpStatus, string>;
   approveAndPayResults: Record<ApproveAndPayResultStatus, FinanceBusinessResultCopy>;
 }
@@ -106,6 +111,11 @@ const messages = {
       title: "Branch delivery location required",
       body: "Configure the branch delivery location before Approve & Pay. No approval or funds were recorded.",
     },
+    categoryPolicyRequired: { title: "Category no longer allowed", body: "The purchasing policy changed. No approval or funds were recorded." },
+    finalAuthorityRequired: { title: "Final payment authority required", body: "Your current permission or approval limit does not authorize this final payment." },
+    budgetPeriodRequired: { title: "Active budget required", body: "The reserved budget period is no longer active. No funds were deducted." },
+    companyCeilingRequired: { title: "Company ceiling review required", body: "The company ceiling does not permit this final payment without an explicit authorized exception." },
+    intermediateApprovalRequired: { title: "Another approval is required", body: "This approval was not the final workflow step. No funds were deducted." },
     topUpStatuses: {
       REQUESTED: "Requested",
       ACKNOWLEDGED: "Acknowledged",
@@ -181,6 +191,11 @@ const messages = {
       title: "موقع تسليم الفرع مطلوب",
       body: "اضبط موقع تسليم الفرع قبل الاعتماد والدفع. لم يُسجل أي اعتماد أو خصم أموال.",
     },
+    categoryPolicyRequired: { title: "الفئة لم تعد مسموحة", body: "تغيرت سياسة الشراء. لم يُسجل أي اعتماد أو خصم أموال." },
+    finalAuthorityRequired: { title: "مطلوب صلاحية الدفع النهائي", body: "صلاحيتك الحالية أو حد اعتمادك لا يسمح بهذا الدفع النهائي." },
+    budgetPeriodRequired: { title: "مطلوب ميزانية نشطة", body: "فترة الميزانية المحجوزة لم تعد نشطة. لم تُخصم أي أموال." },
+    companyCeilingRequired: { title: "مطلوب مراجعة سقف الشركة", body: "سقف الشركة لا يسمح بهذا الدفع النهائي دون استثناء مصرح وصريح." },
+    intermediateApprovalRequired: { title: "مطلوب اعتماد آخر", body: "لم يكن هذا الاعتماد خطوة سير العمل النهائية. لم تُخصم أي أموال." },
     topUpStatuses: {
       REQUESTED: "مطلوب",
       ACKNOWLEDGED: "تم الاستلام",
@@ -256,6 +271,11 @@ const messages = {
       title: "Lokasi penghantaran cawangan diperlukan",
       body: "Konfigurasikan lokasi penghantaran cawangan sebelum Luluskan & Bayar. Tiada kelulusan atau dana direkodkan.",
     },
+    categoryPolicyRequired: { title: "Kategori tidak lagi dibenarkan", body: "Polisi pembelian telah berubah. Tiada kelulusan atau dana direkodkan." },
+    finalAuthorityRequired: { title: "Kuasa bayaran akhir diperlukan", body: "Kebenaran atau had kelulusan semasa anda tidak membenarkan bayaran akhir ini." },
+    budgetPeriodRequired: { title: "Bajet aktif diperlukan", body: "Tempoh bajet yang ditempah tidak lagi aktif. Tiada dana ditolak." },
+    companyCeilingRequired: { title: "Semakan had syarikat diperlukan", body: "Had syarikat tidak membenarkan bayaran akhir ini tanpa pengecualian dibenarkan yang jelas." },
+    intermediateApprovalRequired: { title: "Kelulusan lain diperlukan", body: "Kelulusan ini bukan langkah akhir aliran kerja. Tiada dana ditolak." },
     topUpStatuses: {
       REQUESTED: "Dimohon",
       ACKNOWLEDGED: "Diakui",
@@ -304,6 +324,11 @@ export function approveAndPayResultCopy(
   if (status === "NOT_READY" && requestState === "BRANCH_LOCATION_REQUIRED") {
     return messages[locale].branchLocationRequired;
   }
+  if (status === "NOT_READY" && requestState === "CATEGORY_POLICY_REVIEW_REQUIRED") return messages[locale].categoryPolicyRequired;
+  if (status === "NOT_READY" && requestState === "FINAL_PAYMENT_AUTHORITY_REQUIRED") return messages[locale].finalAuthorityRequired;
+  if (status === "NOT_READY" && requestState === "BUDGET_PERIOD_REQUIRED") return messages[locale].budgetPeriodRequired;
+  if (status === "NOT_READY" && requestState === "COMPANY_CEILING_REVIEW_REQUIRED") return messages[locale].companyCeilingRequired;
+  if (status === "NOT_READY" && requestState === "NON_FINAL_APPROVAL_REQUIRED") return messages[locale].intermediateApprovalRequired;
   return messages[locale].approveAndPayResults[status];
 }
 

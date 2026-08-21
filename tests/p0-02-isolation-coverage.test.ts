@@ -100,7 +100,7 @@ describe("P0-02 active isolation coverage", () => {
     expect(requestExport).toContain("listAuthorizedFilteredRequests(user,filters)");
     expect(catalog).toContain("searchCatalogProducts");
     expect(catalog).toContain('"Cache-Control": "private, no-store"');
-    expect(cart).toContain("getCustomerCatalogProductsByPublicRefs");
+    expect(cart).toContain("commandProcurementCart");
     expect(cart).toContain('"Cache-Control": "private, no-store"');
     expect(notifications).toContain("axora_notification_center_snapshot");
     expect(notifications).not.toMatch(/FROM\s+(?:public\.)?in_app_notifications\b/i);

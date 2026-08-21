@@ -14,7 +14,7 @@ describe("current outbound provider database contract", () => {
     try {
       await db.exec("CREATE ROLE axora_app NOLOGIN");
       const applied = await applyMigrations(db);
-      expect(applied.at(-1)).toBe("104_company_wallet_and_approve_pay.sql");
+      expect(applied.at(-1)).toBe("105_procurement_finance_core.sql");
 
       const privileges = await db.query<{
         resend: boolean;

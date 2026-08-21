@@ -24,6 +24,7 @@ interface ReturnRule {
 const RETURN_RULES: readonly ReturnRule[] = [
   { pattern: /^\/products\/[^/]+\/edit(?:\/|$)/, permission: "manage_catalog" },
   { pattern: /^\/requests\/new(?:\/|$)/, permission: "create_requests" },
+  { pattern: /^\/cart(?:\/|$)/, permission: "create_requests" },
   { pattern: /^\/dashboard(?:\/|$)/, permission: "view_dashboard" },
   { pattern: /^\/driver(?:\/|$)/, permission: "view_delivery_portal" },
   { pattern: /^\/receiving(?:\/|$)/, permission: "view_receiving" },
@@ -37,6 +38,7 @@ const RETURN_RULES: readonly ReturnRule[] = [
   { pattern: /^\/finance(?:\/|$)/, permission: "view_invoices" },
   { pattern: /^\/branches(?:\/|$)/, permission: "view_branches" },
   { pattern: /^\/users(?:\/|$)/, permission: "manage_users" },
+  { pattern: /^\/settings\/procurement(?:\/|$)/, permission: "manage_category_policy" },
   { pattern: /^\/reports(?:\/|$)/, permission: "view_reports" },
   { pattern: /^\/audit(?:\/|$)/, permission: "view_audit" },
   { pattern: /^\/support(?:\/|$)/, permission: "view_system_diagnostics" },
