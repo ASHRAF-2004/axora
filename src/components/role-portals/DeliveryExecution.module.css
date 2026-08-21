@@ -48,6 +48,8 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .filters button[data-active="true"] {
@@ -176,6 +178,19 @@
   font: inherit;
   font-weight: 800;
   cursor: pointer;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.actionButton:focus-visible,
+.compactButton:focus-visible,
+.filters button:focus-visible,
+.details summary:focus-visible,
+.form input:focus-visible,
+.form select:focus-visible,
+.form textarea:focus-visible {
+  outline: 3px solid #1b72e8;
+  outline-offset: 2px;
 }
 
 .actionButton[data-primary="true"] {
@@ -231,6 +246,7 @@
   color: var(--delivery-ink);
   background: white;
   font: inherit;
+  min-height: 44px;
 }
 
 .lineEditor {
@@ -241,6 +257,13 @@
   padding: .7rem;
   border-radius: .75rem;
   background: var(--delivery-paper);
+  border: 1px solid var(--delivery-line);
+  min-width: 0;
+}
+
+.lineEditor legend {
+  padding-inline: .35rem;
+  font-weight: 800;
 }
 
 .timeline {

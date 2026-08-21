@@ -382,12 +382,25 @@ function RouteFigure({
     session.latitude !== null && session.latitude !== undefined
     && session.longitude !== null && session.longitude !== undefined
   );
-  const hasDestination = session.locationAvailable === true || (session.destinationLatitude !== null
+  const hasDestination = session.destinationLatitude !== null
     && session.destinationLatitude !== undefined
     && session.destinationLongitude !== null
-    && session.destinationLongitude !== undefined);
+    && session.destinationLongitude !== undefined;
   if (!hasPoint) return <p className={styles.empty}>{copy.awaitingPoint}</p>;
   if (!hasDestination) return <p className={styles.warning}>{copy.destinationUnavailable}</p>;
+  const latitudeDelta = Number(session.destinationLatitude) - Number(session.latitude);
+  const longitudeDelta = Number(session.destinationLongitude) - Number(session.longitude);
+  const longitudeScale = Math.cos(Number(session.latitude) * Math.PI / 180);
+  const vectorX = longitudeDelta * longitudeScale;
+  const vectorY = -latitudeDelta;
+  const magnitude = Math.hypot(vectorX, vectorY);
+  const scale = magnitude > 0 ? 390 / magnitude : 0;
+  const endX = magnitude > 0 ? 105 + vectorX * scale : 105;
+  const endY = magnitude > 0 ? 90 + vectorY * scale : 90;
+  const boundedEndX = Math.min(525, Math.max(75, endX));
+  const boundedEndY = Math.min(145, Math.max(35, endY));
+  const accuracyRadius = Math.min(34, Math.max(12,
+    Number(session.accuracyMeters ?? 150) / 10));
   return <figure className={styles.routeFigure} data-stale={session.stale}>
     <svg viewBox="0 0 600 180" role="img" aria-label={copy.routeLabel}>
       <defs>
@@ -396,10 +409,10 @@ function RouteFigure({
           <stop offset="1" stopColor="currentColor" />
         </linearGradient>
       </defs>
-      <path d="M74 122 C190 18 370 164 526 54" fill="none" stroke={`url(#route-${session.sessionId})`} strokeWidth="10" strokeLinecap="round" />
-      <circle className={styles.accuracy} cx="74" cy="122" r="28" />
-      <circle className={styles.currentMarker} cx="74" cy="122" r="11" />
-      <path className={styles.destinationMarker} d="M526 31a22 22 0 0 0-22 22c0 18 22 42 22 42s22-24 22-42a22 22 0 0 0-22-22Zm0 14a8 8 0 1 1 0 16 8 8 0 0 1 0-16Z" />
+      <path d={`M105 90 L${boundedEndX} ${boundedEndY}`} fill="none" stroke={`url(#route-${session.sessionId})`} strokeWidth="10" strokeLinecap="round" />
+      <circle className={styles.accuracy} cx="105" cy="90" r={accuracyRadius} />
+      <circle className={styles.currentMarker} cx="105" cy="90" r="11" />
+      <circle className={styles.destinationMarker} cx={boundedEndX} cy={boundedEndY} r="15" />
     </svg>
     <figcaption>
       <span>{session.visibilityPrecision === "EXACT" ? copy.exact : copy.approximate}</span>

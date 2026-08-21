@@ -32,6 +32,27 @@ const eventType = z.enum([
 const allowedFileTypes = new Set([
   "application/pdf", "image/jpeg", "image/png", "image/webp",
 ]);
+const moneyDecimal = z.string().regex(/^\d{1,12}(?:\.\d{1,6})?$/);
+const acquisitionLine = z.discriminatedUnion("resolution", [
+  z.object({
+    deliveryJobLineId: uuid,
+    resolution: z.literal("ACQUIRED"),
+    actualInternalUnitCost: moneyDecimal,
+  }),
+  z.object({
+    deliveryJobLineId: uuid,
+    resolution: z.literal("UNAVAILABLE"),
+    reason: z.string().trim().min(3).max(1_000),
+  }),
+]);
+const acquisitionRegistration = z.object({
+  submissionId: uuid,
+  jobId: uuid,
+  workflowVersion: z.number().int().positive(),
+  created: z.boolean(),
+  storagePath: z.string(),
+  unavailableLines: z.number().int().nonnegative().optional().default(0),
+});
 
 export interface DeliveryEvidenceSummary {
   id: string;
@@ -88,6 +109,7 @@ type DemoDeliveryJobState = {
   status: string;
   workflowVersion: number;
   events: DemoDeliveryEvent[];
+  evidence: DeliveryEvidenceSummary[];
   commands: Map<string, DemoDeliveryCommand>;
 };
 
@@ -139,6 +161,7 @@ function demoDeliveryJobState(actor: AuthenticatedSessionUser) {
       receivedAt: createdAt,
       metadata: { source: "self-claim" },
     }],
+    evidence: [],
     commands: new Map(),
   };
   state.jobs.set(claimed.job.id, initial);
@@ -171,7 +194,7 @@ function demoDeliveryExecutionWorkspace(actor: AuthenticatedSessionUser): Delive
       acceptanceDeadline: "2026-08-21T02:30:00.000Z",
       slaDueAt: "2026-08-21T04:00:00.000Z",
       proofPolicy: ["PHOTO"],
-      proofSatisfied: false,
+      proofSatisfied: current.evidence.some((item) => item.type === "PHOTO"),
       address: "Kuala Lumpur receiving branch, Jalan Sultan Ismail",
       destinationLatitude: 3.1516,
       destinationLongitude: 101.7113,
@@ -185,7 +208,7 @@ function demoDeliveryExecutionWorkspace(actor: AuthenticatedSessionUser): Delive
         unitOfMeasure: "box",
       }],
       events: current.events.map((item) => ({ ...item, metadata: { ...item.metadata } })),
-      evidence: [],
+      evidence: current.evidence.map((item) => ({ ...item })),
       actualHistory: [{
         id: "90000000-0000-4000-8000-000000000001",
         state: "FINALIZED",
@@ -495,7 +518,8 @@ export async function recordCanonicalDeliveryEvent(
     }
     const nextStatus = demoStatusTransitions[current.status]?.[parsed.eventType];
     if (!nextStatus) throw new Error("The delivery event is unavailable in the current state.");
-    if (parsed.eventType === "COMPLETED") {
+    if (parsed.eventType === "COMPLETED"
+      && !current.evidence.some((item) => item.type === "PHOTO")) {
       throw new Error("Required delivery proof is still missing.");
     }
     const now = new Date();
@@ -570,6 +594,10 @@ export async function submitDeliveryShoppingActual(
   if (bytes.length !== receipt.size || !uploadedContentMatchesMime(receipt.type, bytes)) {
     throw new Error("The private receipt evidence is unavailable.");
   }
+  if (receipt.type.startsWith("image/")
+    && !deliveryImageDimensions(receipt.type, bytes)) {
+    throw new Error("The private receipt evidence is unavailable.");
+  }
   const now = new Date();
   return withAuditTransaction({ actor, reason: "Actual delivery shopping submitted", commandId: parsed.idempotencyKey }, async (client) => {
     const attachment = await client.query<{ id: string }>(`
@@ -588,6 +616,126 @@ export async function submitDeliveryShoppingActual(
     if (!result.rows[0]?.value) throw new Error("The actual purchase submission is unavailable.");
     return result.rows[0].value;
   });
+}
+
+/**
+ * Records job-bound internal acquisition evidence for an already-paid request.
+ * This deliberately does not call the legacy request-actual function because
+ * that function can alter customer pricing and budget spend.
+ */
+export async function recordPaidDeliveryAcquisition(
+  actor: AuthenticatedSessionUser,
+  form: FormData,
+) {
+  const receipt = form.get("receipt");
+  if (!(receipt instanceof File) || !allowedFileTypes.has(receipt.type)
+    || receipt.size < 1 || receipt.size > 5 * 1024 * 1024) {
+    throw new Error("The private receipt evidence is unavailable.");
+  }
+  const parsed = z.object({
+    jobId: uuid,
+    assignmentId: uuid,
+    expectedVersion: z.coerce.number().int().positive(),
+    commandId: uuid,
+    eventCommandId: uuid,
+    deviceId: uuid,
+    deviceSequence: z.coerce.number().int().nonnegative(),
+    capturedAt: z.coerce.date(),
+    notes: z.string().trim().max(2_000)
+      .refine((value) => value.length === 0 || value.length >= 3)
+      .optional().default(""),
+    lines: z.array(acquisitionLine).min(1).max(200),
+  }).parse({
+    jobId: form.get("jobId"),
+    assignmentId: form.get("assignmentId"),
+    expectedVersion: form.get("expectedVersion"),
+    commandId: form.get("commandId"),
+    eventCommandId: form.get("eventCommandId"),
+    deviceId: form.get("deviceId"),
+    deviceSequence: form.get("deviceSequence"),
+    capturedAt: form.get("capturedAt"),
+    notes: form.get("notes") ?? "",
+    lines: JSON.parse(String(form.get("lines") ?? "[]")),
+  });
+  const bytes = Buffer.from(await receipt.arrayBuffer());
+  if (bytes.length !== receipt.size || !uploadedContentMatchesMime(receipt.type, bytes)) {
+    throw new Error("The private receipt evidence is unavailable.");
+  }
+  if (receipt.type.startsWith("image/")
+    && !deliveryImageDimensions(receipt.type, bytes)) {
+    throw new Error("The private receipt evidence is unavailable.");
+  }
+  const eventType = parsed.lines.some((line) => line.resolution === "UNAVAILABLE")
+    ? "ISSUE_REPORTED" : "ITEMS_ACQUIRED";
+  const eventNote = eventType === "ISSUE_REPORTED"
+    ? parsed.lines.filter((line) => line.resolution === "UNAVAILABLE")
+      .map((line) => line.reason).join("; ").slice(0, 1_000)
+    : parsed.notes || "Acquisition evidence recorded";
+  if (isDemoMode()) {
+    return recordCanonicalDeliveryEvent(actor, {
+      jobId: parsed.jobId,
+      assignmentId: parsed.assignmentId,
+      expectedVersion: parsed.expectedVersion,
+      commandId: parsed.eventCommandId,
+      deviceId: parsed.deviceId,
+      deviceSequence: parsed.deviceSequence,
+      eventType,
+      clientRecordedAt: parsed.capturedAt,
+      metadata: eventType === "ISSUE_REPORTED"
+        ? { note: eventNote, issueCode: "MISSING_ITEMS" }
+        : { note: eventNote },
+    });
+  }
+  const stored = await storePersistentUpload({
+    namespace: "delivery-receipts",
+    scopeSegments: [actor.id, parsed.jobId],
+    file: receipt,
+  });
+  try {
+    const now = new Date();
+    const registration = await withAuditTransaction({
+      actor, reason: "Paid delivery acquisition recorded", commandId: parsed.commandId,
+    }, async (client) => {
+      const registered = await client.query<JsonRow<unknown>>(`
+        SELECT public.axora_register_delivery_acquisition(
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16
+        ) AS value
+      `, [actor.id, assignmentId(actor), parsed.jobId, parsed.assignmentId,
+        parsed.expectedVersion, parsed.commandId, parsed.eventCommandId,
+        stored.safeFileName, stored.contentType, stored.relativePath,
+        createHash("sha256").update(stored.bytes).digest("hex"), stored.bytes.length,
+        parsed.capturedAt, parsed.notes || null, JSON.stringify(parsed.lines), now]);
+      const value = acquisitionRegistration.parse(registered.rows[0]?.value);
+      const event = await client.query<JsonRow<Record<string, unknown>>>(`
+        SELECT public.axora_record_delivery_event(
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12
+        ) AS value
+      `, [actor.id, assignmentId(actor), parsed.jobId, parsed.assignmentId,
+        parsed.expectedVersion, parsed.eventCommandId, parsed.deviceId,
+        parsed.deviceSequence, eventType, parsed.capturedAt,
+        JSON.stringify(eventType === "ISSUE_REPORTED"
+          ? { note: eventNote, issueCode: "MISSING_ITEMS" }
+          : { note: eventNote }), now]);
+      if (!event.rows[0]?.value) throw new Error("The delivery acquisition is unavailable.");
+      return { registration: value, event: event.rows[0].value };
+    });
+    if (!registration.registration.created) {
+      await removePersistentUpload(stored.relativePath);
+    }
+    return {
+      registration: {
+        submissionId: registration.registration.submissionId,
+        jobId: registration.registration.jobId,
+        workflowVersion: registration.registration.workflowVersion,
+        created: registration.registration.created,
+        unavailableLines: registration.registration.unavailableLines,
+      },
+      event: registration.event,
+    };
+  } catch (error) {
+    await removePersistentUpload(stored.relativePath);
+    throw error;
+  }
 }
 
 export async function uploadCanonicalDeliveryEvidence(
@@ -615,6 +763,53 @@ export async function uploadCanonicalDeliveryEvidence(
   if (parsed.type === "SIGNATURE" && (parsed.consented !== "true" || !parsed.recipientIdentity)) {
     throw new Error("Recipient identity and consent are required for a signature.");
   }
+  if (isDemoMode()) {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    if (bytes.length !== file.size || !allowedFileTypes.has(file.type)
+      || !uploadedContentMatchesMime(file.type, bytes)
+      || (file.type.startsWith("image/") && !deliveryImageDimensions(file.type, bytes))) {
+      throw new Error("The delivery evidence is unavailable.");
+    }
+    const { claimed, current } = demoDeliveryJobState(actor);
+    const event = current.events.find((item) => item.id === parsed.eventId);
+    if (parsed.jobId !== claimed.job.id || !event
+      || !["ARRIVED", "PARTIALLY_DELIVERED", "DELIVERED"].includes(event.type)) {
+      throw new Error("The delivery evidence is unavailable.");
+    }
+    const fingerprint = createHash("sha256").update(JSON.stringify({
+      capturedAt: parsed.capturedAt.toISOString(),
+      digest: createHash("sha256").update(bytes).digest("hex"),
+      eventId: parsed.eventId,
+      fileName: file.name,
+      jobId: parsed.jobId,
+      recipientIdentity: parsed.recipientIdentity,
+      supersedesEvidenceId: parsed.supersedesEvidenceId,
+      type: parsed.type,
+    })).digest("hex");
+    const prior = current.commands.get(parsed.clientEvidenceId);
+    if (prior) {
+      if (prior.fingerprint !== fingerprint) {
+        throw new Error("The delivery evidence command conflicts with its original payload.");
+      }
+      return prior.result;
+    }
+    const evidenceId = deterministicDemoUuid("demo-delivery-evidence", parsed.clientEvidenceId);
+    current.evidence.push({
+      id: evidenceId,
+      type: parsed.type,
+      fileName: cleanFileName(file.name),
+      version: 1,
+      validationStatus: "ACCEPTED",
+      recipientIdentity: parsed.recipientIdentity || undefined,
+      createdAt: new Date().toISOString(),
+    });
+    const result = Object.freeze({
+      evidenceId, version: 1, validationStatus: "ACCEPTED", created: true,
+      storagePath: `demo/${evidenceId}`,
+    });
+    current.commands.set(parsed.clientEvidenceId, { fingerprint, result });
+    return result;
+  }
   const stored = await storePersistentUpload({
     namespace: "delivery-evidence", scopeSegments: [actor.id, parsed.jobId], file,
   });
@@ -632,7 +827,7 @@ export async function uploadCanonicalDeliveryEvidence(
         parsed.clientEvidenceId, parsed.type, stored.safeFileName, stored.contentType,
         stored.relativePath, createHash("sha256").update(stored.bytes).digest("hex"), parsed.capturedAt,
         parsed.recipientIdentity || null, parsed.type === "SIGNATURE" ? "delivery-consent-v1" : null,
-        parsed.type === "SIGNATURE" ? now : null, dimensions?.width ?? null,
+        parsed.type === "SIGNATURE" ? parsed.capturedAt : null, dimensions?.width ?? null,
         dimensions?.height ?? null, parsed.supersedesEvidenceId || null,
         JSON.stringify({ source: "driver-portal" }), now]);
       const parsedRegistration = deliveryEvidenceRegistrationSchema.safeParse(result.rows[0]?.value);

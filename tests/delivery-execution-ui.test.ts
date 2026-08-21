@@ -20,6 +20,10 @@ describe("delivery execution role interfaces", () => {
     expect(driver).toContain("SHOPPING_STARTED");
     expect(driver).toContain("ITEMS_ACQUIRED");
     expect(driver).not.toContain("/api/driver/shopping");
+    expect(driver).toContain("/api/driver/acquisition");
+    expect(driver).toContain("copy.customerPriceFixed");
+    expect(driver).toContain("actualInternalUnitCost");
+    expect(driver).toContain("UNAVAILABLE");
     expect(driver).toContain("/api/driver/proof");
     expect(driver).toContain("/api/driver/otp");
     expect(driver).toContain("DeliveryDestinationMap");
@@ -36,6 +40,8 @@ describe("delivery execution role interfaces", () => {
     expect(receiver).toContain("oneTimeWarning");
     expect(styles).toContain("border-inline-start");
     expect(styles).toContain("prefers-reduced-motion: no-preference");
+    expect(styles).toContain("min-height: 44px");
+    expect(styles).toContain(":focus-visible");
     expect(copy).toContain("ar:");
     expect(copy).toContain("ms:");
   });

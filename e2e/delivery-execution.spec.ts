@@ -97,14 +97,36 @@ test("a real demo self-claim becomes the driver's Out for Delivery navigation jo
   if (await claim.isVisible()) await claim.click();
 
   await expect(executionHeading).toBeVisible();
+  const completedStatus = executionJob.locator("span").filter({ hasText: /^Completed$/ });
+  // The full gate runs desktop and mobile against one demo server. If desktop
+  // has already completed the single logical fixture, mobile verifies the
+  // authoritative terminal state instead of replaying a terminal mutation.
+  if (await completedStatus.isVisible()) {
+    expect(await page.evaluate(() => (
+      document.documentElement.scrollWidth - document.documentElement.clientWidth
+    ))).toBeLessThanOrEqual(2);
+    await page.reload();
+    await expect(completedStatus).toBeVisible();
+    return;
+  }
 
-  for (const action of ["Accept assignment", "Start buying", "Items bought", "Out for delivery"]) {
+  for (const action of ["Accept assignment", "Start buying"]) {
     const button = executionJob.getByRole("button", { name: action, exact: true });
     if (await button.isVisible()) {
       await button.click();
       await expect(page.getByText("Command recorded", { exact: true })).toBeVisible();
     }
   }
+  await executionJob.locator('input[name="receipt"]').setInputFiles({
+    name: "controlled-acquisition.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+  });
+  await executionJob.getByRole("button", { name: "Record acquisition", exact: true }).click();
+  const outForDelivery = executionJob.getByRole("button", { name: "Out for delivery", exact: true });
+  await expect(outForDelivery).toBeVisible();
+  await outForDelivery.click();
+  await expect(page.getByText("Command recorded", { exact: true })).toBeVisible();
 
   await expect(executionJob.locator("span").filter({ hasText: /^Out for delivery$/ }))
     .toBeVisible();
@@ -112,6 +134,27 @@ test("a real demo self-claim becomes the driver's Out for Delivery navigation jo
   const google = executionJob.getByRole("link", { name: "Navigate with Google Maps" });
   await expect(waze).toHaveAttribute("href", /ll=3\.1516%2C101\.7113/);
   await expect(google).toHaveAttribute("href", /destination=3\.1516%2C101\.7113/);
+  await executionJob.getByRole("button", { name: "Arrived", exact: true }).click();
+  await expect(page.getByText("Command recorded", { exact: true })).toBeVisible();
+  await executionJob.getByLabel("Recipient identity").first().fill("Controlled recipient");
+  await executionJob.locator("summary").filter({ hasText: /^Upload proof$/ }).click();
+  await executionJob.locator('input[name="file"]').setInputFiles({
+    name: "controlled-proof.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+  });
+  await executionJob.locator('input[name="recipientIdentity"]').fill("Controlled recipient");
+  await executionJob.getByRole("button", { name: "Upload proof", exact: true }).click();
+  await expect(page.getByText("Command recorded", { exact: true })).toBeVisible();
+  await executionJob.getByRole("button", { name: "Delivered", exact: true }).click();
+  await expect(page.getByText("Command recorded", { exact: true })).toBeVisible();
+  await executionJob.getByRole("button", { name: "Complete job", exact: true }).click();
+  await expect(executionJob.locator("span").filter({ hasText: /^Completed$/ })).toBeVisible();
+  await page.reload();
+  await expect(executionJob.locator("span").filter({ hasText: /^Completed$/ })).toBeVisible();
+  const localCommands = await page.evaluate((key) => localStorage.getItem(key),
+    `axora:delivery-commands:v2:${driver.id}`);
+  expect(localCommands ?? "").not.toContain("Controlled recipient");
 });
 
 test("customer recipient sees a one-time OTP without purchasing internals", async ({ page }) => {

@@ -163,10 +163,13 @@ function customerTrackingWorkspace(workspace: TrackingWorkspace): TrackingWorksp
       stale: Boolean(session.stale),
       locationAvailable: Number.isFinite(session.latitude)
         && Number.isFinite(session.longitude),
-      latitude: null,
-      longitude: null,
-      destinationLatitude: null,
-      destinationLongitude: null,
+      // The database capability has already applied the session's customer
+      // visibility precision. Preserve those privacy-rounded coordinates so
+      // the portal can render the real active route instead of a schematic.
+      latitude: session.latitude,
+      longitude: session.longitude,
+      destinationLatitude: session.destinationLatitude,
+      destinationLongitude: session.destinationLongitude,
       remainingMeters: session.remainingMeters,
       etaSeconds: session.etaSeconds,
       visibilityPrecision: "APPROXIMATE",

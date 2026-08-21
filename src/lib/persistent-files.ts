@@ -36,7 +36,7 @@ export interface StoredUpload {
 }
 
 export async function storePersistentUpload(input: {
-  namespace: "supplier-portal" | "delivery-evidence";
+  namespace: "supplier-portal" | "delivery-evidence" | "delivery-receipts";
   scopeSegments: string[];
   file: File;
   rootOverride?: string;
@@ -140,7 +140,7 @@ export async function readPersistentProfileImage(
 }
 
 export async function readPersistentUpload(relativePath: string, rootOverride?: string) {
-  if (!/^(supplier-portal|delivery-evidence)\/[A-Za-z0-9._/-]+$/.test(relativePath) || /(^|\/)\.\.?(\/|$)/.test(relativePath)) return null;
+  if (!/^(supplier-portal|delivery-evidence|delivery-receipts)\/[A-Za-z0-9._/-]+$/.test(relativePath) || /(^|\/)\.\.?(\/|$)/.test(relativePath)) return null;
   const root = storageRoot(rootOverride);
   const target = path.resolve(/* turbopackIgnore: true */ root, relativePath);
   if (!target.startsWith(`${root}${path.sep}`)) return null;

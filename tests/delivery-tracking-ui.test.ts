@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 
 describe("delivery tracking interfaces", () => {
   it("keeps geolocation private, bounded, retryable and visibly active", async () => {
-    const [panel, styles, copy, nextConfig, caddy, productionCaddy] = await Promise.all([
+    const [panel, trackingService, styles, copy, nextConfig, caddy, productionCaddy] = await Promise.all([
       readFile(new URL(
         "../src/components/role-portals/DeliveryTrackingPanels.tsx",
         import.meta.url,
       ), "utf8"),
+      readFile(new URL("../src/lib/delivery-tracking.ts", import.meta.url), "utf8"),
       readFile(new URL(
         "../src/components/role-portals/DeliveryTracking.module.css",
         import.meta.url,
@@ -28,6 +29,11 @@ describe("delivery tracking interfaces", () => {
     expect(copy).toContain("Delivery status was not changed");
     expect(panel).toContain("REFRESH_INTERVAL_MS = 15_000");
     expect(panel).toContain('role="img"');
+    expect(panel).toContain("latitudeDelta");
+    expect(panel).toContain("longitudeDelta");
+    expect(panel).not.toContain('M74 122 C190 18 370 164 526 54');
+    expect(trackingService).toContain("latitude: session.latitude");
+    expect(trackingService).toContain("destinationLatitude: session.destinationLatitude");
     expect(panel).not.toMatch(/mapbox|googleapis|leaflet/i);
     expect(styles).toContain("border-inline-start");
     expect(styles).toContain("@media (max-width: 560px)");
