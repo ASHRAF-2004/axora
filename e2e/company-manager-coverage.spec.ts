@@ -171,8 +171,10 @@ test("Owner lead creation persists in demo and conflicting command reuse stays l
       .fill("Create a private follow-up lead after reviewing the public enquiry.");
   };
   await fillLead(companyName);
-  await page.getByRole("button", { name: "Create lead" }).click();
-  await expect(page).toHaveURL(/\/companies\/leads\?notice=lead-created/);
+  await Promise.all([
+    page.waitForURL(/\/companies\/leads\?notice=lead-created/, { timeout: 15_000 }),
+    page.getByRole("button", { name: "Create lead" }).click(),
+  ]);
   await expect(page.getByRole("heading", { level: 2, name: companyName })).toBeVisible();
 
   let leadCard = page.locator("article.panel").filter({
