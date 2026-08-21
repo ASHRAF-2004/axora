@@ -11,8 +11,11 @@ import { listShopDepartments } from "@/lib/catalog";
 import Link from "next/link";
 import { setMasterActiveAction } from "../masters/actions";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
+import { loadOrganizationDirectory } from "@/lib/organization-access";
 
-export default async function ProductsPage() {
+export default async function ProductsPage({
+  searchParams,
+}: { searchParams: Promise<{ branch?: string }> }) {
   const actor = await requirePagePermission("view_catalog");
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).products;
@@ -20,7 +23,15 @@ export default async function ProductsPage() {
   const canManageCatalog = canAccess(actor, "manage_catalog");
 
   if (!canManageCatalog) {
-    const departments = await listShopDepartments(actor);
+    const organization = await loadOrganizationDirectory(actor);
+    const branches = organization.branches
+      .filter((branch) => branch.status === "Active")
+      .map((branch) => ({ id: branch.id, name: branch.name, code: branch.code }));
+    const requestedBranch = (await searchParams).branch;
+    const selectedBranchId = actor.branchId
+      ?? branches.find((branch) => branch.id === requestedBranch)?.id
+      ?? branches[0]?.id;
+    const departments = await listShopDepartments(actor, selectedBranchId);
 
     return (
       <>
@@ -33,6 +44,8 @@ export default async function ProductsPage() {
         <ShopCategoryHub
           departments={departments}
           canRequest={canAccess(actor, "create_requests")}
+          purchasingBranches={branches}
+          selectedBranchId={selectedBranchId}
           locale={locale}
         />
       </>

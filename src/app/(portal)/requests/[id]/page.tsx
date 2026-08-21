@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { RequestPricingSummary } from "@/components/RequestPricingSummary";
+import { RequestDraftCleanup } from "@/components/RequestDraftBoundary";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { calculateLineAmounts, formatCurrency, formatDate, formatDateTime } from "@/lib/domain";
@@ -17,7 +18,7 @@ import { allowedNextStatuses } from "@/lib/workflow";
 import { CircleDollarSign, PackageCheck, Route, UserRound, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { approveAndPayRequestAction, updateStatusAction } from "../actions";
+import { approveAndPayRequestAction, cancelPurchaseRequestAction, updateStatusAction } from "../actions";
 import { getFinalInvoiceSummary } from "@/lib/payment-checkout";
 import { formatMoneyDecimal } from "@/lib/money-decimal";
 import { randomUUID } from "node:crypto";
@@ -36,6 +37,8 @@ export default async function RequestDetailPage({
     financeResult?: string;
     financeState?: string;
     financeError?: string;
+    cancelNotice?: string;
+    notice?: string;
   }>;
 }) {
   const { id } = await params;
@@ -93,9 +96,17 @@ export default async function RequestDetailPage({
     && request.approvalStatus === "Approved"
     && !finalInvoice
     && Boolean(request.approvalRevision);
+  const canCancelRequest = !platformView
+    && request.createdById === actor.id
+    && (request.approvalStatus === "Pending" || request.approvalStatus === "Approved")
+    && request.paymentStatus !== "Paid"
+    && Boolean(request.approvalRevision);
 
   return (
     <>
+      {feedback.notice === "request-submitted" && request.createdById === actor.id
+        ? <RequestDraftCleanup scope={{ userId: actor.id, companyId: request.companyId }} />
+        : null}
       <PageHeader
         eyebrow={platformView ? detail.platformEyebrow : detail.companyEyebrow}
         title={request.orderCode}
@@ -214,6 +225,16 @@ export default async function RequestDetailPage({
             {request.approvalStatus === "Pending" && canAccess(actor, "approve_requests")
               ? <div className="form-actions"><Link className="button button-primary" href="/approvals">{detail.reviewApproval}</Link></div>
               : null}
+            {feedback.cancelNotice ? <div className="callout" role={feedback.cancelNotice === "complete" ? "status" : "alert"} style={{ marginBlockStart: 20 }}>
+              <strong>{feedback.cancelNotice === "complete" ? detail.cancellationComplete : detail.cancellationFailed}</strong>
+            </div> : null}
+            {canCancelRequest ? <form action={cancelPurchaseRequestAction.bind(null, id)} style={{ marginBlockStart: 20 }}>
+              <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
+              <input type="hidden" name="commandId" value={randomUUID()} />
+              <div className="callout"><strong>{detail.cancellationTitle}</strong><p>{detail.cancellationBody}</p></div>
+              <label style={{ marginBlockStart: 13 }}>{detail.cancellationReason}<textarea name="reason" minLength={3} maxLength={1000} required /></label>
+              <div className="form-actions"><button className="button button-danger" type="submit">{detail.cancelRequest}</button></div>
+            </form> : null}
             {financeResult ? <div className="callout" role={financeResult === "SUCCESS" || financeResult === "ALREADY_PROCESSED" ? "status" : "alert"} style={{ marginBlockStart: 20 }}>
               <strong>{approveAndPayResultCopy(locale, financeResult, financeState).title}</strong>
               <p>{approveAndPayResultCopy(locale, financeResult, financeState).body}</p>

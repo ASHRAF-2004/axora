@@ -165,13 +165,15 @@ export async function decideRequestApproval(input: {
     }
     const store = getDemoStore();
     const request = store.requests.find((item) => item.id === input.requestId);
-    if (!request || request.approvalStatus !== "Pending"
+    if (!request || !["Pending", "Approved"].includes(request.approvalStatus)
+      || request.paymentStatus === "Paid"
       || (input.actor.companyId && request.companyId !== input.actor.companyId)
       || (input.actor.branchId && request.branchId !== input.actor.branchId)
-      || request.createdById === input.actor.id) {
+      || (request.createdById === input.actor.id && input.action !== "CANCEL")) {
       throw new Error("The request is unavailable.");
     }
     const branch = store.branches.find((item) => item.id === request.branchId);
+    const wasApproved = request.approvalStatus === "Approved";
     if (input.action === "APPROVE") {
       request.approvalStatus = "Approved";
       request.approvedByName = "Demo approver";
@@ -181,12 +183,20 @@ export async function decideRequestApproval(input: {
         branch.remainingAmount = Math.max((branch.monthlyBudget ?? 0)-branch.committedAmount,0);
       }
     } else if (input.action === "REJECT") {
+      if (branch && wasApproved) {
+        branch.committedAmount = Math.max(branch.committedAmount-request.estimatedTotal,0);
+        branch.remainingAmount = Math.max((branch.monthlyBudget ?? 0)-branch.committedAmount,0);
+      }
       request.approvalStatus = "Rejected";
       request.approvalReason = input.reason;
       request.status = "Cancelled";
     } else if (input.action === "RETURN") {
       request.approvalReason = input.reason;
     } else {
+      if (branch && wasApproved) {
+        branch.committedAmount = Math.max(branch.committedAmount-request.estimatedTotal,0);
+        branch.remainingAmount = Math.max((branch.monthlyBudget ?? 0)-branch.committedAmount,0);
+      }
       request.status = "Cancelled";
       request.approvalStatus = "Rejected";
       request.approvalReason = input.reason;

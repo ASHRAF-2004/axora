@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Client, type ClientConfig } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { AuthenticatedSessionUser } from "@/lib/auth";
+import { commandProcurementCart } from "@/lib/procurement-cart";
+import { createAuthorizedRequest } from "@/lib/request-writer";
 
 const nativeDescribe = process.env.AXORA_NATIVE_POSTGRES_INTEGRATION === "true"
   ? describe
@@ -419,6 +422,162 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     expect((await visibleCompanyIds(managerB)).includes(companyId))
       .toBe(activeManager === managerB.userId);
     expect(await visibleCompanyIds(owner)).toContain(companyId);
+  }, 60_000);
+
+  it("creates one request from ten retried canonical-cart submissions", async () => {
+    if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
+    const actor: AuthenticatedSessionUser = {
+      id: requester.userId,
+      email: "requester-prompt8@example.test",
+      name: "Prompt 8 requester",
+      role: "REQUESTER",
+      accountKind: "COMPANY",
+      scopeType: "BRANCH",
+      companyId: financeCompanyId,
+      branchId: financeBranchId,
+      roleAssignmentId: requester.assignmentId,
+      isOwner: false,
+      authVersion: 1,
+      preferredLocale: "en",
+      timezone: "Asia/Kuala_Lumpur",
+    };
+    const product = await admin.query<{ publicRef: string }>(`
+      SELECT public_reference AS "publicRef" FROM public.products WHERE id=$1
+    `, [productId]);
+    const empty = await commandProcurementCart(actor, {
+      branchId: financeBranchId, operation: "READ",
+    });
+    const cart = await commandProcurementCart(actor, {
+      branchId: financeBranchId, operation: "ADD",
+      productRef: product.rows[0]!.publicRef, quantity: 1,
+      expectedVersion: empty.version,
+    });
+    const submissionKey = randomUUID();
+    const metadata = {
+      companyId: "forged-company-is-ignored",
+      branchId: financeBranchId,
+      requestType: "Standard" as const,
+      department: "Operations",
+      neededByDate: new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10),
+      urgency: "Normal" as const,
+      notes: "Ten-way canonical cart submission",
+      lines: [{ productId: "forged-product-is-ignored", quantity: 999_999 }],
+    };
+    const attempts = await Promise.allSettled(Array.from({ length: 10 }, () => (
+      createAuthorizedRequest(metadata, actor, submissionKey, {
+        id: cart.id, version: cart.version,
+      })
+    )));
+    const fulfilledIds = attempts.flatMap((attempt) => (
+      attempt.status === "fulfilled" ? [attempt.value] : []
+    ));
+    expect(fulfilledIds.length).toBeGreaterThanOrEqual(1);
+    expect(new Set(fulfilledIds).size).toBe(1);
+    for (const rejected of attempts.filter((attempt) => attempt.status === "rejected")) {
+      expect(String((rejected as PromiseRejectedResult).reason)).toMatch(/cart|changed|submitted/i);
+    }
+    const evidence = await admin.query<{
+      requests: number; lines: number; quantity: number; reservations: number;
+      companyId: string; branchId: string; carts: number;
+    }>(`
+      SELECT count(DISTINCT request.id)::int AS requests,
+        count(DISTINCT line.id)::int AS lines,
+        max(line.quantity)::int AS quantity,
+        count(DISTINCT reservation.id)::int AS reservations,
+        min(request.company_id::text) AS "companyId",
+        min(request.branch_id::text) AS "branchId",
+        count(DISTINCT cart.id)::int AS carts
+      FROM public.requests request
+      JOIN public.request_lines line ON line.request_id=request.id
+      JOIN public.budget_reservations reservation ON reservation.request_id=request.id
+      JOIN public.procurement_carts cart ON cart.submitted_request_id=request.id
+      WHERE request.created_by=$1 AND request.client_submission_key=$2
+    `, [requester.userId, submissionKey]);
+    expect(evidence.rows[0]).toEqual({
+      requests: 1, lines: 1, quantity: 1, reservations: 1,
+      companyId: financeCompanyId, branchId: financeBranchId, carts: 1,
+    });
+
+    await expect(app!.query(`
+      SELECT public.axora_procurement_cart_command(
+        $1,$2,$3,'READ',NULL,NULL,'',NULL,$4,now()
+      )
+    `, [otherCompanyAdmin.userId,otherCompanyAdmin.assignmentId,
+      financeBranchId,randomUUID()])).rejects.toMatchObject({ code: "42501" });
+
+    const [cancelClient,rejectClient] = await Promise.all([
+      connectedAppClient(), connectedAppClient(),
+    ]);
+    let terminalAttempts: PromiseSettledResult<unknown>[];
+    try {
+      terminalAttempts = await Promise.allSettled([
+        cancelClient.query(`
+          SELECT public.axora_decide_request_approval(
+            $1,$2,$3,1,'CANCEL','',NULL,
+            'Concurrent requester cancellation releases once',$4,now()
+          )
+        `, [requester.userId,requester.assignmentId,fulfilledIds[0],randomUUID()]),
+        rejectClient.query(`
+          SELECT public.axora_decide_request_approval(
+            $1,$2,$3,1,'REJECT','',NULL,
+            'Concurrent approver rejection releases once',$4,now()
+          )
+        `, [approvers[0]!.userId,approvers[0]!.assignmentId,
+          fulfilledIds[0],randomUUID()]),
+      ]);
+    } finally {
+      await Promise.all([cancelClient.end(),rejectClient.end()]);
+    }
+    expect(terminalAttempts.filter((attempt) => attempt.status === "fulfilled"))
+      .toHaveLength(1);
+    const releaseEvidence = await admin.query<{
+      state: string; decisions: number; releaseEvents: number;
+      releaseEntries: number; reservationStatus: string;
+    }>(`
+      SELECT request.approval_state AS state,
+        (SELECT count(*)::int FROM public.request_approval_decisions decision
+          WHERE decision.request_id=request.id
+            AND decision.action IN ('CANCEL','REJECT')) AS decisions,
+        (SELECT count(*)::int FROM public.budget_reservation_events event
+          WHERE event.reservation_id=reservation.id
+            AND event.event_type='RELEASED') AS "releaseEvents",
+        (SELECT count(*)::int FROM public.budget_ledger_entries entry
+          WHERE entry.reservation_id=reservation.id
+            AND entry.entry_type='RELEASE') AS "releaseEntries",
+        reservation.status AS "reservationStatus"
+      FROM public.requests request
+      JOIN public.budget_reservations reservation ON reservation.request_id=request.id
+      WHERE request.id=$1
+    `, [fulfilledIds[0]]);
+    expect(releaseEvidence.rows[0]).toEqual({
+      state: expect.stringMatching(/^(CANCELLED|REJECTED)$/), decisions: 1,
+      releaseEvents: 1, releaseEntries: 1, reservationStatus: "RELEASED",
+    });
+
+    await app!.query(`
+      SELECT public.axora_set_category_policy(
+        $1,$2,'BRANCH',$3,$4,NULL,true,ARRAY[]::text[],0,
+        'Temporarily forbid this branch catalogue for race-safe verification',
+        $5,now()
+      )
+    `, [companyAdmin.userId,companyAdmin.assignmentId,financeCompanyId,
+      financeBranchId,randomUUID()]);
+    const forbiddenCart = await commandProcurementCart(actor, {
+      branchId: financeBranchId, operation: "READ",
+    });
+    await expect(commandProcurementCart(actor, {
+      branchId: financeBranchId, operation: "ADD",
+      productRef: product.rows[0]!.publicRef, quantity: 1,
+      expectedVersion: forbiddenCart.version,
+    })).rejects.toMatchObject({ code: "P8204" });
+    await app!.query(`
+      SELECT public.axora_set_category_policy(
+        $1,$2,'BRANCH',$3,$4,NULL,false,ARRAY[]::text[],1,
+        'Restore inherited catalogue policy after race-safe verification',
+        $5,now()
+      )
+    `, [companyAdmin.userId,companyAdmin.assignmentId,financeCompanyId,
+      financeBranchId,randomUUID()]);
   }, 60_000);
 
   it("credits once, pays once under ten-way contention, and self-claims once", async () => {
@@ -1778,31 +1937,8 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       walletShortfall.requestId,walletShortfall.revision,walletShortfallCommand,
     ])).rejects.toThrow(/Approve & Pay is unavailable/i);
 
-    const budgetShortfall = await createRequest("7000.00","BUDGET-SHORTFALL");
-    const budgetShortfallCommand = randomUUID();
-    const budgetResult = await app.query<{
-      payload: {
-        status: string;
-        requiredAmount: string;
-        availableAmount: string;
-        currency: string;
-        requestId: string;
-      };
-    }>(`
-      SELECT public.axora_approve_and_pay(
-        $1,$2,$3,$4,'Prove insufficient allocation is mutation free',$5,now()
-      ) AS payload
-    `, [
-      approvers[0]!.userId,approvers[0]!.assignmentId,
-      budgetShortfall.requestId,budgetShortfall.revision,budgetShortfallCommand,
-    ]);
-    expect(budgetResult.rows[0]!.payload).toMatchObject({
-      status: "INSUFFICIENT_BUDGET",
-      requiredAmount: "7000.00",
-      availableAmount: "6250.00",
-      currency: "MYR",
-      requestId: budgetShortfall.requestId,
-    });
+    await expect(createRequest("7000.00","BUDGET-SHORTFALL"))
+      .rejects.toMatchObject({ code: "P8207" });
     const deniedFinancialMutations = await admin.query<{
       count: number;
       commands: number;
@@ -1816,49 +1952,96 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     }>(`
       SELECT ((
         SELECT count(*) FROM public.company_wallet_ledger_entries
-        WHERE request_id IN ($1,$2) AND entry_type='PAYMENT'
+        WHERE request_id=$1 AND entry_type='PAYMENT'
       ) + (
         SELECT count(*) FROM public.budget_ledger_entries
-        WHERE request_id IN ($1,$2) AND entry_type='FINAL_SPEND'
+        WHERE request_id=$1 AND entry_type='FINAL_SPEND'
       ) + (
         SELECT count(*) FROM public.invoices
-        WHERE request_id IN ($1,$2) AND direction='CUSTOMER'
+        WHERE request_id=$1 AND direction='CUSTOMER'
       ) + (
         SELECT count(*) FROM public.request_approval_decisions
-        WHERE request_id IN ($1,$2) AND action='APPROVE'
+        WHERE request_id=$1 AND action='APPROVE'
       ))::int AS count,
       (SELECT count(*)::int FROM public.approve_and_pay_commands command
-        WHERE command.request_id IN ($1,$2)) AS commands,
+        WHERE command.request_id=$1) AS commands,
       (SELECT count(*)::int FROM public.approve_and_pay_commands command
         WHERE command.request_id=$1
           AND command.result->>'status'='INSUFFICIENT_WALLET') AS "walletCommands",
       (SELECT count(*)::int FROM public.approve_and_pay_commands command
-        WHERE command.request_id=$2
+        WHERE command.request_id=$1
           AND command.result->>'status'='INSUFFICIENT_BUDGET') AS "budgetCommands",
       (SELECT count(*)::int FROM public.workflow_events event
-        WHERE event.request_id IN ($1,$2)
+        WHERE event.request_id=$1
           AND event.event_key='wallet.payment.recorded') AS "paymentEvents",
       (SELECT available_balance::text FROM public.v_company_wallet_balances
-        WHERE company_id=$3) AS balance,
+        WHERE company_id=$2) AS balance,
       budget.available::text AS "budgetAvailable",
       budget.reserved::text AS "budgetReserved",
       budget.spent::text AS "budgetSpent"
-      FROM public.v_budget_period_balances budget WHERE budget.budget_period_id=$4
+      FROM public.v_budget_period_balances budget WHERE budget.budget_period_id=$3
     `, [
-      walletShortfall.requestId,budgetShortfall.requestId,
-      financeCompanyId,request.budgetPeriodId,
+      walletShortfall.requestId,financeCompanyId,request.budgetPeriodId,
     ]);
     expect(deniedFinancialMutations.rows[0]).toEqual({
       count: 0,
-      commands: 2,
+      commands: 1,
       walletCommands: 1,
-      budgetCommands: 1,
+      budgetCommands: 0,
       paymentEvents: 0,
       balance: "3450.00",
-      budgetAvailable: "6250.00",
-      budgetReserved: "200.00",
+      budgetAvailable: "2250.00",
+      budgetReserved: "4200.00",
       budgetSpent: "1550.00",
     });
+    await app.query(`
+      SELECT public.axora_decide_request_approval(
+        $1,$2,$3,$4,'CANCEL','',NULL,
+        'Release the wallet-shortfall reservation after verification',$5,now()
+      )
+    `, [requester.userId,requester.assignmentId,walletShortfall.requestId,
+      walletShortfall.revision,randomUUID()]);
+
+    const raceRequest = await createRequest("500.00", "PAY-CANCEL-RACE");
+    const [payClient,cancelClient] = await Promise.all([
+      connectedAppClient(), connectedAppClient(),
+    ]);
+    try {
+      await Promise.allSettled([
+        payClient.query(`
+          SELECT public.axora_approve_and_pay(
+            $1,$2,$3,$4,'Win or lose atomically against cancellation',$5,now()
+          )
+        `, [approvers[0]!.userId,approvers[0]!.assignmentId,
+          raceRequest.requestId,raceRequest.revision,randomUUID()]),
+        cancelClient.query(`
+          SELECT public.axora_decide_request_approval(
+            $1,$2,$3,$4,'CANCEL','',NULL,
+            'Requester cancellation racing final payment',$5,now()
+          )
+        `, [requester.userId,requester.assignmentId,
+          raceRequest.requestId,raceRequest.revision,randomUUID()]),
+      ]);
+    } finally {
+      await Promise.all([payClient.end(),cancelClient.end()]);
+    }
+    const raceEvidence = await admin.query<{
+      state: string; payments: number; cancellations: number; reservationStatus: string;
+    }>(`
+      SELECT request.approval_state AS state,
+        (SELECT count(*)::int FROM public.company_wallet_ledger_entries
+          WHERE request_id=request.id AND entry_type='PAYMENT') AS payments,
+        (SELECT count(*)::int FROM public.request_approval_decisions
+          WHERE request_id=request.id AND action='CANCEL') AS cancellations,
+        reservation.status AS "reservationStatus"
+      FROM public.requests request
+      JOIN public.budget_reservations reservation ON reservation.request_id=request.id
+      WHERE request.id=$1
+    `, [raceRequest.requestId]);
+    expect([
+      { state: "AWAITING_FULFILMENT",payments: 1,cancellations: 0,reservationStatus: "SPENT" },
+      { state: "CANCELLED",payments: 0,cancellations: 1,reservationStatus: "RELEASED" },
+    ]).toContainEqual(raceEvidence.rows[0]);
   }, 150_000);
 
   it("routes the immediately previous payment contract through Company Wallet", async () => {

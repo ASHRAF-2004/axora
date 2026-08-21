@@ -36,6 +36,7 @@ export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/budgets", label: "Budget ledger", description: "Authorization periods, balances and reservations", permission: "view_budgets", companyOnly: true, group: "administration" },
   { href: "/wallet", label: "Company Wallet", description: "Actual funds, top-ups and immutable wallet evidence", permission: "view_wallet", group: "administration" },
   { href: "/users", label: "People & access", description: "Invitations, roles and scope", permission: "manage_users", group: "administration" },
+  { href: "/settings/procurement", label: "Purchasing rules", description: "Category policy by company, branch and department", permission: "manage_category_policy", companyOnly: true, group: "administration" },
   { href: "/reports", label: "Reports", description: "Operational and company insights", permission: "view_reports", group: "insight" },
   { href: "/audit", label: "Audit history", description: "Read-only evidence trail", permission: "view_audit", group: "insight" },
   { href: "/email-operations", label: "Email operations", description: "Delivery, suppression and provider health", permission: "view_email_operations", group: "support" },

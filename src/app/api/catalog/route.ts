@@ -41,6 +41,7 @@ export async function GET(request: Request) {
   try {
     const result = await searchCatalogProducts(
       {
+        branchId: params.get("branch") ?? undefined,
         query: params.get("q") ?? "",
         categories: listParameter(params, "category"),
         subcategories: listParameter(params, "subcategory"),

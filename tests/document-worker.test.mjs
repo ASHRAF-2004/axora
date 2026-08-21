@@ -54,7 +54,7 @@ describe("private generated-document worker", () => {
       expect(output.relativePath).toBe(
         `generated-documents/${ids.company}/${ids.request}/${ids.job}.pdf`,
       );
-      expect(output.fileName).toBe("approved-request-REQ-001.pdf");
+      expect(output.fileName).toBe("purchase-request-REQ-001.pdf");
       expect(output.fileSize).toBe(pdf.length);
       expect((await readFile(path.join(rootOverride, ...output.relativePath.split("/")))).equals(pdf)).toBe(true);
       expect((await stat(path.join(rootOverride, ...output.relativePath.split("/")))).mode & 0o777).toBe(0o640);

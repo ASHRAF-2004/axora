@@ -70,6 +70,7 @@ const englishNavigation: Record<string, PortalNavigationCopy> = {
   "/email-operations": { label: "Email operations", description: "Delivery, suppression and provider health" },
   "/support": { label: "Support diagnostics", description: "Audited system and account checks" },
   "/settings": { label: "Settings", description: "Personal and permitted administration" },
+  "/settings/procurement": { label: "Purchasing rules", description: "Category policy by company, branch and department" },
   "/help": { label: "Help", description: "Guidance for your role" },
 };
 
@@ -140,6 +141,7 @@ const arabic: PortalMessages = {
     "/email-operations": { label: "عمليات البريد", description: "التسليم والحظر وصحة مزود البريد" },
     "/support": { label: "تشخيص الدعم", description: "فحوصات مدققة للنظام والحسابات" },
     "/settings": { label: "الإعدادات", description: "الإعدادات الشخصية والإدارية المسموحة" },
+    "/settings/procurement": { label: "قواعد الشراء", description: "سياسة الفئات حسب الشركة والفرع والقسم" },
     "/help": { label: "المساعدة", description: "إرشادات مخصصة لدورك" },
   },
   quickActions: { newRequest: "طلب جديد", addCompany: "إضافة شركة", catalog: "الكتالوج" },
@@ -194,6 +196,7 @@ const malay: PortalMessages = {
     "/email-operations": { label: "Operasi e-mel", description: "Penghantaran, sekatan dan kesihatan penyedia" },
     "/support": { label: "Diagnostik sokongan", description: "Semakan sistem dan akaun yang diaudit" },
     "/settings": { label: "Tetapan", description: "Pentadbiran peribadi dan yang dibenarkan" },
+    "/settings/procurement": { label: "Peraturan pembelian", description: "Polisi kategori mengikut syarikat, cawangan dan jabatan" },
     "/help": { label: "Bantuan", description: "Panduan untuk peranan anda" },
   },
   quickActions: { newRequest: "Permintaan baharu", addCompany: "Tambah syarikat", catalog: "Katalog" },

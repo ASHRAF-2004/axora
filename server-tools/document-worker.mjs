@@ -43,7 +43,7 @@ function fileNameFor(job) {
       ?? job.input_snapshot?.purchaseOrder?.reference
       ?? job.request_id,
   ).normalize("NFKD").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 90);
-  const prefix = job.document_type === "APPROVED_REQUEST" ? "approved-request"
+  const prefix = job.document_type === "APPROVED_REQUEST" ? "purchase-request"
     : job.document_type === "FINAL_FULFILMENT_DELIVERY" ? "final-delivery"
       : job.document_type === "FINAL_INVOICE" ? "Axora-Invoice"
         : "supplier-purchase-order";

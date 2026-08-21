@@ -372,7 +372,10 @@ export async function renderVersionedDocument({ snapshot, companyLogo, companyLo
       let x = PAGE.margin;
       columns.forEach((column, index) => {
         document.font("AxoraBold").fontSize(7.4).fillColor("#ffffff")
-          .text(column.label, x + 4, y + 6, { width: widths[index] - 8, align });
+          .text(column.label, x + 4, y + 6, {
+            width: widths[index] - 8,
+            align: column.money ? "right" : align,
+          });
         x += widths[index];
       });
       document.y = y + 25;
@@ -395,7 +398,10 @@ export async function renderVersionedDocument({ snapshot, companyLogo, companyLo
       let x = PAGE.margin;
       values.forEach((value, index) => {
         document.font("AxoraRegular").fontSize(7.8).fillColor("#17272e")
-          .text(value, x + 4, y + 5, { width: widths[index] - 8, align });
+          .text(value, x + 4, y + 5, {
+            width: widths[index] - 8,
+            align: columns[index].money ? "right" : align,
+          });
         x += widths[index];
       });
       document.y = y + rowHeight;

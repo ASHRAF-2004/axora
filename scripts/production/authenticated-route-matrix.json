@@ -99,6 +99,26 @@
       "landmark": "main h1"
     },
     {
+      "route": "/settings/procurement",
+      "accountRole": "PROCUREMENT_CATEGORY_POLICY_MANAGER",
+      "companyScope": "permission-and-resource-filtered",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource",
+        "unassigned-branch-resource"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/settings/procurement",
+      "landmark": "main h1"
+    },
+    {
       "route": "/help",
       "accountRole": "AUTHENTICATED",
       "companyScope": "self",
@@ -220,6 +240,25 @@
     },
     {
       "route": "/requests/new",
+      "accountRole": "CREATE_REQUEST_PERMISSION",
+      "companyScope": "assigned-branch-or-department",
+      "expectedAccess": [],
+      "expectedDenial": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "mode": "mutating",
+      "apis": [
+        "/api/catalog/cart"
+      ],
+      "expectedFinalUrl": "/access-denied",
+      "landmark": "main"
+    },
+    {
+      "route": "/cart",
       "accountRole": "CREATE_REQUEST_PERMISSION",
       "companyScope": "assigned-branch-or-department",
       "expectedAccess": [],

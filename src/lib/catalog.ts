@@ -4,6 +4,7 @@ import { getDemoStore } from "./demo-data";
 import { canAccess } from "./permissions";
 import type { Product } from "./types";
 import { withDemoCommercialDefaults } from "./procurement-rules";
+import { getCatalogPurchasingScope } from "./procurement-cart";
 import {
   CATALOG_SORTS,
   type CatalogFacetOption,
@@ -44,6 +45,7 @@ function normalizeInput(input: CatalogSearchInput) {
   );
 
   return {
+    branchId: input.branchId?.trim() || undefined,
     query: input.query?.trim().slice(0, 150) ?? "",
     categories: uniqueValues(input.categories),
     subcategories: uniqueValues(input.subcategories),
@@ -308,6 +310,17 @@ export async function searchCatalogProducts(
   }
 
   const input = normalizeInput(rawInput);
+  const purchasingScope = input.branchId
+    ? await getCatalogPurchasingScope(actor, input.branchId)
+    : null;
+  if (actor.accountKind === "COMPANY" && !purchasingScope) {
+    return {
+      products: [], total: 0, page: input.page, limit: input.limit,
+      totalPages: 1,
+      facets: { categories: [], subcategories: [], brands: [], units: [],
+        minimumPrice: 0, maximumPrice: 0 },
+    };
+  }
   const values: unknown[] = [];
   const conditions = [
     "p.active=true",
@@ -320,7 +333,7 @@ export async function searchCatalogProducts(
   }
 
   if (!actor.isOwner) {
-    const companyParameter = parameter(actor.companyId);
+    const companyParameter = parameter(purchasingScope?.companyId ?? actor.companyId);
     conditions.push(
       `(p.company_id IS NULL OR p.company_id=${companyParameter})`,
     );
@@ -339,6 +352,12 @@ export async function searchCatalogProducts(
       OR COALESCE(p.packaging, '') ILIKE ${searchParameter}
       OR COALESCE(p.description, '') ILIKE ${searchParameter}
     )`);
+  }
+
+  if (purchasingScope) {
+    conditions.push(
+      `p.category = ANY(${parameter(purchasingScope.allowedCategories)}::text[])`,
+    );
   }
 
   const facetConditions = [...conditions];
@@ -802,6 +821,7 @@ function shopSafeProduct(product: Product): CustomerCatalogProduct {
 
 export async function listShopDepartments(
   providedActor?: SessionUser,
+  branchId?: string,
 ): Promise<ShopCategorySummary[]> {
   const actor = providedActor ?? await requireSession();
 
@@ -894,6 +914,11 @@ export async function listShopDepartments(
       );
   }
 
+  const purchasingScope = branchId
+    ? await getCatalogPurchasingScope(actor, branchId)
+    : null;
+  if (actor.accountKind === "COMPANY" && !purchasingScope) return [];
+
   interface ShopDepartmentRow {
     category: string;
     subcategory: string;
@@ -926,10 +951,14 @@ export async function listShopDepartments(
   ];
 
   if (!actor.isOwner) {
-    values.push(actor.companyId);
+    values.push(purchasingScope?.companyId ?? actor.companyId);
     conditions.push(
       "(p.company_id IS NULL OR p.company_id=$1)",
     );
+  }
+  if (purchasingScope) {
+    values.push(purchasingScope.allowedCategories);
+    conditions.push(`p.category = ANY($${values.length}::text[])`);
   }
 
   const result = await query<ShopDepartmentRow>(

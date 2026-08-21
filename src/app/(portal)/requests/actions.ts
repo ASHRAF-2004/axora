@@ -4,47 +4,67 @@ import {
   createAuthorizedRequest,
   updateAuthorizedRequestStatus,
 } from "@/lib/request-writer";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireSession } from "@/lib/auth";
 import { REQUEST_STATUSES } from "@/lib/domain";
 import { readFormText, requestSchema } from "@/lib/validation";
 import type { RequestStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getCatalogProductsByPublicRefs } from "@/lib/catalog";
 import { approveAndPay } from "@/lib/company-wallet";
 import { isApproveAndPayLocalNotReadyState } from "@/lib/finance-business-results";
+import { decideRequestApproval } from "@/lib/request-approval";
+import { canAccess } from "@/lib/permissions";
 
 const requestSubmissionKeySchema = z.string().uuid();
+const cartSubmissionSchema = z.object({
+  id: z.string().uuid(),
+  version: z.coerce.number().int().positive(),
+});
 
 export async function createRequestAction(formData: FormData) {
   const user = await requirePermission("create_requests");
-  const productRefs = formData.getAll("publicRef").map(String);
-  const quantities = formData.getAll("quantity");
-  const specifications = formData.getAll("specification").map(String);
-  const resolvedProducts = await getCatalogProductsByPublicRefs(productRefs, user);
-  const productsByRef = new Map(resolvedProducts.map((product) => [product.code, product]));
-  const lines = productRefs
-    .map((publicRef, index) => ({
-      productId: productsByRef.get(publicRef)?.id ?? "",
-      quantity: quantities[index],
-      specification: specifications[index] || undefined,
-    }))
-    .filter((line) => line.productId);
-  const input = requestSchema.parse({
-    companyId: readFormText(formData, "companyId"),
-    branchId: readFormText(formData, "branchId"),
+  const parsedInput = requestSchema.safeParse({
+    companyId: readFormText(formData, "companyId") || "canonical-cart",
+    branchId: readFormText(formData, "branchId") || "canonical-cart",
     requestType: readFormText(formData, "requestType"),
     department: readFormText(formData, "department"),
     neededByDate: readFormText(formData, "neededByDate"),
     urgency: readFormText(formData, "urgency"),
     notes: readFormText(formData, "notes"),
-    lines,
+    lines: [{ productId: "canonical-cart", quantity: 1 }],
   });
-  const submissionKey = requestSubmissionKeySchema.parse(
+  if (!parsedInput.success) redirect("/cart?notice=request-invalid");
+  const input = parsedInput.data;
+  const submissionKey = requestSubmissionKeySchema.safeParse(
     readFormText(formData, "submissionKey"),
   );
-  const id = await createAuthorizedRequest(input, user, submissionKey);
+  const cart = cartSubmissionSchema.safeParse({
+    id: readFormText(formData, "cartId"),
+    version: readFormText(formData, "cartVersion"),
+  });
+  if (!submissionKey.success || !cart.success) {
+    redirect("/cart?notice=request-invalid");
+  }
+  let id: string;
+  try {
+    id = await createAuthorizedRequest(
+      input,
+      user,
+      submissionKey.data,
+      cart.data,
+    );
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error
+      ? String(error.code) : "";
+    const notice = code === "P8202" ? "cart-repriced"
+      : code === "P8204" ? "cart-product-unavailable"
+        : code === "P8205" ? "cart-empty"
+          : code === "P8206" ? "budget-inactive"
+            : code === "P8207" ? "budget-insufficient"
+              : code === "P8203" ? "cart-stale" : "request-unavailable";
+    redirect(`/cart?notice=${notice}`);
+  }
   revalidatePath("/dashboard");
   revalidatePath("/requests");
   redirect(`/requests/${id}?notice=request-submitted`);
@@ -65,6 +85,41 @@ export async function updateStatusAction(id: string, formData: FormData) {
   revalidatePath(`/requests/${id}`);
   revalidatePath("/requests");
   revalidatePath("/dashboard");
+}
+
+export async function cancelPurchaseRequestAction(id: string, formData: FormData) {
+  const actor = await requireSession();
+  if (!canAccess(actor, "create_requests") && !canAccess(actor, "approve_requests")) {
+    redirect(`/requests/${id}?cancelNotice=failed`);
+  }
+  const input = z.object({
+    requestId: z.string().trim().min(1).max(160),
+    approvalRevision: z.coerce.number().int().positive(),
+    reason: z.string().trim().min(3).max(1_000),
+    commandId: z.string().uuid(),
+  }).safeParse({
+    requestId: id,
+    approvalRevision: readFormText(formData, "approvalRevision"),
+    reason: readFormText(formData, "reason"),
+    commandId: readFormText(formData, "commandId"),
+  });
+  if (!input.success) redirect(`/requests/${id}?cancelNotice=failed`);
+  try {
+    await decideRequestApproval({
+      actor,
+      requestId: input.data.requestId,
+      expectedApprovalRevision: input.data.approvalRevision,
+      action: "CANCEL",
+      reason: input.data.reason,
+      idempotencyKey: input.data.commandId,
+    });
+  } catch {
+    redirect(`/requests/${id}?cancelNotice=failed`);
+  }
+  revalidatePath(`/requests/${id}`);
+  revalidatePath("/requests");
+  revalidatePath("/budgets");
+  redirect(`/requests/${id}?cancelNotice=complete`);
 }
 
 export async function approveAndPayRequestAction(id: string, formData: FormData) {

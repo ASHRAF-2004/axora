@@ -706,6 +706,7 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
       status: "New Request",
       notes: input.notes,
       approvalStatus: "Pending",
+      approvalRevision: 1,
       subtotal,
       estimatedDeliveryFee,
       taxRate,
