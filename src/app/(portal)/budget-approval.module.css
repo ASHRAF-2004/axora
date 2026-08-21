@@ -1,9 +1,9 @@
 .page {
-  --ledger-ink: #17322d;
-  --ledger-muted: #61706b;
-  --ledger-line: #d9e1dc;
-  --ledger-paper: #fffdf7;
-  --ledger-accent: #c95f2a;
+  --ledger-ink: var(--axora-text);
+  --ledger-muted: var(--axora-text-muted);
+  --ledger-line: var(--axora-border);
+  --ledger-paper: var(--axora-surface);
+  --ledger-accent: var(--axora-brand-accent);
   display: grid;
   gap: 1.25rem;
   color: var(--ledger-ink);
@@ -16,8 +16,8 @@
   border: 1px solid var(--ledger-line);
   border-radius: 1.5rem;
   background:
-    radial-gradient(circle at 85% 10%, rgb(217 170 96 / 24%), transparent 32%),
-    linear-gradient(135deg, #fffaf0, #eef6f0);
+    radial-gradient(circle at 85% 10%, color-mix(in srgb, var(--ledger-accent) 24%, transparent), transparent 32%),
+    linear-gradient(135deg, var(--axora-surface-elevated), var(--axora-surface-muted));
 }
 
 .hero::after {
@@ -25,7 +25,7 @@
   inset-block: 0;
   inset-inline-end: clamp(1rem, 5vw, 4rem);
   width: 1px;
-  background: rgb(23 50 45 / 12%);
+  background: color-mix(in srgb, var(--ledger-ink) 12%, transparent);
   content: "";
   transform: rotate(17deg) scale(1.6);
 }
@@ -50,7 +50,7 @@
   padding: .85rem 1rem;
   border-inline-start: .3rem solid var(--ledger-accent);
   border-radius: .5rem;
-  background: #fff7e7;
+  background: var(--axora-warning-bg);
 }
 
 .resultNotice {
@@ -80,7 +80,7 @@
   border: 1px solid var(--ledger-line);
   border-radius: 1rem;
   background: var(--ledger-paper);
-  box-shadow: 0 .75rem 2rem rgb(23 50 45 / 6%);
+  box-shadow: var(--axora-shadow-sm);
 }
 
 .cardHeader,
@@ -104,8 +104,8 @@
   display: inline-flex;
   padding: .25rem .55rem;
   border-radius: 999px;
-  background: #e6f0e8;
-  color: #275b4c;
+  background: var(--axora-neutral-bg);
+  color: var(--axora-neutral);
   font-size: .76rem;
   font-weight: 700;
   letter-spacing: .04em;
@@ -122,7 +122,7 @@
 .metric {
   padding: .7rem;
   border-radius: .7rem;
-  background: #f1f5f1;
+  background: var(--axora-surface-muted);
 }
 
 .metric span {
@@ -138,8 +138,8 @@
 }
 
 .dangerMetric {
-  background: #fff0e8;
-  color: #8c321b;
+  background: var(--axora-danger-bg);
+  color: var(--axora-danger);
 }
 
 .decisionForm,
@@ -168,9 +168,9 @@
   width: 100%;
   min-height: 2.65rem;
   padding: .65rem .75rem;
-  border: 1px solid #bdc9c2;
+  border: 1px solid var(--axora-border-strong);
   border-radius: .6rem;
-  background: white;
+  background: var(--axora-surface-interactive);
   color: var(--ledger-ink);
   font: inherit;
 }
@@ -245,7 +245,7 @@
 .dateRangeSelection strong { font-variant-numeric: tabular-nums; }
 
 .dateRangeCalendar {
-  --rdp-accent-color: var(--axora-brand, var(--ledger-accent));
+  --rdp-accent-color: var(--axora-link, var(--ledger-accent));
   --rdp-accent-background-color: var(--axora-brand-soft, #fff1e8);
   --rdp-day-height: 44px;
   --rdp-day-width: 44px;
@@ -266,7 +266,7 @@
 
 .dateRangeCalendar button:focus-visible,
 .dateRangeCalendar select:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--axora-focus, var(--ledger-accent)) 38%, transparent);
+  outline: 3px solid var(--axora-focus, var(--ledger-accent));
   outline-offset: 2px;
 }
 
@@ -307,7 +307,7 @@
 .dateRangeTrack i {
   height: 3px;
   border-radius: 999px;
-  background: var(--axora-brand, var(--ledger-accent));
+  background: var(--axora-link, var(--ledger-accent));
 }
 
 .dateRangeError {
@@ -329,9 +329,9 @@
   cursor: pointer;
 }
 
-.primaryAction { background: var(--ledger-ink); color: white; }
-.secondaryAction { border-color: #9caaa2; background: white; color: var(--ledger-ink); }
-.dangerAction { border-color: #bd5638; background: #fff6f2; color: #8c321b; }
+.primaryAction { background: var(--axora-brand); color: var(--axora-brand-foreground); }
+.secondaryAction { border-color: var(--axora-border-strong); background: var(--axora-surface-interactive); color: var(--ledger-ink); }
+.dangerAction { border-color: var(--axora-danger-border); background: var(--axora-danger-bg); color: var(--axora-danger); }
 
 .lineList,
 .ledgerList {

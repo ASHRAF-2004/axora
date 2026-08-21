@@ -1,10 +1,10 @@
 .shell {
-  --delivery-ink: #14231f;
-  --delivery-muted: #5e6c66;
-  --delivery-line: #d5ddd8;
-  --delivery-paper: #f8f4e9;
-  --delivery-accent: #d1512d;
-  --delivery-teal: #0f6b63;
+  --delivery-ink: var(--axora-text);
+  --delivery-muted: var(--axora-text-muted);
+  --delivery-line: var(--axora-border);
+  --delivery-paper: var(--axora-surface-muted);
+  --delivery-accent: var(--axora-brand);
+  --delivery-teal: var(--axora-success);
   display: grid;
   gap: 1rem;
   color: var(--delivery-ink);
@@ -29,7 +29,7 @@
   padding: .85rem 1rem;
   border: 1px solid var(--delivery-line);
   border-radius: 1rem;
-  background: linear-gradient(115deg, #fff 0%, var(--delivery-paper) 100%);
+  background: linear-gradient(115deg, var(--axora-surface) 0%, var(--delivery-paper) 100%);
 }
 
 .filters {
@@ -37,7 +37,7 @@
   gap: .25rem;
   padding: .25rem;
   border-radius: 999px;
-  background: #e9efeb;
+  background: var(--axora-surface-muted);
 }
 
 .filters button,
@@ -53,8 +53,8 @@
 }
 
 .filters button[data-active="true"] {
-  color: white;
-  background: var(--delivery-teal);
+  color: var(--axora-brand-foreground);
+  background: var(--axora-brand);
 }
 
 .notice,
@@ -65,18 +65,21 @@
   padding: .85rem 1rem;
   border-radius: .85rem;
   border-inline-start: .3rem solid var(--delivery-teal);
-  background: #edf8f5;
+  color: var(--axora-info);
+  background: var(--axora-info-bg);
 }
 
 .recovery,
 .error {
-  border-color: #b42318;
-  background: #fff0ed;
+  color: var(--axora-danger);
+  border-color: var(--axora-danger-border);
+  background: var(--axora-danger-bg);
 }
 
 .success {
-  border-color: #23804b;
-  background: #effaf2;
+  color: var(--axora-success);
+  border-color: var(--axora-success-border);
+  background: var(--axora-success-bg);
 }
 
 .metrics {
@@ -89,7 +92,7 @@
   padding: 1rem;
   border: 1px solid var(--delivery-line);
   border-radius: 1rem;
-  background: #fff;
+  background: var(--axora-surface);
 }
 
 .metric span,
@@ -118,17 +121,17 @@
   overflow: hidden;
   border: 1px solid var(--delivery-line);
   border-radius: 1.15rem;
-  background: #fff;
-  box-shadow: 0 .7rem 2rem rgb(20 35 31 / 7%);
+  background: var(--axora-surface);
+  box-shadow: var(--axora-shadow-sm);
 }
 
 .jobHeader {
   justify-content: space-between;
   padding: 1rem 1.1rem;
-  color: white;
+  color: var(--axora-navigation-text);
   background:
     radial-gradient(circle at 85% 15%, rgb(255 255 255 / 18%), transparent 28%),
-    linear-gradient(115deg, #173a34, var(--delivery-teal));
+    linear-gradient(115deg, var(--axora-navigation), var(--axora-brand));
 }
 
 .jobHeader h2,
@@ -173,8 +176,8 @@
   border: 1px solid var(--delivery-teal);
   border-radius: .75rem;
   padding: .65rem .85rem;
-  color: var(--delivery-teal);
-  background: white;
+  color: var(--axora-link);
+  background: var(--axora-surface-interactive);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
@@ -189,14 +192,14 @@
 .form input:focus-visible,
 .form select:focus-visible,
 .form textarea:focus-visible {
-  outline: 3px solid #1b72e8;
+  outline: 3px solid var(--axora-focus);
   outline-offset: 2px;
 }
 
 .actionButton[data-primary="true"] {
-  color: white;
-  background: var(--delivery-accent);
-  border-color: var(--delivery-accent);
+  color: var(--axora-brand-foreground);
+  background: var(--axora-brand);
+  border-color: var(--axora-brand);
 }
 
 .actionButton:disabled {
@@ -207,7 +210,7 @@
 .details {
   border: 1px solid var(--delivery-line);
   border-radius: .85rem;
-  background: #fff;
+  background: var(--axora-surface);
 }
 
 .details summary {
@@ -240,11 +243,11 @@
 .form textarea {
   min-width: 0;
   width: 100%;
-  border: 1px solid #b9c6bf;
+  border: 1px solid var(--axora-border-strong);
   border-radius: .65rem;
   padding: .65rem .7rem;
   color: var(--delivery-ink);
-  background: white;
+  background: var(--axora-surface-interactive);
   font: inherit;
   min-height: 44px;
 }
@@ -290,7 +293,8 @@
   padding: 1rem;
   border: 2px dashed var(--delivery-accent);
   border-radius: .9rem;
-  background: #fff8ee;
+  color: var(--axora-warning);
+  background: var(--axora-warning-bg);
 }
 
 .otpReveal code {
@@ -319,7 +323,7 @@
   .job:nth-child(2) { animation-delay: .05s; }
   .job:nth-child(3) { animation-delay: .1s; }
   @keyframes delivery-reveal {
-    from { opacity: 0; transform: translateY(.45rem); }
-    to { opacity: 1; transform: translateY(0); }
+    from { transform: translateY(.45rem); }
+    to { transform: translateY(0); }
   }
 }

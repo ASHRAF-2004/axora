@@ -25,6 +25,10 @@ async function validProfilePng() {
 test("a supported user crops, activates, replaces, and removes a private profile photo", async ({ page }) => {
   await signInAsDemoRole(page, companyRequester);
   await page.goto("/profile");
+  let uploadRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/profile/avatar") && request.method() === "POST") uploadRequests += 1;
+  });
   const manager = page.locator(".profile-image-manager");
   await expect(manager.getByRole("heading", { name: "Profile photo" })).toBeVisible();
   await manager.locator('input[name="avatar"]').setInputFiles({
@@ -40,6 +44,23 @@ test("a supported user crops, activates, replaces, and removes a private profile
   await expect(page).toHaveURL(/\/profile\?.*saved=image/);
   await expect(page.getByText("Your processed profile photo is active.")).toBeVisible();
   await expect(manager.locator('img[src^="/api/profile/avatar"]')).toBeVisible();
+  await expect(page.locator('.app-avatar img[src^="/api/profile/avatar"]')).toBeVisible();
+  expect(uploadRequests).toBe(1);
+
+  const activatedSource = await manager.locator('img[src^="/api/profile/avatar"]').getAttribute("src");
+  expect(activatedSource).toContain("?v=");
+  await page.reload();
+  await expect(manager.locator('img[src^="/api/profile/avatar"]')).toHaveAttribute("src", activatedSource ?? "");
+  await expect(page.locator('.app-avatar img[src^="/api/profile/avatar"]')).toBeVisible();
+
+  await manager.locator('input[name="avatar"]').setInputFiles({
+    name: "not-an-image.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("not an image"),
+  });
+  await expect(manager.getByRole("alert")).toContainText(/JPEG, PNG, or WebP/);
+  await expect(page.getByText(/unexpected error|reference id/i)).toHaveCount(0);
+  expect(uploadRequests).toBe(1);
 
   await manager.getByRole("button", { name: "Remove photo" }).click();
   await expect(page).toHaveURL(/\/profile\?.*saved=image-removed/);

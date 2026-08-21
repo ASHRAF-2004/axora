@@ -99,7 +99,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             <div className="panel-body" style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
               {images.map((image, index) => (
                 <article key={image.id} style={{ border: "1px solid var(--slate-200)", borderRadius: 14, overflow: "hidden" }}>
-                  <div style={{ aspectRatio: "16 / 10", background: "white", position: "relative" }}>
+                  <div style={{ aspectRatio: "16 / 10", background: "var(--axora-surface-muted)", position: "relative" }}>
                     <img
                       alt={image.altText || product.name}
                       src={`/api/products/${encodeURIComponent(product.id)}/images/${encodeURIComponent(image.id)}`}

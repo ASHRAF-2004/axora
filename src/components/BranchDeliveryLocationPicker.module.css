@@ -125,11 +125,11 @@
   background: var(--axora-surface);
 }
 
-.field input:hover:not(:disabled) { border-color: var(--axora-brand); }
+.field input:hover:not(:disabled) { border-color: var(--axora-border-focus); }
 
 .field input:focus-visible {
   border-color: var(--axora-focus);
-  outline: 3px solid color-mix(in srgb, var(--axora-focus) 28%, transparent);
+  outline: 3px solid var(--axora-focus);
   outline-offset: 1px;
 }
 

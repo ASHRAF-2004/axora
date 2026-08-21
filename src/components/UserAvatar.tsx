@@ -30,11 +30,15 @@ export function UserAvatar({
     if (version) query.set("v", version);
     return `/api/profile/avatar/${encodeURIComponent(userId)}?${query}`;
   }, [deliveryJobId, size, userId, version]);
+  const showImage = Boolean(src && failedSrc !== src);
   return <span
     className={["user-avatar", className].filter(Boolean).join(" ")}
     style={{ "--avatar-size": `${size}px` } as CSSProperties}
+    role={!showImage && alt ? "img" : undefined}
+    aria-label={!showImage && alt ? alt : undefined}
+    aria-hidden={!showImage && !alt ? "true" : undefined}
   >
-    {src && failedSrc !== src ? <Image alt={alt} height={size} onError={() => setFailedSrc(src)} src={src} unoptimized width={size} />
+    {showImage && src ? <Image alt={alt} height={size} onError={() => setFailedSrc(src)} src={src} unoptimized width={size} />
       : <span aria-hidden="true">{initials(name)}</span>}
   </span>;
 }

@@ -14,6 +14,7 @@ export interface PortalMessages {
     catalog: string;
   };
   shell: {
+    skipToContent: string;
     openMenu: string;
     primaryNavigation: string;
     notifications: (count: number) => string;
@@ -91,6 +92,7 @@ const english: PortalMessages = {
   navigation: englishNavigation,
   quickActions: { newRequest: "New request", addCompany: "Add company", catalog: "Catalog" },
   shell: {
+    skipToContent: "Skip to main content",
     openMenu: "Open application menu", primaryNavigation: "Primary application navigation",
     notifications: (count) => `Notifications, ${count} unread`, myProfile: "My profile",
     accountSecurity: "Account & security", helpTutorial: "Help", signOut: "Sign out",
@@ -146,6 +148,7 @@ const arabic: PortalMessages = {
   },
   quickActions: { newRequest: "طلب جديد", addCompany: "إضافة شركة", catalog: "الكتالوج" },
   shell: {
+    skipToContent: "تخطي إلى المحتوى الرئيسي",
     openMenu: "فتح قائمة التطبيق", primaryNavigation: "التنقل الرئيسي في التطبيق",
     notifications: (count) => `الإشعارات، ${count} غير مقروء`, myProfile: "ملفي الشخصي",
     accountSecurity: "الحساب والأمان", helpTutorial: "المساعدة", signOut: "تسجيل الخروج",
@@ -201,6 +204,7 @@ const malay: PortalMessages = {
   },
   quickActions: { newRequest: "Permintaan baharu", addCompany: "Tambah syarikat", catalog: "Katalog" },
   shell: {
+    skipToContent: "Langkau ke kandungan utama",
     openMenu: "Buka menu aplikasi", primaryNavigation: "Navigasi utama aplikasi",
     notifications: (count) => `Pemberitahuan, ${count} belum dibaca`, myProfile: "Profil saya",
     accountSecurity: "Akaun & keselamatan", helpTutorial: "Bantuan", signOut: "Log keluar",

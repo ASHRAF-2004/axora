@@ -134,6 +134,7 @@ export function ProductImage({
 
   useEffect(() => {
     if (!showControls || images.length < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % images.length);
     }, 5000);
@@ -221,15 +222,16 @@ export function ProductImage({
               background: "rgba(255,255,255,.9)",
               border: "1px solid rgba(148,163,184,.5)",
               borderRadius: 999,
+              color: "#10283e",
               display: "flex",
-              height: 32,
+              height: 44,
               justifyContent: "center",
               insetInlineStart: 10,
               padding: 0,
               position: "absolute",
               top: "50%",
               transform: "translateY(-50%)",
-              width: 32,
+              width: 44,
               zIndex: 2,
             }}
             type="button"
@@ -247,15 +249,16 @@ export function ProductImage({
               background: "rgba(255,255,255,.9)",
               border: "1px solid rgba(148,163,184,.5)",
               borderRadius: 999,
+              color: "#10283e",
               display: "flex",
-              height: 32,
+              height: 44,
               justifyContent: "center",
               padding: 0,
               position: "absolute",
               insetInlineEnd: 10,
               top: "50%",
               transform: "translateY(-50%)",
-              width: 32,
+              width: 44,
               zIndex: 2,
             }}
             type="button"
@@ -286,9 +289,9 @@ export function ProductImage({
                   background: index === boundedIndex ? foreground : "rgba(255,255,255,.9)",
                   border: "1px solid rgba(15,23,42,.25)",
                   borderRadius: 999,
-                  height: 8,
+                  height: 24,
                   padding: 0,
-                  width: 8,
+                  width: 24,
                 }}
                 type="button"
               />

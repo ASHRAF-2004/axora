@@ -34,7 +34,8 @@
   min-block-size: 2.75rem;
   padding: .45rem .65rem;
   border-radius: .55rem;
-  background: #f4f7fb;
+  color: var(--axora-text);
+  background: var(--axora-surface-muted);
   cursor: pointer;
 }
 

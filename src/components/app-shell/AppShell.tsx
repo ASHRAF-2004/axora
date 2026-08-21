@@ -15,7 +15,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
 import { LOCALE_NAMES, SUPPORTED_LOCALES, persistBrowserLocale, type SupportedLocale } from "@/lib/i18n";
 import { setPreferredLocaleAction } from "@/app/(portal)/profile/language-action";
@@ -107,9 +107,18 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const drawerRef = useRef<HTMLDialogElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const profileControlRef = useRef<HTMLDivElement>(null);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [avatarOverride, setAvatarOverride] = useState<{
+    sourceUrl?: string;
+    nextUrl?: string;
+  }>();
+  const avatarUrl = avatarOverride && avatarOverride.sourceUrl === user.avatarUrl
+    ? avatarOverride.nextUrl
+    : user.avatarUrl;
   const [currentAppearance, setCurrentAppearance] = useState<AppearanceMode>(appearance);
   const [polledNotifications, setPolledNotifications] = useState<{
     userId: string;
@@ -124,6 +133,15 @@ export function AppShell({
     userId: user.id,
     ...(user.companyId ? { companyId: user.companyId } : {}),
   };
+
+  useEffect(() => {
+    function updateAvatar(event: Event) {
+      const detail = (event as CustomEvent<{ url: string | null }>).detail;
+      setAvatarOverride({ sourceUrl: user.avatarUrl, nextUrl: detail?.url ?? undefined });
+    }
+    window.addEventListener("axora:profile-avatar-changed", updateAvatar);
+    return () => window.removeEventListener("axora:profile-avatar-changed", updateAvatar);
+  }, [user.avatarUrl]);
 
   useEffect(() => {
     persistBrowserLocale(locale);
@@ -257,10 +275,13 @@ export function AppShell({
 
   useEffect(() => {
     if (!profileOpen) return;
+    const focusFrame = window.requestAnimationFrame(() => {
+      profileMenuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    });
     function dismissOutside(event: PointerEvent) {
       if (!profileControlRef.current?.contains(event.target as Node)) setProfileOpen(false);
     }
-    function dismissWithEscape(event: KeyboardEvent) {
+    function dismissWithEscape(event: globalThis.KeyboardEvent) {
       if (event.key !== "Escape") return;
       setProfileOpen(false);
       profileButtonRef.current?.focus();
@@ -268,10 +289,29 @@ export function AppShell({
     document.addEventListener("pointerdown", dismissOutside);
     document.addEventListener("keydown", dismissWithEscape);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("pointerdown", dismissOutside);
       document.removeEventListener("keydown", dismissWithEscape);
     };
   }, [profileOpen]);
+
+  function navigateProfileMenu(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const items = [...(profileMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+    if (!items.length) return;
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const destination = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? items.length - 1
+        : event.key === "ArrowDown"
+          ? (current + 1 + items.length) % items.length
+          : event.key === "ArrowUp"
+            ? (current - 1 + items.length) % items.length
+            : -1;
+    if (destination < 0) return;
+    event.preventDefault();
+    items[destination]?.focus();
+  }
 
   function openDrawer() {
     if (!drawerRef.current?.open) drawerRef.current?.showModal();
@@ -325,9 +365,10 @@ export function AppShell({
       data-session-user-id={user.id}
       data-session-company-id={user.companyId}
     >
+      <a className="skip-link" href="#portal-main">{messages.shell.skipToContent}</a>
       <SessionContinuity locale={locale} />
       <header className="app-topbar">
-        <button className="app-menu-button" type="button" onClick={openDrawer} aria-label={messages.shell.openMenu}>
+        <button ref={menuButtonRef} className="app-menu-button" type="button" onClick={openDrawer} aria-label={messages.shell.openMenu} aria-haspopup="dialog">
           <Menu size={22} aria-hidden="true" />
         </button>
         {brand.tenant ? <Link
@@ -386,16 +427,16 @@ export function AppShell({
               aria-controls="app-profile-menu"
               onClick={() => setProfileOpen((open) => !open)}
             >
-              <span className={`app-avatar${user.avatarUrl ? " app-avatar-image" : ""}`} aria-hidden="true">{user.avatarUrl ? <Image src={user.avatarUrl} width={38} height={38} alt="" unoptimized /> : user.initials}</span>
+              <span className={`app-avatar${avatarUrl ? " app-avatar-image" : ""}`} aria-hidden="true">{avatarUrl ? <Image src={avatarUrl} width={38} height={38} alt="" unoptimized /> : user.initials}</span>
               <span className="app-profile-copy"><strong>{user.name}</strong><small>{user.roleLabel}</small></span>
               <ChevronDown size={15} aria-hidden="true" />
             </button>
             {profileOpen ? (
-              <div className="app-profile-menu" id="app-profile-menu" role="menu">
+              <div ref={profileMenuRef} className="app-profile-menu" id="app-profile-menu" role="menu" onKeyDown={navigateProfileMenu}>
                 <div><strong>{user.name}</strong><span><bdi className="bidi-ltr" dir="ltr">{user.email}</bdi></span></div>
-                <Link role="menuitem" href="/profile"><UserRound size={17} aria-hidden="true" />{messages.shell.myProfile}</Link>
-                <Link role="menuitem" href="/account"><Settings2 size={17} aria-hidden="true" />{messages.shell.accountSecurity}</Link>
-                <Link role="menuitem" href="/help"><CircleHelp size={17} aria-hidden="true" />{messages.shell.helpTutorial}</Link>
+                <Link role="menuitem" href="/profile" onClick={() => setProfileOpen(false)}><UserRound size={17} aria-hidden="true" />{messages.shell.myProfile}</Link>
+                <Link role="menuitem" href="/account" onClick={() => setProfileOpen(false)}><Settings2 size={17} aria-hidden="true" />{messages.shell.accountSecurity}</Link>
+                <Link role="menuitem" href="/help" onClick={() => setProfileOpen(false)}><CircleHelp size={17} aria-hidden="true" />{messages.shell.helpTutorial}</Link>
                 <form
                   action={logoutAction}
                   onSubmit={() => clearBrowserSessionWorkspace(browserScope)}
@@ -416,9 +457,9 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="content-shell app-content">{children}</main>
+      <main id="portal-main" tabIndex={-1} className="content-shell app-content">{children}</main>
 
-      <dialog ref={drawerRef} className="app-drawer" aria-labelledby="app-drawer-title">
+      <dialog ref={drawerRef} className="app-drawer" aria-labelledby="app-drawer-title" onClose={() => menuButtonRef.current?.focus()}>
         <div className="app-drawer-head">
           <div>
             <span>{messages.shell.workspace}</span>
