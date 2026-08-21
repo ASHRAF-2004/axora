@@ -31,11 +31,12 @@ vi.mock("@/lib/scoped-operations", () => ({
   selectScopedQuotation: vi.fn(),
 }));
 
-import { addProductImagesAction, createCompanyAction, regenerateCompanyBrandAction, replaceProductImageAction } from "@/app/(portal)/masters/actions";
+import { addProductImagesAction, assignCompanyManagerAction, createCompanyAction, regenerateCompanyBrandAction, replaceProductImageAction } from "@/app/(portal)/masters/actions";
 import { recordApprovalAction } from "@/app/(portal)/operations/actions";
 import { updateStatusAction } from "@/app/(portal)/requests/actions";
 import { ACTION_FEEDBACK_CODES, ACTION_FEEDBACK_MESSAGES, publicApprovalErrorCode } from "@/lib/action-feedback-i18n";
 import { CORE_PORTAL_MESSAGES } from "@/lib/core-portal-i18n";
+import { CompanyCreationCommandConflictError } from "@/lib/company-lifecycle";
 
 const actor = { id: "10000000-0000-4000-8000-000000000001", email: "approver@example.test", name: "Approver", role: "BRANCH_APPROVER", accountKind: "COMPANY", isOwner: false, authVersion: 1, preferredLocale: "ar" };
 const requestId = "20000000-0000-4000-8000-000000000001";
@@ -58,6 +59,12 @@ describe("localized portal action feedback", () => {
   });
 
   it("redirects invalid file and status submissions with stable notice codes", async () => {
+    mocks.requirePermission.mockResolvedValueOnce({
+      ...actor,
+      role: "PLATFORM_OWNER",
+      accountKind: "PLATFORM",
+      isOwner: true,
+    });
     await expect(createCompanyAction(new FormData())).rejects.toThrow("REDIRECT:/companies?notice=company-logo-required");
     await expect(regenerateCompanyBrandAction("company-1", new FormData())).rejects.toThrow("REDIRECT:/companies?notice=company-logo-required");
     await expect(addProductImagesAction("product-1", new FormData())).rejects.toThrow("REDIRECT:/products/product-1/edit?notice=product-image-required");
@@ -69,8 +76,16 @@ describe("localized portal action feedback", () => {
     expect(mocks.updateRequestStatus).not.toHaveBeenCalled();
   });
 
-  it("creates a company lead from the reduced form and ignores removed legacy fields", async () => {
+  it("creates a company directly and ignores removed legacy contact fields", async () => {
+    mocks.requirePermission.mockResolvedValueOnce({
+      ...actor,
+      role: "PLATFORM_OWNER",
+      accountKind: "PLATFORM",
+      isOwner: true,
+    });
     const formData = new FormData();
+    const commandId = "30000000-0000-4000-8000-000000000099";
+    formData.set("commandId", commandId);
     formData.set("name", "Simple Company");
     formData.set("industry", "Education");
     formData.set("companyInformation", "A concise company profile.");
@@ -79,12 +94,12 @@ describe("localized portal action feedback", () => {
     formData.set("mainContactPhone", "+601100000001");
     formData.set("billingCycle", "Monthly");
     formData.set("logo", new File(["logo"], "logo.png", { type: "image/png" }));
-    formData.set("legalName", "Ignored Legal Name");
+    formData.set("legalName", "Simple Company Sdn Bhd");
     formData.set("registrationNumber", "IGNORED-REGISTRATION");
-    formData.set("websiteUrl", "https://ignored.example.test");
+    formData.set("websiteUrl", "https://simple.example.test");
     formData.set("billingContactName", "Ignored Billing Contact");
     formData.set("billingAddress", "Ignored Billing Address");
-    formData.set("notes", "Ignored onboarding notes");
+    formData.set("notes", "Owner-created onboarding notes");
 
     await expect(createCompanyAction(formData)).rejects.toThrow(
       "REDIRECT:/companies?notice=company-created&created=30000000-0000-4000-8000-000000000001",
@@ -94,21 +109,55 @@ describe("localized portal action feedback", () => {
     const input = mocks.createCompanyWithBrand.mock.calls[0]?.[0];
     expect(input).toMatchObject({
       name: "Simple Company",
-      legalName: "Simple Company",
+      legalName: "Simple Company Sdn Bhd",
       industry: "Education",
       companyInformation: "A concise company profile.",
       mainContactName: "Main Contact",
-      mainContactEmail: "contact@example.test",
-      mainContactPhone: "+601100000001",
-      billingContactName: "Main Contact",
-      billingContactEmail: "contact@example.test",
-      billingContactPhone: "+601100000001",
-      billingAddress: "Pending onboarding",
       billingCycle: "Monthly",
+      websiteUrl: "https://simple.example.test",
+      notes: "Owner-created onboarding notes",
     });
-    expect(input.registrationNumber).toMatch(/^PENDING-[0-9a-f-]{36}$/);
-    expect(input.websiteUrl).toBeUndefined();
-    expect(input.notes).toBeUndefined();
+    expect(input).not.toHaveProperty("registrationNumber");
+    expect(input).not.toHaveProperty("mainContactEmail");
+    expect(input).not.toHaveProperty("mainContactPhone");
+    expect(mocks.createCompanyWithBrand.mock.calls[0]?.[3]).toBe(commandId);
+  });
+
+  it("returns a stable local route for conflicting company command reuse", async () => {
+    mocks.requirePermission.mockResolvedValueOnce({
+      ...actor,
+      role: "PLATFORM_OWNER",
+      accountKind: "PLATFORM",
+      isOwner: true,
+    });
+    mocks.createCompanyWithBrand.mockRejectedValueOnce(
+      new CompanyCreationCommandConflictError(),
+    );
+    const formData = new FormData();
+    formData.set("commandId", "30000000-0000-4000-8000-000000000098");
+    formData.set("name", "Conflicting Company");
+    formData.set("legalName", "Conflicting Company Sdn Bhd");
+    formData.set("industry", "Education");
+    formData.set("companyInformation", "A valid company creation payload.");
+    formData.set("mainContactName", "Main Contact");
+    formData.set("billingCycle", "Monthly");
+    formData.set("websiteUrl", "");
+    formData.set("logo", new File(["logo"], "logo.png", { type: "image/png" }));
+    await expect(createCompanyAction(formData)).rejects.toThrow(
+      "REDIRECT:/companies/new?notice=company-command-conflict",
+    );
+  });
+
+  it("denies the company handover action before parsing input for an assigned CAM", async () => {
+    mocks.requirePermission.mockResolvedValueOnce({
+      ...actor,
+      role: "CLIENT_ACCOUNT_MANAGER",
+      accountKind: "PLATFORM",
+      isOwner: false,
+    });
+    await expect(assignCompanyManagerAction(new FormData())).rejects.toThrow(
+      "REDIRECT:/companies",
+    );
   });
 
   it("renders redirect notices in EN, AR and MS", () => {

@@ -64,7 +64,7 @@ export interface TransactionalEmailOutboxJob {
   actionUrl?: string;
   contact?: {
     name: string;
-    email: string;
+    email?: string;
     company: string;
     phone?: string;
     subject: string;
@@ -617,6 +617,16 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
       if (row.messageKind === "CONTACT_NOTIFICATION"
         || row.messageKind === "CONTACT_ACKNOWLEDGEMENT") {
         const acknowledgement = row.messageKind === "CONTACT_ACKNOWLEDGEMENT";
+        const contactEmail = typeof row.contactEmail === "string"
+          && EMAIL_PATTERN.test(row.contactEmail)
+          ? row.contactEmail
+          : undefined;
+        const recipientEmail = acknowledgement
+          ? contactEmail
+          : privateContactRecipient ?? undefined;
+        if (!recipientEmail) {
+          throw new Error("The contact email recipient is unavailable.");
+        }
         return {
           deliveryId: row.deliveryId,
           leaseId,
@@ -627,16 +637,14 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
           templateVersion: row.templateVersion,
           priority: row.priority,
           providerAgent: row.providerAgent,
-          recipientEmail: acknowledgement
-            ? String(row.contactEmail)
-            : String(privateContactRecipient),
+          recipientEmail,
           recipientName: acknowledgement
             ? String(row.contactName)
             : "Axora contact team",
-          replyToEmail: acknowledgement ? undefined : String(row.contactEmail),
+          replyToEmail: acknowledgement ? undefined : contactEmail,
           contact: {
             name: String(row.contactName),
-            email: String(row.contactEmail),
+            ...(contactEmail ? { email: contactEmail } : {}),
             company: String(row.companyName),
             ...(row.phone ? { phone: row.phone } : {}),
             subject: String(row.subject),

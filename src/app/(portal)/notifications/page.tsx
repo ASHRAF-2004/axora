@@ -112,6 +112,19 @@ function ReminderSelect({
   </select></label>;
 }
 
+function CurrentFilterInputs({
+  status,
+  category,
+}: {
+  status: NotificationStatusFilter;
+  category: NotificationCenterCategoryFilter;
+}) {
+  return <>
+    <input type="hidden" name="returnStatus" value={status} />
+    <input type="hidden" name="returnCategory" value={category} />
+  </>;
+}
+
 export default async function NotificationsPage({
   searchParams,
 }: {
@@ -185,6 +198,7 @@ export default async function NotificationsPage({
           <div><h2 id="notification-inbox-title">{copy.inbox}</h2><p aria-live="polite">{snapshot.unreadCount ? copy.unreadCount(snapshot.unreadCount) : copy.current}</p></div>
           {snapshot.unreadCount ? <form action={markAllNotificationsReadAction}>
             <input type="hidden" name="commandId" value={randomUUID()} />
+            <CurrentFilterInputs status={selectedStatus} category={selectedCategory} />
             <OperationalSubmitButton className="button button-secondary" label={copy.markAll} pendingLabel={copy.saving} />
           </form> : null}
         </header>
@@ -210,11 +224,13 @@ export default async function NotificationsPage({
                 <input type="hidden" name="commandId" value={randomUUID()} />
                 <input type="hidden" name="notificationId" value={notification.id} />
                 <input type="hidden" name="stateVersion" value={notification.stateVersion} />
+                <CurrentFilterInputs status={selectedStatus} category={selectedCategory} />
                 <OperationalSubmitButton label={copy.markRead} pendingLabel={copy.saving} />
               </form> : null}
               {!notification.archivedAt ? <form action={archiveNotificationAction}>
                 <input type="hidden" name="commandId" value={randomUUID()} />
                 <input type="hidden" name="notificationId" value={notification.id} />
+                <CurrentFilterInputs status={selectedStatus} category={selectedCategory} />
                 <OperationalSubmitButton label={copy.archive} pendingLabel={copy.saving} />
               </form> : null}
             </div>
@@ -239,6 +255,7 @@ export default async function NotificationsPage({
                   <input type="hidden" name="commandId" value={randomUUID()} />
                   <input type="hidden" name="scope" value="USER" />
                   <input type="hidden" name="eventKey" value={preference.eventKey} />
+                  <CurrentFilterInputs status={selectedStatus} category={selectedCategory} />
                   <strong>{copy.personalChoice}</strong>
                   <label>{copy.email}{preference.mandatoryEmail ? <><input type="hidden" name="emailEnabled" value="true" /><input type="checkbox" checked disabled /></> : <input name="emailEnabled" type="checkbox" defaultChecked={preference.emailEnabled} />}</label>
                   {preference.mandatoryEmail ? <><input type="hidden" name="deliverySchedule" value="IMMEDIATE" /><label>{copy.schedule}<select value="IMMEDIATE" disabled><option value="IMMEDIATE">{copy.immediate}</option></select></label></> : <label>{copy.schedule}<select name="deliverySchedule" defaultValue={preference.deliverySchedule}><option value="IMMEDIATE">{copy.immediate}</option><option value="DAILY">{copy.daily}</option><option value="WEEKLY">{copy.weekly}</option></select></label>}
@@ -250,6 +267,7 @@ export default async function NotificationsPage({
                   <input type="hidden" name="scope" value="COMPANY" />
                   <input type="hidden" name="companyId" value={snapshot.companyId} />
                   <input type="hidden" name="eventKey" value={preference.eventKey} />
+                  <CurrentFilterInputs status={selectedStatus} category={selectedCategory} />
                   <strong>{copy.companyDefault}</strong>
                   <label>{copy.email}<input name="emailEnabled" type="checkbox" defaultChecked={preference.companyEmailEnabled ?? true} /></label>
                   <label>{copy.schedule}<select name="deliverySchedule" defaultValue={preference.companyDeliverySchedule ?? "IMMEDIATE"}><option value="IMMEDIATE">{copy.immediate}</option><option value="DAILY">{copy.daily}</option><option value="WEEKLY">{copy.weekly}</option></select></label>

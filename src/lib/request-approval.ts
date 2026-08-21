@@ -30,6 +30,7 @@ export type ApprovalQueueItem = {
   lines: Array<Record<string, unknown>>;
   canResolveOverBudget: boolean;
   canOverrideCeiling: boolean;
+  canApproveAndPay: boolean;
 };
 
 export type ApprovalWorkspace = {
@@ -125,12 +126,13 @@ export async function getApprovalWorkspace(actor: Actor) {
             lines: request.lines as unknown as Array<Record<string, unknown>>,
             canResolveOverBudget: ["ADMIN", "COMPANY_ADMIN"].includes(actor.role ?? ""),
             canOverrideCeiling: false,
+            canApproveAndPay: request.estimatedTotal <= available,
           };
         }),
     } satisfies ApprovalWorkspace;
   }
   const result = await query<{ payload: ApprovalWorkspace | null }>(
-    "SELECT public.axora_request_approval_workspace($1,$2,now()) AS payload",
+    "SELECT public.axora_request_approval_workspace_v2($1,$2,now()) AS payload",
     [actor.id, assignmentId(actor)],
   );
   return result.rows[0]?.payload ?? null;

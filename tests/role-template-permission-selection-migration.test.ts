@@ -109,7 +109,7 @@ async function replacePermissionSet(
 }
 
 describe("invited role-template permission selection", () => {
-  it("accepts target role defaults that the owner cannot operate personally", async () => {
+  it("accepts target role defaults under restored Owner lead authority", async () => {
     const db = await fixture();
     try {
       const ownerLeadAuthority = await db.query<{ count: number }>(`
@@ -123,7 +123,7 @@ describe("invited role-template permission selection", () => {
             'company.lead.assign','company.lead.reassign'
           )
       `);
-      expect(ownerLeadAuthority.rows[0]?.count).toBe(0);
+      expect(ownerLeadAuthority.rows[0]?.count).toBe(2);
 
       const hrDefaults = defaultPermissionsForRole(
         "HUMAN_RESOURCES_MANAGEMENT",
@@ -170,7 +170,7 @@ describe("invited role-template permission selection", () => {
     }
   }, 45_000);
 
-  it("still rejects a true explicit grant outside the inviter's authority", async () => {
+  it("lets the Owner explicitly grant CAM lead reassignment authority", async () => {
     const db = await fixture();
     try {
       const managerDefaults = defaultPermissionsForRole(
@@ -189,16 +189,23 @@ describe("invited role-template permission selection", () => {
         ids.manager,
         ids.managerAssignment,
         [...managerDefaults, "company.lead.reassign"],
-      )).rejects.toThrow(
-        /cannot grant permission company\.lead\.reassign/i,
-      );
+      )).resolves.toBeDefined();
 
       const after = await db.query<{ count: number }>(`
         SELECT count(*)::int AS count
         FROM user_permission_overrides
         WHERE user_id=$1 AND active
       `, [ids.manager]);
-      expect(after.rows[0]).toEqual(before.rows[0]);
+      expect(after.rows[0]?.count).toBe((before.rows[0]?.count ?? 0) + 1);
+      const explicitGrant = await db.query<{ count: number }>(`
+        SELECT count(*)::int AS count
+        FROM user_permission_overrides override_row
+        JOIN permissions permission ON permission.id=override_row.permission_id
+        WHERE override_row.user_id=$1 AND override_row.active
+          AND override_row.effect='GRANT'
+          AND permission.permission_code='company.lead.reassign'
+      `, [ids.manager]);
+      expect(explicitGrant.rows[0]?.count).toBe(1);
     } finally {
       await db.close();
     }

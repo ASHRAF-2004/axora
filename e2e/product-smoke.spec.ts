@@ -12,7 +12,7 @@ const authenticatedRoutes = [
   { path: "/branches", heading: "Branches & monthly budgets" },
   { path: "/reports", heading: "Reports and reconciliation" },
   { path: "/audit", heading: "Audit history" },
-  { path: "/users", heading: "Create named accounts" },
+  { path: "/users", heading: "Axora Users" },
   { path: "/support", heading: "System and account diagnostics" },
   { path: "/settings", heading: "Settings and security" },
   { path: "/help", heading: "How Axora operates" },

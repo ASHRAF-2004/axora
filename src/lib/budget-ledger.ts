@@ -1,5 +1,6 @@
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { getDemoStore } from "./demo-data";
+import type { MoneyDecimalString } from "./money-decimal";
 
 export type BudgetPeriodSummary = {
   id: string;
@@ -200,7 +201,7 @@ export async function adjustBudgetAllocation(input: {
   actor: Actor;
   accountId: string;
   direction: "INCREASE" | "REDUCE";
-  amount: number;
+  amount: MoneyDecimalString;
   recurring: boolean;
   explanation: string;
   idempotencyKey: string;
@@ -225,7 +226,7 @@ export async function transferBudgetAllocation(input: {
   actor: Actor;
   sourceAccountId: string;
   targetAccountId: string;
-  amount: number;
+  amount: MoneyDecimalString;
   recurring: boolean;
   explanation: string;
   idempotencyKey: string;
@@ -249,7 +250,7 @@ export async function transferBudgetAllocation(input: {
 export async function setBudgetAllocation(input: {
   actor: Actor;
   accountId: string;
-  amount: number;
+  amount: MoneyDecimalString;
   explanation: string;
   idempotencyKey: string;
 }) {
@@ -271,7 +272,7 @@ export async function setBudgetAllocation(input: {
 export async function setCompanyCeiling(input: {
   actor: Actor;
   companyId: string;
-  amount: number;
+  amount: MoneyDecimalString;
   currency: string;
   explanation: string;
   idempotencyKey: string;

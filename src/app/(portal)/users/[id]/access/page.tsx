@@ -17,6 +17,8 @@ import { formatDateTime } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
 import { localizedAccountRole } from "@/lib/user-form-i18n";
 import { formatZonedDateTimeInput } from "@/lib/zoned-date-time";
+import { peopleWorkspaceMessages } from "@/lib/people-workspaces-i18n";
+import { localizePermissionOption } from "@/lib/permission-catalog-i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -118,6 +120,7 @@ export default async function UserAccessPage({
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const copy = accessAdministrationMessages(locale);
+  const workspaceCopy = peopleWorkspaceMessages(locale);
   const { id } = await params;
   const query = await searchParams;
 
@@ -145,11 +148,14 @@ export default async function UserAccessPage({
     selectedScope.supplierId,
   ] as const;
   const setOverrideAction = setPermissionOverrideAction.bind(null, ...actionArguments);
-  const grantableOptions = snapshot.permissionOptions.filter((permission) => (
+  const localizedPermissionOptions = snapshot.permissionOptions.map((permission) => (
+    localizePermissionOption(permission, locale)
+  ));
+  const grantableOptions = localizedPermissionOptions.filter((permission) => (
     permission.actorCanGrant
   ));
   const groupedPermissions = new Map<string, PermissionOption[]>();
-  for (const permission of snapshot.permissionOptions) {
+  for (const permission of localizedPermissionOptions) {
     const group = groupedPermissions.get(permission.group) ?? [];
     group.push(permission);
     groupedPermissions.set(permission.group, group);
@@ -159,6 +165,14 @@ export default async function UserAccessPage({
     new Date(snapshot.capturedAt.getTime() + 60_000),
     timeZone,
   );
+  const usersHref = snapshot.identity.accountKind === "COMPANY" && selectedScope.companyId
+    ? `/companies/${selectedScope.companyId}/users`
+    : snapshot.identity.accountKind === "DELIVERY" ? "/deliveries" : "/users";
+  const usersLabel = snapshot.identity.accountKind === "COMPANY"
+    ? workspaceCopy.backUsers
+    : snapshot.identity.accountKind === "DELIVERY"
+      ? workspaceCopy.backDelivery
+      : workspaceCopy.axoraTitle;
 
   return (
     <>
@@ -168,7 +182,7 @@ export default async function UserAccessPage({
         description={copy.description}
       />
 
-      <p><Link href="/users" className="button button-secondary">{copy.backToUsers}</Link></p>
+      <p><Link href={usersHref} className="button button-secondary">{usersLabel}</Link></p>
 
       {notice ? <div className="callout" role="status"><strong>{notice}</strong></div> : null}
 
@@ -244,7 +258,7 @@ export default async function UserAccessPage({
               snapshot.identity.id,
               snapshot.selectedAssignmentId,
             )}
-            options={snapshot.permissionOptions.map((permission) => ({
+            options={localizedPermissionOptions.map((permission) => ({
               code: permission.code,
               group: permission.group,
               label: permission.label,

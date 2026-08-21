@@ -9,6 +9,7 @@ export default defineConfig([
     ".next/**",
     "coverage/**",
     "data/**",
+    "output/**",
     "reports/**",
     "tmp/**",
     "workers/**/.wrangler/**",

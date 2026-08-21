@@ -30,10 +30,11 @@ describe("role-specific portal navigation boundaries", () => {
     };
 
     expect(hrefs(PRIMARY_NAVIGATION, companyAdmin)).toEqual([
-      "/dashboard", "/receiving", "/products", "/requests", "/approvals", "/budgets", "/deliveries", "/finance",
+      "/dashboard", "/receiving", "/products", "/requests", "/approvals", "/budgets", "/wallet", "/deliveries", "/finance",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).toEqual([
-      "/receiving", "/branches", "/budgets", "/users", "/reports", "/audit", "/settings", "/help",
+      "/receiving", "/branches", "/budgets", "/wallet",
+      `/companies/${companyId}/users`, "/reports", "/audit", "/settings", "/help",
     ]);
     expect(canAccess(companyAdmin, "manage_catalog")).toBe(false);
     expect(canAccess(companyAdmin, "manage_commercial_pricing")).toBe(false);

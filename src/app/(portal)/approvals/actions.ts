@@ -2,35 +2,64 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth";
+import { requirePermission, requireSession } from "@/lib/auth";
 import { decideRequestApproval } from "@/lib/request-approval";
 import { decideRequestActual } from "@/lib/budget-variance";
+import { approveAndPay } from "@/lib/company-wallet";
+import { isApproveAndPayLocalNotReadyState } from "@/lib/finance-business-results";
+import { z } from "zod";
 
 function field(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
 }
 
 export async function decideRequestApprovalAction(formData: FormData) {
-  const actor = await requireSession();
+  const actor = await requirePermission("approve_requests");
   const requestId = field(formData, "requestId");
   const revision = Number(field(formData, "approvalRevision"));
   const rawAction = field(formData, "decision").toUpperCase();
-  const action = rawAction === "APPROVE" || rawAction === "REJECT"
+  const action = rawAction === "APPROVE" || rawAction === "APPROVE_AND_PAY"
+    || rawAction === "REJECT"
     || rawAction === "RETURN" || rawAction === "CANCEL" ? rawAction : null;
   const reason = field(formData, "reason");
-  const option = field(formData, "optionCode").toUpperCase();
-  const optionCode = option === "ONE_TIME_EXCEPTION" || option === "TRANSFER_RESERVE"
-    || option === "TEMPORARY_PERIOD_INCREASE" ? option : undefined;
-
+  const rawOption = field(formData, "optionCode").toUpperCase();
+  const optionCode = rawOption === "ONE_TIME_EXCEPTION"
+    || rawOption === "TRANSFER_RESERVE"
+    || rawOption === "TEMPORARY_PERIOD_INCREASE" ? rawOption : undefined;
   if (!requestId || !Number.isInteger(revision) || revision<1 || !action || reason.length<3) {
     redirect("/approvals?error=invalid");
+  }
+  if (action === "APPROVE_AND_PAY") {
+    const commandId = z.string().uuid().safeParse(field(formData, "commandId"));
+    if (!commandId.success) redirect("/approvals?error=invalid");
+    let result: Awaited<ReturnType<typeof approveAndPay>>;
+    try {
+      result = await approveAndPay(actor, {
+        requestId,
+        expectedApprovalRevision: revision,
+        reason,
+        commandId: commandId.data,
+      });
+    } catch {
+      redirect("/approvals?error=decision");
+    }
+    revalidatePath("/approvals");
+    revalidatePath("/budgets");
+    revalidatePath("/wallet");
+    revalidatePath(`/requests/${requestId}`);
+    const feedback = new URLSearchParams({ result: result.status });
+    if (result.status === "NOT_READY"
+      && isApproveAndPayLocalNotReadyState(result.requestState)) {
+      feedback.set("state", result.requestState);
+    }
+    redirect(`/approvals?${feedback.toString()}`);
   }
   try {
     await decideRequestApproval({
       actor,
       requestId,
       expectedApprovalRevision: revision,
-      action,
+      action: action as "APPROVE" | "REJECT" | "RETURN" | "CANCEL",
       optionCode,
       sourceBudgetAccountId: field(formData, "sourceBudgetAccountId") || undefined,
       reason,

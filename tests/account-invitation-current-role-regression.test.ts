@@ -75,7 +75,7 @@ describe("current account invitation contract", () => {
     }
   });
 
-  it("keeps Create User access read-only while server-side explicit overrides remain gated", () => {
+  it("offers explicit creation-time customization while server-side overrides remain gated", () => {
     const form = readFileSync(
       new URL("../src/components/UserCreateForm.tsx", import.meta.url),
       "utf8",
@@ -85,9 +85,9 @@ describe("current account invitation contract", () => {
       "utf8",
     );
 
-    expect(form).not.toContain("PermissionChecklist");
-    expect(form).not.toContain('name="permissions"');
-    expect(form).not.toContain('name="permissionsCustomized"');
+    expect(form).toContain("PermissionChecklist");
+    expect(form).toContain("customizablePermissions");
+    expect(form).toContain('name="permissionsCustomized"');
     expect(action).toContain('readFormText(\n    formData,\n    "permissionsCustomized"');
     expect(action).toContain("permissions: permissionsCustomized");
     expect(action).toContain(": undefined");

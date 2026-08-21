@@ -350,7 +350,7 @@ export async function renderTransactionalEmail(input, options = {}) {
   } else if (input.messageKind === "CONTACT_NOTIFICATION") {
     const contact = input.contact ?? {};
     const name = boundedText(contact.name, "Contact name");
-    const email = emailAddress(contact.email, "Contact email");
+    const email = contact.email ? emailAddress(contact.email, "Contact email") : undefined;
     const company = boundedText(contact.company, "Company name");
     const phone = contact.phone ? boundedText(contact.phone, "Phone", 40) : undefined;
     const enquirySubject = boundedText(contact.subject, "Contact subject");
@@ -360,16 +360,19 @@ export async function renderTransactionalEmail(input, options = {}) {
     subject = kindCopy.subject;
     preheader = kindCopy.intro;
     details = detailRows([
-      [kindCopy.labels.name, name], [kindCopy.labels.email, email],
+      [kindCopy.labels.name, name],
+      ...(email ? [[kindCopy.labels.email, email]] : []),
       [kindCopy.labels.company, company],
       ...(phone ? [[kindCopy.labels.phone, phone]] : []),
       [kindCopy.labels.subject, enquirySubject], [kindCopy.labels.submitted, submitted],
     ], copy.align);
     messageBlock = `<div style="margin-top:20px;padding:18px 20px;background:#f3f8fc;font-family:Arial,Helvetica,sans-serif;color:#304b65;text-align:${copy.align}"><strong style="display:block;margin-bottom:8px;color:#0f3156">${escapeTransactionalEmailHtml(kindCopy.message)}</strong><p style="margin:0;font-size:14px;line-height:23px;white-space:normal">${escapeTransactionalEmailHtml(message).replaceAll(/\r?\n/g, "<br>")}</p></div>`;
-    replyToEmail = email;
-    replyToName = name;
+    if (email) {
+      replyToEmail = email;
+      replyToName = name;
+    }
     helpText = `${kindCopy.help} ${copy.supportLabel}: ${supportEmail}`;
-    text = `${kindCopy.title}\n\n${kindCopy.labels.name}: ${name}\n${kindCopy.labels.email}: ${email}\n${kindCopy.labels.company}: ${company}${phone ? `\n${kindCopy.labels.phone}: ${phone}` : ""}\n${kindCopy.labels.subject}: ${enquirySubject}\n${kindCopy.labels.submitted}: ${submitted}\n\n${kindCopy.message}:\n${message}\n\n${kindCopy.security}\n${helpText}`;
+    text = `${kindCopy.title}\n\n${kindCopy.labels.name}: ${name}${email ? `\n${kindCopy.labels.email}: ${email}` : ""}\n${kindCopy.labels.company}: ${company}${phone ? `\n${kindCopy.labels.phone}: ${phone}` : ""}\n${kindCopy.labels.subject}: ${enquirySubject}\n${kindCopy.labels.submitted}: ${submitted}\n\n${kindCopy.message}:\n${message}\n\n${kindCopy.security}\n${helpText}`;
   } else if (input.messageKind === "INVOICE_FINALIZED") {
     const invoice = input.invoice ?? {};
     const invoiceNumber = boundedText(invoice.invoiceNumber, "Invoice number", 100);

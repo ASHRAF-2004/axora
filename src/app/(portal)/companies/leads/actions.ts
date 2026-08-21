@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { requirePermission } from "@/lib/auth";
 import {
   addCompanyLeadNote,
@@ -9,9 +10,12 @@ import {
   COMPANY_LEAD_STATUSES,
   completeCompanyLeadTask,
   convertCompanyLead,
+  CompanyLeadCommandConflictError,
+  createAcquisitionLead,
   resolveCompanyLeadDuplicate,
   transitionCompanyLead,
 } from "@/lib/company-leads";
+import { acquisitionLeadCreateSchema } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -30,6 +34,41 @@ function finish(notice: string, leadId: string) {
   revalidatePath("/companies");
   revalidatePath("/dashboard");
   redirect(`/companies/leads?notice=${encodeURIComponent(notice)}&lead=${encodeURIComponent(leadId)}`);
+}
+
+export async function createCompanyLeadAction(formData: FormData) {
+  const current = await actor();
+  if (!current.isOwner || current.accountKind !== "PLATFORM") {
+    redirect("/companies/leads");
+  }
+  const input = acquisitionLeadCreateSchema.parse({
+    companyName: value(formData, "companyName"),
+    legalName: value(formData, "legalName"),
+    contactName: value(formData, "contactName"),
+    city: value(formData, "city"),
+    industry: value(formData, "industry"),
+    employeeRange: value(formData, "employeeRange"),
+    branchRange: value(formData, "branchRange"),
+    spendRange: value(formData, "spendRange"),
+    locale: value(formData, "locale"),
+    timezone: value(formData, "timezone"),
+    subject: value(formData, "subject"),
+    message: value(formData, "message"),
+  });
+  let mutation: Awaited<ReturnType<typeof createAcquisitionLead>>;
+  try {
+    mutation = await createAcquisitionLead(
+      current,
+      input,
+      value(formData, "commandId") || randomUUID(),
+    );
+  } catch (error) {
+    if (error instanceof CompanyLeadCommandConflictError) {
+      redirect("/companies/leads/new?notice=lead-command-conflict");
+    }
+    throw error;
+  }
+  finish("lead-created", mutation.leadId);
 }
 
 export async function assignCompanyLeadAction(formData: FormData) {

@@ -332,6 +332,78 @@ BEGIN
   END IF;
 END $$;
 
+-- Prompt 7 operating-model capabilities. Historical columns and callable
+-- signatures remain for rollback compatibility; private evidence tables and
+-- internal financial primitives are never exposed to the application role.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regprocedure(
+      'public.axora_record_public_contact_submission(jsonb,timestamp with time zone)'
+    ) IS NOT NULL
+  THEN
+    REVOKE ALL ON TABLE public.company_lead_profiles,public.company_lead_intake_rows,
+      public.branch_delivery_location_commands
+      FROM axora_app;
+    REVOKE ALL ON FUNCTION
+      public.axora_create_company_record_internal(uuid,uuid,uuid,text,text,text,text,text,text,text,text,timestamptz),
+      public.axora_protect_company_lead_profile()
+      FROM axora_app;
+    IF to_regprocedure(
+      'public.axora_delivery_notification_recipients(uuid,uuid,timestamp with time zone)'
+    ) IS NOT NULL THEN
+      REVOKE ALL ON FUNCTION
+        public.axora_delivery_notification_recipients(uuid,uuid,timestamptz)
+        FROM axora_app;
+    END IF;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_record_public_contact_submission(jsonb,timestamptz),
+      public.axora_create_acquisition_lead(uuid,uuid,jsonb,uuid,timestamptz),
+      public.axora_create_company_direct(uuid,uuid,text,text,text,text,text,text,text,text,timestamptz),
+      public.axora_create_company_direct(uuid,uuid,uuid,text,text,text,text,text,text,text,text,text,timestamptz),
+      public.axora_branch_delivery_location_workspace(uuid,uuid,uuid,timestamptz),
+      public.axora_save_branch_delivery_location(uuid,uuid,uuid,text,numeric,numeric,text,text,uuid,timestamptz)
+      TO axora_app;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.company_wallets') IS NOT NULL
+  THEN
+    REVOKE ALL ON TABLE
+      public.company_wallets,public.company_wallet_top_up_requests,
+      public.company_wallet_ledger_entries,public.company_wallet_top_up_events,
+      public.approve_and_pay_commands,public.v_company_wallet_balances
+      FROM axora_app;
+    REVOKE ALL ON FUNCTION
+      public.axora_create_company_wallet(),
+      public.axora_effective_access_snapshot_unfiltered_internal(uuid,uuid,timestamptz),
+      public.axora_permission_allowed_for_account_kind(text,text),
+      public.axora_enforce_permission_account_kind(),
+      public.axora_protect_top_up_request(),
+      public.axora_protect_company_wallet(),
+      public.axora_workflow_notification_recipient_is_valid_base(uuid,uuid,uuid),
+      public.axora_delivery_actor_notification_is_valid(uuid,uuid,uuid),
+      public.axora_finance_event_copy(text,text,text),
+      public.axora_emit_company_finance_event(uuid,uuid,uuid,text,uuid,text,text,uuid,uuid,text,text,text,jsonb,timestamptz),
+      public.axora_request_can_approve_and_pay_internal(jsonb,uuid,uuid,timestamptz),
+      public.axora_emit_budget_notification(uuid,text,text,uuid,uuid,uuid,timestamptz,jsonb),
+      public.axora_complete_payment_internal(uuid,uuid,uuid,text,text,timestamptz),
+      public.axora_finalize_request_budget_internal(uuid,uuid,uuid,numeric,text,text,timestamptz),
+      public.axora_approve_and_pay_internal(uuid,uuid,uuid,integer,text,uuid,timestamptz,boolean),
+      public.axora_finalize_request_budget(uuid,uuid,uuid,numeric,text,text,timestamptz)
+      FROM axora_app;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_company_wallet_workspace(uuid,uuid,uuid,timestamptz),
+      public.axora_request_approval_workspace_v2(uuid,uuid,timestamptz),
+      public.axora_request_company_wallet_top_up(uuid,uuid,uuid,numeric,text,text,uuid,timestamptz),
+      public.axora_record_company_wallet_top_up(uuid,uuid,uuid,uuid,numeric,date,text,text,uuid,timestamptz),
+      public.axora_approve_and_pay(uuid,uuid,uuid,integer,text,uuid,timestamptz),
+      public.axora_complete_payment(uuid,uuid,uuid,text,text,timestamptz),
+      public.axora_company_deletion_impact_v2(uuid,uuid,uuid,timestamptz)
+      TO axora_app;
+  END IF;
+END $$;
+
 -- Company deletion is split between user-facing owner capabilities and a
 -- dedicated external-cleanup worker. The broad legacy baseline grants above
 -- must never collapse that boundary when deployment/reset reapplies grants.
@@ -655,5 +727,49 @@ BEGIN
   THEN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_remove_user_account(uuid,uuid,uuid,text,timestamptz) TO axora_app';
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_prevent_removed_user_reactivation() FROM axora_app';
+  END IF;
+END $$;
+
+-- Apply the Prompt 7 boundary last because earlier compatibility sections
+-- intentionally grant the historical checkout/finalization entry points.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.company_wallets') IS NOT NULL
+  THEN
+    REVOKE ALL ON TABLE
+      public.company_wallets,public.company_wallet_top_up_requests,
+      public.company_wallet_ledger_entries,public.company_wallet_top_up_events,
+      public.approve_and_pay_commands,public.v_company_wallet_balances
+      FROM axora_app;
+    REVOKE ALL ON FUNCTION
+      public.axora_create_company_wallet(),
+      public.axora_effective_access_snapshot_unfiltered_internal(uuid,uuid,timestamptz),
+      public.axora_permission_allowed_for_account_kind(text,text),
+      public.axora_enforce_permission_account_kind(),
+      public.axora_protect_top_up_request(),
+      public.axora_protect_company_wallet(),
+      public.axora_workflow_notification_recipient_is_valid_base(uuid,uuid,uuid),
+      public.axora_delivery_actor_notification_is_valid(uuid,uuid,uuid),
+      public.axora_finance_event_copy(text,text,text),
+      public.axora_emit_company_finance_event(uuid,uuid,uuid,text,uuid,text,text,uuid,uuid,text,text,text,jsonb,timestamptz),
+      public.axora_request_can_approve_and_pay_internal(jsonb,uuid,uuid,timestamptz),
+      public.axora_emit_budget_notification(uuid,text,text,uuid,uuid,uuid,timestamptz,jsonb),
+      public.axora_complete_payment_internal(uuid,uuid,uuid,text,text,timestamptz),
+      public.axora_finalize_request_budget_internal(uuid,uuid,uuid,numeric,text,text,timestamptz),
+      public.axora_approve_and_pay_internal(uuid,uuid,uuid,integer,text,uuid,timestamptz,boolean),
+      public.axora_finalize_request_budget(uuid,uuid,uuid,numeric,text,text,timestamptz)
+      FROM axora_app;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_company_wallet_workspace(uuid,uuid,uuid,timestamptz),
+      public.axora_request_approval_workspace_v2(uuid,uuid,timestamptz),
+      public.axora_request_company_wallet_top_up(uuid,uuid,uuid,numeric,text,text,uuid,timestamptz),
+      public.axora_record_company_wallet_top_up(uuid,uuid,uuid,uuid,numeric,date,text,text,uuid,timestamptz),
+      public.axora_approve_and_pay(uuid,uuid,uuid,integer,text,uuid,timestamptz),
+      public.axora_complete_payment(uuid,uuid,uuid,text,text,timestamptz),
+      public.axora_final_invoice_summary(uuid,uuid,uuid,timestamptz),
+      public.axora_delivery_evidence_file(uuid,uuid,uuid,timestamptz),
+      public.axora_company_deletion_impact_v2(uuid,uuid,uuid,timestamptz)
+      TO axora_app;
   END IF;
 END $$;

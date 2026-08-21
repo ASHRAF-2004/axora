@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { deliveryWorkflowMessages, deliveryWorkflowStatusLabel, type DeliveryWorkflowLocale } from "@/lib/delivery-workflow-i18n";
+import { DeliveryDestinationMap } from "./DeliveryDestinationMap";
 import { DriverTrackingPanel } from "./DeliveryTrackingPanels";
 import styles from "./DeliveryExecution.module.css";
 
@@ -17,6 +18,8 @@ type Job = {
   branchName: string; destinationTimezone: string; scheduledLocalStart?: string;
   scheduledLocalEnd?: string; acceptanceDeadline?: string; slaDueAt?: string;
   proofPolicy: string[]; proofSatisfied: boolean; address: string;
+  destinationLatitude?: number; destinationLongitude?: number;
+  instructions?: string;
   vehicle?: string; shift?: string; zone?: string; lines: Line[];
   events: Event[]; evidence: Evidence[]; actualHistory: Array<{ id: string; state: string }>;
 };
@@ -120,6 +123,10 @@ function availableEvents(job: Job) {
     default: return [];
   }
 }
+
+const NAVIGATION_STATUSES = new Set([
+  "OUT_FOR_DELIVERY", "ARRIVED", "PARTIALLY_DELIVERED", "DELIVERED",
+]);
 
 export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { locale?: DeliveryWorkflowLocale }) {
   const copy = deliveryWorkflowMessages(initialLocale);
@@ -325,6 +332,18 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
             <div className={styles.fact}><dt>{copy.proof}</dt><dd>{job.proofPolicy.join(" + ")}<br />{job.proofSatisfied ? copy.proofReady : copy.proofMissing}</dd></div>
           </dl>
           <p>{job.address}</p>
+          {job.instructions ? <p><strong>{copy.instructions}:</strong> {job.instructions}</p> : null}
+          {NAVIGATION_STATUSES.has(job.status) ? (
+            typeof job.destinationLatitude === "number"
+              && typeof job.destinationLongitude === "number"
+              ? <DeliveryDestinationMap
+                  address={job.address}
+                  latitude={job.destinationLatitude}
+                  locale={initialLocale}
+                  longitude={job.destinationLongitude}
+                />
+              : <p className={styles.error} role="status">{copy.navigationUnavailable}</p>
+          ) : null}
           <label>{copy.note}<textarea value={notes[job.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [job.id]: event.target.value }))} maxLength={1000} /></label>
           {job.status === "ARRIVED" ? <div className={styles.formGrid}>{job.lines.map((line) => <label key={line.id}>{line.productName}<input id={`partial-${job.id}-${line.id}`} type="number" min="0" max={line.quantity} step="0.001" defaultValue={line.quantity} /></label>)}</div> : null}
           <div className={styles.actions}>{availableEvents(job).map((type) => <button className={styles.actionButton} data-primary={["ACCEPTED", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED"].includes(type)} disabled={busy || (type === "COMPLETED" && !job.proofSatisfied)} key={type} type="button" onClick={() => void sendEvent(job, type)}>{({

@@ -1,4 +1,5 @@
 import { isDemoMode, query, withAuditTransaction } from "./db";
+import type { MoneyDecimalString } from "./money-decimal";
 
 type Actor = {
   id: string;
@@ -136,10 +137,10 @@ export type BudgetCycleConfig = {
   anchorLocal: string;
   effectiveLocal?: string;
   dstResolution: BudgetCycleSchedule["dstResolution"];
-  fixedAllocation: number;
+  fixedAllocation: MoneyDecimalString;
   rolloverMode: BudgetCycleSchedule["rolloverMode"];
   rolloverPercentage?: number;
-  customRolloverAmount?: number;
+  customRolloverAmount?: MoneyDecimalString;
   lowThresholdPercentage: number;
   criticalThresholdPercentage: number;
   hysteresisPercentage: number;
@@ -274,7 +275,7 @@ export async function requestBudgetAdjustment(input: {
   budgetAccountId: string;
   adjustment: {
     adjustmentType: "ONE_TIME" | "TEMPORARY" | "PERMANENT" | "TRANSFER";
-    amount: number;
+    amount: MoneyDecimalString;
     sourceBudgetAccountId?: string;
     effectiveUntil?: string;
   };

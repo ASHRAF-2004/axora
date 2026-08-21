@@ -18,10 +18,11 @@ export const PRIMARY_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/dashboard", label: "Dashboard", permission: "view_dashboard" },
   { href: "/driver", label: "Delivery Guy", permission: "view_delivery_portal" },
   { href: "/receiving", label: "Receiving", permission: "view_receiving" },
-  { href: "/products", label: "Shop", permission: "view_catalog" },
+  { href: "/products", label: "Shopping", permission: "view_catalog" },
   { href: "/requests", label: "Requests", permission: "view_requests" },
   { href: "/approvals", label: "Approvals", permission: "view_approvals" },
   { href: "/budgets", label: "Budgets", permission: "view_budgets", companyOnly: true },
+  { href: "/wallet", label: "Company Wallet", permission: "view_wallet" },
   { href: "/deliveries", label: "Deliveries", permission: "view_deliveries" },
   { href: "/finance", label: "Invoices", permission: "view_invoices" },
 ];
@@ -33,6 +34,7 @@ export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/products", label: "Global catalog", description: "Products and customer-facing images", permission: "manage_catalog", group: "administration" },
   { href: "/branches", label: "Branches & budgets", description: "Company structure and controls", permission: "view_branches", group: "administration" },
   { href: "/budgets", label: "Budget ledger", description: "Authorization periods, balances and reservations", permission: "view_budgets", companyOnly: true, group: "administration" },
+  { href: "/wallet", label: "Company Wallet", description: "Actual funds, top-ups and immutable wallet evidence", permission: "view_wallet", group: "administration" },
   { href: "/users", label: "People & access", description: "Invitations, roles and scope", permission: "manage_users", group: "administration" },
   { href: "/reports", label: "Reports", description: "Operational and company insights", permission: "view_reports", group: "insight" },
   { href: "/audit", label: "Audit history", description: "Read-only evidence trail", permission: "view_audit", group: "insight" },
@@ -52,9 +54,15 @@ export function visiblePortalNavigation(
     if (item.companyOnly && user.accountKind !== "COMPANY") return false;
     return !item.permission || canAccess(user, item.permission);
   }).map((item) => ({
-    href: item.href,
-    label: messages.navigation[item.href]?.label ?? item.label,
-    description: messages.navigation[item.href]?.description ?? item.description,
+    href: item.href === "/users" && user.accountKind === "COMPANY" && user.companyId
+      ? `/companies/${user.companyId}/users`
+      : item.href,
+    label: messages.navigation[
+      item.href === "/users" && user.accountKind === "COMPANY" ? "/company-users" : item.href
+    ]?.label ?? item.label,
+    description: messages.navigation[
+      item.href === "/users" && user.accountKind === "COMPANY" ? "/company-users" : item.href
+    ]?.description ?? item.description,
     group: item.group,
   }));
 }

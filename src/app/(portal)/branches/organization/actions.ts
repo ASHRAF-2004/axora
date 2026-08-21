@@ -14,8 +14,11 @@ import { z } from "zod";
 const timezone = z.string().trim().max(120).refine(
   (value) => !value || value === "UTC" || /^[A-Za-z_]+(?:\/[A-Za-z0-9_+.-]+)+$/.test(value),
 );
+const editableNodeTypes = [
+  "BRANCH", "DEPARTMENT", "BUSINESS_UNIT", "COST_CENTRE",
+] as const;
 const nodeSchema = z.object({
-  nodeType: z.enum(ORGANIZATION_NODE_TYPES),
+  nodeType: z.enum(editableNodeTypes),
   nodeId: z.uuid().optional(),
   companyId: z.uuid(),
   code: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{1,39}$/),
@@ -40,10 +43,6 @@ const nodeSchema = z.object({
   isPrimary: z.boolean(),
   reason: z.string().trim().min(3).max(1000),
 }).superRefine((value, context) => {
-  if (value.nodeType === "DELIVERY_LOCATION" && (
-    !value.branchId || !value.address || value.address.length < 3
-    || !value.city || value.city.length < 2
-  )) context.addIssue({ code: "custom", message: "Complete the delivery location and branch." });
   if (value.nodeType === "BRANCH" && !value.nodeId) {
     context.addIssue({ code: "custom", message: "A branch identifier is required." });
   }

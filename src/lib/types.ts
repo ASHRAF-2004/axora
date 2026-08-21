@@ -240,6 +240,7 @@ export interface ProcurementRequest {
   notes?: string;
   issueReason?: string;
   approvalStatus: "Pending" | "Approved" | "Rejected";
+  approvalRevision?: number;
   approvalReason?: string;
   approvedByName?: string;
   subtotal?: number;

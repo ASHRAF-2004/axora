@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
+import { loadBranchDeliveryLocationWorkspace } from "@/lib/branch-delivery-location";
 import { corePortalMessages,localizedStatus } from "@/lib/core-portal-i18n";
 import { formatCurrency } from "@/lib/domain";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
@@ -11,9 +12,9 @@ import { setMasterActiveAction } from "../../masters/actions";
 import { setBranchBudgetAction } from "../actions";
 
 const localCopy = {
-  en: { back: "Back to branches",details: "Branch details",budget: "Budget controls" },
-  ar: { back: "العودة إلى الفروع",details: "تفاصيل الفرع",budget: "ضوابط الميزانية" },
-  ms: { back: "Kembali ke cawangan",details: "Butiran cawangan",budget: "Kawalan bajet" },
+  en: { back: "Back to branches",details: "Branch details",budget: "Budget controls",deliveryLocation: "Delivery location" },
+  ar: { back: "العودة إلى الفروع",details: "تفاصيل الفرع",budget: "ضوابط الميزانية",deliveryLocation: "موقع التسليم" },
+  ms: { back: "Kembali ke cawangan",details: "Butiran cawangan",budget: "Kawalan bajet",deliveryLocation: "Lokasi penghantaran" },
 } as const;
 
 export default async function BranchDetailPage({ params }: { params: Promise<{ branchId: string }> }) {
@@ -26,6 +27,10 @@ export default async function BranchDetailPage({ params }: { params: Promise<{ b
   const { branches } = await loadOrganizationDirectory(actor);
   const branch = branches.find((item) => item.id === branchId);
   if (!branch) notFound();
+  const locationWorkspace = await loadBranchDeliveryLocationWorkspace(actor, branch.id)
+    .catch(() => null);
+  const canOpenDeliveryLocation = Boolean(locationWorkspace
+    && (locationWorkspace.canManage || actor.accountKind === "PLATFORM"));
   const canManageBranches = canAccess(actor,"manage_branches");
   const canManageBudget = actor.accountKind === "COMPANY"
     && canAccess(actor,"manage_branch_budget")
@@ -33,7 +38,9 @@ export default async function BranchDetailPage({ params }: { params: Promise<{ b
 
   return <>
     <PageHeader eyebrow={copy.eyebrow} title={branch.name} description={`${branch.companyName} · ${branch.city}`} />
-    <div className="page-actions"><Link className="button button-secondary" href="/branches">{local.back}</Link></div>
+    <div className="page-actions"><Link className="button button-secondary" href="/branches">{local.back}</Link>
+      {canOpenDeliveryLocation ? <Link className="button button-primary" href={`/branches/${branch.id}/delivery-location`}>{local.deliveryLocation}</Link> : null}
+    </div>
     <section className="detail-grid">
       <article className="panel"><h2>{local.details}</h2><dl className="summary-list">
         <div><dt>{common.company}</dt><dd>{branch.companyName}</dd></div>

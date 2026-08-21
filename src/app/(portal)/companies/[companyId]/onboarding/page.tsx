@@ -90,7 +90,6 @@ export default async function CompanyOnboardingPage({
         <input type="hidden" name="expectedVersion" value={company.version} />
         <div className="form-grid">
           <label>{copy.legalName}<input name="legalName" defaultValue={company.legalName} required maxLength={300} disabled={!workspace.canEdit} /></label>
-          <label>{copy.registrationNumber}<input name="registrationNumber" defaultValue={company.registrationNumber} required maxLength={160} disabled={!workspace.canEdit} /></label>
           <label>{copy.registrationCountry}<input name="registrationCountryCode" defaultValue={company.registrationCountryCode} required pattern="[A-Za-z]{2}" maxLength={2} disabled={!workspace.canEdit} /></label>
           <label>{copy.taxNumber}<input name="taxRegistrationNumber" defaultValue={company.taxRegistrationNumber} maxLength={160} disabled={!workspace.canEdit} /></label>
           <label>{copy.industry}<select name="industryCode" defaultValue={company.industryCode} disabled={!workspace.canEdit}>{workspace.industries.map((industry) => <option key={industry.code} value={industry.code}>{industryName(industry)}</option>)}</select></label>
@@ -98,11 +97,8 @@ export default async function CompanyOnboardingPage({
           <label className="field-full">{copy.registeredAddress}<textarea name="registeredAddress" defaultValue={company.registeredAddress} required maxLength={5000} disabled={!workspace.canEdit} /></label>
           <label className="field-full">{copy.operatingAddress}<textarea name="operatingAddress" defaultValue={company.operatingAddress} required maxLength={5000} disabled={!workspace.canEdit} /></label>
           <label>{copy.mainContactName}<input name="mainContactName" defaultValue={company.mainContactName} required disabled={!workspace.canEdit} /></label>
-          <label>{copy.mainContactEmail}<input name="mainContactEmail" type="email" defaultValue={company.mainContactEmail} required disabled={!workspace.canEdit} /></label>
-          <label>{copy.mainContactPhone}<input name="mainContactPhone" defaultValue={company.mainContactPhone} required disabled={!workspace.canEdit} /></label>
           <label>{copy.billingContactName}<input name="billingContactName" defaultValue={company.billingContactName} disabled={!workspace.canEdit} /></label>
           <label>{copy.billingContactEmail}<input name="billingContactEmail" type="email" defaultValue={company.billingContactEmail} disabled={!workspace.canEdit} /></label>
-          <label>{copy.billingContactPhone}<input name="billingContactPhone" defaultValue={company.billingContactPhone} disabled={!workspace.canEdit} /></label>
           <label className="field-full">{copy.billingAddress}<textarea name="billingAddress" defaultValue={company.billingAddress} required disabled={!workspace.canEdit} /></label>
           <label>{copy.billingCycle}<input name="billingCycle" defaultValue={company.billingCycle} required disabled={!workspace.canEdit} /></label>
           <label>{copy.locale}<select name="defaultLocale" defaultValue={company.defaultLocale} disabled={!workspace.canEdit}><option value="en">{copy.english}</option><option value="ar">{copy.arabic}</option><option value="ms">{copy.malay}</option></select></label>

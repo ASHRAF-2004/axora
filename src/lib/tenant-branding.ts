@@ -13,10 +13,13 @@ import {
   type BrandThemeTokens,
 } from "./brand-colors";
 import { isDemoMode, query, withAuditTransaction } from "./db";
-import type { Company } from "./types";
 import {
-  createCompanyLeadInTransaction,
+  CompanyCreationCommandConflictError,
+  CompanyLifecycleUnavailableError,
+  createCompanyDirectInTransaction,
   markCompanyBrandReadyInTransaction,
+  registerDemoCompanyDirect,
+  type NewCompanyDirectInput,
   notifyCompanyLifecycleMutation,
 } from "./company-lifecycle";
 
@@ -377,30 +380,94 @@ async function saveLogoAndTheme(
   };
 }
 
-type NewCompanyWithBrand = Omit<
-  Company,
-  "id" | "code" | "status" | "taxRate" | "estimatedDeliveryFee"
-> & {
-  legalName: string;
-  registrationNumber: string;
+type NewCompanyWithBrand = NewCompanyDirectInput;
+
+type DemoCompanyCreationCommand = {
+  payloadHash: string;
+  companyId: string;
+  logoId: string;
+  themeId: string;
 };
+
+declare global {
+  var __axoraDemoCompanyCreationCommands:
+    Map<string, DemoCompanyCreationCommand> | undefined;
+}
+
+function demoCompanyCreationCommands() {
+  if (!global.__axoraDemoCompanyCreationCommands) {
+    global.__axoraDemoCompanyCreationCommands = new Map();
+  }
+  return global.__axoraDemoCompanyCreationCommands;
+}
+
+function deterministicUuid(seed: string) {
+  const bytes = createHash("sha256").update(seed).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function companyCreationPayloadHash(
+  input: NewCompanyWithBrand,
+  logoSha256: string,
+  actor: SessionUser,
+) {
+  return createHash("sha256").update(JSON.stringify({
+    actorUserId: actor.id,
+    name: input.name.trim(),
+    legalName: input.legalName.trim(),
+    industry: input.industry.trim(),
+    companyInformation: (input.companyInformation ?? "").trim(),
+    websiteUrl: input.websiteUrl?.trim() || null,
+    mainContactName: input.mainContactName.trim(),
+    billingCycle: input.billingCycle.trim(),
+    notes: input.notes?.trim() || null,
+    logoSha256,
+  })).digest("hex");
+}
 
 export async function createCompanyWithBrand(
   input: NewCompanyWithBrand,
   logoFile: File,
   actor: SessionUser,
+  commandId: string,
 ) {
+  if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+    throw new CompanyLifecycleUnavailableError();
+  }
+  const parsedCommandId = z.uuid().parse(commandId);
   const logo = await processCompanyLogo(
     Buffer.from(await logoFile.arrayBuffer()),
     logoFile.name,
     logoFile.type || undefined,
   );
   if (isDemoMode()) {
+    const payloadHash = companyCreationPayloadHash(input, logo.sha256, actor);
+    const commands = demoCompanyCreationCommands();
+    const existing = commands.get(parsedCommandId);
+    if (existing) {
+      if (existing.payloadHash !== payloadHash) {
+        throw new CompanyCreationCommandConflictError();
+      }
+      registerDemoCompanyDirect(existing.companyId, input);
+      return { ...existing, logo, created: false };
+    }
+    const created = {
+      payloadHash,
+      companyId: deterministicUuid(`company:${parsedCommandId}`),
+      logoId: deterministicUuid(`company-logo:${parsedCommandId}`),
+      themeId: deterministicUuid(`company-theme:${parsedCommandId}`),
+    };
+    commands.set(parsedCommandId, created);
+    registerDemoCompanyDirect(created.companyId, input);
     return {
-      companyId: "demo-company",
-      logoId: "demo-logo",
-      themeId: "demo-theme",
+      companyId: created.companyId,
+      logoId: created.logoId,
+      themeId: created.themeId,
       logo,
+      created: true,
     };
   }
   return withAuditTransaction(
@@ -409,7 +476,21 @@ export async function createCompanyWithBrand(
       reason: "Customer company registered with a reviewed branding draft",
     },
     async (client) => {
-      const mutation = await createCompanyLeadInTransaction(client, input, actor);
+      const mutation = await createCompanyDirectInTransaction(
+        client,input,actor,parsedCommandId,logo.sha256,
+      );
+      if (!mutation.created) {
+        if (!mutation.creationLogoId || !mutation.creationThemeId) {
+          throw new CompanyBrandUnavailableError();
+        }
+        return {
+          companyId: mutation.companyId,
+          logoId: mutation.creationLogoId,
+          themeId: mutation.creationThemeId,
+          logo,
+          created: false,
+        };
+      }
       const branded = await saveLogoAndTheme(
         client,
         mutation.companyId,
@@ -422,6 +503,7 @@ export async function createCompanyWithBrand(
         companyId: mutation.companyId,
         ...branded,
         logo,
+        created: true,
       };
     },
   );

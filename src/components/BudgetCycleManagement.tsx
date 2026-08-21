@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { BudgetPeriodScheduleFields } from "@/components/BudgetPeriodScheduleFields";
 import type { SupportedLocale } from "@/lib/i18n";
 import type { BudgetCycleWorkspace } from "@/lib/budget-cycles";
 import { budgetCycleVarianceMessages } from "@/lib/budget-cycle-variance-i18n";
+import {
+  customBudgetPeriodDefaults,
+  isoLocalDateTimeInTimeZone,
+} from "@/lib/budget-period-range";
 import {
   decideBudgetAdjustmentAction,
   decideBudgetCycleChangeAction,
@@ -30,7 +35,21 @@ function localInput(value: string) {
   return value.replace(" ", "T").slice(0, 16);
 }
 
-const frequencies = ["WEEKLY","MONTHLY","QUARTERLY","YEARLY","CUSTOM","MANUAL"] as const;
+function customScheduleDefaults(account: BudgetCycleWorkspace["accounts"][number]) {
+  const defaults = customBudgetPeriodDefaults({
+    nextRefreshAt: account.nextRefreshAt,
+    timezone: account.schedule.timezone,
+    currentCustomIntervalDays: account.schedule.frequency === "CUSTOM"
+      ? account.schedule.customIntervalDays
+      : undefined,
+  });
+  return {
+    minimumStartDate: defaults.startDate,
+    defaultStartDate: defaults.startDate,
+    defaultEndDate: defaults.endDate,
+  };
+}
+
 const rolloverModes = ["RESET_FIXED","FULL","NONE","PARTIAL_PERCENT","CUSTOM_AMOUNT"] as const;
 
 export function BudgetCycleManagement({
@@ -69,12 +88,19 @@ export function BudgetCycleManagement({
                   <input type="hidden" name="idempotencyKey" value={randomUUID()} />
                   <input type="hidden" name="budgetAccountId" value={account.id} />
                   <div className={styles.fieldGrid}>
-                    <label><span>{messages.frequency}</span><select name="frequency" defaultValue={account.schedule.frequency}>{frequencies.map((value) => <option value={value} key={value}>{value.replaceAll("_", " ")}</option>)}</select></label>
-                    <label><span>{messages.interval}</span><input name="intervalCount" type="number" min="1" max="52" defaultValue={account.schedule.intervalCount} required /></label>
-                    <label><span>{messages.customDays}</span><input name="customIntervalDays" type="number" min="1" max="3660" defaultValue={account.schedule.customIntervalDays} /></label>
+                    <BudgetPeriodScheduleFields
+                      defaultFrequency={account.schedule.frequency}
+                      defaultIntervalCount={account.schedule.intervalCount}
+                      defaultAnchorLocal={localInput(account.schedule.anchorLocal)}
+                      defaultEffectiveLocal={isoLocalDateTimeInTimeZone(
+                        account.nextRefreshAt,
+                        account.schedule.timezone,
+                      )}
+                      locale={locale}
+                      messages={messages}
+                      {...customScheduleDefaults(account)}
+                    />
                     <label><span>{messages.timezone}</span><input name="timezone" defaultValue={account.schedule.timezone} minLength={3} maxLength={100} required /></label>
-                    <label><span>{messages.anchor}</span><input name="anchorLocal" type="datetime-local" defaultValue={localInput(account.schedule.anchorLocal)} required /></label>
-                    <label><span>{messages.effective}</span><input name="effectiveLocal" type="datetime-local" defaultValue={localInput(account.schedule.anchorLocal)} /></label>
                     <label><span>{messages.dst}</span><select name="dstResolution" defaultValue={account.schedule.dstResolution}><option value="EARLIER">{messages.earlier}</option><option value="LATER">{messages.later}</option></select></label>
                     <label><span>{messages.fixedAllocation}</span><input name="fixedAllocation" type="number" min="0" step="0.01" defaultValue={account.schedule.fixedAllocation} required /></label>
                     <label><span>{messages.rolloverMode}</span><select name="rolloverMode" defaultValue={account.schedule.rolloverMode}>{rolloverModes.map((value) => <option value={value} key={value}>{value.replaceAll("_", " ")}</option>)}</select></label>

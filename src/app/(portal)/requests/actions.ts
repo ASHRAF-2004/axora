@@ -11,8 +11,9 @@ import type { RequestStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { completePayment } from "@/lib/payment-checkout";
 import { getCatalogProductsByPublicRefs } from "@/lib/catalog";
+import { approveAndPay } from "@/lib/company-wallet";
+import { isApproveAndPayLocalNotReadyState } from "@/lib/finance-business-results";
 
 const requestSubmissionKeySchema = z.string().uuid();
 
@@ -66,14 +67,40 @@ export async function updateStatusAction(id: string, formData: FormData) {
   revalidatePath("/dashboard");
 }
 
-export async function payRequestAction(id: string, formData: FormData) {
-  const actor = await requirePermission("create_requests");
-  const idempotencyKey = requestSubmissionKeySchema.parse(
-    readFormText(formData, "idempotencyKey"),
-  );
-  await completePayment(actor, z.string().uuid().parse(id), idempotencyKey);
+export async function approveAndPayRequestAction(id: string, formData: FormData) {
+  const actor = await requirePermission("approve_requests");
+  const input = z.object({
+    requestId: z.string().uuid(),
+    approvalRevision: z.coerce.number().int().positive(),
+    reason: z.string().trim().min(3).max(1_000),
+    commandId: z.string().uuid(),
+  }).safeParse({
+    requestId: id,
+    approvalRevision: readFormText(formData, "approvalRevision"),
+    reason: readFormText(formData, "reason"),
+    commandId: readFormText(formData, "commandId"),
+  });
+  if (!input.success) redirect(`/requests/${id}?financeError=invalid`);
+  let result: Awaited<ReturnType<typeof approveAndPay>>;
+  try {
+    result = await approveAndPay(actor, {
+      requestId: input.data.requestId,
+      expectedApprovalRevision: input.data.approvalRevision,
+      reason: input.data.reason,
+      commandId: input.data.commandId,
+    });
+  } catch {
+    redirect(`/requests/${id}?financeError=unavailable`);
+  }
   revalidatePath(`/requests/${id}`);
   revalidatePath("/requests");
-  revalidatePath("/dashboard");
-  redirect(`/requests/${id}?notice=payment-completed`);
+  revalidatePath("/approvals");
+  revalidatePath("/budgets");
+  revalidatePath("/wallet");
+  const feedback = new URLSearchParams({ financeResult: result.status });
+  if (result.status === "NOT_READY"
+    && isApproveAndPayLocalNotReadyState(result.requestState)) {
+    feedback.set("financeState", result.requestState);
+  }
+  redirect(`/requests/${id}?${feedback.toString()}`);
 }

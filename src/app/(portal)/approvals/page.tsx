@@ -7,10 +7,19 @@ import { approvalStateLabel, budgetApprovalMessages } from "@/lib/budget-approva
 import { RequestApprovalDecisionForm } from "@/components/RequestApprovalDecisionForm";
 import { getProcurementVarianceApprovalWorkspace } from "@/lib/budget-variance";
 import { VarianceApprovalPanel } from "@/components/VarianceApprovalPanel";
+import {
+  isApproveAndPayLocalNotReadyState,
+  isApproveAndPayResultStatus,
+} from "@/lib/finance-business-results";
+import { formatMoneyDecimal, moneyDecimalIsPositive } from "@/lib/money-decimal";
+import {
+  APPROVE_AND_PAY_RESULT_TONES,
+  approveAndPayResultCopy,
+} from "@/lib/wallet-i18n";
 import styles from "../budget-approval.module.css";
 
 function money(value: string, currency: string, locale: string) {
-  return new Intl.NumberFormat(locale, { style: "currency", currency }).format(Number(value));
+  return formatMoneyDecimal(value, currency, locale);
 }
 
 function lineLabel(line: Record<string, unknown>) {
@@ -20,7 +29,12 @@ function lineLabel(line: Record<string, unknown>) {
 export default async function ApprovalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; error?: string }>;
+  searchParams: Promise<{
+    success?: string;
+    error?: string;
+    result?: string;
+    state?: string;
+  }>;
 }) {
   const actor = await requirePagePermission("view_approvals");
   if (!isDemoMode() && !actor.roleAssignmentId) redirect("/access-denied");
@@ -38,6 +52,18 @@ export default async function ApprovalsPage({
     id: account.id,
     name: account.name,
   }));
+  const resultStatus = isApproveAndPayResultStatus(feedback.result)
+    ? feedback.result
+    : undefined;
+  const resultCopy = resultStatus
+    ? approveAndPayResultCopy(
+      locale,
+      resultStatus,
+      isApproveAndPayLocalNotReadyState(feedback.state)
+        ? feedback.state
+        : undefined,
+    )
+    : undefined;
 
   return (
     <main className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -48,6 +74,15 @@ export default async function ApprovalsPage({
       </header>
       {feedback.success ? <p className={styles.notice} role="status">{messages.success}</p> : null}
       {feedback.error ? <p className={styles.notice} role="alert">{messages.failure}</p> : null}
+      {resultStatus && resultCopy ? (
+        <section
+          className={`${styles.resultNotice} ${styles[APPROVE_AND_PAY_RESULT_TONES[resultStatus]]}`}
+          role={resultStatus === "SUCCESS" || resultStatus === "ALREADY_PROCESSED" ? "status" : "alert"}
+        >
+          <strong>{resultCopy.title}</strong>
+          <p>{resultCopy.body}</p>
+        </section>
+      ) : null}
       {workspace && workspace.requests.length === 0 ? (
         <section className={styles.card}><p>{messages.noApprovals}</p></section>
       ) : workspace ? (
@@ -66,7 +101,7 @@ export default async function ApprovalsPage({
                 <div className={styles.metric}><span>{messages.requester}</span><strong>{request.requesterName}</strong></div>
                 <div className={styles.metric}><span>{messages.approvalLimit}</span><strong>{request.approvalLimit ? money(request.approvalLimit, request.currency, locale) : "-"}</strong></div>
                 <div className={styles.metric}><span>{messages.available}</span><strong>{money(request.available, request.currency, locale)}</strong></div>
-                {Number(request.exceededBy)>0 ? (
+                {moneyDecimalIsPositive(request.exceededBy) ? (
                   <div className={`${styles.metric} ${styles.dangerMetric}`}><span>{messages.exceededBy}</span><strong>{money(request.exceededBy, request.currency, locale)}</strong></div>
                 ) : (
                   <div className={styles.metric}><span>{messages.delivery}</span><strong>{request.deliveryDate ?? "-"}</strong></div>
@@ -81,7 +116,11 @@ export default async function ApprovalsPage({
                   </li>
                 ))}
               </ul>
-              <RequestApprovalDecisionForm request={request} messages={messages} sourceAccounts={sourceAccounts} />
+              <RequestApprovalDecisionForm
+                request={request}
+                messages={messages}
+                sourceAccounts={sourceAccounts}
+              />
             </article>
           ))}
         </section>

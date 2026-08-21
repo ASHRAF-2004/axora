@@ -4,25 +4,21 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
+import { canAccess } from "@/lib/permissions";
 import { getCompanyDeletionImpact } from "@/lib/company-deletion";
 import {
-  COMPANY_MANAGER_ACCESS_MODES,
-  COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS,
+  findAuthorizedCompanyLifecycleRecord,
   loadCompanyLifecycleWorkspace,
   type CompanyLifecycleAction,
-  type CompanyLifecycleManager,
-  type CompanyLifecycleRecord,
   type CompanyLifecycleStatus,
 } from "@/lib/company-lifecycle";
 import {
   companyLifecycleActionLabel,
   companyLifecycleMessages,
   companyLifecycleStatusLabel,
-  companyLifecycleText,
 } from "@/lib/company-lifecycle-i18n";
 import {
   activateCompanyAction,
-  assignCompanyManagerAction,
   inviteCompanyAdministratorAction,
   resolveCompanyDuplicateAction,
   setCompanyPublicationAction,
@@ -38,133 +34,6 @@ const transitionTargets: Partial<Record<CompanyLifecycleAction, CompanyLifecycle
   MARK_INACTIVE: "INACTIVE", ARCHIVE: "ARCHIVED", MARK_DUPLICATE: "DUPLICATE", REJECT: "REJECTED",
 };
 
-function formatDate(locale: "en" | "ar" | "ms", value: Date | null | undefined) {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat(
-    locale === "ar" ? "ar-MY" : locale === "ms" ? "ms-MY" : "en-MY",
-    { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kuala_Lumpur" },
-  ).format(value);
-}
-
-function AssignmentForm({
-  company,
-  action,
-  managers,
-  locale,
-}: {
-  company: CompanyLifecycleRecord;
-  action: Extract<CompanyLifecycleAction, "ASSIGN" | "REASSIGN" | "ADD_BACKUP" | "REPLACE_BACKUP">;
-  managers: CompanyLifecycleManager[];
-  locale: "en" | "ar" | "ms";
-}) {
-  const copy = companyLifecycleMessages(locale);
-  const backup = action === "ADD_BACKUP" || action === "REPLACE_BACKUP";
-  const excludedId = backup ? company.backupManager?.id : company.primaryManager?.id;
-  const choices = managers.filter((manager) => manager.id !== excludedId);
-  const accessModes = COMPANY_MANAGER_ACCESS_MODES.filter((mode) => backup || mode !== "TEMPORARY");
-  const accessModeLabel = (mode: typeof COMPANY_MANAGER_ACCESS_MODES[number]) => ({
-    NORMAL: copy.normalAccess,
-    TEMPORARY: copy.temporaryAccess,
-    READ_ONLY: copy.readOnlyAccess,
-    SPECIFIC_PERMISSIONS: copy.specificAccess,
-  })[mode];
-  const permissionLabel = (permission: typeof COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS[number]) => ({
-    "company.view.assigned": copy.permissionCompanyView,
-    "company.edit": copy.permissionCompanyEdit,
-    "user.view": copy.permissionUsersView,
-    "organization.branch.view": copy.permissionBranchesView,
-    "request.view": copy.permissionRequestsView,
-    "document.view": copy.permissionDocumentsView,
-    "report.view": copy.permissionReportsView,
-  })[permission];
-
-  return (
-    <details>
-      <summary>{companyLifecycleActionLabel(locale, action)}</summary>
-      <form action={assignCompanyManagerAction} className="form-grid">
-        <input type="hidden" name="companyId" value={company.id} />
-        <input type="hidden" name="assignmentType" value={backup ? "BACKUP" : "PRIMARY"} />
-        <label className="field-full">
-          {copy.chooseManager}
-          <select name="managerUserId" required defaultValue="">
-            <option value="" disabled>{copy.chooseManager}</option>
-            {choices.map((manager) => {
-              const available = backup ? manager.availableForBackup : manager.availableForPrimary;
-              return (
-                <option key={manager.id} value={manager.id} disabled={!available}>
-                  {companyLifecycleText(locale, "managerOption", {
-                    name: manager.name,
-                    active: manager.activePrimaryAssignments,
-                    maximum: manager.maxPrimaryAssignments,
-                    region: manager.serviceRegionCode,
-                  })}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-        {backup ? (
-          <>
-            <label>{copy.coverageStarts}<input name="coverageStartsAt" type="datetime-local" required /></label>
-            <label>{copy.coverageEnds}<input name="coverageEndsAt" type="datetime-local" required /></label>
-          </>
-        ) : null}
-        <label>
-          {copy.accessMode}
-          <select name="accessMode" required defaultValue={backup ? "TEMPORARY" : "NORMAL"}>
-            {accessModes.map((mode) => <option key={mode} value={mode}>{accessModeLabel(mode)}</option>)}
-          </select>
-        </label>
-        <label>
-          {copy.documentVisibility}
-          <select name="documentVisibility" required defaultValue="STANDARD">
-            <option value="STANDARD">{copy.documentStandard}</option>
-            <option value="COMPANY_SHARED_ONLY">{copy.documentCompanyShared}</option>
-            <option value="NONE">{copy.documentNone}</option>
-          </select>
-        </label>
-        <fieldset className="field-full">
-          <legend>{copy.specificPermissions}</legend>
-          <p className="subtle">{copy.specificPermissionsHelp}</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8 }}>
-            {COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS.map((permission) => (
-              <label key={permission} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input type="checkbox" name="specificPermissionCodes" value={permission} />
-                {permissionLabel(permission)}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <div className="panel field-full">
-          <strong>{copy.transferPreview}</strong>
-          <p className="subtle">{companyLifecycleText(locale, "transferPreviewCounts", {
-            onboarding: company.openManagerWork.onboardingItems,
-            reminders: company.openManagerWork.reminders,
-            tasks: company.openManagerWork.leadTasks,
-          })}</p>
-        </div>
-        <label className="field-full">
-          {copy.handoverNotes}
-          <textarea name="handoverNotes" maxLength={5000} placeholder={copy.handoverNotesHelp} />
-        </label>
-        <label className="field-full">
-          {copy.handoverChecklist}
-          <textarea name="handoverChecklist" maxLength={4800} placeholder={copy.handoverChecklistHelp} />
-        </label>
-        <label className="field-full">
-          {copy.coverageReason}
-          <textarea name="reason" required minLength={3} maxLength={1000} placeholder={copy.reasonPlaceholder} />
-        </label>
-        <div className="form-actions field-full">
-          <button className="button button-primary" type="submit" disabled={!choices.length}>
-            {copy.applyAssignment}
-          </button>
-        </div>
-      </form>
-    </details>
-  );
-}
-
 const detailCopy = {
   en: { back: "Back to companies", onboarding: "Onboarding", theme: "Theme review", access: "Access and lifecycle", enabled: "Portal access enabled", disabled: "Portal access disabled", manager: "Primary Agent", noManager: "No primary Agent assigned", actions: "Company actions", adminName: "Administrator name", adminEmail: "Administrator email", locale: "Language", invite: "Send secure invitation", reason: "Reason", publish: "Public listing", deletion: "Deletion impact", protected: "Protected accounting or delivery evidence prevents permanent deletion. Access will be revoked and only required evidence retained.", hard: "Disposable child records will be deleted in ownership order; permanent deletion is available.", archive: "Work is still in progress. Deletion is blocked until it is resolved.", users: "Users", memberships: "Memberships", branches: "Branches", departments: "Departments", roles: "Role assignments", sessions: "Sessions", requests: "Requests", budgets: "Budgets", approvals: "Approval policies", invoices: "Invoices", deliveries: "Deliveries", receipts: "Receipts", documents: "Documents", branding: "Branding records", notifications: "Notifications", workflow: "Workflow events", history: "Lifecycle history", invitations: "Pending invitations", email: "Pending email", inFlight: "Work in progress", evidence: "Protected evidence", files: "External files", permanent: "Permanently delete company and disposable records", archiveAction: "Archive company and revoke access", blockedAction: "Deletion unavailable while work is active", type: "Type", confirm: "Confirm irreversible action", open: "Open company" },
   ar: { back: "العودة إلى الشركات", onboarding: "الإعداد", theme: "مراجعة السمة", access: "الوصول ودورة الحياة", enabled: "بوابة الشركة مفعلة", disabled: "بوابة الشركة معطلة", manager: "الوكيل الأساسي", noManager: "لا يوجد وكيل أساسي", actions: "إجراءات الشركة", adminName: "اسم المسؤول", adminEmail: "بريد المسؤول", locale: "اللغة", invite: "إرسال دعوة آمنة", reason: "السبب", publish: "الإدراج العام", deletion: "أثر الحذف", protected: "تمنع الأدلة المحاسبية أو أدلة التسليم المحمية الحذف الدائم. سيُلغى الوصول وتُحتفظ الأدلة المطلوبة فقط.", hard: "ستُحذف السجلات التابعة القابلة للإزالة بترتيب الملكية؛ الحذف الدائم متاح.", archive: "لا يزال هناك عمل جارٍ. الحذف محظور حتى تتم معالجته.", users: "المستخدمون", memberships: "العضويات", branches: "الفروع", departments: "الأقسام", roles: "إسنادات الأدوار", sessions: "الجلسات", requests: "الطلبات", budgets: "الميزانيات", approvals: "سياسات الاعتماد", invoices: "الفواتير", deliveries: "عمليات التسليم", receipts: "إيصالات الاستلام", documents: "المستندات", branding: "سجلات العلامة", notifications: "الإشعارات", workflow: "أحداث سير العمل", history: "سجل دورة الحياة", invitations: "الدعوات المعلقة", email: "البريد المعلق", inFlight: "العمل الجاري", evidence: "الأدلة المحمية", files: "الملفات الخارجية", permanent: "حذف الشركة والسجلات القابلة للإزالة نهائياً", archiveAction: "أرشفة الشركة وإلغاء الوصول", blockedAction: "الحذف غير متاح أثناء وجود عمل نشط", type: "اكتب", confirm: "تأكيد الإجراء غير القابل للتراجع", open: "فتح الشركة" },
@@ -178,46 +47,22 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
   const local = detailCopy[locale];
   const { companyId } = await params;
   const workspace = await loadCompanyLifecycleWorkspace(actor);
-  const company = workspace.companies.find((item) => item.id === companyId);
+  const company = findAuthorizedCompanyLifecycleRecord(workspace, companyId);
   if (!company || company.status === "ARCHIVED") notFound();
   const actions = new Set(company.availableActions);
+  const assignmentActions = new Set(["ASSIGN", "REASSIGN", "ADD_BACKUP", "REPLACE_BACKUP"]);
+  const hasLifecycleActions = company.availableActions.some((action) => !assignmentActions.has(action));
   const impact = actor.isOwner ? await getCompanyDeletionImpact(actor, company.id) : null;
   return <>
     <PageHeader eyebrow={copy.eyebrow} title={company.name} description={company.companyInformation ?? copy.description} />
-    <div className="page-actions"><Link className="button button-secondary" href="/companies">{local.back}</Link><Link className="button button-secondary" href={`/companies/${company.id}/onboarding`}>{local.onboarding}</Link><Link className="button button-secondary" href={`/companies/${company.id}/theme`}>{local.theme}</Link></div>
+    <div className="page-actions"><Link className="button button-secondary" href="/companies">{local.back}</Link>{actor.isOwner && actor.accountKind === "PLATFORM" ? <Link className="button button-secondary" href={`/companies/${company.id}/assignment`}>{copy.coverageAndHandover}</Link> : null}{canAccess(actor, "manage_users") ? <Link className="button button-secondary" href={`/companies/${company.id}/users`}>{local.users}</Link> : null}<Link className="button button-secondary" href={`/companies/${company.id}/onboarding`}>{local.onboarding}</Link><Link className="button button-secondary" href={`/companies/${company.id}/theme`}>{local.theme}</Link></div>
     <section className="detail-grid">
-      <article className="panel"><h2>{copy.companyInformation}</h2><dl className="summary-list"><div><dt>{copy.status}</dt><dd><StatusBadge status={company.status}>{companyLifecycleStatusLabel(locale, company.status)}</StatusBadge></dd></div><div><dt>{copy.industry}</dt><dd>{company.industry}</dd></div><div><dt>{copy.mainContact}</dt><dd>{company.mainContactName}<br />{company.mainContactEmail}<br />{company.mainContactPhone}</dd></div><div><dt>{copy.billingCycle}</dt><dd>{company.billingCycle}</dd></div></dl></article>
+      <article className="panel"><h2>{copy.companyInformation}</h2><dl className="summary-list"><div><dt>{copy.status}</dt><dd><StatusBadge status={company.status}>{companyLifecycleStatusLabel(locale, company.status)}</StatusBadge></dd></div><div><dt>{copy.industry}</dt><dd>{company.industry}</dd></div><div><dt>{copy.mainContact}</dt><dd>{company.mainContactName}</dd></div><div><dt>{copy.billingCycle}</dt><dd>{company.billingCycle}</dd></div></dl></article>
       <article className="panel"><h2>{local.access}</h2><p>{company.portalAccessEnabled ? local.enabled : local.disabled}</p><p>{company.primaryManager ? `${local.manager}: ${company.primaryManager.name}` : local.noManager}</p></article>
     </section>
-    <section className="panel">
-      <h2>{copy.coverageAndHandover}</h2>
-      <p><StatusBadge>{company.managerCoverage.status === "COVERED" ? copy.covered : copy.coverageGap}</StatusBadge>{company.managerCoverage.reason ? <> <span className="subtle">{company.managerCoverage.reason}</span></> : null}</p>
-      {[company.primaryManager, company.backupManager].filter((manager) => manager !== null).map((manager) => (
-        <div className="panel" key={manager.assignmentId} style={{ marginBlockStart: 12 }}>
-          <strong>{manager.name}</strong> · {manager.accessMode === "NORMAL" ? copy.normalAccess : manager.accessMode === "TEMPORARY" ? copy.temporaryAccess : manager.accessMode === "READ_ONLY" ? copy.readOnlyAccess : copy.specificAccess}
-          <p className="subtle">{manager.coverageReason} · {copy.assignedBy} {manager.assignedByName} · {formatDate(locale, manager.assignedAt)}</p>
-          {manager.coverageEndsAt ? <p className="subtle">{companyLifecycleText(locale, "backupWindow", { start: formatDate(locale, manager.coverageStartsAt), end: formatDate(locale, manager.coverageEndsAt) })}</p> : null}
-          {manager.handoverNotes ? <p><strong>{copy.handoverNotes}:</strong> {manager.handoverNotes}</p> : null}
-          {manager.handoverChecklist.length ? <ul>{manager.handoverChecklist.map((item) => <li key={item}>{item}</li>)}</ul> : null}
-        </div>
-      ))}
-      <p>{companyLifecycleText(locale, "transferPreviewCounts", {
-        onboarding: company.openManagerWork.onboardingItems,
-        reminders: company.openManagerWork.reminders,
-        tasks: company.openManagerWork.leadTasks,
-      })}</p>
-      <h3>{copy.assignmentHistory}</h3>
-      {company.assignmentHistory.length ? <ol>{company.assignmentHistory.map((entry) => (
-        <li key={entry.assignmentId}>
-          <strong>{entry.managerName}</strong> · {entry.assignmentType === "PRIMARY" ? copy.primaryManager : copy.backupManager} · {entry.status === "ACTIVE" ? copy.activeAssignment : copy.endedAssignment}
-          <br /><span className="subtle">{entry.coverageReason} · {formatDate(locale, entry.assignedAt)}{entry.endedAt ? ` - ${formatDate(locale, entry.endedAt)}` : ""}</span>
-        </li>
-      ))}</ol> : <p className="subtle">{copy.noAssignmentHistory}</p>}
-    </section>
-    {company.availableActions.length ? <section className="panel"><h2>{local.actions}</h2><div className="detail-grid">
-      {(["ASSIGN", "REASSIGN", "ADD_BACKUP", "REPLACE_BACKUP"] as const).filter((action) => actions.has(action)).map((action) => <AssignmentForm key={action} company={company} action={action} managers={workspace.managers} locale={locale} />)}
+    {hasLifecycleActions ? <section className="panel"><h2>{local.actions}</h2><div className="detail-grid">
       {(Object.entries(transitionTargets) as Array<[CompanyLifecycleAction, CompanyLifecycleStatus]>).filter(([action]) => actions.has(action)).map(([action, toStatus]) => <form action={transitionCompanyLifecycleAction} className="table-action-stack" key={action}><input type="hidden" name="companyId" value={company.id} /><input type="hidden" name="toStatus" value={toStatus} /><label>{local.reason}<input name="reason" minLength={3} maxLength={1000} required /></label><button className="button button-secondary">{companyLifecycleActionLabel(locale, action)}</button></form>)}
-      {actions.has("INVITE_ADMINISTRATOR") ? <form action={inviteCompanyAdministratorAction} className="form-grid"><input type="hidden" name="companyId" value={company.id} /><label>{local.adminName}<input name="displayName" defaultValue={company.mainContactName} required /></label><label>{local.adminEmail}<input name="email" type="email" defaultValue={company.mainContactEmail} required /></label><label>{local.locale}<select name="preferredLocale" defaultValue={locale}><option value="en">English</option><option value="ar">العربية</option><option value="ms">Bahasa Melayu</option></select></label><button className="button button-primary" type="submit">{local.invite}</button></form> : null}
+      {actions.has("INVITE_ADMINISTRATOR") ? <form action={inviteCompanyAdministratorAction} className="form-grid"><input type="hidden" name="companyId" value={company.id} /><label>{local.adminName}<input name="displayName" defaultValue={company.mainContactName} required /></label><label>{local.adminEmail}<input name="email" type="email" required /></label><label>{local.locale}<select name="preferredLocale" defaultValue={locale}><option value="en">English</option><option value="ar">العربية</option><option value="ms">Bahasa Melayu</option></select></label><button className="button button-primary" type="submit">{local.invite}</button></form> : null}
       {actions.has("SYNC_ADMINISTRATOR") ? <form action={syncCompanyAdministratorAction}><input type="hidden" name="companyId" value={company.id} /><button className="button button-secondary">{companyLifecycleActionLabel(locale, "SYNC_ADMINISTRATOR")}</button></form> : null}
       {actions.has("ACTIVATE") && !company.activationBlockedReasons.length ? <form action={activateCompanyAction} className="table-action-stack"><input type="hidden" name="companyId" value={company.id} /><label>{local.reason}<input name="reason" minLength={3} maxLength={1000} required /></label><button className="button button-primary">{companyLifecycleActionLabel(locale, "ACTIVATE")}</button></form> : null}
       {actions.has("SUSPEND") ? <form action={suspendCompanyAction} className="table-action-stack"><input type="hidden" name="companyId" value={company.id} /><label>{local.reason}<input name="reason" minLength={3} maxLength={1000} required /></label><button className="button button-secondary">{companyLifecycleActionLabel(locale, "SUSPEND")}</button></form> : null}

@@ -66,6 +66,7 @@ interface AppShellProps {
 }
 
 function tourName(href: string) {
+  if (/^\/companies\/[^/]+\/users(?:\/|$)/.test(href)) return "people";
   const names: Record<string, string> = {
     "/dashboard": "dashboard",
     "/companies": "companies",
@@ -73,6 +74,7 @@ function tourName(href: string) {
     "/requests": "requests",
     "/approvals": "approvals",
     "/budgets": "budgets",
+    "/wallet": "wallet",
     "/deliveries": "deliveries",
     "/finance": "finance",
     "/branches": "branches",

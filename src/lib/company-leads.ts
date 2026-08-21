@@ -1,7 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { PoolClient, QueryResultRow } from "pg";
 import { z } from "zod";
 import type { AuthenticatedSessionUser, SessionUser } from "./auth";
+import {
+  registerDemoCompanyDirect,
+  registerDemoCompanyManagerCoverage,
+} from "./company-lifecycle";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import {
   insertContactAcknowledgementEmailOutbox,
@@ -124,11 +128,11 @@ export const companyLeadRecordSchema = z.object({
   legalName: z.string().trim().min(2).max(300),
   registrationNumber: z.string().max(160),
   contactName: z.string().trim().min(2).max(200),
-  contactEmail: z.string().trim().min(3).max(254),
+  contactEmail: z.string().trim().max(254),
   phoneCountryCode: z.string().max(12),
-  phone: z.string().trim().min(3).max(40),
-  country: z.string().trim().min(2).max(120),
-  region: z.string().trim().min(2).max(160),
+  phone: z.string().trim().max(40).nullable(),
+  country: z.string().trim().max(120),
+  region: z.string().trim().max(160),
   city: z.string().trim().min(2).max(160),
   industry: z.string().trim().min(2).max(200),
   employeeRange: z.string().trim().min(1).max(40),
@@ -140,7 +144,7 @@ export const companyLeadRecordSchema = z.object({
   locale: z.enum(["en", "ar", "ms"]),
   subject: z.string().trim().min(3).max(200),
   message: z.string().trim().min(10).max(5000),
-  consentAt: z.coerce.date(),
+  consentAt: nullableDate,
   privacyPolicyVersion: z.string().trim().min(1).max(80),
   sourcePage: z.string().trim().min(1).max(500),
   sourceMetadata: z.record(z.string(), z.unknown()),
@@ -176,6 +180,10 @@ const publicMutationSchema = z.object({
   event: eventSchema,
   notificationRecipientIds: z.array(uuid),
 }).strict();
+const publicContactMutationSchema = z.object({
+  created: z.boolean(),
+  submissionId: uuid,
+}).strict();
 const overdueMutationSchema = z.object({
   leadId: uuid,
   leadCode: z.string().regex(/^LEAD-[0-9]{8,}$/),
@@ -189,11 +197,571 @@ export type CompanyLeadWorkspace = z.infer<typeof workspaceSchema>;
 export type CompanyLeadMutation = z.infer<typeof mutationSchema>;
 export type CompanyLeadManager = z.infer<typeof managerSchema>;
 
+export interface AcquisitionLeadInput {
+  companyName: string;
+  legalName: string;
+  contactName: string;
+  city: string;
+  industry: string;
+  employeeRange: "1_10" | "11_50" | "51_200" | "201_500" | "501_1000" | "1001_PLUS";
+  branchRange: "1" | "2_5" | "6_20" | "21_50" | "51_PLUS";
+  spendRange: "UNDER_10K" | "10K_50K" | "50K_250K" | "250K_1M" | "OVER_1M" | "UNDISCLOSED";
+  locale: "en" | "ar" | "ms";
+  timezone: string;
+  subject: string;
+  message: string;
+}
+
+const retiredCompanyLeadExportKeys = new Set<keyof CompanyLeadRecord>([
+  "registrationNumber",
+  "contactEmail",
+  "phoneCountryCode",
+  "phone",
+  "country",
+  "region",
+  "preferredContactTime",
+  "usesPersonalEmail",
+]);
+const retiredCompanyLeadMatchFields = new Set([
+  "registrationNumber", "emailDomain", "contactEmail", "phone",
+]);
+
 export class CompanyLeadUnavailableError extends Error {
   constructor() {
     super("The requested company lead operation is unavailable.");
     this.name = "CompanyLeadUnavailableError";
   }
+}
+
+export class CompanyLeadCommandConflictError extends Error {
+  constructor() {
+    super("The company lead command was already used for different input.");
+    this.name = "CompanyLeadCommandConflictError";
+  }
+}
+
+type DemoAcquisitionLeadCommand = {
+  actorUserId: string;
+  payloadHash: string;
+  leadId: string;
+  eventId: string;
+};
+
+type DemoCompanyLeadState = {
+  commands: Map<string, DemoAcquisitionLeadCommand>;
+  leads: Map<string, CompanyLeadRecord>;
+};
+
+const DEMO_COMPANY_LEAD_MANAGER = Object.freeze({
+  id: "20222222-2222-4222-8222-222222222222",
+  name: "Agent fixture",
+  email: "agent.fixture@axora.invalid",
+});
+
+declare global {
+  var __axoraDemoCompanyLeadState: DemoCompanyLeadState | undefined;
+}
+
+function demoCompanyLeadState() {
+  if (!global.__axoraDemoCompanyLeadState) {
+    global.__axoraDemoCompanyLeadState = {
+      commands: new Map(),
+      leads: new Map(),
+    };
+  }
+  return global.__axoraDemoCompanyLeadState;
+}
+
+function deterministicUuid(seed: string) {
+  const hex = createHash("sha256").update(seed).digest("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+function deterministicLeadCode(seed: string) {
+  const hex = createHash("sha256").update(seed).digest("hex").slice(0, 15);
+  const numeric = (BigInt(`0x${hex}`) % 1_000_000_000_000n)
+    .toString()
+    .padStart(12, "0");
+  return `LEAD-${numeric}`;
+}
+
+function normalizedAcquisitionLeadInput(input: AcquisitionLeadInput): AcquisitionLeadInput {
+  return {
+    companyName: input.companyName.trim(),
+    legalName: input.legalName.trim(),
+    contactName: input.contactName.trim(),
+    city: input.city.trim(),
+    industry: input.industry.trim(),
+    employeeRange: input.employeeRange,
+    branchRange: input.branchRange,
+    spendRange: input.spendRange,
+    locale: input.locale,
+    timezone: input.timezone.trim(),
+    subject: input.subject.trim(),
+    message: input.message.trim(),
+  };
+}
+
+function demoAcquisitionPayloadHash(
+  actor: AuthenticatedSessionUser,
+  input: AcquisitionLeadInput,
+) {
+  return createHash("sha256").update(JSON.stringify({
+    actorUserId: actor.id,
+    ...normalizedAcquisitionLeadInput(input),
+  })).digest("hex");
+}
+
+function addUtcMonths(value: Date, months: number) {
+  const next = new Date(value);
+  next.setUTCMonth(next.getUTCMonth() + months);
+  return next;
+}
+
+function demoLeadMutation(
+  lead: CompanyLeadRecord,
+  eventId: string,
+  created: boolean,
+): CompanyLeadMutation {
+  return {
+    leadId: lead.id,
+    leadCode: lead.code,
+    status: lead.status,
+    statusVersion: lead.statusVersion,
+    event: {
+      id: eventId,
+      leadId: lead.id,
+      eventKey: "company.lead.created",
+      eventVersion: 1,
+      created,
+      occurredAt: lead.createdAt,
+    },
+    notificationRecipientIds: [],
+  };
+}
+
+function createDemoAcquisitionLead(
+  actor: AuthenticatedSessionUser,
+  input: AcquisitionLeadInput,
+  commandId: string,
+  capturedAt: Date,
+) {
+  if (!actor.isOwner || actor.accountKind !== "PLATFORM"
+    || !Number.isFinite(capturedAt.getTime())) {
+    throw new CompanyLeadUnavailableError();
+  }
+  const normalized = normalizedAcquisitionLeadInput(input);
+  const payloadHash = demoAcquisitionPayloadHash(actor, normalized);
+  const state = demoCompanyLeadState();
+  const existing = state.commands.get(commandId);
+  if (existing) {
+    if (existing.actorUserId !== actor.id || existing.payloadHash !== payloadHash) {
+      throw new CompanyLeadCommandConflictError();
+    }
+    const lead = state.leads.get(existing.leadId);
+    if (!lead) throw new CompanyLeadUnavailableError();
+    return demoLeadMutation(lead, existing.eventId, false);
+  }
+  const leadId = deterministicUuid(`company-lead:${actor.id}:${commandId}`);
+  const eventId = deterministicUuid(`company-lead-event:${actor.id}:${commandId}`);
+  const lead: CompanyLeadRecord = {
+    id: leadId,
+    code: deterministicLeadCode(`company-lead-code:${actor.id}:${commandId}`),
+    status: "NEW",
+    statusVersion: 1,
+    source: "OWNER_CREATED",
+    duplicateRisk: "CLEAR",
+    usesPersonalEmail: false,
+    slaDueAt: new Date(capturedAt.getTime() + 24 * 60 * 60 * 1000),
+    overdue: false,
+    createdAt: new Date(capturedAt),
+    updatedAt: new Date(capturedAt),
+    retentionUntil: addUtcMonths(capturedAt, 24),
+    anonymizedAt: null,
+    convertedCompanyId: null,
+    companyName: normalized.companyName,
+    legalName: normalized.legalName,
+    registrationNumber: "",
+    contactName: normalized.contactName,
+    contactEmail: "",
+    phoneCountryCode: "",
+    phone: null,
+    country: "",
+    region: "",
+    city: normalized.city,
+    industry: normalized.industry,
+    employeeRange: normalized.employeeRange,
+    branchRange: normalized.branchRange,
+    spendRange: normalized.spendRange,
+    preferredContactMethod: "EMAIL",
+    preferredContactTime: "",
+    contactTimezone: normalized.timezone,
+    locale: normalized.locale,
+    subject: normalized.subject,
+    message: normalized.message,
+    consentAt: null,
+    privacyPolicyVersion: "owner-created-lead",
+    sourcePage: "/companies/leads/new",
+    sourceMetadata: { source: "OWNER_CREATED" },
+    assignment: null,
+    assignmentHistory: [],
+    duplicateCandidates: [],
+    notes: [],
+    tasks: [],
+    statusHistory: [{
+      fromStatus: null,
+      toStatus: "NEW",
+      reason: "Company Lead created by Platform Owner",
+      changedAt: new Date(capturedAt),
+      changedByName: actor.name,
+    }],
+    availableActions: [],
+  };
+  state.commands.set(commandId, {
+    actorUserId: actor.id,
+    payloadHash,
+    leadId,
+    eventId,
+  });
+  state.leads.set(leadId, lead);
+  return demoLeadMutation(lead, eventId, true);
+}
+
+function demoAvailableLeadActions(
+  lead: CompanyLeadRecord,
+  actor: AuthenticatedSessionUser,
+): CompanyLeadAction[] {
+  const owner = actor.isOwner && actor.accountKind === "PLATFORM";
+  const assignedCam = actor.accountKind === "PLATFORM"
+    && actor.role === "CLIENT_ACCOUNT_MANAGER"
+    && lead.assignment?.managerId === actor.id;
+  if (!owner && !assignedCam) return [];
+  const actions: CompanyLeadAction[] = [];
+  const terminal = ["CONVERTED","DUPLICATE","REJECTED","ARCHIVED"]
+    .includes(lead.status);
+  if (owner && !terminal) actions.push(lead.assignment ? "REASSIGN" : "ASSIGN");
+  if (["NEW","ASSIGNED","INFORMATION_PENDING"].includes(lead.status)) {
+    actions.push("MARK_CONTACTED");
+  }
+  if (["NEW","ASSIGNED","CONTACTED","QUALIFIED"].includes(lead.status)) {
+    actions.push("REQUEST_INFORMATION");
+  }
+  if (["NEW","ASSIGNED","CONTACTED","INFORMATION_PENDING"].includes(lead.status)) {
+    actions.push("QUALIFY");
+  }
+  if (!terminal) actions.push("REJECT","ADD_NOTE","ADD_TASK");
+  if (lead.status === "QUALIFIED" && lead.duplicateRisk !== "POSSIBLE_DUPLICATE") {
+    actions.push("CONVERT");
+  }
+  return actions;
+}
+
+function demoLeadForActor(
+  lead: CompanyLeadRecord,
+  actor: AuthenticatedSessionUser,
+): CompanyLeadRecord {
+  return {
+    ...lead,
+    assignment: lead.assignment ? { ...lead.assignment } : null,
+    assignmentHistory: lead.assignmentHistory.map((item) => ({ ...item })),
+    notes: lead.notes.map((item) => ({ ...item })),
+    tasks: lead.tasks.map((item) => ({ ...item })),
+    statusHistory: lead.statusHistory.map((item) => ({ ...item })),
+    availableActions: demoAvailableLeadActions(lead,actor),
+  };
+}
+
+function demoActorCanFollowUpLead(
+  actor: AuthenticatedSessionUser,
+  lead: CompanyLeadRecord,
+) {
+  return (actor.isOwner && actor.accountKind === "PLATFORM")
+    || (actor.accountKind === "PLATFORM"
+      && actor.role === "CLIENT_ACCOUNT_MANAGER"
+      && lead.assignment?.managerId === actor.id);
+}
+
+function demoStateMutation(
+  lead: CompanyLeadRecord,
+  eventKey: string,
+  occurredAt = new Date(),
+  companyId?: string,
+  eventNonce = "",
+): CompanyLeadMutation {
+  return {
+    leadId: lead.id,
+    leadCode: lead.code,
+    status: lead.status,
+    statusVersion: lead.statusVersion,
+    event: {
+      id: deterministicUuid(
+        `company-lead-event:${lead.id}:${eventKey}:${lead.statusVersion}:${eventNonce}`,
+      ),
+      leadId: lead.id,
+      eventKey,
+      eventVersion: lead.statusVersion,
+      created: true,
+      occurredAt,
+    },
+    notificationRecipientIds: lead.assignment
+      ? [lead.assignment.managerId]
+      : [],
+    ...(companyId ? { companyId } : {}),
+  };
+}
+
+function demoAssignCompanyLead(
+  actor: AuthenticatedSessionUser,
+  leadId: string,
+  managerUserId: string,
+  reason: string,
+) {
+  const lead = demoCompanyLeadState().leads.get(leadId);
+  const occurredAt = new Date();
+  if (!lead || !actor.isOwner || actor.accountKind !== "PLATFORM"
+    || managerUserId !== DEMO_COMPANY_LEAD_MANAGER.id
+    || reason.trim().length < 3 || reason.trim().length > 1000
+    || ["ONBOARDING","ACTIVE","CONVERTED","DUPLICATE","REJECTED","ARCHIVED"]
+      .includes(lead.status)
+    || lead.assignment?.managerId === managerUserId) {
+    throw new CompanyLeadUnavailableError();
+  }
+  if (lead.assignment) {
+    const current = lead.assignment;
+    const history = lead.assignmentHistory.find((item) => item.id === current.id);
+    if (history) {
+      history.status = "ENDED";
+      history.endedAt = occurredAt;
+      history.endReason = `Reassigned: ${reason.trim()}`;
+    }
+  }
+  const assignment = {
+    id: deterministicUuid(`company-lead-assignment:${lead.id}:${managerUserId}:${occurredAt.toISOString()}`),
+    managerId: managerUserId,
+    managerName: DEMO_COMPANY_LEAD_MANAGER.name,
+    assignedAt: occurredAt,
+    reason: reason.trim(),
+  };
+  lead.assignment = assignment;
+  lead.assignmentHistory.unshift({
+    ...assignment,
+    status: "ACTIVE",
+    endedAt: null,
+    endReason: null,
+  });
+  if (lead.status === "NEW") {
+    lead.status = "ASSIGNED";
+    lead.statusVersion += 1;
+    lead.statusHistory.unshift({
+      fromStatus: "NEW",
+      toStatus: "ASSIGNED",
+      reason: "Lead assigned to Agent",
+      changedAt: occurredAt,
+      changedByName: actor.name,
+    });
+  }
+  lead.updatedAt = occurredAt;
+  return demoStateMutation(lead,"company.lead.assigned",occurredAt);
+}
+
+const DEMO_LEAD_TRANSITIONS: Readonly<Partial<Record<
+  CompanyLeadStatus,
+  readonly CompanyLeadStatus[]
+>>> = {
+  NEW: ["CONTACTED","INFORMATION_PENDING","QUALIFIED","REJECTED"],
+  ASSIGNED: ["CONTACTED","INFORMATION_PENDING","QUALIFIED","REJECTED"],
+  CONTACTED: ["INFORMATION_PENDING","QUALIFIED","REJECTED"],
+  INFORMATION_PENDING: ["CONTACTED","QUALIFIED","REJECTED"],
+  QUALIFIED: ["INFORMATION_PENDING","REJECTED"],
+  ACTIVE: ["ARCHIVED"],
+  CONVERTED: ["ARCHIVED"],
+  DUPLICATE: ["ARCHIVED"],
+  REJECTED: ["ARCHIVED"],
+};
+
+function demoTransitionCompanyLead(
+  actor: AuthenticatedSessionUser,
+  leadId: string,
+  status: CompanyLeadStatus,
+  reason: string,
+) {
+  const lead = demoCompanyLeadState().leads.get(leadId);
+  if (!lead || !demoActorCanFollowUpLead(actor,lead)
+    || reason.trim().length < 3 || reason.trim().length > 1000
+    || !DEMO_LEAD_TRANSITIONS[lead.status]?.includes(status)) {
+    throw new CompanyLeadUnavailableError();
+  }
+  const occurredAt = new Date();
+  const fromStatus = lead.status;
+  lead.status = status;
+  lead.statusVersion += 1;
+  lead.updatedAt = occurredAt;
+  lead.statusHistory.unshift({
+    fromStatus,
+    toStatus: status,
+    reason: reason.trim(),
+    changedAt: occurredAt,
+    changedByName: actor.name,
+  });
+  const eventKey = status === "CONTACTED"
+    ? "company.lead.contacted"
+    : status === "INFORMATION_PENDING"
+      ? "company.lead.information_requested"
+      : status === "QUALIFIED"
+        ? "company.lead.qualified"
+        : status === "REJECTED"
+          ? "company.lead.rejected"
+          : status === "ARCHIVED"
+            ? "company.lead.archived"
+            : "company.lead.status_changed";
+  return demoStateMutation(lead,eventKey,occurredAt);
+}
+
+function demoConvertCompanyLead(
+  actor: AuthenticatedSessionUser,
+  leadId: string,
+  reason: string,
+) {
+  const lead = demoCompanyLeadState().leads.get(leadId);
+  if (!lead || !demoActorCanFollowUpLead(actor,lead) || lead.status !== "QUALIFIED"
+    || lead.duplicateRisk === "POSSIBLE_DUPLICATE"
+    || reason.trim().length < 3 || reason.trim().length > 1000) {
+    throw new CompanyLeadUnavailableError();
+  }
+  const occurredAt = new Date();
+  const companyId = deterministicUuid(`company-lead-conversion:${lead.id}`);
+  registerDemoCompanyDirect(companyId,{
+    name: lead.companyName,
+    legalName: lead.legalName,
+    industry: lead.industry,
+    companyInformation: `${lead.employeeRange}; ${lead.branchRange}; ${lead.spendRange}`,
+    mainContactName: lead.contactName,
+    billingCycle: "Monthly",
+    notes: `Converted from ${lead.code}`,
+  });
+  if (lead.assignment) {
+    registerDemoCompanyManagerCoverage(
+      companyId,lead.assignment.managerId,actor.name,
+      "Acquisition lead handover retained during company conversion",occurredAt,
+    );
+  }
+  lead.convertedCompanyId = companyId;
+  lead.status = "ONBOARDING";
+  lead.statusVersion += 1;
+  lead.updatedAt = occurredAt;
+  lead.statusHistory.unshift({
+    fromStatus: "QUALIFIED",
+    toStatus: "ONBOARDING",
+    reason: reason.trim(),
+    changedAt: occurredAt,
+    changedByName: actor.name,
+  });
+  return demoStateMutation(lead,"company.lead.converted",occurredAt,companyId);
+}
+
+function demoAddCompanyLeadNote(
+  actor: AuthenticatedSessionUser,
+  leadId: string,
+  noteType: "INTERNAL" | "CONTACT_ATTEMPT" | "INFORMATION_RECEIVED",
+  note: string,
+) {
+  const lead = demoCompanyLeadState().leads.get(leadId);
+  if (!lead || !demoActorCanFollowUpLead(actor,lead)
+    || note.trim().length < 2 || note.trim().length > 5000
+    || ["CONVERTED","DUPLICATE","REJECTED","ARCHIVED"].includes(lead.status)) {
+    throw new CompanyLeadUnavailableError();
+  }
+  const occurredAt = new Date();
+  const noteId = deterministicUuid(
+    `company-lead-note:${lead.id}:${lead.notes.length + 1}:${note.trim()}`,
+  );
+  lead.notes.unshift({
+    id: noteId,
+    type: noteType,
+    note: note.trim(),
+    createdByName: actor.name,
+    createdAt: occurredAt,
+  });
+  lead.updatedAt = occurredAt;
+  return demoStateMutation(
+    lead,"company.lead.note_added",occurredAt,undefined,noteId,
+  );
+}
+
+function demoAddCompanyLeadTask(
+  actor: AuthenticatedSessionUser,
+  leadId: string,
+  title: string,
+  dueAt: Date,
+  assignedUserId: string,
+) {
+  const lead = demoCompanyLeadState().leads.get(leadId);
+  const occurredAt = new Date();
+  if (!lead || !demoActorCanFollowUpLead(actor,lead)
+    || title.trim().length < 2 || title.trim().length > 240
+    || assignedUserId !== DEMO_COMPANY_LEAD_MANAGER.id
+    || !Number.isFinite(dueAt.getTime()) || dueAt <= occurredAt
+    || ["CONVERTED","DUPLICATE","REJECTED","ARCHIVED"].includes(lead.status)) {
+    throw new CompanyLeadUnavailableError();
+  }
+  const taskId = deterministicUuid(
+    `company-lead-task:${lead.id}:${lead.tasks.length + 1}:${title.trim()}`,
+  );
+  lead.tasks.unshift({
+    id: taskId,
+    title: title.trim(),
+    dueAt: new Date(dueAt),
+    status: "OPEN",
+    assignedUserId,
+    assignedUserName: DEMO_COMPANY_LEAD_MANAGER.name,
+    completionNote: null,
+  });
+  lead.updatedAt = occurredAt;
+  return demoStateMutation(
+    lead,"company.lead.task_added",occurredAt,undefined,taskId,
+  );
+}
+
+function demoCompleteCompanyLeadTask(
+  actor: AuthenticatedSessionUser,
+  leadId: string,
+  taskId: string,
+  completionNote: string,
+) {
+  const lead = demoCompanyLeadState().leads.get(leadId);
+  const task = lead?.tasks.find((candidate) => candidate.id === taskId);
+  if (!lead || !task || !demoActorCanFollowUpLead(actor,lead)
+    || task.status !== "OPEN" || completionNote.trim().length > 1000) {
+    throw new CompanyLeadUnavailableError();
+  }
+  const occurredAt = new Date();
+  task.status = "COMPLETED";
+  task.completionNote = completionNote.trim() || null;
+  lead.updatedAt = occurredAt;
+  return demoStateMutation(
+    lead,"company.lead.task_completed",occurredAt,undefined,taskId,
+  );
+}
+
+function demoLeadMatchesFilters(
+  lead: CompanyLeadRecord,
+  actor: AuthenticatedSessionUser,
+  filters: Record<string, string | undefined>,
+) {
+  if (filters.status && lead.status !== filters.status) return false;
+  if (filters.source && lead.source !== filters.source) return false;
+  if (filters.industry
+    && !lead.industry.toLocaleLowerCase().includes(filters.industry.toLocaleLowerCase())) {
+    return false;
+  }
+  if (filters.duplicateRisk && lead.duplicateRisk !== filters.duplicateRisk) return false;
+  if (filters.createdFrom) {
+    const start = new Date(`${filters.createdFrom}T00:00:00.000Z`);
+    if (Number.isFinite(start.getTime()) && lead.createdAt < start) return false;
+  }
+  if (filters.assignment === "UNASSIGNED" && lead.assignment) return false;
+  if (filters.assignment === "MINE" && lead.assignment?.managerId !== actor.id) return false;
+  return true;
 }
 
 function requiredAssignment(actor: SessionUser) {
@@ -295,12 +863,44 @@ export async function recordPublicCompanyLead(
   return mutation;
 }
 
+export async function recordPublicContactSubmission(
+  client: PoolClient,
+  payload: Record<string, unknown>,
+  locale: SupportedEmailLocale,
+  capturedAt: Date,
+) {
+  const result = await client.query<SnapshotRow>(
+    "SELECT public.axora_record_public_contact_submission($1,$2) AS snapshot",
+    [payload, capturedAt],
+  );
+  const parsed = publicContactMutationSchema.safeParse(result.rows[0]?.snapshot);
+  if (!parsed.success) throw new CompanyLeadUnavailableError();
+  const mutation = parsed.data;
+  if (mutation.created) {
+    await insertContactEmailOutbox(client, mutation.submissionId, locale);
+  }
+  return mutation;
+}
+
 export async function loadCompanyLeadWorkspace(
   actor: AuthenticatedSessionUser,
   filters: Record<string, string | undefined> = {},
   capturedAt = new Date(),
 ) {
-  if (isDemoMode()) return { capturedAt, canViewAll: actor.isOwner, managers: [], leads: [] };
+  if (isDemoMode()) {
+    const leads = [...demoCompanyLeadState().leads.values()]
+      .filter((lead) => actor.isOwner
+        || lead.assignment?.managerId === actor.id)
+      .filter((lead) => demoLeadMatchesFilters(lead,actor,filters))
+      .sort((left,right) => right.createdAt.getTime() - left.createdAt.getTime())
+      .map((lead) => demoLeadForActor(lead,actor));
+    return {
+      capturedAt,
+      canViewAll: actor.isOwner,
+      managers: actor.isOwner ? [{ ...DEMO_COMPANY_LEAD_MANAGER }] : [],
+      leads,
+    } satisfies CompanyLeadWorkspace;
+  }
   try {
     return await withAuditTransaction(
       { actor, reason: "Viewed authorized company lead workspace" },
@@ -348,32 +948,92 @@ async function mutate(
   });
 }
 
-export function assignCompanyLead(actor: AuthenticatedSessionUser, leadId: string, managerUserId: string, reason: string) {
-  return mutate(actor, "Company lead assigned", "SELECT public.axora_assign_company_lead($1,$2,$3,$4,$5,$6) AS snapshot", [actor.id, requiredAssignment(actor), uuid.parse(leadId), uuid.parse(managerUserId), reason, new Date()]);
+export async function createAcquisitionLead(
+  actor: AuthenticatedSessionUser,
+  input: AcquisitionLeadInput,
+  commandId: string,
+  capturedAt = new Date(),
+) {
+  if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+    throw new CompanyLeadUnavailableError();
+  }
+  const parsedCommandId = uuid.parse(commandId);
+  if (isDemoMode()) {
+    return createDemoAcquisitionLead(
+      actor,input,parsedCommandId,capturedAt,
+    );
+  }
+  return await mutate(
+    actor,
+    "Company Lead created by Platform Owner",
+    "SELECT public.axora_create_acquisition_lead($1,$2,$3,$4,$5) AS snapshot",
+    [
+      actor.id,
+      requiredAssignment(actor),
+      input,
+      parsedCommandId,
+      capturedAt,
+    ],
+  );
 }
 
-export function transitionCompanyLead(actor: AuthenticatedSessionUser, leadId: string, status: CompanyLeadStatus, reason: string) {
-  return mutate(actor, `Company lead changed to ${status}`, "SELECT public.axora_transition_company_lead($1,$2,$3,$4,$5,$6) AS snapshot", [actor.id, requiredAssignment(actor), uuid.parse(leadId), status, reason, new Date()]);
+export async function assignCompanyLead(actor: AuthenticatedSessionUser, leadId: string, managerUserId: string, reason: string) {
+  const parsedLeadId = uuid.parse(leadId);
+  const parsedManagerId = uuid.parse(managerUserId);
+  if (isDemoMode()) {
+    return demoAssignCompanyLead(actor,parsedLeadId,parsedManagerId,reason);
+  }
+  return await mutate(actor, "Company lead assigned", "SELECT public.axora_assign_company_lead($1,$2,$3,$4,$5,$6) AS snapshot", [actor.id, requiredAssignment(actor), parsedLeadId, parsedManagerId, reason, new Date()]);
+}
+
+export async function transitionCompanyLead(actor: AuthenticatedSessionUser, leadId: string, status: CompanyLeadStatus, reason: string) {
+  const parsedLeadId = uuid.parse(leadId);
+  if (isDemoMode()) {
+    return demoTransitionCompanyLead(actor,parsedLeadId,status,reason);
+  }
+  return await mutate(actor, `Company lead changed to ${status}`, "SELECT public.axora_transition_company_lead($1,$2,$3,$4,$5,$6) AS snapshot", [actor.id, requiredAssignment(actor), parsedLeadId, status, reason, new Date()]);
 }
 
 export function resolveCompanyLeadDuplicate(actor: AuthenticatedSessionUser, leadId: string, candidateId: string, resolution: "CLEAR" | "CONFIRM", reason: string) {
   return mutate(actor, `Company lead duplicate ${resolution.toLowerCase()}`, "SELECT public.axora_resolve_company_lead_duplicate($1,$2,$3,$4,$5,$6,$7) AS snapshot", [actor.id, requiredAssignment(actor), uuid.parse(leadId), uuid.parse(candidateId), resolution, reason, new Date()]);
 }
 
-export function addCompanyLeadNote(actor: AuthenticatedSessionUser, leadId: string, noteType: "INTERNAL" | "CONTACT_ATTEMPT" | "INFORMATION_RECEIVED", note: string) {
-  return mutate(actor, "Company lead note added", "SELECT public.axora_add_company_lead_note($1,$2,$3,$4,$5,$6) AS snapshot", [actor.id, requiredAssignment(actor), uuid.parse(leadId), noteType, note, new Date()]);
+export async function addCompanyLeadNote(actor: AuthenticatedSessionUser, leadId: string, noteType: "INTERNAL" | "CONTACT_ATTEMPT" | "INFORMATION_RECEIVED", note: string) {
+  const parsedLeadId = uuid.parse(leadId);
+  if (isDemoMode()) {
+    return demoAddCompanyLeadNote(actor,parsedLeadId,noteType,note);
+  }
+  return await mutate(actor, "Company lead note added", "SELECT public.axora_add_company_lead_note($1,$2,$3,$4,$5,$6) AS snapshot", [actor.id, requiredAssignment(actor), parsedLeadId, noteType, note, new Date()]);
 }
 
-export function addCompanyLeadTask(actor: AuthenticatedSessionUser, leadId: string, title: string, dueAt: Date, assignedUserId: string) {
-  return mutate(actor, "Company lead follow-up task added", "SELECT public.axora_add_company_lead_task($1,$2,$3,$4,$5,$6,$7) AS snapshot", [actor.id, requiredAssignment(actor), uuid.parse(leadId), title, dueAt, uuid.parse(assignedUserId), new Date()]);
+export async function addCompanyLeadTask(actor: AuthenticatedSessionUser, leadId: string, title: string, dueAt: Date, assignedUserId: string) {
+  const parsedLeadId = uuid.parse(leadId);
+  const parsedAssignedUserId = uuid.parse(assignedUserId);
+  if (isDemoMode()) {
+    return demoAddCompanyLeadTask(
+      actor,parsedLeadId,title,dueAt,parsedAssignedUserId,
+    );
+  }
+  return await mutate(actor, "Company lead follow-up task added", "SELECT public.axora_add_company_lead_task($1,$2,$3,$4,$5,$6,$7) AS snapshot", [actor.id, requiredAssignment(actor), parsedLeadId, title, dueAt, parsedAssignedUserId, new Date()]);
 }
 
-export function completeCompanyLeadTask(actor: AuthenticatedSessionUser, leadId: string, taskId: string, completionNote: string) {
-  return mutate(actor, "Company lead follow-up task completed", "SELECT public.axora_complete_company_lead_task($1,$2,$3,$4,$5,$6) AS snapshot", [actor.id, requiredAssignment(actor), uuid.parse(leadId), uuid.parse(taskId), completionNote, new Date()]);
+export async function completeCompanyLeadTask(actor: AuthenticatedSessionUser, leadId: string, taskId: string, completionNote: string) {
+  const parsedLeadId = uuid.parse(leadId);
+  const parsedTaskId = uuid.parse(taskId);
+  if (isDemoMode()) {
+    return demoCompleteCompanyLeadTask(
+      actor,parsedLeadId,parsedTaskId,completionNote,
+    );
+  }
+  return await mutate(actor, "Company lead follow-up task completed", "SELECT public.axora_complete_company_lead_task($1,$2,$3,$4,$5,$6) AS snapshot", [actor.id, requiredAssignment(actor), parsedLeadId, parsedTaskId, completionNote, new Date()]);
 }
 
-export function convertCompanyLead(actor: AuthenticatedSessionUser, leadId: string, reason: string) {
-  return mutate(actor, "Company lead converted to onboarding company", "SELECT public.axora_convert_company_lead($1,$2,$3,$4,$5) AS snapshot", [actor.id, requiredAssignment(actor), uuid.parse(leadId), reason, new Date()]);
+export async function convertCompanyLead(actor: AuthenticatedSessionUser, leadId: string, reason: string) {
+  const parsedLeadId = uuid.parse(leadId);
+  if (isDemoMode()) {
+    return demoConvertCompanyLead(actor,parsedLeadId,reason);
+  }
+  return await mutate(actor, "Company lead converted to onboarding company", "SELECT public.axora_convert_company_lead($1,$2,$3,$4,$5) AS snapshot", [actor.id, requiredAssignment(actor), parsedLeadId, reason, new Date()]);
 }
 
 export function anonymizeCompanyLead(actor: AuthenticatedSessionUser, leadId: string, reason: string) {
@@ -388,5 +1048,18 @@ export async function exportCompanyLead(actor: AuthenticatedSessionUser, leadId:
   );
   const parsed = companyLeadRecordSchema.safeParse(result.rows[0]?.snapshot);
   if (!parsed.success) throw new CompanyLeadUnavailableError();
-  return parsed.data;
+  const retained = Object.fromEntries(
+    Object.entries(parsed.data).filter(([key]) =>
+      !retiredCompanyLeadExportKeys.has(key as keyof CompanyLeadRecord)),
+  ) as Omit<CompanyLeadRecord,
+    "registrationNumber" | "contactEmail" | "phoneCountryCode" | "phone" |
+    "country" | "region" | "preferredContactTime" | "usesPersonalEmail">;
+  return {
+    ...retained,
+    duplicateCandidates: retained.duplicateCandidates.map((candidate) => ({
+      ...candidate,
+      matchedFields: candidate.matchedFields.filter((field) =>
+        !retiredCompanyLeadMatchFields.has(field)),
+    })),
+  };
 }

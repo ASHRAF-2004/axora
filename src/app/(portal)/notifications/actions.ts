@@ -12,6 +12,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 const uuid = z.uuid();
+const statusFilter = z.enum(["ALL", "UNREAD", "READ", "ARCHIVED"]);
+const categoryFilter = z.enum([
+  "ALL", "ACCOUNT", "LEAD", "APPROVAL", "BUDGET",
+  "DELIVERY", "FINANCE", "EMAIL", "WORKFLOW",
+]);
 const notificationCommandSchema = z.object({
   commandId: uuid,
   notificationId: uuid,
@@ -32,9 +37,14 @@ function text(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function finish(notice: "saved" | "denied"): never {
+function finish(formData: FormData, notice: "saved" | "denied"): never {
+  const params = new URLSearchParams({ notice });
+  const status = statusFilter.safeParse(text(formData, "returnStatus"));
+  const category = categoryFilter.safeParse(text(formData, "returnCategory"));
+  if (status.success) params.set("status", status.data);
+  if (category.success) params.set("category", category.data);
   revalidatePath("/notifications");
-  redirect(`/notifications?notice=${notice}`);
+  redirect(`/notifications?${params.toString()}`);
 }
 
 export async function markNotificationReadAction(formData: FormData) {
@@ -44,7 +54,7 @@ export async function markNotificationReadAction(formData: FormData) {
     notificationId: text(formData, "notificationId"),
     stateVersion: text(formData, "stateVersion") || undefined,
   });
-  if (!parsed.success) finish("denied");
+  if (!parsed.success) finish(formData, "denied");
   try {
     await markMyNotificationRead(
       actor,
@@ -53,21 +63,21 @@ export async function markNotificationReadAction(formData: FormData) {
       parsed.data.stateVersion,
     );
   } catch {
-    finish("denied");
+    finish(formData, "denied");
   }
-  finish("saved");
+  finish(formData, "saved");
 }
 
 export async function markAllNotificationsReadAction(formData: FormData) {
   const actor = await requireSession();
   const commandId = uuid.safeParse(text(formData, "commandId"));
-  if (!commandId.success) finish("denied");
+  if (!commandId.success) finish(formData, "denied");
   try {
     await markAllMyNotificationsRead(actor, commandId.data);
   } catch {
-    finish("denied");
+    finish(formData, "denied");
   }
-  finish("saved");
+  finish(formData, "saved");
 }
 
 export async function archiveNotificationAction(formData: FormData) {
@@ -76,7 +86,7 @@ export async function archiveNotificationAction(formData: FormData) {
     commandId: text(formData, "commandId"),
     notificationId: text(formData, "notificationId"),
   });
-  if (!parsed.success) finish("denied");
+  if (!parsed.success) finish(formData, "denied");
   try {
     await archiveMyNotification(
       actor,
@@ -84,9 +94,9 @@ export async function archiveNotificationAction(formData: FormData) {
       parsed.data.commandId,
     );
   } catch {
-    finish("denied");
+    finish(formData, "denied");
   }
-  finish("saved");
+  finish(formData, "saved");
 }
 
 export async function saveNotificationPreferenceAction(formData: FormData) {
@@ -101,11 +111,11 @@ export async function saveNotificationPreferenceAction(formData: FormData) {
     deliverySchedule: text(formData, "deliverySchedule"),
     reminderHours: text(formData, "reminderHours") || "0",
   });
-  if (!parsed.success) finish("denied");
+  if (!parsed.success) finish(formData, "denied");
   try {
     await saveMyNotificationPreference(actor, parsed.data);
   } catch {
-    finish("denied");
+    finish(formData, "denied");
   }
-  finish("saved");
+  finish(formData, "saved");
 }

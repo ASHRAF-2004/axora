@@ -160,7 +160,6 @@ export interface CompanyOnboardingProfileInput {
   companyId: string;
   expectedVersion: number;
   legalName: string;
-  registrationNumber: string;
   registrationCountryCode: string;
   taxRegistrationNumber: string;
   industryCode: string;
@@ -168,11 +167,8 @@ export interface CompanyOnboardingProfileInput {
   registeredAddress: string;
   operatingAddress: string;
   mainContactName: string;
-  mainContactEmail: string;
-  mainContactPhone: string;
   billingContactName: string;
   billingContactEmail: string;
-  billingContactPhone: string;
   billingAddress: string;
   billingCycle: string;
   defaultLocale: "en" | "ar" | "ms";
@@ -421,28 +417,50 @@ async function mutate(
   });
 }
 
-export function saveCompanyOnboarding(
+export async function saveCompanyOnboarding(
   actor: AuthenticatedSessionUser,
   input: CompanyOnboardingProfileInput,
 ) {
-  return mutate(
-    actor,
-    input.reason,
-    `SELECT public.axora_save_company_verification_draft(
-       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-       $19,$20,$21,$22,$23,$24,$25,$26
-     ) AS snapshot`,
-    [
-      actor.id, assignmentId(actor), uuid.parse(input.companyId), input.expectedVersion,
-      input.legalName, input.registrationNumber, input.registrationCountryCode,
-      input.taxRegistrationNumber, input.industryCode, input.industryOtherText ?? null,
-      input.registeredAddress, input.operatingAddress, input.mainContactName,
-      input.mainContactEmail, input.mainContactPhone, input.billingContactName,
-      input.billingContactEmail, input.billingContactPhone, input.billingAddress,
-      input.billingCycle, input.defaultLocale, input.timezone, input.currentStep,
-      input.completedSteps, input.reason, new Date(),
-    ],
-  );
+  if (isDemoMode()) throw new CompanyOnboardingUnavailableError();
+  const capturedAt = new Date();
+  return withAuditTransaction({ actor, reason: input.reason }, async (client) => {
+    // The current database signature retains these historical columns so an
+    // older application image can still roll back safely. Read their trusted
+    // values server-side and pass them through unchanged; they are no longer
+    // collected, displayed, or accepted from the browser.
+    const currentResult = await client.query<SnapshotRow>(
+      "SELECT public.axora_company_verification_workspace($1,$2,$3,$4) AS snapshot",
+      [actor.id, assignmentId(actor), uuid.parse(input.companyId), capturedAt],
+    );
+    const current = workspaceSchema.safeParse(currentResult.rows[0]?.snapshot);
+    if (!current.success
+      || current.data.capturedAt.getTime() !== capturedAt.getTime()
+      || current.data.company.id !== input.companyId
+      || current.data.company.version !== input.expectedVersion) {
+      throw new CompanyOnboardingUnavailableError();
+    }
+    const result = await client.query<SnapshotRow>(
+      `SELECT public.axora_save_company_verification_draft(
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+         $19,$20,$21,$22,$23,$24,$25,$26
+       ) AS snapshot`,
+      [
+        actor.id, assignmentId(actor), uuid.parse(input.companyId), input.expectedVersion,
+        input.legalName, current.data.company.registrationNumber,
+        input.registrationCountryCode, input.taxRegistrationNumber,
+        input.industryCode, input.industryOtherText ?? null,
+        input.registeredAddress, input.operatingAddress, input.mainContactName,
+        current.data.company.mainContactEmail, current.data.company.mainContactPhone,
+        input.billingContactName, input.billingContactEmail,
+        current.data.company.billingContactPhone, input.billingAddress, input.billingCycle,
+        input.defaultLocale, input.timezone, input.currentStep,
+        input.completedSteps, input.reason, capturedAt,
+      ],
+    );
+    const mutation = parseMutation(result.rows[0]?.snapshot);
+    await notifyMutation(client, mutation, actor);
+    return mutation;
+  });
 }
 
 export function updateCompanyOnboardingItem(

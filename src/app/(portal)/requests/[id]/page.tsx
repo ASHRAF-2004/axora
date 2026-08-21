@@ -17,18 +17,41 @@ import { allowedNextStatuses } from "@/lib/workflow";
 import { CircleDollarSign, PackageCheck, Route, UserRound, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { updateStatusAction } from "../actions";
-import { payRequestAction } from "../actions";
+import { approveAndPayRequestAction, updateStatusAction } from "../actions";
 import { getFinalInvoiceSummary } from "@/lib/payment-checkout";
+import { formatMoneyDecimal } from "@/lib/money-decimal";
 import { randomUUID } from "node:crypto";
+import {
+  isApproveAndPayLocalNotReadyState,
+  isApproveAndPayResultStatus,
+} from "@/lib/finance-business-results";
+import { approveAndPayResultCopy, walletMessages } from "@/lib/wallet-i18n";
 
-export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function RequestDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    financeResult?: string;
+    financeState?: string;
+    financeError?: string;
+  }>;
+}) {
   const { id } = await params;
   const actor = await requirePagePermission("view_requests");
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const requestCopy = corePortalMessages(locale).requests;
   const detail = requestDetailMessages(locale);
+  const walletCopy = walletMessages(locale);
+  const feedback = await searchParams;
+  const financeResult = isApproveAndPayResultStatus(feedback.financeResult)
+    ? feedback.financeResult
+    : undefined;
+  const financeState = isApproveAndPayLocalNotReadyState(feedback.financeState)
+    ? feedback.financeState
+    : undefined;
   const platformView = actor.isOwner || actor.accountKind === "PLATFORM";
   const canViewRevenue = !platformView || canAccess(actor, "view_platform_revenue");
   const canViewCost = platformView && canAccess(actor, "view_internal_cost");
@@ -64,9 +87,12 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
   const canMoveRequest = canAccess(actor, "manage_deliveries")
     && nextStatuses.length > 0
     && !(request.status === "New Request" && request.approvalStatus !== "Approved");
-  const payAction = payRequestAction.bind(null, id);
-  const canPay = !platformView && canAccess(actor, "create_requests")
-    && request.approvalStatus === "Approved" && !finalInvoice;
+  const canFinalizeApprovedRequest = !platformView
+    && canAccess(actor, "approve_requests")
+    && request.createdById !== actor.id
+    && request.approvalStatus === "Approved"
+    && !finalInvoice
+    && Boolean(request.approvalRevision);
 
   return (
     <>
@@ -188,14 +214,21 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             {request.approvalStatus === "Pending" && canAccess(actor, "approve_requests")
               ? <div className="form-actions"><Link className="button button-primary" href="/approvals">{detail.reviewApproval}</Link></div>
               : null}
-            {canPay ? <form action={payAction} style={{ marginBlockStart: 20 }}>
-              <input type="hidden" name="idempotencyKey" value={randomUUID()} />
-              <div className="callout"><strong>{detail.readyToPay}</strong><p>{detail.payBody(formatCurrency(request.estimatedTotal, locale))}</p></div>
-              <div className="form-actions"><button className="button button-primary" type="submit">{detail.pay}</button></div>
+            {financeResult ? <div className="callout" role={financeResult === "SUCCESS" || financeResult === "ALREADY_PROCESSED" ? "status" : "alert"} style={{ marginBlockStart: 20 }}>
+              <strong>{approveAndPayResultCopy(locale, financeResult, financeState).title}</strong>
+              <p>{approveAndPayResultCopy(locale, financeResult, financeState).body}</p>
+            </div> : null}
+            {feedback.financeError ? <div className="callout" role="alert" style={{ marginBlockStart: 20 }}><strong>{walletCopy.unavailable}</strong><p>{walletCopy.invalidSubmission}</p></div> : null}
+            {canFinalizeApprovedRequest ? <form action={approveAndPayRequestAction.bind(null, id)} style={{ marginBlockStart: 20 }}>
+              <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
+              <input type="hidden" name="commandId" value={randomUUID()} />
+              <div className="callout"><strong>{walletCopy.approveAndPay}</strong><p>{walletCopy.approveAndPayIntro}</p></div>
+              <label style={{ marginBlockStart: 13 }}>{walletCopy.reason}<textarea name="reason" minLength={3} maxLength={1000} required /></label>
+              <div className="form-actions"><button className="button button-primary" type="submit">{walletCopy.approveAndPay}</button></div>
             </form> : null}
             {finalInvoice ? <div className="callout" style={{ marginBlockStart: 20 }}>
               <strong>{detail.paid}</strong>
-              <p>{finalInvoice.invoiceNumber} · {formatCurrency(Number(finalInvoice.amount), locale)} · {formatDateTime(finalInvoice.paidAt, locale, timeZone)}</p>
+              <p>{finalInvoice.invoiceNumber} · {formatMoneyDecimal(finalInvoice.amount, finalInvoice.currency, locale)} · {formatDateTime(finalInvoice.paidAt, locale, timeZone)}</p>
               <p>{detail.invoiceEmailStatus(finalInvoice.emailStatus ?? "PENDING")}</p>
               {finalInvoice.downloadUrl ? <div className="form-actions"><Link className="button button-secondary" href={finalInvoice.downloadUrl}>{detail.downloadInvoice}</Link></div> : <p>{detail.invoicePreparing}</p>}
             </div> : null}

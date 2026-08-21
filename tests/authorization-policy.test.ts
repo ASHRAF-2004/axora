@@ -3,8 +3,10 @@ import {
   PERMISSION_CATALOG,
   authorize,
   canonicalRoleForAuthorization,
+  creationPermissionOptions,
   defaultPermissionsForRole,
   isPermissionCode,
+  permissionIsCompatibleWithAccountKind,
   type ApprovalLimit,
   type AuthorizationScope,
   type AuthorizationSubject,
@@ -91,10 +93,91 @@ describe("canonical authorization policy", () => {
       "DELIVERY",
       false,
     )).toBe("DELIVERY_AGENT");
-    expect(defaultPermissionsForRole(
+    const camDefaults = defaultPermissionsForRole(
       "CLIENT_ACCOUNT_MANAGER",
       "COMPANY",
-    )).toContain("company.view.assigned");
+    );
+    expect(camDefaults).toContain("company.view.assigned");
+    expect(camDefaults).not.toContain("company.create");
+  });
+
+  it("keeps permission customization inside the target account kind", () => {
+    expect(permissionIsCompatibleWithAccountKind(
+      "company_user.create",
+      "COMPANY",
+    )).toBe(true);
+    expect(permissionIsCompatibleWithAccountKind(
+      "commercial.cost.view",
+      "COMPANY",
+    )).toBe(false);
+    expect(permissionIsCompatibleWithAccountKind(
+      "delivery.view",
+      "COMPANY",
+    )).toBe(true);
+    expect(permissionIsCompatibleWithAccountKind(
+      "delivery.claim",
+      "COMPANY",
+    )).toBe(false);
+    expect(permissionIsCompatibleWithAccountKind(
+      "finance.wallet.top_up.record",
+      "COMPANY",
+    )).toBe(false);
+    expect(permissionIsCompatibleWithAccountKind(
+      "commercial.company_ceiling.override",
+      "COMPANY",
+    )).toBe(false);
+    for (const platformOnly of [
+      "analytics.revenue.view",
+      "finance.manage",
+      "delivery.manage",
+      "delivery.assign",
+    ] as const) {
+      expect(permissionIsCompatibleWithAccountKind(
+        platformOnly,
+        "COMPANY",
+      )).toBe(false);
+    }
+    expect(permissionIsCompatibleWithAccountKind(
+      "delivery.claim",
+      "DELIVERY",
+    )).toBe(true);
+    expect(permissionIsCompatibleWithAccountKind(
+      "company_user.create",
+      "DELIVERY",
+    )).toBe(false);
+    expect(permissionIsCompatibleWithAccountKind(
+      "document.download",
+      "DELIVERY",
+    )).toBe(true);
+    expect(permissionIsCompatibleWithAccountKind(
+      "delivery.view",
+      "PLATFORM",
+    )).toBe(true);
+    expect(permissionIsCompatibleWithAccountKind(
+      "delivery.claim",
+      "PLATFORM",
+    )).toBe(false);
+
+    const requesterDefaults = defaultPermissionsForRole(
+      "REQUESTER",
+      "BRANCH",
+    );
+    const narrowed = creationPermissionOptions(
+      "COMPANY",
+      requesterDefaults,
+      false,
+    );
+    expect(narrowed.map((permission) => permission.code).sort())
+      .toEqual([...requesterDefaults].sort());
+    const expanded = creationPermissionOptions(
+      "COMPANY",
+      requesterDefaults,
+      true,
+    );
+    expect(expanded.some((permission) => permission.code === "company_user.edit"))
+      .toBe(true);
+    expect(expanded.some((permission) => permission.code === "platform_user.edit"))
+      .toBe(false);
   });
 
   it("keeps an assigned client account manager inside assigned companies", () => {

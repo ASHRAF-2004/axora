@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isDemoMode, withAuditTransaction } from "./db";
-import { recordPublicCompanyLead } from "./company-leads";
+import { recordPublicContactSubmission } from "./company-leads";
 import {
   consumePublicRequestRateLimit,
   publicRequestRateKey,
@@ -9,7 +9,6 @@ import {
 
 const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
 const MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
-const PHONE_PATTERN = /^[+0-9() .-]+$/;
 const singleLine = (minimum: number, maximum: number) => z.string()
   .trim()
   .min(minimum)
@@ -43,22 +42,14 @@ const contactSubmissionSchema = z.object({
   locale: z.enum(["en", "ar", "ms"]),
   idempotencyToken: z.string().uuid(),
   contactName: singleLine(2, 200),
-  contactEmail: z.email().max(254).transform((value) => value.trim().toLowerCase()),
   companyName: singleLine(2, 200),
   companyLegalName: singleLine(2, 300),
-  registrationNumber: optionalSingleLine(160),
-  phoneCountryCode: z.string().trim().min(1).max(12).regex(/^\+[0-9]{1,4}$/),
-  phone: z.string().trim().min(3).max(40).regex(PHONE_PATTERN)
-    .transform((value) => value.replace(/\s+/g, " ")),
-  country: singleLine(2, 120),
-  region: singleLine(2, 160),
   city: singleLine(2, 160),
   industry: singleLine(2, 200),
   employeeRange: z.enum(["1_10", "11_50", "51_200", "201_500", "501_1000", "1001_PLUS"]),
   branchRange: z.enum(["1", "2_5", "6_20", "21_50", "51_PLUS"]),
   spendRange: z.enum(["UNDER_10K", "10K_50K", "50K_250K", "250K_1M", "OVER_1M", "UNDISCLOSED"]),
   contactMethod: z.enum(["EMAIL", "PHONE", "WHATSAPP", "VIDEO_CALL"]),
-  contactTime: optionalSingleLine(160),
   contactTimezone: singleLine(1, 80).refine(validIanaTimezone),
   subject: singleLine(3, 200),
   message: z.string().trim().min(10).max(5_000)
@@ -130,10 +121,13 @@ export async function submitPublicContact(
   const capturedAt = new Date();
   const verified = validateTurnstileResult(turnstile, capturedAt);
   const networkRateKey = publicRequestRateKey("network", networkIdentifier);
-  const senderRateKey = publicRequestRateKey("identifier", parsed.contactEmail);
+  const senderRateKey = publicRequestRateKey(
+    "identifier",
+    `${parsed.contactName}:${parsed.companyName}`.toLowerCase(),
+  );
   const idempotencyKey = publicRequestRateKey(
     "identifier",
-    `company-lead:${parsed.idempotencyToken}:${parsed.contactEmail}`,
+    `public-contact:${parsed.idempotencyToken}`,
   );
   const sourceMetadata = Object.fromEntries(
     Object.entries(parsed.campaign).filter((entry): entry is [string, string] => Boolean(entry[1])),
@@ -146,25 +140,18 @@ export async function submitPublicContact(
         { kind: "NETWORK", hash: networkRateKey, hourlyLimit: 6 },
         { kind: "IDENTIFIER", hash: senderRateKey, hourlyLimit: 4 },
       ]);
-      const mutation = await recordPublicCompanyLead(client, {
+      const mutation = await recordPublicContactSubmission(client, {
         idempotencyKey,
         locale: parsed.locale,
         contactName: parsed.contactName,
-        contactEmail: parsed.contactEmail,
         companyName: parsed.companyName,
         companyLegalName: parsed.companyLegalName,
-        registrationNumber: parsed.registrationNumber,
-        phoneCountryCode: parsed.phoneCountryCode,
-        phone: parsed.phone,
-        country: parsed.country,
-        region: parsed.region,
         city: parsed.city,
         industry: parsed.industry,
         employeeRange: parsed.employeeRange,
         branchRange: parsed.branchRange,
         spendRange: parsed.spendRange,
         contactMethod: parsed.contactMethod,
-        contactTime: parsed.contactTime,
         contactTimezone: parsed.contactTimezone,
         subject: parsed.subject,
         message: parsed.message,
@@ -176,7 +163,7 @@ export async function submitPublicContact(
         turnstileChallengeAt: verified.challengeAt.toISOString(),
         turnstileHostname: verified.hostname.toLowerCase(),
       }, parsed.locale as SupportedEmailLocale, capturedAt);
-      return { submissionId: mutation.submissionId, leadId: mutation.leadId };
+      return { submissionId: mutation.submissionId };
     },
   );
 }

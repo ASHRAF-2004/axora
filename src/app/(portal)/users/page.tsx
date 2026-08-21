@@ -11,7 +11,9 @@ import { localizedAccountRole } from "@/lib/user-form-i18n";
 import { accountRoleLabel } from "@/lib/role-catalog";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { profileImageMessages } from "@/lib/profile-image-i18n";
+import { peopleWorkspaceMessages } from "@/lib/people-workspaces-i18n";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   setUserActiveAction,
   deactivateUserProfileImageAction,
@@ -73,17 +75,31 @@ function invitationTimeline(user: Awaited<ReturnType<typeof listAuthorizedUsers>
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requirePagePermission("manage_users");
+  if (actor.accountKind !== "PLATFORM") notFound();
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
-  const copy = corePortalMessages(locale).users;
-  const common = corePortalMessages(locale).common;
+  const portalCopy = corePortalMessages(locale);
+  const copy = portalCopy.users;
+  const common = portalCopy.common;
   const accessCopy = accessAdministrationMessages(locale);
   const imageCopy = profileImageMessages(locale);
   const deletionCopy = permanentDeletionMessages[locale];
+  const workspaceCopy = peopleWorkspaceMessages(locale);
   const [directoryUsers, params] = await Promise.all([listAuthorizedUsers(actor), searchParams]);
-  const users = directoryUsers.filter((user) => user.accountStatus !== "DEACTIVATED");
-  const notice = params.notice === "user-removed" ? deletionCopy.removedNotice
-    : params.notice === "remove-unavailable" ? copy.removeUnavailable : undefined;
+  const users = directoryUsers.filter((user) => (
+    user.accountKind === "PLATFORM" && user.accountStatus !== "DEACTIVATED"
+  ));
+  const standardNotice = params.notice ? portalCopy.notices[params.notice] : undefined;
+  const localNotice = params.notice === "user-removed"
+    ? { message: deletionCopy.removedNotice }
+    : params.notice === "remove-unavailable"
+      ? { message: copy.removeUnavailable, tone: "error" as const }
+      : params.notice === "user-creation-invalid"
+        ? { message: workspaceCopy.invalidUser, tone: "error" as const }
+        : params.notice === "user-permission-selection-unavailable"
+          ? { message: workspaceCopy.unavailablePermissions, tone: "error" as const }
+          : undefined;
+  const notice = standardNotice ?? localNotice;
   const activeAdminCounts = users.reduce<Record<string, number>>((counts, user) => {
     if (user.active && user.accountSetupCompletedAt
       && ["ADMIN", "COMPANY_ADMIN"].includes(user.role) && user.companyId) {
@@ -96,9 +112,9 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     && (user.isOwner || user.role === "PLATFORM_OWNER")).length;
   const showOrganization = actor.accountKind === "PLATFORM" || actor.isOwner;
 
-  return <><PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
-    <div className="page-actions"><Link className="button button-primary" href="/users/new">{copy.create}</Link></div>
-    {notice ? <div className="callout" role="status"><strong>{notice}</strong></div> : null}
+  return <><PageHeader eyebrow={workspaceCopy.axoraEyebrow} title={workspaceCopy.axoraTitle} description={workspaceCopy.axoraDescription} />
+    {actor.isOwner ? <div className="page-actions"><Link className="button button-primary" href="/users/new">{workspaceCopy.createAxora}</Link></div> : null}
+    {notice ? <div className={notice.tone === "error" ? "form-alert" : "callout"} role={notice.tone === "error" ? "alert" : "status"}><strong>{notice.message}</strong></div> : null}
     <section className="panel" style={{ marginBlockStart: 17 }}><div className="data-table-wrap"><table className="data-table"><thead><tr>
       <th>{copy.user}</th>{showOrganization ? <th>{copy.organization}</th> : null}<th>{copy.role}</th><th>{copy.scope}</th><th>{common.status}</th><th>{copy.lastLogin}</th><th>{copy.action}</th>
     </tr></thead><tbody>{users.map((user) => {

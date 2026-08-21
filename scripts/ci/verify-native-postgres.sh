@@ -121,6 +121,8 @@ run_native_test() {
 # proving the global last-Platform-Owner invariant and intentionally retires
 # other native owner fixtures only after the PR #137 regression is complete.
 run_native_test tests/delivery-guy-invitation-native-postgres.test.ts
+run_native_test tests/operating-model-concurrency-native-postgres.test.ts
+run_native_test tests/company-direct-creation-native-postgres.test.ts
 run_native_test tests/existing-user-management-native-postgres.test.ts
 run_native_test tests/company-acquisition-native-postgres.test.ts
 
@@ -137,6 +139,9 @@ DECLARE
   invalid_constraints text[];
   missing_rls text[];
   exposed_cleanup_functions text[];
+  exposed_prompt7_functions text[];
+  exposed_prompt7_tables text[];
+  missing_prompt7_capabilities text[];
 BEGIN
   SELECT count(*) INTO applied_migrations FROM public.schema_migrations;
   IF applied_migrations <> expected_migrations THEN
@@ -224,6 +229,94 @@ BEGIN
       AND has_function_privilege('axora_cleanup_worker', oid, 'EXECUTE')
   ) THEN
     RAISE EXCEPTION 'Cleanup worker cannot lease cleanup tasks';
+  END IF;
+
+  SELECT array_agg(relname ORDER BY relname)
+  INTO missing_rls
+  FROM pg_class
+  WHERE relnamespace='public'::regnamespace
+    AND relname IN (
+      'company_lead_profiles',
+      'branch_delivery_location_commands',
+      'company_wallets',
+      'company_wallet_top_up_requests',
+      'company_wallet_ledger_entries',
+      'company_wallet_top_up_events',
+      'approve_and_pay_commands'
+    )
+    AND (NOT relrowsecurity OR NOT relforcerowsecurity);
+  IF coalesce(cardinality(missing_rls), 0) <> 0 THEN
+    RAISE EXCEPTION 'Prompt 7 evidence tables lack forced RLS: %', missing_rls;
+  END IF;
+
+  SELECT array_agg(DISTINCT table_name ORDER BY table_name)
+  INTO exposed_prompt7_tables
+  FROM information_schema.role_table_grants
+  WHERE grantee='axora_app' AND table_schema='public'
+    AND table_name IN (
+      'company_lead_profiles','company_lead_intake_rows',
+      'branch_delivery_location_commands',
+      'company_wallets','company_wallet_top_up_requests',
+      'company_wallet_ledger_entries','company_wallet_top_up_events',
+      'approve_and_pay_commands'
+    );
+  IF coalesce(cardinality(exposed_prompt7_tables), 0) <> 0 THEN
+    RAISE EXCEPTION 'Prompt 7 raw tables are exposed to axora_app: %',
+      exposed_prompt7_tables;
+  END IF;
+
+  SELECT array_agg(oid::regprocedure::text ORDER BY oid::regprocedure::text)
+  INTO exposed_prompt7_functions
+  FROM pg_proc
+  WHERE pronamespace='public'::regnamespace
+    AND proname IN (
+      'axora_create_company_record_internal',
+      'axora_delivery_notification_recipients',
+      'axora_effective_access_snapshot_unfiltered_internal',
+      'axora_workflow_notification_recipient_is_valid_base',
+      'axora_create_company_wallet',
+      'axora_protect_top_up_request',
+      'axora_protect_company_wallet',
+      'axora_finance_event_copy',
+      'axora_emit_company_finance_event',
+      'axora_complete_payment_internal',
+      'axora_approve_and_pay_internal',
+      'axora_finalize_request_budget'
+    )
+    AND has_function_privilege('axora_app', oid, 'EXECUTE');
+  IF coalesce(cardinality(exposed_prompt7_functions), 0) <> 0 THEN
+    RAISE EXCEPTION 'Prompt 7 internal functions are exposed to axora_app: %',
+      exposed_prompt7_functions;
+  END IF;
+
+  WITH required(proname) AS (VALUES
+    ('axora_record_public_contact_submission'),
+    ('axora_create_company_direct'),
+    ('axora_create_acquisition_lead'),
+    ('axora_branch_delivery_location_workspace'),
+    ('axora_save_branch_delivery_location'),
+    ('axora_company_wallet_workspace'),
+    ('axora_request_company_wallet_top_up'),
+    ('axora_record_company_wallet_top_up'),
+    ('axora_request_approval_workspace_v2'),
+    ('axora_approve_and_pay'),
+    ('axora_delivery_evidence_file'),
+    ('axora_final_invoice_summary'),
+    ('axora_complete_payment'),
+    ('axora_company_deletion_impact_v2')
+  )
+  SELECT array_agg(required.proname ORDER BY required.proname)
+  INTO missing_prompt7_capabilities
+  FROM required
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_proc
+    WHERE pronamespace='public'::regnamespace
+      AND pg_proc.proname=required.proname
+      AND has_function_privilege('axora_app', pg_proc.oid, 'EXECUTE')
+  );
+  IF coalesce(cardinality(missing_prompt7_capabilities), 0) <> 0 THEN
+    RAISE EXCEPTION 'Prompt 7 application capabilities are unavailable: %',
+      missing_prompt7_capabilities;
   END IF;
 END
 $verify$;
