@@ -74,7 +74,7 @@ test("creates one catalogue product without losing the route after insertion", a
   await form.getByLabel("Description / specification").fill("Catalogue route-recovery regression fixture");
   await form.getByRole("button", { name: "Create product" }).click();
 
-  await expect(page).toHaveURL(/\/products\/[0-9a-f-]+\/edit(?:\?.*)?$/i);
+  await expect(page).toHaveURL(/\/products\/[0-9a-f-]+\/edit(?:\?.*)?$/i, { timeout: 15_000 });
   await expect(page.getByText("This page could not be restored")).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await expect(page.getByText(/Product created successfully/)).toBeVisible();

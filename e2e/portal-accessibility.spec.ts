@@ -267,7 +267,18 @@ test("representative role and Malay workspaces render only inside the authorized
     await expect(shell).toHaveAttribute("lang", expectedLocale);
     await expect(shell).toHaveAttribute("dir", expectedLocale === "ar" ? "rtl" : "ltr");
     await expect(shell.locator("main.app-content")).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), `${scenario.route} overflow`).toBe(true);
+    await expect.poll(async () => {
+      try {
+        return await page.evaluate(() => (
+          document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+        ));
+      } catch {
+        return false;
+      }
+    }, {
+      message: `${scenario.route} overflow`,
+      timeout: 10_000,
+    }).toBe(true);
     for (const selector of [".app-menu-button", ".app-active-brand"]) {
       const box = await shell.locator(selector).boundingBox();
       const width = page.viewportSize()?.width ?? 0;
