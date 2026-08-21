@@ -15,7 +15,7 @@
     "test:e2e": "playwright test && playwright test --config=playwright.visitor-recovery.config.ts",
     "test:e2e:headed": "playwright test --headed",
     "standalone:stage": "node scripts/prepare-standalone.mjs",
-    "standalone:validate": "node scripts/validate-standalone-runtime.mjs",
+    "standalone:validate": "node scripts/run-standalone-validation.mjs",
     "assets:validate": "node scripts/validate-third-party-assets.mjs --report output/playwright/asset-size-report.json && node scripts/validate-third-party-notices.mjs",
     "links:validate": "node scripts/validate-public-links.mjs",
     "qa:visual": "node scripts/qa/visual-smoke.mjs",

@@ -11,6 +11,15 @@ afterEach(async () => {
 });
 
 describe("production CSP and standalone staging", () => {
+  it("boots the staged server before runtime validation and always terminates it", async () => {
+    const packageJson = JSON.parse(await readFile(path.join(process.cwd(), "package.json"), "utf8"));
+    const runner = await readFile(path.join(process.cwd(), "scripts/run-standalone-validation.mjs"), "utf8");
+    expect(packageJson.scripts["standalone:validate"]).toBe("node scripts/run-standalone-validation.mjs");
+    expect(runner).toContain('["output/standalone/server.js"]');
+    expect(runner).toContain("await waitUntilReady()");
+    expect(runner).toMatch(/finally \{\s+await stopServer\(\)/);
+  });
+
   it("rejects retired WebAssembly and broad executable capabilities", () => {
     const sources = validateProductionCsp("default-src 'self'; script-src 'self' 'nonce-test' 'strict-dynamic' https://challenges.cloudflare.com");
     expect(sources).not.toContain("'wasm-unsafe-eval'");
