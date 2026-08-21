@@ -282,6 +282,10 @@ completed backup directory to the approved encrypted off-machine destination
 and verify the copied checksums there. A backup that exists only under
 `/var/lib/axora-production` is not a disaster-recovery backup.
 
+The uploads restore verification uses GNU tar extraction and requires
+`RestrictSUIDSGID=no` on the affected host/systemd combination. The backup
+service retains its other systemd sandbox protections.
+
 ### Prepare a guarded encrypted reset recovery point
 
 The installer creates a stable root-owned mode-`0600` passphrase at
