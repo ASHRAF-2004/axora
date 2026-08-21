@@ -31,7 +31,7 @@ ReadOnlyPaths=/etc/axora-production
 ReadWritePaths=/var/lib/axora-production /run/docker.sock -/mnt -/media
 LockPersonality=yes
 RestrictRealtime=yes
-RestrictSUIDSGID=yes
+RestrictSUIDSGID=no
 SystemCallArchitectures=native
 
 [Install]
