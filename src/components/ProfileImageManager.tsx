@@ -127,6 +127,11 @@ export function ProfileImageManager({
       const result = await request.promise;
       setActiveAvailable(true);
       setActiveVersion(result.versionId);
+      window.dispatchEvent(new CustomEvent("axora:profile-avatar-changed", {
+        detail: { url: result.versionId
+          ? `/api/profile/avatar?v=${encodeURIComponent(result.versionId)}`
+          : "/api/profile/avatar" },
+      }));
       setPreview(undefined);
       if (inputRef.current) inputRef.current.value = "";
       setClientNotice(copy.saved);
@@ -152,6 +157,9 @@ export function ProfileImageManager({
       await request.promise;
       setActiveAvailable(false);
       setActiveVersion(undefined);
+      window.dispatchEvent(new CustomEvent("axora:profile-avatar-changed", {
+        detail: { url: null },
+      }));
       setClientNotice(copy.removed);
       router.replace(completedPath("image-removed", onboarding, returnTo));
     } catch (error) {
@@ -185,7 +193,7 @@ export function ProfileImageManager({
       <input type="hidden" name="focalX" value={focalX} />
       <input type="hidden" name="focalY" value={focalY} />
       <input type="hidden" name="zoom" value={zoom} />
-      <label className="button button-secondary profile-image-picker"><Camera size={16} />{activeAvailable ? copy.replace : copy.choose}<input
+      <label className="button button-secondary profile-image-picker"><Camera size={16} aria-hidden="true" />{activeAvailable ? copy.replace : copy.choose}<input
         accept="image/jpeg,image/png,image/webp" className="sr-only" name="avatar"
         disabled={busy} onChange={(event) => chooseFile(event.currentTarget.files?.[0])} ref={inputRef} required type="file"
       /></label>
@@ -194,13 +202,13 @@ export function ProfileImageManager({
         <label>{copy.vertical}<input aria-label={copy.vertical} disabled={busy} max="100" min="0" onChange={(event) => setFocalY(Number(event.currentTarget.value))} type="range" value={focalY} /></label>
         <label>{copy.zoom}<input aria-label={copy.zoom} disabled={busy} max="3" min="1" onChange={(event) => setZoom(Number(event.currentTarget.value))} step="0.05" type="range" value={zoom} /></label>
       </div> : null}
-      <button className="button button-primary" disabled={!preview || busy} type="submit"><ImageUp size={16} />{clientError && preview ? copy.retry : copy.save}</button>
+      <button className="button button-primary" disabled={!preview || busy} type="submit"><ImageUp size={16} aria-hidden="true" />{clientError && preview ? copy.retry : copy.save}</button>
       {phase === "uploading" ? <div className="profile-image-progress" aria-live="polite"><progress max="100" value={progress} /><span>{copy.progress(progress)}</span></div> : null}
       {phase === "processing" ? <div className="profile-image-progress" aria-live="polite"><progress aria-label={copy.processing} /><span>{copy.processing}</span></div> : null}
       {phase === "uploading" || phase === "processing" ? <button className="text-button" onClick={() => requestRef.current?.cancel()} type="button">{copy.cancel}</button> : null}
     </form>
     {phase === "removing" ? <p aria-live="polite" role="status">{copy.removing}</p> : null}
-    {activeAvailable ? <form action={removeAction} onSubmit={submitRemoval}><input type="hidden" name="onboarding" value={onboarding ? "true" : "false"} /><input type="hidden" name="returnTo" value={returnTo} /><button className="text-button" disabled={busy} type="submit"><Trash2 size={15} />{copy.remove}</button></form> : null}
+    {activeAvailable ? <form action={removeAction} onSubmit={submitRemoval}><input type="hidden" name="onboarding" value={onboarding ? "true" : "false"} /><input type="hidden" name="returnTo" value={returnTo} /><button className="text-button" disabled={busy} type="submit"><Trash2 size={15} aria-hidden="true" />{copy.remove}</button></form> : null}
     <small>{copy.help}</small>
   </aside>;
 }

@@ -10,9 +10,27 @@ import {
   isAppearanceMode,
   legacyAppearanceToMode,
 } from "@/lib/appearance";
+import { contrastRatio, relativeLuminance } from "@/lib/brand-colors";
 
 async function source(path: string) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
+}
+
+function themeTokens(css: string, appearance: "light" | "dark") {
+  const block = css.match(new RegExp(
+    `html\\[data-appearance="${appearance}"\\],[\\s\\S]*?\\{([\\s\\S]*?)\\n\\}`,
+  ))?.[1];
+  if (!block) throw new Error(`Missing ${appearance} token block.`);
+  return Object.fromEntries(
+    [...block.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6})\s*;/gi)]
+      .map((match) => [`--${match[1]}`, match[2].toUpperCase()]),
+  );
+}
+
+function token(tokens: Record<string, string>, name: string) {
+  const value = tokens[name];
+  if (!value) throw new Error(`Missing literal color token ${name}.`);
+  return value;
 }
 
 describe("unified appearance contract", () => {
@@ -47,6 +65,56 @@ describe("unified appearance contract", () => {
     expect(css).toContain("color-scheme: light");
     expect(css).toContain("color-scheme: dark");
     expect(css).not.toContain("data-atmosphere");
+  });
+
+  it.each(["light", "dark"] as const)("meets semantic %s contrast contracts", async (appearance) => {
+    const css = await source("src/app/appearance-tokens.css");
+    const tokens = themeTokens(css, appearance);
+    const page = token(tokens, "--axora-page-bg");
+    const surface = token(tokens, "--axora-surface");
+
+    for (const textToken of ["--axora-text", "--axora-text-secondary", "--axora-text-muted"]) {
+      expect(contrastRatio(token(tokens, textToken), surface), `${textToken} on ${appearance} surface`).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrastRatio(token(tokens, "--axora-focus"), surface), `focus on ${appearance} surface`).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(token(tokens, "--axora-focus"), page), `focus on ${appearance} page`).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(token(tokens, "--axora-chart-axis"), surface), `chart axis on ${appearance} surface`).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(token(tokens, "--axora-chart-1"), surface), `chart series 1 on ${appearance} surface`).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(token(tokens, "--axora-chart-2"), surface), `chart series 2 on ${appearance} surface`).toBeGreaterThanOrEqual(3);
+
+    for (const status of ["success", "warning", "danger", "info", "neutral"]) {
+      expect(
+        contrastRatio(token(tokens, `--axora-${status}`), token(tokens, `--axora-${status}-bg`)),
+        `${status} status in ${appearance}`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("keeps Dark surfaces dark and shared authenticated primitives semantic", async () => {
+    const [tokensCss, globalCss] = await Promise.all([
+      source("src/app/appearance-tokens.css"),
+      source("src/app/globals.css"),
+    ]);
+    const dark = themeTokens(tokensCss, "dark");
+    for (const surfaceToken of ["--axora-page-bg", "--axora-surface", "--axora-surface-elevated", "--axora-surface-muted"]) {
+      expect(relativeLuminance(token(dark, surfaceToken)), surfaceToken).toBeLessThan(0.08);
+    }
+    expect(tokensCss).toContain(".app-shell :is(.panel, .metric-card, .card, .table-wrap, .empty-state");
+    expect(tokensCss).toContain(".data-table td { color: var(--axora-text-secondary)");
+    expect(globalCss).toMatch(/\.metric-card\s*\{[^}]*background:\s*var\(--axora-surface\)/is);
+    expect(globalCss).toMatch(/\.panel\s*\{[^}]*background:\s*var\(--axora-surface\)/is);
+    expect(globalCss).toContain(".shop-cart-bar {");
+    expect(globalCss).not.toMatch(/\.shop-cart-bar\s*\{[^}]*background:\s*(?:white|#fff)/is);
+  });
+
+  it("derives company Dark interactions after the common reviewed-brand mapping", async () => {
+    const css = await source("src/app/appearance-tokens.css");
+    const commonCompany = css.lastIndexOf('.app-shell[data-tenant-theme="company"] {');
+    const darkDerivation = css.lastIndexOf('.app-shell[data-tenant-theme="company"][data-appearance="dark"] {');
+    expect(commonCompany).toBeGreaterThan(0);
+    expect(darkDerivation).toBeGreaterThan(commonCompany);
+    expect(css.slice(darkDerivation)).toContain("--axora-link: color-mix");
+    expect(css.slice(darkDerivation)).toContain("--axora-focus: color-mix");
   });
 });
 

@@ -1,10 +1,11 @@
 .page {
-  --wallet-surface: var(--surface, var(--white));
-  --wallet-muted-surface: var(--tenant-muted, var(--slate-50));
-  --wallet-text: var(--text, var(--slate-950));
-  --wallet-muted: var(--text-muted, var(--slate-600));
-  --wallet-border: var(--tenant-border, var(--slate-200));
-  --wallet-primary: var(--tenant-primary, var(--blue-600));
+  --wallet-surface: var(--axora-surface);
+  --wallet-muted-surface: var(--axora-surface-muted);
+  --wallet-text: var(--axora-text);
+  --wallet-muted: var(--axora-text-muted);
+  --wallet-border: var(--axora-border);
+  --wallet-primary: var(--axora-brand);
+  --wallet-accent-text: var(--axora-link);
   display: grid;
   gap: 1.25rem;
   color: var(--wallet-text);
@@ -21,7 +22,7 @@
 
 .hero h1 { margin: .2rem 0 .6rem; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1; }
 .hero > p:not(.eyebrow, .fundsNote) { max-width: 70ch; color: var(--wallet-muted); }
-.eyebrow { margin: 0; color: var(--wallet-primary); font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.eyebrow { margin: 0; color: var(--wallet-accent-text); font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .fundsNote { max-width: 75ch; margin-block: 1rem 0; font-weight: 700; }
 
 .successNotice,
@@ -72,14 +73,14 @@
 .inlineRecordForm button {
   padding: .65rem 1rem;
   border-color: var(--wallet-primary);
-  color: var(--wallet-surface);
+  color: var(--axora-brand-foreground);
   background: var(--wallet-primary);
   font-weight: 800;
 }
 .companySelector :focus-visible,
 .financeForm :focus-visible,
 .inlineRecordForm :focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--wallet-primary) 35%, transparent);
+  outline: 3px solid var(--axora-focus);
   outline-offset: 2px;
 }
 
@@ -97,7 +98,7 @@
 }
 .balanceCard p { margin: 0 0 .25rem; color: var(--wallet-muted); }
 .balanceCard h2 { margin: 0; font-size: 1rem; }
-.balanceCard > strong { color: var(--wallet-primary); font-size: clamp(2rem, 7vw, 4rem); font-variant-numeric: tabular-nums; }
+.balanceCard > strong { color: var(--wallet-text); font-size: clamp(2rem, 7vw, 4rem); font-variant-numeric: tabular-nums; }
 
 .panel {
   overflow: hidden;
@@ -125,7 +126,7 @@
 .topUpList > li { display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--wallet-border); border-radius: 1rem; }
 .topUpSummary { display: grid; gap: .35rem; }
 .topUpSummary > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; }
-.topUpSummary span { color: var(--wallet-primary); font-weight: 800; }
+.topUpSummary span { color: var(--wallet-accent-text); font-weight: 800; }
 .topUpSummary p { margin: 0; color: var(--wallet-muted); font-size: .85rem; }
 .inlineRecordForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .inlineRecordForm button { align-self: end; }

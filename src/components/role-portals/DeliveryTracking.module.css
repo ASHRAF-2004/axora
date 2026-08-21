@@ -1,12 +1,14 @@
 .driverPanel,
 .board {
-  --tracking-ink: var(--brand-text, #17312d);
-  --tracking-muted: var(--brand-text-muted, #61706b);
-  --tracking-line: var(--brand-border, #cbd8d2);
-  --tracking-surface: var(--brand-surface, #fff);
-  --tracking-soft: color-mix(in srgb, var(--brand-primary, #0b6f65) 9%, #fff);
-  --tracking-live: #08775f;
-  --tracking-warning: #9b3f1e;
+  --brand-primary: var(--axora-brand);
+  --brand-accent: var(--axora-brand-accent);
+  --tracking-ink: var(--axora-text);
+  --tracking-muted: var(--axora-text-muted);
+  --tracking-line: var(--axora-border);
+  --tracking-surface: var(--axora-surface);
+  --tracking-soft: color-mix(in srgb, var(--axora-brand) 9%, var(--axora-surface));
+  --tracking-live: var(--axora-success);
+  --tracking-warning: var(--axora-danger);
   display: grid;
   gap: 1rem;
   margin-block: 1rem;
@@ -54,8 +56,8 @@
   border: 0;
   border-radius: .7rem;
   padding: .65rem .85rem;
-  color: #fff;
-  background: var(--brand-primary, #0b6f65);
+  color: var(--axora-brand-foreground);
+  background: var(--axora-brand);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
@@ -99,8 +101,9 @@
 }
 
 .warning {
-  border-color: var(--tracking-warning);
-  background: #fff1eb;
+  color: var(--axora-danger);
+  border-color: var(--axora-danger-border);
+  background: var(--axora-danger-bg);
 }
 
 .empty {
@@ -130,8 +133,8 @@
 .sessionHeading > span {
   padding: .4rem .65rem;
   border-radius: 999px;
-  color: #fff;
-  background: var(--tracking-muted);
+  color: var(--axora-text-inverse);
+  background: var(--axora-text-secondary);
   font-size: .78rem;
   font-weight: 850;
 }
@@ -141,8 +144,9 @@
 }
 
 .sessionHeading > span[data-status="PAUSED"] {
-  color: #3d2c00;
-  background: #f2c14e;
+  color: var(--axora-warning);
+  background: var(--axora-warning-bg);
+  border: 1px solid var(--axora-warning-border);
 }
 
 .sessionHeading small,
@@ -221,7 +225,7 @@
 
 .currentMarker {
   fill: currentColor;
-  stroke: #fff;
+  stroke: var(--axora-surface);
   stroke-width: 4;
 }
 

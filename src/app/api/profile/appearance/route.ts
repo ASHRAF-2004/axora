@@ -1,5 +1,8 @@
 import { getSession } from "@/lib/auth";
+import { APPEARANCE_COOKIE_KEY } from "@/lib/appearance";
 import { setUserAppearance } from "@/lib/user-appearance";
+
+const COOKIE_MAX_AGE_SECONDS = 31_536_000;
 
 function expectedOrigin() {
   try { return new URL(process.env.APP_BASE_URL ?? "https://axora.management").origin; }
@@ -39,8 +42,13 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    return Response.json({ appearance: await setUserAppearance(actor, body?.appearance) }, {
-      headers: { "Cache-Control": "private, no-store" },
+    const appearance = await setUserAppearance(actor, body?.appearance);
+    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+    return Response.json({ appearance }, {
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Set-Cookie": `${APPEARANCE_COOKIE_KEY}=${appearance}; Path=/; Max-Age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secure}`,
+      },
     });
   } catch {
     return Response.json({ error: "Preference unavailable" }, { status: 403 });

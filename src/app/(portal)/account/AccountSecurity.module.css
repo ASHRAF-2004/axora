@@ -18,7 +18,7 @@
   min-width: 0;
   padding: clamp(20px, 3vw, 30px);
   color: var(--slate-700);
-  background: var(--tenant-surface, #fff);
+  background: var(--axora-surface);
   border: 1px solid var(--tenant-border, var(--slate-200));
   border-radius: 20px;
   box-shadow: 0 12px 40px rgba(11, 45, 82, .06);
@@ -36,7 +36,7 @@
   height: 42px;
   display: grid;
   place-items: center;
-  color: var(--tenant-primary, #0b2d52);
+  color: var(--axora-link);
   background: var(--tenant-muted, #edf3f7);
   border-radius: 13px;
 }
@@ -66,7 +66,7 @@
 
 .cardHeader svg {
   flex: none;
-  color: var(--tenant-primary, #0b2d52);
+  color: var(--axora-link);
 }
 
 .cardHeader h2 {
@@ -120,7 +120,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  background: var(--tenant-muted, #f3f7fa);
+  background: var(--axora-surface-muted);
   border: 1px solid var(--tenant-border, var(--slate-200));
   border-radius: 14px;
 }
@@ -141,11 +141,11 @@
 
 .badge {
   padding: 3px 7px;
-  color: #136544;
-  background: #e7f8ef;
-  border: 1px solid #bcebd2;
+  color: var(--axora-success);
+  background: var(--axora-success-bg);
+  border: 1px solid var(--axora-success-border);
   border-radius: 999px;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: .05em;
   text-transform: uppercase;
@@ -174,7 +174,7 @@
   padding: 15px;
   display: grid;
   gap: 4px;
-  background: var(--tenant-muted, #f3f7fa);
+  background: var(--axora-surface-muted);
   border-radius: 14px;
 }
 
