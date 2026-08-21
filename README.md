@@ -210,11 +210,7 @@ queues one invoice email. Payment and delivery states remain independent.
 Safe form drafts remain scoped to the authenticated user, role assignment,
 tenant and route. Draft restoration is silent; passwords, tokens, secrets and
 file contents are never persisted.
-# Immersive World V2
-
-Axora's public experience uses six route-specific, progressively enhanced 3D scenes. The customer-visible lifecycle is `Request -> Approve -> Pay -> Invoice -> Prepare -> Deliver -> Track -> Complete`; internal buying activity, supplier identity, private cost and driver operational notes never cross the customer boundary. Licensed semantic GLB models and interface sounds are self-hosted and inventoried in `THIRD_PARTY_ASSETS.md`.
-
-Axora supports exactly **Light** and **Dark** appearance modes across public and authenticated application surfaces. Public first paint is cookie-authoritative; authenticated users use a server-resolved database preference. For company users, the reviewed company Light/Dark token sets and company identity remain authoritative while the user's appearance selects the appropriate approved surface/text set. The public 3D experience follows the same two appearance modes. Sound is muted by default. Reduced-motion, reduced-data, WebGL failure and context loss retain complete semantic HTML fallbacks.
+Axora supports exactly **Light** and **Dark** appearance modes across public and authenticated application surfaces. Public first paint is cookie-authoritative; authenticated users use a server-resolved database preference. For company users, the reviewed company Light/Dark token sets and company identity remain authoritative while the user's appearance selects the appropriate approved surface/text set.
 
 Paid requests enter an available delivery-job pool. Active Delivery Guys claim work atomically; Platform Owners monitor drivers and may only release a genuinely stuck job through an audited recovery action. Driver location requires explicit browser permission, is collected only for active work, and is exposed to customers only as privacy-safe status and ETA.
 

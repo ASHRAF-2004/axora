@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
 const publicDir = join(root, "public", "manuals");
-const outputDir = join(root, "output", "pdf");
 const names = [
   "axora-company-user-manual-ar.pdf",
   "axora-company-user-manual-en.pdf",
@@ -17,18 +16,27 @@ function sha256(path: string) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+const manifest = JSON.parse(
+  readFileSync(join(publicDir, "manifest.json"), "utf8"),
+) as {
+  schemaVersion: number;
+  files: Record<string, { bytes: number; sha256: string }>;
+};
+
 describe("production manual publication", () => {
   it("publishes only the four stable filenames", () => {
     expect(readdirSync(publicDir).filter((name) => name.endsWith(".pdf")).sort()).toEqual(names);
   });
 
-  it("publishes the exact deterministic build output", () => {
+  it("matches the committed deterministic publication manifest", () => {
+    expect(manifest.schemaVersion).toBe(1);
+    expect(Object.keys(manifest.files).sort()).toEqual(names);
     for (const name of names) {
-      const built = join(outputDir, name);
       const published = join(publicDir, name);
       expect(statSync(published).size).toBeGreaterThan(50_000);
       expect(readFileSync(published).subarray(0, 5).toString()).toBe("%PDF-");
-      expect(sha256(published)).toBe(sha256(built));
+      expect(statSync(published).size).toBe(manifest.files[name]?.bytes);
+      expect(sha256(published)).toBe(manifest.files[name]?.sha256);
     }
   });
 

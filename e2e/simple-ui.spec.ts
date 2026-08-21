@@ -63,9 +63,3 @@ test("owner dashboard keeps the top-navigation shell without public 3D", async (
     path: `output/playwright/simple-ui-owner-dashboard-${testInfo.project.name}.png`,
   });
 });
-
-test("optional operations experience remains available", async ({ page }) => {
-  await page.goto("/en/operations-experience");
-  await expect(page.getByTestId("workflow-console")).toBeVisible();
-  await expect(page.locator('[data-public-scene="home"]')).toBeVisible();
-});

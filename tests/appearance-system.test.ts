@@ -107,6 +107,35 @@ describe("unified appearance contract", () => {
     expect(globalCss).not.toMatch(/\.shop-cart-bar\s*\{[^}]*background:\s*(?:white|#fff)/is);
   });
 
+  it.each(["light", "dark"] as const)("meets public homepage %s contrast contracts", async (appearance) => {
+    const css = await source("src/app/appearance-tokens.css");
+    const tokens = themeTokens(css, appearance);
+    const page = token(tokens, "--public-page-bg");
+    const surface = token(tokens, "--public-surface-elevated");
+    const mutedSurface = token(tokens, "--public-surface-muted");
+
+    for (const [foreground, background] of [
+      ["--public-text-primary", surface],
+      ["--public-text-secondary", surface],
+      ["--public-text-secondary", mutedSurface],
+      ["--public-text-muted", page],
+      ["--public-success-text", token(tokens, "--public-success-surface")],
+      ["--public-button-primary-foreground", token(tokens, "--public-button-primary")],
+      ["--public-button-secondary-foreground", token(tokens, "--public-button-secondary")],
+      ["--public-cta-text", token(tokens, "--public-cta-surface")],
+      ["--public-cta-text-secondary", token(tokens, "--public-cta-surface")],
+      ["--public-cta-button-foreground", token(tokens, "--public-cta-button")],
+    ] as const) {
+      expect(contrastRatio(token(tokens, foreground), background), `${foreground} in ${appearance}`).toBeGreaterThanOrEqual(4.5);
+    }
+
+    if (appearance === "dark") {
+      for (const surfaceToken of ["--public-page-bg", "--public-surface", "--public-surface-elevated", "--public-surface-muted"]) {
+        expect(relativeLuminance(token(tokens, surfaceToken)), surfaceToken).toBeLessThan(0.08);
+      }
+    }
+  });
+
   it("derives company Dark interactions after the common reviewed-brand mapping", async () => {
     const css = await source("src/app/appearance-tokens.css");
     const commonCompany = css.lastIndexOf('.app-shell[data-tenant-theme="company"] {');

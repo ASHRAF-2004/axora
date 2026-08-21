@@ -8,12 +8,6 @@ import { LanguagePreference } from "./LanguagePreference";
 import { PublicMobileMenu } from "./PublicMobileMenu";
 import { PublicSkipLink } from "./PublicSkipLink";
 
-const experienceLabels = {
-  en: "Operations Experience",
-  ar: "تجربة العمليات",
-  ms: "Pengalaman Operasi",
-} as const;
-
 interface PublicShellProps {
   locale: SupportedLocale;
   detectedLocale: SupportedLocale;
@@ -27,7 +21,6 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
   const navigation = [
     { href: prefix, label: messages.nav.home },
     { href: `${prefix}/how-it-works`, label: messages.nav.how },
-    { href: `${prefix}/operations-experience`, label: experienceLabels[locale] },
     { href: `${prefix}/procurement-process`, label: messages.nav.process },
     { href: `${prefix}/solutions-by-role`, label: messages.nav.roles },
     { href: `${prefix}/security-and-privacy`, label: messages.nav.security },
@@ -80,7 +73,6 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
           <div>
             <strong>{messages.footer.product}</strong>
             <Link href={`${prefix}/how-it-works`}>{messages.nav.how}</Link>
-            <Link href={`${prefix}/operations-experience`}>{experienceLabels[locale]}</Link>
             <Link href={`${prefix}/procurement-process`}>{messages.nav.process}</Link>
             <Link href={`${prefix}/solutions-by-role`}>{messages.nav.roles}</Link>
           </div>

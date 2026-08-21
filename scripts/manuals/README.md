@@ -11,13 +11,12 @@ npm run manuals:verify
 
 The command:
 
-1. builds the exact four PDFs into `output/pdf/`;
-2. publishes the same bytes into `public/manuals/`;
-3. performs a second deterministic build;
-4. proves that both SHA-256 hashes match;
-5. validates page counts, embedded Noto fonts, required guidance, forbidden
+1. builds the exact four PDFs into `output/pdf/` without modifying the committed publication;
+2. performs a second deterministic build;
+3. proves that both generated SHA-256 hashes match the committed files;
+4. validates page counts, embedded Noto fonts, required guidance, forbidden
    wording, unresolved placeholders, clipping and the publication allowlist;
-6. renders every page to PNG with PyMuPDF under
+5. renders every page to PNG with PyMuPDF under
    `output/playwright/manuals/rendered/` for visual inspection.
 
 The publication allowlist is:
