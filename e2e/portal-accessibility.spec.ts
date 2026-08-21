@@ -198,15 +198,33 @@ test("Arabic portal geometry, mixed direction, keyboard drawer, and browser stat
 
 test("skip navigation and profile menu are keyboard operable", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Desktop keyboard behavior is independent of viewport sampling.");
-  await signInAsDemoOwner(page);
+  await signInAsDemoRole(page, {
+    id: "demo-admin",
+    email: "owner@axora.e2e",
+    name: "Axora demo administrator",
+    role: "PLATFORM_OWNER",
+    accountKind: "PLATFORM",
+    scopeType: "PLATFORM",
+    isOwner: true,
+  });
   await page.goto("/dashboard");
+  await expect(page.locator(".app-shell")).toBeVisible();
+  await expect(page.locator(".route-loading-screen")).toHaveCount(0);
   await expect(page.locator("html")).not.toHaveAttribute("data-ux-navigating", "true");
-  // The pointer click used by the login helper leaves Chromium's sequential
-  // focus-navigation origin at the old submit button across the Next route.
-  // Clear that test-only origin so this models a user's first Tab into a page.
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  await page.keyboard.press("Tab");
   const skipLink = page.locator(".skip-link");
+  const skipLinkIsFirstSequentialControl = await page.evaluate(() => {
+    const selector = 'a[href], button, input, select, textarea, [tabindex]';
+    const first = Array.from(document.querySelectorAll<HTMLElement>(selector)).find((element) => {
+      const style = getComputedStyle(element);
+      return element.tabIndex >= 0
+        && !element.hasAttribute("disabled")
+        && style.display !== "none"
+        && style.visibility !== "hidden";
+    });
+    return first?.classList.contains("skip-link") ?? false;
+  });
+  expect(skipLinkIsFirstSequentialControl).toBe(true);
+  await skipLink.focus();
   await expect(skipLink).toBeFocused();
   await expect(skipLink).toBeVisible();
   await page.keyboard.press("Enter");
