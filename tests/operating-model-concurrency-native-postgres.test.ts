@@ -1173,6 +1173,16 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       assignedBy: winningDriver.userId,
       fulfilmentActor: winningDriver.userId,
     });
+    const trackingDestination = await admin.query<{
+      latitude: string; longitude: string; status: string;
+    }>(`
+      SELECT destination_latitude::text AS latitude,
+        destination_longitude::text AS longitude,status
+      FROM public.delivery_tracking_sessions WHERE assignment_id=$1
+    `, [activeAssignment.assignmentId]);
+    expect(trackingDestination.rows[0]).toEqual({
+      latitude: "3.139000",longitude: "101.686900",status: "NOT_STARTED",
+    });
     const claimReplay = await app.query<{
       payload: { assignmentId: string; jobId: string; status: string; created: boolean };
     }>(`
@@ -1307,68 +1317,93 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
 
     expect((await recordEvent("ACCEPTED")).status).toBe("ACCEPTED");
     expect((await recordEvent("SHOPPING_STARTED")).status).toBe("SHOPPING");
-    const receipt = await app.query<{ id: string }>(`
-      SELECT public.axora_create_delivery_receipt_attachment(
-        $1,$2,$3,'native-receipt.pdf','application/pdf',
-        decode('255044462d312e34','hex'),now()
-      )::text AS id
-    `, [
-      winningDriver.userId,winningDriver.assignmentId,request.requestId,
-    ]);
-    await admin.query(`
-      INSERT INTO public.request_actual_submissions(
-        request_id,request_version,company_id,assignment_id,reservation_id,
-        variance_policy_id,variance_policy_version,purchase_mode,estimate_amount,
-        previous_actual_amount,submission_amount,cumulative_actual_amount,
-        difference_amount,within_tolerance,receipt_attachment_id,state,
-        submitted_by,submitted_by_role_assignment_id,notes,idempotency_key,
-        correlation_id,result,submitted_at,finalized_at
-      ) SELECT
-        request.id,request.request_version,request.company_id,assignment.id,
-        reservation.id,policy.id,policy.policy_version,'FINAL',snapshot.amount,
-        0,snapshot.amount,snapshot.amount,0,true,$4,'FINALIZED',$5,$6,
-        'Verified purchase prerequisite for delivery lifecycle',$7,$8,
-        jsonb_build_object('state','FINALIZED'),now(),now()
-      FROM public.requests request
-      JOIN public.fulfilment_purchase_assignments assignment
-        ON assignment.request_id=request.id AND assignment.status='ASSIGNED'
-      JOIN public.budget_reservations reservation
-        ON reservation.request_id=request.id
-      JOIN public.request_approval_snapshots snapshot
-        ON snapshot.request_id=request.id
-       AND snapshot.request_version=request.request_version
-      CROSS JOIN LATERAL public.axora_current_variance_policy(
-        request.company_id,now()
-      ) policy
-      WHERE request.id=$1 AND assignment.assigned_user_id=$2
-        AND assignment.assigned_role_assignment_id=$3
-    `, [
-      request.requestId,winningDriver.userId,winningDriver.assignmentId,
-      receipt.rows[0]!.id,winningDriver.userId,winningDriver.assignmentId,
-      randomUUID(),randomUUID(),
-    ]);
-    const acquiredState = await admin.query<{ status: string; workflowVersion: number }>(`
-      SELECT status,workflow_version::int AS "workflowVersion"
-      FROM public.delivery_jobs WHERE id=$1
+    const deliveryLine = await admin.query<{ id: string }>(`
+      SELECT id::text FROM public.delivery_job_lines
+      WHERE delivery_job_id=$1 ORDER BY created_at,id LIMIT 1
     `, [job.rows[0]!.id]);
-    expect(acquiredState.rows[0]!.status).toBe("ITEMS_ACQUIRED");
-    workflowVersion = acquiredState.rows[0]!.workflowVersion;
+    const unavailableCommand = randomUUID();
+    const unavailableEventCommand = randomUUID();
+    const unavailableCapturedAt = new Date();
+    const unavailablePath = `delivery-receipts/${winningDriver.userId}/${job.rows[0]!.id}/unavailable.pdf`;
+    const unavailable = await app.query<{
+      payload: { submissionId: string; created: boolean; unavailableLines: number };
+    }>(`
+      SELECT public.axora_register_delivery_acquisition(
+        $1,$2,$3,$4,$5,$6,$7,'unavailable-receipt.pdf','application/pdf',$8,$9,
+        1024,$10,'Item unavailable at controlled source',$11::jsonb,$10
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      activeAssignment.assignmentId,workflowVersion,unavailableCommand,
+      unavailableEventCommand,unavailablePath,"d".repeat(64),unavailableCapturedAt,
+      JSON.stringify([{
+        deliveryJobLineId: deliveryLine.rows[0]!.id,
+        resolution: "UNAVAILABLE",
+        reason: "Item unavailable at controlled source",
+      }])]);
+    expect(unavailable.rows[0]!.payload).toMatchObject({
+      created: true,unavailableLines: 1,
+    });
+    expect((await recordEvent("ISSUE_REPORTED", {
+      note: "Item unavailable at controlled source",
+      issueCode: "MISSING_ITEMS",
+    }, unavailableEventCommand)).status).toBe("SHOPPING");
+    const acquisitionCommand = randomUUID();
+    const acquisitionEventCommand = randomUUID();
+    const acquisitionCapturedAt = new Date();
+    const acquisitionLines = JSON.stringify([{
+      deliveryJobLineId: deliveryLine.rows[0]!.id,
+      resolution: "ACQUIRED",
+      actualInternalUnitCost: "700.000000",
+    }]);
+    const acquisitionPath = `delivery-receipts/${winningDriver.userId}/${job.rows[0]!.id}/native.pdf`;
+    const acquisition = await app.query<{
+      payload: { submissionId: string; created: boolean; unavailableLines: number };
+    }>(`
+      SELECT public.axora_register_delivery_acquisition(
+        $1,$2,$3,$4,$5,$6,$7,'native-receipt.pdf','application/pdf',$8,$9,
+        1024,$10,'Native paid-safe acquisition',$11::jsonb,$10
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      activeAssignment.assignmentId,workflowVersion,acquisitionCommand,
+      acquisitionEventCommand,acquisitionPath,"c".repeat(64),
+      acquisitionCapturedAt,acquisitionLines]);
+    expect(acquisition.rows[0]!.payload).toMatchObject({ created: true,unavailableLines: 0 });
+    const acquisitionReplay = await app.query<{
+      payload: { submissionId: string; created: boolean; storagePath: string };
+    }>(`
+      SELECT public.axora_register_delivery_acquisition(
+        $1,$2,$3,$4,$5,$6,$7,'native-receipt.pdf','application/pdf',$8,$9,
+        1024,$10,'Native paid-safe acquisition',$11::jsonb,$10
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      activeAssignment.assignmentId,workflowVersion,acquisitionCommand,
+      acquisitionEventCommand,acquisitionPath,"c".repeat(64),
+      acquisitionCapturedAt,acquisitionLines]);
+    expect(acquisitionReplay.rows[0]!.payload).toMatchObject({
+      submissionId: acquisition.rows[0]!.payload.submissionId,
+      created: false,storagePath: acquisitionPath,
+    });
+    expect((await recordEvent("ITEMS_ACQUIRED", {
+      note: "Native paid-safe acquisition",
+    }, acquisitionEventCommand)).status).toBe("ITEMS_ACQUIRED");
     expect((await recordEvent("OUT_FOR_DELIVERY")).status).toBe("OUT_FOR_DELIVERY");
     const arrived = await recordEvent("ARRIVED");
     expect(arrived.status).toBe("ARRIVED");
 
     const evidenceCommand = randomUUID();
+    const evidenceCapturedAt = new Date();
     const evidence = await app.query<{
       payload: { evidenceId: string; created: boolean; storagePath: string };
     }>(`
       SELECT public.axora_register_delivery_evidence(
         $1,$2,$3,$4,$5,'PHOTO','native-proof.png','image/png',$6,$7,
-        now(),NULL,NULL,NULL,1,1,NULL,'{}'::jsonb,now()
+        $8,NULL,NULL,NULL,1,1,NULL,'{}'::jsonb,$8
       ) AS payload
     `, [
       winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
       arrived.eventId,evidenceCommand,
       `delivery-evidence/native/${job.rows[0]!.id}/proof.png`,"a".repeat(64),
+      evidenceCapturedAt,
     ]);
     expect(evidence.rows[0]!.payload).toMatchObject({ created: true });
     const evidenceReplay = await app.query<{
@@ -1376,12 +1411,13 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     }>(`
       SELECT public.axora_register_delivery_evidence(
         $1,$2,$3,$4,$5,'PHOTO','native-proof.png','image/png',$6,$7,
-        now(),NULL,NULL,NULL,1,1,NULL,'{}'::jsonb,now()
+        $8,NULL,NULL,NULL,1,1,NULL,'{}'::jsonb,$8
       ) AS payload
     `, [
       winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
       arrived.eventId,evidenceCommand,
       `delivery-evidence/native/${job.rows[0]!.id}/proof.png`,"a".repeat(64),
+      evidenceCapturedAt,
     ]);
     expect(evidenceReplay.rows[0]!.payload).toEqual({
       evidenceId: evidence.rows[0]!.payload.evidenceId,
@@ -1443,16 +1479,44 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       });
     }
 
-    expect((await recordEvent("DELIVERED", { recipientName: "Native recipient" })).status)
+    expect((await recordEvent("DELIVERED", {
+      receiverName: "Native recipient",
+      lineOutcomes: [{
+        deliveryJobLineId: deliveryLine.rows[0]!.id,
+        deliveredQuantity: 1,
+        damagedQuantity: 0,
+        missingQuantity: 0,
+      }],
+    })).status)
       .toBe("DELIVERED");
     const completionVersion = workflowVersion;
-    const completionCommand = randomUUID();
-    const completed = await recordEvent(
-      "COMPLETED",
-      {},
-      completionCommand,
-    );
+    const completionCommands = Array.from({ length: 10 }, () => randomUUID());
+    const completionRecordedAt = new Date();
+    const completionSequence = deviceSequence;
+    const completionAttempts = await Promise.allSettled(completionCommands.map((command, index) => (
+      withAppClient((client) => client.query<{
+        payload: { eventId: string; status: string; workflowVersion: number };
+      }>(`
+        SELECT public.axora_record_delivery_event(
+          $1,$2,$3,$4,$5,$6,$7,$8,'COMPLETED',$9,'{}'::jsonb,$9
+        ) AS payload
+      `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+        activeAssignment.assignmentId,completionVersion,command,deviceId,
+        completionSequence+index,completionRecordedAt]))
+    )));
+    const completedAttempts = completionAttempts.flatMap((attempt, index) => (
+      attempt.status === "fulfilled"
+        ? [{ command: completionCommands[index]!,sequence: completionSequence+index,
+          payload: attempt.value.rows[0]!.payload }]
+        : []
+    ));
+    expect(completedAttempts).toHaveLength(1);
+    expect(completionAttempts.filter((attempt) => attempt.status === "rejected"))
+      .toHaveLength(9);
+    const completed = completedAttempts[0]!.payload;
     expect(completed.status).toBe("COMPLETED");
+    workflowVersion = completed.workflowVersion;
+    deviceSequence += 10;
     const completedReplay = await app.query<{
       payload: { eventId: string; status: string; workflowVersion: number };
     }>(`
@@ -1461,8 +1525,8 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       ) AS payload
     `, [
       winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
-      activeAssignment.assignmentId,completionVersion,completionCommand,deviceId,
-      deviceSequence - 1,completed.recordedAt,
+      activeAssignment.assignmentId,completionVersion,completedAttempts[0]!.command,deviceId,
+      completedAttempts[0]!.sequence,completionRecordedAt,
       JSON.stringify({}),
     ]);
     expect(completedReplay.rows[0]!.payload).toMatchObject({
@@ -1488,6 +1552,12 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       evidenceContentType: string;
       evidenceStoragePath: string;
       evidenceSha256: string;
+      requestStatus: string;
+      finalDocumentJobs: number;
+      acquisitionRows: number;
+      customerInvoiceAmount: string;
+      internalCost: string;
+      trackingSessionsEnded: number;
     }>(`
       SELECT
         job.status AS "jobStatus",
@@ -1523,25 +1593,43 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
         proof.validation_status AS "evidenceValidation",
         proof.content_type AS "evidenceContentType",
         proof.storage_path AS "evidenceStoragePath",
-        proof.sha256 AS "evidenceSha256"
+        proof.sha256 AS "evidenceSha256",
+        request_status.value_key AS "requestStatus",
+        (SELECT count(*)::int FROM public.document_generation_jobs document_job
+          WHERE document_job.request_id=job.request_id
+            AND document_job.document_type='FINAL_FULFILMENT_DELIVERY') AS "finalDocumentJobs",
+        (SELECT count(*)::int FROM public.delivery_acquisition_submissions acquisition
+          WHERE acquisition.delivery_job_id=job.id) AS "acquisitionRows",
+        (SELECT invoice.amount::text FROM public.invoices invoice
+          WHERE invoice.request_id=job.request_id AND invoice.lifecycle_status='FINALIZED'
+          ORDER BY invoice.finalized_at DESC LIMIT 1) AS "customerInvoiceAmount",
+        (SELECT acquisition_line.actual_internal_unit_cost::text
+          FROM public.delivery_acquisition_lines acquisition_line
+          WHERE acquisition_line.delivery_job_id=job.id
+            AND acquisition_line.actual_internal_unit_cost IS NOT NULL
+          ORDER BY acquisition_line.created_at DESC LIMIT 1) AS "internalCost",
+        (SELECT count(*)::int FROM public.delivery_tracking_sessions session
+          WHERE session.delivery_job_id=job.id AND session.status='ENDED') AS "trackingSessionsEnded"
       FROM public.delivery_jobs job
       JOIN public.delivery_job_assignments assignment
         ON assignment.id=$2
       JOIN public.delivery_evidence proof
         ON proof.delivery_job_id=job.id AND proof.validation_status='ACCEPTED'
+      JOIN public.requests request ON request.id=job.request_id
+      JOIN public.lookup_values request_status ON request_status.id=request.status_id
       WHERE job.id=$1
     `, [job.rows[0]!.id,activeAssignment.assignmentId]);
     expect(completionEvidence.rows[0]).toEqual({
       jobStatus: "COMPLETED",assignmentStatus: "COMPLETED",
       completionEvents: 1,proofRows: 1,activeAssignments: 0,
-      eventCount: 6,
+      eventCount: 8,
       eventTypes: [
-        "ACCEPTED","SHOPPING_STARTED","OUT_FOR_DELIVERY",
+        "ACCEPTED","SHOPPING_STARTED","ISSUE_REPORTED","ITEMS_ACQUIRED","OUT_FOR_DELIVERY",
         "ARRIVED","DELIVERED","COMPLETED",
       ],
-      eventVersionsBefore: [2,3,5,6,7,8],
-      eventVersionsAfter: [3,4,6,7,8,9],
-      distinctEventCommands: 6,
+      eventVersionsBefore: [2,3,4,5,6,7,8,9],
+      eventVersionsAfter: [3,4,5,6,7,8,9,10],
+      distinctEventCommands: 8,
       evidenceActor: winningDriver.userId,
       evidenceEvent: arrived.eventId,
       evidenceCommand,
@@ -1551,7 +1639,22 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       evidenceContentType: "image/png",
       evidenceStoragePath: `delivery-evidence/native/${job.rows[0]!.id}/proof.png`,
       evidenceSha256: "a".repeat(64),
+      requestStatus: "COMPLETED",
+      finalDocumentJobs: 1,
+      acquisitionRows: 2,
+      customerInvoiceAmount: "1000.00",
+      internalCost: "700.000000",
+      trackingSessionsEnded: 1,
     });
+    const finalDocument = await admin.query<{ snapshot: Record<string, unknown> }>(`
+      SELECT public.axora_build_final_delivery_document_snapshot($1,now()) AS snapshot
+    `, [request.requestId]);
+    const finalSnapshot = JSON.stringify(finalDocument.rows[0]!.snapshot);
+    expect(finalSnapshot).toContain("Native recipient");
+    expect(finalSnapshot).toContain('"documentType":"FINAL_FULFILMENT_DELIVERY"');
+    expect(finalSnapshot).not.toContain("actualInternalUnitCost");
+    expect(finalSnapshot).not.toContain(acquisitionPath);
+    expect(finalSnapshot).not.toContain("700.000000");
     const deliveryNotifications = await admin.query<{
       eventKey: string; actorValid: boolean; otherDriverValid: boolean;
       actorNotifications: number; otherDriverNotifications: number;

@@ -627,6 +627,7 @@
       "apis": [
         "/api/driver/workspace",
         "/api/driver/workflow",
+        "/api/driver/acquisition",
         "/api/driver/tracking",
         "/api/driver/evidence",
         "/api/driver/events",
@@ -1008,6 +1009,12 @@
     },
     {
       "route": "/api/driver/workflow",
+      "authentication": "update_assigned_deliveries",
+      "scope": "assigned-delivery",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/driver/acquisition",
       "authentication": "update_assigned_deliveries",
       "scope": "assigned-delivery",
       "mode": "mutating"

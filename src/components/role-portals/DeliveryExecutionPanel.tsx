@@ -114,11 +114,11 @@ function availableEvents(job: Job) {
   switch (job.status) {
     case "ASSIGNED": return ["ACCEPTED", "REJECTED"];
     case "ACCEPTED": return ["SHOPPING_STARTED", "ISSUE_REPORTED"];
-    case "SHOPPING": return ["ITEMS_ACQUIRED", "ISSUE_REPORTED", "NOTE_ADDED"];
+    case "SHOPPING": return ["ISSUE_REPORTED", "NOTE_ADDED"];
     case "ITEMS_ACQUIRED": return ["OUT_FOR_DELIVERY", "ISSUE_REPORTED"];
     case "OUT_FOR_DELIVERY": return ["ARRIVED", "FAILED", "ISSUE_REPORTED"];
     case "ARRIVED": return ["DELIVERED", "PARTIALLY_DELIVERED", "FAILED", "ISSUE_REPORTED"];
-    case "PARTIALLY_DELIVERED": return ["DELIVERED", "COMPLETED", "ISSUE_REPORTED"];
+    case "PARTIALLY_DELIVERED": return ["ISSUE_REPORTED"];
     case "DELIVERED": return ["COMPLETED", "ISSUE_REPORTED"];
     default: return [];
   }
@@ -139,6 +139,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [resolutions, setResolutions] = useState<Record<string, "ACQUIRED" | "UNAVAILABLE">>({});
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/driver/workspace", { cache: "no-store" });
@@ -222,6 +223,8 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
   }, [flush]);
 
   const sendEvent = async (job: Job, type: string) => {
+    setNotice("");
+    setError("");
     const note = notes[job.id]?.trim() ?? "";
     const metadata: Record<string, unknown> = {};
     if (["REJECTED", "FAILED", "ISSUE_REPORTED"].includes(type)) {
@@ -229,12 +232,21 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
       metadata.issueCode = type === "REJECTED" ? undefined : "OTHER";
     } else if (type === "NOTE_ADDED" && note) metadata.note = note;
     if (type === "PARTIALLY_DELIVERED") {
-      metadata.receiverName = note || copy.recipientRepresentative;
+      metadata.receiverName = note;
       metadata.lineOutcomes = job.lines.map((line) => ({
         deliveryJobLineId: line.id,
         deliveredQuantity: Number((document.getElementById(`partial-${job.id}-${line.id}`) as HTMLInputElement | null)?.value ?? 0),
         damagedQuantity: 0,
         missingQuantity: Math.max(line.quantity - Number((document.getElementById(`partial-${job.id}-${line.id}`) as HTMLInputElement | null)?.value ?? 0), 0),
+      }));
+    }
+    if (type === "DELIVERED") {
+      metadata.receiverName = note;
+      metadata.lineOutcomes = job.lines.map((line) => ({
+        deliveryJobLineId: line.id,
+        deliveredQuantity: line.quantity,
+        damagedQuantity: 0,
+        missingQuantity: 0,
       }));
     }
     const deviceKey = `axora:delivery-device:${workspace?.actorId}`;
@@ -247,14 +259,64 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
       deviceId, deviceSequence: nextDeviceSequence(), eventType: type,
       clientRecordedAt: new Date().toISOString(), metadata,
     } };
+    // Recipient identity, handover quantities and free-text operational notes
+    // are never persisted to localStorage. These commands require a live
+    // request and can be retried from the authoritative refreshed state.
+    if (Object.keys(metadata).length) {
+      if (!navigator.onLine) {
+        setError(copy.commandConflict);
+        return;
+      }
+      setBusy(true);
+      try {
+        const response = await fetch("/api/driver/workflow", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(command.payload),
+        });
+        if (!response.ok) throw new Error("conflict");
+        setNotice(copy.saved); await refresh();
+      } catch { setError(copy.commandConflict); }
+      finally { setBusy(false); }
+      return;
+    }
     const next = [...queue, command];
     persist(next);
     if (navigator.onLine) await flush(next);
     else setNotice(copy.offline);
   };
 
+  const submitAcquisition = async (event: FormEvent<HTMLFormElement>, job: Job) => {
+    event.preventDefault(); setBusy(true); setError(""); setNotice("");
+    const form = new FormData(event.currentTarget);
+    const lines = job.lines.map((line) => {
+      const resolution = String(form.get(`resolution-${line.id}`));
+      return resolution === "UNAVAILABLE"
+        ? { deliveryJobLineId: line.id, resolution, reason: String(form.get(`reason-${line.id}`) ?? "") }
+        : { deliveryJobLineId: line.id, resolution: "ACQUIRED", actualInternalUnitCost: String(form.get(`cost-${line.id}`) ?? "") };
+    });
+    const deviceKey = `axora:delivery-device:${workspace?.actorId}`;
+    const existingDevice = localStorage.getItem(deviceKey);
+    const deviceId = existingDevice ?? crypto.randomUUID();
+    if (!existingDevice) localStorage.setItem(deviceKey, deviceId);
+    form.set("jobId", job.id);
+    form.set("assignmentId", job.assignmentId);
+    form.set("expectedVersion", String(job.workflowVersion));
+    form.set("commandId", crypto.randomUUID());
+    form.set("eventCommandId", crypto.randomUUID());
+    form.set("deviceId", deviceId);
+    form.set("deviceSequence", String(nextDeviceSequence()));
+    form.set("capturedAt", new Date().toISOString());
+    form.set("lines", JSON.stringify(lines));
+    try {
+      const response = await fetch("/api/driver/acquisition", { method: "POST", body: form });
+      if (!response.ok) throw new Error("acquisition");
+      setNotice(copy.saved); await refresh();
+    } catch { setError(copy.shoppingError); }
+    finally { setBusy(false); }
+  };
+
   const uploadProof = async (event: FormEvent<HTMLFormElement>, job: Job) => {
-    event.preventDefault(); setBusy(true); setError("");
+    event.preventDefault(); setBusy(true); setError(""); setNotice("");
     const form = new FormData(event.currentTarget);
     form.set("jobId", job.id); form.set("clientEvidenceId", crypto.randomUUID());
     form.set("capturedAt", new Date().toISOString());
@@ -344,9 +406,23 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
                 />
               : <p className={styles.error} role="status">{copy.navigationUnavailable}</p>
           ) : null}
-          <label>{copy.note}<textarea value={notes[job.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [job.id]: event.target.value }))} maxLength={1000} /></label>
+          <label>{job.status === "ARRIVED" ? copy.recipient : copy.note}<textarea value={notes[job.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [job.id]: event.target.value }))} maxLength={1000} /></label>
+          {job.status === "SHOPPING" ? <details className={styles.details} open>
+            <summary>{copy.shopping}</summary>
+            <form className={styles.form} onSubmit={(event) => void submitAcquisition(event, job)}>
+              <p className={styles.notice}>{copy.customerPriceFixed}</p>
+              {job.lines.map((line) => <fieldset className={styles.lineEditor} key={line.id}>
+                <legend>{line.productName} · {line.quantity} {line.unitOfMeasure}</legend>
+                <label>{copy.resolution}<select name={`resolution-${line.id}`} value={resolutions[line.id] ?? "ACQUIRED"} onChange={(event) => setResolutions((current) => ({ ...current, [line.id]: event.target.value as "ACQUIRED" | "UNAVAILABLE" }))}><option value="ACQUIRED">{copy.acquired}</option><option value="UNAVAILABLE">{copy.itemUnavailable}</option></select></label>
+                <label>{copy.internalCost}<input name={`cost-${line.id}`} inputMode="decimal" pattern="[0-9]+([.][0-9]{1,6})?" defaultValue="0.00" disabled={resolutions[line.id] === "UNAVAILABLE"} required={resolutions[line.id] !== "UNAVAILABLE"} /></label>
+                <label>{copy.unavailableReason}<input name={`reason-${line.id}`} maxLength={1000} disabled={resolutions[line.id] !== "UNAVAILABLE"} required={resolutions[line.id] === "UNAVAILABLE"} /></label>
+              </fieldset>)}
+              <div className={styles.formGrid}><label>{copy.receipt}<input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.note}<textarea name="notes" minLength={3} maxLength={2000} /></label></div>
+              <button className={styles.actionButton} data-primary="true" disabled={busy} type="submit">{copy.submitBuying}</button>
+            </form>
+          </details> : null}
           {job.status === "ARRIVED" ? <div className={styles.formGrid}>{job.lines.map((line) => <label key={line.id}>{line.productName}<input id={`partial-${job.id}-${line.id}`} type="number" min="0" max={line.quantity} step="0.001" defaultValue={line.quantity} /></label>)}</div> : null}
-          <div className={styles.actions}>{availableEvents(job).map((type) => <button className={styles.actionButton} data-primary={["ACCEPTED", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED"].includes(type)} disabled={busy || (type === "COMPLETED" && !job.proofSatisfied)} key={type} type="button" onClick={() => void sendEvent(job, type)}>{({
+          <div className={styles.actions}>{availableEvents(job).map((type) => <button className={styles.actionButton} data-primary={["ACCEPTED", "OUT_FOR_DELIVERY", "DELIVERED", "COMPLETED"].includes(type)} disabled={busy || (type === "COMPLETED" && !job.proofSatisfied) || (["DELIVERED", "PARTIALLY_DELIVERED"].includes(type) && (notes[job.id]?.trim().length ?? 0) < 2)} key={type} type="button" onClick={() => void sendEvent(job, type)}>{({
             ACCEPTED: copy.accept, REJECTED: copy.reject, SHOPPING_STARTED: copy.startBuying,
             ITEMS_ACQUIRED: copy.itemsAcquired,
             OUT_FOR_DELIVERY: copy.outForDelivery, ARRIVED: copy.arrived,
@@ -354,7 +430,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
             COMPLETED: copy.completed, ISSUE_REPORTED: copy.reportIssue,
             FAILED: copy.reportIssue, NOTE_ADDED: copy.note,
           } as Record<string, string>)[type] ?? type}</button>)}</div>
-          {job.events.length ? <details className={styles.details}><summary>{copy.uploadProof}</summary><form className={styles.form} onSubmit={(event) => void uploadProof(event, job)}><div className={styles.formGrid}><label>{copy.event}<select name="eventId" required>{[...job.events].reverse().map((item) => <option key={item.id} value={item.id}>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</option>)}</select></label><label>{copy.evidenceType}<select name="type" defaultValue="PHOTO"><option>PHOTO</option><option>SIGNATURE</option><option>DELIVERY_NOTE</option></select></label><label>{copy.file}<input name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.recipient}<input name="recipientIdentity" maxLength={200} /></label><label><input name="consented" type="checkbox" /> {copy.consent}</label><label>{copy.correctEvidence}<select name="supersedesEvidenceId" defaultValue=""><option value="">—</option>{job.evidence.map((item) => <option key={item.id} value={item.id}>{item.type} v{item.version}</option>)}</select></label></div><button className={styles.actionButton} type="submit">{copy.uploadProof}</button></form></details> : null}
+          {["ARRIVED", "PARTIALLY_DELIVERED", "DELIVERED"].includes(job.status) ? <details className={styles.details}><summary>{copy.uploadProof}</summary><form className={styles.form} onSubmit={(event) => void uploadProof(event, job)}><div className={styles.formGrid}><label>{copy.event}<select name="eventId" required>{[...job.events].reverse().filter((item) => ["ARRIVED", "PARTIALLY_DELIVERED", "DELIVERED"].includes(item.type)).map((item) => <option key={item.id} value={item.id}>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</option>)}</select></label><label>{copy.evidenceType}<select name="type" defaultValue="PHOTO"><option>PHOTO</option><option>SIGNATURE</option><option>DELIVERY_NOTE</option></select></label><label>{copy.file}<input name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.recipient}<input name="recipientIdentity" minLength={2} maxLength={200} required /></label><label><input name="consented" type="checkbox" /> {copy.consent}</label><label>{copy.correctEvidence}<select name="supersedesEvidenceId" defaultValue=""><option value="">—</option>{job.evidence.map((item) => <option key={item.id} value={item.id}>{item.type} v{item.version}</option>)}</select></label></div><button className={styles.actionButton} type="submit">{copy.uploadProof}</button></form></details> : null}
           {job.proofPolicy.includes("OTP") ? <details className={styles.details}><summary>{copy.verifyOtp}</summary><form className={styles.form} onSubmit={(event) => void verifyOtp(event, job)}><div className={styles.formGrid}><label>{copy.challengeId}<input name="challengeId" required /></label><label>{copy.code}<input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label></div><button className={styles.actionButton} type="submit">{copy.verifyOtp}</button></form></details> : null}
           {job.evidence.length ? <ul>{job.evidence.map((item) => <li key={item.id}>{item.accessUrl ? <a href={item.accessUrl}>{item.type} · {item.fileName} · v{item.version}</a> : item.fileName}</li>)}</ul> : null}
           <details className={styles.details}><summary>{copy.timeline}</summary><ol className={styles.timeline}>{job.events.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</strong><time>{formatDate(item.receivedAt, initialLocale, job.destinationTimezone)}</time></li>)}</ol></details>

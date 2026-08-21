@@ -59,6 +59,24 @@ REVOKE ALL ON TABLE
   public.role_assignment_management_rules
 FROM axora_app;
 
+DO $delivery_operations_boundary$
+BEGIN
+  IF to_regclass('public.delivery_acquisition_submissions') IS NOT NULL THEN
+    REVOKE ALL ON TABLE public.delivery_acquisition_submissions,
+      public.delivery_acquisition_receipts,public.delivery_acquisition_lines
+    FROM axora_app;
+  END IF;
+  IF to_regprocedure('public.axora_delivery_acquisition_is_complete(uuid)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.axora_delivery_acquisition_is_complete(uuid)
+    FROM axora_app;
+  END IF;
+  IF to_regprocedure('public.axora_delivery_line_outcomes_are_valid(uuid,jsonb,boolean)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.axora_delivery_line_outcomes_are_valid(uuid,jsonb,boolean)
+    FROM axora_app;
+  END IF;
+END
+$delivery_operations_boundary$;
+
 GRANT SELECT ON TABLE public.permissions,public.role_permissions
 TO axora_app;
 
