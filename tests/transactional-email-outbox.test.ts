@@ -125,6 +125,35 @@ describe("generic transactional email outbox", () => {
     ]);
   });
 
+  it("claims a support notification without inventing a removed contact address", async () => {
+    mocks.client.query
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{
+        deliveryId: outboxId,
+        messageKind: "CONTACT_NOTIFICATION",
+        locale: "en",
+        contactName: "Aisha Rahman",
+        contactEmail: null,
+        companyName: "Example Industries",
+        phone: null,
+        subject: "Procurement workflow",
+        message: "A private contact message for the Axora team.",
+        submittedAt: "2026-08-03T06:00:00.000Z",
+      }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: outboxId }] });
+
+    const job = await claimTransactionalEmailOutbox();
+    expect(job).toMatchObject({
+      messageKind: "CONTACT_NOTIFICATION",
+      recipientEmail: "monitored-inbox@example.test",
+      contact: { company: "Example Industries" },
+    });
+    expect(job?.replyToEmail).toBeUndefined();
+    expect(job?.contact).not.toHaveProperty("email");
+  });
+
   it("claims a visitor acknowledgement to the submitted address", async () => {
     mocks.client.query
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })

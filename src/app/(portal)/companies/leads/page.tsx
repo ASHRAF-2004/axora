@@ -26,6 +26,11 @@ import {
 
 type SearchValue = string | string[] | undefined;
 const first = (value: SearchValue) => Array.isArray(value) ? value[0] : value;
+const removedContactMatchFields = new Set([
+  "registrationNumber", "emailDomain", "contactEmail", "phone",
+]);
+const visibleMatchedFields = (fields: readonly string[]) =>
+  fields.filter((field) => !removedContactMatchFields.has(field));
 
 function formatDate(locale: SupportedLocale, timezone: string, value: Date | null) {
   if (!value) return "-";
@@ -53,11 +58,12 @@ function actionsForRole(
   source: readonly CompanyLeadAction[],
   status: CompanyLeadStatus,
 ) {
-  const allowed = isOwner
-    ? new Set<CompanyLeadAction>([
-      "ASSIGN", "REASSIGN", "REVIEW_DUPLICATE", "ANONYMIZE",
-    ])
-    : role === "HUMAN_RESOURCES_MANAGEMENT"
+  if (isOwner) {
+    // The database read model is the state- and permission-aware authority.
+    // Do not hide valid Owner follow-up actions behind a second role list.
+    return new Set(source);
+  }
+  const allowed = role === "HUMAN_RESOURCES_MANAGEMENT"
       ? new Set<CompanyLeadAction>(["ASSIGN", "REASSIGN", "REVIEW_DUPLICATE", "ADD_NOTE", "ADD_TASK"])
       : role === "CLIENT_ACCOUNT_MANAGER"
         ? new Set<CompanyLeadAction>([
@@ -143,7 +149,6 @@ export default async function CompanyLeadsPage({
     assignment: ["VISIBLE", "ALL", "MINE", "UNASSIGNED"].includes(assignment ?? "") ? assignment : "VISIBLE",
     source: first(search.source)?.slice(0, 80),
     industry: first(search.industry)?.slice(0, 200),
-    region: first(search.region)?.slice(0, 160),
     duplicateRisk: ["CLEAR", "POSSIBLE_DUPLICATE", "CLEARED", "CONFIRMED"].includes(duplicateRisk ?? "") ? duplicateRisk : undefined,
     createdFrom: /^\d{4}-\d{2}-\d{2}$/.test(first(search.createdFrom) ?? "") ? first(search.createdFrom) : undefined,
   };
@@ -153,8 +158,13 @@ export default async function CompanyLeadsPage({
   return <div className="page-stack">
     <header className="page-header">
       <div><p className="eyebrow">{copy.queueTitle}</p><h1>{copy.queueTitle}</h1><p>{copy.queueIntro}</p></div>
-      <Link className="button button-secondary" href="/companies">{copy.backToCompanies}</Link>
+      <div className="action-row">
+        {actor.isOwner ? <Link className="button button-primary" href="/companies/leads/new">{copy.createAction}</Link> : null}
+        <Link className="button button-secondary" href="/companies">{copy.backToCompanies}</Link>
+      </div>
     </header>
+
+    {first(search.notice) === "lead-created" ? <section className="panel" role="status"><strong>{copy.leadCreated}</strong></section> : null}
 
     <section className="panel" aria-labelledby="lead-filters">
       <h2 id="lead-filters">{copy.filters}</h2>
@@ -163,7 +173,6 @@ export default async function CompanyLeadsPage({
         {workspace.canViewAll ? <label>{copy.assignment}<select name="assignment" defaultValue={filters.assignment}><option value="VISIBLE">{copy.allVisible}</option><option value="MINE">{copy.mine}</option><option value="UNASSIGNED">{copy.unassigned}</option></select></label> : null}
         <label>{copy.source}<input name="source" maxLength={80} defaultValue={filters.source ?? ""} /></label>
         <label>{copy.industry}<input name="industry" maxLength={200} defaultValue={filters.industry ?? ""} /></label>
-        <label>{copy.region}<input name="region" maxLength={160} defaultValue={filters.region ?? ""} /></label>
         <label>{copy.duplicateRisk}<select name="duplicateRisk" defaultValue={filters.duplicateRisk ?? ""}><option value="">{copy.allVisible}</option><option value="CLEAR">CLEAR</option><option value="POSSIBLE_DUPLICATE">POSSIBLE DUPLICATE</option><option value="CLEARED">CLEARED</option><option value="CONFIRMED">CONFIRMED</option></select></label>
         <label>{copy.createdFrom}<input name="createdFrom" type="date" defaultValue={filters.createdFrom ?? ""} /></label>
         <div className="form-actions"><button className="button button-primary" type="submit">{copy.applyFilters}</button></div>
@@ -180,25 +189,25 @@ export default async function CompanyLeadsPage({
             <div className="status-cluster"><span className="status-badge">{companyLeadStatusLabel(locale, lead.status)}</span>{lead.overdue ? <span className="status-badge status-danger">{copy.overdue}</span> : null}</div>
           </header>
           <dl className="summary-grid">
-            <div><dt>{copy.contact}</dt><dd>{lead.contactName}<br /><a href={`mailto:${lead.contactEmail}`}>{lead.contactEmail}</a><br /><span dir="ltr">{lead.phoneCountryCode} {lead.phone}</span></dd></div>
-            <div><dt>{copy.location}</dt><dd>{lead.city}, {lead.region}, {lead.country}<br />{lead.industry}</dd></div>
-            <div><dt>{copy.preferences}</dt><dd>{lead.preferredContactMethod}<br />{lead.preferredContactTime || "-"}<br /><span dir="ltr">{lead.contactTimezone}</span></dd></div>
+            <div><dt>{copy.contact}</dt><dd>{lead.contactName}</dd></div>
+            <div><dt>{copy.location}</dt><dd>{lead.city}<br />{lead.industry}</dd></div>
+            <div><dt>{copy.preferences}</dt><dd>{lead.preferredContactMethod}<br /><span dir="ltr">{lead.contactTimezone}</span></dd></div>
             <div><dt>{copy.submitted}</dt><dd>{formatDate(locale, timezone, lead.createdAt)}<br />{copy.due}: {formatDate(locale, timezone, lead.slaDueAt)}</dd></div>
             <div><dt>{copy.assignment}</dt><dd>{lead.assignment?.managerName ?? copy.unassigned}</dd></div>
-            <div><dt>{copy.duplicateRisk}</dt><dd>{lead.duplicateRisk}{lead.usesPersonalEmail ? <><br />{copy.personalEmail}</> : null}</dd></div>
+            <div><dt>{copy.duplicateRisk}</dt><dd>{lead.duplicateRisk}</dd></div>
           </dl>
           <details open={selectedLead === lead.id}>
             <summary>{copy.originalMessage}</summary>
             <div className="page-stack">
               <p><strong>{lead.subject}</strong></p><p className="pre-wrap">{lead.message}</p>
-              <p>{copy.company}: {lead.companyName} / {lead.legalName} / {lead.registrationNumber || "-"}</p>
-              <p>{copy.consent}: {formatDate(locale, timezone, lead.consentAt)} ({lead.privacyPolicyVersion})</p>
+              <p>{copy.company}: {lead.companyName} / {lead.legalName}</p>
+              {lead.consentAt ? <p>{copy.consent}: {formatDate(locale, timezone, lead.consentAt)} ({lead.privacyPolicyVersion})</p> : null}
               <p>{copy.retentionUntil}: {formatDate(locale, timezone, lead.retentionUntil)}</p>
               {lead.convertedCompanyId ? <p>{copy.convertedCompany}: <Link href={`/companies?created=${lead.convertedCompanyId}`}>{lead.convertedCompanyId}</Link></p> : null}
               <LeadActions lead={lead} managers={workspace.managers} locale={locale} available={available} />
 
               {lead.duplicateCandidates.length ? <section><h3>{copy.duplicateCandidates}</h3>{lead.duplicateCandidates.map((candidate) => <div className="subpanel" key={candidate.id}>
-                <p><strong>{candidate.kind}: {candidate.label}</strong></p><p>{copy.matched}: {candidate.matchedFields.join(", ")}</p><p>{candidate.reviewStatus}</p>
+                <p><strong>{candidate.kind}: {candidate.label}</strong></p>{visibleMatchedFields(candidate.matchedFields).length ? <p>{copy.matched}: {visibleMatchedFields(candidate.matchedFields).join(", ")}</p> : null}<p>{candidate.reviewStatus}</p>
                 {candidate.reviewStatus === "PENDING" && available.has("REVIEW_DUPLICATE") ? <form action={resolveCompanyLeadDuplicateAction} className="form-grid">
                   <input type="hidden" name="leadId" value={lead.id} /><input type="hidden" name="candidateId" value={candidate.id} />
                   <label>{copy.reason}<input name="reason" minLength={3} maxLength={1000} required /></label>

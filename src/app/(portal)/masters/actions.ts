@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { requirePermission } from "@/lib/auth";
 import { sendAccountSetupEmail } from "@/lib/account-email";
 import {
@@ -12,6 +11,7 @@ import {
 import {
   activateCompany,
   assignCompanyManager,
+  CompanyCreationCommandConflictError,
   COMPANY_LIFECYCLE_STATUSES,
   COMPANY_MANAGER_ACCESS_MODES,
   COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS,
@@ -35,13 +35,12 @@ import {
   updateProductImageAltText,
 } from "@/lib/product-images";
 import { createBranch, createProduct, setMasterActive, type MasterEntity } from "@/lib/repository";
-import { branchSchema, companyLeadCreateSchema, companySchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
+import { branchSchema, directCompanyCreateSchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { calculateCommercialSellingPrice } from "@/lib/procurement-rules";
 import { canAccess } from "@/lib/permissions";
-import { STANDARD_BILLING_TERMS } from "@/lib/types";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 function productInput(formData: FormData) {
@@ -82,30 +81,31 @@ function revalidateProductAfterEditorUpdate(productId: string) {
 
 export async function createCompanyAction(formData: FormData) {
   const user = await requirePermission("manage_companies");
+  if (!user.isOwner || user.accountKind !== "PLATFORM") {
+    redirect("/companies");
+  }
   const logo = formData.get("logo");
   if (!(logo instanceof File) || logo.size < 1) redirect("/companies?notice=company-logo-required");
-  const submitted = companyLeadCreateSchema.parse({
+  const commandId = z.uuid().parse(readFormText(formData, "commandId"));
+  const input = directCompanyCreateSchema.parse({
     name: readFormText(formData, "name"),
+    legalName: readFormText(formData, "legalName"),
     industry: readFormText(formData, "industry"),
     companyInformation: readFormText(formData, "companyInformation"),
+    websiteUrl: readFormText(formData, "websiteUrl"),
     mainContactName: readFormText(formData, "mainContactName"),
-    mainContactEmail: readFormText(formData, "mainContactEmail"),
-    mainContactPhone: readFormText(formData, "mainContactPhone"),
     billingCycle: readFormText(formData, "billingCycle"),
+    notes: readFormText(formData, "notes") || undefined,
   });
-  const input = companySchema.parse({
-    ...submitted,
-    legalName: submitted.name,
-    registrationNumber: `PENDING-${randomUUID()}`,
-    websiteUrl: "",
-    billingContactName: submitted.mainContactName,
-    billingContactEmail: submitted.mainContactEmail,
-    billingContactPhone: submitted.mainContactPhone,
-    billingAddress: "Pending onboarding",
-    paymentTerms: STANDARD_BILLING_TERMS,
-    notes: undefined,
-  });
-  const created = await createCompanyWithBrand(input, logo, user);
+  let created: Awaited<ReturnType<typeof createCompanyWithBrand>>;
+  try {
+    created = await createCompanyWithBrand(input, logo, user, commandId);
+  } catch (error) {
+    if (error instanceof CompanyCreationCommandConflictError) {
+      redirect("/companies/new?notice=company-command-conflict");
+    }
+    throw error;
+  }
   revalidatePath("/companies"); revalidatePath("/dashboard");
   redirect(`/companies?notice=company-created&created=${created.companyId}`);
 }
@@ -132,6 +132,9 @@ function lifecycleRedirect(notice: string, companyId: string) {
 
 export async function assignCompanyManagerAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
+  if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+    redirect("/companies");
+  }
   const startValue = readFormText(formData, "coverageStartsAt");
   const endValue = readFormText(formData, "coverageEndsAt");
   const input = assignmentSchema.parse({
@@ -152,7 +155,11 @@ export async function assignCompanyManagerAction(formData: FormData) {
     reason: readFormText(formData, "reason"),
   });
   await assignCompanyManager(actor, input);
-  lifecycleRedirect("company-assigned", input.companyId);
+  revalidatePath("/companies");
+  revalidatePath(`/companies/${input.companyId}`);
+  revalidatePath(`/companies/${input.companyId}/assignment`);
+  revalidatePath("/dashboard");
+  redirect(`/companies/${input.companyId}/assignment?notice=company-assigned`);
 }
 
 export async function transitionCompanyLifecycleAction(formData: FormData) {

@@ -38,6 +38,28 @@ describe("trusted transactional email renderer", () => {
     expect(rendered.templateKey).toBe("contact-notification");
   });
 
+  it("renders an enquiry notification without an invented contact address", async () => {
+    const rendered = await renderTransactionalEmail({
+      deliveryId,
+      messageKind: "CONTACT_NOTIFICATION",
+      locale: "en",
+      recipientEmail: "private-support-inbox@example.test",
+      recipientName: "Axora contact team",
+      contact: {
+        name: "Aisha Rahman",
+        company: "Example & Company",
+        subject: "Procurement review",
+        message: "Please review this company enquiry.",
+        submittedAt: "2026-08-03T06:00:00.000Z",
+      },
+    });
+
+    expect(rendered.html).not.toContain("undefined");
+    expect(rendered.text).not.toContain("undefined");
+    expect(rendered.replyToEmail).toBe("support@axora.management");
+    expect(rendered.text).not.toContain("Email:");
+  });
+
   it.each([
     ["en", "We received your Axora company enquiry", 'lang="en" dir="ltr"'],
     ["ar", "استلمنا استفسار شركتك لدى Axora", 'lang="ar" dir="rtl"'],

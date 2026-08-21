@@ -1,0 +1,156 @@
+.page {
+  --wallet-surface: var(--surface, var(--white));
+  --wallet-muted-surface: var(--tenant-muted, var(--slate-50));
+  --wallet-text: var(--text, var(--slate-950));
+  --wallet-muted: var(--text-muted, var(--slate-600));
+  --wallet-border: var(--tenant-border, var(--slate-200));
+  --wallet-primary: var(--tenant-primary, var(--blue-600));
+  display: grid;
+  gap: 1.25rem;
+  color: var(--wallet-text);
+}
+
+.hero {
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid var(--wallet-border);
+  border-radius: var(--radius);
+  background: linear-gradient(145deg,
+    color-mix(in srgb, var(--wallet-surface) 91%, var(--wallet-primary)),
+    var(--wallet-surface));
+}
+
+.hero h1 { margin: .2rem 0 .6rem; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1; }
+.hero > p:not(.eyebrow, .fundsNote) { max-width: 70ch; color: var(--wallet-muted); }
+.eyebrow { margin: 0; color: var(--wallet-primary); font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.fundsNote { max-width: 75ch; margin-block: 1rem 0; font-weight: 700; }
+
+.successNotice,
+.errorNotice {
+  margin: 0;
+  padding: .9rem 1rem;
+  border: 1px solid var(--wallet-border);
+  border-inline-start-width: .3rem;
+  border-radius: .75rem;
+  background: var(--wallet-surface);
+}
+.successNotice { border-inline-start-color: var(--teal-600); }
+.errorNotice { border-inline-start-color: var(--red-600); }
+
+.companySelector {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: end;
+  gap: .75rem;
+  padding: 1rem;
+  border: 1px solid var(--wallet-border);
+  border-radius: 1rem;
+  background: var(--wallet-surface);
+}
+.companySelector label { grid-column: 1 / -1; font-weight: 700; }
+
+.companySelector select,
+.companySelector button,
+.financeForm input,
+.financeForm textarea,
+.financeForm button,
+.inlineRecordForm input,
+.inlineRecordForm textarea,
+.inlineRecordForm button {
+  min-height: 44px;
+  border: 1px solid var(--wallet-border);
+  border-radius: .7rem;
+  color: var(--wallet-text);
+  background: var(--wallet-surface);
+}
+.companySelector select,
+.financeForm input,
+.financeForm textarea,
+.inlineRecordForm input,
+.inlineRecordForm textarea { width: 100%; padding: .65rem .75rem; }
+.companySelector button,
+.financeForm button,
+.inlineRecordForm button {
+  padding: .65rem 1rem;
+  border-color: var(--wallet-primary);
+  color: var(--wallet-surface);
+  background: var(--wallet-primary);
+  font-weight: 800;
+}
+.companySelector :focus-visible,
+.financeForm :focus-visible,
+.inlineRecordForm :focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--wallet-primary) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.balanceCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid var(--wallet-border);
+  border-radius: var(--radius);
+  background: var(--wallet-surface);
+  box-shadow: var(--shadow);
+}
+.balanceCard p { margin: 0 0 .25rem; color: var(--wallet-muted); }
+.balanceCard h2 { margin: 0; font-size: 1rem; }
+.balanceCard > strong { color: var(--wallet-primary); font-size: clamp(2rem, 7vw, 4rem); font-variant-numeric: tabular-nums; }
+
+.panel {
+  overflow: hidden;
+  border: 1px solid var(--wallet-border);
+  border-radius: var(--radius);
+  background: var(--wallet-surface);
+}
+.sectionHeader { padding: 1.25rem; border-block-end: 1px solid var(--wallet-border); }
+.sectionHeader h2 { margin: 0; }
+.sectionHeader p { max-width: 75ch; margin: .35rem 0 0; color: var(--wallet-muted); }
+
+.formGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 1rem; padding: 1.25rem; }
+.financeForm,
+.inlineRecordForm { display: grid; align-content: start; gap: .8rem; padding: 1rem; border: 1px solid var(--wallet-border); border-radius: 1rem; background: var(--wallet-muted-surface); }
+.financeForm h3,
+.financeForm p { margin: 0; }
+.financeForm p { color: var(--wallet-muted); font-size: .875rem; line-height: 1.5; }
+.financeForm label,
+.inlineRecordForm label { display: grid; gap: .35rem; color: var(--wallet-muted); font-size: .875rem; font-weight: 700; }
+.financeForm textarea,
+.inlineRecordForm textarea { min-height: 5.5rem; resize: vertical; }
+
+.empty { margin: 0; padding: 1.25rem; color: var(--wallet-muted); }
+.topUpList { display: grid; gap: 1rem; margin: 0; padding: 1.25rem; list-style: none; }
+.topUpList > li { display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--wallet-border); border-radius: 1rem; }
+.topUpSummary { display: grid; gap: .35rem; }
+.topUpSummary > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; }
+.topUpSummary span { color: var(--wallet-primary); font-weight: 800; }
+.topUpSummary p { margin: 0; color: var(--wallet-muted); font-size: .85rem; }
+.inlineRecordForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.inlineRecordForm button { align-self: end; }
+
+.tableWrap { overflow-x: auto; }
+.tableWrap table { width: 100%; min-width: 48rem; border-collapse: collapse; }
+.tableWrap th,
+.tableWrap td { padding: .85rem 1rem; border-block-end: 1px solid var(--wallet-border); text-align: start; }
+.tableWrap th { color: var(--wallet-muted); background: var(--wallet-muted-surface); font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; }
+.tableWrap td { font-size: .875rem; }
+.credit,
+.debit { font-weight: 800; font-variant-numeric: tabular-nums; }
+.credit { color: var(--teal-600); }
+.debit { color: var(--red-600); }
+
+@media (max-width: 44rem) {
+  .companySelector,
+  .inlineRecordForm { grid-template-columns: 1fr; }
+  .companySelector label { grid-column: auto; }
+  .balanceCard > strong { width: 100%; overflow-wrap: anywhere; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page *, .page *::before, .page *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}

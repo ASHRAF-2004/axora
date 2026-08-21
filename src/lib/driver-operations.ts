@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import type { QueryResultRow } from "pg";
+import { z } from "zod";
 import type { AuthenticatedSessionUser } from "./auth";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 
@@ -81,13 +83,163 @@ async function capability<T>(name: string, values: unknown[]) {
   return result.rows[0].value;
 }
 
-export async function getAvailableDeliveryJobs(actor: AuthenticatedSessionUser) {
-  if (isDemoMode()) return { sequence: Date.now(), capturedAt: new Date().toISOString(), jobs: [] } satisfies AvailableDeliveryWorkspace;
-  return capability<AvailableDeliveryWorkspace>("axora_driver_available_jobs", [actor.id, assignmentId(actor), new Date()]);
+function hideAvailableJobsWhileAssigned(
+  workspace: AvailableDeliveryWorkspace,
+  hasActiveAssignment: boolean,
+): AvailableDeliveryWorkspace {
+  return hasActiveAssignment && workspace.jobs.length
+    ? { ...workspace, jobs: [] }
+    : workspace;
 }
 
+const demoAvailableJob = Object.freeze({
+  id: "10000000-0000-4000-8000-000000000001",
+  code: "DEL-DEMO-AVAILABLE-001",
+  requestReference: "REQ-DEMO-PAID-001",
+  companyName: "Controlled demo company",
+  branchName: "Kuala Lumpur receiving branch",
+  area: "Kuala Lumpur",
+  destinationTimezone: "Asia/Kuala_Lumpur",
+  lineCount: 2,
+  status: "AVAILABLE" as const,
+});
+
+type DemoClaimResult = {
+  assignmentId: string;
+  jobId: string;
+  status: "ASSIGNED";
+  created: true;
+};
+
+type DemoDeliveryClaimState = {
+  sequence: number;
+  claimedByJob: Map<string, { actorId: string; result: DemoClaimResult }>;
+  commands: Map<string, { actorId: string; jobId: string; result: DemoClaimResult }>;
+  availability: Map<string, "AVAILABLE" | "UNAVAILABLE">;
+};
+
+declare global {
+  var __axoraDemoDeliveryClaimState: DemoDeliveryClaimState | undefined;
+}
+
+function demoDeliveryClaimState() {
+  if (!global.__axoraDemoDeliveryClaimState) {
+    global.__axoraDemoDeliveryClaimState = {
+      sequence: 1,
+      claimedByJob: new Map(),
+      commands: new Map(),
+      availability: new Map(),
+    };
+  }
+  return global.__axoraDemoDeliveryClaimState;
+}
+
+function requireDemoDeliveryActor(actor: AuthenticatedSessionUser) {
+  if (actor.accountKind !== "DELIVERY"
+    || !["DELIVERY_GUY", "DELIVERY_AGENT"].includes(actor.role ?? "")) {
+    throw new Error("Delivery job unavailable.");
+  }
+}
+
+function deterministicDemoAssignmentId(actorId: string, commandId: string) {
+  const bytes = createHash("sha256").update(`${actorId}:${commandId}`).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function demoAvailableDeliveryJobs(actor: AuthenticatedSessionUser): AvailableDeliveryWorkspace {
+  requireDemoDeliveryActor(actor);
+  const state = demoDeliveryClaimState();
+  const hasActiveAssignment = [...state.claimedByJob.values()]
+    .some((claim) => claim.actorId === actor.id);
+  const isAvailable = state.availability.get(actor.id) !== "UNAVAILABLE";
+  return {
+    sequence: state.sequence,
+    capturedAt: new Date().toISOString(),
+    jobs: isAvailable && !hasActiveAssignment
+      && !state.claimedByJob.has(demoAvailableJob.id)
+      ? [{ ...demoAvailableJob }]
+      : [],
+  };
+}
+
+function demoClaimedDeliveryJob(actorId: string) {
+  const state = demoDeliveryClaimState();
+  const claimed = [...state.claimedByJob.entries()].find(([, claim]) => (
+    claim.actorId === actorId
+  ));
+  if (!claimed) return undefined;
+  const [jobId, claim] = claimed;
+  return jobId === demoAvailableJob.id
+    ? { job: demoAvailableJob,claim: claim.result }
+    : undefined;
+}
+
+export async function getAvailableDeliveryJobs(actor: AuthenticatedSessionUser) {
+  if (isDemoMode()) return demoAvailableDeliveryJobs(actor);
+  const at = new Date();
+  return withAuditTransaction({ actor, reason: "Viewed available delivery jobs" }, async (client) => {
+    const available = await client.query<ValueRow<AvailableDeliveryWorkspace>>(
+      "SELECT public.axora_driver_available_jobs($1,$2,$3) AS value",
+      [actor.id, assignmentId(actor), at],
+    );
+    const workspace = available.rows[0]?.value;
+    if (!workspace) throw new Error("Delivery workspace unavailable.");
+    const active = await client.query<{ present: boolean }>(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM public.delivery_job_assignments assignment
+        JOIN public.delivery_jobs job ON job.id=assignment.delivery_job_id
+        WHERE assignment.driver_user_id=$1
+          AND assignment.driver_role_assignment_id=$2
+          AND assignment.status IN ('ASSIGNED','ACCEPTED')
+          AND assignment.ended_at IS NULL
+          AND job.status NOT IN ('COMPLETED','CANCELLED','FAILED','RETURNED')
+      ) AS present
+    `, [actor.id, assignmentId(actor)]);
+    return hideAvailableJobsWhileAssigned(workspace, active.rows[0]?.present === true);
+  });
+}
+
+export const driverAvailableJobInternals = {
+  demoAvailableDeliveryJobs,
+  demoDeliveryClaimState,
+  demoClaimedDeliveryJob,
+  hideAvailableJobsWhileAssigned,
+};
+
 export async function claimAvailableDeliveryJob(actor: AuthenticatedSessionUser, jobId: string, commandId: string) {
-  if (isDemoMode()) return { assignmentId: "demo", jobId, status: "ASSIGNED", created: true };
+  if (isDemoMode()) {
+    requireDemoDeliveryActor(actor);
+    const parsedJobId = z.string().uuid().parse(jobId);
+    const parsedCommandId = z.string().uuid().parse(commandId);
+    const state = demoDeliveryClaimState();
+    const existing = state.commands.get(parsedCommandId);
+    if (existing) {
+      if (existing.actorId !== actor.id || existing.jobId !== parsedJobId) {
+        throw new Error("Delivery job unavailable.");
+      }
+      return existing.result;
+    }
+    if (parsedJobId !== demoAvailableJob.id
+      || state.availability.get(actor.id) === "UNAVAILABLE"
+      || state.claimedByJob.has(parsedJobId)
+      || [...state.claimedByJob.values()].some((claim) => claim.actorId === actor.id)) {
+      throw new Error("This job was already claimed.");
+    }
+    const result: DemoClaimResult = Object.freeze({
+      assignmentId: deterministicDemoAssignmentId(actor.id, parsedCommandId),
+      jobId: parsedJobId,
+      status: "ASSIGNED",
+      created: true,
+    });
+    state.claimedByJob.set(parsedJobId, { actorId: actor.id, result });
+    state.commands.set(parsedCommandId, { actorId: actor.id, jobId: parsedJobId, result });
+    state.sequence += 1;
+    return result;
+  }
   return withAuditTransaction({ actor, reason: "Delivery job self-claimed", commandId }, async (client) => {
     const result = await client.query<ValueRow<{ assignmentId: string; jobId: string; status: string; created: boolean }>>(
       "SELECT public.axora_claim_available_delivery_job($1,$2,$3,$4,$5) AS value",
@@ -99,7 +251,14 @@ export async function claimAvailableDeliveryJob(actor: AuthenticatedSessionUser,
 }
 
 export async function setDriverAvailability(actor: AuthenticatedSessionUser, availability: string) {
-  if (isDemoMode()) return availability;
+  if (isDemoMode()) {
+    requireDemoDeliveryActor(actor);
+    const parsed = z.enum(["AVAILABLE", "UNAVAILABLE"]).parse(availability);
+    const state = demoDeliveryClaimState();
+    state.availability.set(actor.id, parsed);
+    state.sequence += 1;
+    return parsed;
+  }
   return capability<string>("axora_set_driver_availability", [actor.id, assignmentId(actor), availability, new Date()]);
 }
 

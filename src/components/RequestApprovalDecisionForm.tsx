@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import type { BudgetApprovalMessages } from "@/lib/budget-approval-i18n";
 import type { ApprovalQueueItem } from "@/lib/request-approval";
+import { moneyDecimalIsPositive } from "@/lib/money-decimal";
 import { decideRequestApprovalAction } from "@/app/(portal)/approvals/actions";
 import styles from "@/app/(portal)/budget-approval.module.css";
 
@@ -12,11 +14,14 @@ export function RequestApprovalDecisionForm({
   messages: BudgetApprovalMessages;
   sourceAccounts: Array<{ id: string; name: string }>;
 }) {
-  const overBudget = Number(request.exceededBy)>0;
+  const overBudget = moneyDecimalIsPositive(request.exceededBy);
   return (
     <form action={decideRequestApprovalAction} className={styles.decisionForm}>
       <input type="hidden" name="requestId" value={request.id} />
       <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
+      {request.canApproveAndPay ? (
+        <input type="hidden" name="commandId" value={randomUUID()} />
+      ) : null}
       {overBudget && request.canResolveOverBudget ? (
         <div className={styles.fieldGrid}>
           <label>
@@ -43,9 +48,17 @@ export function RequestApprovalDecisionForm({
         <span>{messages.reason}</span>
         <textarea name="reason" minLength={3} maxLength={1000} required />
       </label>
+      <p className={styles.formHelp}>{request.canApproveAndPay
+        ? messages.approveAndPayHelp
+        : messages.approveHelp}</p>
       <div className={styles.actionRow}>
-        <button className={styles.primaryAction} name="decision" value="APPROVE" type="submit">
-          {messages.approve}
+        <button
+          className={styles.primaryAction}
+          name="decision"
+          value={request.canApproveAndPay ? "APPROVE_AND_PAY" : "APPROVE"}
+          type="submit"
+        >
+          {request.canApproveAndPay ? messages.approveAndPay : messages.approve}
         </button>
         <button className={styles.secondaryAction} name="decision" value="RETURN" type="submit">
           {messages.return}

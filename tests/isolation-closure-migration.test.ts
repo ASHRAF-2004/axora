@@ -205,12 +205,12 @@ async function fixture(createAppRole = false) {
     SELECT $1::uuid,permission.id,'GRANT','COMPANY',$2::uuid,now(),
       true,$3::text,$4::uuid
     FROM permissions permission
-    WHERE permission.permission_code='finance.manage'
+    WHERE permission.permission_code='finance.invoice.view'
     UNION ALL
     SELECT $5::uuid,permission.id,'GRANT','COMPANY',$6::uuid,now(),
       true,$3::text,$4::uuid
     FROM permissions permission
-    WHERE permission.permission_code='finance.manage'
+    WHERE permission.permission_code='finance.invoice.view'
   `, [
     ids.companyAdminA,
     ids.companyA,
@@ -351,7 +351,7 @@ describe("P0-02 isolation closure migration", () => {
 
       const invoice = await db.query<SnapshotRow>(`
         SELECT axora_lock_invoice_access(
-          $1,$2,'finance.manage',$3,now()
+          $1,$2,'finance.invoice.view',$3,now()
         ) AS snapshot
       `, [ids.companyAdminA, ids.companyAssignmentA, ids.invoice]);
       expect(invoice.rows[0]?.snapshot).toMatchObject({

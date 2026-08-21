@@ -34,6 +34,8 @@ describe("paid checkout and finalized invoice", () => {
     const otherAssignmentId = "76000000-0000-4000-8000-000000000004";
     const platformServiceId = "76000000-0000-4000-8000-000000000005";
     const platformAssignmentId = "76000000-0000-4000-8000-000000000006";
+    const walletAdminId = "76000000-0000-4000-8000-000000000009";
+    const walletAdminAssignmentId = "76000000-0000-4000-8000-000000000010";
     const otherScope = await db.query<{ company_id: string; branch_id: string }>(`
       SELECT company.id::text AS company_id,branch.id::text AS branch_id
       FROM companies company JOIN branches branch ON branch.company_id=company.id
@@ -55,10 +57,25 @@ describe("paid checkout and finalized invoice", () => {
       candidate.rows[0].branch_id, otherScope.rows[0].company_id,
       otherScope.rows[0].branch_id]);
     await db.query(`
+      INSERT INTO users(
+        id,email,display_name,password_hash,role_id,company_id,is_owner,
+        account_setup_completed_at,email_verified_at,account_kind,
+        account_status,active,auth_version
+      ) SELECT $1,'checkout-wallet-admin@example.test','Checkout wallet administrator',
+        'not-a-real-hash',id,$2,false,now(),now(),'COMPANY','ACTIVE',true,1
+      FROM roles WHERE role_key='COMPANY_ADMIN'
+    `, [walletAdminId,candidate.rows[0].company_id]);
+    await db.query(`
+      INSERT INTO user_profiles(user_id,display_name,preferred_locale,timezone)
+      SELECT id,display_name,'en','Asia/Kuala_Lumpur'
+      FROM users WHERE id IN ($1,$2,$3)
+    `, [actorId,otherActorId,walletAdminId]);
+    await db.query(`
       INSERT INTO company_memberships(user_id,company_id,status,is_primary,joined_at)
-      VALUES ($1,$3,'ACTIVE',true,now()),($2,$4,'ACTIVE',true,now())
+      VALUES ($1,$3,'ACTIVE',true,now()),($2,$4,'ACTIVE',true,now()),
+        ($5,$3,'ACTIVE',true,now())
     `, [actorId, otherActorId, candidate.rows[0].company_id,
-      otherScope.rows[0].company_id]);
+      otherScope.rows[0].company_id,walletAdminId]);
     await db.query(`
       INSERT INTO users(
         id,email,display_name,password_hash,role_id,is_owner,
@@ -66,8 +83,12 @@ describe("paid checkout and finalized invoice", () => {
         account_status,active,auth_version
       )
       SELECT $1,'checkout-service@example.test','Checkout service',
-        'not-a-real-hash',id,false,now(),now(),'PLATFORM','ACTIVE',true,1
-      FROM roles WHERE role_key='PLATFORM_OPERATIONS'
+        'not-a-real-hash',id,true,now(),now(),'PLATFORM','ACTIVE',true,1
+      FROM roles WHERE role_key='PLATFORM_OWNER'
+    `, [platformServiceId]);
+    await db.query(`
+      INSERT INTO user_profiles(user_id,display_name,preferred_locale,timezone)
+      VALUES ($1,'Checkout funding owner','en','Asia/Kuala_Lumpur')
     `, [platformServiceId]);
     await db.query(`
       INSERT INTO branch_assignments(user_id,company_id,branch_id,status,is_primary)
@@ -82,22 +103,54 @@ describe("paid checkout and finalized invoice", () => {
         ($1,$3,(SELECT id FROM roles WHERE role_key='BRANCH_ADMIN'),
           'BRANCH',$5,$6,true,now()),
         ($2,$4,(SELECT id FROM roles WHERE role_key='BRANCH_ADMIN'),
-          'BRANCH',$7,$8,true,now())
+          'BRANCH',$7,$8,true,now()),
+        ($9,$10,(SELECT id FROM roles WHERE role_key='COMPANY_ADMIN'),
+          'COMPANY',$5,NULL,true,now())
     `, [assignmentId, otherAssignmentId, actorId, otherActorId,
       candidate.rows[0].company_id, candidate.rows[0].branch_id,
-      otherScope.rows[0].company_id, otherScope.rows[0].branch_id]);
+      otherScope.rows[0].company_id, otherScope.rows[0].branch_id,
+      walletAdminAssignmentId,walletAdminId]);
     await db.query(`
       INSERT INTO role_assignments(
         id,user_id,role_id,scope_type,active,assigned_at
       )
       SELECT $1,$2,id,'PLATFORM',true,now()
-      FROM roles WHERE role_key='PLATFORM_OPERATIONS'
+      FROM roles WHERE role_key='PLATFORM_OWNER'
     `, [platformAssignmentId, platformServiceId]);
     await db.query(`
       UPDATE requests SET approval_state='APPROVED',created_by=$2,
         approval_decided_at=now()
       WHERE id=$1
     `, [requestId, actorId]);
+    const budgetFunding = await db.query<{
+      budgetAccountId: string;
+      companyId: string;
+      currency: string;
+      increasedCeiling: string;
+      requiredAmount: string;
+    }>(`
+      SELECT request.budget_account_id::text AS "budgetAccountId",
+        request.company_id::text AS "companyId",company.ceiling_currency AS currency,
+        (company.contractual_ceiling+axora_request_total_internal(request.id))::text
+          AS "increasedCeiling",
+        axora_request_total_internal(request.id)::text AS "requiredAmount"
+      FROM requests request JOIN companies company ON company.id=request.company_id
+      WHERE request.id=$1
+    `, [requestId]);
+    await db.query(`
+      SELECT axora_set_company_ceiling(
+        $1,$2,$3,$4::numeric,$5,'Fund checkout migration ceiling',
+        'checkout-ceiling-0001',now()
+      )
+    `, [platformServiceId,platformAssignmentId,budgetFunding.rows[0].companyId,
+      budgetFunding.rows[0].increasedCeiling,budgetFunding.rows[0].currency]);
+    await db.query(`
+      SELECT axora_adjust_budget_allocation(
+        $1,$2,$3,'INCREASE',$4::numeric,false,
+        'Fund checkout migration allocation','checkout-budget-0001',now()
+      )
+    `, [platformServiceId,platformAssignmentId,
+      budgetFunding.rows[0].budgetAccountId,budgetFunding.rows[0].requiredAmount]);
     await db.query(`
       INSERT INTO request_approval_snapshots(
         request_id,request_version,company_id,policy_id,policy_version,
@@ -110,6 +163,57 @@ describe("paid checkout and finalized invoice", () => {
       JOIN request_approval_policies policy ON policy.id=request.approval_policy_id
       WHERE request.id=$1
     `, [requestId, actorId]);
+    await db.query(`
+      WITH request_input AS (
+        SELECT request.*,
+          axora_request_total_internal(request.id)::numeric(18,2) AS amount,
+          gen_random_uuid() AS correlation_id
+        FROM requests request WHERE request.id=$1
+      ), reservation AS (
+        INSERT INTO budget_reservations(
+          company_id,budget_account_id,budget_period_id,request_id,
+          request_version,currency,reserved_amount,remaining_reserved,status,
+          correlation_id,created_at,updated_at
+        ) SELECT company_id,budget_account_id,budget_period_id,id,
+          request_version,currency,amount,amount,'RESERVED',correlation_id,now(),now()
+        FROM request_input
+        RETURNING id,correlation_id
+      )
+      SELECT axora_post_budget_entry_internal(
+        input.company_id,input.budget_account_id,input.budget_period_id,
+        'RESERVATION',input.amount,0,-input.amount,input.amount,0,0,0,0,
+        input.id,input.request_version,reservation.id,NULL,'REQUEST',input.id,
+        NULL,NULL,'TEST_FIXTURE','REQUEST_RESERVATION',
+        'Checkout migration reservation fixture',reservation.correlation_id,
+        'checkout-reservation-0001',now()
+      )
+      FROM request_input input CROSS JOIN reservation
+    `, [requestId]);
+    await db.exec("SET ROLE axora_app");
+    await db.query(`
+      SELECT axora_save_branch_delivery_location(
+        $1,$2,$3,'Checkout fixture delivery destination',
+        3.139000,101.686900,'Use the receiving entrance',
+        'Configure checkout migration destination',$4,now()
+      )
+    `, [walletAdminId,walletAdminAssignmentId,candidate.rows[0].branch_id,
+      "76000000-0000-4000-8000-000000000011"]);
+    const topUpRequest = await db.query<{ value: { requestId: string } }>(`
+      SELECT axora_request_company_wallet_top_up(
+        $1,$2,$3,1000000::numeric,'CHECKOUT-FUNDING',
+        'Verified checkout migration fixture funds',$4,now()
+      ) AS value
+    `, [walletAdminId,walletAdminAssignmentId,candidate.rows[0].company_id,
+      "76000000-0000-4000-8000-000000000007"]);
+    await db.query(`
+      SELECT axora_record_company_wallet_top_up(
+        $1,$2,$3,$4,1000000::numeric,CURRENT_DATE,'CHECKOUT-FUNDS-RECEIVED',
+        'Owner verified checkout migration fixture funds',$5,now()
+      )
+    `, [platformServiceId,platformAssignmentId,candidate.rows[0].company_id,
+      topUpRequest.rows[0].value.requestId,
+      "76000000-0000-4000-8000-000000000008"]);
+    await db.exec("RESET ROLE");
   }, 30_000);
 
   afterAll(async () => { await db.close(); });
@@ -212,7 +316,10 @@ describe("paid checkout and finalized invoice", () => {
       FROM pg_proc procedure JOIN pg_namespace namespace
         ON namespace.oid=procedure.pronamespace
       WHERE namespace.nspname='public'
-        AND procedure.proname IN ('axora_create_company_lead','axora_convert_company_lead')
+        AND procedure.proname IN (
+          'axora_create_company_record_internal',
+          'axora_create_company_lead','axora_convert_company_lead'
+        )
     `);
     expect(billingTerms.rows[0].definitions).toContain("Standard billing terms");
     expect(billingTerms.rows[0].definitions).not.toContain("Cash on delivery");

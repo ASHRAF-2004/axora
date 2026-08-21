@@ -96,7 +96,9 @@ describe("canonical fulfilment delivery execution migration", () => {
       expect(row.driver_scope).toContain("assignment.ended_at IS NULL");
       expect(row.driver_scope).toContain("axora_context_role_assignment_id");
       expect(row.actual_submit).toContain("'delivery.shop','DELIVERY'");
-      expect(row.evidence_file).toContain("receiving.confirm");
+      expect(row.evidence_file).toContain("'delivery.view','BRANCH'");
+      expect(row.evidence_file).toContain("CLIENT_ACCOUNT_MANAGER");
+      expect(row.evidence_file).toContain("driver_role_assignment_id");
 
       const security = await db.query<{
         otp_code_column: number; commands_select: boolean; otp_select: boolean;

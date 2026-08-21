@@ -219,7 +219,7 @@ test("small-phone keyboard flow exposes language, login, and menu controls", asy
   ).toBeVisible();
 });
 
-test("localized contact form keeps real fields labeled and the anti-spam field out of keyboard flow", async ({
+test("localized contact form labels retained fields and omits retired company fields", async ({
   context,
   page,
 }) => {
@@ -233,10 +233,13 @@ test("localized contact form keeps real fields labeled and the anti-spam field o
     }),
   ).toBeVisible();
   await expect(page.getByLabel("الاسم الكامل لجهة الاتصال", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("البريد الإلكتروني للعمل")).toHaveAttribute(
-    "type",
-    "email",
-  );
+  await expect(page.getByLabel("المدينة", { exact: true })).toBeVisible();
+  for (const retiredField of [
+    "registrationNumber", "contactEmail", "phoneCountryCode", "phone",
+    "country", "region", "contactTime",
+  ]) {
+    await expect(page.locator(`[name="${retiredField}"]`)).toHaveCount(0);
+  }
   await expect(
     page.getByLabel("كيف يمكن لـ Axora دعم عمليات المشتريات لديك؟", {
       exact: true,

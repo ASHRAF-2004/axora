@@ -6,26 +6,25 @@ import type { GeoJSONSource, Map as MapLibreMap, Marker as MapLibreMarker, Style
 import type { DriverDetailWorkspace } from "@/lib/driver-operations";
 import type { SupportedLocale } from "@/lib/i18n";
 import { driverManagementMessages } from "@/lib/driver-management-i18n";
+import {
+  escapeOperationalMapHtml as escapeHtml,
+  isSameOriginMapAsset,
+  OPERATIONAL_MAP_CONFIG_URL as RUNTIME_CONFIG_URL,
+  operationalMapContainsCoordinate,
+  operationalStyleAssessment,
+  parseOperationalMapRuntimeConfig as parseRuntimeConfig,
+  REGIONAL_OVERVIEW_STYLE,
+  semanticMapColor,
+  type OperationalMapRuntimeConfig as RuntimeMapConfig,
+  usableOperationalMapStyle as usableStyle,
+} from "@/lib/operational-map";
 
 type LocationPoint = { latitude: number; longitude: number; accuracy: number; capturedAt: string };
-type RuntimeMapConfig = {
-  version: 1;
-  status: "configured";
-  providerId: string;
-  providerName: string;
-  styleUrl: string;
-  attribution: { label: string; url: string };
-  coverage: { bounds: [number, number, number, number]; label: string };
-};
 type ConfigState = "checking" | "configured" | "unconfigured" | "failed";
 type MapState = "idle" | "loading" | "ready" | "missing" | "outside" | "failed";
 
 const ROUTE_SOURCE_ID = "driver-route";
 const ROUTE_LAYER_ID = "driver-route-line";
-const RUNTIME_CONFIG_URL = "/maps/driver-map-config.json";
-const REGIONAL_OVERVIEW_STYLE = "/maps/axora-operational-style.json";
-const LOCAL_CONTEXT_PATTERN = /(?:^|[-_.])(road|roads|street|streets|transport|transportation|highway|highways|motorway|motorways)(?:$|[-_.])/i;
-const LABEL_CONTEXT_PATTERN = /(?:^|[-_.])(label|labels|place|places|poi|pois|settlement|settlements|road|roads|street|streets)(?:$|[-_.])/i;
 
 function routeFeature(points: LocationPoint[]): GeoJSON.Feature<GeoJSON.LineString> {
   const coordinates = points.map((point) => [point.longitude, point.latitude]);
@@ -33,121 +32,8 @@ function routeFeature(points: LocationPoint[]): GeoJSON.Feature<GeoJSON.LineStri
   return { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } };
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
-}
-
-function usableStyle(value: unknown): value is StyleSpecification {
-  const style = asRecord(value);
-  const sources = asRecord(style?.sources);
-  const layers = Array.isArray(style?.layers) ? style.layers : [];
-  return style?.version === 8
-    && Boolean(sources && Object.keys(sources).length)
-    && layers.some((layer) => {
-      const candidate = asRecord(layer);
-      return typeof candidate?.source === "string" && Boolean(sources?.[candidate.source]);
-    });
-}
-
-function isSameOriginMapAsset(value: string, origin = "https://axora.management") {
-  if (/[^\x20-\x7e]/.test(value) || value.includes("\\") || value.includes("..")) return false;
-  if (value.startsWith("/maps/") && !value.startsWith("//")) return true;
-  try {
-    const url = new URL(value);
-    return url.origin === origin && url.pathname.startsWith("/maps/") && !url.username && !url.password;
-  } catch {
-    return false;
-  }
-}
-
-function styleAssetUrls(style: StyleSpecification) {
-  const urls: string[] = [];
-  const topLevel = style as unknown as Record<string, unknown>;
-  for (const key of ["glyphs", "sprite"]) {
-    if (typeof topLevel[key] === "string") urls.push(topLevel[key]);
-  }
-  for (const source of Object.values(style.sources) as Array<Record<string, unknown>>) {
-    if (typeof source.url === "string") urls.push(source.url);
-    if (typeof source.data === "string") urls.push(source.data);
-    if (Array.isArray(source.tiles)) {
-      urls.push(...source.tiles.filter((tile): tile is string => typeof tile === "string"));
-    }
-  }
-  return urls;
-}
-
-function operationalStyleAssessment(value: unknown, origin = "https://axora.management") {
-  if (!usableStyle(value)) return { usable: false as const, reason: "invalid-style" };
-  const style = value;
-  const metadata = asRecord((style as unknown as Record<string, unknown>).metadata);
-  if (metadata?.["axora:map-purpose"] === "regional-overview-only") {
-    return { usable: false as const, reason: "overview-only" };
-  }
-  if (metadata?.["axora:map-purpose"] !== "operational-street") {
-    return { usable: false as const, reason: "operational-purpose-missing" };
-  }
-  if (styleAssetUrls(style).some((asset) => !isSameOriginMapAsset(asset, origin))) {
-    return { usable: false as const, reason: "remote-or-unsafe-source" };
-  }
-  const sourceRecords = style.sources as unknown as Record<string, Record<string, unknown>>;
-  const layers = style.layers.map((layer) => layer as unknown as Record<string, unknown>);
-  const rasterContext = layers.some((layer) => {
-    const source = typeof layer.source === "string" ? sourceRecords[layer.source] : undefined;
-    return layer.type === "raster" && source?.type === "raster";
-  });
-  const roadContext = layers.some((layer) => {
-    const semanticId = `${String(layer.id ?? "")} ${String(layer["source-layer"] ?? "")}`;
-    return layer.type === "line" && LOCAL_CONTEXT_PATTERN.test(semanticId);
-  });
-  const labelContext = layers.some((layer) => {
-    const semanticId = `${String(layer.id ?? "")} ${String(layer["source-layer"] ?? "")}`;
-    return layer.type === "symbol" && LABEL_CONTEXT_PATTERN.test(semanticId);
-  });
-  if (!rasterContext && (!roadContext || !labelContext)) {
-    return { usable: false as const, reason: "local-context-missing" };
-  }
-  return { usable: true as const, reason: "operational-context" };
-}
-
-function parseRuntimeConfig(value: unknown): { state: "configured"; config: RuntimeMapConfig } | { state: "unconfigured" | "failed" } {
-  const config = asRecord(value);
-  if (config?.version !== 1) return { state: "failed" };
-  if (config.status === "unconfigured") return { state: "unconfigured" };
-  const attribution = asRecord(config.attribution);
-  const coverage = asRecord(config.coverage);
-  const bounds = Array.isArray(coverage?.bounds) ? coverage.bounds : [];
-  if (config.status !== "configured"
-    || typeof config.providerId !== "string"
-    || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(config.providerId)
-    || typeof config.providerName !== "string"
-    || !config.providerName.trim()
-    || typeof config.styleUrl !== "string"
-    || !isSameOriginMapAsset(config.styleUrl)
-    || typeof attribution?.label !== "string"
-    || !attribution.label.trim()
-    || typeof attribution.url !== "string"
-    || bounds.length !== 4
-    || bounds.some((coordinate) => typeof coordinate !== "number" || !Number.isFinite(coordinate))
-    || bounds[0] >= bounds[2]
-    || bounds[1] >= bounds[3]
-    || typeof coverage?.label !== "string"
-    || !coverage.label.trim()) return { state: "failed" };
-  try {
-    const attributionUrl = new URL(attribution.url);
-    if (attributionUrl.protocol !== "https:" || attributionUrl.username || attributionUrl.password) return { state: "failed" };
-  } catch {
-    return { state: "failed" };
-  }
-  return { state: "configured", config: config as RuntimeMapConfig };
-}
-
 function coverageContainsPoints(coverage: RuntimeMapConfig["coverage"], points: LocationPoint[]) {
-  const [west, south, east, north] = coverage.bounds;
-  return points.every(({ longitude, latitude }) => longitude >= west && longitude <= east && latitude >= south && latitude <= north);
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
+  return points.every((point) => operationalMapContainsCoordinate(coverage, point));
 }
 
 function fitRoute(map: MapLibreMap, points: LocationPoint[]) {
@@ -162,11 +48,6 @@ function fitRoute(map: MapLibreMap, points: LocationPoint[]) {
     [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
     { duration: 0, maxZoom: 16, padding: map.getContainer().clientWidth < 600 ? 36 : 64 },
   );
-}
-
-function semanticMapColor(container: HTMLElement, property: "--axora-map-route" | "--axora-map-marker", fallback: string) {
-  const scope = container.closest<HTMLElement>(".app-shell") ?? document.documentElement;
-  return window.getComputedStyle(scope).getPropertyValue(property).trim() || fallback;
 }
 
 export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: string; points: LocationPoint[]; locale?: SupportedLocale }) {

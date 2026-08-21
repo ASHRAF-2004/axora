@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AuthenticatedSessionUser, SessionUser } from "./auth";
 import { getDemoStore } from "./demo-data";
 import { isDemoMode, query, withAuditTransaction } from "./db";
+import { STANDARD_BILLING_TERMS } from "./types";
 import { appendWorkflowEvent, notifyWorkflowUsers } from "./workflow-repository";
 import type { WorkflowNotificationMessage } from "./workflow-notification-i18n";
 
@@ -244,6 +245,16 @@ const mutationSchema = z.object({
   blockedReasons: z.array(z.string()).optional(),
 }).strict();
 
+const directCompanyCreationSchema = mutationSchema.extend({
+  created: z.boolean(),
+  creationLogoId: uuid.nullable(),
+  creationThemeId: uuid.nullable(),
+});
+
+const companyCreationCommandConflictSchema = z.object({
+  status: z.literal("COMMAND_CONFLICT"),
+}).strict();
+
 interface SnapshotRow extends QueryResultRow {
   snapshot: unknown;
 }
@@ -251,23 +262,16 @@ interface SnapshotRow extends QueryResultRow {
 export type CompanyLifecycleRecord = z.infer<typeof companyLifecycleRecordSchema>;
 export type CompanyLifecycleWorkspace = z.infer<typeof workspaceSchema>;
 export type CompanyLifecycleMutation = z.infer<typeof mutationSchema>;
+export type DirectCompanyCreationMutation = z.infer<typeof directCompanyCreationSchema>;
 export type CompanyLifecycleManager = z.infer<typeof managerSchema>;
 
-export interface NewCompanyLeadInput {
+export interface NewCompanyDirectInput {
   name: string;
   legalName: string;
-  registrationNumber: string;
   industry: string;
   companyInformation?: string;
   websiteUrl?: string;
   mainContactName: string;
-  mainContactEmail: string;
-  mainContactPhone: string;
-  billingContactName: string;
-  billingContactEmail: string;
-  billingContactPhone: string;
-  billingAddress: string;
-  paymentTerms: string;
   billingCycle: string;
   notes?: string;
 }
@@ -276,6 +280,13 @@ export class CompanyLifecycleUnavailableError extends Error {
   constructor() {
     super("The requested company lifecycle operation is unavailable.");
     this.name = "CompanyLifecycleUnavailableError";
+  }
+}
+
+export class CompanyCreationCommandConflictError extends Error {
+  constructor() {
+    super("The company creation command was already used for different input.");
+    this.name = "CompanyCreationCommandConflictError";
   }
 }
 
@@ -291,11 +302,123 @@ function parseMutation(raw: unknown) {
   return parsed.data;
 }
 
+const DEMO_CLIENT_ACCOUNT_MANAGER = Object.freeze({
+  id: "20222222-2222-4222-8222-222222222222",
+  name: "Agent fixture",
+  email: "agent.fixture@axora.invalid",
+  serviceRegionCode: "GLOBAL",
+  availabilityStatus: "AVAILABLE" as const,
+  activePrimaryAssignments: 0,
+  maxPrimaryAssignments: 25,
+  availableForPrimary: true,
+  availableForBackup: true,
+});
+
+type DemoCompanyManagerAssignment = {
+  managerUserId: string;
+  assignedByName: string;
+  assignedAt: Date;
+  reason: string;
+};
+
+declare global {
+  var __axoraDemoCompanyManagerAssignments:
+    Map<string, DemoCompanyManagerAssignment> | undefined;
+}
+
+function demoCompanyManagerAssignments() {
+  if (!global.__axoraDemoCompanyManagerAssignments) {
+    global.__axoraDemoCompanyManagerAssignments = new Map();
+  }
+  return global.__axoraDemoCompanyManagerAssignments;
+}
+
+export function demoCompanyVisibleToActor(
+  actor: Pick<SessionUser, "id" | "role" | "accountKind" | "companyId" | "isOwner">,
+  companyId: string,
+) {
+  if (actor.isOwner && actor.accountKind === "PLATFORM") return true;
+  if (actor.accountKind === "COMPANY") return actor.companyId === companyId;
+  return actor.accountKind === "PLATFORM"
+    && actor.role === "CLIENT_ACCOUNT_MANAGER"
+    && demoCompanyManagerAssignments().get(companyId)?.managerUserId === actor.id;
+}
+
+export function registerDemoCompanyDirect(
+  companyId: string,
+  input: NewCompanyDirectInput,
+) {
+  const store = getDemoStore();
+  if (store.companies.some((company) => company.id === companyId)) return;
+  store.companies.push({
+    id: companyId,
+    code: `C-${String(store.companies.length + 1).padStart(3, "0")}`,
+    name: input.name,
+    industry: input.industry,
+    ...(input.companyInformation
+      ? { companyInformation: input.companyInformation }
+      : {}),
+    ...(input.websiteUrl ? { websiteUrl: input.websiteUrl } : {}),
+    mainContactName: input.mainContactName,
+    mainContactEmail: "",
+    mainContactPhone: "",
+    billingContactName: "",
+    billingContactEmail: "",
+    billingContactPhone: "",
+    billingAddress: "",
+    paymentTerms: STANDARD_BILLING_TERMS,
+    billingCycle: input.billingCycle,
+    taxRate: 0,
+    estimatedDeliveryFee: 0,
+    ...(input.notes ? { notes: input.notes } : {}),
+    status: "Inactive",
+  });
+}
+
+export function registerDemoCompanyManagerCoverage(
+  companyId: string,
+  managerUserId: string,
+  assignedByName: string,
+  reason: string,
+  assignedAt = new Date(),
+) {
+  if (managerUserId !== DEMO_CLIENT_ACCOUNT_MANAGER.id
+    || !getDemoStore().companies.some((company) => company.id === companyId)
+    || reason.trim().length < 3
+    || !Number.isFinite(assignedAt.getTime())) {
+    throw new CompanyLifecycleUnavailableError();
+  }
+  demoCompanyManagerAssignments().set(companyId, {
+    managerUserId,
+    assignedByName,
+    assignedAt: new Date(assignedAt),
+    reason: reason.trim(),
+  });
+}
+
 function demoWorkspace(actor: AuthenticatedSessionUser): CompanyLifecycleWorkspace {
   const capturedAt = new Date();
   const companies = getDemoStore().companies
-    .filter((company) => actor.isOwner || company.id === actor.companyId)
-    .map((company): CompanyLifecycleRecord => ({
+    .filter((company) => demoCompanyVisibleToActor(actor, company.id))
+    .map((company): CompanyLifecycleRecord => {
+      const assignment = demoCompanyManagerAssignments().get(company.id);
+      const primaryManager = assignment ? {
+        id: assignment.managerUserId,
+        name: DEMO_CLIENT_ACCOUNT_MANAGER.name,
+        email: DEMO_CLIENT_ACCOUNT_MANAGER.email,
+        assignmentId: assignment.managerUserId,
+        assignedAt: assignment.assignedAt,
+        coverageStartsAt: assignment.assignedAt,
+        coverageEndsAt: null,
+        accessMode: "NORMAL" as const,
+        specificPermissionCodes: [],
+        documentVisibility: "STANDARD" as const,
+        coverageReason: assignment.reason,
+        assignedByName: assignment.assignedByName,
+        handoverNotes: null,
+        handoverChecklist: [],
+      } : null;
+      return ({
       id: company.id,
       code: company.code,
       name: company.name,
@@ -326,19 +449,35 @@ function demoWorkspace(actor: AuthenticatedSessionUser): CompanyLifecycleWorkspa
       suspendedAt: null,
       suspensionReason: null,
       serviceRegionCode: "GLOBAL",
-      isAssignedToActor: false,
-      primaryManager: null,
+      isAssignedToActor: assignment?.managerUserId === actor.id,
+      primaryManager,
       backupManager: null,
       assignmentHistory: [],
       openManagerWork: { onboardingItems: 0, reminders: 0, leadTasks: 0 },
-      managerCoverage: { status: "GAP", reason: null, lastChangedAt: null },
+      managerCoverage: assignment
+        ? { status: "COVERED", reason: assignment.reason, lastChangedAt: assignment.assignedAt }
+        : { status: "GAP", reason: null, lastChangedAt: null },
       onboarding: { required: 8, passed: company.status === "Active" ? 8 : 3, items: [] },
       duplicateCandidates: [],
       history: [],
       activationBlockedReasons: company.status === "Active" ? [] : ["PRIMARY_MANAGER"],
-      availableActions: [],
-    }));
-  return { capturedAt, canCreate: actor.isOwner, canViewAll: actor.isOwner, managers: [], companies };
+      availableActions: actor.isOwner
+        ? assignment ? ["REASSIGN", "ADD_BACKUP"] : ["ASSIGN"]
+        : [],
+    });
+    });
+  return {
+    capturedAt,
+    canCreate: actor.isOwner,
+    canViewAll: actor.isOwner,
+    managers: actor.isOwner ? [{
+      ...DEMO_CLIENT_ACCOUNT_MANAGER,
+      activePrimaryAssignments: [...demoCompanyManagerAssignments().values()]
+        .filter((assignment) => assignment.managerUserId === DEMO_CLIENT_ACCOUNT_MANAGER.id)
+        .length,
+    }] : [],
+    companies,
+  };
 }
 
 export async function loadCompanyLifecycleWorkspace(
@@ -366,38 +505,49 @@ export async function loadCompanyLifecycleWorkspace(
   }
 }
 
-export async function createCompanyLeadInTransaction(
+export function findAuthorizedCompanyLifecycleRecord(
+  workspace: CompanyLifecycleWorkspace,
+  companyId: string,
+) {
+  return workspace.companies.find((company) => company.id === companyId);
+}
+
+export async function createCompanyDirectInTransaction(
   client: PoolClient,
-  input: NewCompanyLeadInput,
+  input: NewCompanyDirectInput,
   actor: SessionUser,
+  commandId: string,
+  logoSha256: string,
   capturedAt = new Date(),
 ) {
+  if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+    throw new CompanyLifecycleUnavailableError();
+  }
   const result = await client.query<SnapshotRow>(`
-    SELECT public.axora_create_company_lead(
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+    SELECT public.axora_create_company_direct(
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
     ) AS snapshot
   `, [
     actor.id,
     requiredAssignment(actor),
+    uuid.parse(commandId),
+    z.string().regex(/^[0-9a-f]{64}$/).parse(logoSha256),
     input.name,
     input.legalName,
-    input.registrationNumber,
     input.industry,
     input.companyInformation ?? "",
     input.websiteUrl ?? null,
     input.mainContactName,
-    input.mainContactEmail,
-    input.mainContactPhone,
-    input.billingContactName,
-    input.billingContactEmail,
-    input.billingContactPhone,
-    input.billingAddress,
-    input.paymentTerms,
     input.billingCycle,
     input.notes ?? null,
     capturedAt,
   ]);
-  return parseMutation(result.rows[0]?.snapshot);
+  if (companyCreationCommandConflictSchema.safeParse(result.rows[0]?.snapshot).success) {
+    throw new CompanyCreationCommandConflictError();
+  }
+  const parsed = directCompanyCreationSchema.safeParse(result.rows[0]?.snapshot);
+  if (!parsed.success) throw new CompanyLifecycleUnavailableError();
+  return parsed.data;
 }
 
 export async function markCompanyBrandReadyInTransaction(
@@ -479,6 +629,33 @@ export function assignCompanyManager(
     reason: string;
   },
 ) {
+  if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+    throw new CompanyLifecycleUnavailableError();
+  }
+  if (isDemoMode()) {
+    if (input.managerUserId !== DEMO_CLIENT_ACCOUNT_MANAGER.id
+      || !getDemoStore().companies.some((company) => company.id === input.companyId)) {
+      throw new CompanyLifecycleUnavailableError();
+    }
+    demoCompanyManagerAssignments().set(input.companyId, {
+      managerUserId: input.managerUserId,
+      assignedByName: actor.name,
+      assignedAt: new Date(),
+      reason: input.reason,
+    });
+    const company = demoWorkspace(actor).companies.find(
+      (candidate) => candidate.id === input.companyId,
+    );
+    if (!company) throw new CompanyLifecycleUnavailableError();
+    return Promise.resolve({
+      company,
+      companyId: company.id,
+      companyName: company.name,
+      companyVersion: company.version,
+      eventKey: "company.assigned",
+      notificationRecipientIds: [input.managerUserId],
+    } satisfies CompanyLifecycleMutation);
+  }
   return mutate(
     actor,
     input.assignmentType === "PRIMARY" ? "Company primary manager assigned" : "Company backup manager assigned",

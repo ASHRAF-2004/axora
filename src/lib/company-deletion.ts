@@ -10,6 +10,9 @@ export type CompanyDeletionImpact = {
   deliveries: number; completedDeliveries: number; receipts: number;
   documents: number; branding: number;
   notifications: number; workflowEvents: number; protectedEvidence: number;
+  wallets: number; walletTopUpRequests: number; walletLedgerEntries: number;
+  walletTopUpEvents: number; approveAndPayCommands: number;
+  walletProtectedEvidence: number;
   lifecycleHistory: number; pendingInvitations: number; pendingWorkflowEmails: number;
   inFlightWork: number;
   hardDeleteEligible: boolean;
@@ -51,7 +54,7 @@ function assignment(actor: AuthenticatedSessionUser) {
 }
 
 export async function getCompanyDeletionImpact(actor: AuthenticatedSessionUser, companyId: string) {
-  if (isDemoMode()) return { companyId, companyCode: "DEMO", confirmation: "PERMANENTLY DELETE DEMO", users: 0, memberships: 0, branches: 0, departments: 0, roleAssignments: 0, sessions: 0, requests: 0, budgets: 0, approvalPolicies: 0, invoices: 0, finalizedInvoices: 0, paidPayments: 0, deliveries: 0, completedDeliveries: 0, receipts: 0, documents: 0, branding: 0, notifications: 0, workflowEvents: 0, lifecycleHistory: 0, pendingInvitations: 0, pendingWorkflowEmails: 0, inFlightWork: 0, protectedEvidence: 0, hardDeleteEligible: true, recommendedMode: "HARD_DELETE", ownership: {}, externalFileCount: 0, externalCleanupRequired: false, retentionPolicy: "Demo mode contains no protected evidence." } satisfies CompanyDeletionImpact;
+  if (isDemoMode()) return { companyId, companyCode: "DEMO", confirmation: "PERMANENTLY DELETE DEMO", users: 0, memberships: 0, branches: 0, departments: 0, roleAssignments: 0, sessions: 0, requests: 0, budgets: 0, approvalPolicies: 0, invoices: 0, finalizedInvoices: 0, paidPayments: 0, deliveries: 0, completedDeliveries: 0, receipts: 0, documents: 0, branding: 0, notifications: 0, workflowEvents: 0, wallets: 0, walletTopUpRequests: 0, walletLedgerEntries: 0, walletTopUpEvents: 0, approveAndPayCommands: 0, walletProtectedEvidence: 0, lifecycleHistory: 0, pendingInvitations: 0, pendingWorkflowEmails: 0, inFlightWork: 0, protectedEvidence: 0, hardDeleteEligible: true, recommendedMode: "HARD_DELETE", ownership: {}, externalFileCount: 0, externalCleanupRequired: false, retentionPolicy: "Demo mode contains no protected evidence." } satisfies CompanyDeletionImpact;
   const result = await query<{ value: CompanyDeletionImpact }>(
     "SELECT public.axora_company_deletion_impact_v2($1,$2,$3,$4) AS value",
     [actor.id, assignment(actor), companyId, new Date()],

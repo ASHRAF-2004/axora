@@ -126,7 +126,7 @@ describe("normalized least-privilege permissions", () => {
         companyId,
         branchId,
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "view_approvals", "approve_requests", "view_documents", "view_reports"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "view_approvals", "approve_requests", "view_invoices", "view_documents", "view_reports"],
     },
     {
       subject: {
@@ -136,7 +136,7 @@ describe("normalized least-privilege permissions", () => {
         scopeType: "COMPANY",
         companyId,
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "view_approvals", "approve_requests", "view_documents", "view_reports"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "view_approvals", "approve_requests", "view_invoices", "view_documents", "view_reports"],
     },
     {
       subject: {
@@ -146,7 +146,7 @@ describe("normalized least-privilege permissions", () => {
         scopeType: "COMPANY",
         companyId,
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "view_invoices", "manage_finance", "view_documents", "view_reports"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "view_invoices", "view_documents", "view_reports"],
     },
     {
       subject: {
@@ -266,6 +266,7 @@ describe("new canonical role compatibility permissions", () => {
       "create_requests",
       "view_approvals",
       "approve_requests",
+      "view_invoices",
       "view_documents",
       "manage_documents",
       "view_reports",

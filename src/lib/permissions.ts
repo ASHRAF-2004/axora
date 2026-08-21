@@ -20,6 +20,9 @@ export type Permission =
   | "create_requests"
   | "view_approvals"
   | "view_budgets"
+  | "view_wallet"
+  | "request_wallet_top_up"
+  | "record_wallet_top_up"
   | "approve_requests"
   | "manage_deliveries"
   | "view_invoices"
@@ -69,6 +72,9 @@ const platformOwnerPermissions: readonly Permission[] = [
     "view_branches",
     "view_approvals",
     "view_budgets",
+    "view_wallet",
+    "request_wallet_top_up",
+    "record_wallet_top_up",
     "manage_companies",
   "manage_catalog",
   "manage_branches",
@@ -106,6 +112,8 @@ const legacyCompanyAdminPermissions: readonly Permission[] = [
   "create_requests",
   "view_approvals",
   "view_budgets",
+  "view_wallet",
+  "request_wallet_top_up",
   "approve_requests",
   "view_invoices",
   "view_documents",
@@ -128,6 +136,8 @@ const companyAdminPermissions: readonly Permission[] = [
   "manage_branch_budget",
   "view_approvals",
   "view_budgets",
+  "view_wallet",
+  "request_wallet_top_up",
   "approve_requests",
   "view_invoices",
   "view_documents",
@@ -187,19 +197,19 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   DEPARTMENT_ADMIN: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
     "view_branches", "create_requests", "view_approvals", "view_budgets", "approve_requests",
-    "view_documents", "manage_documents", "view_reports", "manage_users",
+    "view_invoices", "view_documents", "manage_documents", "view_reports", "manage_users",
   ],
   BRANCH_APPROVER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "view_approvals", "view_budgets", "approve_requests", "view_documents", "view_reports",
+    "view_branches", "view_approvals", "view_budgets", "approve_requests", "view_invoices", "view_documents", "view_reports",
   ],
   COMPANY_APPROVER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "view_approvals", "view_budgets", "approve_requests", "view_documents", "view_reports",
+    "view_branches", "view_approvals", "view_budgets", "approve_requests", "view_invoices", "view_documents", "view_reports",
   ],
   FINANCE_REVIEWER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "view_budgets", "view_invoices", "manage_finance", "view_documents",
+    "view_branches", "view_budgets", "view_invoices", "view_documents",
     "view_reports",
   ],
   AUDITOR: [

@@ -564,6 +564,27 @@ export const FOUNDATION_PERMISSION_CATALOG = [
 
 export const ADDITIVE_PERMISSION_CATALOG = [
   {
+    "code": "finance.wallet.view",
+    "group": "Finance",
+    "label": "View Company Wallet",
+    "description": "View actual credited company funds and immutable wallet evidence in scope.",
+    "highRisk": true
+  },
+  {
+    "code": "finance.wallet.top_up.request",
+    "group": "Finance",
+    "label": "Request Company Wallet top-up",
+    "description": "Request an operational review of funds to be added after external receipt.",
+    "highRisk": true
+  },
+  {
+    "code": "finance.wallet.top_up.record",
+    "group": "Finance",
+    "label": "Record received Company Wallet funds",
+    "description": "Record externally confirmed funds as an immutable Company Wallet credit.",
+    "highRisk": true
+  },
+  {
     "code": "delivery.claim",
     "group": "Delivery",
     "label": "Claim available deliveries",
@@ -621,13 +642,12 @@ const GRANULAR_ROLE_DEFAULT_PERMISSIONS: Readonly<Partial<Record<KnownUserRole, 
     "company.view.all", "company.lead.view", "company.lead.assign",
     "company.lead.reassign",
   ],
-  DELIVERY_GUY: ["delivery.tracking.history"],
   PLATFORM_OPERATIONS: [
     "product.manage", "product.archive", "category.manage",
     "commercial.cost.view", "commercial.pricing.manage",
   ],
   CLIENT_ACCOUNT_MANAGER: [
-    "company.create", "company.view.assigned",
+    "company.view.assigned",
     "company.lead.view", "company.lead.create", "company.lead.assign",
     "company_user.view", "company_user.create", "company_user.invite",
     "company_user.edit", "company_user.deactivate",
@@ -635,6 +655,7 @@ const GRANULAR_ROLE_DEFAULT_PERMISSIONS: Readonly<Partial<Record<KnownUserRole, 
   COMPANY_ADMIN: [
     "company_user.view", "company_user.create", "company_user.invite",
     "company_user.edit", "company_user.deactivate", "company_user.permission.manage",
+    "finance.wallet.view", "finance.wallet.top_up.request",
   ],
   BRANCH_ADMIN: [
     "company_user.view", "company_user.create", "company_user.invite",
@@ -969,6 +990,7 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "request.approve.other",
     "budget.view",
     "delivery.view",
+    "finance.invoice.view",
     "document.view",
     "document.manage",
     "document.generate",
@@ -986,6 +1008,7 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "request.approve.other",
     "budget.view",
     "delivery.view",
+    "finance.invoice.view",
     "document.view",
     "document.download",
     "report.view",
@@ -1001,6 +1024,7 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "request.approve.other",
     "budget.view",
     "delivery.view",
+    "finance.invoice.view",
     "document.view",
     "document.download",
     "report.view"
@@ -1029,7 +1053,6 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "budget.view",
     "delivery.view",
     "finance.invoice.view",
-    "finance.manage",
     "document.view",
     "document.download",
     "report.view",
@@ -1118,6 +1141,110 @@ const approvalPermissions = new Set<PermissionCode>([
 
 export function isPermissionCode(value: unknown): value is PermissionCode {
   return typeof value === "string" && knownPermissionCodes.has(value);
+}
+
+const COMPANY_ACCOUNT_FORBIDDEN_PERMISSIONS = [
+  "platform.",
+  "platform_user.",
+  "delivery_user.",
+  "supplier.",
+  "email.operations.",
+  "system.diagnostics.",
+  "commercial.cost.",
+  "commercial.markup.",
+  "commercial.platform_margin.",
+  "commercial.pricing.",
+  "analytics.platform.",
+] as const;
+
+const COMPANY_ACCOUNT_FORBIDDEN_EXACT = new Set<PermissionCode>([
+  "company.create",
+  "company.view.all",
+  "company.lead.view",
+  "company.lead.create",
+  "company.lead.assign",
+  "company.lead.reassign",
+  "company.activate",
+  "company.suspend",
+  "company.portal.publish",
+  "catalog.manage",
+  "product.manage",
+  "product.archive",
+  "category.manage",
+  "commercial.company_ceiling.override",
+  "analytics.revenue.view",
+  "delivery.assign",
+  "delivery.manage",
+  "finance.manage",
+  "finance.wallet.top_up.record",
+]);
+
+const DELIVERY_ACCOUNT_PERMISSIONS = new Set<PermissionCode>([
+  "dashboard.view",
+  "delivery.view",
+  "delivery.claim",
+  "delivery.accept",
+  "delivery.shop",
+  "delivery.receipt.upload",
+  "delivery.track",
+  "delivery.complete",
+  "delivery.portal.view",
+  "delivery.assignment.update",
+  "document.view",
+  "document.download",
+]);
+
+const DELIVERY_AGENT_ONLY_PERMISSIONS = new Set<PermissionCode>([
+  "delivery.claim",
+  "delivery.accept",
+  "delivery.shop",
+  "delivery.receipt.upload",
+  "delivery.track",
+  "delivery.complete",
+  "delivery.portal.view",
+  "delivery.assignment.update",
+]);
+
+/**
+ * Account-kind compatibility is separate from scope. This filter limits which
+ * capabilities may be selected for a new identity; database authorization
+ * still verifies the inviter, exact scope, and target resource at commit time.
+ */
+export function permissionIsCompatibleWithAccountKind(
+  permission: PermissionCode,
+  accountKind: AccountKind,
+) {
+  if (accountKind === "COMPANY") {
+    return !COMPANY_ACCOUNT_FORBIDDEN_EXACT.has(permission)
+      && !DELIVERY_AGENT_ONLY_PERMISSIONS.has(permission)
+      && !COMPANY_ACCOUNT_FORBIDDEN_PERMISSIONS.some((prefix) => (
+        permission.startsWith(prefix)
+      ));
+  }
+  if (accountKind === "DELIVERY") {
+    return DELIVERY_ACCOUNT_PERMISSIONS.has(permission);
+  }
+  if (accountKind === "SUPPLIER") {
+    return permission === "dashboard.view"
+      || permission.startsWith("supplier.")
+      || permission === "document.view"
+      || permission === "document.download";
+  }
+  return !permission.startsWith("supplier.")
+    && !DELIVERY_AGENT_ONLY_PERMISSIONS.has(permission);
+}
+
+export function creationPermissionOptions(
+  accountKind: AccountKind,
+  roleDefaults: readonly PermissionCode[],
+  allowExpandedSelection: boolean,
+) {
+  const defaults = new Set(roleDefaults);
+  return PERMISSION_CATALOG.filter((permission) => (
+    defaults.has(permission.code)
+    || (allowExpandedSelection
+      && permissionIsCompatibleWithAccountKind(permission.code, accountKind))
+  ));
 }
 
 export function canonicalRoleForAuthorization(

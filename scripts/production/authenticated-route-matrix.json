@@ -315,17 +315,16 @@
     },
     {
       "route": "/users",
-      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
-      "companyScope": "tenant-filtered",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform-users-only",
       "expectedAccess": [
         "OWNER_1",
-        "OWNER_2",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
         "C100_ADMIN",
         "C101_ADMIN",
         "C102_ADMIN"
-      ],
-      "expectedDenial": [
-        "foreign-company-resource"
       ],
       "mode": "mixed",
       "apis": [
@@ -747,21 +746,97 @@
     },
     {
       "route": "/users/new",
-      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
-      "companyScope": "delegated-scope",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform-users-only",
       "expectedAccess": [
         "OWNER_1",
-        "OWNER_2",
+        "OWNER_2"
+      ],
+      "expectedDenial": [
         "C100_ADMIN",
         "C101_ADMIN",
         "C102_ADMIN"
       ],
-      "expectedDenial": [
-        "foreign-company-resource"
-      ],
       "mode": "mutating",
       "apis": [],
       "expectedFinalUrl": "/users/new",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/branches/[branchId]/delivery-location",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "exact-authorized-branch",
+      "expectedAccess": ["OWNER_1", "OWNER_2", "C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "expectedDenial": ["foreign-company-resource"],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/branches/[branchId]/delivery-location",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]/assignment",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "owner-controlled-exact-company",
+      "expectedAccess": ["OWNER_1", "OWNER_2"],
+      "expectedDenial": ["C100_ADMIN", "C101_ADMIN", "C102_ADMIN", "foreign-company-resource"],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/companies/[companyId]/assignment",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]/users",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "exact-authorized-company-users",
+      "expectedAccess": ["OWNER_1", "OWNER_2", "C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "expectedDenial": ["foreign-company-resource"],
+      "mode": "mixed",
+      "apis": ["/api/profile/avatar/[userId]"],
+      "expectedFinalUrl": "/companies/[companyId]/users",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]/users/new",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "exact-authorized-company-users",
+      "expectedAccess": ["OWNER_1", "OWNER_2", "C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "expectedDenial": ["foreign-company-resource"],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/companies/[companyId]/users/new",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/leads/new",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "platform-lead-intake",
+      "expectedAccess": ["OWNER_1", "OWNER_2"],
+      "expectedDenial": ["C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/companies/leads/new",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/deliveries/users/new",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "delivery-users-only",
+      "expectedAccess": ["OWNER_1", "OWNER_2"],
+      "expectedDenial": ["C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/deliveries/users/new",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/wallet",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "exact-authorized-company-wallet",
+      "expectedAccess": ["OWNER_1", "OWNER_2", "C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "expectedDenial": ["foreign-company-resource"],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/wallet",
       "landmark": "main h1"
     }
   ],

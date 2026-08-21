@@ -14,9 +14,14 @@ import { z } from "zod";
 import { appendWorkflowEvent, notifyWorkflowUsers } from "./workflow-repository";
 import {
   createScopedUserInTransaction,
+  listUsers,
+  registerDemoInvitedUser,
+  replaceDemoInvitation,
   resolveUserCreation,
+  updateDemoInvitationDelivery,
   type ResolvedUserCreation,
   type UserCreationInput,
+  type ValidatedUserCreation,
 } from "./users";
 import { replaceUserPermissionSetInTransaction } from "./access-management";
 import {
@@ -24,6 +29,8 @@ import {
   lockAuthorizedInvitationResendTarget,
 } from "./account-invitation-isolation";
 import { accountSetupInvitationReplacementBlocker } from "./account-invitation-eligibility";
+import { getDemoStore } from "./demo-data";
+import { demoCompanyVisibleToActor } from "./company-lifecycle";
 
 const TOKEN_BYTES = 32;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -71,6 +78,61 @@ const activationInputSchema = z.object({
 }).strict();
 
 export type AccountSetupActivationInput = z.infer<typeof activationInputSchema>;
+
+type DemoAccountSetupInvitation = {
+  invitationId: string;
+  userId: string;
+  tokenHash: string;
+  createdAt: Date;
+  createdBy: string;
+  active: boolean;
+};
+
+declare global {
+  var __axoraDemoAccountSetupInvitations:
+    Map<string, DemoAccountSetupInvitation> | undefined;
+}
+
+function demoAccountSetupInvitations() {
+  if (!global.__axoraDemoAccountSetupInvitations) {
+    global.__axoraDemoAccountSetupInvitations = new Map();
+  }
+  return global.__axoraDemoAccountSetupInvitations;
+}
+
+function validateDemoUserCreation(
+  input: ResolvedUserCreation,
+  actor: SessionUser,
+): ValidatedUserCreation {
+  const store = getDemoStore();
+  if (input.accountKind === "COMPANY") {
+    const company = store.companies.find((item) => item.id === input.companyId);
+    if (!company || !demoCompanyVisibleToActor(actor, company.id)) {
+      throw new Error("The selected company is unavailable.");
+    }
+    let branchName: string | undefined;
+    if (input.branchId) {
+      const branch = store.branches.find((item) => (
+        item.id === input.branchId && item.companyId === company.id && item.status === "Active"
+      ));
+      if (!branch) throw new Error("The selected branch is unavailable.");
+      branchName = branch.name;
+    }
+    // The current demo fixture has no department catalogue. Never accept a
+    // browser-supplied department identifier without an authoritative record.
+    if (input.departmentId) throw new Error("The selected department is unavailable.");
+    return { ...input, organizationName: company.name, branchName };
+  }
+  if (input.accountKind === "SUPPLIER") {
+    const supplier = store.suppliers.find((item) => item.id === input.supplierId);
+    if (!supplier) throw new Error("The selected supplier is unavailable.");
+    return { ...input, organizationName: supplier.name };
+  }
+  return {
+    ...input,
+    organizationName: input.accountKind === "DELIVERY" ? "Axora delivery network" : "Axora",
+  };
+}
 
 export class AccountSetupTokenError extends Error {
   constructor() {
@@ -206,7 +268,40 @@ export async function createInvitedUser(
   actor: SessionUser,
 ): Promise<AccountSetupInvitationResult> {
   if (isDemoMode()) {
-    throw new Error("Account invitation delivery is unavailable in demo mode.");
+    const resolved = resolveUserCreation(input, actor);
+    const validated = validateDemoUserCreation(resolved, actor);
+    const rawToken = generateAccountSetupToken();
+    const invitationId = randomUUID();
+    const userId = randomUUID();
+    const expiresAt = expiresAtFrom(new Date()).toISOString();
+    registerDemoInvitedUser(resolved, {
+      userId,
+      organizationName: validated.organizationName,
+      branchName: validated.branchName,
+      departmentName: validated.departmentName,
+      expiresAt,
+    });
+    demoAccountSetupInvitations().set(invitationId, {
+      invitationId,
+      userId,
+      tokenHash: hashAccountSetupToken(rawToken),
+      createdAt: new Date(),
+      createdBy: actor.id,
+      active: true,
+    });
+    return {
+      invitationId,
+      userId,
+      recipientName: resolved.displayName,
+      recipientEmail: resolved.email,
+      companyName: validated.organizationName,
+      role: resolved.role,
+      branchName: validated.branchName,
+      departmentName: validated.departmentName,
+      expiresAt,
+      locale: resolved.preferredLocale,
+      rawToken,
+    };
   }
 
   const resolved = resolveUserCreation(input, actor);
@@ -440,7 +535,45 @@ export async function resendAccountSetupInvitation(
   actor: SessionUser,
 ): Promise<AccountSetupInvitationResult> {
   if (isDemoMode()) {
-    throw new Error("Account invitation delivery is unavailable in demo mode.");
+    const target = (await listUsers(actor)).find((user) => user.id === userId);
+    if (!target || !target.active || target.accountStatus !== "INVITED"
+      || !creatableAccountRoles(actor).some((role) => role.key === target.role)) {
+      throw new AccountSetupResendEligibilityError("ineligible");
+    }
+    const current = [...demoAccountSetupInvitations().values()]
+      .filter((invitation) => invitation.userId === userId && invitation.active)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0];
+    if (current && Date.now() - current.createdAt.getTime() < RESEND_COOLDOWN_SECONDS * 1_000) {
+      throw new AccountSetupResendRateLimitError("cooldown");
+    }
+    if (current) current.active = false;
+    const rawToken = generateAccountSetupToken();
+    const invitationId = randomUUID();
+    const expiresAt = expiresAtFrom(new Date()).toISOString();
+    const replaced = replaceDemoInvitation(userId, expiresAt);
+    if (!replaced) throw new AccountSetupResendEligibilityError("ineligible");
+    demoAccountSetupInvitations().set(invitationId, {
+      invitationId,
+      userId,
+      tokenHash: hashAccountSetupToken(rawToken),
+      createdAt: new Date(),
+      createdBy: actor.id,
+      active: true,
+    });
+    return {
+      invitationId,
+      userId,
+      recipientName: replaced.displayName,
+      recipientEmail: replaced.email,
+      companyName: replaced.companyName ?? replaced.supplierName
+        ?? (replaced.accountKind === "DELIVERY" ? "Axora delivery network" : "Axora"),
+      role: replaced.role,
+      branchName: replaced.branchName,
+      departmentName: replaced.departmentName,
+      expiresAt,
+      locale: actor.preferredLocale ?? "en",
+      rawToken,
+    };
   }
 
   const rawToken = generateAccountSetupToken();
@@ -611,7 +744,15 @@ export async function recordAccountSetupDelivery(
     status?: "sent" | "disabled" | "failed" | "uncertain";
   },
 ) {
-  if (isDemoMode()) return false;
+  if (isDemoMode()) {
+    const invitation = demoAccountSetupInvitations().get(invitationId);
+    if (!invitation?.active) return false;
+    const status = delivery.succeeded
+      ? "SENT"
+      : delivery.status === "disabled" ? "DISABLED"
+        : delivery.status === "uncertain" ? "UNCERTAIN" : "FAILED";
+    return updateDemoInvitationDelivery(invitation.userId, status);
+  }
   if (!UUID_PATTERN.test(invitationId)) return false;
   const providerMessageId = safeProviderMessageId(delivery.providerMessageId);
 

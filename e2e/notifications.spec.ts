@@ -29,6 +29,29 @@ test("notification centre exposes grouped controls and refreshes the shell count
   await expect.poll(()=>summaryRequests.length).toBeGreaterThan(0);
 });
 
+test("notification filters survive refresh and browser Back and Forward",async ({page})=>{
+  await signInAsDemoOwner(page);
+  await page.goto("/notifications");
+
+  await page.locator('select[name="status"]').selectOption("UNREAD");
+  await page.locator('select[name="category"]').selectOption("DELIVERY");
+  await page.locator(".notification-filter-bar").getByRole("button").click();
+  await expect(page).toHaveURL(/\/notifications\?status=UNREAD&category=DELIVERY$/);
+
+  await page.reload();
+  await expect(page.locator('select[name="status"]')).toHaveValue("UNREAD");
+  await expect(page.locator('select[name="category"]')).toHaveValue("DELIVERY");
+
+  await page.goto("/requests");
+  await page.goBack();
+  await expect(page).toHaveURL(/\/notifications\?status=UNREAD&category=DELIVERY$/);
+  await expect(page.locator('select[name="status"]')).toHaveValue("UNREAD");
+  await expect(page.locator('select[name="category"]')).toHaveValue("DELIVERY");
+
+  await page.goForward();
+  await expect(page).toHaveURL(/\/requests$/);
+});
+
 test("Arabic notification centre remains usable on mobile with reduced motion",async ({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.emulateMedia({reducedMotion:"reduce"});

@@ -8,7 +8,11 @@ import {
   contrastRatio,
   themeCssVariables,
 } from "@/lib/brand-colors";
-import { processCompanyLogo } from "@/lib/tenant-branding";
+import {
+  createCompanyWithBrand,
+  processCompanyLogo,
+} from "@/lib/tenant-branding";
+import { CompanyCreationCommandConflictError } from "@/lib/company-lifecycle";
 import { applyDemoSeed, applyMigrations } from "./helpers/pglite";
 
 describe("deterministic tenant branding", () => {
@@ -75,6 +79,43 @@ describe("deterministic tenant branding", () => {
     await expect(processCompanyLogo(logo, "tenant-logo.jpg", "image/jpeg")).rejects.toThrow(
       "does not match",
     );
+  });
+
+  it("replays deterministic demo company creation without duplicating branding", async () => {
+    const logo = await sharp({
+      create: { width: 48, height: 48, channels: 4, background: "#0B2D52" },
+    }).png().toBuffer();
+    const logoFile = new File([logo], "tenant-logo.png", { type: "image/png" });
+    const commandId = "c9000000-0000-4000-8000-000000000001";
+    const actor = {
+      id: "c9000000-0000-4000-8000-000000000002",
+      email: "owner@example.test",
+      name: "Platform Owner",
+      role: "PLATFORM_OWNER" as const,
+      accountKind: "PLATFORM" as const,
+      roleAssignmentId: "c9000000-0000-4000-8000-000000000003",
+      isOwner: true,
+    };
+    const input = {
+      name: "Replay Company",
+      legalName: "Replay Company Sdn Bhd",
+      industry: "Business services",
+      companyInformation: "Deterministic replay fixture",
+      mainContactName: "Company coordinator",
+      billingCycle: "Monthly",
+    };
+    const first = await createCompanyWithBrand(input, logoFile, actor, commandId);
+    const replay = await createCompanyWithBrand(input, logoFile, actor, commandId);
+    expect(first).toMatchObject({ created: true });
+    expect(replay).toMatchObject({
+      created: false,
+      companyId: first.companyId,
+      logoId: first.logoId,
+      themeId: first.themeId,
+    });
+    await expect(createCompanyWithBrand(
+      { ...input, name: "Conflicting Company" },logoFile,actor,commandId,
+    )).rejects.toBeInstanceOf(CompanyCreationCommandConflictError);
   });
 });
 

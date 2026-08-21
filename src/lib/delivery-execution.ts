@@ -3,6 +3,7 @@ import type { QueryResultRow } from "pg";
 import { z } from "zod";
 import type { AuthenticatedSessionUser } from "./auth";
 import { isDemoMode, query, withAuditTransaction } from "./db";
+import { driverAvailableJobInternals } from "./driver-operations";
 import {
   createDeliveryEvidenceAccessUrl,
   deliveryImageDimensions,
@@ -56,11 +57,169 @@ export interface DeliveryExecutionWorkspace {
     assignmentId: string;
     requestId: string;
     destinationTimezone: string;
+    destinationLatitude?: number;
+    destinationLongitude?: number;
     evidence: DeliveryEvidenceSummary[];
   }>;
 }
 
 interface JsonRow<T> extends QueryResultRow { value: T | null }
+interface DestinationRow extends QueryResultRow {
+  id: string;
+  destinationLatitude: string | null;
+  destinationLongitude: string | null;
+}
+
+type DemoDeliveryEvent = {
+  id: string;
+  type: string;
+  receivedAt: string;
+  metadata: Record<string, unknown>;
+};
+
+type DemoDeliveryCommand = {
+  fingerprint: string;
+  result: Record<string, unknown>;
+};
+
+type DemoDeliveryJobState = {
+  actorId: string;
+  assignmentId: string;
+  status: string;
+  workflowVersion: number;
+  events: DemoDeliveryEvent[];
+  commands: Map<string, DemoDeliveryCommand>;
+};
+
+type DemoDeliveryExecutionState = {
+  jobs: Map<string, DemoDeliveryJobState>;
+};
+
+declare global {
+  var __axoraDemoDeliveryExecutionState: DemoDeliveryExecutionState | undefined;
+}
+
+function demoDeliveryExecutionState() {
+  if (!global.__axoraDemoDeliveryExecutionState) {
+    global.__axoraDemoDeliveryExecutionState = { jobs: new Map() };
+  }
+  return global.__axoraDemoDeliveryExecutionState;
+}
+
+function deterministicDemoUuid(namespace: string, value: string) {
+  const bytes = createHash("sha256").update(`${namespace}:${value}`).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function demoDeliveryJobState(actor: AuthenticatedSessionUser) {
+  const claimed = driverAvailableJobInternals.demoClaimedDeliveryJob(actor.id);
+  if (!claimed || actor.accountKind !== "DELIVERY") {
+    throw new Error("The delivery workflow is unavailable.");
+  }
+  const state = demoDeliveryExecutionState();
+  const current = state.jobs.get(claimed.job.id);
+  if (current) {
+    if (current.actorId !== actor.id || current.assignmentId !== claimed.claim.assignmentId) {
+      throw new Error("The delivery workflow is unavailable.");
+    }
+    return { claimed, current };
+  }
+  const createdAt = new Date().toISOString();
+  const initial: DemoDeliveryJobState = {
+    actorId: actor.id,
+    assignmentId: claimed.claim.assignmentId,
+    status: "ASSIGNED",
+    workflowVersion: 1,
+    events: [{
+      id: deterministicDemoUuid("demo-delivery-assigned", claimed.claim.assignmentId),
+      type: "ASSIGNED",
+      receivedAt: createdAt,
+      metadata: { source: "self-claim" },
+    }],
+    commands: new Map(),
+  };
+  state.jobs.set(claimed.job.id, initial);
+  return { claimed, current: initial };
+}
+
+function demoDeliveryExecutionWorkspace(actor: AuthenticatedSessionUser): DeliveryExecutionWorkspace {
+  const claimed = driverAvailableJobInternals.demoClaimedDeliveryJob(actor.id);
+  if (!claimed) {
+    return { actorId: actor.id, capturedAt: new Date().toISOString(), products: [], suppliers: [], jobs: [] };
+  }
+  const { current } = demoDeliveryJobState(actor);
+  return {
+    actorId: actor.id,
+    capturedAt: new Date().toISOString(),
+    products: [],
+    suppliers: [],
+    jobs: [{
+      id: claimed.job.id,
+      code: claimed.job.code,
+      status: current.status,
+      workflowVersion: current.workflowVersion,
+      assignmentId: current.assignmentId,
+      requestId: "60000000-0000-4000-8000-000000000001",
+      requestNumber: claimed.job.requestReference,
+      branchName: claimed.job.branchName,
+      destinationTimezone: claimed.job.destinationTimezone,
+      scheduledLocalStart: "2026-08-21T10:00:00",
+      scheduledLocalEnd: "2026-08-21T12:00:00",
+      acceptanceDeadline: "2026-08-21T02:30:00.000Z",
+      slaDueAt: "2026-08-21T04:00:00.000Z",
+      proofPolicy: ["PHOTO"],
+      proofSatisfied: false,
+      address: "Kuala Lumpur receiving branch, Jalan Sultan Ismail",
+      destinationLatitude: 3.1516,
+      destinationLongitude: 101.7113,
+      instructions: "Use the receiving entrance and quote the request reference.",
+      lines: [{
+        id: "70000000-0000-4000-8000-000000000001",
+        requestLineId: "80000000-0000-4000-8000-000000000001",
+        productId: "40000000-0000-4000-8000-000000000001",
+        productName: "Safety gloves",
+        quantity: 2,
+        unitOfMeasure: "box",
+      }],
+      events: current.events.map((item) => ({ ...item, metadata: { ...item.metadata } })),
+      evidence: [],
+      actualHistory: [{
+        id: "90000000-0000-4000-8000-000000000001",
+        state: "FINALIZED",
+      }],
+    }],
+  };
+}
+
+const demoStatusTransitions: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  ASSIGNED: { ACCEPTED: "ACCEPTED", REJECTED: "REJECTED" },
+  ACCEPTED: { SHOPPING_STARTED: "SHOPPING", ISSUE_REPORTED: "ACCEPTED" },
+  SHOPPING: { ITEMS_ACQUIRED: "ITEMS_ACQUIRED", ISSUE_REPORTED: "SHOPPING", NOTE_ADDED: "SHOPPING" },
+  ITEMS_ACQUIRED: { OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY", ISSUE_REPORTED: "ITEMS_ACQUIRED" },
+  OUT_FOR_DELIVERY: { ARRIVED: "ARRIVED", FAILED: "FAILED", ISSUE_REPORTED: "OUT_FOR_DELIVERY" },
+  ARRIVED: {
+    DELIVERED: "DELIVERED",
+    PARTIALLY_DELIVERED: "PARTIALLY_DELIVERED",
+    FAILED: "FAILED",
+    ISSUE_REPORTED: "ARRIVED",
+  },
+  PARTIALLY_DELIVERED: {
+    DELIVERED: "DELIVERED",
+    COMPLETED: "COMPLETED",
+    ISSUE_REPORTED: "PARTIALLY_DELIVERED",
+  },
+  DELIVERED: { COMPLETED: "COMPLETED", ISSUE_REPORTED: "DELIVERED" },
+};
+
+const deliveryEvidenceRegistrationSchema = z.object({
+  created: z.boolean(),
+  evidenceId: uuid,
+  storagePath: z.string().min(1).max(1_000),
+  version: z.number().int().positive(),
+}).passthrough();
 
 function assignmentId(actor: AuthenticatedSessionUser) {
   if (!actor.roleAssignmentId) throw new Error("The delivery workflow is unavailable.");
@@ -79,17 +238,87 @@ async function jsonCapability<T>(sql: string, values: unknown[]) {
   return result.rows[0].value;
 }
 
+function attachDestinationCoordinates(
+  jobs: DeliveryExecutionWorkspace["jobs"],
+  rows: DestinationRow[],
+) {
+  const jobIds = new Set(jobs.map((job) => job.id));
+  const coordinates = new Map<string, { latitude: number; longitude: number }>();
+  for (const row of rows) {
+    if (!jobIds.has(row.id)) continue;
+    if (row.destinationLatitude === null || row.destinationLongitude === null) {
+      if (row.destinationLatitude !== row.destinationLongitude) {
+        throw new Error("The delivery destination is unavailable.");
+      }
+      continue;
+    }
+    const parsed = z.object({
+      latitude: z.number().finite().min(-90).max(90),
+      longitude: z.number().finite().min(-180).max(180),
+    }).safeParse({
+      latitude: Number(row.destinationLatitude),
+      longitude: Number(row.destinationLongitude),
+    });
+    if (!parsed.success) throw new Error("The delivery destination is unavailable.");
+    coordinates.set(row.id, parsed.data);
+  }
+  return jobs.map((job) => {
+    const destination = coordinates.get(job.id);
+    return destination ? {
+      ...job,
+      destinationLatitude: destination.latitude,
+      destinationLongitude: destination.longitude,
+    } : job;
+  });
+}
+
+function stagedEvidenceReplayPath(
+  registration: z.infer<typeof deliveryEvidenceRegistrationSchema>,
+  newlyStoredPath: string,
+) {
+  return registration.created ? null : newlyStoredPath;
+}
+
+function deliveryEvidenceBytesMatch(
+  contentType: string,
+  bytes: Buffer,
+  expectedSha256: string,
+) {
+  return /^[a-f0-9]{64}$/.test(expectedSha256)
+    && uploadedContentMatchesMime(contentType, bytes)
+    && createHash("sha256").update(bytes).digest("hex") === expectedSha256;
+}
+
 export async function getDeliveryExecutionWorkspace(actor: AuthenticatedSessionUser) {
-  if (isDemoMode()) return {
-    actorId: actor.id, capturedAt: new Date().toISOString(), products: [], suppliers: [], jobs: [],
-  } satisfies DeliveryExecutionWorkspace;
+  if (isDemoMode()) return demoDeliveryExecutionWorkspace(actor);
   const workspace = await jsonCapability<DeliveryExecutionWorkspace>(
     "SELECT public.axora_delivery_execution_workspace($1,$2,$3) AS value",
     [actor.id, assignmentId(actor), new Date()],
   );
+  const jobIds = workspace.jobs.map((job) => uuid.parse(job.id));
+  const destinationRows = jobIds.length ? await withAuditTransaction({
+    actor,
+    reason: "Viewed assigned delivery destination snapshots",
+  }, async (client) => {
+    const result = await client.query<DestinationRow>(`
+      SELECT job.id::text,
+        job.destination_latitude::text AS "destinationLatitude",
+        job.destination_longitude::text AS "destinationLongitude"
+      FROM public.delivery_jobs job
+      JOIN public.delivery_job_assignments assignment
+        ON assignment.delivery_job_id=job.id
+       AND assignment.driver_user_id=$1
+       AND assignment.driver_role_assignment_id=$2
+       AND assignment.status IN ('ASSIGNED','ACCEPTED')
+       AND assignment.ended_at IS NULL
+      WHERE job.id=ANY($3::uuid[])
+        AND job.status NOT IN ('COMPLETED','CANCELLED')
+    `, [actor.id, assignmentId(actor), jobIds]);
+    return result.rows;
+  }) : [];
   return {
     ...workspace,
-    jobs: workspace.jobs.map((job) => ({
+    jobs: attachDestinationCoordinates(workspace.jobs, destinationRows).map((job) => ({
       ...job,
       evidence: (job.evidence ?? []).map((item) => ({
         ...item,
@@ -98,6 +327,14 @@ export async function getDeliveryExecutionWorkspace(actor: AuthenticatedSessionU
     })),
   };
 }
+
+export const deliveryExecutionDestinationInternals = {
+  attachDestinationCoordinates,
+  deliveryEvidenceBytesMatch,
+  demoDeliveryExecutionState,
+  demoDeliveryExecutionWorkspace,
+  stagedEvidenceReplayPath,
+};
 
 export async function getDeliverySupervisorWorkspace(actor: AuthenticatedSessionUser) {
   if (isDemoMode()) return { capturedAt: new Date().toISOString(), agents: [], requests: [], jobs: [] };
@@ -230,6 +467,57 @@ export async function recordCanonicalDeliveryEvent(
     clientRecordedAt: z.coerce.date(),
     metadata: z.record(z.string(), z.unknown()).default({}),
   }).parse(input);
+  if (isDemoMode()) {
+    const { claimed, current } = demoDeliveryJobState(actor);
+    if (parsed.jobId !== claimed.job.id || parsed.assignmentId !== current.assignmentId) {
+      throw new Error("The delivery event is unavailable.");
+    }
+    const fingerprint = createHash("sha256").update(JSON.stringify({
+      actorId: actor.id,
+      assignmentId: parsed.assignmentId,
+      clientRecordedAt: parsed.clientRecordedAt.toISOString(),
+      deviceId: parsed.deviceId,
+      deviceSequence: parsed.deviceSequence,
+      eventType: parsed.eventType,
+      expectedVersion: parsed.expectedVersion,
+      jobId: parsed.jobId,
+      metadata: parsed.metadata,
+    })).digest("hex");
+    const prior = current.commands.get(parsed.commandId);
+    if (prior) {
+      if (prior.fingerprint !== fingerprint) {
+        throw new Error("The delivery command conflicts with its original payload.");
+      }
+      return prior.result;
+    }
+    if (parsed.expectedVersion !== current.workflowVersion) {
+      throw new Error("The delivery event conflicts with the current workflow version.");
+    }
+    const nextStatus = demoStatusTransitions[current.status]?.[parsed.eventType];
+    if (!nextStatus) throw new Error("The delivery event is unavailable in the current state.");
+    if (parsed.eventType === "COMPLETED") {
+      throw new Error("Required delivery proof is still missing.");
+    }
+    const now = new Date();
+    current.status = nextStatus;
+    current.workflowVersion += 1;
+    const eventId = deterministicDemoUuid("demo-delivery-event", parsed.commandId);
+    current.events.push({
+      id: eventId,
+      type: parsed.eventType,
+      receivedAt: now.toISOString(),
+      metadata: { ...parsed.metadata },
+    });
+    const result = Object.freeze({
+      assignmentId: current.assignmentId,
+      eventId,
+      jobId: claimed.job.id,
+      status: current.status,
+      workflowVersion: current.workflowVersion,
+    });
+    current.commands.set(parsed.commandId, { fingerprint, result });
+    return result;
+  }
   const now = new Date();
   return withAuditTransaction({ actor, reason: `Delivery ${parsed.eventType}`, commandId: parsed.commandId }, async (client) => {
     const result = await client.query<JsonRow<Record<string, unknown>>>(`
@@ -335,8 +623,8 @@ export async function uploadCanonicalDeliveryEvidence(
     const dimensions = stored.contentType.startsWith("image/")
       ? deliveryImageDimensions(stored.contentType, stored.bytes) : null;
     const now = new Date();
-    return await withAuditTransaction({ actor, reason: "Delivery proof uploaded", commandId: parsed.clientEvidenceId }, async (client) => {
-      const result = await client.query<JsonRow<Record<string, unknown>>>(`
+    const registration = await withAuditTransaction({ actor, reason: "Delivery proof uploaded", commandId: parsed.clientEvidenceId }, async (client) => {
+      const result = await client.query<JsonRow<unknown>>(`
         SELECT public.axora_register_delivery_evidence(
           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb,$19
         ) AS value
@@ -347,9 +635,17 @@ export async function uploadCanonicalDeliveryEvidence(
         parsed.type === "SIGNATURE" ? now : null, dimensions?.width ?? null,
         dimensions?.height ?? null, parsed.supersedesEvidenceId || null,
         JSON.stringify({ source: "driver-portal" }), now]);
-      if (!result.rows[0]?.value) throw new Error("The delivery evidence is unavailable.");
-      return result.rows[0].value;
+      const parsedRegistration = deliveryEvidenceRegistrationSchema.safeParse(result.rows[0]?.value);
+      if (!parsedRegistration.success) throw new Error("The delivery evidence is unavailable.");
+      return parsedRegistration.data;
     });
+    const replayPath = stagedEvidenceReplayPath(registration, stored.relativePath);
+    if (replayPath) {
+      // The command already committed earlier. Keep the durable evidence path
+      // returned by PostgreSQL and remove only this request's newly staged file.
+      await removePersistentUpload(replayPath);
+    }
+    return registration;
   } catch (error) {
     await removePersistentUpload(stored.relativePath);
     throw error;
@@ -401,7 +697,7 @@ export async function loadDeliveryEvidenceFile(
   const item = result.rows[0];
   if (!item) return null;
   const bytes = await readPersistentUpload(item.storagePath);
-  if (!bytes) return null;
+  if (!bytes || !deliveryEvidenceBytesMatch(item.contentType, bytes, item.sha256)) return null;
   return { ...item, bytes };
 }
 

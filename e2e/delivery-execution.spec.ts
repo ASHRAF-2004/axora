@@ -86,6 +86,34 @@ test("Delivery Guy claims exactly one paid available job through the self-claim 
   expect(postCount).toBe(1);
 });
 
+test("a real demo self-claim becomes the driver's Out for Delivery navigation job", async ({ page }) => {
+  await signInAsDemoRole(page, { ...driver, preferredLocale: "en" });
+  await page.goto("/driver");
+
+  const executionJob = page.locator("article").filter({ hasText: "DEL-DEMO-AVAILABLE-001" });
+  const executionHeading = executionJob.getByRole("heading", { name: "DEL-DEMO-AVAILABLE-001" });
+  const claim = page.getByRole("button", { name: "Claim", exact: true });
+  await expect(claim.or(executionHeading)).toBeVisible();
+  if (await claim.isVisible()) await claim.click();
+
+  await expect(executionHeading).toBeVisible();
+
+  for (const action of ["Accept assignment", "Start buying", "Items bought", "Out for delivery"]) {
+    const button = executionJob.getByRole("button", { name: action, exact: true });
+    if (await button.isVisible()) {
+      await button.click();
+      await expect(page.getByText("Command recorded", { exact: true })).toBeVisible();
+    }
+  }
+
+  await expect(executionJob.locator("span").filter({ hasText: /^Out for delivery$/ }))
+    .toBeVisible();
+  const waze = executionJob.getByRole("link", { name: "Navigate with Waze" });
+  const google = executionJob.getByRole("link", { name: "Navigate with Google Maps" });
+  await expect(waze).toHaveAttribute("href", /ll=3\.1516%2C101\.7113/);
+  await expect(google).toHaveAttribute("href", /destination=3\.1516%2C101\.7113/);
+});
+
 test("customer recipient sees a one-time OTP without purchasing internals", async ({ page }) => {
   await page.route("**/api/receiving/delivery-otp", async (route) => {
     if (route.request().method() === "POST") {

@@ -61,6 +61,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
     </section> : null}
     <div className="page-actions">
       <Link className="button button-secondary" href="/companies/leads">{leadCopy.queueTitle}</Link>
+      {actor.isOwner ? <Link className="button button-secondary" href="/companies/leads/new">{leadCopy.createAction}</Link> : null}
       {workspace.canCreate ? <Link className="button button-primary" href="/companies/new">{copy.createTitle}</Link> : null}
     </div>
     <section className="panel">
@@ -72,7 +73,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
         <div className="form-actions field-full"><button className="button button-secondary" type="submit">{copy.filter}</button></div>
       </form>
       {companies.length ? <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{local.company}</th><th>{copy.status}</th><th>{copy.mainContact}</th><th>{copy.assignment}</th><th /></tr></thead><tbody>
-        {companies.map((company) => <tr key={company.id}><td><strong>{company.name}</strong><br /><span className="subtle">{company.industry}</span></td><td><StatusBadge status={company.status}>{companyLifecycleStatusLabel(locale, company.status)}</StatusBadge></td><td>{company.mainContactName}<br /><span className="subtle">{company.mainContactEmail}</span></td><td>{company.primaryManager?.name ?? copy.unassigned}</td><td><Link className="button button-secondary" href={`/companies/${company.id}`}>{local.open}</Link></td></tr>)}
+        {companies.map((company) => <tr key={company.id}><td><strong>{company.name}</strong><br /><span className="subtle">{company.industry}</span></td><td><StatusBadge status={company.status}>{companyLifecycleStatusLabel(locale, company.status)}</StatusBadge></td><td>{company.mainContactName}</td><td>{company.primaryManager?.name ?? copy.unassigned}</td><td><Link className="button button-secondary" href={`/companies/${company.id}`}>{local.open}</Link></td></tr>)}
       </tbody></table></div> : <p>{copy.noCompanies}</p>}
     </section>
   </>;

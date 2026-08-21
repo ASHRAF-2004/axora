@@ -11,23 +11,48 @@ const wholeDays = z.coerce.number().int().min(0).max(3650);
 
 export const companySchema = z.object({
   name: required("Company display name"), legalName: required("Legal company name", 300),
-  registrationNumber: required("Registration number", 160), industry: required("Industry"),
+  industry: required("Industry"),
   companyInformation: required("Company information", 3000),
   websiteUrl: z.union([z.url({ protocol: /^https$/ }).max(500), z.literal("")]).transform((value) => value || undefined),
   mainContactName: required("Main contact"),
-  mainContactEmail: email, mainContactPhone: required("Main contact phone", 50), billingContactName: required("Billing contact"),
-  billingContactEmail: email, billingContactPhone: required("Billing contact phone", 50), billingAddress: required("Billing address", 500),
+  billingContactName: required("Billing contact"), billingContactEmail: email,
+  billingAddress: required("Billing address", 500),
   paymentTerms: z.literal(STANDARD_BILLING_TERMS), billingCycle: required("Billing cycle", 100), notes: optional(1000),
 });
 
-export const companyLeadCreateSchema = z.object({
+/**
+ * Current owner-driven company creation deliberately excludes the retired
+ * acquisition/contact fields. Historical database columns remain for
+ * read-model and rollback compatibility, but browser validation no longer
+ * accepts or requires them.
+ */
+export const directCompanyCreateSchema = z.object({
   name: required("Company display name", 300),
+  legalName: required("Legal company name", 300),
   industry: required("Industry", 300),
   companyInformation: required("Company information", 3000),
+  websiteUrl: z.union([
+    z.url({ protocol: /^https$/ }).max(500),
+    z.literal(""),
+  ]).transform((value) => value || undefined),
   mainContactName: required("Main contact name", 300),
-  mainContactEmail: required("Main contact email", 254).pipe(z.email("Enter a valid email address.")),
-  mainContactPhone: required("Main contact phone", 120),
   billingCycle: required("Billing cycle", 100),
+  notes: optional(1000),
+}).strict();
+
+export const acquisitionLeadCreateSchema = z.object({
+  companyName: required("Company display name", 200),
+  legalName: required("Legal company name", 300),
+  contactName: required("Contact name", 200),
+  city: required("City", 160),
+  industry: required("Industry", 200),
+  employeeRange: z.enum(["1_10", "11_50", "51_200", "201_500", "501_1000", "1001_PLUS"]),
+  branchRange: z.enum(["1", "2_5", "6_20", "21_50", "51_PLUS"]),
+  spendRange: z.enum(["UNDER_10K", "10K_50K", "50K_250K", "250K_1M", "OVER_1M", "UNDISCLOSED"]),
+  locale: z.enum(["en", "ar", "ms"]),
+  timezone: required("Timezone", 80),
+  subject: required("Subject", 200).pipe(z.string().min(3)),
+  message: required("Message", 5000).pipe(z.string().min(10)),
 }).strict();
 
 export const companyPricingSchema = z.object({

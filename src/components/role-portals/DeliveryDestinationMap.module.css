@@ -1,0 +1,96 @@
+.shell {
+  display: grid;
+  gap: .8rem;
+  padding: 1rem;
+  border: 1px solid var(--axora-border);
+  border-radius: .9rem;
+  color: var(--axora-text);
+  background: var(--axora-surface-elevated);
+}
+
+.heading h3,
+.heading p,
+.warning,
+.overlay {
+  margin: 0;
+}
+
+.heading h3 { color: var(--axora-text); font-size: 1rem; }
+.heading p { margin-block-start: .3rem; color: var(--axora-text-secondary); line-height: 1.5; }
+
+.mapFrame {
+  position: relative;
+  min-block-size: 19rem;
+  overflow: hidden;
+  border: 1px solid var(--axora-border);
+  border-radius: .8rem;
+  background: var(--axora-surface-muted);
+}
+
+.map { position: absolute; inset: 0; }
+.map:focus-within { outline: 3px solid var(--axora-focus); outline-offset: -3px; }
+.map :global(.maplibregl-ctrl-group button) { inline-size: 44px; block-size: 44px; }
+.map :global(.maplibregl-ctrl-group button:focus-visible),
+.map :global(.maplibregl-ctrl-attrib-button:focus-visible) {
+  outline: 3px solid var(--axora-focus);
+  outline-offset: -3px;
+}
+
+.marker {
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border: .25rem solid var(--axora-surface);
+  border-radius: 50% 50% 50% 0;
+  background: var(--axora-map-marker);
+  box-shadow: var(--axora-shadow-md);
+  rotate: -45deg;
+}
+
+.overlay {
+  position: absolute;
+  inset-block-start: 1rem;
+  inset-inline-start: 50%;
+  z-index: 2;
+  max-inline-size: calc(100% - 2rem);
+  padding: .65rem .9rem;
+  translate: -50% 0;
+  border: 1px solid var(--axora-border);
+  border-radius: .7rem;
+  color: var(--axora-text);
+  background: var(--axora-surface);
+  box-shadow: var(--axora-shadow-sm);
+}
+
+[dir="rtl"] .overlay { translate: 50% 0; }
+
+.warning {
+  padding: .8rem 1rem;
+  border: 1px solid var(--axora-warning-border);
+  border-radius: .75rem;
+  color: var(--axora-warning);
+  background: var(--axora-warning-bg);
+  line-height: 1.5;
+}
+
+.actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+.actions a {
+  display: inline-flex;
+  min-block-size: 44px;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 1rem;
+  border: 1px solid var(--axora-brand);
+  border-radius: .75rem;
+  color: var(--axora-brand-foreground);
+  background: var(--axora-brand);
+  font-weight: 800;
+  text-align: center;
+}
+
+.actions a:hover { background: var(--axora-brand-hover); }
+.actions a:focus-visible { outline: 3px solid var(--axora-focus); outline-offset: 3px; }
+
+@media (max-width: 560px) {
+  .mapFrame { min-block-size: 17rem; }
+  .actions a { flex: 1 1 100%; }
+}

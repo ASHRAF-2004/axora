@@ -18,6 +18,14 @@ import {
   requestVariancePolicyChange,
   rerunBudgetRefreshJob,
 } from "@/lib/budget-cycles";
+import {
+  parseMoneyDecimal,
+  parsePositiveMoneyDecimal,
+} from "@/lib/money-decimal";
+import {
+  deriveBudgetPeriodScheduleFields,
+  type BudgetPeriodFrequency,
+} from "@/lib/budget-period-range";
 
 function field(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
@@ -32,11 +40,16 @@ async function requireCompanyBudgetActor() {
 }
 
 function positiveAmount(formData: FormData) {
-  const amount = Number(field(formData, "amount"));
-  if (!Number.isFinite(amount) || amount<=0 || amount>999_999_999_999) {
-    throw new Error("Invalid amount");
-  }
-  return Math.round(amount*100)/100;
+  return parsePositiveMoneyDecimal(field(formData, "amount"));
+}
+
+function nonNegativeMoney(formData: FormData, name: string) {
+  return parseMoneyDecimal(field(formData, name), { allowNegative: false });
+}
+
+function optionalMoney(formData: FormData, name: string) {
+  const value = field(formData, name);
+  return value ? parseMoneyDecimal(value, { allowNegative: false }) : undefined;
 }
 
 function reason(formData: FormData) {
@@ -157,21 +170,29 @@ export async function requestBudgetCycleChangeAction(formData: FormData) {
       || !["EARLIER","LATER"].includes(dstResolution)) {
       throw new Error("Invalid schedule");
     }
+    const schedulePeriod = deriveBudgetPeriodScheduleFields({
+      frequency: frequency as BudgetPeriodFrequency,
+      intervalCount: boundedNumber(formData, "intervalCount", 1, 52),
+      periodStartDate: field(formData, "periodStartDate") || undefined,
+      periodEndDate: field(formData, "periodEndDate") || undefined,
+      anchorLocal: field(formData, "anchorLocal") || undefined,
+      effectiveLocal: field(formData, "effectiveLocal") || undefined,
+    });
     await requestBudgetCycleChange({
       actor,
       budgetAccountId: field(formData, "budgetAccountId"),
       config: {
         frequency: frequency as "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY" | "CUSTOM" | "MANUAL",
-        intervalCount: boundedNumber(formData, "intervalCount", 1, 52),
-        customIntervalDays: optionalNumber(formData, "customIntervalDays"),
+        intervalCount: schedulePeriod.intervalCount,
+        customIntervalDays: schedulePeriod.customIntervalDays,
         timezone: field(formData, "timezone"),
-        anchorLocal: field(formData, "anchorLocal"),
-        effectiveLocal: field(formData, "effectiveLocal") || undefined,
+        anchorLocal: schedulePeriod.anchorLocal,
+        effectiveLocal: schedulePeriod.effectiveLocal,
         dstResolution: dstResolution as "EARLIER" | "LATER",
-        fixedAllocation: boundedNumber(formData, "fixedAllocation", 0, 999_999_999_999),
+        fixedAllocation: nonNegativeMoney(formData, "fixedAllocation"),
         rolloverMode: rolloverMode as "RESET_FIXED" | "FULL" | "NONE" | "PARTIAL_PERCENT" | "CUSTOM_AMOUNT",
         rolloverPercentage: optionalNumber(formData, "rolloverPercentage"),
-        customRolloverAmount: optionalNumber(formData, "customRolloverAmount"),
+        customRolloverAmount: optionalMoney(formData, "customRolloverAmount"),
         lowThresholdPercentage: boundedNumber(formData, "lowThresholdPercentage", 1, 99),
         criticalThresholdPercentage: boundedNumber(formData, "criticalThresholdPercentage", 0.01, 98),
         hysteresisPercentage: boundedNumber(formData, "hysteresisPercentage", 0.01, 25),

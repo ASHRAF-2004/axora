@@ -1,0 +1,208 @@
+.shell {
+  display: grid;
+  gap: 1rem;
+  color: var(--axora-text);
+}
+
+.header {
+  padding: 1rem;
+  border: 1px solid var(--axora-border);
+  border-radius: 1rem;
+  background: var(--axora-surface-elevated);
+}
+
+.header h2,
+.header p,
+.help,
+.warning,
+.error,
+.status,
+.success,
+.attribution {
+  margin: 0;
+}
+
+.header h2 {
+  color: var(--axora-text);
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.header p,
+.help,
+.status,
+.attribution {
+  color: var(--axora-text-muted);
+  font-size: .9rem;
+  line-height: 1.55;
+}
+
+.header p { margin-block-start: .4rem; }
+
+.mapFrame {
+  position: relative;
+  min-block-size: 24rem;
+  overflow: hidden;
+  border: 1px solid var(--axora-border);
+  border-radius: 1rem;
+  background: var(--axora-surface-muted);
+  box-shadow: var(--axora-shadow-sm);
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+.map:focus-within {
+  outline: 3px solid var(--axora-focus);
+  outline-offset: -3px;
+}
+
+.map :global(.maplibregl-ctrl-group button) {
+  inline-size: 44px;
+  block-size: 44px;
+}
+
+.map :global(.maplibregl-ctrl-group button:focus-visible),
+.map :global(.maplibregl-ctrl-attrib-button:focus-visible) {
+  outline: 3px solid var(--axora-focus);
+  outline-offset: -3px;
+}
+
+.mapOverlay {
+  position: absolute;
+  inset-block-start: 1rem;
+  inset-inline-start: 50%;
+  z-index: 2;
+  max-inline-size: calc(100% - 2rem);
+  margin: 0;
+  padding: .65rem .9rem;
+  translate: -50% 0;
+  border: 1px solid var(--axora-border);
+  border-radius: .75rem;
+  color: var(--axora-text);
+  background: var(--axora-surface);
+  box-shadow: var(--axora-shadow-sm);
+  font-size: .9rem;
+}
+
+[dir="rtl"] .mapOverlay { translate: 50% 0; }
+
+.marker {
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  border: .25rem solid var(--axora-surface);
+  border-radius: 50% 50% 50% 0;
+  background: var(--axora-map-marker);
+  box-shadow: var(--axora-shadow-md);
+  rotate: -45deg;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: .45rem;
+  min-inline-size: 0;
+  color: var(--axora-text-secondary);
+  font-size: .9rem;
+  font-weight: 750;
+}
+
+.field input {
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding-inline: .8rem;
+  border: 1px solid var(--axora-border-strong);
+  border-radius: .7rem;
+  color: var(--axora-text);
+  background: var(--axora-surface);
+}
+
+.field input:hover:not(:disabled) { border-color: var(--axora-brand); }
+
+.field input:focus-visible {
+  border-color: var(--axora-focus);
+  outline: 3px solid color-mix(in srgb, var(--axora-focus) 28%, transparent);
+  outline-offset: 1px;
+}
+
+.field input[aria-invalid="true"] { border-color: var(--axora-danger-border); }
+.field input:disabled { cursor: not-allowed; opacity: .65; }
+
+.fieldError {
+  color: var(--axora-danger);
+  font-size: .82rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.warning,
+.error,
+.success {
+  padding: .8rem 1rem;
+  border: 1px solid;
+  border-radius: .75rem;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.warning {
+  color: var(--axora-warning);
+  border-color: var(--axora-warning-border);
+  background: var(--axora-warning-bg);
+}
+
+.error {
+  color: var(--axora-danger);
+  border-color: var(--axora-danger-border);
+  background: var(--axora-danger-bg);
+}
+
+.success {
+  color: var(--axora-success);
+  border-color: var(--axora-success-border);
+  background: var(--axora-success-bg);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  min-block-size: 44px;
+  padding-inline: 1rem;
+  border: 1px solid var(--axora-brand);
+  border-radius: .75rem;
+  color: var(--axora-brand-foreground);
+  background: var(--axora-brand);
+  font-weight: 800;
+}
+
+.actions button:hover:not(:disabled) { background: var(--axora-brand-hover); }
+
+.actions button:focus-visible,
+.attribution a:focus-visible {
+  outline: 3px solid var(--axora-focus);
+  outline-offset: 3px;
+}
+
+.actions button:disabled { cursor: not-allowed; opacity: .55; }
+.actions p { flex: 1 1 18rem; }
+.attribution a { color: var(--axora-link); text-decoration: underline; text-underline-offset: .18em; }
+
+@media (max-width: 640px) {
+  .mapFrame { min-block-size: 19rem; }
+  .fields { grid-template-columns: 1fr; }
+  .actions { align-items: stretch; }
+  .actions button { inline-size: 100%; }
+}

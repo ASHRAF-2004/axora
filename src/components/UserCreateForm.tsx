@@ -12,6 +12,10 @@ import {
   accessGroupsForPermissions,
   userProvisioningRoleConfig,
 } from "@/lib/user-provisioning";
+import {
+  PermissionChecklist,
+  type PermissionChecklistOption,
+} from "@/components/PermissionChecklist";
 
 export interface UserRoleOption {
   label: string;
@@ -19,6 +23,7 @@ export interface UserRoleOption {
   description: string;
   category: "Axora" | "Company" | "Delivery";
   defaultPermissions?: readonly PermissionCode[];
+  customizablePermissions?: readonly PermissionChecklistOption[];
 }
 
 function CreateAccountButton({ disabled, locale }: { disabled: boolean; locale: SupportedLocale }) {
@@ -41,6 +46,10 @@ export function UserCreateForm({
   departments,
   roleOptions,
   defaultLocale,
+  creationContext,
+  fixedCompanyId,
+  canCustomizePermissions = false,
+  createAction = createUserAction,
 }: {
   actorBranchId?: string;
   actorCompanyId?: string;
@@ -51,13 +60,24 @@ export function UserCreateForm({
   departments: OrganizationDepartment[];
   roleOptions: UserRoleOption[];
   defaultLocale: SupportedLocale;
+  creationContext?: "PLATFORM" | "COMPANY" | "DELIVERY";
+  fixedCompanyId?: string;
+  canCustomizePermissions?: boolean;
+  createAction?: (formData: FormData) => void | Promise<void>;
 }) {
   const [role, setRole] = useState<UserRole | "">("");
-  const [companyId, setCompanyId] = useState(actorCompanyId ?? "");
+  const [companyId, setCompanyId] = useState(fixedCompanyId ?? actorCompanyId ?? "");
   const [branchId, setBranchId] = useState(actorBranchId ?? "");
   const [departmentId, setDepartmentId] = useState(actorDepartmentId ?? "");
-  const [requesterScope, setRequesterScope] = useState<"BRANCH" | "DEPARTMENT">("BRANCH");
+  const requesterScopeFixedToDepartment = Boolean(actorDepartmentId) && !actorIsOwner;
+  const [requesterScope, setRequesterScope] = useState<"BRANCH" | "DEPARTMENT">(
+    requesterScopeFixedToDepartment ? "DEPARTMENT" : "BRANCH",
+  );
   const [roleChanged, setRoleChanged] = useState(false);
+  const [customizePermissions, setCustomizePermissions] = useState(false);
+  const [selectedPermissions, setSelectedPermissions] = useState<Set<PermissionCode>>(
+    new Set(),
+  );
   const copy = userFormMessages(defaultLocale);
   const selectedRole = roleOptions.find((option) => option.value === role);
   const config = role ? userProvisioningRoleConfig(role) : undefined;
@@ -75,7 +95,7 @@ export function UserCreateForm({
   const showCompany = Boolean(config?.showCompany);
   const showBranch = Boolean(config?.showBranch && effectiveScope !== "COMPANY");
   const showDepartment = Boolean(config?.showDepartment && effectiveScope === "DEPARTMENT");
-  const companyFixed = showCompany && Boolean(actorCompanyId) && !actorIsOwner;
+  const companyFixed = showCompany && Boolean(fixedCompanyId || (actorCompanyId && !actorIsOwner));
   const branchFixed = showBranch && Boolean(actorBranchId) && !actorIsOwner;
   const departmentFixed = showDepartment && Boolean(actorDepartmentId) && !actorIsOwner;
 
@@ -89,11 +109,13 @@ export function UserCreateForm({
 
   function resetOrganizationForRole(nextRole: UserRole) {
     const nextConfig = userProvisioningRoleConfig(nextRole);
-    setCompanyId(nextConfig?.showCompany ? actorCompanyId ?? "" : "");
+    setCompanyId(nextConfig?.showCompany ? fixedCompanyId ?? actorCompanyId ?? "" : "");
     setBranchId(nextConfig?.showBranch ? actorBranchId ?? "" : "");
     setDepartmentId(nextConfig?.showDepartment ? actorDepartmentId ?? "" : "");
     const firstScope = nextConfig?.creationScopes[0];
-    setRequesterScope(firstScope === "DEPARTMENT" ? "DEPARTMENT" : "BRANCH");
+    setRequesterScope(requesterScopeFixedToDepartment || firstScope === "DEPARTMENT"
+      ? "DEPARTMENT"
+      : "BRANCH");
   }
 
   function changeRole(nextRole: UserRole | "") {
@@ -102,11 +124,17 @@ export function UserCreateForm({
       setCompanyId("");
       setBranchId("");
       setDepartmentId("");
+      setCustomizePermissions(false);
+      setSelectedPermissions(new Set());
       return;
     }
     if (role && role !== nextRole) setRoleChanged(true);
     setRole(nextRole);
     resetOrganizationForRole(nextRole);
+    setCustomizePermissions(false);
+    const defaults = roleOptions.find((option) => option.value === nextRole)
+      ?.defaultPermissions ?? [];
+    setSelectedPermissions(new Set(defaults));
   }
 
   function changeCompany(nextCompanyId: string) {
@@ -132,7 +160,11 @@ export function UserCreateForm({
           : true;
 
   return (
-    <form action={createUserAction} data-draft-id="create-user">
+    <form action={createAction} data-draft-id="create-user">
+      <input type="hidden" name="creationContext" value={creationContext ?? (fixedCompanyId || actorCompanyId ? "COMPANY" : "PLATFORM")} />
+      {customizePermissions
+        ? <input type="hidden" name="permissionsCustomized" value="true" />
+        : null}
       <div className="form-grid">
         <label>{copy.fullName}<input name="displayName" required autoComplete="name" /></label>
         <label>{copy.workEmail}<input name="email" type="email" required autoComplete="username" /></label>
@@ -175,11 +207,41 @@ export function UserCreateForm({
               <ul>
                 {accessGroups.map((group) => <li key={group}>{copy.accessGroups[group] ?? group}</li>)}
               </ul>
+              {canCustomizePermissions && selectedRole.customizablePermissions?.length ? (
+                <div style={{ marginBlockStart: 16 }}>
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    aria-expanded={customizePermissions}
+                    onClick={() => setCustomizePermissions((current) => !current)}
+                  >
+                    {customizePermissions ? copy.useRoleDefaults : copy.customizePermissions}
+                  </button>
+                  <p className="subtle">{copy.customizePermissionsHelp}</p>
+                </div>
+              ) : null}
             </div>
           </section>
         ) : null}
 
-        {role === "REQUESTER" ? (
+        {customizePermissions && selectedRole?.customizablePermissions?.length ? (
+          <section className="panel field-full" aria-labelledby="create-user-permissions-title">
+            <div className="panel-header"><div>
+              <h3 id="create-user-permissions-title">{copy.customizePermissions}</h3>
+              <p>{copy.customizePermissionsHelp}</p>
+            </div></div>
+            <div className="panel-body">
+              <PermissionChecklist
+                locale={defaultLocale}
+                options={selectedRole.customizablePermissions}
+                selected={selectedPermissions}
+                onChange={setSelectedPermissions}
+              />
+            </div>
+          </section>
+        ) : null}
+
+        {role === "REQUESTER" && !requesterScopeFixedToDepartment ? (
           <label className="field-full">{copy.assignmentLevel}
             <select value={requesterScope} onChange={(event) => changeRequesterScope(event.target.value as "BRANCH" | "DEPARTMENT")}>
               <option value="BRANCH">{copy.branchScope}</option>
@@ -196,7 +258,7 @@ export function UserCreateForm({
             </select>
           </label>
         ) : null}
-        {companyFixed ? <input type="hidden" name="companyId" value={actorCompanyId} /> : null}
+        {companyFixed ? <input type="hidden" name="companyId" value={fixedCompanyId ?? actorCompanyId} /> : null}
 
         {showBranch && !branchFixed ? (
           <label>{copy.assignedBranch}

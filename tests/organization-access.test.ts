@@ -15,6 +15,8 @@ import {
   loadOrganizationResourceAccess,
   OrganizationAccessUnavailableError,
 } from "@/lib/organization-access";
+import { registerDemoCompanyManagerCoverage } from "@/lib/company-lifecycle";
+import { getDemoStore } from "@/lib/demo-data";
 
 const ids = {
   actor: "10000000-0000-4000-8000-000000000044",
@@ -238,5 +240,30 @@ describe("organization isolation service", () => {
     });
     await expect(loadOrganizationDirectory(actor, capturedAt))
       .rejects.toThrow("The requested organization resource is unavailable.");
+  });
+
+  it("keeps the demo CAM directory inside explicit company coverage", async () => {
+    mocks.isDemoMode.mockReturnValue(true);
+    global.__axoraDemoCompanyManagerAssignments = undefined;
+    const cam: AuthenticatedSessionUser = {
+      ...actor,
+      id: "20222222-2222-4222-8222-222222222222",
+      accountKind: "PLATFORM",
+      scopeType: "PLATFORM",
+      companyId: undefined,
+    };
+    expect((await loadOrganizationDirectory(cam, capturedAt)).companies).toEqual([]);
+
+    const assignedCompany = getDemoStore().companies[0]!;
+    registerDemoCompanyManagerCoverage(
+      assignedCompany.id,
+      cam.id,
+      "Owner fixture",
+      "Explicit portfolio assignment",
+      capturedAt,
+    );
+    const directory = await loadOrganizationDirectory(cam, capturedAt);
+    expect(directory.companies.map((company) => company.id)).toEqual([assignedCompany.id]);
+    expect(directory.branches.every((branch) => branch.companyId === assignedCompany.id)).toBe(true);
   });
 });

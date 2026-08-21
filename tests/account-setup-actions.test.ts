@@ -208,6 +208,102 @@ describe("account invitation actions", () => {
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
 
+  it("keeps invalid company-user feedback inside the fixed company workspace", async () => {
+    const form = userForm();
+    form.set("creationContext", "COMPANY");
+    form.set("preferredLocale", "xx");
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      `REDIRECT:/companies/${actor.companyId}/users?notice=user-creation-invalid`,
+    );
+    expect(mocks.createInvitedUser).not.toHaveBeenCalled();
+  });
+
+  it("creates delivery workforce identities only from the delivery workspace", async () => {
+    const owner = {
+      ...actor,
+      role: "PLATFORM_OWNER",
+      accountKind: "PLATFORM",
+      isOwner: true,
+    };
+    mocks.requirePermission.mockResolvedValue(owner);
+    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
+    const form = new FormData();
+    form.set("creationContext", "DELIVERY");
+    form.set("email", "driver@example.test");
+    form.set("displayName", "Delivery Driver");
+    form.set("role", "DELIVERY_GUY");
+    form.set("preferredLocale", "ms");
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      "REDIRECT:/deliveries?notice=user-invited",
+    );
+    expect(mocks.createInvitedUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "DELIVERY_GUY" }),
+      owner,
+    );
+  });
+
+  it("rejects a delivery identity forged into the Axora Users workspace", async () => {
+    mocks.requirePermission.mockResolvedValue({
+      ...actor,
+      role: "PLATFORM_OWNER",
+      accountKind: "PLATFORM",
+      isOwner: true,
+    });
+    const form = new FormData();
+    form.set("creationContext", "PLATFORM");
+    form.set("email", "driver@example.test");
+    form.set("displayName", "Delivery Driver");
+    form.set("role", "DELIVERY_GUY");
+    form.set("preferredLocale", "en");
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      "REDIRECT:/users?notice=user-creation-invalid",
+    );
+    expect(mocks.createInvitedUser).not.toHaveBeenCalled();
+  });
+
+  it("keeps protected Platform Owner permissions on canonical defaults", async () => {
+    mocks.requirePermission.mockResolvedValue({
+      ...actor,
+      role: "PLATFORM_OWNER",
+      accountKind: "PLATFORM",
+      isOwner: true,
+    });
+    const form = new FormData();
+    form.set("creationContext", "PLATFORM");
+    form.set("email", "second-owner@example.test");
+    form.set("displayName", "Second Owner");
+    form.set("role", "PLATFORM_OWNER");
+    form.set("preferredLocale", "en");
+    form.set("permissionsCustomized", "true");
+    form.append("permissions", "dashboard.view");
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      "REDIRECT:/users?notice=user-creation-invalid",
+    );
+    expect(mocks.createInvitedUser).not.toHaveBeenCalled();
+  });
+
+  it("rejects owner-only wallet recording on a company identity", async () => {
+    mocks.requirePermission.mockResolvedValue({
+      ...actor,
+      role: "PLATFORM_OWNER",
+      accountKind: "PLATFORM",
+      isOwner: true,
+    });
+    const form = userForm();
+    form.set("creationContext", "COMPANY");
+    form.set("permissionsCustomized", "true");
+    form.append("permissions", "finance.wallet.top_up.record");
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      `REDIRECT:/companies/${actor.companyId}/users?notice=user-creation-invalid`,
+    );
+    expect(mocks.createInvitedUser).not.toHaveBeenCalled();
+  });
+
   it("keeps the account and reports when email delivery is disabled", async () => {
     mocks.sendEmail.mockResolvedValue({ succeeded: false, status: "disabled" });
 

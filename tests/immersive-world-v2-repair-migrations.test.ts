@@ -41,6 +41,23 @@ async function makePaymentDeliverable(db: PGlite, paymentId: string) {
   await db.exec("SET session_replication_role=origin");
 }
 
+async function configurePaymentBranchLocation(db: PGlite, paymentId: string) {
+  const branch = await db.query<{ id: string }>(`
+    SELECT request.branch_id::text AS id
+    FROM payments payment
+    JOIN invoices invoice ON invoice.id=payment.invoice_id
+    JOIN requests request ON request.id=invoice.request_id
+    WHERE payment.id=$1
+  `, [paymentId]);
+  await db.query(`
+    SELECT axora_save_branch_delivery_location(
+      $1,$2,$3,'Native delivery fixture',3.139000,101.686900,
+      'Use the controlled fixture entrance','Configure delivery test location',
+      'da000000-0000-4000-8000-000000000010',now()
+    )
+  `, [ownerId,ownerAssignmentId,branch.rows[0]!.id]);
+}
+
 describe("immersive world V2 repair migrations", () => {
   it("never disables trigger or constraint enforcement in the V2 migration chain", async () => {
     for (const migration of [
@@ -124,6 +141,7 @@ describe("immersive world V2 repair migrations", () => {
       await installOwner(db);
       const payment = (await db.query<{ id: string }>("SELECT id FROM payments ORDER BY id LIMIT 1")).rows[0]!.id;
       await makePaymentDeliverable(db, payment);
+      await configurePaymentBranchLocation(db, payment);
       const jobId = (await db.query<{ value: string }>("SELECT axora_ensure_available_job_for_paid_payment($1,now()) AS value", [payment])).rows[0]!.value;
 
       const drivers = [
@@ -169,6 +187,32 @@ describe("immersive world V2 repair migrations", () => {
         WHERE delivery_job_id=$1 AND ended_at IS NULL
       `, [jobId]);
       expect(assignmentCount.rows[0]?.count).toBe(1);
+
+      const winningIndex = claims.findIndex((claim) => claim.status === "fulfilled");
+      const winner = drivers[winningIndex]!;
+      const replay = await db.query<{ value: {
+        assignmentId: string; jobId: string; status: string; created: boolean;
+      } }>(
+        "SELECT axora_claim_available_delivery_job($1,$2,$3,$4,now()) AS value",
+        [winner.user,winner.assignment,jobId,winner.command],
+      );
+      expect(replay.rows[0]?.value).toMatchObject({
+        jobId,status: "ASSIGNED",created: false,
+      });
+      await expect(db.query(
+        "SELECT axora_claim_available_delivery_job($1,$2,$3,$4,now())",
+        [
+          winner.user,winner.assignment,
+          "da000000-0000-4000-8000-000000000099",winner.command,
+        ],
+      )).rejects.toThrow(/AXORA_DELIVERY_CLAIM_COMMAND_CONFLICT/);
+      await expect(db.query(
+        "SELECT axora_claim_available_delivery_job($1,$2,$3,$4,now())",
+        [
+          winner.user,drivers[(winningIndex + 1) % drivers.length]!.assignment,
+          jobId,winner.command,
+        ],
+      )).rejects.toThrow(/AXORA_DELIVERY_CLAIM_COMMAND_CONFLICT/);
 
       await expect(db.query(
         "SELECT axora_release_stuck_delivery_job($1,$2,$3,$4,$5,now())",

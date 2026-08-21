@@ -4,6 +4,7 @@ import { isDemoMode } from "./db";
 import type { SessionUser } from "./auth";
 import { canAccess } from "./permissions";
 import { getBudgetWorkspace, setBudgetAllocation } from "./budget-ledger";
+import { parseMoneyDecimal } from "./money-decimal";
 
 export async function setBranchMonthlyBudget(
   branchId: string,
@@ -37,7 +38,7 @@ export async function setBranchMonthlyBudget(
   await setBudgetAllocation({
     actor,
     accountId: account.id,
-    amount: monthlyBudget ?? 0,
+    amount: parseMoneyDecimal(String(monthlyBudget ?? 0), { allowNegative: false }),
     explanation: monthlyBudget === null
       ? "Branch recurring budget cleared"
       : "Branch recurring budget updated",

@@ -45,6 +45,7 @@ interface RequestRow extends QueryResultRow {
   notes?: string;
   issueReason?: string;
   approvalStatus: ProcurementRequest["approvalStatus"];
+  approvalRevision?: number;
   approvalReason?: string;
   approvedByName?: string;
   subtotal: number;
@@ -108,6 +109,7 @@ function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
         notes: row.notes,
         issueReason: row.issueReason,
         approvalStatus: row.approvalStatus,
+        approvalRevision: row.approvalRevision,
         approvalReason: row.approvalReason,
         approvedByName: row.approvedByName,
         subtotal: Number(row.subtotal ?? 0),
@@ -191,6 +193,7 @@ const requestSelect = `SELECT
   r.notes,
   r.issue_reason AS "issueReason",
   COALESCE(approval.status,'Pending') AS "approvalStatus",
+  r.approval_revision::int AS "approvalRevision",
   approval.reason AS "approvalReason",
   approval.reviewer_name AS "approvedByName",
   COALESCE(request_total.subtotal,0)::float8 AS subtotal,

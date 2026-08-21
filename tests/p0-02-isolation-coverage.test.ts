@@ -44,10 +44,11 @@ describe("P0-02 active isolation coverage", () => {
   });
 
   it("uses exact-assignment user and organization administration", async () => {
-    const [users, newUser, userActions, userRuntime, accountSetup, newRequest,
-      settingsAction] = await Promise.all([
+    const [users, newUser, newCompanyUser, userActions, userRuntime,
+      accountSetup, newRequest, settingsAction] = await Promise.all([
         source("src/app/(portal)/users/page.tsx"),
         source("src/app/(portal)/users/new/page.tsx"),
+        source("src/app/(portal)/companies/[companyId]/users/new/page.tsx"),
         source("src/app/(portal)/users/actions.ts"),
         source("src/lib/user-isolation.ts"),
         source("src/lib/account-setup.ts"),
@@ -56,7 +57,10 @@ describe("P0-02 active isolation coverage", () => {
       ]);
 
     expect(users).toContain("listAuthorizedUsers(actor)");
-    expect(newUser).toContain("loadOrganizationDirectory(actor)");
+    expect(newUser).not.toContain("loadOrganizationDirectory(actor)");
+    expect(newUser).toContain('creationContext="PLATFORM"');
+    expect(newCompanyUser).toContain("loadOrganizationDirectory(actor)");
+    expect(newCompanyUser).toContain('creationContext="COMPANY"');
     expect(users).not.toContain("listUsers(actor)");
     expect(users).not.toContain("listCompanies(actor)");
     expect(users).not.toContain("listBranches(actor)");

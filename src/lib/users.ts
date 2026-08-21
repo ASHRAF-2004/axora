@@ -17,13 +17,32 @@ declare global {
 }
 
 function demoUsers() {
-  if (!global.__axoraDemoUsers) global.__axoraDemoUsers = [{ id: "demo-admin", email: process.env.DEMO_EMAIL || "demo@axora.local",
-    displayName: "Axora demo administrator", role: "ADMIN", active: true, isOwner: true, createdAt: new Date().toISOString() }];
+  if (!global.__axoraDemoUsers) global.__axoraDemoUsers = [{
+    id: "demo-admin",
+    email: process.env.DEMO_EMAIL || "demo@axora.local",
+    displayName: "Axora demo administrator",
+    role: "PLATFORM_OWNER",
+    active: true,
+    isOwner: true,
+    accountKind: "PLATFORM",
+    scopeType: "PLATFORM",
+    accountStatus: "ACTIVE",
+    accountSetupCompletedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  }];
   return global.__axoraDemoUsers;
 }
 
 export async function listUsers(actor: SessionUser): Promise<UserRecord[]> {
-  if (isDemoMode()) return demoUsers();
+  if (isDemoMode()) {
+    if (actor.isOwner) return demoUsers().map((user) => ({ ...user }));
+    if (actor.accountKind !== "COMPANY" || !actor.companyId) return [];
+    return demoUsers().filter((user) => (
+      user.accountKind === "COMPANY"
+      && user.companyId === actor.companyId
+      && (!actor.branchId || user.branchId === actor.branchId || user.id === actor.id)
+    )).map((user) => ({ ...user }));
+  }
   const result = await query<UserRecord>(`SELECT u.id::text,u.email,u.display_name AS "displayName",
     COALESCE(scoped_role.role_key,legacy_role.role_key) AS role,u.active,
     u.is_owner AS "isOwner",u.account_kind AS "accountKind",u.account_status AS "accountStatus",
@@ -117,6 +136,80 @@ export interface ValidatedUserCreation extends ResolvedUserCreation {
   organizationName: string;
   branchName?: string;
   departmentName?: string;
+}
+
+export function registerDemoInvitedUser(
+  input: ResolvedUserCreation,
+  details: {
+    userId: string;
+    organizationName: string;
+    branchName?: string;
+    departmentName?: string;
+    expiresAt: string;
+  },
+) {
+  if (!isDemoMode()) throw new Error("Demo account registration is unavailable.");
+  if (demoUsers().some((user) => user.email.toLowerCase() === input.email.toLowerCase())) {
+    throw new Error("An account already uses this email address.");
+  }
+  const record: UserRecord = {
+    id: details.userId,
+    email: input.email,
+    displayName: input.displayName,
+    role: input.role,
+    active: true,
+    isOwner: input.role === "PLATFORM_OWNER",
+    accountKind: input.accountKind,
+    scopeType: input.scopeType,
+    accountStatus: "INVITED",
+    ...(input.companyId ? {
+      companyId: input.companyId,
+      companyName: details.organizationName,
+    } : {}),
+    ...(input.branchId ? {
+      branchId: input.branchId,
+      branchName: details.branchName,
+    } : {}),
+    ...(input.departmentId ? {
+      departmentId: input.departmentId,
+      departmentName: details.departmentName,
+    } : {}),
+    ...(input.supplierId ? {
+      supplierId: input.supplierId,
+      supplierName: details.organizationName,
+    } : {}),
+    ...(input.jobTitle ? { jobTitle: input.jobTitle } : {}),
+    accountSetupDeliveryStatus: "PENDING",
+    accountSetupExpiresAt: details.expiresAt,
+    createdAt: new Date().toISOString(),
+  };
+  demoUsers().push(record);
+  return { ...record };
+}
+
+export function updateDemoInvitationDelivery(
+  userId: string,
+  status: NonNullable<UserRecord["accountSetupDeliveryStatus"]>,
+) {
+  const user = demoUsers().find((item) => item.id === userId);
+  if (!user || user.accountStatus !== "INVITED") return false;
+  user.accountSetupDeliveryStatus = status;
+  user.accountSetupDeliveryAttemptedAt = new Date().toISOString();
+  if (status === "SENT") user.accountSetupSentAt = user.accountSetupDeliveryAttemptedAt;
+  return true;
+}
+
+export function replaceDemoInvitation(
+  userId: string,
+  expiresAt: string,
+) {
+  const user = demoUsers().find((item) => item.id === userId);
+  if (!user || !user.active || user.accountStatus !== "INVITED") return undefined;
+  user.accountSetupDeliveryStatus = "PENDING";
+  user.accountSetupExpiresAt = expiresAt;
+  user.accountSetupSentAt = undefined;
+  user.accountSetupDeliveryAttemptedAt = undefined;
+  return { ...user };
 }
 
 const USER_EMAIL_SCHEMA = z.email().max(254);

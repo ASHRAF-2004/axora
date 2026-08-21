@@ -10,6 +10,7 @@ import {
 import { isDemoMode, query } from "./db";
 import { getDemoStore } from "./demo-data";
 import { loadEffectiveAccess } from "./effective-access";
+import { demoCompanyVisibleToActor } from "./company-lifecycle";
 import type { Branch, Company } from "./types";
 
 const uuidSchema = z.string().uuid();
@@ -269,6 +270,9 @@ async function demoDirectory(
   const effective = await loadEffectiveAccess(actor, capturedAt);
   const store = getDemoStore();
   const companies = store.companies.filter((company) => {
+    if (actor.accountKind === "PLATFORM"
+      && actor.role === "CLIENT_ACCOUNT_MANAGER"
+      && !demoCompanyVisibleToActor(actor, company.id)) return false;
     const contexts = companyPermissionContexts(effective.subject, company.id);
     return permissionAtAnyScope(
       effective.subject,
@@ -289,6 +293,9 @@ async function demoDirectory(
   ));
 
   const branches = store.branches.flatMap((branch) => {
+    if (actor.accountKind === "PLATFORM"
+      && actor.role === "CLIENT_ACCOUNT_MANAGER"
+      && !demoCompanyVisibleToActor(actor, branch.companyId)) return [];
     const contexts = branchPermissionContexts(effective.subject, branch);
     if (!permissionAtAnyScope(
       effective.subject,

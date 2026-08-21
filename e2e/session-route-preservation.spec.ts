@@ -128,6 +128,32 @@ test("refresh preserves the authorized path, filters, and selected fragment", as
   await expect(page.getByLabel("Filter by status")).toHaveValue("open");
 });
 
+test("Back and Forward reconstruct query-based workspace state", async ({ page }) => {
+  await signInAsDemoOwner(page);
+  await page.goto("/requests?q=paper&status=open&sort=amount-desc#request-table");
+  await expect(page.getByLabel("Search requests")).toHaveValue("paper");
+  await page.goto("/requests?q=toner&status=Approved&sort=submitted-asc#request-table");
+  await expect(page.getByLabel("Search requests")).toHaveValue("toner");
+  await expect(page.getByLabel("Filter by status")).toHaveValue("Approved");
+  await expect(page.getByLabel("Sort requests")).toHaveValue("submitted-asc");
+
+  await page.goBack();
+  await expect(page).toHaveURL(
+    /\/requests\?q=paper&status=open&sort=amount-desc#request-table$/,
+  );
+  await expect(page.getByLabel("Search requests")).toHaveValue("paper");
+  await expect(page.getByLabel("Filter by status")).toHaveValue("open");
+  await expect(page.getByLabel("Sort requests")).toHaveValue("amount-desc");
+
+  await page.goForward();
+  await expect(page).toHaveURL(
+    /\/requests\?q=toner&status=Approved&sort=submitted-asc#request-table$/,
+  );
+  await expect(page.getByLabel("Search requests")).toHaveValue("toner");
+  await expect(page.getByLabel("Filter by status")).toHaveValue("Approved");
+  await expect(page.getByLabel("Sort requests")).toHaveValue("submitted-asc");
+});
+
 test("an expired cookie resumes the exact prior route after login", async ({ page }) => {
   await signInAsDemoOwner(page);
   await page.goto("/requests?q=paper&status=open#request-table");

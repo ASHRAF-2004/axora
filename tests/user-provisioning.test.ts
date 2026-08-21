@@ -106,7 +106,7 @@ describe("Create User payload shape validation", () => {
 });
 
 describe("Create User progressive UI source contract", () => {
-  it("starts with universal fields, preserves draft identity, and has no global permission matrix", async () => {
+  it("starts with universal fields and reveals scoped customization only after role selection", async () => {
     const source = await readFile(
       new URL("../src/components/UserCreateForm.tsx", import.meta.url),
       "utf8",
@@ -117,8 +117,13 @@ describe("Create User progressive UI source contract", () => {
     expect(source).toContain("changeCompany");
     expect(source).toContain('setBranchId("")');
     expect(source).toContain('setDepartmentId("")');
-    expect(source).not.toContain("PermissionChecklist");
-    expect(source).not.toContain('name="permissions"');
+    expect(source).toContain("PermissionChecklist");
+    expect(source).toContain("permissionsCustomized");
+    expect(source).toContain("customizablePermissions");
+    expect(source).toContain("requesterScopeFixedToDepartment");
+    expect(source).toContain(
+      'role === "REQUESTER" && !requesterScopeFixedToDepartment',
+    );
   });
 
   it("uses centralized English, Arabic and Malay role/access copy", async () => {

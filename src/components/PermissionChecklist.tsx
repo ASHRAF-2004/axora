@@ -2,6 +2,7 @@
 
 import type { PermissionCode } from "@/lib/authorization-policy";
 import type { SupportedLocale } from "@/lib/i18n";
+import { localizePermissionOption } from "@/lib/permission-catalog-i18n";
 
 export interface PermissionChecklistOption {
   code: PermissionCode;
@@ -29,7 +30,8 @@ export function PermissionChecklist({
   onChange: (next: Set<PermissionCode>) => void;
 }) {
   const groups = new Map<string, PermissionChecklistOption[]>();
-  for (const option of options) {
+  for (const original of options) {
+    const option = localizePermissionOption(original, locale);
     const group = groups.get(option.group) ?? [];
     group.push(option);
     groups.set(option.group, group);

@@ -79,20 +79,13 @@ export default async function ContactPage({
           <div className="field-full"><h2>{lead.publicTitle}</h2><p>{lead.publicIntro}</p></div>
           <label>{lead.legalName}<input name="companyLegalName" autoComplete="organization" minLength={2} maxLength={300} required /></label>
           <label>{lead.displayName}<input name="companyName" autoComplete="organization" minLength={2} maxLength={200} required /></label>
-          <label>{lead.registrationNumber}<input name="registrationNumber" maxLength={160} /></label>
           <label>{lead.industry}<input name="industry" minLength={2} maxLength={200} required /></label>
           <label>{lead.contactName}<input name="contactName" autoComplete="name" minLength={2} maxLength={200} required /></label>
-          <label>{lead.businessEmail}<input name="contactEmail" type="email" inputMode="email" dir="ltr" autoComplete="email" maxLength={254} required /></label>
-          <label>{lead.countryCode}<input name="phoneCountryCode" type="tel" dir="ltr" defaultValue="+60" pattern="\\+[0-9]{1,4}" maxLength={12} required /></label>
-          <label>{lead.phone}<input name="phone" type="tel" dir="ltr" autoComplete="tel-national" minLength={3} maxLength={40} required /></label>
-          <label>{lead.country}<input name="country" autoComplete="country-name" minLength={2} maxLength={120} required /></label>
-          <label>{lead.region}<input name="region" autoComplete="address-level1" minLength={2} maxLength={160} required /></label>
           <label>{lead.city}<input name="city" autoComplete="address-level2" minLength={2} maxLength={160} required /></label>
           <label>{lead.employees}<select name="employeeRange" required defaultValue=""><option value="" disabled>-</option>{employeeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>{lead.branches}<select name="branchRange" required defaultValue=""><option value="" disabled>-</option>{branchOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>{lead.spend}<select name="spendRange" required defaultValue=""><option value="" disabled>-</option>{spendOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>{lead.contactMethod}<select name="contactMethod" required defaultValue="EMAIL">{contactMethods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>{lead.contactTime}<input name="contactTime" maxLength={160} placeholder={locale === "ar" ? "مثال: أيام العمل صباحًا" : locale === "ms" ? "Contoh: pagi hari bekerja" : "Example: weekday mornings"} /></label>
           <label>{lead.timezone}<input name="contactTimezone" dir="ltr" defaultValue="Asia/Kuala_Lumpur" minLength={1} maxLength={80} required /></label>
           <label className="field-full">{lead.subject}<input name="subject" minLength={3} maxLength={200} required /></label>
           <label className="field-full">{lead.message}<textarea name="message" rows={7} minLength={10} maxLength={5000} required /></label>
