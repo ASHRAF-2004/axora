@@ -64,6 +64,7 @@ describe("one-shot account setup email delivery", () => {
     await expect(recordAccountSetupDelivery(invitationId, {
       succeeded: true,
       providerMessageId: "provider-message-123",
+      providerName: "resend",
       status: "sent",
     })).resolves.toBe(true);
 
@@ -76,6 +77,7 @@ describe("one-shot account setup email delivery", () => {
       "SENT",
       true,
       "provider-message-123",
+      "resend",
     ]);
   });
 

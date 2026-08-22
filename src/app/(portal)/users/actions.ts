@@ -60,6 +60,7 @@ async function deliverInvitation(
     await recordAccountSetupDelivery(invitation.invitationId, {
       succeeded: delivery.succeeded,
       providerMessageId: delivery.providerMessageId,
+      providerName: delivery.providerName,
       status: delivery.status,
     });
   } catch {

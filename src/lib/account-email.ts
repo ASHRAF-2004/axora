@@ -24,6 +24,7 @@ const seenServiceRequestIds = new Map<string, number>();
 export interface AccountSetupEmailDelivery {
   succeeded: boolean;
   providerMessageId?: string;
+  providerName?: "resend";
   status: "sent" | "disabled" | "failed" | "uncertain";
 }
 
@@ -227,6 +228,7 @@ export async function sendAccountSetupEmail(
 
   let outcome: AccountSetupEmailDelivery["status"] = "uncertain";
   let providerMessageId: string | undefined;
+  let providerName: "resend" | undefined;
   let requestStarted = false;
   try {
     const url = emailSenderUrl();
@@ -269,6 +271,9 @@ export async function sendAccountSetupEmail(
       providerMessageId = safeProviderMessageId(
         (result as Record<string, unknown> | undefined)?.messageId,
       );
+      if ((result as Record<string, unknown> | undefined)?.providerName === "resend") {
+        providerName = "resend";
+      }
     }
   } catch (error) {
     if (error instanceof Error && error.message === "invalid_provider_message_id") {
@@ -282,6 +287,7 @@ export async function sendAccountSetupEmail(
     return {
       succeeded: true,
       ...(providerMessageId ? { providerMessageId } : {}),
+      ...(providerName ? { providerName } : {}),
       status: "sent",
     };
   }

@@ -215,6 +215,7 @@ export async function inviteCompanyAdministratorAction(formData: FormData) {
     await recordAccountSetupDelivery(invitation.invitationId, {
       succeeded: delivery.succeeded,
       providerMessageId: delivery.providerMessageId,
+      providerName: delivery.providerName,
       status: delivery.status,
     });
     deliveryRecorded = true;

@@ -29,6 +29,25 @@ export const resendQuotaSnapshotSchema = z.object({
 
 export type ResendQuotaSnapshot = z.infer<typeof resendQuotaSnapshotSchema>;
 
+export const trackedEmailUsageSchema = z.object({
+  provider: z.literal("resend"),
+  initialized: z.boolean(),
+  openingApplies: z.boolean(),
+  periodTimezone: z.literal("UTC"),
+  monthStart: z.string(),
+  dayStart: z.string(),
+  monthlyUsed: z.number().int().min(0).max(RESEND_QUOTA_MAXIMUM),
+  dailyUsed: z.number().int().min(0).max(RESEND_QUOTA_MAXIMUM),
+  monthlyOpeningUsed: z.number().int().min(0).max(RESEND_QUOTA_MAXIMUM),
+  dailyOpeningUsed: z.number().int().min(0).max(RESEND_QUOTA_MAXIMUM),
+  baselineAt: z.iso.datetime({ offset: true }).nullable(),
+  baselineSource: z.literal("USER_CONFIRMED_RESEND_DASHBOARD").nullable(),
+  lastCountedAt: z.iso.datetime({ offset: true }).nullable(),
+  lastRecordedAt: z.iso.datetime({ offset: true }).nullable(),
+});
+
+export type TrackedEmailUsage = z.infer<typeof trackedEmailUsageSchema>;
+
 function configuredQuotaLimit(value: string | undefined) {
   if (!/^[1-9][0-9]*$/.test(value ?? "")) return undefined;
   const parsed = Number(value);
@@ -195,7 +214,7 @@ export interface EmailOperationsWorkspace {
   dailyUsage: Array<{ day: string; recipientUnits: number; attempts: number }>;
   providerRuntime: EmailProviderRuntimeReadiness;
   providerHealth?: EmailProviderHealth;
-  resendQuota?: ResendQuotaSnapshot;
+  trackedUsage: TrackedEmailUsage;
   webhooks: Array<{
     providerName: string;
     periodStart: string;
@@ -252,8 +271,8 @@ const WEBHOOK_FAILURE_SQL = `
   SELECT public.axora_record_email_webhook_failure($1::text,$2::text)
 `;
 
-const RESEND_QUOTA_READ_SQL = `
-  SELECT public.axora_current_resend_quota_snapshot() AS snapshot
+const TRACKED_USAGE_READ_SQL = `
+  SELECT public.axora_current_email_usage() AS usage
 `;
 
 const RESEND_QUOTA_WRITE_SQL = `
@@ -495,18 +514,23 @@ function demoWorkspace(actor: SessionUser, filters: EmailOperationsFilters): Ema
       configurationState: "HEALTHY",
       capturedAt: new Date(now.getTime() - 3_600_000).toISOString(),
     } : undefined,
-    resendQuota: actor.isOwner && actor.accountKind === "PLATFORM"
-      && process.env.AXORA_DEMO_RESEND_QUOTA_AVAILABLE !== "false" ? {
+    trackedUsage: {
       provider: "resend",
-      plan: "FREE",
-      monthlyUsed: 8,
-      monthlyLimit: 3_000,
-      dailyUsed: 0,
-      dailyLimit: 100,
-      source: "PROVIDER_RESPONSE_HEADER",
-      responseStatusClass: 2,
-      capturedAt: new Date(now.getTime() - 60_000).toISOString(),
-    } : undefined,
+      initialized: true,
+      openingApplies: true,
+      periodTimezone: "UTC",
+      monthStart: now.toISOString().slice(0, 7) + "-01",
+      dayStart: now.toISOString().slice(0, 10),
+      monthlyUsed: 8 + (process.env.AXORA_DEMO_EMAIL_USAGE_ACCEPTED_AFTER_BASELINE === "1" ? 1 : 0),
+      dailyUsed: process.env.AXORA_DEMO_EMAIL_USAGE_ACCEPTED_AFTER_BASELINE === "1" ? 1 : 0,
+      monthlyOpeningUsed: 8,
+      dailyOpeningUsed: 0,
+      baselineAt: new Date(now.getTime() - 60_000).toISOString(),
+      baselineSource: "USER_CONFIRMED_RESEND_DASHBOARD",
+      lastCountedAt: process.env.AXORA_DEMO_EMAIL_USAGE_ACCEPTED_AFTER_BASELINE === "1"
+        ? now.toISOString() : null,
+      lastRecordedAt: now.toISOString(),
+    },
     webhooks: canManage ? [{
       providerName: "resend",
       periodStart: now.toISOString(),
@@ -548,11 +572,12 @@ export async function getEmailOperationsWorkspace(
       if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
         return query.rows[0].workspace;
       }
-      const quotaQuery = await client.query<{ snapshot: unknown }>(RESEND_QUOTA_READ_SQL);
-      const snapshot = resendQuotaSnapshotSchema.safeParse(quotaQuery.rows[0]?.snapshot);
+      const usageQuery = await client.query<{ usage: unknown }>(TRACKED_USAGE_READ_SQL);
+      const usage = trackedEmailUsageSchema.safeParse(usageQuery.rows[0]?.usage);
+      if (!usage.success) throw new Error("email_operations_unavailable");
       return {
         ...query.rows[0].workspace,
-        ...(snapshot.success ? { resendQuota: snapshot.data } : {}),
+        trackedUsage: usage.data,
       };
     },
   );
@@ -670,7 +695,7 @@ export const emailOperationsInternals = {
     workspace: WORKSPACE_SQL,
     command: COMMAND_SQL,
     webhookFailure: WEBHOOK_FAILURE_SQL,
-    resendQuotaRead: RESEND_QUOTA_READ_SQL,
+    trackedUsageRead: TRACKED_USAGE_READ_SQL,
     resendQuotaWrite: RESEND_QUOTA_WRITE_SQL,
   },
 };
