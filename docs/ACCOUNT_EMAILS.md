@@ -197,6 +197,9 @@ Current outbound runtime configuration is intentionally narrow:
 
 ```dotenv
 AXORA_EMAIL_PROVIDER=resend
+AXORA_RESEND_PLAN=FREE
+AXORA_RESEND_MONTHLY_LIMIT=3000
+AXORA_RESEND_DAILY_LIMIT=100
 AXORA_EMAIL_DELIVERY_ENABLED=false
 AXORA_EMAIL_EVENTS_ENABLED=false
 AXORA_EMAIL_FROM_ADDRESS=noreply@axora.management
@@ -212,9 +215,11 @@ webhook, and current production readiness gates are verified. Events may be
 enabled before delivery to validate the signed webhook path. A verified-webhook
 claim is invalid if provider events are disabled.
 
-Any `AXORA_EMAIL_PERIOD_RECIPIENT_QUOTA` value is an Axora-owned operating limit
-for local usage presentation. It is not a Resend credit balance or provider
-allowance.
+The Resend plan values are non-secret configuration. Usage is captured only
+from validated `x-resend-monthly-quota` and, on Free accounts,
+`x-resend-daily-quota` response headers. When upgrading, set the plan to
+`PAID`, update the monthly allowance, and leave the daily limit empty if the
+account has no daily quota.
 
 ## Production verification
 

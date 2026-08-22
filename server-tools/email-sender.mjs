@@ -15,6 +15,7 @@ import { renderTransactionalEmail } from "./transactional-email.mjs";
 const MAX_BODY_BYTES = 32 * 1024;
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 const RESEND_MAX_MESSAGE_BYTES = 40 * 1024 * 1024;
+const RESEND_QUOTA_MAXIMUM = 1_000_000_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SIGNATURE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -314,7 +315,83 @@ export function parseResendEmailId(provider) {
   return emailId.trim();
 }
 
-export function createResendEmailProvider({ token, fetchImpl = globalThis.fetch } = {}) {
+function positiveQuotaLimit(value) {
+  if (!/^[1-9][0-9]*$/.test(String(value ?? ""))) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed <= RESEND_QUOTA_MAXIMUM
+    ? parsed : undefined;
+}
+
+function usedQuotaHeader(headers, name) {
+  const raw = headers?.get?.(name);
+  if (raw === null || raw === undefined) return { present: false };
+  if (!/^(0|[1-9][0-9]*)$/.test(raw)) return { present: true, valid: false };
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value <= RESEND_QUOTA_MAXIMUM
+    ? { present: true, valid: true, value }
+    : { present: true, valid: false };
+}
+
+export function resendPlanConfiguration(env = process.env) {
+  const plan = String(env.AXORA_RESEND_PLAN ?? "FREE").trim().toUpperCase();
+  const monthlyLimit = positiveQuotaLimit(env.AXORA_RESEND_MONTHLY_LIMIT ?? "3000");
+  const dailyValue = String(env.AXORA_RESEND_DAILY_LIMIT ?? (plan === "FREE" ? "100" : "")).trim();
+  const dailyLimit = dailyValue ? positiveQuotaLimit(dailyValue) : undefined;
+  if (!['FREE', 'PAID'].includes(plan) || monthlyLimit === undefined
+    || (plan === 'FREE' && dailyLimit === undefined)) {
+    throw new Error("email_not_configured");
+  }
+  return { plan, monthlyLimit, ...(dailyLimit === undefined ? {} : { dailyLimit }) };
+}
+
+export function parseResendQuotaHeaders(response, {
+  env = process.env,
+  capturedAt = new Date(),
+  source = "PROVIDER_RESPONSE_HEADER",
+} = {}) {
+  const monthly = usedQuotaHeader(response?.headers, "x-resend-monthly-quota");
+  const daily = usedQuotaHeader(response?.headers, "x-resend-daily-quota");
+  if (!monthly.present && !daily.present) return undefined;
+  if (!monthly.valid || (daily.present && !daily.valid)) return undefined;
+  let configuration;
+  try {
+    configuration = resendPlanConfiguration(env);
+  } catch {
+    // Quota evidence is supplementary. Invalid display configuration must
+    // never change the outcome of a provider request that already completed.
+    return undefined;
+  }
+  if (configuration.dailyLimit !== undefined && !daily.valid) return undefined;
+  const statusClass = Math.floor(Number(response?.status) / 100);
+  const captured = capturedAt instanceof Date ? capturedAt : new Date(capturedAt);
+  if (!Number.isSafeInteger(statusClass) || statusClass < 2 || statusClass > 5
+    || Number.isNaN(captured.getTime())
+    || !["PROVIDER_RESPONSE_HEADER", "PROVIDER_READ_ONLY_SYNC"].includes(source)) {
+    return undefined;
+  }
+  return {
+    provider: "resend",
+    plan: configuration.plan,
+    monthlyUsed: monthly.value,
+    monthlyLimit: configuration.monthlyLimit,
+    ...(configuration.dailyLimit === undefined ? {
+      dailyUsed: null,
+      dailyLimit: null,
+    } : {
+      dailyUsed: daily.value,
+      dailyLimit: configuration.dailyLimit,
+    }),
+    source,
+    responseStatusClass: statusClass,
+    capturedAt: captured.toISOString(),
+  };
+}
+
+export function createResendEmailProvider({
+  token,
+  fetchImpl = globalThis.fetch,
+  env = process.env,
+} = {}) {
   if (!token) throw new Error("email_not_configured");
   return {
     name: "resend",
@@ -328,6 +405,7 @@ export function createResendEmailProvider({ token, fetchImpl = globalThis.fetch 
         },
         body: resendBody(message),
       }, { fetchImpl });
+      const quotaSnapshot = parseResendQuotaHeaders(response, { env });
       let providerResponse;
       try {
         providerResponse = await response.json();
@@ -335,24 +413,34 @@ export function createResendEmailProvider({ token, fetchImpl = globalThis.fetch 
         providerResponse = undefined;
       }
       if (!response.ok) {
+        let failure;
         if (response.status === 429) {
-          throw emailError("provider_rate_limited", response.status, "retry");
-        }
-        if ([401, 403].includes(response.status)) {
-          throw emailError(
+          failure = emailError("provider_rate_limited", response.status, "retry");
+        } else if ([401, 403].includes(response.status)) {
+          failure = emailError(
             "provider_configuration_incident",
             response.status,
             "configuration",
           );
+        } else if (response.status >= 500) {
+          failure = emailError("provider_unavailable", response.status, "retry");
+        } else {
+          failure = emailError("provider_rejected", response.status, "failed");
         }
-        if (response.status >= 500) {
-          throw emailError("provider_unavailable", response.status, "retry");
-        }
-        throw emailError("provider_rejected", response.status, "failed");
+        if (quotaSnapshot) failure.quotaSnapshot = quotaSnapshot;
+        throw failure;
+      }
+      let messageId;
+      try {
+        messageId = parseResendEmailId(providerResponse);
+      } catch (failure) {
+        if (quotaSnapshot) failure.quotaSnapshot = quotaSnapshot;
+        throw failure;
       }
       return {
         status: "submitted",
-        messageId: parseResendEmailId(providerResponse),
+        messageId,
+        ...(quotaSnapshot ? { quotaSnapshot } : {}),
       };
     },
   };
@@ -403,6 +491,7 @@ export async function sendAccountSetup(payload, {
       provider: configuration.provider,
     }),
     fetchImpl,
+    env,
   });
   if (selectedProvider.name !== "resend") throw new Error("email_not_configured");
   const result = await selectedProvider.send({
@@ -427,6 +516,7 @@ export async function sendAccountSetup(payload, {
     providerName: "resend",
     providerAgent: "axora-auth",
     ...(result.messageId === undefined ? {} : { messageId: result.messageId }),
+    ...(result.quotaSnapshot === undefined ? {} : { quotaSnapshot: result.quotaSnapshot }),
   };
 }
 
@@ -463,6 +553,7 @@ export async function sendTransactionalEmail(payload, {
       provider: configuration.provider,
     }),
     fetchImpl,
+    env,
   });
   if (selectedProvider.name !== "resend") throw new Error("email_not_configured");
   const result = await selectedProvider.send({
@@ -484,6 +575,7 @@ export async function sendTransactionalEmail(payload, {
     providerName: "resend",
     providerAgent,
     ...(result.messageId === undefined ? {} : { messageId: result.messageId }),
+    ...(result.quotaSnapshot === undefined ? {} : { quotaSnapshot: result.quotaSnapshot }),
   };
 }
 
@@ -671,7 +763,12 @@ export function createEmailSenderHandler({
         disposition,
         providerStatus: error?.statusCode,
       }));
-      json(response, status, { succeeded: false, error: category, disposition });
+      json(response, status, {
+        succeeded: false,
+        error: category,
+        disposition,
+        ...(error?.quotaSnapshot ? { quotaSnapshot: error.quotaSnapshot } : {}),
+      });
     }
   };
 }
@@ -703,12 +800,14 @@ async function internalOutboxRequest(body, {
 }
 
 function providerFailureOutcome(error) {
+  const quota = error?.quotaSnapshot ? { quotaSnapshot: error.quotaSnapshot } : {};
   if (error?.disposition === "retry") {
     return {
       outcome: "retry",
       errorCode: error?.message === "provider_rate_limited"
         ? "provider_rate_limited" : "provider_unavailable",
       ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+      ...quota,
     };
   }
   if (error?.disposition === "configuration") {
@@ -716,6 +815,7 @@ function providerFailureOutcome(error) {
       outcome: "paused",
       errorCode: "provider_configuration_incident",
       ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+      ...quota,
     };
   }
   if (error?.disposition === "uncertain") {
@@ -723,12 +823,14 @@ function providerFailureOutcome(error) {
       outcome: "uncertain",
       errorCode: "provider_outcome_uncertain",
       ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+      ...quota,
     };
   }
   return {
     outcome: "failed",
     errorCode: "provider_rejected",
     ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+    ...quota,
   };
 }
 
@@ -757,6 +859,7 @@ export async function pollTransactionalEmailOutboxOnce(dependencies = {}) {
       ...(result.messageId ? { providerMessageId: result.messageId } : {}),
       providerName: result.providerName,
       providerAgent: result.providerAgent,
+      ...(result.quotaSnapshot ? { quotaSnapshot: result.quotaSnapshot } : {}),
     };
   } catch (error) {
     completion = {
@@ -796,6 +899,7 @@ export async function pollWorkflowEmailOutboxOnce(dependencies = {}) {
       ...(result.messageId ? { providerMessageId: result.messageId } : {}),
       providerName: result.providerName,
       providerAgent: result.providerAgent,
+      ...(result.quotaSnapshot ? { quotaSnapshot: result.quotaSnapshot } : {}),
     };
   } catch (error) {
     completion = {
