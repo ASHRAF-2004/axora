@@ -148,7 +148,11 @@ test("owner sees live-source quota presentation and compact masked operations", 
   expect((await retryButton.boundingBox())?.height).toBeGreaterThanOrEqual(44);
   const retryColumn = page.getByRole("columnheader", { name: "Retry" });
   await expect(retryColumn).toBeVisible();
-  await expect(retryColumn.locator(".sr-only")).toHaveCSS("clip-path", "inset(50%)");
+  const retryLabel = retryColumn.locator(".sr-only");
+  await expect(retryLabel).toHaveCSS("clip-path", "inset(50%)");
+  expect((await retryLabel.boundingBox())?.x).toBeLessThanOrEqual(
+    (await page.locator('[class*="tableWrap"]').boundingBox())?.x ?? 0,
+  );
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   let reachedRetry = false;
   for (let step = 0; step < 50 && !reachedRetry; step += 1) {
