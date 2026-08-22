@@ -741,6 +741,7 @@ export async function recordAccountSetupDelivery(
   delivery: {
     succeeded: boolean;
     providerMessageId?: string;
+    providerName?: "resend";
     status?: "sent" | "disabled" | "failed" | "uncertain";
   },
 ) {
@@ -775,6 +776,7 @@ export async function recordAccountSetupDelivery(
              delivery_attempt_count=1,
              sent_at=CASE WHEN $3::boolean THEN now() ELSE NULL END,
              provider_message_id=CASE WHEN $3::boolean THEN $4 ELSE NULL END,
+             accepted_provider_name=CASE WHEN $3::boolean THEN $5 ELSE NULL END,
              last_delivery_error=CASE WHEN $3::boolean THEN NULL
                WHEN $2='UNCERTAIN' THEN 'delivery_uncertain'
                WHEN $2='DISABLED' THEN 'delivery_disabled'
@@ -786,6 +788,7 @@ export async function recordAccountSetupDelivery(
           deliveryStatus,
           delivery.succeeded,
           providerMessageId,
+          delivery.providerName ?? null,
         ],
       );
       if (result.rowCount) {

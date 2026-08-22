@@ -133,6 +133,7 @@ describe("account invitation actions", () => {
     expect(mocks.recordDelivery).toHaveBeenCalledWith(invitation.invitationId, {
       succeeded: true,
       providerMessageId: undefined,
+      providerName: undefined,
       status: "sent",
     });
   });

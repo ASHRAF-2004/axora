@@ -215,11 +215,14 @@ webhook, and current production readiness gates are verified. Events may be
 enabled before delivery to validate the signed webhook path. A verified-webhook
 claim is invalid if provider events are disabled.
 
-The Resend plan values are non-secret configuration. Usage is captured only
-from validated `x-resend-monthly-quota` and, on Free accounts,
-`x-resend-daily-quota` response headers. When upgrading, set the plan to
-`PAID`, update the monthly allowance, and leave the daily limit empty if the
-account has no daily quota.
+The Resend plan values are non-secret configuration. Email Status displays
+Axora-tracked recipient units derived from durable, successful Resend delivery
+evidence. This is not the complete Resend account total: messages sent directly
+from Resend or received outside Axora are not included. The protected opening
+baseline is initialized once by an operator after migration 109; it is never a
+demo seed or an application-editable setting. Periods use UTC. When upgrading,
+set the plan to `PAID`, update the monthly allowance, and leave the daily limit
+empty if the account has no daily quota.
 
 ## Production verification
 

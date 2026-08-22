@@ -91,7 +91,7 @@ describe("email operations application boundary", () => {
     expect(sql).not.toContain("provider_message_id");
   });
 
-  it("models configured Free and Paid limits without inventing provider usage", async () => {
+  it("models configured limits separately from Axora-tracked usage", async () => {
     expect(resendPlanConfiguration({
       AXORA_RESEND_PLAN: "FREE",
       AXORA_RESEND_MONTHLY_LIMIT: "3000",
@@ -104,9 +104,17 @@ describe("email operations application boundary", () => {
     })).toEqual({ plan: "PAID", monthlyLimit: 50000, dailyLimit: undefined });
 
     vi.stubEnv("DEMO_MODE", "true");
-    vi.stubEnv("AXORA_DEMO_RESEND_QUOTA_AVAILABLE", "false");
     const workspace = await getEmailOperationsWorkspace(actor(), {});
-    expect(workspace.resendQuota).toBeUndefined();
-    expect(workspace.metrics.monthlyRecipientUnits).toBeGreaterThan(0);
+    expect(workspace.trackedUsage).toMatchObject({
+      initialized: true,
+      monthlyUsed: 8,
+      dailyUsed: 0,
+      periodTimezone: "UTC",
+    });
+    expect(workspace.trackedUsage).not.toHaveProperty("monthlyLimit");
+
+    vi.stubEnv("AXORA_DEMO_EMAIL_USAGE_ACCEPTED_AFTER_BASELINE", "1");
+    const incremented = await getEmailOperationsWorkspace(actor(), {});
+    expect(incremented.trackedUsage).toMatchObject({ monthlyUsed: 9, dailyUsed: 1 });
   });
 });

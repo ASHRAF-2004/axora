@@ -120,7 +120,7 @@ async function expectNoPageOverflow(page: Page, width: number) {
   ), `${width}px horizontal overflow`).toBeLessThanOrEqual(0);
 }
 
-test("owner sees live-source quota presentation and compact masked operations", async ({ page }, testInfo) => {
+test("owner sees Axora-tracked usage and compact masked operations", async ({ page }, testInfo) => {
   const runtimeFailures = captureUnexpectedRuntime(page);
   await signInAsDemoOwner(page);
   await page.goto("/email-operations");
@@ -141,6 +141,10 @@ test("owner sees live-source quota presentation and compact masked operations", 
   await expect(progress.nth(1)).toHaveAttribute("value", "0");
   await expect(page.getByText("Remaining: 2,992", { exact: true })).toBeVisible();
   await expect(page.getByText("Remaining: 100", { exact: true })).toBeVisible();
+  await expect(page.getByText("Tracked from emails successfully sent through Axora.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Emails sent directly from Resend or received outside Axora are not included.", { exact: true })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("Provider usage unavailable");
+  await expect(page.locator("main")).not.toContainText("Waiting for Resend usage synchronization");
   await expect(page.getByText("Request update", { exact: true })).toBeVisible();
   await expect(page.getByText("ap***@example.invalid", { exact: true })).toBeVisible();
   const retryButton = page.getByRole("button", { name: "Retry" });
@@ -166,15 +170,16 @@ test("owner sees live-source quota presentation and compact masked operations", 
   for (const appearance of ["light", "dark"] as const) {
     await selectAppearance(page, appearance);
     const contrastTargets: Array<[string, Locator]> = [
-      ["Monthly limit", page.getByText("Monthly limit", { exact: true })],
-      ["Daily limit", page.getByText("Daily limit", { exact: true })],
+      ["Monthly usage", page.getByText("Monthly usage", { exact: true })],
+      ["Daily usage", page.getByText("Daily usage", { exact: true })],
       ["Monthly used and limit", page.getByText("8 / 3,000", { exact: true })],
       ["Daily used and limit", page.getByText("0 / 100", { exact: true })],
       ["Monthly percentage", page.getByText("0.3%", { exact: true })],
       ["Daily percentage", page.getByText("0.0%", { exact: true })],
       ["Monthly remaining", page.getByText("Remaining: 2,992", { exact: true })],
       ["Daily remaining", page.getByText("Remaining: 100", { exact: true })],
-      ["Last synchronized", page.locator('[class*="syncTime"] span')],
+      ["Last recorded", page.locator('[class*="syncTime"] span')],
+      ["Usage source", page.getByText("Tracked from emails successfully sent through Axora.", { exact: true })],
     ];
     for (const [label, target] of contrastTargets) {
       await expectReadable(target, `${appearance} ${label}`);
@@ -187,29 +192,18 @@ test("owner sees live-source quota presentation and compact masked operations", 
   expect(runtimeFailures).toEqual([]);
 });
 
-test("provider-unavailable fallback labels retain accessible contrast", async ({ page }) => {
+test("a controlled accepted email increments the tracked fixture", async ({ page }) => {
   test.skip(
-    process.env.AXORA_DEMO_RESEND_QUOTA_AVAILABLE !== "false",
-    "Run this controlled fixture with AXORA_DEMO_RESEND_QUOTA_AVAILABLE=false.",
+    process.env.AXORA_DEMO_EMAIL_USAGE_ACCEPTED_AFTER_BASELINE !== "1",
+    "Run this controlled fixture with AXORA_DEMO_EMAIL_USAGE_ACCEPTED_AFTER_BASELINE=1.",
   );
   const runtimeFailures = captureUnexpectedRuntime(page);
   await signInAsDemoOwner(page);
   await page.goto("/email-operations");
-  await expect(page.getByText("Waiting for Resend usage synchronization", { exact: true })).toBeVisible();
-  await expect(page.locator("main")).not.toContainText("0 / 3,000");
-  await expect(page.locator("main")).not.toContainText("0 / 100");
-  for (const appearance of ["light", "dark"] as const) {
-    await selectAppearance(page, appearance);
-    for (const [label, target] of [
-      ["fallback message", page.getByText("Waiting for Resend usage synchronization", { exact: true })],
-      ["fallback activity", page.getByText(/Axora-recorded activity:/)],
-      ["fallback monthly label", page.getByText("Monthly limit", { exact: true })],
-      ["fallback daily label", page.getByText("Daily limit", { exact: true })],
-    ] as Array<[string, Locator]>) {
-      await expectReadable(target, `${appearance} ${label}`);
-      expect(parseFloat(await target.evaluate((element) => getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(14);
-    }
-  }
+  await expect(page.getByText("9 / 3,000", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 / 100", { exact: true })).toBeVisible();
+  await expect(page.getByText("Remaining: 2,991", { exact: true })).toBeVisible();
+  await expect(page.getByText("Remaining: 99", { exact: true })).toBeVisible();
   expect(runtimeFailures).toEqual([]);
 });
 
@@ -252,7 +246,7 @@ test("Malay operations use polished localized copy", async ({ page }, testInfo) 
   await page.goto("/email-operations");
   await selectAppearance(page, "light");
   await expect(page.getByRole("heading", { level: 1, name: "Status E-mel" })).toBeVisible();
-  await expect(page.getByText("Had bulanan", { exact: true })).toBeVisible();
+  await expect(page.getByText("Penggunaan bulanan", { exact: true })).toBeVisible();
   await expect(page.getByText("Baki: 2,992", { exact: true })).toBeVisible();
   await page.screenshot({
     animations: "disabled", fullPage: true,

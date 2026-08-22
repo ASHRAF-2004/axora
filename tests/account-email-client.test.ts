@@ -91,13 +91,14 @@ describe("account setup email delivery client", () => {
     vi.stubEnv("AXORA_EMAIL_DELIVERY_ENABLED", "true");
     vi.stubEnv("AXORA_EMAIL_SENDER_URL", "http://email-sender:3100");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
-      JSON.stringify({ succeeded: true, status: "queued", messageId: "email-message-123" }),
+      JSON.stringify({ succeeded: true, status: "queued", messageId: "email-message-123", providerName: "resend" }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     )));
 
     await expect(sendAccountSetupEmail(invitation)).resolves.toEqual({
       succeeded: true,
       providerMessageId: "email-message-123",
+      providerName: "resend",
       status: "sent",
     });
   });
