@@ -72,6 +72,14 @@ async function effectiveContrast(locator: Locator) {
     type Rgba = { red: number; green: number; blue: number; alpha: number };
     const parse = (value: string): Rgba => {
       const values = value.match(/[\d.]+/g)?.map(Number) ?? [];
+      if (value.startsWith("color(srgb")) {
+        return {
+          red: (values[0] ?? 0) * 255,
+          green: (values[1] ?? 0) * 255,
+          blue: (values[2] ?? 0) * 255,
+          alpha: values[3] ?? 1,
+        };
+      }
       return { red: values[0] ?? 0, green: values[1] ?? 0, blue: values[2] ?? 0, alpha: values[3] ?? 1 };
     };
     const over = (front: Rgba, back: Rgba): Rgba => {
@@ -101,6 +109,17 @@ async function effectiveContrast(locator: Locator) {
   });
 }
 
+async function expectReadable(locator: Locator, label: string) {
+  await expect(locator, `${label} is visible`).toBeVisible();
+  expect(await effectiveContrast(locator), `${label} contrast`).toBeGreaterThanOrEqual(4.5);
+}
+
+async function expectNoPageOverflow(page: Page, width: number) {
+  expect(await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  ), `${width}px horizontal overflow`).toBeLessThanOrEqual(0);
+}
+
 test("owner sees live-source quota presentation and compact masked operations", async ({ page }, testInfo) => {
   const runtimeFailures = captureUnexpectedRuntime(page);
   await signInAsDemoOwner(page);
@@ -124,21 +143,37 @@ test("owner sees live-source quota presentation and compact masked operations", 
   await expect(page.getByText("Remaining: 100", { exact: true })).toBeVisible();
   await expect(page.getByText("Request update", { exact: true })).toBeVisible();
   await expect(page.getByText("ap***@example.invalid", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Retry" })).toHaveCSS("min-height", "44px");
+  const retryButton = page.getByRole("button", { name: "Retry" });
+  await expect(retryButton).toHaveCSS("min-height", "44px");
+  expect((await retryButton.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  const retryColumn = page.getByRole("columnheader", { name: "Retry" });
+  await expect(retryColumn).toBeVisible();
+  await expect(retryColumn.locator(".sr-only")).toHaveCSS("clip-path", "inset(50%)");
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  let reachedRetry = false;
+  for (let step = 0; step < 50 && !reachedRetry; step += 1) {
+    await page.keyboard.press("Tab");
+    reachedRetry = await retryButton.evaluate((button) => document.activeElement === button);
+  }
+  expect(reachedRetry, "Retry is keyboard reachable").toBe(true);
+  await expect(retryButton).toHaveCSS("outline-style", "solid");
   await expect(page.locator("main")).not.toContainText("owner@axora.e2e");
-  expect(await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  )).toBeLessThanOrEqual(2);
+  await expectNoPageOverflow(page, 1280);
   for (const appearance of ["light", "dark"] as const) {
     await selectAppearance(page, appearance);
-    for (const selector of [
-      "main h1", "main h2", '[class*="description"]', '[class*="quotaMeta"] span',
-      '[class*="table"] th', '[class*="table"] td', '[class*="retryButton"]',
-    ]) {
-      const target = page.locator(selector).filter({ visible: true }).first();
-      if (await target.count()) {
-        expect(await effectiveContrast(target), `${appearance} ${selector}`).toBeGreaterThanOrEqual(4.5);
-      }
+    const contrastTargets: Array<[string, Locator]> = [
+      ["Monthly limit", page.getByText("Monthly limit", { exact: true })],
+      ["Daily limit", page.getByText("Daily limit", { exact: true })],
+      ["Monthly used and limit", page.getByText("8 / 3,000", { exact: true })],
+      ["Daily used and limit", page.getByText("0 / 100", { exact: true })],
+      ["Monthly percentage", page.getByText("0.3%", { exact: true })],
+      ["Daily percentage", page.getByText("0.0%", { exact: true })],
+      ["Monthly remaining", page.getByText("Remaining: 2,992", { exact: true })],
+      ["Daily remaining", page.getByText("Remaining: 100", { exact: true })],
+      ["Last synchronized", page.locator('[class*="syncTime"] span')],
+    ];
+    for (const [label, target] of contrastTargets) {
+      await expectReadable(target, `${appearance} ${label}`);
     }
     await page.screenshot({
       animations: "disabled", fullPage: true,
@@ -148,21 +183,47 @@ test("owner sees live-source quota presentation and compact masked operations", 
   expect(runtimeFailures).toEqual([]);
 });
 
+test("provider-unavailable fallback labels retain accessible contrast", async ({ page }) => {
+  test.skip(
+    process.env.AXORA_DEMO_RESEND_QUOTA_AVAILABLE !== "false",
+    "Run this controlled fixture with AXORA_DEMO_RESEND_QUOTA_AVAILABLE=false.",
+  );
+  const runtimeFailures = captureUnexpectedRuntime(page);
+  await signInAsDemoOwner(page);
+  await page.goto("/email-operations");
+  await expect(page.getByText("Waiting for Resend usage synchronization", { exact: true })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("0 / 3,000");
+  await expect(page.locator("main")).not.toContainText("0 / 100");
+  for (const appearance of ["light", "dark"] as const) {
+    await selectAppearance(page, appearance);
+    for (const [label, target] of [
+      ["fallback message", page.getByText("Waiting for Resend usage synchronization", { exact: true })],
+      ["fallback activity", page.getByText(/Axora-recorded activity:/)],
+      ["fallback monthly label", page.getByText("Monthly limit", { exact: true })],
+      ["fallback daily label", page.getByText("Daily limit", { exact: true })],
+    ] as Array<[string, Locator]>) {
+      await expectReadable(target, `${appearance} ${label}`);
+      expect(parseFloat(await target.evaluate((element) => getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(14);
+    }
+  }
+  expect(runtimeFailures).toEqual([]);
+});
+
 test("email status has no page overflow at required responsive widths", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "One browser is sufficient for deterministic layout sampling.");
   await signInAsDemoOwner(page);
-  for (const width of [1440, 1024, 768, 390, 360, 320]) {
+  for (const width of [767, 768, 769, 1024, 390, 360, 320]) {
     await page.setViewportSize({ width, height: width <= 390 ? 844 : 900 });
     await page.goto("/email-operations");
     await expect(page.getByRole("heading", { level: 1, name: "Email Status" })).toBeVisible();
-    expect(await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    ), `${width}px horizontal overflow`).toBeLessThanOrEqual(2);
+    await expectNoPageOverflow(page, width);
+    await expect(page.getByRole("columnheader", { name: "Retry" }).locator(".sr-only"))
+      .toHaveCSS("clip-path", "inset(50%)");
   }
 });
 
 test("Arabic operations remain RTL, mobile-safe, and reduced-motion aware", async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 768, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await signInAsDemoRole(page, arabicOwner);
   await page.goto("/email-operations");
@@ -171,9 +232,11 @@ test("Arabic operations remain RTL, mobile-safe, and reduced-motion aware", asyn
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/[\u0600-\u06ff]/u);
   await selectAppearance(page, "dark");
-  expect(await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  )).toBeLessThanOrEqual(2);
+  await expectNoPageOverflow(page, 768);
+  await expect(page.getByRole("columnheader", { name: "إعادة المحاولة" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "إعادة المحاولة" })).toHaveCSS("min-height", "44px");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectNoPageOverflow(page, 390);
   await page.screenshot({
     animations: "disabled", fullPage: true,
     path: `output/playwright/email-status-ar-dark-${testInfo.project.name}.png`,
