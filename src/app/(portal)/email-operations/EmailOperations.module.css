@@ -69,7 +69,8 @@
 .tableHeader h2 { margin: 0; color: var(--axora-text); font-size: 19px; }
 .tableHeader p { margin: 4px 0 0; color: var(--axora-text-muted); font-size: 13px; }
 .tableHeader > span { color: var(--axora-text-muted); font-size: 13px; }
-.tableWrap { max-width: 100%; overflow-x: auto; }
+.tableWrap { position: relative; max-width: 100%; overflow-x: auto; }
+.tableRetryLabel { inset-block-start: 0; inset-inline-start: 0; }
 .table { width: 100%; min-width: 760px; border-collapse: collapse; }
 .table th, .table td { padding: 13px 16px; text-align: start; border-block-end: 1px solid var(--axora-border-subtle); }
 .table th { color: var(--axora-text-secondary); background: var(--axora-surface-muted); font-size: 12px; letter-spacing: .07em; text-transform: uppercase; }
