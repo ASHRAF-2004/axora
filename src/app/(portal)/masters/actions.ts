@@ -10,12 +10,9 @@ import {
 } from "@/lib/account-setup";
 import {
   activateCompany,
-  assignCompanyManager,
   CompanyCreationCommandConflictError,
+  createCompanyWithoutBrand,
   COMPANY_LIFECYCLE_STATUSES,
-  COMPANY_MANAGER_ACCESS_MODES,
-  COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS,
-  COMPANY_MANAGER_DOCUMENT_VISIBILITIES,
   resolveCompanyDuplicate,
   setCompanyPublication,
   suspendCompany,
@@ -40,7 +37,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { calculateCommercialSellingPrice } from "@/lib/procurement-rules";
-import { canAccess } from "@/lib/permissions";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 function productInput(formData: FormData) {
@@ -80,26 +76,24 @@ function revalidateProductAfterEditorUpdate(productId: string) {
 }
 
 export async function createCompanyAction(formData: FormData) {
-  const user = await requirePermission("manage_companies");
-  if (!user.isOwner || user.accountKind !== "PLATFORM") {
-    redirect("/companies");
-  }
+  const user = await requirePermission("create_companies");
   const logo = formData.get("logo");
-  if (!(logo instanceof File) || logo.size < 1) redirect("/companies?notice=company-logo-required");
   const commandId = z.uuid().parse(readFormText(formData, "commandId"));
   const input = directCompanyCreateSchema.parse({
     name: readFormText(formData, "name"),
-    legalName: readFormText(formData, "legalName"),
-    industry: readFormText(formData, "industry"),
-    companyInformation: readFormText(formData, "companyInformation"),
+    legalName: readFormText(formData, "legalName") || undefined,
+    industry: readFormText(formData, "industry") || undefined,
+    companyInformation: undefined,
     websiteUrl: readFormText(formData, "websiteUrl"),
     mainContactName: readFormText(formData, "mainContactName"),
-    billingCycle: readFormText(formData, "billingCycle"),
-    notes: readFormText(formData, "notes") || undefined,
+    billingCycle: "Monthly",
+    notes: undefined,
   });
-  let created: Awaited<ReturnType<typeof createCompanyWithBrand>>;
+  let created: { companyId: string };
   try {
-    created = await createCompanyWithBrand(input, logo, user, commandId);
+    created = logo instanceof File && logo.size > 0
+      ? await createCompanyWithBrand(input, logo, user, commandId)
+      : await createCompanyWithoutBrand(input, user, commandId);
   } catch (error) {
     if (error instanceof CompanyCreationCommandConflictError) {
       redirect("/companies/new?notice=company-command-conflict");
@@ -107,59 +101,13 @@ export async function createCompanyAction(formData: FormData) {
     throw error;
   }
   revalidatePath("/companies"); revalidatePath("/dashboard");
-  redirect(`/companies?notice=company-created&created=${created.companyId}`);
+  redirect(`/companies/${created.companyId}?notice=company-created`);
 }
-
-const assignmentSchema = z.object({
-  companyId: z.uuid(),
-  managerUserId: z.uuid(),
-  assignmentType: z.enum(["PRIMARY", "BACKUP"]),
-  coverageStartsAt: z.coerce.date().optional(),
-  coverageEndsAt: z.coerce.date().optional(),
-  accessMode: z.enum(COMPANY_MANAGER_ACCESS_MODES),
-  specificPermissionCodes: z.array(z.enum(COMPANY_MANAGER_ASSIGNABLE_PERMISSIONS)).max(20),
-  documentVisibility: z.enum(COMPANY_MANAGER_DOCUMENT_VISIBILITIES),
-  handoverNotes: z.string().trim().max(5000).optional(),
-  handoverChecklist: z.array(z.string().trim().min(2).max(240)).max(20),
-  reason: z.string().trim().min(3).max(1000),
-});
 
 function lifecycleRedirect(notice: string, companyId: string) {
   revalidatePath("/companies");
   revalidatePath("/dashboard");
   redirect(`/companies?notice=${notice}&created=${encodeURIComponent(companyId)}`);
-}
-
-export async function assignCompanyManagerAction(formData: FormData) {
-  const actor = await requirePermission("manage_companies");
-  if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
-    redirect("/companies");
-  }
-  const startValue = readFormText(formData, "coverageStartsAt");
-  const endValue = readFormText(formData, "coverageEndsAt");
-  const input = assignmentSchema.parse({
-    companyId: readFormText(formData, "companyId"),
-    managerUserId: readFormText(formData, "managerUserId"),
-    assignmentType: readFormText(formData, "assignmentType"),
-    coverageStartsAt: startValue || undefined,
-    coverageEndsAt: endValue || undefined,
-    accessMode: readFormText(formData, "accessMode"),
-    specificPermissionCodes: formData.getAll("specificPermissionCodes")
-      .filter((value): value is string => typeof value === "string"),
-    documentVisibility: readFormText(formData, "documentVisibility"),
-    handoverNotes: readFormText(formData, "handoverNotes") || undefined,
-    handoverChecklist: readFormText(formData, "handoverChecklist")
-      .split(/\r?\n/)
-      .map((item) => item.trim())
-      .filter(Boolean),
-    reason: readFormText(formData, "reason"),
-  });
-  await assignCompanyManager(actor, input);
-  revalidatePath("/companies");
-  revalidatePath(`/companies/${input.companyId}`);
-  revalidatePath(`/companies/${input.companyId}/assignment`);
-  revalidatePath("/dashboard");
-  redirect(`/companies/${input.companyId}/assignment?notice=company-assigned`);
 }
 
 export async function transitionCompanyLifecycleAction(formData: FormData) {
@@ -168,9 +116,7 @@ export async function transitionCompanyLifecycleAction(formData: FormData) {
   const toStatus = z.enum(COMPANY_LIFECYCLE_STATUSES).parse(
     readFormText(formData, "toStatus"),
   );
-  const reason = z.string().trim().min(3).max(1000).parse(
-    readFormText(formData, "reason"),
-  );
+  const reason = `COMPANY_STATUS_UPDATED_${toStatus}`;
   await transitionCompanyLifecycle(actor, companyId, toStatus, reason);
   lifecycleRedirect("company-status-updated", companyId);
 }
@@ -181,9 +127,7 @@ export async function resolveCompanyDuplicateAction(formData: FormData) {
   const decision = z.enum(["CLEAR", "CONFIRM"]).parse(
     readFormText(formData, "decision"),
   );
-  const reason = z.string().trim().min(3).max(1000).parse(
-    readFormText(formData, "reason"),
-  );
+  const reason = `COMPANY_DUPLICATE_${decision}`;
   await resolveCompanyDuplicate(actor, companyId, decision, reason);
   lifecycleRedirect("company-duplicate-reviewed", companyId);
 }
@@ -191,9 +135,7 @@ export async function resolveCompanyDuplicateAction(formData: FormData) {
 export async function activateCompanyAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
   const companyId = z.uuid().parse(readFormText(formData, "companyId"));
-  const reason = z.string().trim().min(3).max(1000).parse(
-    readFormText(formData, "reason"),
-  );
+  const reason = "COMPANY_ACTIVATED";
   const mutation = await activateCompany(actor, companyId, reason);
   lifecycleRedirect(
     mutation.blockedReasons?.length ? "company-activation-blocked" : "company-activated",
@@ -204,9 +146,7 @@ export async function activateCompanyAction(formData: FormData) {
 export async function suspendCompanyAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
   const companyId = z.uuid().parse(readFormText(formData, "companyId"));
-  const reason = z.string().trim().min(3).max(1000).parse(
-    readFormText(formData, "reason"),
-  );
+  const reason = "COMPANY_SUSPENDED";
   await suspendCompany(actor, companyId, reason);
   lifecycleRedirect("company-suspended", companyId);
 }
@@ -217,9 +157,7 @@ export async function setCompanyPublicationAction(formData: FormData) {
   const isPubliclyListed = z.enum(["true", "false"]).parse(
     readFormText(formData, "isPubliclyListed"),
   ) === "true";
-  const reason = z.string().trim().min(3).max(1000).parse(
-    readFormText(formData, "reason"),
-  );
+  const reason = isPubliclyListed ? "COMPANY_PUBLISHED" : "COMPANY_UNPUBLISHED";
   await setCompanyPublication(actor, companyId, isPubliclyListed, reason);
   lifecycleRedirect(isPubliclyListed ? "company-published" : "company-unpublished", companyId);
 }
@@ -337,9 +275,6 @@ export async function createProductAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   const user = await requirePermission("manage_catalog");
-  if (!canAccess(user, "manage_commercial_pricing")) {
-    return { status: "error", message: "Commercial pricing permission is required to create a priced product." };
-  }
   let input: ReturnType<typeof productInput>;
   let preparedImages: Awaited<ReturnType<typeof prepareProductImages>>;
   try {
@@ -384,9 +319,6 @@ export async function updateProductAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   const user = await requirePermission("manage_catalog");
-  if (!canAccess(user, "manage_commercial_pricing")) {
-    return { status: "error", message: "Commercial pricing permission is required to change a priced product." };
-  }
   try {
     await updateProduct(productId, productInput(formData), user);
   } catch (error) {

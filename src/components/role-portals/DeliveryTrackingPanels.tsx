@@ -159,7 +159,6 @@ export function DriverTrackingPanel({
   const [workspace, setWorkspace] = useState<TrackingWorkspace | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [endReason, setEndReason] = useState("");
   const [sharingEnabled, setSharingEnabled] = useState(false);
   const failureReported = useRef("");
 
@@ -210,7 +209,7 @@ export function DriverTrackingPanel({
       await postJson("/api/driver/tracking", {
         action: "REPORT_FAILURE",
         sessionId: activeSessionId,
-        reason: message,
+        reason: failureCode,
         failureCode,
       }).catch(() => undefined);
     };
@@ -319,14 +318,13 @@ export function DriverTrackingPanel({
     const response = await postJson("/api/driver/tracking", {
       action: "END",
       sessionId: active.sessionId,
-      reason: endReason,
+      reason: "DELIVERY_TRACKING_ENDED",
     });
     if (!response.ok) {
       setError(copy.commandFailed);
       return;
     }
     writeQueue(actorId, []);
-    setEndReason("");
     setNotice(copy.commandSaved);
     await refresh();
   };
@@ -361,7 +359,6 @@ export function DriverTrackingPanel({
             {copy.failure}: {session.lastFailureCode}
           </p> : null}
           {session.status === "ACTIVE" ? <form className={styles.endForm} onSubmit={endSharing}>
-            <label>{copy.reason}<input value={endReason} onChange={(event) => setEndReason(event.target.value)} minLength={3} maxLength={1000} required /></label>
             <button type="submit">{copy.end}</button>
           </form> : null}
         </article>,

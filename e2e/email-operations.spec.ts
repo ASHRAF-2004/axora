@@ -22,15 +22,17 @@ const companyAdmin = {
   companyId: "10000000-0000-4000-8000-000000000001",
 };
 
-test("owner sees the masked transactional email operations workspace", async ({ page }) => {
+test("owner sees the compact masked Email Status workspace", async ({ page }) => {
   await signInAsDemoOwner(page);
   await page.goto("/email-operations");
 
   await expect(page.getByRole("heading", {
     level: 1,
-    name: "Transactional email operations",
+    name: "Email Status",
   })).toBeVisible();
-  await expect(page.getByText("axora-auth", { exact: true }).last()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Email service status" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current month usage" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Queue summary" })).toBeVisible();
   await expect(page.locator("main")).not.toContainText("owner@axora.e2e");
   expect(await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -54,5 +56,6 @@ test("Arabic operations remain RTL, mobile-safe, and reduced-motion aware", asyn
 test("company users cannot enter global email operations", async ({ page }) => {
   await signInAsDemoRole(page, companyAdmin);
   await page.goto("/email-operations");
-  await expect(page).toHaveURL(/\/access-denied$/);
+  await expect(page.getByRole("heading", { name: "This page is not part of your role" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Email Status" })).toHaveCount(0);
 });

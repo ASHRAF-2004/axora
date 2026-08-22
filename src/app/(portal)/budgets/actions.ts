@@ -52,12 +52,6 @@ function optionalMoney(formData: FormData, name: string) {
   return value ? parseMoneyDecimal(value, { allowNegative: false }) : undefined;
 }
 
-function reason(formData: FormData) {
-  const value = field(formData, "explanation");
-  if (value.length<3 || value.length>1000) throw new Error("Invalid explanation");
-  return value;
-}
-
 function idempotencyKey(formData: FormData) {
   const value = field(formData, "idempotencyKey");
   if (value.length<8 || value.length>180) throw new Error("Invalid command key");
@@ -95,7 +89,7 @@ export async function adjustBudgetAction(formData: FormData) {
       direction,
       amount: positiveAmount(formData),
       recurring: formData.get("recurring") === "on",
-      explanation: reason(formData),
+      explanation: "BUDGET_ALLOCATION_UPDATED",
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -114,7 +108,7 @@ export async function transferBudgetAction(formData: FormData) {
       targetAccountId: field(formData, "targetAccountId"),
       amount: positiveAmount(formData),
       recurring: formData.get("recurring") === "on",
-      explanation: reason(formData),
+      explanation: "BUDGET_ALLOCATION_TRANSFERRED",
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -130,7 +124,7 @@ export async function refreshBudgetAction(formData: FormData) {
     await refreshBudgetPeriod({
       actor,
       accountId: field(formData, "accountId"),
-      explanation: reason(formData),
+      explanation: "BUDGET_PERIOD_REFRESHED",
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -148,7 +142,7 @@ export async function setCompanyCeilingAction(formData: FormData) {
       companyId: field(formData, "companyId"),
       amount: positiveAmount(formData),
       currency: field(formData, "currency").toUpperCase(),
-      explanation: reason(formData),
+      explanation: "COMPANY_CEILING_UPDATED",
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -197,7 +191,7 @@ export async function requestBudgetCycleChangeAction(formData: FormData) {
         criticalThresholdPercentage: boundedNumber(formData, "criticalThresholdPercentage", 0.01, 98),
         hysteresisPercentage: boundedNumber(formData, "hysteresisPercentage", 0.01, 25),
       },
-      reason: reason(formData),
+      reason: "BUDGET_CYCLE_CHANGE_REQUESTED",
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -218,7 +212,7 @@ export async function decideBudgetCycleChangeAction(formData: FormData) {
       actor,
       changeRequestId: field(formData, "changeRequestId"),
       decision,
-      reason: reason(formData),
+      reason: `BUDGET_CYCLE_CHANGE_${decision}`,
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -244,7 +238,7 @@ export async function requestVariancePolicyChangeAction(formData: FormData) {
         percentageTolerance: optionalNumber(formData, "percentageTolerance"),
         effectiveAt: field(formData, "effectiveAt") || undefined,
       },
-      reason: reason(formData),
+      reason: "VARIANCE_POLICY_CHANGE_REQUESTED",
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -265,7 +259,7 @@ export async function decideVariancePolicyChangeAction(formData: FormData) {
       actor,
       changeRequestId: field(formData, "changeRequestId"),
       decision,
-      reason: reason(formData),
+      reason: `VARIANCE_POLICY_CHANGE_${decision}`,
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -291,7 +285,7 @@ export async function requestBudgetAdjustmentAction(formData: FormData) {
         sourceBudgetAccountId: field(formData, "sourceBudgetAccountId") || undefined,
         effectiveUntil: field(formData, "effectiveUntil") || undefined,
       },
-      reason: reason(formData),
+      reason: "BUDGET_ADJUSTMENT_REQUESTED",
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -312,7 +306,7 @@ export async function decideBudgetAdjustmentAction(formData: FormData) {
       actor,
       adjustmentRequestId: field(formData, "adjustmentRequestId"),
       decision: decision as "APPROVE" | "REJECT" | "RETURN",
-      reason: reason(formData),
+      reason: `BUDGET_ADJUSTMENT_${decision}`,
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {
@@ -328,7 +322,7 @@ export async function rerunBudgetRefreshJobAction(formData: FormData) {
     await rerunBudgetRefreshJob({
       actor,
       jobId: field(formData, "jobId"),
-      reason: reason(formData),
+      reason: "BUDGET_REFRESH_RERUN_REQUESTED",
       idempotencyKey: idempotencyKey(formData),
     });
   } catch {

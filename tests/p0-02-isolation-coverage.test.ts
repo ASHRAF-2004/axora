@@ -84,11 +84,10 @@ describe("P0-02 active isolation coverage", () => {
     );
   });
 
-  it("keeps direct files, exports, catalogue, notifications and role portals scoped", async () => {
-    const [attachmentRoute, requestExport, catalog, cart, notifications,
+  it("keeps direct files, catalogue, notifications and role portals scoped", async () => {
+    const [attachmentRoute, catalog, cart, notifications,
       rolePortals, audit] = await Promise.all([
         source("src/app/api/attachments/[id]/route.ts"),
-        source("src/app/api/export/requests/route.ts"),
         source("src/app/api/catalog/route.ts"),
         source("src/app/api/catalog/cart/route.ts"),
         source("src/lib/notification-repository.ts"),
@@ -97,7 +96,6 @@ describe("P0-02 active isolation coverage", () => {
       ]);
 
     expect(attachmentRoute).toContain("loadAuthorizedAttachmentFile(actor");
-    expect(requestExport).toContain("listAuthorizedFilteredRequests(user,filters)");
     expect(catalog).toContain("searchCatalogProducts");
     expect(catalog).toContain('"Cache-Control": "private, no-store"');
     expect(cart).toContain("commandProcurementCart");

@@ -3,7 +3,6 @@
 import {
   actionFeedback,
   publicApprovalErrorCode,
-  type ActionFeedbackCode,
 } from "@/lib/action-feedback-i18n";
 import { requirePermission } from "@/lib/auth";
 import { requestLocaleDecision } from "@/lib/locale-server";
@@ -14,22 +13,12 @@ import { z } from "zod";
 const approvalSchema = z.object({
   requestId: z.string().uuid(),
   status: z.enum(["Approved", "Rejected"]),
-  reason: z.string().trim().max(1000).optional()
-    .transform((value) => value || undefined),
-}).superRefine((value, context) => {
-  if (value.status === "Rejected" && !value.reason) {
-    context.addIssue({
-      code: "custom",
-      path: ["reason"],
-      message: "approval.reason_required",
-    });
-  }
 });
 
 export type ApprovalActionState = {
   status: "idle" | "success" | "error";
   message: string;
-  field?: "reason" | "form";
+  field?: "form";
   submissionId: number;
 };
 
@@ -43,7 +32,7 @@ export async function recordApprovalAction(
     const user = await requirePermission("approve_requests");
     locale = user.preferredLocale ?? locale;
     const input = approvalSchema.parse(Object.fromEntries(formData));
-    await recordScopedApproval({ ...input, approvalType: "Company approval" }, user);
+    await recordScopedApproval({ ...input, reason: input.status === "Approved" ? "REQUEST_APPROVED" : "REQUEST_REJECTED", approvalType: "Company approval" }, user);
     revalidatePath("/approvals");
     revalidatePath("/requests");
     revalidatePath("/dashboard");
@@ -58,16 +47,10 @@ export async function recordApprovalAction(
   } catch (error) {
     console.error("Approval decision failed", error);
     if (error instanceof z.ZodError) {
-      const issue = error.issues[0];
       return {
         status: "error",
-        message: actionFeedback(
-          issue?.message === "approval.reason_required"
-            ? issue.message as ActionFeedbackCode
-            : "approval.check_information",
-          locale,
-        ),
-        field: issue?.path[0] === "reason" ? "reason" : "form",
+        message: actionFeedback("approval.check_information", locale),
+        field: "form",
         submissionId,
       };
     }
@@ -77,7 +60,7 @@ export async function recordApprovalAction(
     return {
       status: "error",
       message: actionFeedback(publicCode ?? "approval.decision_failed", locale),
-      field: publicCode === "approval.reason_required" ? "reason" : "form",
+      field: "form",
       submissionId,
     };
   }

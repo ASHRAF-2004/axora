@@ -11,7 +11,7 @@ describe("notification centre presentation contract",()=>{
     expect(page).toContain("notification-centre");
     expect(page).toContain("notification-filter-bar");
     expect(page).toContain("notification-preferences");
-    expect(page).toContain('name="category"');
+    expect(page).not.toContain('<select name="category"');
     expect(page).toContain('name="status"');
     expect(page).toContain("notification.routePath");
     expect(page).toContain("markAllNotificationsReadAction");

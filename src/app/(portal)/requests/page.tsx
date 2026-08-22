@@ -14,8 +14,8 @@ import {
   type RequestFilters,
 } from "@/lib/request-filters";
 import { searchAuthorizedRequests } from "@/lib/request-reader";
-import { Download } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 function requestPageHref(filters: RequestFilters, page: number) {
   const params=requestFiltersToSearchParams({...filters,page});
@@ -35,14 +35,22 @@ export default async function RequestsPage({
   const copy=corePortalMessages(locale).requests;
   const filterCopy=requestFilterMessages(locale);
   const platformView=actor.isOwner || actor.accountKind==="PLATFORM";
-  const result=await searchAuthorizedRequests(actor,normalizeRequestFilters(rawFilters));
+  const normalizedFilters=normalizeRequestFilters(rawFilters);
+  const canonicalParams=requestFiltersToSearchParams(normalizedFilters);
+  const rawParams=new URLSearchParams();
+  for (const [key,value] of Object.entries(rawFilters)) {
+    for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) rawParams.append(key,item);
+  }
+  if (rawParams.toString()!==canonicalParams.toString()) {
+    redirect(canonicalParams.size ? `/requests?${canonicalParams}` : "/requests");
+  }
+  const result=await searchAuthorizedRequests(actor,normalizedFilters);
   const requests=result.requests;
   const canViewInvoices=requests.some((request) => (
     request.invoiceStatus!==undefined || request.paymentStatus!==undefined
     || request.invoiceNumber!==undefined
   ));
   const currentParams=requestFiltersToSearchParams(result.filters);
-  const exportParams=requestFiltersToSearchParams(result.filters,{omitPagination:true});
   const from=result.total ? (result.page-1)*result.pageSize+1 : 0;
   const to=Math.min(result.page*result.pageSize,result.total);
 
@@ -63,9 +71,6 @@ export default async function RequestsPage({
       />
       <div className="request-results-bar">
         <div><strong>{filterCopy.resultCount(result.total)}</strong><span>{filterCopy.resultRange(from,to,result.total)}</span></div>
-        {canAccess(actor,"view_reports") ? <Link className="button button-secondary" href={`/api/export/requests?${exportParams}`}>
-          <Download size={16} />{copy.exportCsv}
-        </Link> : null}
       </div>
       <section className="panel" id="request-table">
         <div className="data-table-wrap"><table className="data-table">

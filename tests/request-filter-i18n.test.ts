@@ -8,9 +8,10 @@ describe("procurement discovery localization",() => {
       const filters=requestFilterMessages(locale);
       const shop=shopMessages(locale);
       expect(filters.title).toBeTruthy();
-      expect(filters.company).toBeTruthy();
-      expect(filters.deliveryAgent).toBeTruthy();
-      expect(filters.budgetStatuses.COMPANY_CEILING).toBeTruthy();
+      expect(filters.search).toBeTruthy();
+      expect(filters.status).toBeTruthy();
+      expect(Object.keys(filters)).not.toContain("company");
+      expect(Object.keys(filters)).not.toContain("advanced");
       expect(shop.seeAllProducts).toBeTruthy();
       expect(shop.allProducts).toBeTruthy();
       expect(shop.pageStatus(2,4)).toBeTruthy();

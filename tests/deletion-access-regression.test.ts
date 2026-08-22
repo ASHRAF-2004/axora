@@ -125,7 +125,7 @@ describe("deletion and access regressions", () => {
       `, [ids.invitation, ids.target, ids.owner, role.operationsRole]);
 
       const permission = await db.query<{ id: string }>(`
-        SELECT id::text FROM permissions WHERE permission_code='dashboard.view'
+        SELECT id::text FROM permissions WHERE permission_code='product.manage'
       `);
       await db.query(`
         INSERT INTO user_permission_overrides(
@@ -257,13 +257,14 @@ describe("deletion and access regressions", () => {
   }, 45_000);
 
   it("exposes explicit irreversible owner deletion controls", async () => {
-    const [companies, users, lifecycle] = await Promise.all([
+    const [companies, company, users] = await Promise.all([
       readFile(new URL("../src/app/(portal)/companies/page.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/app/(portal)/companies/[companyId]/page.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/app/(portal)/users/page.tsx", import.meta.url), "utf8"),
-      readFile(new URL("../src/lib/company-lifecycle-i18n.ts", import.meta.url), "utf8"),
     ]);
     expect(companies).toContain('company.status !== "ARCHIVED"');
-    expect(lifecycle).toContain('ARCHIVE: "Delete company"');
+    expect(company).toContain("deleteOrArchiveCompanyAction.bind(null, company.id)");
+    expect(company).toContain('name="confirmed"');
     expect(users).toContain("actor.isOwner && !isPlatformOwner");
     expect(users).toContain("removeUserAction.bind(null, user.id)");
     expect(users).toContain('user.accountStatus !== "DEACTIVATED"');

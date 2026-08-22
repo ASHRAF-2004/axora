@@ -62,7 +62,7 @@ export async function updateProduct(productId: string, input: ProductInput, acto
     return;
   }
 
-  await withAuditTransaction({ actor, reason: "Product details updated" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "PRODUCT_UPDATED" }, async (client) => {
     const existing = await client.query("SELECT 1 FROM products WHERE id=$1 FOR UPDATE", [productId]);
     if (!existing.rowCount) throw new Error("Product not found.");
 

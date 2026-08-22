@@ -68,7 +68,6 @@ export interface CompanyBrandingMessages {
   publish: string;
   rollback: string;
   reason: string;
-  reasonHelp: string;
   publishPermission: string;
   noPublishPermission: string;
   contrastTitle: string;
@@ -173,7 +172,6 @@ const en: CompanyBrandingMessages = {
   publish: "Publish approved version",
   rollback: "Publish rollback as a new version",
   reason: "Decision reason",
-  reasonHelp: "Use 3 to 1000 characters. The reason is stored in append-only evidence.",
   publishPermission: "You have permission to publish an approved version.",
   noPublishPermission: "You may preview and review drafts, but publication requires delegated company.portal.publish permission.",
   contrastTitle: "WCAG contrast evidence",
@@ -287,7 +285,6 @@ const ar: CompanyBrandingMessages = {
   publish: "نشر الإصدار المعتمد",
   rollback: "نشر التراجع كإصدار جديد",
   reason: "سبب القرار",
-  reasonHelp: "استخدم من 3 إلى 1000 حرف. يحفظ السبب في دليل غير قابل للتعديل.",
   publishPermission: "لديك صلاحية نشر إصدار معتمد.",
   noPublishPermission: "يمكنك المعاينة والمراجعة، لكن النشر يتطلب صلاحية company.portal.publish مفوضة.",
   contrastTitle: "دليل تباين WCAG",
@@ -401,7 +398,6 @@ const ms: CompanyBrandingMessages = {
   publish: "Terbitkan versi diluluskan",
   rollback: "Terbitkan undur sebagai versi baharu",
   reason: "Sebab keputusan",
-  reasonHelp: "Gunakan 3 hingga 1000 aksara. Sebab disimpan dalam bukti tambah sahaja.",
   publishPermission: "Anda mempunyai kebenaran untuk menerbitkan versi diluluskan.",
   noPublishPermission: "Anda boleh pratonton dan menyemak draf, tetapi penerbitan memerlukan kebenaran company.portal.publish yang diwakilkan.",
   contrastTitle: "Bukti kontras WCAG",

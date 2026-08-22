@@ -34,7 +34,7 @@ describe("account setup email", () => {
     expect(result.text).toContain("Login: https://axora.management/login");
     expect(result.text).toContain("Privacy: https://axora.management/en/privacy");
     expect(result.html).toContain("https://axora.management/en/privacy");
-    expect(result.html).toContain("https://axora.management/en/help");
+    expect(result.html).toContain("https://axora.management/en/contact");
   });
 
   it("escapes tenant-controlled text and rejects a setup URL outside Axora", async () => {

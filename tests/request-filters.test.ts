@@ -3,13 +3,12 @@ import { catalogInternals } from "../src/lib/catalog";
 import {
   hasActiveRequestFilters,
   normalizeRequestFilters,
-  normalizeRequestOptionValues,
   requestFiltersToSearchParams,
 } from "../src/lib/request-filters";
 import { requestReaderInternals } from "../src/lib/request-reader";
 
 describe("permission-scoped procurement filters",() => {
-  it("normalizes, bounds and round-trips combinable URL filters",() => {
+  it("normalizes, bounds and round-trips search, status and pagination only",() => {
     const raw=new URLSearchParams();
     raw.set("q","  paper clips  ");
     raw.append("company","11111111-1111-4111-8111-111111111111");
@@ -23,12 +22,12 @@ describe("permission-scoped procurement filters",() => {
     raw.set("page","3");
     raw.set("pageSize","50");
     const filters=normalizeRequestFilters(raw);
-    expect(filters).toMatchObject({query:"paper clips",companyIds:["11111111-1111-4111-8111-111111111111"],categories:["Office Supplies"],statuses:["open"],neededFrom:"2026-08-01",neededTo:"2026-08-31",minAmount:25.5,sort:"amount-desc",page:3,pageSize:50});
+    expect(filters).toMatchObject({query:"paper clips",companyIds:[],categories:[],statuses:["open"],sort:"submitted-desc",page:3,pageSize:25});
     expect(normalizeRequestFilters(requestFiltersToSearchParams(filters))).toEqual(filters);
     expect(hasActiveRequestFilters(filters)).toBe(true);
   });
 
-  it("parameterizes every value and ignores retired supplier filters",() => {
+  it("parameterizes search and ignores retired advanced filters",() => {
     const filters=normalizeRequestFilters(new URLSearchParams({
       q:"%' OR TRUE --",
       category:"Office Supplies",
@@ -38,8 +37,8 @@ describe("permission-scoped procurement filters",() => {
     }));
     const spec=requestReaderInternals.buildRequestSearchSpec(filters,"Asia/Kuala_Lumpur");
     expect(filters).not.toHaveProperty("supplierIds");
-    expect(spec.where).toContain("AT TIME ZONE");
-    expect(spec.where).toContain("category_line.request_id=r.id");
+    expect(spec.where).not.toContain("AT TIME ZONE");
+    expect(spec.where).not.toContain("category_line.request_id=r.id");
     expect(spec.where).not.toContain("%' OR TRUE --");
     expect(spec.values).toContain("%' OR TRUE --");
     expect(requestReaderInternals.requestSearchFrom).toContain("axora_request_access_rows($1,$2,$3)");
@@ -47,9 +46,7 @@ describe("permission-scoped procurement filters",() => {
     expect(requestReaderInternals.requestSearchFrom).not.toContain("public.request_approval_escalations");
   });
 
-  it("rejects malformed option IDs and invalid catalogue sorts",() => {
-    expect(normalizeRequestOptionValues("company",["bad","11111111-1111-4111-8111-111111111111"]))
-      .toEqual(["11111111-1111-4111-8111-111111111111"]);
+  it("rejects invalid catalogue sorts",() => {
     expect(catalogInternals.normalizeInput({sort:"DROP TABLE products" as never}).sort)
       .toBe("relevance");
   });

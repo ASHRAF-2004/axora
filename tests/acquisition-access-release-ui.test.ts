@@ -35,11 +35,7 @@ describe("acquisition and account access release UI", () => {
     });
   });
 
-  it("ships English, Arabic and Malay onboarding and hierarchy workspaces with logical responsive layout", () => {
-    const onboardingCopy = readFileSync(
-      new URL("../src/lib/company-onboarding-i18n.ts", import.meta.url),
-      "utf8",
-    );
+  it("ships English, Arabic and Malay company setup and hierarchy workspaces with logical responsive layout", () => {
     const organizationCopy = readFileSync(
       new URL("../src/lib/organization-structure-i18n.ts", import.meta.url),
       "utf8",
@@ -56,13 +52,14 @@ describe("acquisition and account access release UI", () => {
       new URL("../src/app/globals.css", import.meta.url),
       "utf8",
     );
-    for (const source of [onboardingCopy, organizationCopy]) {
-      expect(source).toContain("const en");
-      expect(source).toContain("const ar");
-      expect(source).toContain("const ms");
-      expect(source).toMatch(/[\u0600-\u06ff]/);
-    }
-    expect(onboardingPage).toContain("repeat(auto-fit,minmax(min(100%,360px),1fr))");
+    expect(onboardingPage).toContain("en:");
+    expect(onboardingPage).toContain("ar:");
+    expect(onboardingPage).toContain("ms:");
+    expect(organizationCopy).toContain("const en");
+    expect(organizationCopy).toContain("const ar");
+    expect(organizationCopy).toContain("const ms");
+    expect(`${onboardingPage}\n${organizationCopy}`).toMatch(/[\u0600-\u06ff]/);
+    expect(onboardingPage).toContain('className="form-grid"');
     expect(organizationPage).toContain("data-depth={depth(");
     expect(organizationStyles).toContain("margin-inline-start");
     expect(`${onboardingPage}\n${organizationPage}\n${organizationStyles}`)

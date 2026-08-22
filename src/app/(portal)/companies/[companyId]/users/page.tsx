@@ -15,6 +15,7 @@ import { localizedAccountRole } from "@/lib/user-form-i18n";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { canAccess } from "@/lib/permissions";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
+import { CompanyWorkspaceNav } from "@/components/CompanyWorkspaceNav";
 
 export default async function CompanyUsersPage({
   params,
@@ -51,6 +52,7 @@ export default async function CompanyUsersPage({
   const notice = standardNotice ?? localNotice;
   return <>
     <PageHeader eyebrow={copy.companyEyebrow} title={`${copy.companyTitle}: ${company.name}`} description={description} />
+    <CompanyWorkspaceNav companyId={company.id} locale={locale} active="users" />
     <div className="page-actions">
       <Link className="button button-secondary" href={`/companies/${company.id}`}>{copy.backCompany}</Link>
       {canAccess(actor, "create_company_users") ? <Link className="button button-primary" href={`/companies/${company.id}/users/new`}>{copy.createCompany}</Link> : null}

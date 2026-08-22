@@ -11,6 +11,7 @@ import { creatableAccountRoles } from "@/lib/role-catalog";
 import { accountRoleDefinition } from "@/lib/role-catalog";
 import { notFound } from "next/navigation";
 import { createAxoraUserAction } from "../actions";
+import { isMvpVisiblePermission } from "@/lib/mvp-permissions";
 
 export default async function NewUserPage() {
   const actor = await requirePagePermission("manage_users");
@@ -26,15 +27,17 @@ export default async function NewUserPage() {
       role.allowedScopes[0],
       role.key === "PLATFORM_OWNER",
     );
+    const visibleDefaults = defaults.filter((code) => isMvpVisiblePermission(role.accountKind, code));
     return {
       value: role.key,
       label: role.label,
       description: role.description,
       category: role.category,
-      defaultPermissions: defaults,
+      defaultPermissions: visibleDefaults,
       customizablePermissions: role.key === "PLATFORM_OWNER"
         ? []
-        : creationPermissionOptions(role.accountKind, defaults, actor.isOwner),
+        : creationPermissionOptions(role.accountKind, defaults, actor.isOwner)
+          .filter((permission) => isMvpVisiblePermission(role.accountKind, permission.code)),
     };
   });
   return <>

@@ -73,22 +73,6 @@ interface AccountLifecycleMessages {
     unavailableBody: string;
     invalidBody: string;
   };
-  help: {
-    chip: string;
-    storyTitle: string;
-    storyBody: string;
-    eyebrow: string;
-    title: string;
-    intro: string;
-    linkTitle: string;
-    linkPoints: [string, string, string];
-    passwordTitle: string;
-    passwordPoints: [string, string, string];
-    privacyTitle: string;
-    privacyBeforeEmail: string;
-    setup: string;
-    linksLabel: string;
-  };
   account: {
     eyebrow: string;
     title: string;
@@ -184,17 +168,6 @@ const en: AccountLifecycleMessages = {
     unavailableBody: "Axora could not verify this link right now. Reopen the newest message shortly.",
     invalidBody: "This verification link is missing, invalid, expired, replaced, or already used.",
   },
-  help: {
-    chip: "Account help", storyTitle: "Get your account ready safely.",
-    storyBody: "Axora invitations use a private, single-use link. These checks fix the most common setup problems without sharing your password.",
-    eyebrow: "Troubleshooting", title: "Account setup help", intro: "Use the newest invitation email sent to your assigned work address.",
-    linkTitle: "If the link is invalid or expired",
-    linkPoints: ["Open the newest invitation. Resending automatically cancels every older link.", "A setup link works once and stops working after its expiry time.", "Ask your company administrator to choose Resend invite on the Users page."],
-    passwordTitle: "If the password is not accepted",
-    passwordPoints: ["Enter the same password in both fields.", "Use 15–128 Unicode characters. Spaces and paste are allowed; uppercase letters, numbers, and symbols are not required.", "After setup succeeds, sign in with the email shown in your invitation and your new password."],
-    privacyTitle: "Keep the invitation private", privacyBeforeEmail: "If you did not expect the invitation, do not use or forward it. Contact your company administrator or email",
-    setup: "Account setup", linksLabel: "Account setup help links",
-  },
   account: {
     eyebrow: "Personal settings", title: "Account & security", description: "Manage your password, email verification, notifications, and active Axora sessions.",
     reauthorize: "Re-authorize this action", reauthorizeBody: "For security, this operation needs one additional confirmation with your current password.",
@@ -273,17 +246,6 @@ const ms: AccountLifecycleMessages = {
     unavailableBody: "Axora tidak dapat mengesahkan pautan ini sekarang. Buka semula mesej terbaharu sebentar lagi.",
     invalidBody: "Pautan pengesahan ini tiada, tidak sah, tamat tempoh, telah diganti atau telah digunakan.",
   },
-  help: {
-    chip: "Bantuan akaun", storyTitle: "Sediakan akaun anda dengan selamat.",
-    storyBody: "Jemputan Axora menggunakan pautan peribadi sekali guna. Semakan ini menyelesaikan masalah biasa tanpa berkongsi kata laluan anda.",
-    eyebrow: "Penyelesaian masalah", title: "Bantuan persediaan akaun", intro: "Gunakan e-mel jemputan terbaharu yang dihantar ke alamat kerja anda.",
-    linkTitle: "Jika pautan tidak sah atau tamat tempoh",
-    linkPoints: ["Buka jemputan terbaharu. Penghantaran semula membatalkan semua pautan lama.", "Pautan persediaan berfungsi sekali dan berhenti selepas masa tamatnya.", "Minta pentadbir syarikat memilih Hantar semula jemputan pada halaman Pengguna."],
-    passwordTitle: "Jika kata laluan tidak diterima",
-    passwordPoints: ["Masukkan kata laluan yang sama dalam kedua-dua medan.", "Gunakan 15–128 aksara Unicode. Ruang dan tampal dibenarkan; huruf besar, nombor dan simbol tidak diwajibkan.", "Selepas persediaan berjaya, log masuk menggunakan e-mel dalam jemputan dan kata laluan baharu anda."],
-    privacyTitle: "Pastikan jemputan kekal peribadi", privacyBeforeEmail: "Jika anda tidak menjangka jemputan ini, jangan guna atau majukannya. Hubungi pentadbir syarikat anda atau e-mel",
-    setup: "Persediaan akaun", linksLabel: "Pautan bantuan persediaan akaun",
-  },
   account: {
     eyebrow: "Tetapan peribadi", title: "Akaun & keselamatan", description: "Urus kata laluan, pengesahan e-mel, pemberitahuan dan sesi Axora aktif anda.",
     reauthorize: "Sahkan semula tindakan ini", reauthorizeBody: "Untuk keselamatan, operasi ini memerlukan pengesahan dengan kata laluan semasa anda.",
@@ -361,17 +323,6 @@ const ar: AccountLifecycleMessages = {
     verifiedBody: "تم الآن تأكيد بريد حساب Axora. لا يمكن استخدام هذا الرابط الخاص مرة أخرى.",
     unavailableBody: "تعذر على Axora التحقق من الرابط الآن. افتح أحدث رسالة مرة أخرى بعد قليل.",
     invalidBody: "رابط التحقق مفقود أو غير صالح أو منتهي الصلاحية أو مستبدل أو مستخدم.",
-  },
-  help: {
-    chip: "مساعدة الحساب", storyTitle: "جهّز حسابك بأمان.",
-    storyBody: "تستخدم دعوات Axora رابطًا خاصًا ولمرة واحدة. تحل هذه الخطوات أكثر مشكلات الإعداد شيوعًا دون مشاركة كلمة مرورك.",
-    eyebrow: "استكشاف الأخطاء", title: "مساعدة إعداد الحساب", intro: "استخدم أحدث رسالة دعوة أُرسلت إلى عنوان عملك المحدد.",
-    linkTitle: "إذا كان الرابط غير صالح أو منتهيًا",
-    linkPoints: ["افتح أحدث دعوة. تؤدي إعادة الإرسال إلى إلغاء كل رابط أقدم.", "يعمل رابط الإعداد مرة واحدة ويتوقف بعد انتهاء صلاحيته.", "اطلب من مسؤول الشركة اختيار إعادة إرسال الدعوة في صفحة المستخدمين."],
-    passwordTitle: "إذا لم تُقبل كلمة المرور",
-    passwordPoints: ["أدخل كلمة المرور نفسها في الحقلين.", "استخدم من 15 إلى 128 محرف Unicode. المسافات واللصق مسموحان، ولا تُشترط الأحرف الكبيرة أو الأرقام أو الرموز.", "بعد نجاح الإعداد، سجّل الدخول بالبريد الظاهر في الدعوة وكلمة مرورك الجديدة."],
-    privacyTitle: "حافظ على خصوصية الدعوة", privacyBeforeEmail: "إذا لم تكن تتوقع الدعوة، فلا تستخدمها أو تعِد توجيهها. تواصل مع مسؤول شركتك أو راسل",
-    setup: "إعداد الحساب", linksLabel: "روابط مساعدة إعداد الحساب",
   },
   account: {
     eyebrow: "الإعدادات الشخصية", title: "الحساب والأمان", description: "أدر كلمة المرور والتحقق من البريد والإشعارات وجلسات Axora النشطة.",

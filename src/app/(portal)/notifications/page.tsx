@@ -52,11 +52,6 @@ function statusFilter(value: string | undefined): NotificationStatusFilter {
   return normalized && statuses.includes(normalized) ? normalized : "ALL";
 }
 
-function categoryFilter(value: string | undefined): NotificationCenterCategoryFilter {
-  const normalized = value?.toUpperCase() as NotificationCenterCategoryFilter | undefined;
-  return normalized && categories.includes(normalized) ? normalized : "ALL";
-}
-
 function dateFormatter(locale: "en" | "ar" | "ms", timezone: string) {
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
@@ -135,7 +130,7 @@ export default async function NotificationsPage({
   const locale = profile.preferredLocale;
   const copy = notificationCentreMessages(locale);
   const selectedStatus = statusFilter(first(params.status));
-  const selectedCategory = categoryFilter(first(params.category));
+  const selectedCategory: NotificationCenterCategoryFilter = "ALL";
   const notice = first(params.notice);
   let snapshot;
   try {
@@ -183,10 +178,6 @@ export default async function NotificationsPage({
     <form className="notification-filter-bar" action="/notifications" method="get" aria-label={copy.filters}>
       <label>{copy.status}<select name="status" defaultValue={selectedStatus}>
         {statuses.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
-      </select></label>
-      <label>{copy.type}<select name="category" defaultValue={selectedCategory}>
-        <option value="ALL">{copy.allTypes}</option>
-        {categories.slice(1).map((category) => <option key={category} value={category}>{copy.categories[category as NotificationCategory]}</option>)}
       </select></label>
       <button className="button button-secondary" type="submit">{copy.apply}</button>
       <span><span className="environment-dot" aria-hidden="true" />{copy.live}</span>

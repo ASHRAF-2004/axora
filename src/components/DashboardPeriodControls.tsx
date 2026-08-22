@@ -49,12 +49,6 @@ export function DashboardPeriodControls({
         <div className="dashboard-period-summary" aria-live="polite">
           <strong>{copy.summary(start, end, period.timeZone)}</strong>
           <span>{copy.generated(generated)}</span>
-          {period.comparison ? (
-            <span>{copy.comparisonPeriod(
-              displayDate(period.comparison.startDate, locale),
-              displayDate(period.comparison.endDate, locale),
-            )}</span>
-          ) : null}
         </div>
       </header>
       {period.issue ? (
@@ -103,16 +97,6 @@ export function DashboardPeriodControls({
             </select>
           </label>
         ) : null}
-        <label className="dashboard-period-checkbox">
-          <input
-            type="checkbox"
-            name="compare"
-            value="1"
-            defaultChecked={period.compare}
-            aria-label={copy.compare}
-          />
-          <span>{copy.compare}</span>
-        </label>
         <div className="dashboard-period-actions">
           <button type="submit" className="button button-primary">{copy.apply}</button>
           <Link className="button button-secondary" href="/dashboard">{copy.reset}</Link>

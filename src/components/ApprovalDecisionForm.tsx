@@ -12,7 +12,6 @@ import {
   useActionState,
   useEffect,
   useRef,
-  type FormEvent,
 } from "react";
 
 const initialState: ApprovalActionState = {
@@ -34,7 +33,6 @@ export function ApprovalDecisionForm({
   const router = useRouter();
   const { notify } = useUxFeedback();
   const formRef = useRef<HTMLFormElement>(null);
-  const reasonRef = useRef<HTMLTextAreaElement>(null);
   const [state, formAction, pending] = useActionState(
     recordApprovalAction,
     initialState,
@@ -65,26 +63,6 @@ export function ApprovalDecisionForm({
     router,
   ]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    const submitter = (event.nativeEvent as SubmitEvent).submitter;
-
-    if (
-      submitter instanceof HTMLButtonElement &&
-      submitter.value === "Rejected" &&
-      !reasonRef.current?.value.trim()
-    ) {
-      event.preventDefault();
-      notify(
-        copy.rejectionReason,
-        "error",
-      );
-      reasonRef.current?.focus();
-    }
-  }
-
-  const reasonError =
-    state.status === "error" && state.field === "reason";
-
   return (
     <form
       ref={formRef}
@@ -92,22 +70,8 @@ export function ApprovalDecisionForm({
       className="form-panel"
       style={{ padding: 0 }}
       noValidate
-      onSubmit={handleSubmit}
     >
       <input name="requestId" type="hidden" value={requestId} />
-
-      <label>
-        {copy.approvalNote}
-        <textarea
-          ref={reasonRef}
-          name="reason"
-          placeholder={copy.notePlaceholder}
-          aria-invalid={reasonError}
-          aria-describedby={
-            reasonError ? `approval-error-${requestId}` : undefined
-          }
-        />
-      </label>
 
       {state.status === "error" ? (
         <p

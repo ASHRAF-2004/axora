@@ -4,11 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
-import {
-  calculateDashboardComparison,
-  normalizeDashboardPeriod,
-  type DashboardPeriodInput,
-} from "@/lib/dashboard-period";
+import { normalizeDashboardPeriod, type DashboardPeriodInput } from "@/lib/dashboard-period";
 import { dashboardPeriodMessages } from "@/lib/dashboard-period-i18n";
 import {
   getAuthorizedDashboardPeriodReport,
@@ -45,16 +41,16 @@ function roleDashboard(
 ) {
   const role = corePortalMessages(locale).dashboard.role;
   const paths: Record<keyof typeof role, string[]> = {
-    owner: ["/companies", "/users", "/products", "/audit"],
-    hr: ["/companies/leads", "/companies", "/users"],
-    agent: ["/companies/leads", "/companies", "/requests", "/finance"],
-    operations: ["/deliveries", "/products", "/reports"],
+    owner: ["/companies", "/users", "/products", "/email-operations"],
+    hr: ["/companies", "/users", "/branches"],
+    agent: ["/companies", "/products", "/requests", "/deliveries"],
+    operations: ["/deliveries", "/products", "/requests"],
     deliveryGuy: ["/deliveries", "/dashboard"],
-    companyAdmin: ["/users", "/branches", "/requests", "/reports"],
+    companyAdmin: ["/users", "/branches", "/requests", "/wallet"],
     branchAdmin: ["/users", "/branches", "/requests", "/deliveries"],
     approver: ["/approvals", "/requests", "/branches"],
-    finance: ["/finance", "/reports", "/requests"],
-    auditor: ["/audit", "/reports"],
+    finance: ["/finance", "/invoices", "/requests"],
+    auditor: ["/requests", "/invoices"],
     requester: ["/products", "/requests/new", "/requests", "/deliveries"],
   };
   const key: keyof typeof role = actor.isOwner
@@ -108,17 +104,13 @@ export default async function DashboardPage({
     preset: first(raw.preset),
     start: first(raw.start),
     end: first(raw.end),
-    compare: first(raw.compare),
   };
   const scope = await resolveDashboardReportingScope(actor, first(raw.branch));
   const period = normalizeDashboardPeriod(input, scope.timeZone);
   const report = await getAuthorizedDashboardPeriodReport(actor, period, scope);
   const data = report.current;
-  const previous = report.previous;
   const platformData = report.scope === "platform" ? report.current : undefined;
-  const previousPlatform = report.scope === "platform" ? report.previous : undefined;
   const companyData = report.scope === "company" ? report.current : undefined;
-  const previousCompany = report.scope === "company" ? report.previous : undefined;
   const platformView = report.scope === "platform";
   const companyView = actor.accountKind === "COMPANY";
   const branches = companyView
@@ -153,21 +145,6 @@ export default async function DashboardPage({
     maximumFractionDigits: 1,
   }).format(value);
   const percent = (value: number) => number(value) + "%";
-  const comparisonNote = (
-    base: string,
-    currentValue: number,
-    previousValue: number | undefined,
-    formatter: (value: number) => string,
-  ) => {
-    if (previousValue === undefined) return base;
-    const delta = calculateDashboardComparison(currentValue, previousValue);
-    const comparison = periodCopy.comparison(
-      delta,
-      formatter(Math.abs(delta.absolute)),
-      delta.percentage === null ? "" : percent(Math.abs(delta.percentage)),
-    );
-    return base + " · " + comparison;
-  };
 
   return (
     <>
@@ -204,96 +181,56 @@ export default async function DashboardPage({
             <MetricCard
               label={copy.metrics.totalRequests}
               value={String(data.requestCount)}
-              note={comparisonNote(
-                String(data.openRequestCount) + " " + copy.notes.open,
-                data.requestCount,
-                previous?.requestCount,
-                number,
-              )}
+              note={String(data.openRequestCount) + " " + copy.notes.open}
               icon={ClipboardList}
               tone="blue"
             />
             {canViewRevenue ? <MetricCard
               label={copy.metrics.customerSales}
               value={formatCurrency(platformData!.sales, locale)}
-              note={comparisonNote(
-                copy.notes.customerPrice,
-                platformData!.sales,
-                previousPlatform?.sales,
-                (value) => formatCurrency(value, locale),
-              )}
+              note={copy.notes.customerPrice}
               icon={TrendingUp}
               tone="teal"
             /> : null}
             {canViewCost ? <MetricCard
               label={copy.metrics.buyingCost}
               value={formatCurrency(platformData!.buyingCost, locale)}
-              note={comparisonNote(
-                copy.notes.supplierCost,
-                platformData!.buyingCost,
-                previousPlatform?.buyingCost,
-                (value) => formatCurrency(value, locale),
-              )}
+              note={copy.notes.supplierCost}
               icon={Banknote}
               tone="navy"
             /> : null}
             {canViewProfit ? <MetricCard
               label={copy.metrics.grossProfit}
               value={formatCurrency(platformData!.grossProfit, locale)}
-              note={comparisonNote(
-                percent(platformData!.grossMarginPercent) + " " + copy.notes.grossMargin,
-                platformData!.grossProfit,
-                previousPlatform?.grossProfit,
-                (value) => formatCurrency(value, locale),
-              )}
+              note={percent(platformData!.grossMarginPercent) + " " + copy.notes.grossMargin}
               icon={CircleDollarSign}
               tone="teal"
             /> : null}
             <MetricCard
               label={copy.metrics.urgent}
               value={String(data.urgentRequestCount)}
-              note={comparisonNote(
-                copy.notes.urgentPlatform,
-                data.urgentRequestCount,
-                previous?.urgentRequestCount,
-                number,
-              )}
+              note={copy.notes.urgentPlatform}
               icon={AlertTriangle}
               tone="orange"
             />
             <MetricCard
               label={copy.metrics.delayed}
               value={String(platformData!.delayedDeliveryCount)}
-              note={comparisonNote(
-                copy.notes.delayedPlatform,
-                platformData!.delayedDeliveryCount,
-                previousPlatform?.delayedDeliveryCount,
-                number,
-              )}
+              note={copy.notes.delayedPlatform}
               icon={Clock3}
               tone="orange"
             />
             {canAccess(actor, "view_invoices") ? <MetricCard
               label={copy.metrics.outstanding}
               value={String(platformData!.outstandingInvoiceCount)}
-              note={comparisonNote(
-                copy.notes.outstanding,
-                platformData!.outstandingInvoiceCount,
-                previousPlatform?.outstandingInvoiceCount,
-                number,
-              )}
+              note={copy.notes.outstanding}
               icon={PackageCheck}
               tone="blue"
             /> : null}
             {canViewProfit ? <MetricCard
               label={copy.metrics.margin}
               value={percent(platformData!.grossMarginPercent)}
-              note={comparisonNote(
-                formatCurrency(platformData!.deliveryCharges, locale) + " " + copy.notes.deliverySeparate,
-                platformData!.grossMarginPercent,
-                previousPlatform?.grossMarginPercent,
-                (value) => number(value) + " pp",
-              )}
+              note={formatCurrency(platformData!.deliveryCharges, locale) + " " + copy.notes.deliverySeparate}
               icon={Percent}
               tone="navy"
             /> : null}
@@ -303,48 +240,28 @@ export default async function DashboardPage({
             <MetricCard
               label={copy.metrics.purchaseRequests}
               value={String(data.requestCount)}
-              note={comparisonNote(
-                String(data.openRequestCount) + " " + copy.notes.inProgress,
-                data.requestCount,
-                previous?.requestCount,
-                number,
-              )}
+              note={String(data.openRequestCount) + " " + copy.notes.inProgress}
               icon={ClipboardList}
               tone="blue"
             />
             <MetricCard
               label={copy.metrics.requestedValue}
               value={formatCurrency(companyData!.requestedValue, locale)}
-              note={comparisonNote(
-                copy.notes.requestedValue,
-                companyData!.requestedValue,
-                previousCompany?.requestedValue,
-                (value) => formatCurrency(value, locale),
-              )}
+              note={copy.notes.requestedValue}
               icon={TrendingUp}
               tone="teal"
             />
             <MetricCard
               label={copy.metrics.approvedSpend}
               value={formatCurrency(companyData!.approvedSpend, locale)}
-              note={comparisonNote(
-                copy.notes.approvedSpend,
-                companyData!.approvedSpend,
-                previousCompany?.approvedSpend,
-                (value) => formatCurrency(value, locale),
-              )}
+              note={copy.notes.approvedSpend}
               icon={ClipboardCheck}
               tone="navy"
             />
             <MetricCard
               label={copy.metrics.pendingApproval}
               value={String(companyData!.pendingApprovalCount)}
-              note={comparisonNote(
-                copy.notes.pendingApproval,
-                companyData!.pendingApprovalCount,
-                previousCompany?.pendingApprovalCount,
-                number,
-              )}
+              note={copy.notes.pendingApproval}
               icon={Clock3}
               tone="orange"
             />
@@ -369,12 +286,7 @@ export default async function DashboardPage({
             <MetricCard
               label={copy.metrics.urgent}
               value={String(data.urgentRequestCount)}
-              note={comparisonNote(
-                copy.notes.urgentCompany,
-                data.urgentRequestCount,
-                previous?.urgentRequestCount,
-                number,
-              )}
+              note={copy.notes.urgentCompany}
               icon={AlertTriangle}
               tone="orange"
             />

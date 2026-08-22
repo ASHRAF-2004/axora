@@ -7,6 +7,5 @@ export function landingPathForSession(user: LandingSubject) {
     user.role === "DELIVERY_DRIVER" || user.role === "DELIVERY_GUY"
   )) return "/driver";
   if (user.accountKind === "COMPANY" && user.role === "RECEIVING_USER") return "/receiving";
-  if (!user.isOwner && (user.role === "IT_SUPPORT" || user.role === "TECHNICAL_SUPPORT")) return "/support";
   return "/dashboard";
 }

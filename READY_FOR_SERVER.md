@@ -41,7 +41,7 @@ restore are deliberately left for the Ubuntu server.
 1. Install the new SSD and Ubuntu.
 2. Confirm the real LAN IP, subnet, interface, and internal hostname.
 3. Copy this entire folder to `/srv/axora`.
-4. Follow `output/pdf/Axora_Server_Deployment_and_Use_Guide_AR.pdf`.
+4. Follow `docs/PRODUCTION_RUNBOOK.md`.
 5. Create production secrets on Ubuntu; never reuse a demonstration password.
 6. Deploy, create the first named administrator, configure internal DNS/hosts,
    and trust the Caddy public root certificate on approved clients.

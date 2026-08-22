@@ -9,10 +9,7 @@ import {
   findVisibleDemoRequest,
   RequestAccessUnavailableError,
 } from "./request-isolation";
-import type {
-  RequestFilterDimension,
-  RequestFilters,
-} from "./request-filters";
+import type { RequestFilters } from "./request-filters";
 import type {
   DashboardData,
   ProcurementRequest,
@@ -481,12 +478,6 @@ export interface AuthorizedRequestSearchResult {
   totalPages: number;
 }
 
-export interface AuthorizedRequestFilterOption {
-  value: string;
-  label: string;
-  count: number;
-}
-
 function demoRequestMatches(request: ProcurementRequest, filters: RequestFilters) {
   const searchable = [request.orderCode,request.companyName,request.branchName,
     ...request.lines.flatMap((line) => [line.productCode ?? "",line.productName,line.category])]
@@ -607,102 +598,6 @@ export function searchAuthorizedRequests(
   filters: RequestFilters,
 ) {
   return loadAuthorizedFilteredRequests(actor,filters,true);
-}
-
-export async function listAuthorizedFilteredRequests(
-  actor: AuthenticatedSessionUser,
-  filters: RequestFilters,
-) {
-  return (await loadAuthorizedFilteredRequests(actor,filters,false)).requests;
-}
-
-async function demoFilterOptions(
-  actor: AuthenticatedSessionUser,
-  dimension: RequestFilterDimension,
-  queryText: string,
-  selectedValues: string[],
-) {
-  const counts=new Map<string,{label:string;requests:Set<string>}>();
-  function add(value:string|undefined,label:string|undefined,requestId:string) {
-    if (!value || !label) return;
-    const entry=counts.get(value) ?? {label,requests:new Set<string>()};
-    entry.requests.add(requestId);counts.set(value,entry);
-  }
-  const visible=await filterVisibleDemoRequests(actor,getDemoStore().requests,new Date());
-  for (const request of visible) {
-    if (dimension==="company") add(request.companyId,request.companyName,request.id);
-    if (dimension==="branch") add(request.branchId,request.branchName,request.id);
-    if (dimension==="department") add(request.departmentId,request.department,request.id);
-    if (dimension==="requester") add(request.createdById,request.requestedBy,request.id);
-    if (dimension==="category") for (const category of new Set(request.lines.map((line) => line.category))) add(category,category,request.id);
-    if (dimension==="budgetException") add("NONE","NONE",request.id);
-  }
-  const normalizedQuery=queryText.toLowerCase();
-  return [...counts.entries()].map(([value,entry]) => ({value,label:entry.label,count:entry.requests.size}))
-    .filter((option) => selectedValues.length
-      ? selectedValues.includes(option.value)
-      : !normalizedQuery || option.label.toLowerCase().includes(normalizedQuery))
-    .sort((left,right) => right.count-left.count || left.label.localeCompare(right.label))
-    .slice(0,25);
-}
-
-const optionConfigurations: Record<RequestFilterDimension,{value:string;label:string;joins:string}> = {
-  company:{value:"r.company_id::text",label:"c.name",joins:""},
-  category:{value:"option_line.category_snapshot",label:"option_line.category_snapshot",joins:"JOIN public.request_lines option_line ON option_line.request_id=r.id"},
-  manager:{value:"option_manager_assignment.manager_user_id::text",label:"option_manager.display_name",joins:`JOIN public.company_leads option_lead ON option_lead.converted_company_id=r.company_id
-    JOIN public.company_lead_assignments option_manager_assignment ON option_manager_assignment.lead_id=option_lead.id AND option_manager_assignment.status='ACTIVE'
-    JOIN public.users option_manager ON option_manager.id=option_manager_assignment.manager_user_id`},
-  branch:{value:"r.branch_id::text",label:"b.name",joins:""},
-  department:{value:"option_department.id::text",label:"option_department.name",joins:"JOIN public.departments option_department ON option_department.id=r.department_id AND option_department.company_id=r.company_id"},
-  costCentre:{value:"option_cost_centre.id::text",label:"option_cost_centre.name",joins:"JOIN public.cost_centres option_cost_centre ON option_cost_centre.id=r.cost_centre_id AND option_cost_centre.company_id=r.company_id"},
-  requester:{value:"option_requester.id::text",label:"option_requester.display_name",joins:"JOIN public.users option_requester ON option_requester.id=r.created_by"},
-  approver:{value:"option_approval.reviewer_id::text",label:"option_approver.display_name",joins:"JOIN public.approvals option_approval ON option_approval.request_id=r.id AND option_approval.reviewer_id IS NOT NULL JOIN public.users option_approver ON option_approver.id=option_approval.reviewer_id"},
-  deliveryAgent:{value:"option_delivery_assignment.driver_user_id::text",label:"option_driver.display_name",joins:`JOIN public.delivery_jobs option_job ON option_job.request_id=r.id
-    JOIN public.delivery_job_assignments option_delivery_assignment ON option_delivery_assignment.delivery_job_id=option_job.id AND option_delivery_assignment.ended_at IS NULL AND option_delivery_assignment.status IN ('ASSIGNED','ACCEPTED')
-    JOIN public.users option_driver ON option_driver.id=option_delivery_assignment.driver_user_id`},
-  budgetException:{value:requestBudgetException,label:requestBudgetException,joins:""},
-};
-
-export async function listAuthorizedRequestFilterOptions(
-  actor: AuthenticatedSessionUser,
-  dimension: RequestFilterDimension,
-  queryText="",
-  selectedValues:string[]=[],
-): Promise<AuthorizedRequestFilterOption[]> {
-  if (isDemoMode()) return demoFilterOptions(actor,dimension,queryText,selectedValues);
-  const assignmentId=requireAssignment(actor);
-  const capturedAt=new Date();
-  const config=optionConfigurations[dimension];
-  const values:unknown[]=[actor.id,assignmentId,capturedAt];
-  const conditions=[`(${config.value}) IS NOT NULL`,`btrim((${config.label})::text)<>''`];
-  if (selectedValues.length) {
-    values.push(selectedValues);
-    conditions.push(`(${config.value})::text=ANY($${values.length}::text[])`);
-  } else if (queryText) {
-    values.push(`%${queryText}%`);
-    conditions.push(`(${config.label})::text ILIKE $${values.length}`);
-  }
-  try {
-    return await withAuditTransaction(
-      {actor,reason:`Viewed scoped request filter options: ${dimension}`},
-      async (client) => {
-        const result=await client.query<{value:string;label:string;count:number}>(`
-          SELECT (${config.value})::text AS value,(${config.label})::text AS label,
-            count(DISTINCT r.id)::int AS count
-          ${requestSearchFrom}
-          ${config.joins}
-          WHERE ${conditions.join(" AND ")}
-          GROUP BY ${config.value},${config.label}
-          ORDER BY count DESC,label
-          LIMIT 25
-        `,values);
-        return result.rows.map((row) => ({...row,count:Number(row.count)}));
-      },
-    );
-  } catch (error) {
-    if (error instanceof RequestAccessUnavailableError) throw error;
-    throw new RequestAccessUnavailableError();
-  }
 }
 
 export async function listAuthorizedRequests(

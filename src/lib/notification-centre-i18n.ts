@@ -13,10 +13,8 @@ export interface NotificationCentreMessages {
   deliveryMetric: string;
   filters: string;
   status: string;
-  type: string;
   apply: string;
   allStatuses: string;
-  allTypes: string;
   unread: string;
   read: string;
   archived: string;
@@ -210,8 +208,8 @@ const en: NotificationCentreMessages = {
   loading: "Loading your notification centre…", errorTitle: "Notifications are temporarily unavailable",
   errorBody: "No notification content was shown. Refresh or try again shortly.",
   unreadMetric: "Unread", visibleMetric: "Matching updates", deliveryMetric: "Live sync",
-  filters: "Filter notifications", status: "Status", type: "Type", apply: "Apply filters",
-  allStatuses: "All statuses", allTypes: "All types", unread: "Unread", read: "Read", archived: "Archived",
+  filters: "Filter notifications", status: "Status", apply: "Apply filters",
+  allStatuses: "All statuses", unread: "Unread", read: "Read", archived: "Archived",
   inbox: "Activity inbox", current: "You are up to date", unreadCount: (count) => `${count} unread update${count === 1 ? "" : "s"}`,
   markAll: "Mark all read", markRead: "Mark read", archive: "Dismiss", open: "Open authorized record", saving: "Saving…",
   reminder: "Reminder", emailRelated: "Email also queued", expires: (date) => `Retained until ${date}`,
@@ -222,7 +220,7 @@ const en: NotificationCentreMessages = {
   noReminder: "Off", hours12: "After 12 hours", hours24: "After 24 hours", hours72: "After 3 days", hours168: "After 7 days",
   immediate: "Immediately", daily: "Next daily window", weekly: "Next weekly window", mandatory: "Required", optional: "Optional",
   save: "Save preference", saved: "Notification preference saved.", denied: "The notification action was unavailable.", live: "Updates sync automatically while this page is open.",
-  categories: { ACCOUNT: "Account", LEAD: "Company leads", APPROVAL: "Approvals", BUDGET: "Budgets", SOURCING: "Legacy operations", DELIVERY: "Delivery and receiving", FINANCE: "Finance", EMAIL: "Email delivery", WORKFLOW: "Requests" },
+  categories: { ACCOUNT: "Account", LEAD: "Historical company events", APPROVAL: "Approvals", BUDGET: "Budgets", SOURCING: "Legacy operations", DELIVERY: "Delivery and receiving", FINANCE: "Finance", EMAIL: "Email delivery", WORKFLOW: "Requests" },
   eventLabels: eventLabels.en,
 };
 
@@ -231,13 +229,13 @@ const ar: NotificationCentreMessages = {
   description: "سجل خاص ودائم لتحديثات العمل المصرح بها حالياً لحسابك.",
   loading: "جارٍ تحميل مركز الإشعارات…", errorTitle: "الإشعارات غير متاحة مؤقتاً", errorBody: "لم يُعرض أي محتوى للإشعارات. حدّث الصفحة أو حاول بعد قليل.",
   unreadMetric: "غير مقروء", visibleMetric: "التحديثات المطابقة", deliveryMetric: "مزامنة مباشرة",
-  filters: "تصفية الإشعارات", status: "الحالة", type: "النوع", apply: "تطبيق التصفية", allStatuses: "كل الحالات", allTypes: "كل الأنواع", unread: "غير مقروء", read: "مقروء", archived: "مؤرشف",
+  filters: "تصفية الإشعارات", status: "الحالة", apply: "تطبيق التصفية", allStatuses: "كل الحالات", unread: "غير مقروء", read: "مقروء", archived: "مؤرشف",
   inbox: "صندوق النشاط", current: "أنت على اطلاع", unreadCount: (count) => `${count} تحديثات غير مقروءة`, markAll: "تحديد الكل كمقروء", markRead: "تحديد كمقروء", archive: "تجاهل", open: "فتح السجل المصرح", saving: "جارٍ الحفظ…",
   reminder: "تذكير", emailRelated: "أُدرج بريد أيضاً", expires: (date) => `محفوظ حتى ${date}`, empty: "لا توجد إشعارات مطابقة", emptyBody: "تظهر هنا المهام والقرارات والتسليمات والاستلامات والاستثناءات عندما ترتبط بدورك الحالي.",
   preferences: "تفضيلات التسليم", preferencesIntro: "تبقى الأدلة داخل التطبيق دائماً. اضبط توقيت البريد والتذكيرات الاختيارية لكل حدث.", inAppLocked: "الإشعارات داخل التطبيق مفعّلة دائماً", inAppLockedBody: "لا يمكن تعطيل أدلة سير العمل والحساب والأمان الموثوقة.",
   personalChoice: "تفضيلي", companyDefault: "إعداد الشركة", email: "البريد", schedule: "توقيت البريد", reminderSchedule: "التذكير", noReminder: "إيقاف", hours12: "بعد 12 ساعة", hours24: "بعد 24 ساعة", hours72: "بعد 3 أيام", hours168: "بعد 7 أيام",
   immediate: "فوراً", daily: "النافذة اليومية التالية", weekly: "النافذة الأسبوعية التالية", mandatory: "إلزامي", optional: "اختياري", save: "حفظ التفضيل", saved: "تم حفظ تفضيل الإشعار.", denied: "تعذر تنفيذ إجراء الإشعار.", live: "تتزامن التحديثات تلقائياً أثناء فتح الصفحة.",
-  categories: { ACCOUNT: "الحساب", LEAD: "عملاء الشركات المحتملون", APPROVAL: "الاعتمادات", BUDGET: "الميزانيات", SOURCING: "عمليات سابقة", DELIVERY: "التسليم والاستلام", FINANCE: "المالية", EMAIL: "تسليم البريد", WORKFLOW: "الطلبات" },
+  categories: { ACCOUNT: "الحساب", LEAD: "أحداث شركات تاريخية", APPROVAL: "الاعتمادات", BUDGET: "الميزانيات", SOURCING: "عمليات سابقة", DELIVERY: "التسليم والاستلام", FINANCE: "المالية", EMAIL: "تسليم البريد", WORKFLOW: "الطلبات" },
   eventLabels: eventLabels.ar,
 };
 
@@ -246,13 +244,13 @@ const ms: NotificationCentreMessages = {
   description: "Rekod peribadi dan berterusan bagi kemas kini kerja yang kini dibenarkan untuk akaun anda.",
   loading: "Memuatkan pusat pemberitahuan…", errorTitle: "Pemberitahuan tidak tersedia buat sementara", errorBody: "Tiada kandungan pemberitahuan dipaparkan. Muat semula atau cuba sebentar lagi.",
   unreadMetric: "Belum dibaca", visibleMetric: "Kemas kini sepadan", deliveryMetric: "Segerak langsung",
-  filters: "Tapis pemberitahuan", status: "Status", type: "Jenis", apply: "Gunakan penapis", allStatuses: "Semua status", allTypes: "Semua jenis", unread: "Belum dibaca", read: "Dibaca", archived: "Diarkibkan",
+  filters: "Tapis pemberitahuan", status: "Status", apply: "Gunakan penapis", allStatuses: "Semua status", unread: "Belum dibaca", read: "Dibaca", archived: "Diarkibkan",
   inbox: "Peti masuk aktiviti", current: "Anda telah mengikuti semua kemas kini", unreadCount: (count) => `${count} kemas kini belum dibaca`, markAll: "Tandakan semua dibaca", markRead: "Tandakan dibaca", archive: "Ketepikan", open: "Buka rekod dibenarkan", saving: "Menyimpan…",
   reminder: "Peringatan", emailRelated: "E-mel turut dibariskan", expires: (date) => `Disimpan sehingga ${date}`, empty: "Tiada pemberitahuan sepadan", emptyBody: "Tugasan, keputusan, penghantaran, penerimaan dan pengecualian dipaparkan apabila berkaitan dengan peranan semasa anda.",
   preferences: "Pilihan penghantaran", preferencesIntro: "Bukti dalam aplikasi sentiasa disimpan. Tetapkan masa e-mel dan peringatan pilihan mengikut acara.", inAppLocked: "Penghantaran dalam aplikasi sentiasa aktif", inAppLockedBody: "Bukti aliran kerja, akaun dan keselamatan yang berwibawa tidak boleh dimatikan.",
   personalChoice: "Pilihan saya", companyDefault: "Tetapan syarikat", email: "E-mel", schedule: "Masa e-mel", reminderSchedule: "Peringatan", noReminder: "Tutup", hours12: "Selepas 12 jam", hours24: "Selepas 24 jam", hours72: "Selepas 3 hari", hours168: "Selepas 7 hari",
   immediate: "Serta-merta", daily: "Tetingkap harian seterusnya", weekly: "Tetingkap mingguan seterusnya", mandatory: "Wajib", optional: "Pilihan", save: "Simpan pilihan", saved: "Pilihan pemberitahuan disimpan.", denied: "Tindakan pemberitahuan tidak tersedia.", live: "Kemas kini disegerakkan secara automatik semasa halaman ini dibuka.",
-  categories: { ACCOUNT: "Akaun", LEAD: "Prospek syarikat", APPROVAL: "Kelulusan", BUDGET: "Bajet", SOURCING: "Operasi terdahulu", DELIVERY: "Penghantaran dan penerimaan", FINANCE: "Kewangan", EMAIL: "Penghantaran e-mel", WORKFLOW: "Permintaan" },
+  categories: { ACCOUNT: "Akaun", LEAD: "Peristiwa syarikat terdahulu", APPROVAL: "Kelulusan", BUDGET: "Bajet", SOURCING: "Operasi terdahulu", DELIVERY: "Penghantaran dan penerimaan", FINANCE: "Kewangan", EMAIL: "Penghantaran e-mel", WORKFLOW: "Permintaan" },
   eventLabels: eventLabels.ms,
 };
 

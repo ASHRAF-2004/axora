@@ -35,7 +35,7 @@ const refreshCases: Array<{
       accountKind: "PLATFORM",
       scopeType: "PLATFORM",
     },
-    route: "/companies/leads?status=new#leads",
+    route: "/companies?status=active#companies",
   },
   {
     name: "delivery guy",
@@ -130,28 +130,25 @@ test("refresh preserves the authorized path, filters, and selected fragment", as
 
 test("Back and Forward reconstruct query-based workspace state", async ({ page }) => {
   await signInAsDemoOwner(page);
-  await page.goto("/requests?q=paper&status=open&sort=amount-desc#request-table");
+  await page.goto("/requests?q=paper&status=open#request-table");
   await expect(page.getByLabel("Search requests")).toHaveValue("paper");
-  await page.goto("/requests?q=toner&status=Approved&sort=submitted-asc#request-table");
+  await page.goto("/requests?q=toner&status=Approved#request-table");
   await expect(page.getByLabel("Search requests")).toHaveValue("toner");
   await expect(page.getByLabel("Filter by status")).toHaveValue("Approved");
-  await expect(page.getByLabel("Sort requests")).toHaveValue("submitted-asc");
 
   await page.goBack();
   await expect(page).toHaveURL(
-    /\/requests\?q=paper&status=open&sort=amount-desc#request-table$/,
+    /\/requests\?q=paper&status=open#request-table$/,
   );
   await expect(page.getByLabel("Search requests")).toHaveValue("paper");
   await expect(page.getByLabel("Filter by status")).toHaveValue("open");
-  await expect(page.getByLabel("Sort requests")).toHaveValue("amount-desc");
 
   await page.goForward();
   await expect(page).toHaveURL(
-    /\/requests\?q=toner&status=Approved&sort=submitted-asc#request-table$/,
+    /\/requests\?q=toner&status=Approved#request-table$/,
   );
   await expect(page.getByLabel("Search requests")).toHaveValue("toner");
   await expect(page.getByLabel("Filter by status")).toHaveValue("Approved");
-  await expect(page.getByLabel("Sort requests")).toHaveValue("submitted-asc");
 });
 
 test("an expired cookie resumes the exact prior route after login", async ({ page }) => {
@@ -231,17 +228,17 @@ test("request draft fields recover after a hard refresh", async ({ page }) => {
 
 test("offline and reconnect states retain the current route", async ({ page, context }) => {
   await signInAsDemoOwner(page);
-  await page.goto("/audit?entityType=requests&action=UPDATE#audit-table");
-  await expect(page).toHaveURL(/\/audit\?entityType=requests&action=UPDATE#audit-table$/);
+  await page.goto("/requests?q=paper&status=open#request-table");
+  await expect(page).toHaveURL(/\/requests\?q=paper&status=open#request-table$/);
 
   await context.setOffline(true);
   await expect(page.getByText(/You are offline/)).toBeVisible();
-  await expect(page).toHaveURL(/\/audit\?entityType=requests&action=UPDATE#audit-table$/);
+  await expect(page).toHaveURL(/\/requests\?q=paper&status=open#request-table$/);
 
   await context.setOffline(false);
   await expect(page.getByText("Connection restored.")).toBeVisible();
   await page.reload();
-  await expect(page).toHaveURL(/\/audit\?entityType=requests&action=UPDATE#audit-table$/);
+  await expect(page).toHaveURL(/\/requests\?q=paper&status=open#request-table$/);
 });
 
 test("multiple tabs independently retain their active authorized routes", async ({ page, context }) => {
@@ -249,12 +246,12 @@ test("multiple tabs independently retain their active authorized routes", async 
   const second = await context.newPage();
 
   await page.goto("/requests?q=paper&status=open#requests");
-  await second.goto("/audit?entityType=requests&action=UPDATE#audit");
+  await second.goto("/companies?status=active#companies");
 
   await Promise.all([page.reload(), second.reload()]);
 
   await expect(page).toHaveURL(/\/requests\?q=paper&status=open#requests$/);
-  await expect(second).toHaveURL(/\/audit\?entityType=requests&action=UPDATE#audit$/);
+  await expect(second).toHaveURL(/\/companies\?status=active#companies$/);
 });
 
 test("every major role retains its authorized workspace on refresh", async ({ page }) => {

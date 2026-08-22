@@ -30,16 +30,17 @@ function optionsWithCurrent(options: readonly string[], current: string) {
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requirePagePermission("manage_catalog");
-  if (!canAccess(actor, "manage_commercial_pricing")) notFound();
+  if (!canAccess(actor, "manage_catalog")) notFound();
   const locale = actor.preferredLocale ?? "en";
   const productCopy = corePortalMessages(locale).products;
   const copy = productEditorMessages(locale);
   const rules = procurementRulesMessages(locale);
   const { id } = await params;
+  const canViewCommercialHistory = canAccess(actor, "manage_commercial_pricing");
   const [products, images, commercialHistory] = await Promise.all([
     listProducts(actor),
     listProductImages(id, actor),
-    listProductCommercialHistory(id, actor),
+    canViewCommercialHistory ? listProductCommercialHistory(id, actor) : Promise.resolve([]),
   ]);
   const product = products.find((item) => item.id === id);
   if (!product) notFound();
@@ -77,10 +78,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       </ProductActionForm>
 
       <div className="stack-lg">
-        <section className="panel">
+        {canViewCommercialHistory ? <section className="panel">
           <div className="panel-header"><div><h2>{rules.history}</h2><p>{rules.historyBody}</p></div></div>
           {commercialHistory.length ? <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{rules.baseCost}</th><th>{rules.sellingPrice}</th><th>{rules.markup}</th><th>{rules.version}</th></tr></thead><tbody>{commercialHistory.slice(0, 20).map((entry) => <tr key={entry.id}><td>{formatCurrency(entry.baseCost, locale)}</td><td>{formatCurrency(entry.sellingPrice, locale)}</td><td>{entry.markupPercentage}%</td><td>{entry.pricingRuleVersion}<br /><span className="subtle">{new Date(entry.recordedAt).toLocaleDateString(locale)}</span></td></tr>)}</tbody></table></div> : <div className="empty-state"><strong>{rules.historyEmpty}</strong></div>}
-        </section>
+        </section> : null}
 
         <form action={addProductImagesAction.bind(null, product.id)} className="panel form-panel">
           <div className="panel-header"><div><h2>{copy.slideshow}</h2><p>{copy.uploadCount(images.length, MAX_PRODUCT_IMAGES)}</p></div><ImagePlus aria-hidden="true" size={22} /></div>

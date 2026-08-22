@@ -269,12 +269,9 @@ export async function removeUserAction(id: string, formData: FormData) {
   const actor = await requirePermission("manage_users");
   const targetUserId = z.uuid().parse(id);
   const confirmed = readFormText(formData, "confirmRemoval") === "confirmed";
-  const reason = z.string().trim().min(3).max(500).parse(
-    readFormText(formData, "reason"),
-  );
   if (!confirmed) redirect("/users?notice=remove-unavailable");
   try {
-    await removeAuthorizedUser(targetUserId, reason, actor);
+    await removeAuthorizedUser(targetUserId, "USER_REMOVED", actor);
   } catch {
     redirect("/users?notice=remove-unavailable");
   }

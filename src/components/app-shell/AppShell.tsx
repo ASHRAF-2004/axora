@@ -4,7 +4,6 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
-  CircleHelp,
   Languages,
   LogOut,
   Menu,
@@ -32,7 +31,7 @@ export interface AppNavigationItem {
   href: string;
   label: string;
   description?: string;
-  group?: "workspace" | "administration" | "insight" | "support";
+  group?: "workspace" | "administration";
 }
 
 interface AppShellProps {
@@ -79,8 +78,6 @@ function tourName(href: string) {
     "/finance": "finance",
     "/branches": "branches",
     "/users": "people",
-    "/audit": "audit",
-    "/help": "help",
     "/driver": "driver-today",
     "/receiving": "receiving",
   };
@@ -436,7 +433,7 @@ export function AppShell({
                 <div><strong>{user.name}</strong><span><bdi className="bidi-ltr" dir="ltr">{user.email}</bdi></span></div>
                 <Link role="menuitem" href="/profile" onClick={() => setProfileOpen(false)}><UserRound size={17} aria-hidden="true" />{messages.shell.myProfile}</Link>
                 <Link role="menuitem" href="/account" onClick={() => setProfileOpen(false)}><Settings2 size={17} aria-hidden="true" />{messages.shell.accountSecurity}</Link>
-                <Link role="menuitem" href="/help" onClick={() => setProfileOpen(false)}><CircleHelp size={17} aria-hidden="true" />{messages.shell.helpTutorial}</Link>
+                <Link role="menuitem" href="/settings" onClick={() => setProfileOpen(false)}><Settings2 size={17} aria-hidden="true" />{messages.navigation["/settings"]?.label ?? "Settings"}</Link>
                 <form
                   action={logoutAction}
                   onSubmit={() => clearBrowserSessionWorkspace(browserScope)}

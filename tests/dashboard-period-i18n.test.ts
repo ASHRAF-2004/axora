@@ -10,7 +10,6 @@ describe("P1-15 dashboard period localization", () => {
       expect(Object.keys(copy.presets)).toHaveLength(7);
       expect(Object.keys(copy.issues)).toHaveLength(4);
       expect(copy.title).not.toBe("");
-      expect(copy.compare).not.toBe("");
       expect(copy.export).not.toBe("");
       expect(copy.currentSnapshot).not.toBe("");
     }

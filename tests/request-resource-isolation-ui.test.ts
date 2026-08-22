@@ -7,14 +7,13 @@ const source = (path: string) => readFile(
 );
 
 describe("request resource isolation integration", () => {
-  it("routes primary request reads, timeline, dashboard, reports, and export through trusted readers", async () => {
-    const [listPage, detailPage, dashboard, reports, exportRoute] =
+  it("routes primary request reads, timeline, and dashboard through trusted readers", async () => {
+    const [listPage, detailPage, dashboard, reports] =
       await Promise.all([
         source("src/app/(portal)/requests/page.tsx"),
         source("src/app/(portal)/requests/[id]/page.tsx"),
         source("src/app/(portal)/dashboard/page.tsx"),
         source("src/app/(portal)/reports/page.tsx"),
-        source("src/app/api/export/requests/route.ts"),
       ]);
 
     expect(listPage).toContain("searchAuthorizedRequests(actor");
@@ -22,9 +21,9 @@ describe("request resource isolation integration", () => {
     expect(detailPage).toContain("listAuthorizedRequestWorkflowEvents");
     expect(dashboard).toContain("resolveDashboardReportingScope(actor");
     expect(dashboard).toContain("getAuthorizedDashboardPeriodReport(actor, period, scope)");
-    expect(reports).toContain("getAuthorizedDashboardData(actor)");
-    expect(exportRoute).toContain("listAuthorizedFilteredRequests(user,filters)");
-    for (const text of [listPage, detailPage, dashboard, reports, exportRoute]) {
+    expect(reports).toContain('redirect("/dashboard")');
+    expect(listPage).not.toContain("/api/export/requests");
+    for (const text of [listPage, detailPage, dashboard]) {
       expect(text).not.toMatch(/\b(listRequests|getRequest)\s*\(/);
     }
   });

@@ -3,6 +3,7 @@ import type { PoolClient } from "pg";
 import sharp from "sharp";
 import { z } from "zod";
 import type { SessionUser } from "./auth";
+import { canAccess } from "./permissions";
 import {
   analyzeLogoPixels,
   brandContrastSummary,
@@ -417,12 +418,12 @@ function companyCreationPayloadHash(
   return createHash("sha256").update(JSON.stringify({
     actorUserId: actor.id,
     name: input.name.trim(),
-    legalName: input.legalName.trim(),
-    industry: input.industry.trim(),
+    legalName: (input.legalName ?? input.name).trim(),
+    industry: (input.industry ?? "").trim(),
     companyInformation: (input.companyInformation ?? "").trim(),
     websiteUrl: input.websiteUrl?.trim() || null,
     mainContactName: input.mainContactName.trim(),
-    billingCycle: input.billingCycle.trim(),
+    billingCycle: (input.billingCycle ?? "Monthly").trim(),
     notes: input.notes?.trim() || null,
     logoSha256,
   })).digest("hex");
@@ -434,7 +435,7 @@ export async function createCompanyWithBrand(
   actor: SessionUser,
   commandId: string,
 ) {
-  if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+  if (actor.accountKind !== "PLATFORM" || (!actor.isOwner && !canAccess(actor, "create_companies"))) {
     throw new CompanyLifecycleUnavailableError();
   }
   const parsedCommandId = z.uuid().parse(commandId);

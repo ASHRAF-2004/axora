@@ -9,6 +9,7 @@ const allPermissions: Permission[] = [
   "view_deliveries",
   "view_branches",
   "manage_companies",
+  "create_companies",
   "manage_catalog",
   "manage_branches",
   "manage_branch_budget",
@@ -96,7 +97,7 @@ describe("normalized least-privilege permissions", () => {
         accountKind: "PLATFORM",
         scopeType: "PLATFORM",
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_companies", "manage_catalog", "manage_branches", "manage_deliveries", "view_approvals", "view_budgets", "view_invoices", "manage_finance", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_commercial_pricing", "view_system_diagnostics", "view_email_operations", "manage_email_operations", "view_receiving", "confirm_receipts"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_branches", "manage_companies", "create_companies", "manage_catalog", "manage_branches", "manage_deliveries", "view_approvals", "view_budgets", "view_invoices", "manage_finance", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings", "manage_commercial_pricing", "view_system_diagnostics", "view_email_operations", "manage_email_operations", "view_receiving", "confirm_receipts"],
     },
     {
       subject: {
@@ -228,13 +229,12 @@ describe("new canonical role compatibility permissions", () => {
   const branchId = "branch-1";
   const departmentId = "department-1";
 
-  it("scopes a client account manager to one assigned company", () => {
+  it("gives an authorized client account manager platform company access without assignment", () => {
     expectExactPermissions({
       role: "CLIENT_ACCOUNT_MANAGER",
       isOwner: false,
       accountKind: "PLATFORM",
-      scopeType: "COMPANY",
-      companyId,
+      scopeType: "PLATFORM",
     }, [
       "view_dashboard",
       "view_catalog",
@@ -242,8 +242,8 @@ describe("new canonical role compatibility permissions", () => {
       "view_deliveries",
       "view_branches",
       "manage_companies",
+      "create_companies",
       "view_invoices",
-      "view_reports",
       "manage_users",
     ]);
   });

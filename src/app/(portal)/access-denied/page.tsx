@@ -11,9 +11,9 @@ export default async function AccessDeniedPage() {
   const m = (key: OperationalMessageKey) => operationalMessage(locale, key);
   const destination = canAccess(actor, "view_dashboard")
     ? { href: "/dashboard", label: m("access.dashboard") }
-    : canAccess(actor, "manage_settings") || canAccess(actor, "view_system_diagnostics")
+    : canAccess(actor, "manage_settings")
       ? { href: "/settings", label: m("access.settings") }
-      : { href: "/help", label: m("access.help") };
+      : { href: "/dashboard", label: m("access.dashboard") };
 
   return (
     <>

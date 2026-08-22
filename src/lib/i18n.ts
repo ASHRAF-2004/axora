@@ -66,7 +66,6 @@ export const PUBLIC_PAGE_SLUGS = [
   "delivery-tracking",
   "security-and-privacy",
   "about",
-  "help",
   "privacy",
   "terms",
 ] as const;
@@ -165,7 +164,6 @@ interface PublicMessages {
     product: string;
     company: string;
     legal: string;
-    help: string;
     privacy: string;
     terms: string;
     rights: string;
@@ -246,17 +244,6 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
     sections: [
       { title: "Product purpose", body: "The platform reduces fragmented spreadsheets, messages, and status chasing while preserving clear responsibility at every step." },
       { title: "What Axora does not claim", body: "This website does not present unsupported customer numbers, certifications, partnerships, savings guarantees, or service commitments." },
-    ],
-  },
-  help: {
-    eyebrow: "Help and FAQ",
-    title: "Straight answers for common Axora tasks.",
-    intro: "Signed-in users also receive role-specific guidance and can resume individual onboarding steps from Help.",
-    sections: [
-      { title: "How do I get an account?", body: "An authorized Axora or company administrator sends a private invitation. You open the one-time link and create your own password." },
-      { title: "Why can’t I see a module?", body: "Navigation follows your role, tenant, branch assignment, and current permissions. Hidden access is also enforced on the server." },
-      { title: "Can a requester approve the same request?", body: "No. Axora preserves separation of duties and prevents self-approval." },
-      { title: "What should I do with a delivery problem?", body: "The driver records operational evidence and the receiver records accepted, damaged, or missing quantities. The discrepancy remains open until resolved." },
     ],
   },
   privacy: {
@@ -358,17 +345,6 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "ما لا تدعيه أكسورا", body: "لا يعرض هذا الموقع أعداد عملاء أو شهادات أو شراكات أو وفورات مضمونة أو التزامات خدمة غير موثقة." },
     ],
   },
-  help: {
-    eyebrow: "المساعدة والأسئلة الشائعة",
-    title: "إجابات واضحة لمهام أكسورا الشائعة.",
-    intro: "يحصل المستخدم المسجل أيضًا على إرشاد حسب دوره ويمكنه استئناف خطوات التهيئة الفردية من المساعدة.",
-    sections: [
-      { title: "كيف أحصل على حساب؟", body: "يرسل مسؤول مخوّل من أكسورا أو الشركة دعوة خاصة. تفتح الرابط لمرة واحدة وتنشئ كلمة مرورك بنفسك." },
-      { title: "لماذا لا أرى وحدة معينة؟", body: "يتبع التنقل دورك وشركتك وفروعك وصلاحياتك الحالية، كما يفرض الخادم القيود نفسها." },
-      { title: "هل يستطيع مقدم الطلب اعتماد طلبه؟", body: "لا. تحافظ أكسورا على فصل المسؤوليات وتمنع الاعتماد الذاتي." },
-      { title: "ماذا أفعل عند وجود مشكلة تسليم؟", body: "يسجل السائق الدليل التشغيلي ويسجل المستلم الكميات المقبولة أو التالفة أو الناقصة، وتبقى المشكلة مفتوحة حتى حلها." },
-    ],
-  },
   privacy: {
     eyebrow: "إشعار الخصوصية",
     title: "كيف تتعامل أكسورا مع بيانات الحساب والمشتريات.",
@@ -468,17 +444,6 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "Perkara yang tidak didakwa", body: "Laman ini tidak memaparkan bilangan pelanggan, pensijilan, kerjasama, jaminan penjimatan atau komitmen perkhidmatan yang tidak disokong." },
     ],
   },
-  help: {
-    eyebrow: "Bantuan dan FAQ",
-    title: "Jawapan jelas untuk tugas Axora yang biasa.",
-    intro: "Pengguna yang log masuk juga menerima panduan khusus peranan dan boleh menyambung langkah orientasi individu dari Bantuan.",
-    sections: [
-      { title: "Bagaimanakah saya mendapat akaun?", body: "Pentadbir Axora atau syarikat yang diberi kuasa menghantar jemputan peribadi. Buka pautan sekali guna dan cipta kata laluan anda sendiri." },
-      { title: "Mengapa saya tidak nampak sesuatu modul?", body: "Navigasi mengikut peranan, penyewa, tugasan cawangan dan kebenaran semasa. Sekatan yang sama dikuatkuasakan pada pelayan." },
-      { title: "Bolehkah pemohon meluluskan permintaan sendiri?", body: "Tidak. Axora mengekalkan pengasingan tugas dan menghalang kelulusan sendiri." },
-      { title: "Apakah tindakan bagi masalah penghantaran?", body: "Pemandu merekod bukti operasi dan penerima merekod kuantiti diterima, rosak atau hilang. Perbezaan kekal terbuka sehingga diselesaikan." },
-    ],
-  },
   privacy: {
     eyebrow: "Notis privasi",
     title: "Cara Axora mengendalikan maklumat akaun dan perolehan.",
@@ -553,7 +518,7 @@ const english: PublicMessages = {
     closingBody: "Tell Axora about your company, branch structure, and current request and delivery process. Do not include passwords or confidential records.",
   },
   contact: { eyebrow: "Contact Axora", title: "Tell us about your procurement workflow.", intro: "Share enough context for a useful reply. Do not send passwords, invitation links, payment evidence, or confidential procurement documents.", name: "Your name", email: "Work email", company: "Company", phone: "Phone (optional)", subject: "What would you like to discuss?", message: "Message", privacy: "I understand Axora will use this information to respond to my enquiry.", submit: "Send enquiry", sending: "Sending…", success: "Thank you. Your enquiry has been recorded and Axora will follow up.", failure: "The enquiry could not be sent. Please check the form and try again.", unavailable: "Contact submission is temporarily unavailable. Please try again later.", securityNote: "Your enquiry is rate limited, checked for automated abuse, and stored for authorized Axora follow-up. Never include passwords or invitation links.", validationNote: "Fields are validated before submission." },
-  footer: { summary: "Secure, role-aware procurement coordination from request to verified record.", product: "Product", company: "Company", legal: "Legal", help: "Help / FAQ", privacy: "Privacy", terms: "Terms", rights: "All rights reserved." },
+  footer: { summary: "Secure, role-aware procurement coordination from request to verified record.", product: "Product", company: "Company", legal: "Legal", privacy: "Privacy", terms: "Terms", rights: "All rights reserved." },
   pages: englishPages,
 };
 
@@ -609,7 +574,7 @@ const arabic: PublicMessages = {
     closingBody: "أخبر أكسورا عن شركتك وفروعك ومسار الطلب والتسليم، من دون إرسال كلمات مرور أو سجلات سرية.",
   },
   contact: { eyebrow: "تواصل مع أكسورا", title: "أخبرنا عن مسار المشتريات في شركتك.", intro: "أرسل سياقًا كافيًا لرد مفيد. لا ترسل كلمات مرور أو روابط دعوات أو إثباتات دفع أو مستندات سرية.", name: "الاسم", email: "البريد الإلكتروني للعمل", company: "الشركة", phone: "الهاتف (اختياري)", subject: "موضوع التواصل", message: "الرسالة", privacy: "أفهم أن أكسورا ستستخدم هذه المعلومات للرد على استفساري.", submit: "إرسال الاستفسار", sending: "جارٍ الإرسال…", success: "شكرًا لك. تم تسجيل الاستفسار وستتواصل معك أكسورا.", failure: "تعذر إرسال الاستفسار. تحقق من البيانات وحاول مرة أخرى.", unavailable: "خدمة التواصل غير متاحة مؤقتًا. حاول لاحقًا.", securityNote: "يخضع الاستفسار لتحديد المعدل وفحص الاستخدام الآلي، ويُحفظ لمتابعة مخوّلة من أكسورا. لا تضع كلمة مرور أو رابط دعوة.", validationNote: "يتم التحقق من الحقول قبل الإرسال." },
-  footer: { summary: "تنسيق مشتريات آمن ومحدد الصلاحيات من الطلب إلى السجل الموثق.", product: "المنتج", company: "الشركة", legal: "قانوني", help: "المساعدة والأسئلة", privacy: "الخصوصية", terms: "الشروط", rights: "جميع الحقوق محفوظة." },
+  footer: { summary: "تنسيق مشتريات آمن ومحدد الصلاحيات من الطلب إلى السجل الموثق.", product: "المنتج", company: "الشركة", legal: "قانوني", privacy: "الخصوصية", terms: "الشروط", rights: "جميع الحقوق محفوظة." },
   pages: arabicPages,
 };
 
@@ -665,7 +630,7 @@ const malay: PublicMessages = {
     closingBody: "Beritahu Axora tentang syarikat, struktur cawangan serta proses permintaan dan penghantaran tanpa memasukkan kata laluan atau rekod sulit.",
   },
   contact: { eyebrow: "Hubungi Axora", title: "Beritahu kami tentang aliran perolehan anda.", intro: "Kongsi konteks yang mencukupi untuk jawapan berguna. Jangan hantar kata laluan, pautan jemputan, bukti pembayaran atau dokumen sulit.", name: "Nama anda", email: "E-mel kerja", company: "Syarikat", phone: "Telefon (pilihan)", subject: "Perkara yang ingin dibincangkan", message: "Mesej", privacy: "Saya faham Axora akan menggunakan maklumat ini untuk menjawab pertanyaan saya.", submit: "Hantar pertanyaan", sending: "Menghantar…", success: "Terima kasih. Pertanyaan anda telah direkodkan dan Axora akan membuat susulan.", failure: "Pertanyaan tidak dapat dihantar. Semak borang dan cuba lagi.", unavailable: "Penghantaran borang tidak tersedia buat sementara waktu. Cuba lagi kemudian.", securityNote: "Pertanyaan dihadkan kadarnya, diperiksa untuk penyalahgunaan automatik dan disimpan untuk susulan Axora yang dibenarkan. Jangan masukkan kata laluan atau pautan jemputan.", validationNote: "Medan disahkan sebelum dihantar." },
-  footer: { summary: "Penyelarasan perolehan selamat dan berasaskan peranan daripada permintaan kepada rekod disahkan.", product: "Produk", company: "Syarikat", legal: "Perundangan", help: "Bantuan / FAQ", privacy: "Privasi", terms: "Terma", rights: "Hak cipta terpelihara." },
+  footer: { summary: "Penyelarasan perolehan selamat dan berasaskan peranan daripada permintaan kepada rekod disahkan.", product: "Produk", company: "Syarikat", legal: "Perundangan", privacy: "Privasi", terms: "Terma", rights: "Hak cipta terpelihara." },
   pages: malayPages,
 };
 

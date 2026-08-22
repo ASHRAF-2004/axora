@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("P1-15 dashboard period UI", () => {
-  it("uses a bookmarkable GET form with comparison, export, and accessible status", async () => {
+  it("uses a bookmarkable current-period GET form with export and accessible status", async () => {
     const source = await readFile(
       new URL("../src/components/DashboardPeriodControls.tsx", import.meta.url),
       "utf8",
@@ -12,7 +12,7 @@ describe("P1-15 dashboard period UI", () => {
     expect(source).toContain('name="preset"');
     expect(source).toContain('name="start"');
     expect(source).toContain('name="end"');
-    expect(source).toContain('name="compare"');
+    expect(source).not.toContain('name="compare"');
     expect(source).toContain('name="branch"');
     expect(source).toContain('aria-live="polite"');
     expect(source).toContain('role="alert"');

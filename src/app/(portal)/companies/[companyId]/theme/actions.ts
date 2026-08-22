@@ -109,7 +109,7 @@ export async function createCompanyBrandCustomDraftAction(
     logoVariant: readFormText(formData, "logoVariant"),
     logoPlacement: readFormText(formData, "logoPlacement"),
     themePreference: readFormText(formData, "themePreference"),
-    reason: readFormText(formData, "reason"),
+    reason: "COMPANY_THEME_UPDATED",
   });
   await createCompanyBrandCustomDraft(
     companyId,
@@ -132,7 +132,7 @@ export async function transitionCompanyBrandThemeAction(
   }).parse({
     themeId: readFormText(formData, "themeId"),
     action: readFormText(formData, "action"),
-    reason: readFormText(formData, "reason"),
+    reason: "COMPANY_THEME_REVIEWED",
   });
   const result = await transitionCompanyBrandTheme(
     companyId,
@@ -159,7 +159,7 @@ export async function rollbackCompanyBrandThemeAction(
     reason: reasonSchema,
   }).parse({
     themeId: readFormText(formData, "themeId"),
-    reason: readFormText(formData, "reason"),
+    reason: "COMPANY_THEME_ROLLED_BACK",
   });
   await rollbackCompanyBrandTheme(
     companyId,

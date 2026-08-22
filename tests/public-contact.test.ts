@@ -21,10 +21,9 @@ vi.mock("@/lib/db", () => ({
   isDemoMode: () => false,
   withAuditTransaction: mocks.withAuditTransaction,
 }));
-vi.mock("@/lib/company-leads", () => ({
+vi.mock("@/lib/public-contact-persistence", () => ({
   recordPublicContactSubmission: mocks.recordPublicContactSubmission,
 }));
-
 import {
   ContactVerificationError,
   submitPublicContact,
@@ -183,12 +182,11 @@ describe("public contact surfaces", () => {
   const source = (path: string) =>
     readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-  it("omits retired fields from acquisition, onboarding, and lead workspaces", async () => {
-    const [page, action, leads, copy, onboardingPage, onboardingAction] = await Promise.all([
+  it("omits retired fields and keeps old lead routes as redirects", async () => {
+    const [page, action, leads, onboardingPage, onboardingAction] = await Promise.all([
       source("src/app/[locale]/contact/page.tsx"),
       source("src/app/[locale]/contact/actions.ts"),
       source("src/app/(portal)/companies/leads/page.tsx"),
-      source("src/lib/company-leads-i18n.ts"),
       source("src/app/(portal)/companies/[companyId]/onboarding/page.tsx"),
       source("src/app/(portal)/companies/[companyId]/onboarding/actions.ts"),
     ]);
@@ -199,16 +197,7 @@ describe("public contact surfaces", () => {
       expect(page).not.toContain(`name=\"${field}\"`);
       expect(action).not.toContain(`formData.get(\"${field}\")`);
     }
-    expect(leads).not.toContain('name="region"');
-    for (const expression of [
-      "lead.registrationNumber", "lead.contactEmail", "lead.phoneCountryCode",
-      "lead.phone", "lead.country", "lead.region", "lead.preferredContactTime",
-      "lead.usesPersonalEmail",
-    ]) expect(leads).not.toContain(expression);
-    for (const retiredLabel of [
-      "Registration number", "Business email", "Country code", "Phone number",
-      "Preferred contact time",
-    ]) expect(copy).not.toContain(retiredLabel);
+    expect(leads).toContain('permanentRedirect("/companies")');
     expect(onboardingPage).not.toContain('name="billingContactPhone"');
     expect(onboardingAction).not.toContain('readFormText(formData, "billingContactPhone")');
   });

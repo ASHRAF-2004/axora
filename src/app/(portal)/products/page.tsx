@@ -54,10 +54,9 @@ export default async function ProductsPage({
 
   const products = await listProducts(actor);
   const canViewCost = canAccess(actor, "view_internal_cost");
-  const canManagePricing = canAccess(actor, "manage_commercial_pricing");
   return <><PageHeader eyebrow={copy.operationsEyebrow} title={copy.title}
     description={copy.operationsDescription} />
-    {canManagePricing ? <div className="page-actions"><Link className="button button-primary" href="/products/new">{copy.create}</Link></div> : null}
+    <div className="page-actions"><Link className="button button-primary" href="/products/new">{copy.create}</Link></div>
 
     <section>
       <article className="panel">
@@ -73,7 +72,7 @@ export default async function ProductsPage({
           <td><StatusBadge status={product.status}>{localizedStatus(product.status, locale)}</StatusBadge></td>
           <td style={{ minWidth: 165 }}>
             <Link className="button button-secondary" href={`/products/${product.id}`}>{copy.view}</Link>
-            {canManagePricing ? <Link className="button button-secondary" href={`/products/${product.id}/edit`}>{copy.edit}</Link> : null}
+            <Link className="button button-secondary" href={`/products/${product.id}/edit`}>{copy.edit}</Link>
             <form action={setMasterActiveAction.bind(null, "products", product.id, product.status === "Inactive")} style={{ marginBlockStart: 8 }}>
               <button className="button button-secondary" type="submit">{product.status === "Active" ? common.deactivate : product.status === "Needs Review" ? copy.rejectDuplicate : common.activate}</button>
             </form>

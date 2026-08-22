@@ -372,7 +372,7 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     await admin?.end();
   });
 
-  it("keeps Owner visibility and serializes CAM handover without broad portfolio access", async () => {
+  it("keeps Owner and authorized CAM visibility independent of historical handover records", async () => {
     if (!app || !admin) throw new Error("Native PostgreSQL fixture is unavailable.");
     const created = await app.query<{
       snapshot: { companyId: string };
@@ -385,8 +385,8 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     `, [owner.userId,owner.assignmentId]);
     const companyId = created.rows[0]!.snapshot.companyId;
     expect(await visibleCompanyIds(owner)).toContain(companyId);
-    expect(await visibleCompanyIds(managerA)).not.toContain(companyId);
-    expect(await visibleCompanyIds(managerB)).not.toContain(companyId);
+    expect(await visibleCompanyIds(managerA)).toContain(companyId);
+    expect(await visibleCompanyIds(managerB)).toContain(companyId);
 
     await app.query(`
       SELECT public.axora_assign_company_manager(
@@ -394,7 +394,7 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       )
     `, [owner.userId,owner.assignmentId,companyId,managerA.userId]);
     expect(await visibleCompanyIds(managerA)).toContain(companyId);
-    expect(await visibleCompanyIds(managerB)).not.toContain(companyId);
+    expect(await visibleCompanyIds(managerB)).toContain(companyId);
 
     const handovers = await Promise.allSettled([
       withAppClient((client) => client.query(`
@@ -415,12 +415,9 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       WHERE company_id=$1 AND assignment_type='PRIMARY' AND status='ACTIVE'
     `, [companyId]);
     expect(active.rows[0]!.count).toBe(1);
-    const activeManager = active.rows[0]!.managerId;
-    expect([managerA.userId,managerB.userId]).toContain(activeManager);
-    expect((await visibleCompanyIds(managerA)).includes(companyId))
-      .toBe(activeManager === managerA.userId);
-    expect((await visibleCompanyIds(managerB)).includes(companyId))
-      .toBe(activeManager === managerB.userId);
+    expect([managerA.userId,managerB.userId]).toContain(active.rows[0]!.managerId);
+    expect(await visibleCompanyIds(managerA)).toContain(companyId);
+    expect(await visibleCompanyIds(managerB)).toContain(companyId);
     expect(await visibleCompanyIds(owner)).toContain(companyId);
   }, 60_000);
 

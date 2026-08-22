@@ -627,7 +627,7 @@ export async function createProduct(
     }));
     return id;
   }
-  return withAuditTransaction({ actor }, async (client) => {
+  return withAuditTransaction({ actor, reason: "PRODUCT_CREATED" }, async (client) => {
     await client.query("SELECT pg_advisory_xact_lock(hashtext(lower(btrim($1))))", [input.name]);
     const duplicate = await client.query(
       "SELECT 1 FROM products WHERE lower(btrim(name))=lower(btrim($1)) LIMIT 1",
@@ -1044,7 +1044,7 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
   }
   const allowedTables: Record<MasterEntity, string> = { companies: "companies", branches: "branches", products: "products" };
   const table = allowedTables[entity];
-  await withAuditTransaction({ actor, reason: active ? "Master record activated" : "Master record deactivated" }, async (client) => {
+  await withAuditTransaction({ actor, reason: entity === "products" ? (active ? "PRODUCT_ACTIVATED" : "PRODUCT_ARCHIVED") : (active ? "BRANCH_ACTIVATED" : "BRANCH_DEACTIVATED") }, async (client) => {
     const platformActor = isPlatformProcurementActor(actor);
     const companyPredicate = platformActor ? "" : " AND company_id=$3";
     if (entity === "products" && active) {

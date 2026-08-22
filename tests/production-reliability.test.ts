@@ -65,13 +65,13 @@ describe("production reliability contracts", () => {
     expect(dockerfile).toContain("AXORA_REVISION=${AXORA_REVISION}");
   });
 
-  it("does not catch Next redirect control flow in Prompt 5 role/scope replacement", async () => {
+  it("does not catch Next redirect control flow in simple permission replacement", async () => {
     const actions = await source("src/app/(portal)/users/[id]/access/actions.ts");
     expect(actions).not.toContain('"digest" in error');
-    expect(actions).toContain("let nextRoleAssignmentId = currentRoleAssignmentId");
-    expect(actions).toContain("nextRoleAssignmentId = result.roleAssignmentId");
-    expect(actions).toContain("refreshUserManagement(targetUserId);");
-    expect(actions).toContain('"role-scope-updated"');
+    expect(actions).toContain("await replaceUserPermissionSet(actor");
+    expect(actions).toContain("USER_PERMISSION_UPDATED");
+    expect(actions).toContain('revalidatePath("/users")');
+    expect(actions).toContain('"permissions-updated"');
   });
 
   it("provides one reusable browser guard for generic recovery, page errors, failed requests and 5xx", async () => {

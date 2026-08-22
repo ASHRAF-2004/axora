@@ -16,6 +16,7 @@ import {
 import { accountRoleDefinition, creatableAccountRoles } from "@/lib/role-catalog";
 import { STANDARD_BILLING_TERMS, type Branch, type Company } from "@/lib/types";
 import { createCompanyUserAction } from "@/app/(portal)/users/actions";
+import { isMvpVisiblePermission } from "@/lib/mvp-permissions";
 
 export default async function NewCompanyUserPage({
   params,
@@ -52,12 +53,12 @@ export default async function NewCompanyUserPage({
       label: role.label,
       description: role.description,
       category: role.category,
-      defaultPermissions: defaults,
+      defaultPermissions: defaults.filter((code) => isMvpVisiblePermission(role.accountKind, code)),
       customizablePermissions: creationPermissionOptions(
         role.accountKind,
         defaults,
         actor.isOwner,
-      ),
+      ).filter((permission) => isMvpVisiblePermission(role.accountKind, permission.code)),
     };
   });
   const description = peopleWorkspaceText(locale, "companyDescription", { company: authorizedCompany.name });

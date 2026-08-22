@@ -232,18 +232,16 @@ test("localized contact form labels retained fields and omits retired company fi
       name: "أخبرنا عن مسار المشتريات في شركتك.",
     }),
   ).toBeVisible();
-  await expect(page.getByLabel("الاسم الكامل لجهة الاتصال", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("المدينة", { exact: true })).toBeVisible();
+  await expect(page.locator('input[name="companyName"]')).toBeVisible();
+  await expect(page.locator('input[name="contactName"]')).toBeVisible();
   for (const retiredField of [
     "registrationNumber", "contactEmail", "phoneCountryCode", "phone",
-    "country", "region", "contactTime",
+    "country", "region", "contactTime", "city",
   ]) {
     await expect(page.locator(`[name="${retiredField}"]`)).toHaveCount(0);
   }
   await expect(
-    page.getByLabel("كيف يمكن لـ Axora دعم عمليات المشتريات لديك؟", {
-      exact: true,
-    }),
+    page.locator('textarea[name="message"]'),
   ).toBeVisible();
   await expect(
     page.getByRole("checkbox", { name: /أفهم أن أكسورا/ }),

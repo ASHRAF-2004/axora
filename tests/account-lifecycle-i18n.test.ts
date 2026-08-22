@@ -16,7 +16,7 @@ describe("account lifecycle localization", () => {
       expect(copy.forgot.submit).toBeTruthy();
       expect(copy.reset.errors.password_mismatch).toBeTruthy();
       expect(copy.verify.verifiedBody).toBeTruthy();
-      expect(copy.help.passwordPoints).toHaveLength(3);
+      expect(copy.account.passwordHelp).toBeTruthy();
     }
   });
 

@@ -59,7 +59,6 @@ export default async function BudgetsPage({
                   <input type="hidden" name="companyId" value={ceiling.companyId} />
                   <input type="hidden" name="currency" value={ceiling.currency} />
                   <label><span>{messages.amount}</span><input name="amount" type="number" min="0.01" step="0.01" required /></label>
-                  <label><span>{messages.explanation}</span><textarea name="explanation" minLength={3} maxLength={1000} required /></label>
                   <button className={styles.primaryAction} type="submit">{messages.setCeiling}</button>
                 </form>
               ) : null}
@@ -98,7 +97,6 @@ export default async function BudgetsPage({
                     <label><span>{messages.adjust}</span><select name="direction">{account.canIncrease ? <option value="INCREASE">{messages.increase}</option> : null}{account.canReduce ? <option value="REDUCE">{messages.decrease}</option> : null}</select></label>
                     <label><span>{messages.amount}</span><input name="amount" type="number" min="0.01" step="0.01" required /></label>
                   </div>
-                  <label><span>{messages.explanation}</span><textarea name="explanation" minLength={3} maxLength={1000} required /></label>
                   <label><input name="recurring" type="checkbox" /> {messages.recurring}</label>
                   <button className={styles.secondaryAction} type="submit">{messages.adjust}</button>
                 </form>
@@ -107,7 +105,6 @@ export default async function BudgetsPage({
                 <form action={refreshBudgetAction} className={styles.adminForm}>
                   <input type="hidden" name="idempotencyKey" value={randomUUID()} />
                   <input type="hidden" name="accountId" value={account.id} />
-                  <label><span>{messages.explanation}</span><input name="explanation" minLength={3} maxLength={1000} required /></label>
                   <button className={styles.secondaryAction} type="submit">{messages.refreshPeriod}</button>
                 </form>
               ) : null}
@@ -125,7 +122,6 @@ export default async function BudgetsPage({
               <label><span>{messages.targetAccount}</span><select name="targetAccountId" required>{transferable.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
               <label><span>{messages.amount}</span><input name="amount" type="number" min="0.01" step="0.01" required /></label>
             </div>
-            <label><span>{messages.explanation}</span><textarea name="explanation" minLength={3} maxLength={1000} required /></label>
             <label><input name="recurring" type="checkbox" /> {messages.recurring}</label>
             <button className={styles.primaryAction} type="submit">{messages.transferBudget}</button>
           </form>

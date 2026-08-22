@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { isDemoMode, withAuditTransaction } from "./db";
-import { recordPublicContactSubmission } from "./company-leads";
 import {
   consumePublicRequestRateLimit,
   publicRequestRateKey,
   type SupportedEmailLocale,
 } from "./transactional-email";
+import { recordPublicContactSubmission } from "./public-contact-persistence";
 
 const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
 const MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;

@@ -8,7 +8,7 @@ function deploymentRevision() {
     process.env.AXORA_REVISION,
     process.env.NEXT_DEPLOYMENT_ID,
   ]) {
-    const value = candidate?.trim();
+    const value = typeof candidate === "string" ? candidate.trim() : "";
     if (value && SAFE_REVISION.test(value)) return value;
   }
   return "unknown";

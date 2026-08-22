@@ -4,18 +4,18 @@ import { describe,expect,it } from "vitest";
 const source=(path:string) => readFile(new URL(`../${path}`,import.meta.url),"utf8");
 
 describe("procurement discovery UI and API",() => {
-  it("uses one validated database-scoped filter contract for list, options and export",async () => {
-    const [page,reader,options,exportRoute]=await Promise.all([
+  it("uses the validated database-scoped request list with compact filters",async () => {
+    const [page,reader,filters]=await Promise.all([
       source("src/app/(portal)/requests/page.tsx"),source("src/lib/request-reader.ts"),
-      source("src/app/api/requests/filter-options/route.ts"),source("src/app/api/export/requests/route.ts"),
+      source("src/components/RequestFilters.tsx"),
     ]);
     expect(page).toContain("searchAuthorizedRequests(actor");
     expect(reader).toContain("axora_request_access_rows($1,$2,$3)");
-    expect(reader).toContain("count(DISTINCT r.id)");
-    expect(reader).toContain("AT TIME ZONE");
-    expect(options).toContain("normalizeRequestOptionValues");
-    expect(exportRoute).toContain("normalizeRequestFilters");
-    expect(exportRoute).toContain("listAuthorizedFilteredRequests(user,filters)");
+    expect(reader).toContain("count(*)::int AS total");
+    expect(filters).toContain('name="q"');
+    expect(filters).toContain('name="status"');
+    expect(filters).not.toContain("ScopedFilter");
+    expect(page).not.toContain("/api/export/requests");
     expect(page).not.toContain("scopedRequests.filter");
   });
 

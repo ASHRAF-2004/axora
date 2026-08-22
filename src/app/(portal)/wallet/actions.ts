@@ -51,7 +51,7 @@ export async function recordWalletTopUpAction(formData: FormData) {
       amount: field(formData, "amount"),
       effectiveDate: field(formData, "effectiveDate"),
       reference: field(formData, "reference"),
-      reason: field(formData, "reason"),
+      reason: "WALLET_TOP_UP_RECORDED",
       commandId: field(formData, "commandId"),
     });
     created = result.created;

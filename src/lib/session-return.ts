@@ -39,10 +39,7 @@ const RETURN_RULES: readonly ReturnRule[] = [
   { pattern: /^\/branches(?:\/|$)/, permission: "view_branches" },
   { pattern: /^\/users(?:\/|$)/, permission: "manage_users" },
   { pattern: /^\/settings\/procurement(?:\/|$)/, permission: "manage_category_policy" },
-  { pattern: /^\/reports(?:\/|$)/, permission: "view_reports" },
-  { pattern: /^\/audit(?:\/|$)/, permission: "view_audit" },
-  { pattern: /^\/support(?:\/|$)/, permission: "view_system_diagnostics" },
-  { pattern: /^\/(?:account|profile|notifications|settings|help)(?:\/|$)/ },
+  { pattern: /^\/(?:account|profile|notifications|settings)(?:\/|$)/ },
 ];
 
 function parsedInternalPath(raw: string | null | undefined) {

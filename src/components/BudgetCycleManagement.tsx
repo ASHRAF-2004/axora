@@ -110,7 +110,6 @@ export function BudgetCycleManagement({
                     <label><span>{messages.criticalThreshold}</span><input name="criticalThresholdPercentage" type="number" min="0.01" max="98" step="0.01" defaultValue={account.schedule.criticalThresholdPercentage} required /></label>
                     <label><span>{messages.hysteresis}</span><input name="hysteresisPercentage" type="number" min="0.01" max="25" step="0.01" defaultValue={account.schedule.hysteresisPercentage} required /></label>
                   </div>
-                  <label><span>{messages.reason}</span><textarea name="explanation" minLength={3} maxLength={1000} required /></label>
                   <button className={styles.primaryAction} type="submit">{messages.requestChange}</button>
                 </form>
               </details>
@@ -137,7 +136,6 @@ export function BudgetCycleManagement({
                   <label><span>{messages.sourceAccount}</span><select name="sourceBudgetAccountId" defaultValue=""><option value="">-</option>{workspace.accounts.filter((item) => item.id!==account.id && item.companyId===account.companyId && item.currency===account.currency).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
                   <label><span>{messages.effectiveUntil}</span><input name="effectiveUntil" type="datetime-local" /></label>
                 </div>
-                <label><span>{messages.reason}</span><textarea name="explanation" minLength={3} maxLength={1000} required /></label>
                 <button className={styles.secondaryAction} type="submit">{messages.requestAdjustment}</button>
               </form>
             </details>
@@ -150,8 +148,8 @@ export function BudgetCycleManagement({
           <ul className={styles.ledgerList}>
             {workspace.changeRequests.map((change) => (
               <li key={change.id}>
-                <span><strong>{change.accountName}</strong><br /><small className={styles.muted}>{change.state} / {messages.requestedBy}: {change.requestedBy}<br />{change.reason}</small></span>
-                {change.canDecide ? <form action={decideBudgetCycleChangeAction} className={styles.adminForm}><input type="hidden" name="changeRequestId" value={change.id} /><input type="hidden" name="idempotencyKey" value={randomUUID()} /><input name="explanation" minLength={3} maxLength={1000} aria-label={messages.reason} required /><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></form> : <span>{change.state}</span>}
+                <span><strong>{change.accountName}</strong><br /><small className={styles.muted}>{change.state} / {messages.requestedBy}: {change.requestedBy}</small></span>
+                {change.canDecide ? <form action={decideBudgetCycleChangeAction} className={styles.adminForm}><input type="hidden" name="changeRequestId" value={change.id} /><input type="hidden" name="idempotencyKey" value={randomUUID()} /><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></form> : <span>{change.state}</span>}
               </li>
             ))}
           </ul>
@@ -171,7 +169,6 @@ export function BudgetCycleManagement({
               <label><span>{messages.percentageTolerance}</span><input name="percentageTolerance" type="number" min="0" max="100" step="0.01" defaultValue={policy.percentageTolerance} /></label>
               <label><span>{messages.effective}</span><input name="effectiveAt" type="datetime-local" /></label>
             </div>
-            <label><span>{messages.reason}</span><textarea name="explanation" minLength={3} maxLength={1000} required /></label>
             <button className={styles.secondaryAction} type="submit">{messages.requestPolicy}</button>
           </form>
         ))}
@@ -180,8 +177,7 @@ export function BudgetCycleManagement({
             <input type="hidden" name="changeRequestId" value={change.id} />
             <input type="hidden" name="idempotencyKey" value={randomUUID()} />
             <strong>{change.companyName} / {change.requestedBy}</strong>
-            <p className={styles.muted}>{change.reason}</p>
-            {change.canDecide ? <><input name="explanation" minLength={3} maxLength={1000} aria-label={messages.reason} required /><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></> : <span>{change.state}</span>}
+            {change.canDecide ? <><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></> : <span>{change.state}</span>}
           </form>
         ))}
       </section>
@@ -193,15 +189,15 @@ export function BudgetCycleManagement({
               <input type="hidden" name="adjustmentRequestId" value={adjustment.id} />
               <input type="hidden" name="idempotencyKey" value={randomUUID()} />
               <strong>{adjustment.accountName}: {adjustment.adjustmentType} / {adjustment.amount}</strong>
-              <p className={styles.muted}>{adjustment.requestedBy}: {adjustment.reason}</p>
-              {adjustment.canDecide ? <><input name="explanation" minLength={3} maxLength={1000} aria-label={messages.reason} required /><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.secondaryAction} name="decision" value="RETURN">{messages.return}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></> : <span>{adjustment.state}</span>}
+              <p className={styles.muted}>{adjustment.requestedBy}</p>
+              {adjustment.canDecide ? <><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.secondaryAction} name="decision" value="RETURN">{messages.return}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></> : <span>{adjustment.state}</span>}
             </form>
           ))}
         </section>
       ) : null}
       <section className={styles.card}>
         <h2>{messages.refreshJobs}</h2>
-        {workspace.jobs.length ? <ul className={styles.ledgerList}>{workspace.jobs.map((job) => <li key={job.id}><span><strong>{job.accountName}</strong><br /><small className={styles.muted}>{job.state} / {job.attemptCount}/{job.maxAttempts} / {dateTime(job.dueAt, locale, "UTC")}</small></span>{job.canRerun ? <form action={rerunBudgetRefreshJobAction}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="idempotencyKey" value={randomUUID()} /><input name="explanation" minLength={3} maxLength={1000} aria-label={messages.reason} required /><button className={styles.secondaryAction}>{messages.rerun}</button></form> : <span>{job.lastErrorCode ?? job.state}</span>}</li>)}</ul> : <p>{messages.noJobs}</p>}
+        {workspace.jobs.length ? <ul className={styles.ledgerList}>{workspace.jobs.map((job) => <li key={job.id}><span><strong>{job.accountName}</strong><br /><small className={styles.muted}>{job.state} / {job.attemptCount}/{job.maxAttempts} / {dateTime(job.dueAt, locale, "UTC")}</small></span>{job.canRerun ? <form action={rerunBudgetRefreshJobAction}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="idempotencyKey" value={randomUUID()} /><button className={styles.secondaryAction}>{messages.rerun}</button></form> : <span>{job.lastErrorCode ?? job.state}</span>}</li>)}</ul> : <p>{messages.noJobs}</p>}
       </section>
       <section className={styles.card}>
         <h2>{messages.alerts}</h2>

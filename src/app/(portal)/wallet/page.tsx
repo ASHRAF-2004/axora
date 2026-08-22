@@ -148,10 +148,6 @@ export default async function CompanyWalletPage({
                     <span>{messages.reference}</span>
                     <input name="reference" minLength={3} maxLength={200} autoComplete="off" required />
                   </label>
-                  <label>
-                    <span>{messages.reason}</span>
-                    <textarea name="reason" minLength={3} maxLength={1000} required />
-                  </label>
                   <button type="submit">{messages.recordReceivedTopUp}</button>
                 </form>
               ) : null}
@@ -187,10 +183,6 @@ export default async function CompanyWalletPage({
                         <label>
                           <span>{messages.reference}</span>
                           <input name="reference" minLength={3} maxLength={200} defaultValue={request.reference ?? ""} required />
-                        </label>
-                        <label>
-                          <span>{messages.reason}</span>
-                          <textarea name="reason" minLength={3} maxLength={1000} required />
                         </label>
                         <button type="submit">{messages.recordReceivedTopUp}</button>
                       </form>

@@ -40,7 +40,7 @@ describe("branch delivery location picker coordinate fallback", () => {
       expect(copy.confirmed).toBeTruthy();
       expect(copy.pageTitle).toBeTruthy();
       expect(copy.addressLabel).toBeTruthy();
-      expect(copy.reason).toBeTruthy();
+      expect("reason" in copy).toBe(false);
       expect(copy.confirmationRequired).toBeTruthy();
     }
   });

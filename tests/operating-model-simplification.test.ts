@@ -87,18 +87,13 @@ describe("operating model simplification", () => {
   });
 
   it("does not expose supplier selection or ungranted financial columns", async () => {
-    const [reader, exportRoute, dashboard, reports] = await Promise.all([
+    const [reader, dashboard, reports] = await Promise.all([
       source("src/lib/request-reader.ts"),
-      source("src/app/api/export/requests/route.ts"),
       source("src/app/(portal)/dashboard/page.tsx"),
       source("src/app/(portal)/reports/page.tsx"),
     ]);
     expect(reader).toContain('NULL::text AS "supplierName"');
-    expect(exportRoute).not.toContain('"Supplier"');
-    for (const permission of [
-      "view_internal_cost", "view_platform_revenue", "view_platform_profit",
-    ]) expect(exportRoute).toContain(permission);
     expect(dashboard).toContain('canAccess(actor, "view_platform_profit")');
-    expect(reports).toContain('canAccess(actor, "view_internal_cost")');
+    expect(reports).toContain('redirect("/dashboard")');
   });
 });
