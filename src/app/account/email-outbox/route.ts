@@ -5,6 +5,10 @@ import {
   completeTransactionalEmailOutbox,
 } from "@/lib/transactional-email";
 import {
+  recordResendQuotaSnapshotSafely,
+  resendQuotaSnapshotSchema,
+} from "@/lib/email-operations";
+import {
   claimWorkflowEmailOutbox,
   completeWorkflowEmailOutbox,
 } from "@/lib/workflow-email";
@@ -34,6 +38,7 @@ const transactionalCompleteSchema = z.object({
   providerName: providerNameSchema.optional(),
   providerAgent: z.enum(["axora-auth", "axora-procurement", "axora-budget", "axora-delivery", "axora-documents", "axora-platform"]).optional(),
   httpStatus: z.number().int().min(100).max(599).optional(),
+  quotaSnapshot: resendQuotaSnapshotSchema.optional(),
 }).strict();
 const workflowCompleteSchema = z.object({
   action: z.literal("complete"),
@@ -46,6 +51,7 @@ const workflowCompleteSchema = z.object({
   providerName: providerNameSchema.optional(),
   providerAgent: z.enum(["axora-auth", "axora-procurement", "axora-budget", "axora-delivery", "axora-documents", "axora-platform"]).optional(),
   httpStatus: z.number().int().min(100).max(599).optional(),
+  quotaSnapshot: resendQuotaSnapshotSchema.optional(),
 }).strict();
 const requestSchema = z.union([
   transactionalClaimSchema,
@@ -114,6 +120,9 @@ export async function POST(request: Request) {
           httpStatus: parsed.httpStatus,
         },
       );
+      if (parsed.quotaSnapshot) {
+        await recordResendQuotaSnapshotSafely(parsed.quotaSnapshot);
+      }
       return recorded
         ? noStoreJson({ recorded: true })
         : noStoreJson({ error: "stale_lease" }, 409);
@@ -132,6 +141,9 @@ export async function POST(request: Request) {
           httpStatus: parsed.httpStatus,
         },
       );
+      if (parsed.quotaSnapshot) {
+        await recordResendQuotaSnapshotSafely(parsed.quotaSnapshot);
+      }
       return recorded
         ? noStoreJson({ recorded: true })
         : noStoreJson({ error: "stale_lease" }, 409);

@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SessionUser } from "@/lib/auth";
 import {
   emailOperationsInternals,
+  getEmailOperationsWorkspace,
   maskEmailAddress,
   normalizeEmailOperationsFilters,
+  resendPlanConfiguration,
 } from "@/lib/email-operations";
+afterEach(() => vi.unstubAllEnvs());
 
 function actor(overrides: Partial<SessionUser> = {}): SessionUser {
   return {
@@ -86,5 +89,24 @@ describe("email operations application boundary", () => {
     const sql = JSON.stringify(emailOperationsInternals.sql).toLowerCase();
     expect(sql).not.toContain("recipient_email");
     expect(sql).not.toContain("provider_message_id");
+  });
+
+  it("models configured Free and Paid limits without inventing provider usage", async () => {
+    expect(resendPlanConfiguration({
+      AXORA_RESEND_PLAN: "FREE",
+      AXORA_RESEND_MONTHLY_LIMIT: "3000",
+      AXORA_RESEND_DAILY_LIMIT: "100",
+    })).toEqual({ plan: "FREE", monthlyLimit: 3000, dailyLimit: 100 });
+    expect(resendPlanConfiguration({
+      AXORA_RESEND_PLAN: "PAID",
+      AXORA_RESEND_MONTHLY_LIMIT: "50000",
+      AXORA_RESEND_DAILY_LIMIT: "",
+    })).toEqual({ plan: "PAID", monthlyLimit: 50000, dailyLimit: undefined });
+
+    vi.stubEnv("DEMO_MODE", "true");
+    vi.stubEnv("AXORA_DEMO_RESEND_QUOTA_AVAILABLE", "false");
+    const workspace = await getEmailOperationsWorkspace(actor(), {});
+    expect(workspace.resendQuota).toBeUndefined();
+    expect(workspace.metrics.monthlyRecipientUnits).toBeGreaterThan(0);
   });
 });

@@ -1,12 +1,57 @@
 import type { SessionUser } from "./auth";
 import { isDemoMode, withAuditTransaction } from "./db";
 import { canAccess } from "./permissions";
+import { z } from "zod";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE_PATTERN = /^20\d{2}-\d{2}-\d{2}$/;
 const KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_.-]{1,119}$/;
 const ERROR_PATTERN = /^[a-z0-9_]{1,64}$/;
 const DOMAIN_PATTERN = /^[a-z0-9.-]{3,253}$/;
+const RESEND_QUOTA_MAXIMUM = 1_000_000_000;
+
+export const resendQuotaSnapshotSchema = z.object({
+  provider: z.literal("resend"),
+  plan: z.enum(["FREE", "PAID"]),
+  monthlyUsed: z.number().int().min(0).max(RESEND_QUOTA_MAXIMUM),
+  monthlyLimit: z.number().int().min(1).max(RESEND_QUOTA_MAXIMUM),
+  dailyUsed: z.number().int().min(0).max(RESEND_QUOTA_MAXIMUM).nullable(),
+  dailyLimit: z.number().int().min(1).max(RESEND_QUOTA_MAXIMUM).nullable(),
+  source: z.enum(["PROVIDER_RESPONSE_HEADER", "PROVIDER_READ_ONLY_SYNC"]),
+  responseStatusClass: z.number().int().min(2).max(5),
+  capturedAt: z.iso.datetime({ offset: true }),
+}).superRefine((snapshot, context) => {
+  if ((snapshot.dailyUsed === null) !== (snapshot.dailyLimit === null)
+    || (snapshot.plan === "FREE" && snapshot.dailyLimit === null)) {
+    context.addIssue({ code: "custom", message: "Invalid daily quota shape" });
+  }
+});
+
+export type ResendQuotaSnapshot = z.infer<typeof resendQuotaSnapshotSchema>;
+
+function configuredQuotaLimit(value: string | undefined) {
+  if (!/^[1-9][0-9]*$/.test(value ?? "")) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed <= RESEND_QUOTA_MAXIMUM
+    ? parsed : undefined;
+}
+
+export function resendPlanConfiguration(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const plan = (env.AXORA_RESEND_PLAN ?? "FREE").trim().toUpperCase();
+  const monthlyLimit = configuredQuotaLimit(
+    env.AXORA_RESEND_MONTHLY_LIMIT ?? "3000",
+  );
+  const dailyRaw = (env.AXORA_RESEND_DAILY_LIMIT
+    ?? (plan === "FREE" ? "100" : "")).trim();
+  const dailyLimit = dailyRaw ? configuredQuotaLimit(dailyRaw) : undefined;
+  if ((plan !== "FREE" && plan !== "PAID") || monthlyLimit === undefined
+    || (plan === "FREE" && dailyLimit === undefined)) {
+    throw new Error("email_operations_unavailable");
+  }
+  return { plan, monthlyLimit, dailyLimit } as const;
+}
 
 /** Logical Axora queue streams. These are not external-provider accounts. */
 export const EMAIL_DELIVERY_STREAMS = [
@@ -150,6 +195,7 @@ export interface EmailOperationsWorkspace {
   dailyUsage: Array<{ day: string; recipientUnits: number; attempts: number }>;
   providerRuntime: EmailProviderRuntimeReadiness;
   providerHealth?: EmailProviderHealth;
+  resendQuota?: ResendQuotaSnapshot;
   webhooks: Array<{
     providerName: string;
     periodStart: string;
@@ -204,6 +250,17 @@ const COMMAND_SQL = `
 
 const WEBHOOK_FAILURE_SQL = `
   SELECT public.axora_record_email_webhook_failure($1::text,$2::text)
+`;
+
+const RESEND_QUOTA_READ_SQL = `
+  SELECT public.axora_current_resend_quota_snapshot() AS snapshot
+`;
+
+const RESEND_QUOTA_WRITE_SQL = `
+  SELECT public.axora_record_resend_quota_snapshot(
+    $1::text,$2::bigint,$3::bigint,$4::bigint,$5::bigint,$6::text,
+    $7::smallint,$8::timestamptz
+  ) AS changed
 `;
 
 function first(value: string | string[] | undefined) {
@@ -438,6 +495,18 @@ function demoWorkspace(actor: SessionUser, filters: EmailOperationsFilters): Ema
       configurationState: "HEALTHY",
       capturedAt: new Date(now.getTime() - 3_600_000).toISOString(),
     } : undefined,
+    resendQuota: actor.isOwner && actor.accountKind === "PLATFORM"
+      && process.env.AXORA_DEMO_RESEND_QUOTA_AVAILABLE !== "false" ? {
+      provider: "resend",
+      plan: "FREE",
+      monthlyUsed: 8,
+      monthlyLimit: 3_000,
+      dailyUsed: 0,
+      dailyLimit: 100,
+      source: "PROVIDER_RESPONSE_HEADER",
+      responseStatusClass: 2,
+      capturedAt: new Date(now.getTime() - 60_000).toISOString(),
+    } : undefined,
     webhooks: canManage ? [{
       providerName: "resend",
       periodStart: now.toISOString(),
@@ -476,10 +545,52 @@ export async function getEmailOperationsWorkspace(
       if (!query.rows[0]?.workspace) {
         throw new Error("email_operations_unavailable");
       }
-      return query.rows[0].workspace;
+      if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+        return query.rows[0].workspace;
+      }
+      const quotaQuery = await client.query<{ snapshot: unknown }>(RESEND_QUOTA_READ_SQL);
+      const snapshot = resendQuotaSnapshotSchema.safeParse(quotaQuery.rows[0]?.snapshot);
+      return {
+        ...query.rows[0].workspace,
+        ...(snapshot.success ? { resendQuota: snapshot.data } : {}),
+      };
     },
   );
   return { ...workspace, providerRuntime: emailProviderRuntimeReadiness() };
+}
+
+export async function recordResendQuotaSnapshot(input: unknown) {
+  const snapshot = resendQuotaSnapshotSchema.parse(input);
+  if (isDemoMode()) return false;
+  return withAuditTransaction(
+    {
+      reason: "Validated Resend provider quota headers captured",
+      reasonCode: "EMAIL_PROVIDER_QUOTA_CAPTURED",
+      systemIdentity: "EMAIL_PROVIDER_QUOTA",
+    },
+    async (client) => {
+      const result = await client.query<{ changed: boolean }>(RESEND_QUOTA_WRITE_SQL, [
+        snapshot.plan,
+        snapshot.monthlyUsed,
+        snapshot.monthlyLimit,
+        snapshot.dailyUsed,
+        snapshot.dailyLimit,
+        snapshot.source,
+        snapshot.responseStatusClass,
+        snapshot.capturedAt,
+      ]);
+      return result.rows[0]?.changed === true;
+    },
+  );
+}
+
+export async function recordResendQuotaSnapshotSafely(input: unknown) {
+  try {
+    return await recordResendQuotaSnapshot(input);
+  } catch {
+    console.error(JSON.stringify({ event: "resend_quota_snapshot_persistence_error" }));
+    return false;
+  }
 }
 
 export async function executeEmailOperationsCommand(
@@ -559,5 +670,7 @@ export const emailOperationsInternals = {
     workspace: WORKSPACE_SQL,
     command: COMMAND_SQL,
     webhookFailure: WEBHOOK_FAILURE_SQL,
+    resendQuotaRead: RESEND_QUOTA_READ_SQL,
+    resendQuotaWrite: RESEND_QUOTA_WRITE_SQL,
   },
 };

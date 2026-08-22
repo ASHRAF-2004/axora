@@ -9,6 +9,10 @@ import {
   authorizeAccountSetupDelivery,
   type AccountSetupInvitationResult,
 } from "./account-setup";
+import {
+  recordResendQuotaSnapshotSafely,
+  resendQuotaSnapshotSchema,
+} from "./email-operations";
 
 const EMAIL_SERVICE_SECRET_MINIMUM_LENGTH = 32;
 const EMAIL_SERVICE_CLOCK_SKEW_SECONDS = 90;
@@ -255,6 +259,12 @@ export async function sendAccountSetupEmail(
       result = undefined;
     }
     outcome = responseOutcome(response, result);
+    const quotaSnapshot = resendQuotaSnapshotSchema.safeParse(
+      (result as Record<string, unknown> | undefined)?.quotaSnapshot,
+    );
+    if (quotaSnapshot.success) {
+      await recordResendQuotaSnapshotSafely(quotaSnapshot.data);
+    }
     if (outcome === "sent") {
       providerMessageId = safeProviderMessageId(
         (result as Record<string, unknown> | undefined)?.messageId,

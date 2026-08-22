@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   apiToken,
   createResendEmailProvider,
+  parseResendQuotaHeaders,
   readinessStatus,
   sendAccountSetup,
   senderConfiguration,
@@ -29,6 +30,128 @@ const message = {
 };
 
 describe("Resend provider adapter", () => {
+  it("strictly parses complete Free-plan quota headers", () => {
+    const snapshot = parseResendQuotaHeaders(new Response(null, {
+      status: 200,
+      headers: {
+        "x-resend-monthly-quota": "8",
+        "x-resend-daily-quota": "0",
+      },
+    }), {
+      env: {
+        AXORA_RESEND_PLAN: "FREE",
+        AXORA_RESEND_MONTHLY_LIMIT: "3000",
+        AXORA_RESEND_DAILY_LIMIT: "100",
+      },
+      capturedAt: new Date("2026-08-22T10:00:00.000Z"),
+    });
+    expect(snapshot).toEqual({
+      provider: "resend",
+      plan: "FREE",
+      monthlyUsed: 8,
+      monthlyLimit: 3000,
+      dailyUsed: 0,
+      dailyLimit: 100,
+      source: "PROVIDER_RESPONSE_HEADER",
+      responseStatusClass: 2,
+      capturedAt: "2026-08-22T10:00:00.000Z",
+    });
+  });
+
+  it.each([
+    [{ "x-resend-daily-quota": "0" }, "missing monthly"],
+    [{ "x-resend-monthly-quota": "8" }, "missing daily"],
+    [{ "x-resend-monthly-quota": "eight", "x-resend-daily-quota": "0" }, "invalid string"],
+    [{ "x-resend-monthly-quota": "-1", "x-resend-daily-quota": "0" }, "negative"],
+    [{ "x-resend-monthly-quota": "9007199254740992", "x-resend-daily-quota": "0" }, "unsafe integer"],
+    [{ "x-resend-monthly-quota": "1000000001", "x-resend-daily-quota": "0" }, "unexpectedly large"],
+  ])("rejects %s (%s)", (headers) => {
+    expect(parseResendQuotaHeaders(new Response(null, { status: 200, headers }), {
+      env: {
+        AXORA_RESEND_PLAN: "FREE",
+        AXORA_RESEND_MONTHLY_LIMIT: "3000",
+        AXORA_RESEND_DAILY_LIMIT: "100",
+      },
+    })).toBeUndefined();
+  });
+
+  it("supports a Paid plan with no daily limit", () => {
+    expect(parseResendQuotaHeaders(new Response(null, {
+      status: 200,
+      headers: { "x-resend-monthly-quota": "4200" },
+    }), {
+      env: {
+        AXORA_RESEND_PLAN: "PAID",
+        AXORA_RESEND_MONTHLY_LIMIT: "50000",
+        AXORA_RESEND_DAILY_LIMIT: "",
+      },
+    })).toMatchObject({ dailyUsed: null, dailyLimit: null, plan: "PAID" });
+  });
+
+  it("captures validated quota headers from a controlled 429 without retrying", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ type: "daily_quota_exceeded" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "x-resend-monthly-quota": "9",
+        "x-resend-daily-quota": "100",
+      },
+    }));
+    const provider = createResendEmailProvider({
+      token: "re_synthetic_production_key_value",
+      fetchImpl,
+    });
+    await expect(provider.send(message)).rejects.toMatchObject({
+      disposition: "retry",
+      statusCode: 429,
+      quotaSnapshot: {
+        monthlyUsed: 9,
+        monthlyLimit: 3000,
+        dailyUsed: 100,
+        dailyLimit: 100,
+        responseStatusClass: 4,
+      },
+    });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it("never changes a successful send outcome when quota configuration is invalid", async () => {
+    const provider = createResendEmailProvider({
+      token: "re_synthetic_production_key_value",
+      env: { AXORA_RESEND_PLAN: "BROKEN" },
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ id: "resend-safe-id" }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+          "x-resend-monthly-quota": "8",
+          "x-resend-daily-quota": "0",
+        },
+      })),
+    });
+    await expect(provider.send(message)).resolves.toEqual({
+      status: "submitted",
+      messageId: "resend-safe-id",
+    });
+  });
+
+  it("retains safe quota evidence when a 2xx body has no trustworthy message ID", async () => {
+    const provider = createResendEmailProvider({
+      token: "re_synthetic_production_key_value",
+      fetchImpl: vi.fn(async () => new Response("{}", {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+          "x-resend-monthly-quota": "8",
+          "x-resend-daily-quota": "0",
+        },
+      })),
+    });
+    await expect(provider.send(message)).rejects.toMatchObject({
+      disposition: "uncertain",
+      quotaSnapshot: { monthlyUsed: 8, dailyUsed: 0 },
+    });
+  });
+
   it("accepts Resend configuration and reads only the configured secret file", async () => {
     expect(senderConfiguration({
       AXORA_EMAIL_PROVIDER: "resend",

@@ -187,7 +187,11 @@ describe("central Resend delivery", () => {
       }
       return new Response(JSON.stringify({ id: "re-transactional-123" }), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-resend-monthly-quota": "8",
+          "x-resend-daily-quota": "0",
+        },
       });
     });
     await expect(pollTransactionalEmailOutboxOnce({
@@ -206,6 +210,13 @@ describe("central Resend delivery", () => {
       providerMessageId: "re-transactional-123",
       providerName: "resend",
       providerAgent: "axora-auth",
+      quotaSnapshot: expect.objectContaining({
+        provider: "resend",
+        monthlyUsed: 8,
+        monthlyLimit: 3000,
+        dailyUsed: 0,
+        dailyLimit: 100,
+      }),
     });
     expect(requests[1].url).toBe("https://api.resend.com/emails");
     expect(requests[1].headers["Idempotency-Key"] ?? requests[1].headers.get?.("Idempotency-Key"))
