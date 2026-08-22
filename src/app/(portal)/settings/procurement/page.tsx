@@ -44,7 +44,6 @@ export default async function ProcurementSettingsPage({
                 </label>)}
               </div>
             </fieldset>
-            <label><span>{copy.reason}</span><textarea name="reason" minLength={3} maxLength={1000} required /><small>{copy.reasonHelp}</small></label>
             <button className="button button-primary" type="submit">{copy.save}</button>
           </form>;
         })}

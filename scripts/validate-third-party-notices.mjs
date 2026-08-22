@@ -10,7 +10,7 @@ const requiredSections = [
   "MapLibre GL JS",
   "Owner-supplied Axora artwork and email illustration",
   "Lucide icon assets and React library",
-  "Noto fonts embedded in the user manuals",
+  "Noto fonts used by map glyph assets",
   "axe-core Playwright accessibility checks",
   "Tailscale client",
   "PDFKit document generator",

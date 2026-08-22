@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   DASHBOARD_METRIC_DEFINITIONS,
-  calculateDashboardComparison,
   dashboardPeriodSearchParams,
   normalizeDashboardPeriod,
   reportingDateAt,
@@ -66,18 +65,11 @@ describe("P1-15 dashboard period contract", () => {
       preset: "custom",
       start: "2027-01-01",
       end: "2027-01-31",
-      compare: "1",
     }, "UTC", new Date("2026-08-09T00:00:00.000Z"))).toMatchObject({
       preset: "custom",
       startDate: "2027-01-01",
       endDate: "2027-01-31",
       endExclusiveDate: "2027-02-01",
-      compare: true,
-      comparison: {
-        startDate: "2026-12-01",
-        endDate: "2026-12-31",
-        endExclusiveDate: "2027-01-01",
-      },
     });
   });
 
@@ -103,36 +95,17 @@ describe("P1-15 dashboard period contract", () => {
     }, "UTC", now).issue).toBe("invalid-preset");
   });
 
-  it("handles zero comparison denominators without infinity or NaN", () => {
-    expect(calculateDashboardComparison(0, 0)).toEqual({
-      absolute: 0,
-      percentage: 0,
-      direction: "same",
-    });
-    expect(calculateDashboardComparison(50, 0)).toEqual({
-      absolute: 50,
-      percentage: null,
-      direction: "up",
-    });
-    expect(calculateDashboardComparison(75, 100)).toEqual({
-      absolute: -25,
-      percentage: -25,
-      direction: "down",
-    });
-  });
-
   it("serializes only the applied scope and period state", () => {
     const period = normalizeDashboardPeriod({
       preset: "custom",
       start: "2026-07-01",
       end: "2026-07-31",
-      compare: "true",
     }, "UTC", new Date("2026-08-09T00:00:00.000Z"));
     expect(dashboardPeriodSearchParams(
       period,
       "20000000-0000-4000-8000-000000000001",
     ).toString()).toBe(
-      "preset=custom&start=2026-07-01&end=2026-07-31&compare=1&branch=20000000-0000-4000-8000-000000000001",
+      "preset=custom&start=2026-07-01&end=2026-07-31&branch=20000000-0000-4000-8000-000000000001",
     );
   });
 

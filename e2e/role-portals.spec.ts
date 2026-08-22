@@ -22,15 +22,15 @@ async function expectShell(page: Parameters<typeof signInAsDemoRole>[0]) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
 }
 
-test("Human Resources Management assigns and monitors leads without financial access", async ({ page }) => {
+test("Human Resources Management reaches companies while retired routes return to the dashboard", async ({ page }) => {
   await signInAsDemoRole(page, principals.hr);
   await page.goto("/dashboard");
   await expect(page.locator("main").getByText("Human Resources Management", { exact: true })).toBeVisible();
   await expectShell(page);
   await page.goto("/companies/leads");
-  await expect(page.locator("main h1")).toBeVisible();
+  await expect(page).toHaveURL(/\/companies$/);
   await page.goto("/reports");
-  await expect(page).toHaveURL(/\/access-denied$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
 });
 
 test("Agent sees assigned company operations without platform financial fields", async ({ page }) => {
@@ -85,15 +85,14 @@ test("Delivery Guy receives only the assigned buying and delivery workspace", as
   await expect(page).toHaveURL(/\/access-denied$/);
 });
 
-test("Platform Owner retains full authority and financial visibility", async ({ page }) => {
+test("Platform Owner retains company authority and the Owner-only Email Status", async ({ page }) => {
   await signInAsDemoOwner(page);
   await page.goto("/companies");
   await expect(page.locator("main h1")).toBeVisible();
   await page.goto("/reports");
-  const reports = page.getByRole("main");
-  await expect(reports.getByText("Customer sales", { exact: true })).toBeVisible();
-  await expect(reports.getByText(/^(Supplier buying cost|Internal buying cost)$/i).first()).toBeVisible();
-  await expect(reports.getByText("Gross margin", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await page.goto("/email-operations");
+  await expect(page.getByRole("heading", { level: 1, name: "Email Status" })).toBeVisible();
 });
 
 test("Arabic company dashboard remains RTL, mobile-safe and reduced-motion aware", async ({ page }) => {

@@ -28,15 +28,15 @@ export const companySchema = z.object({
  */
 export const directCompanyCreateSchema = z.object({
   name: required("Company display name", 300),
-  legalName: required("Legal company name", 300),
-  industry: required("Industry", 300),
-  companyInformation: required("Company information", 3000),
+  legalName: optional(300),
+  industry: optional(300),
+  companyInformation: optional(3000),
   websiteUrl: z.union([
     z.url({ protocol: /^https$/ }).max(500),
     z.literal(""),
   ]).transform((value) => value || undefined),
   mainContactName: required("Main contact name", 300),
-  billingCycle: required("Billing cycle", 100),
+  billingCycle: optional(100),
   notes: optional(1000),
 }).strict();
 

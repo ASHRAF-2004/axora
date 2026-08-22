@@ -50,8 +50,7 @@ Date: 2026-08-03
   - `docs/refactor/MIGRATION_AND_RESET_PLAN.md`
   - `docs/refactor/RESET_READINESS_AUDIT.md`
   - `docs/refactor/WORKBOOK_IMPORT_REPORT.md`
-- Manuals:
-  - `public/manuals/` (English/Arabic versions)
+- User manuals were retired by the internal-MVP simplification; business PDFs remain.
 
 ## Current known production gates (not in this branch execution)
 

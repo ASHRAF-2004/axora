@@ -1,149 +1,54 @@
 "use server";
 
-import {
-  COMPANY_ONBOARDING_STEPS,
-  reviewCompanyVerification,
-  saveCompanyOnboarding,
-  submitCompanyVerification,
-  updateCompanyOnboardingItem,
-} from "@/lib/company-onboarding";
 import { requirePermission } from "@/lib/auth";
+import { loadCompanyOnboardingWorkspace, saveCompanyOnboarding } from "@/lib/company-onboarding";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
 import { readFormText } from "@/lib/validation";
-import { parseZonedDateTime } from "@/lib/zoned-date-time";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-const optionalEmail = z.union([z.email().max(320), z.literal("")]);
-const profileSchema = z.object({
+const TIMEZONES = ["Asia/Kuala_Lumpur", "Asia/Singapore", "Asia/Riyadh", "Asia/Dubai", "Asia/Jakarta", "Asia/Manila", "UTC"] as const;
+
+const setupSchema = z.object({
   companyId: z.uuid(),
   expectedVersion: z.coerce.number().int().positive(),
   legalName: z.string().trim().min(2).max(300),
-  registrationCountryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/),
-  taxRegistrationNumber: z.string().trim().max(160),
-  industryCode: z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/),
-  industryOtherText: z.string().trim().max(300).optional(),
-  registeredAddress: z.string().trim().min(3).max(5000),
-  operatingAddress: z.string().trim().min(3).max(5000),
   mainContactName: z.string().trim().min(2).max(300),
-  billingContactName: z.string().trim().max(300),
-  billingContactEmail: optionalEmail,
-  billingAddress: z.string().trim().min(3).max(5000),
-  billingCycle: z.string().trim().min(2).max(300),
+  industryCode: z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/),
   defaultLocale: z.enum(SUPPORTED_LOCALES),
-  timezone: z.string().trim().max(120).refine(
-    (value) => value === "UTC" || /^[A-Za-z_]+(?:\/[A-Za-z0-9_+.-]+)+$/.test(value),
-  ),
-  currentStep: z.enum(COMPANY_ONBOARDING_STEPS),
-  completedSteps: z.array(z.enum(COMPANY_ONBOARDING_STEPS)).max(9),
-  reason: z.string().trim().min(3).max(1000),
+  timezone: z.enum(TIMEZONES),
 });
-
-const itemSchema = z.object({
-  companyId: z.uuid(),
-  expectedVersion: z.coerce.number().int().positive(),
-  itemCode: z.string().regex(/^[A-Z][A-Z0-9_]{2,79}$/),
-  status: z.enum(["PENDING", "PASSED", "FAILED", "WAIVED"]),
-  responsibleUserId: z.uuid().optional(),
-  notes: z.string().trim().max(3000).optional(),
-  evidenceReference: z.string().trim().max(1000).optional(),
-  dueAt: z.date().optional(),
-  exceptionReason: z.string().trim().max(1000).optional(),
-  exceptionExpiresAt: z.date().optional(),
-  reason: z.string().trim().min(3).max(1000),
-});
-
-function path(companyId: string) {
-  return `/companies/${companyId}/onboarding`;
-}
 
 export async function saveCompanyOnboardingAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
-  const input = profileSchema.parse({
+  const input = setupSchema.parse({
     companyId: readFormText(formData, "companyId"),
     expectedVersion: readFormText(formData, "expectedVersion"),
     legalName: readFormText(formData, "legalName"),
-    registrationCountryCode: readFormText(formData, "registrationCountryCode"),
-    taxRegistrationNumber: readFormText(formData, "taxRegistrationNumber"),
-    industryCode: readFormText(formData, "industryCode"),
-    industryOtherText: readFormText(formData, "industryOtherText") || undefined,
-    registeredAddress: readFormText(formData, "registeredAddress"),
-    operatingAddress: readFormText(formData, "operatingAddress"),
     mainContactName: readFormText(formData, "mainContactName"),
-    billingContactName: readFormText(formData, "billingContactName"),
-    billingContactEmail: readFormText(formData, "billingContactEmail"),
-    billingAddress: readFormText(formData, "billingAddress"),
-    billingCycle: readFormText(formData, "billingCycle"),
+    industryCode: readFormText(formData, "industryCode"),
     defaultLocale: readFormText(formData, "defaultLocale"),
     timezone: readFormText(formData, "timezone"),
-    currentStep: readFormText(formData, "currentStep"),
-    completedSteps: formData.getAll("completedSteps").map(String),
-    reason: readFormText(formData, "reason"),
   });
-  await saveCompanyOnboarding(actor, input);
-  revalidatePath(path(input.companyId));
-  revalidatePath("/companies");
-  redirect(`${path(input.companyId)}?notice=saved`);
-}
-
-export async function updateCompanyOnboardingItemAction(formData: FormData) {
-  const actor = await requirePermission("manage_companies");
-  const status = readFormText(formData, "status");
-  const dueValue = readFormText(formData, "dueAt");
-  const expiryValue = readFormText(formData, "exceptionExpiresAt");
-  const input = itemSchema.parse({
-    companyId: readFormText(formData, "companyId"),
-    expectedVersion: readFormText(formData, "expectedVersion"),
-    itemCode: readFormText(formData, "itemCode"),
-    status,
-    responsibleUserId: readFormText(formData, "responsibleUserId") || undefined,
-    notes: readFormText(formData, "notes") || undefined,
-    evidenceReference: readFormText(formData, "evidenceReference") || undefined,
-    dueAt: dueValue ? parseZonedDateTime(dueValue, actor.timezone ?? "Asia/Kuala_Lumpur") : undefined,
-    exceptionReason: readFormText(formData, "exceptionReason") || undefined,
-    exceptionExpiresAt: expiryValue
-      ? parseZonedDateTime(expiryValue, actor.timezone ?? "Asia/Kuala_Lumpur")
-      : undefined,
-    reason: readFormText(formData, "reason"),
+  const current = (await loadCompanyOnboardingWorkspace(actor, input.companyId)).company;
+  await saveCompanyOnboarding(actor, {
+    ...input,
+    registrationCountryCode: current.registrationCountryCode,
+    taxRegistrationNumber: current.taxRegistrationNumber,
+    industryOtherText: current.industryOtherText,
+    registeredAddress: current.registeredAddress,
+    operatingAddress: current.operatingAddress,
+    billingContactName: current.billingContactName,
+    billingContactEmail: current.billingContactEmail,
+    billingAddress: current.billingAddress,
+    billingCycle: current.billingCycle,
+    currentStep: current.currentStep,
+    completedSteps: current.completedSteps,
+    reason: "COMPANY_UPDATED",
   });
-  await updateCompanyOnboardingItem(actor, input);
-  revalidatePath(path(input.companyId));
+  revalidatePath(`/companies/${input.companyId}/onboarding`);
+  revalidatePath(`/companies/${input.companyId}`);
   revalidatePath("/companies");
-  redirect(`${path(input.companyId)}?notice=item-saved`);
-}
-
-function verificationDecisionInput(formData: FormData) {
-  return {
-    companyId: z.uuid().parse(readFormText(formData, "companyId")),
-    expectedVersion: z.coerce.number().int().positive().parse(
-      readFormText(formData, "expectedVersion"),
-    ),
-    reason: z.string().trim().min(3).max(1000).parse(readFormText(formData, "reason")),
-  };
-}
-
-export async function submitCompanyVerificationAction(formData: FormData) {
-  const actor = await requirePermission("manage_companies");
-  const input = verificationDecisionInput(formData);
-  await submitCompanyVerification(
-    actor,input.companyId,input.expectedVersion,input.reason,
-  );
-  revalidatePath(path(input.companyId));
-  revalidatePath("/companies");
-  redirect(`${path(input.companyId)}?notice=submitted`);
-}
-
-export async function reviewCompanyVerificationAction(formData: FormData) {
-  const actor = await requirePermission("manage_companies");
-  const input = verificationDecisionInput(formData);
-  const decision = z.enum(["APPROVE", "REQUEST_CHANGES", "REJECT"]).parse(
-    readFormText(formData, "decision"),
-  );
-  await reviewCompanyVerification(
-    actor,input.companyId,input.expectedVersion,decision,input.reason,
-  );
-  revalidatePath(path(input.companyId));
-  revalidatePath("/companies");
-  redirect(`${path(input.companyId)}?notice=${decision.toLowerCase()}`);
+  redirect(`/companies/${input.companyId}/onboarding?notice=saved`);
 }

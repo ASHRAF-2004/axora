@@ -291,7 +291,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
     const lines = job.lines.map((line) => {
       const resolution = String(form.get(`resolution-${line.id}`));
       return resolution === "UNAVAILABLE"
-        ? { deliveryJobLineId: line.id, resolution, reason: String(form.get(`reason-${line.id}`) ?? "") }
+        ? { deliveryJobLineId: line.id, resolution, reason: "ITEM_UNAVAILABLE" }
         : { deliveryJobLineId: line.id, resolution: "ACQUIRED", actualInternalUnitCost: String(form.get(`cost-${line.id}`) ?? "") };
     });
     const deviceKey = `axora:delivery-device:${workspace?.actorId}`;
@@ -415,7 +415,6 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
                 <legend>{line.productName} · {line.quantity} {line.unitOfMeasure}</legend>
                 <label>{copy.resolution}<select name={`resolution-${line.id}`} value={resolutions[line.id] ?? "ACQUIRED"} onChange={(event) => setResolutions((current) => ({ ...current, [line.id]: event.target.value as "ACQUIRED" | "UNAVAILABLE" }))}><option value="ACQUIRED">{copy.acquired}</option><option value="UNAVAILABLE">{copy.itemUnavailable}</option></select></label>
                 <label>{copy.internalCost}<input name={`cost-${line.id}`} inputMode="decimal" pattern="[0-9]+([.][0-9]{1,6})?" defaultValue="0.00" disabled={resolutions[line.id] === "UNAVAILABLE"} required={resolutions[line.id] !== "UNAVAILABLE"} /></label>
-                <label>{copy.unavailableReason}<input name={`reason-${line.id}`} maxLength={1000} disabled={resolutions[line.id] !== "UNAVAILABLE"} required={resolutions[line.id] === "UNAVAILABLE"} /></label>
               </fieldset>)}
               <div className={styles.formGrid}><label>{copy.receipt}<input name="receipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.note}<textarea name="notes" minLength={3} maxLength={2000} /></label></div>
               <button className={styles.actionButton} data-primary="true" disabled={busy} type="submit">{copy.submitBuying}</button>

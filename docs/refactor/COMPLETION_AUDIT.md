@@ -105,8 +105,7 @@ Legend:
 - `npm run build`
   - Result: successful full route build.
 - Latest completed GitHub CI run: `30770354193` (PR #30) — all jobs successful.
-- `npm run manuals:verify`
-  - Result: exact four manuals rebuilt and deterministic validation succeeded.
+- User manuals and their validation stage were retired by the internal-MVP simplification.
 - Production readiness config check note:
   - `/etc/axora-production/runtime.env` and `/etc/axora-production/deploy.env` are not yet present in this session, so production preflight in local-only mode could not be executed without the deployment bootstrap step.
 

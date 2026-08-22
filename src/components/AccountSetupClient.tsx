@@ -147,7 +147,7 @@ function SetupMessageCard({ unavailable = false, locale }: { unavailable?: boole
           : copy.invalidHelp}
       </p>
       <div className="public-info-actions">
-        <Link className="button button-secondary" href="/account/setup/help">{copy.setupHelp}</Link>
+        <Link className="button button-secondary" href={`/${locale}/contact`}>{copy.setupHelp}</Link>
         <Link className="button button-primary" href="/login">{copy.signIn}</Link>
       </div>
     </article>

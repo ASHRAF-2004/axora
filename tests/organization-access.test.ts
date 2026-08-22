@@ -15,7 +15,6 @@ import {
   loadOrganizationResourceAccess,
   OrganizationAccessUnavailableError,
 } from "@/lib/organization-access";
-import { registerDemoCompanyManagerCoverage } from "@/lib/company-lifecycle";
 import { getDemoStore } from "@/lib/demo-data";
 
 const ids = {
@@ -242,7 +241,7 @@ describe("organization isolation service", () => {
       .rejects.toThrow("The requested organization resource is unavailable.");
   });
 
-  it("keeps the demo CAM directory inside explicit company coverage", async () => {
+  it("gives a permitted demo CAM the full company directory without assignment", async () => {
     mocks.isDemoMode.mockReturnValue(true);
     global.__axoraDemoCompanyManagerAssignments = undefined;
     const cam: AuthenticatedSessionUser = {
@@ -252,18 +251,10 @@ describe("organization isolation service", () => {
       scopeType: "PLATFORM",
       companyId: undefined,
     };
-    expect((await loadOrganizationDirectory(cam, capturedAt)).companies).toEqual([]);
-
-    const assignedCompany = getDemoStore().companies[0]!;
-    registerDemoCompanyManagerCoverage(
-      assignedCompany.id,
-      cam.id,
-      "Owner fixture",
-      "Explicit portfolio assignment",
-      capturedAt,
-    );
     const directory = await loadOrganizationDirectory(cam, capturedAt);
-    expect(directory.companies.map((company) => company.id)).toEqual([assignedCompany.id]);
-    expect(directory.branches.every((branch) => branch.companyId === assignedCompany.id)).toBe(true);
+    expect(directory.companies.map((company) => company.id).sort()).toEqual(
+      getDemoStore().companies.map((company) => company.id).sort(),
+    );
+    expect(directory.branches.length).toBeGreaterThan(0);
   });
 });

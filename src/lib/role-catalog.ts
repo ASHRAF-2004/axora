@@ -14,8 +14,8 @@ export interface AccountRoleDefinition {
 
 export const ACCOUNT_ROLE_CATALOG: readonly AccountRoleDefinition[] = [
   { key: "PLATFORM_OWNER", label: "Axora platform owner", description: "Full platform governance and protected tenant administration.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
-  { key: "HUMAN_RESOURCES_MANAGEMENT", label: "Human Resources Management", description: "Assigns company leads to eligible Agents and monitors onboarding.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
-  { key: "CLIENT_ACCOUNT_MANAGER", label: "Client account manager", description: "Axora employee responsible for assigned leads and customer companies.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
+  { key: "HUMAN_RESOURCES_MANAGEMENT", label: "Human Resources Management", description: "Creates internal Axora accounts and supports company onboarding.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
+  { key: "CLIENT_ACCOUNT_MANAGER", label: "Client account manager", description: "Authorized Axora employee who creates and manages customer companies.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora" },
   { key: "PLATFORM_OPERATIONS", label: "Axora operations administrator", description: "Compatibility role for existing catalogue and delivery operations.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora", availableForCreation: false },
   { key: "TECHNICAL_SUPPORT", label: "Technical support", description: "Historical compatibility role.", accountKind: "PLATFORM", allowedScopes: ["PLATFORM"], category: "Axora", availableForCreation: false },
   { key: "COMPANY_ADMIN", label: "Company administrator", description: "People, branches, budgets, and company-wide procurement oversight.", accountKind: "COMPANY", allowedScopes: ["COMPANY"], category: "Company" },

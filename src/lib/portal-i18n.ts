@@ -20,7 +20,6 @@ export interface PortalMessages {
     notifications: (count: number) => string;
     myProfile: string;
     accountSecurity: string;
-    helpTutorial: string;
     signOut: string;
     language: string;
     workspace: string;
@@ -34,19 +33,6 @@ export interface PortalMessages {
     completeProfileAction: string;
     signOutInstead: string;
     home: (brandName: string) => string;
-  };
-  tutorial: {
-    open: string;
-    restart: string;
-    continue: string;
-    roleGuide: string;
-    close: string;
-    stepOf: (current: number, total: number) => string;
-    openArea: string;
-    skipStep: string;
-    previous: string;
-    finish: string;
-    understood: string;
   };
   environment: { production: string; sample: string };
 }
@@ -66,13 +52,9 @@ const englishNavigation: Record<string, PortalNavigationCopy> = {
   "/branches": { label: "Branches & budgets", description: "Company structure and controls" },
   "/users": { label: "Axora Users", description: "Axora employees, roles and platform access" },
   "/company-users": { label: "Company Users", description: "Company employees, roles and scoped access" },
-  "/reports": { label: "Reports", description: "Operational and company insights" },
-  "/audit": { label: "Audit history", description: "Read-only evidence trail" },
-  "/email-operations": { label: "Email operations", description: "Delivery, suppression and provider health" },
-  "/support": { label: "Support diagnostics", description: "Audited system and account checks" },
+  "/email-operations": { label: "Email Status", description: "Service status, usage and safe retries" },
   "/settings": { label: "Settings", description: "Personal and permitted administration" },
   "/settings/procurement": { label: "Purchasing rules", description: "Category policy by company, branch and department" },
-  "/help": { label: "Help", description: "Guidance for your role" },
 };
 
 const english: PortalMessages = {
@@ -95,20 +77,14 @@ const english: PortalMessages = {
     skipToContent: "Skip to main content",
     openMenu: "Open application menu", primaryNavigation: "Primary application navigation",
     notifications: (count) => `Notifications, ${count} unread`, myProfile: "My profile",
-    accountSecurity: "Account & security", helpTutorial: "Help", signOut: "Sign out",
+    accountSecurity: "Account & security", signOut: "Sign out",
     language: "Language", workspace: "Axora workspace", menu: "Menu", closeMenu: "Close application menu",
     completeNavigation: "Complete application navigation",
-    groups: { workspace: "Workspace", administration: "Administration", insight: "Insights & controls", support: "Support" },
+    groups: { workspace: "Workspace", administration: "Administration" },
     firstLogin: "First login · Required", completeProfileTitle: "Complete your profile first",
     completeProfileBody: "Confirm your identity, language, time zone, and notification preferences before starting work in Axora.",
     completeProfileAction: "Complete my profile", signOutInstead: "Sign out instead",
     home: (brandName) => `${brandName} home`,
-  },
-  tutorial: {
-    open: "Open role tutorial", restart: "Restart tutorial", continue: "Continue tutorial",
-    roleGuide: "Role guide", close: "Close tutorial and resume later",
-    stepOf: (current, total) => `Step ${current} of ${total}`, openArea: "Open this area",
-    skipStep: "Skip this step", previous: "Previous tutorial step", finish: "Finish", understood: "Got it",
   },
   environment: { production: "Production", sample: "Safe sample data" },
 };
@@ -138,33 +114,23 @@ const arabic: PortalMessages = {
     "/branches": { label: "الفروع والميزانيات", description: "هيكل الشركة وضوابطها" },
     "/users": { label: "مستخدمو أكسورا", description: "موظفو أكسورا وأدوارهم ووصولهم إلى المنصة" },
     "/company-users": { label: "مستخدمو الشركة", description: "موظفو الشركة وأدوارهم ووصولهم محدد النطاق" },
-    "/reports": { label: "التقارير", description: "مؤشرات العمليات والشركات" },
-    "/audit": { label: "سجل التدقيق", description: "مسار أدلة للقراءة فقط" },
-    "/email-operations": { label: "عمليات البريد", description: "التسليم والحظر وصحة مزود البريد" },
-    "/support": { label: "تشخيص الدعم", description: "فحوصات مدققة للنظام والحسابات" },
+    "/email-operations": { label: "حالة البريد الإلكتروني", description: "حالة الخدمة والاستخدام وإعادة المحاولة الآمنة" },
     "/settings": { label: "الإعدادات", description: "الإعدادات الشخصية والإدارية المسموحة" },
     "/settings/procurement": { label: "قواعد الشراء", description: "سياسة الفئات حسب الشركة والفرع والقسم" },
-    "/help": { label: "المساعدة", description: "إرشادات مخصصة لدورك" },
   },
   quickActions: { newRequest: "طلب جديد", addCompany: "إضافة شركة", catalog: "الكتالوج" },
   shell: {
     skipToContent: "تخطي إلى المحتوى الرئيسي",
     openMenu: "فتح قائمة التطبيق", primaryNavigation: "التنقل الرئيسي في التطبيق",
     notifications: (count) => `الإشعارات، ${count} غير مقروء`, myProfile: "ملفي الشخصي",
-    accountSecurity: "الحساب والأمان", helpTutorial: "المساعدة", signOut: "تسجيل الخروج",
+    accountSecurity: "الحساب والأمان", signOut: "تسجيل الخروج",
     language: "اللغة", workspace: "مساحة عمل أكسورا", menu: "القائمة", closeMenu: "إغلاق قائمة التطبيق",
     completeNavigation: "التنقل الكامل في التطبيق",
-    groups: { workspace: "مساحة العمل", administration: "الإدارة", insight: "الرؤى والضوابط", support: "الدعم" },
+    groups: { workspace: "مساحة العمل", administration: "الإدارة" },
     firstLogin: "الدخول الأول · مطلوب", completeProfileTitle: "أكمل ملفك الشخصي أولًا",
     completeProfileBody: "أكد هويتك ولغتك ومنطقتك الزمنية وتفضيلات الإشعارات قبل بدء العمل في أكسورا.",
     completeProfileAction: "إكمال ملفي الشخصي", signOutInstead: "تسجيل الخروج بدلًا من ذلك",
     home: (brandName) => `الصفحة الرئيسية لـ ${brandName}`,
-  },
-  tutorial: {
-    open: "فتح دليل الدور", restart: "إعادة تشغيل الدليل", continue: "متابعة الدليل",
-    roleGuide: "دليل الدور", close: "إغلاق الدليل ومتابعته لاحقًا",
-    stepOf: (current, total) => `الخطوة ${current} من ${total}`, openArea: "فتح هذه الصفحة",
-    skipStep: "تخطي هذه الخطوة", previous: "الخطوة السابقة", finish: "إنهاء", understood: "فهمت",
   },
   environment: { production: "الإنتاج", sample: "بيانات تجريبية آمنة" },
 };
@@ -194,33 +160,23 @@ const malay: PortalMessages = {
     "/branches": { label: "Cawangan & bajet", description: "Struktur dan kawalan syarikat" },
     "/users": { label: "Pengguna Axora", description: "Pekerja Axora, peranan dan akses platform" },
     "/company-users": { label: "Pengguna Syarikat", description: "Pekerja syarikat, peranan dan akses berskop" },
-    "/reports": { label: "Laporan", description: "Cerapan operasi dan syarikat" },
-    "/audit": { label: "Sejarah audit", description: "Jejak bukti baca sahaja" },
-    "/email-operations": { label: "Operasi e-mel", description: "Penghantaran, sekatan dan kesihatan penyedia" },
-    "/support": { label: "Diagnostik sokongan", description: "Semakan sistem dan akaun yang diaudit" },
+    "/email-operations": { label: "Status E-mel", description: "Status perkhidmatan, penggunaan dan cubaan semula selamat" },
     "/settings": { label: "Tetapan", description: "Pentadbiran peribadi dan yang dibenarkan" },
     "/settings/procurement": { label: "Peraturan pembelian", description: "Polisi kategori mengikut syarikat, cawangan dan jabatan" },
-    "/help": { label: "Bantuan", description: "Panduan untuk peranan anda" },
   },
   quickActions: { newRequest: "Permintaan baharu", addCompany: "Tambah syarikat", catalog: "Katalog" },
   shell: {
     skipToContent: "Langkau ke kandungan utama",
     openMenu: "Buka menu aplikasi", primaryNavigation: "Navigasi utama aplikasi",
     notifications: (count) => `Pemberitahuan, ${count} belum dibaca`, myProfile: "Profil saya",
-    accountSecurity: "Akaun & keselamatan", helpTutorial: "Bantuan", signOut: "Log keluar",
+    accountSecurity: "Akaun & keselamatan", signOut: "Log keluar",
     language: "Bahasa", workspace: "Ruang kerja Axora", menu: "Menu", closeMenu: "Tutup menu aplikasi",
     completeNavigation: "Navigasi lengkap aplikasi",
-    groups: { workspace: "Ruang kerja", administration: "Pentadbiran", insight: "Cerapan & kawalan", support: "Sokongan" },
+    groups: { workspace: "Ruang kerja", administration: "Pentadbiran" },
     firstLogin: "Log masuk pertama · Wajib", completeProfileTitle: "Lengkapkan profil anda dahulu",
     completeProfileBody: "Sahkan identiti, bahasa, zon waktu dan pilihan pemberitahuan sebelum mula bekerja dalam Axora.",
     completeProfileAction: "Lengkapkan profil saya", signOutInstead: "Log keluar sebaliknya",
     home: (brandName) => `Laman utama ${brandName}`,
-  },
-  tutorial: {
-    open: "Buka tutorial peranan", restart: "Mulakan semula tutorial", continue: "Teruskan tutorial",
-    roleGuide: "Panduan peranan", close: "Tutup tutorial dan sambung kemudian",
-    stepOf: (current, total) => `Langkah ${current} daripada ${total}`, openArea: "Buka bahagian ini",
-    skipStep: "Langkau langkah ini", previous: "Langkah tutorial sebelumnya", finish: "Selesai", understood: "Faham",
   },
   environment: { production: "Produksi", sample: "Data contoh selamat" },
 };

@@ -11,6 +11,7 @@ import {
 import { requirePagePermission } from "@/lib/auth";
 import { peopleWorkspaceMessages } from "@/lib/people-workspaces-i18n";
 import { accountRoleDefinition, creatableAccountRoles } from "@/lib/role-catalog";
+import { isMvpVisiblePermission } from "@/lib/mvp-permissions";
 
 export default async function NewDeliveryUserPage() {
   const actor = await requirePagePermission("create_delivery_users");
@@ -30,12 +31,12 @@ export default async function NewDeliveryUserPage() {
         label: role.label,
         description: role.description,
         category: role.category,
-        defaultPermissions: defaults,
+        defaultPermissions: defaults.filter((code) => isMvpVisiblePermission(role.accountKind, code)),
         customizablePermissions: creationPermissionOptions(
           role.accountKind,
           defaults,
           actor.isOwner,
-        ),
+        ).filter((permission) => isMvpVisiblePermission(role.accountKind, permission.code)),
       };
     });
 

@@ -43,7 +43,7 @@ test("owner create routes are single-purpose and obsolete budget access is unava
 
   await page.goto("/companies/new");
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/company/i);
-  await expect(page.locator("form").filter({ has: page.getByLabel("Display name") })).toBeVisible();
+  await expect(page.locator("form").filter({ has: page.locator('input[name="name"]') })).toBeVisible();
   await expect(page.getByRole("table")).toHaveCount(0);
   await expect(page.getByRole("search")).toHaveCount(0);
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-add-company-${testInfo.project.name}.png`, fullPage: true });

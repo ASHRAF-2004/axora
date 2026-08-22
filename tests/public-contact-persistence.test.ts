@@ -1,4 +1,4 @@
-import { recordPublicContactSubmission } from "@/lib/company-leads";
+import { recordPublicContactSubmission } from "@/lib/public-contact-persistence";
 import type { PoolClient } from "pg";
 import { describe, expect, it, vi } from "vitest";
 

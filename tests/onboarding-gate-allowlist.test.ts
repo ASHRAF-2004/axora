@@ -29,8 +29,6 @@ describe("pre-onboarding route allowlist", () => {
     expect(imports.sort()).toEqual([
       "src/app/(portal)/account/actions.ts",
       "src/app/(portal)/account/page.tsx",
-      "src/app/(portal)/help/actions.ts",
-      "src/app/(portal)/help/page.tsx",
       "src/app/(portal)/layout.tsx",
       "src/app/(portal)/profile/actions.ts",
       "src/app/(portal)/profile/language-action.ts",
@@ -51,7 +49,6 @@ describe("pre-onboarding route allowlist", () => {
       "src/app/api/catalog/route.ts",
       "src/app/api/driver/events/route.ts",
       "src/app/api/driver/evidence/route.ts",
-      "src/app/api/export/requests/route.ts",
       "src/app/api/products/[id]/image/route.ts",
       "src/app/api/products/[id]/images/[imageId]/route.ts",
       "src/app/api/products/[id]/images/route.ts",
@@ -67,7 +64,6 @@ describe("pre-onboarding route allowlist", () => {
   it("keeps ordinary portal actions on the gated authorization primitives", async () => {
     const allowed = new Set([
       "src/app/(portal)/account/actions.ts",
-      "src/app/(portal)/help/actions.ts",
       "src/app/(portal)/profile/actions.ts",
     ]);
     const actionFiles = (await sourceFiles())

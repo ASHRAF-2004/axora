@@ -56,11 +56,11 @@ describe("real asynchronous operation status", () => {
     expect(domain).toContain("DocumentGenerationJobSummary");
   });
 
-  it("preserves request-filter data and exposes retryable real failures", async () => {
+  it("keeps request filters server-rendered and limited to search and status", async () => {
     const filters = await source("src/components/RequestFilters.tsx");
-    expect(filters).toContain("setLoadError(copy.loadError)");
-    expect(filters).toContain("setRetryToken");
-    expect(filters).toContain("loaded && !available.length");
-    expect(filters).not.toMatch(/catch\([^)]*\)[\s\S]{0,120}setOptions\(\[\]\)/);
+    expect(filters).toContain('name="q"');
+    expect(filters).toContain('name="status"');
+    expect(filters).not.toContain("filter-options");
+    expect(filters).not.toContain("useEffect");
   });
 });

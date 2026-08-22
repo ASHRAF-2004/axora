@@ -294,7 +294,7 @@ describe("company lifecycle migration", () => {
       });
       const actions = await readFile(actionsUrl, "utf8");
       expect(actions).toContain('revalidatePath("/companies")');
-      expect(actions).toContain("created=${created.companyId}");
+      expect(actions).toContain("/companies/${created.companyId}?notice=company-created");
     } finally {
       await db.close();
     }

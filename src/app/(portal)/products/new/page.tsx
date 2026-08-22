@@ -8,7 +8,7 @@ import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
 import { createProductAction } from "../../masters/actions";
 
 export default async function NewProductPage() {
-  const actor = await requirePagePermission("manage_commercial_pricing");
+  const actor = await requirePagePermission("manage_catalog");
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).products;
   const rules = procurementRulesMessages(locale);

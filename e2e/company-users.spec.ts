@@ -43,10 +43,8 @@ test("Owner creates a fixed-context Company User invitation in demo mode", async
   await expect(createdUser.getByText("Pending setup", { exact: true })).toBeVisible();
 });
 
-test("unassigned CAM cannot browse another company's Company Users workspace", async ({ page }) => {
+test("authorized CAM browses company users without a company assignment", async ({ page }) => {
   await signInAsDemoRole(page, unassignedCam);
   await page.goto("/companies/co-youruni/users");
-  await expect(page.getByRole("heading", { name: "This page could not be found." }))
-    .toBeVisible();
-  await expect(page.getByText("Company Users", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Company Users: YourUni" })).toBeVisible();
 });

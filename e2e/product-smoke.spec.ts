@@ -8,14 +8,10 @@ const authenticatedRoutes = [
   { path: "/deliveries", heading: "Manage Drivers" },
   { path: "/receiving", heading: "Confirm delivered quantities" },
   { path: "/finance", heading: "Invoices and payments" },
-  { path: "/companies", heading: "Company lifecycle" },
+  { path: "/companies", heading: "Companies" },
   { path: "/branches", heading: "Branches & monthly budgets" },
-  { path: "/reports", heading: "Reports and reconciliation" },
-  { path: "/audit", heading: "Audit history" },
   { path: "/users", heading: "Axora Users" },
-  { path: "/support", heading: "System and account diagnostics" },
-  { path: "/settings", heading: "Settings and security" },
-  { path: "/help", heading: "How Axora operates" },
+  { path: "/email-operations", heading: "Email Status" },
 ] as const;
 
 async function horizontalOverflow(page: Parameters<typeof signInAsDemoOwner>[0]) {
@@ -29,6 +25,20 @@ test("redirects an unauthenticated portal visit to sign in", async ({ page }) =>
 
   await expect(page).toHaveURL(/\/login\?/);
   await expect(page.getByRole("heading", { name: "Sign in to Axora" })).toBeVisible();
+});
+
+test("redirects retired MVP routes without rendering their old products", async ({ page }) => {
+  await signInAsDemoOwner(page);
+  for (const path of ["/help", "/support", "/reports", "/audit"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/dashboard$/);
+  }
+  await page.goto("/settings");
+  await expect(page).toHaveURL(/\/profile$/);
+  for (const path of ["/companies/leads", "/companies/leads/new", "/companies/leads/00000000-0000-4000-8000-000000000001"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/companies$/);
+  }
 });
 
 test("opens every owner top-level workspace with its semantic shell", async ({ page }, testInfo) => {
@@ -49,6 +59,19 @@ test("opens every owner top-level workspace with its semantic shell", async ({ p
   }
 });
 
+test("compact MVP administration has no overflow at every required width", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "The exact responsive matrix runs once.");
+  await signInAsDemoOwner(page);
+  for (const width of [1440, 1024, 768, 390, 360, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of ["/companies", "/companies/10000000-0000-4000-8000-000000000001/onboarding", "/email-operations"]) {
+      await page.goto(route);
+      await expect(page.locator("main.app-content")).toBeVisible();
+      expect(await horizontalOverflow(page), `${route} at ${width}px`).toBeLessThanOrEqual(2);
+    }
+  }
+});
+
 test("keeps customer approval decisions outside the platform-owner role", async ({ page }) => {
   await signInAsDemoOwner(page);
   await page.goto("/approvals");
@@ -61,6 +84,29 @@ test("keeps customer approval decisions outside the platform-owner role", async 
   await expect(page.getByRole("button", {
     name: "Approve and reserve budget",
   })).toHaveCount(0);
+});
+
+test("creates a company on the first valid attempt without a logo or assignment", async ({ page }) => {
+  await signInAsDemoOwner(page);
+  await page.goto("/companies/new");
+  const name = `MVP company ${Date.now()}`;
+  await page.getByLabel("Company name").fill(name);
+  await page.getByLabel("Main contact name").fill("Controlled contact");
+  await Promise.all([
+    page.waitForURL(/\/companies\/[0-9a-f-]+\?notice=company-created$/i),
+    page.getByRole("button", { name: "Create company" }).click(),
+  ]);
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  for (const tab of ["Overview", "Company setup", "Users", "Branches and delivery locations", "Wallet and budgets", "Documents"]) {
+    await expect(page.getByRole("link", { name: tab })).toBeVisible();
+  }
+  await page.getByRole("link", { name: "Company setup" }).click();
+  await expect(page).toHaveURL(/\/companies\/[0-9a-f-]+\/onboarding$/i);
+  await page.getByLabel("Main contact name").fill("Controlled contact updated");
+  await page.getByRole("button", { name: "Save company setup" }).click();
+  await expect(page).toHaveURL(/\/onboarding\?notice=saved$/);
+  await expect(page.getByRole("status").filter({ hasText: "Company setup saved" })).toBeVisible();
+  await expect(page.getByText("This page could not be restored")).toHaveCount(0);
 });
 
 test("creates one catalogue product without losing the route after insertion", async ({ page }, testInfo) => {
@@ -78,6 +124,18 @@ test("creates one catalogue product without losing the route after insertion", a
   await expect(page.getByText("This page could not be restored")).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await expect(page.getByText(/Product created successfully/)).toBeVisible();
+
+  const imageUpload = page.locator('form').filter({ has: page.getByRole("heading", { name: "Image slideshow" }) });
+  await imageUpload.locator('input[name="images"]').setInputFiles([
+    "public/catalog/categories/office-basics.webp",
+    "public/catalog/categories/other.webp",
+  ]);
+  await imageUpload.getByLabel("Alternative text for this upload").fill("Controlled product image");
+  await imageUpload.getByRole("button", { name: "Upload images" }).click();
+  const gallery = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: "Manage gallery" }) });
+  await expect(gallery.locator("article")).toHaveCount(2);
+  await gallery.getByRole("button", { name: "Make primary" }).click();
+  await expect(gallery.getByText("Primary", { exact: true })).toHaveCount(1);
 
   const editor = page.locator("form.panel.form-panel").first();
   await editor.getByLabel("Description / specification").fill(

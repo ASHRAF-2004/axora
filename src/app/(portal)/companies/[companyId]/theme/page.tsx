@@ -343,11 +343,6 @@ export default async function CompanyThemeReviewPage({
                   <option value="DARK">{copy.dark}</option>
                 </select>
               </label>
-              <label className="field-full">
-                {copy.reason}
-                <textarea name="reason" required minLength={3} maxLength={1000} />
-                <small>{copy.reasonHelp}</small>
-              </label>
               <div className="form-actions field-full">
                 <button className="button button-secondary" type="submit">
                   {copy.saveDraft}
@@ -375,10 +370,6 @@ export default async function CompanyThemeReviewPage({
               >
                 <input type="hidden" name="themeId" value={draft.id} />
                 <input type="hidden" name="action" value="APPROVE" />
-                <label className="field-full">
-                  {copy.reason}
-                  <textarea name="reason" required minLength={3} maxLength={1000} />
-                </label>
                 <button className="button button-primary" type="submit">
                   {copy.approve}
                 </button>
@@ -393,10 +384,6 @@ export default async function CompanyThemeReviewPage({
               >
                 <input type="hidden" name="themeId" value={draft.id} />
                 <input type="hidden" name="action" value="PUBLISH" />
-                <label className="field-full">
-                  {copy.reason}
-                  <textarea name="reason" required minLength={3} maxLength={1000} />
-                </label>
                 <button className="button button-primary" type="submit">
                   {copy.publish}
                 </button>
@@ -411,10 +398,6 @@ export default async function CompanyThemeReviewPage({
             >
               <input type="hidden" name="themeId" value={draft.id} />
               <input type="hidden" name="action" value="REJECT" />
-              <label className="field-full">
-                {copy.reason}
-                <textarea name="reason" required minLength={3} maxLength={1000} />
-              </label>
               <button className="button button-secondary" type="submit">
                 {copy.reject}
               </button>
@@ -448,13 +431,6 @@ export default async function CompanyThemeReviewPage({
                   className="table-action-stack"
                 >
                   <input type="hidden" name="themeId" value={theme.id} />
-                  <input
-                    name="reason"
-                    required
-                    minLength={3}
-                    maxLength={1000}
-                    aria-label={copy.reason}
-                  />
                   <button className="button button-secondary" type="submit">
                     {copy.rollback}
                   </button>
@@ -465,25 +441,6 @@ export default async function CompanyThemeReviewPage({
         </div>
       </section>
 
-      <section className="panel">
-        <h2>{copy.eventHistory}</h2>
-        <ol className={styles.timeline}>
-          {workspace.events.map((event) => (
-            <li key={event.id}>
-              <strong>{copy.eventStatus[
-                event.status as keyof typeof copy.eventStatus
-              ] ?? event.status}</strong>
-              <br />
-              <span>{event.reason}</span>
-              <br />
-              <span className="subtle">
-                {formatDate(event.createdAt, locale)} · {copy.by}{" "}
-                {event.actor?.name ?? copy.system}
-              </span>
-            </li>
-          ))}
-        </ol>
-      </section>
     </div>
   );
 }

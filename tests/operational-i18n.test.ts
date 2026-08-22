@@ -1,34 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  notificationEventKeys,
-  operationalDictionaryKeys,
-  operationalEventLabel,
   operationalMessage,
-  operationalMissingKeys,
   operationalNumber,
   operationalStatus,
 } from "@/lib/operational-i18n";
 
 describe("operational portal localization", () => {
-  it("keeps Arabic and Malay complete against the English key catalog", () => {
-    expect(operationalDictionaryKeys().length).toBeGreaterThan(150);
-    expect(operationalMissingKeys("ar")).toEqual([]);
-    expect(operationalMissingKeys("ms")).toEqual([]);
-  });
-
-  it("localizes representative operational screens and interpolates values", () => {
-    expect(operationalMessage("ar", "companies.title")).toBe("الشركات العميلة");
+  it("localizes the retained finance and access screens", () => {
     expect(operationalMessage("ms", "finance.platformTitle")).toBe("Invois dan bayaran");
-    expect(operationalMessage("ar", "notifications.unread", { count: 3 })).toContain("3");
-    expect(operationalMessage("ms", "settings.updated")).toBe("Tetapan harga disimpan.");
-  });
-
-  it("localizes every supported workflow notification event", () => {
-    for (const eventKey of notificationEventKeys) {
-      expect(operationalEventLabel("ar", eventKey)).not.toBe(eventKey);
-      expect(operationalEventLabel("ms", eventKey)).not.toBe(eventKey);
-    }
+    expect(operationalMessage("ar", "finance.invoiceCount", { count: 3 })).toContain("3");
+    expect(operationalMessage("ms", "access.dashboard")).toBe("Kembali ke papan pemuka");
   });
 
   it("uses locale-aware statuses and numbers", () => {

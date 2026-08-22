@@ -12,17 +12,15 @@ describe("P0-12 global RTL and mixed-direction closure", () => {
     expect(css).toContain("padding-inline");
   });
 
-  it("isolates user identities, request IDs, metrics and audit identifiers", async () => {
-    const [shell, dashboard, metric, audit] = await Promise.all([
+  it("isolates user identities, request IDs and metrics", async () => {
+    const [shell, dashboard, metric] = await Promise.all([
       readFile(new URL("../src/components/app-shell/AppShell.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/app/(portal)/dashboard/page.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/components/MetricCard.tsx", import.meta.url), "utf8"),
-      readFile(new URL("../src/app/(portal)/audit/page.tsx", import.meta.url), "utf8"),
     ]);
     expect(shell).toContain('className="bidi-ltr" dir="ltr"');
     expect(dashboard).toContain('<bdi className="bidi-ltr" dir="ltr">{request.orderCode}</bdi>');
     expect(metric).toContain('<bdi dir="auto">{value}</bdi>');
-    expect(audit).toContain('className="subtle bidi-ltr" dir="ltr"');
   });
 
   it("keeps the login heading visible without physical offscreen positioning", async () => {

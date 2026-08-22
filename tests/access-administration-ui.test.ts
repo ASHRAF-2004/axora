@@ -29,14 +29,12 @@ describe("access administration UI contract", () => {
     expect(page).toContain("loadAccessAdministration(actor, id, query.assignment)");
     expect(page).toContain("notFound()");
     expect(page).toContain("<PageHeader");
-    expect(page).toContain("<table className=\"data-table\"");
-    expect(page).toContain("<label");
+    expect(page).toContain("<PermissionEditorForm");
     expect(page).toContain('role="status"');
-    expect(page).toContain('name="reason"');
-    expect(page).toContain("maxLength={500}");
+    expect(page).not.toContain('name="reason"');
     expect(page).toContain("snapshot.canManagePermissions");
-    expect(page).toContain("override.manageable");
-    expect(page).toContain("snapshot.canViewHistory");
+    expect(page).not.toContain("override.manageable");
+    expect(page).not.toContain("snapshot.canViewHistory");
     expect(page).not.toContain("dangerouslySetInnerHTML");
     expect(page).not.toMatch(/FROM\s+(user_permission_overrides|approval_limits|delegated_access)/i);
 
@@ -51,32 +49,14 @@ describe("access administration UI contract", () => {
     expect(actions).toContain('"use server"');
     expect(actions).toContain('requirePermission("manage_users")');
     expect(actions).not.toContain("requireRecentStepUp");
-    expect(actions).toContain("setUserPermissionOverride(actor");
-    expect(actions).toContain("removeUserPermissionOverride(actor");
     expect(actions).toContain("replaceUserPermissionSet(actor");
-    expect(actions).toContain("replaceUserRoleScope(actor");
-    expect(actions).toContain("updateManagedUserProfile(actor");
-    expect(actions).toContain("setApprovalLimit(actor");
-    expect(actions).toContain("removeApprovalLimit(actor");
-    expect(actions).toContain("setAuthorizedUserActive(targetUserId,active,actor)");
-    expect(actions).toContain("scopeType: string");
-    expect(actions).toContain("companyId: string | undefined");
     expect(actions).toContain("targetRoleAssignmentId: string");
     expect(actions).not.toContain("user_permission_overrides");
     expect(actions).not.toMatch(/^export\s+(const|let|var|class)\s/m);
     const exportedActions = [...actions.matchAll(
       /^export\s+async\s+function\s+(\w+)/gm,
     )].map((match) => match[1]).sort();
-    expect(exportedActions).toEqual([
-      "removeManagedApprovalLimitAction",
-      "removePermissionOverrideAction",
-      "replacePermissionSetAction",
-      "replaceRoleScopeAction",
-      "setManagedApprovalLimitAction",
-      "setManagedUserActiveAction",
-      "setPermissionOverrideAction",
-      "updateManagedUserProfileAction",
-    ].sort());
+    expect(exportedActions).toEqual(["replacePermissionSetAction"]);
   });
 
   it("links active, invited, and suspended user rows to the same access workspace without replacing protected-account controls", async () => {

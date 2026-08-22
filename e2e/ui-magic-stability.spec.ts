@@ -60,8 +60,8 @@ test("major owner routes render without recovery, RSC, or browser errors", async
   test.skip(testInfo.project.name !== "chromium", "The route matrix runs once at desktop width.");
   await signInAsDemoOwner(page);
   const routes = [
-    "/dashboard", "/notifications", "/products", "/companies", "/companies/leads",
-    "/users", "/reports", "/audit", "/email-operations", "/settings", "/support",
+    "/dashboard", "/notifications", "/products", "/companies",
+    "/users", "/email-operations", "/settings",
     "/profile", "/account",
   ];
   const failures: string[] = [];

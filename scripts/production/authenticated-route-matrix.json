@@ -95,7 +95,7 @@
       "expectedDenial": [],
       "mode": "mixed",
       "apis": [],
-      "expectedFinalUrl": "/settings",
+      "expectedFinalUrl": "/profile",
       "landmark": "main h1"
     },
     {
@@ -132,7 +132,7 @@
       "expectedDenial": [],
       "mode": "read-only",
       "apis": [],
-      "expectedFinalUrl": "/help",
+      "expectedFinalUrl": "/dashboard",
       "landmark": "main h1"
     },
     {
@@ -209,10 +209,7 @@
       ],
       "expectedDenial": [],
       "mode": "read-only",
-      "apis": [
-        "/api/requests/filter-options",
-        "/api/export/requests"
-      ],
+      "apis": [],
       "expectedFinalUrl": "/requests",
       "landmark": "main h1"
     },
@@ -448,11 +445,8 @@
         "foreign-company-resource"
       ],
       "mode": "read-only",
-      "apis": [
-        "/api/export/dashboard",
-        "/api/export/requests"
-      ],
-      "expectedFinalUrl": "/reports",
+      "apis": [],
+      "expectedFinalUrl": "/dashboard",
       "landmark": "main h1"
     },
     {
@@ -470,10 +464,8 @@
         "foreign-company-resource"
       ],
       "mode": "read-only",
-      "apis": [
-        "/api/export/audit"
-      ],
-      "expectedFinalUrl": "/audit",
+      "apis": [],
+      "expectedFinalUrl": "/dashboard",
       "landmark": "main h1"
     },
     {
@@ -513,7 +505,18 @@
       "apis": [
         "/companies/leads/[leadId]/export"
       ],
-      "expectedFinalUrl": "/companies/leads",
+      "expectedFinalUrl": "/companies",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/leads/[leadId]",
+      "accountRole": "PLATFORM_OWNER",
+      "companyScope": "retired-route",
+      "expectedAccess": ["OWNER_1", "OWNER_2"],
+      "expectedDenial": ["C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "mode": "read-only",
+      "apis": [],
+      "expectedFinalUrl": "/companies",
       "landmark": "main h1"
     },
     {
@@ -587,7 +590,7 @@
       ],
       "mode": "read-only",
       "apis": [],
-      "expectedFinalUrl": "/support",
+      "expectedFinalUrl": "/dashboard",
       "landmark": "main h1"
     },
     {
@@ -854,7 +857,7 @@
       "expectedDenial": ["C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
       "mode": "mutating",
       "apis": [],
-      "expectedFinalUrl": "/companies/leads/new",
+      "expectedFinalUrl": "/companies",
       "landmark": "main h1"
     },
     {
@@ -866,6 +869,39 @@
       "mode": "mutating",
       "apis": [],
       "expectedFinalUrl": "/deliveries/users/new",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]/branches",
+      "accountRole": "PLATFORM_OWNER|CLIENT_ACCOUNT_MANAGER",
+      "companyScope": "authorized-company",
+      "expectedAccess": ["OWNER_1", "OWNER_2"],
+      "expectedDenial": ["foreign-company-resource"],
+      "mode": "read-only",
+      "apis": [],
+      "expectedFinalUrl": "/companies/[companyId]/branches",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]/wallet",
+      "accountRole": "PLATFORM_OWNER|CLIENT_ACCOUNT_MANAGER",
+      "companyScope": "authorized-company",
+      "expectedAccess": ["OWNER_1", "OWNER_2"],
+      "expectedDenial": ["foreign-company-resource"],
+      "mode": "read-only",
+      "apis": [],
+      "expectedFinalUrl": "/companies/[companyId]/wallet",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/companies/[companyId]/documents",
+      "accountRole": "PLATFORM_OWNER|CLIENT_ACCOUNT_MANAGER",
+      "companyScope": "authorized-company-documents",
+      "expectedAccess": ["OWNER_1", "OWNER_2"],
+      "expectedDenial": ["foreign-company-resource"],
+      "mode": "read-only",
+      "apis": ["/api/attachments/[id]"],
+      "expectedFinalUrl": "/companies/[companyId]/documents",
       "landmark": "main h1"
     },
     {
@@ -930,26 +966,8 @@
       "mode": "mixed"
     },
     {
-      "route": "/api/requests/filter-options",
-      "authentication": "view_requests",
-      "scope": "tenant-filtered",
-      "mode": "read-only"
-    },
-    {
-      "route": "/api/export/requests",
-      "authentication": "view_reports",
-      "scope": "tenant-filtered",
-      "mode": "read-only"
-    },
-    {
       "route": "/api/export/dashboard",
       "authentication": "view_dashboard",
-      "scope": "tenant-filtered",
-      "mode": "read-only"
-    },
-    {
-      "route": "/api/export/audit",
-      "authentication": "view_audit",
       "scope": "tenant-filtered",
       "mode": "read-only"
     },

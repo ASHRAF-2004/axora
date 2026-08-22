@@ -326,7 +326,7 @@ export async function setPrimaryProductImage(productId: string, imageId: string,
     if (product) product.imageAltText = selected.altText || product.name;
     return;
   }
-  await withAuditTransaction({ actor, reason: "Primary product image changed" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "PRODUCT_PRIMARY_IMAGE_UPDATED" }, async (client) => {
     const selected = await client.query("SELECT 1 FROM product_images WHERE id=$1 AND product_id=$2 AND active=true FOR UPDATE", [imageId, productId]);
     if (!selected.rowCount) throw new Error("Product image not found.");
     await client.query("UPDATE product_images SET is_primary=false, updated_at=now() WHERE product_id=$1 AND active=true", [productId]);
@@ -348,7 +348,7 @@ export async function updateProductImageAltText(productId: string, imageId: stri
     if (image.isPrimary) product.imageAltText = image.altText;
     return;
   }
-  await withAuditTransaction({ actor, reason: "Product image description updated" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "PRODUCT_IMAGE_DESCRIPTION_UPDATED" }, async (client) => {
     const updated = await client.query(
       `UPDATE product_images image
        SET alt_text=COALESCE(NULLIF($3,''),(SELECT name FROM products WHERE id=$1)), updated_at=now()
@@ -380,7 +380,7 @@ export async function deactivateProductImage(productId: string, imageId: string,
     }
     return;
   }
-  await withAuditTransaction({ actor, reason: "Product image removed" }, async (client) => {
+  await withAuditTransaction({ actor, reason: "PRODUCT_IMAGE_REMOVED" }, async (client) => {
     const removed = await client.query<{ wasPrimary: boolean }>(
       `UPDATE product_images SET active=false, is_primary=false, updated_at=now()
        WHERE id=$1 AND product_id=$2 AND active=true RETURNING is_primary AS "wasPrimary"`,

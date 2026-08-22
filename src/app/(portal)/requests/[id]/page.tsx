@@ -205,7 +205,6 @@ export default async function RequestDetailPage({
               : canMoveRequest
                 ? <form action={updateAction}>
                     <label>{detail.nextStatus}<select name="status" defaultValue={nextStatuses[0]}>{nextStatuses.map((status) => <option key={status} value={status}>{localizedStatus(status, locale)}</option>)}</select></label>
-                    <label style={{ marginBlockStart: 13 }}>{detail.note}<textarea name="reason" placeholder={detail.notePlaceholder} /></label>
                     <div className="form-actions"><button className="button button-primary" type="submit">{detail.updateStatus}</button></div>
                   </form>
                 : <div className="callout"><strong>{nextStatuses.length ? detail.readOnly : detail.closed}</strong><p>{nextStatuses.length ? detail.readOnlyBody : detail.closedBody}</p></div>}
@@ -232,7 +231,6 @@ export default async function RequestDetailPage({
               <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
               <input type="hidden" name="commandId" value={randomUUID()} />
               <div className="callout"><strong>{detail.cancellationTitle}</strong><p>{detail.cancellationBody}</p></div>
-              <label style={{ marginBlockStart: 13 }}>{detail.cancellationReason}<textarea name="reason" minLength={3} maxLength={1000} required /></label>
               <div className="form-actions"><button className="button button-danger" type="submit">{detail.cancelRequest}</button></div>
             </form> : null}
             {financeResult ? <div className="callout" role={financeResult === "SUCCESS" || financeResult === "ALREADY_PROCESSED" ? "status" : "alert"} style={{ marginBlockStart: 20 }}>
@@ -244,7 +242,6 @@ export default async function RequestDetailPage({
               <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
               <input type="hidden" name="commandId" value={randomUUID()} />
               <div className="callout"><strong>{walletCopy.approveAndPay}</strong><p>{walletCopy.approveAndPayIntro}</p></div>
-              <label style={{ marginBlockStart: 13 }}>{walletCopy.reason}<textarea name="reason" minLength={3} maxLength={1000} required /></label>
               <div className="form-actions"><button className="button button-primary" type="submit">{walletCopy.approveAndPay}</button></div>
             </form> : null}
             {finalInvoice ? <div className="callout" style={{ marginBlockStart: 20 }}>

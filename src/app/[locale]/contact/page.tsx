@@ -1,5 +1,4 @@
 import { ContactSubmitButton } from "@/components/public/ContactSubmitButton";
-import { companyLeadMessages } from "@/lib/company-leads-i18n";
 import { isSupportedLocale, publicMessages, type SupportedLocale } from "@/lib/i18n";
 import { randomUUID } from "node:crypto";
 import { CheckCircle2, CircleAlert, LockKeyhole, MailCheck } from "lucide-react";
@@ -36,7 +35,6 @@ export default async function ContactPage({
   if (!isSupportedLocale(rawLocale)) notFound();
   const locale = rawLocale as SupportedLocale;
   const messages = publicMessages(locale);
-  const lead = companyLeadMessages(locale);
   const search = await searchParams;
   const status = typeof search.status === "string" ? search.status : undefined;
   const siteKey = process.env.TURNSTILE_SITE_KEY?.trim() ?? "";
@@ -45,21 +43,11 @@ export default async function ContactPage({
     const value = search[key];
     return (typeof value === "string" ? value : "").slice(0, 200);
   };
-  const employeeOptions = [
-    ["1_10", "1-10"], ["11_50", "11-50"], ["51_200", "51-200"],
-    ["201_500", "201-500"], ["501_1000", "501-1,000"], ["1001_PLUS", "1,001+"],
-  ];
-  const branchOptions = [["1", "1"], ["2_5", "2-5"], ["6_20", "6-20"], ["21_50", "21-50"], ["51_PLUS", "51+"]];
-  const spendOptions = [
-    ["UNDER_10K", "< MYR 10k"], ["10K_50K", "MYR 10k-50k"],
-    ["50K_250K", "MYR 50k-250k"], ["250K_1M", "MYR 250k-1m"],
-    ["OVER_1M", "> MYR 1m"], ["UNDISCLOSED", locale === "ar" ? "أفضل عدم الإفصاح" : locale === "ms" ? "Tidak didedahkan" : "Prefer not to disclose"],
-  ];
-  const contactMethods = [
-    ["EMAIL", locale === "ar" ? "البريد الإلكتروني" : locale === "ms" ? "E-mel" : "Email"],
-    ["PHONE", locale === "ar" ? "الهاتف" : locale === "ms" ? "Telefon" : "Phone"],
-    ["WHATSAPP", "WhatsApp"], ["VIDEO_CALL", locale === "ar" ? "مكالمة فيديو" : locale === "ms" ? "Panggilan video" : "Video call"],
-  ];
+  const formCopy = locale === "ar"
+    ? { intro: "أرسل استفسارك إلى فريق Axora", company: "اسم الشركة", name: "اسمك", subject: "الموضوع", message: "الرسالة" }
+    : locale === "ms"
+      ? { intro: "Hantar pertanyaan anda kepada pasukan Axora", company: "Nama syarikat", name: "Nama anda", subject: "Subjek", message: "Mesej" }
+      : { intro: "Send your enquiry to the Axora team", company: "Company name", name: "Your name", subject: "Subject", message: "Message" };
   return <>
     <section className="public-page-hero public-contact-hero">
       <p className="public-eyebrow">{messages.contact.eyebrow}</p>
@@ -76,20 +64,11 @@ export default async function ContactPage({
         {status === "success" ? <div className="form-success" role="status"><CheckCircle2 size={18} />{messages.contact.success}</div> : null}
         {status === "failure" ? <div className="form-alert" role="alert"><CircleAlert size={18} />{messages.contact.failure}</div> : null}
         <div className="form-grid">
-          <div className="field-full"><h2>{lead.publicTitle}</h2><p>{lead.publicIntro}</p></div>
-          <label>{lead.legalName}<input name="companyLegalName" autoComplete="organization" minLength={2} maxLength={300} required /></label>
-          <label>{lead.displayName}<input name="companyName" autoComplete="organization" minLength={2} maxLength={200} required /></label>
-          <label>{lead.industry}<input name="industry" minLength={2} maxLength={200} required /></label>
-          <label>{lead.contactName}<input name="contactName" autoComplete="name" minLength={2} maxLength={200} required /></label>
-          <label>{lead.city}<input name="city" autoComplete="address-level2" minLength={2} maxLength={160} required /></label>
-          <label>{lead.employees}<select name="employeeRange" required defaultValue=""><option value="" disabled>-</option>{employeeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>{lead.branches}<select name="branchRange" required defaultValue=""><option value="" disabled>-</option>{branchOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>{lead.spend}<select name="spendRange" required defaultValue=""><option value="" disabled>-</option>{spendOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>{lead.contactMethod}<select name="contactMethod" required defaultValue="EMAIL">{contactMethods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label>{lead.timezone}<input name="contactTimezone" dir="ltr" defaultValue="Asia/Kuala_Lumpur" minLength={1} maxLength={80} required /></label>
-          <label className="field-full">{lead.subject}<input name="subject" minLength={3} maxLength={200} required /></label>
-          <label className="field-full">{lead.message}<textarea name="message" rows={7} minLength={10} maxLength={5000} required /></label>
-          <p className="field-full">{lead.attachmentPolicy}</p>
+          <div className="field-full"><h2>{formCopy.intro}</h2></div>
+          <label>{formCopy.company}<input name="companyName" autoComplete="organization" minLength={2} maxLength={200} required /></label>
+          <label>{formCopy.name}<input name="contactName" autoComplete="name" minLength={2} maxLength={200} required /></label>
+          <label className="field-full">{formCopy.subject}<input name="subject" minLength={3} maxLength={200} required /></label>
+          <label className="field-full">{formCopy.message}<textarea name="message" rows={7} minLength={10} maxLength={5000} required /></label>
         </div>
         <input type="hidden" name="idempotencyToken" value={randomUUID()} />
         <input type="hidden" name="utmSource" value={campaignValue("utm_source")} />

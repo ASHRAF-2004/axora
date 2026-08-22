@@ -22,9 +22,6 @@
     "bootstrap:review-workbook": "python3 scripts/bootstrap/validate_workbook.py",
     "bootstrap:first-platform-owner": "node scripts/bootstrap/create_first_platform_owner.mjs",
     "email:preview": "node scripts/email/preview.mjs",
-    "manuals:build": "uv run scripts/manuals/generate_user_manuals.py",
-    "manuals:validate": "uv run scripts/manuals/validate_user_manuals.py",
-    "manuals:verify": "uv run scripts/manuals/generate_user_manuals.py --output-dir output/pdf && uv run scripts/manuals/generate_user_manuals.py --output-dir output/manuals-rebuild && uv run scripts/manuals/validate_user_manuals.py --compare-dir output/manuals-rebuild",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "keywords": [

@@ -52,7 +52,7 @@ const TRANSLATIONS = {
     accountLabel: "Account",
     replyLabel: "Reply",
     productSummary: "Axora keeps branches, budgets, purchase requests, approvals, and fulfilment together in one secure workspace.",
-    helpLabel: "Help",
+    helpLabel: "Contact",
     loginLabel: "Login",
     privacyLabel: "Privacy",
     invitationCreatedFor: "This invitation was created for",
@@ -62,7 +62,7 @@ const TRANSLATIONS = {
     emailLine: "Sign-in email",
     linkLine: (expiry) => `Create your password using this private, one-time link by ${expiry}:`,
     unexpected: "If you did not expect this invitation, do not use the link. Reply to this email for help.",
-    helpLine: "Axora help",
+    helpLine: "Contact Axora",
     supportLine: "Support email",
     ownerWelcome: "Welcome to Axora",
     ownerPreheader: "Finish setting up your Axora platform owner account.",
@@ -80,7 +80,7 @@ const TRANSLATIONS = {
     accountLabel: "الحساب",
     replyLabel: "الرد",
     productSummary: "تجمع Axora الفروع والميزانيات وطلبات الشراء والموافقات والتنفيذ في مساحة عمل آمنة واحدة.",
-    helpLabel: "المساعدة",
+    helpLabel: "تواصل معنا",
     loginLabel: "تسجيل الدخول",
     privacyLabel: "الخصوصية",
     invitationCreatedFor: "تم إنشاء هذه الدعوة من أجل",
@@ -90,7 +90,7 @@ const TRANSLATIONS = {
     emailLine: "بريد تسجيل الدخول",
     linkLine: (expiry) => `أنشئ كلمة المرور عبر هذا الرابط الخاص ولمرة واحدة قبل ${expiry}:`,
     unexpected: "إذا لم تكن تتوقع هذه الدعوة، فلا تستخدم الرابط. يمكنك الرد على هذه الرسالة للحصول على المساعدة.",
-    helpLine: "مساعدة Axora",
+    helpLine: "تواصل مع Axora",
     supportLine: "بريد الدعم",
     ownerWelcome: "مرحباً بك في Axora",
     ownerPreheader: "أكمل إعداد حساب مالك منصة Axora.",
@@ -108,7 +108,7 @@ const TRANSLATIONS = {
     accountLabel: "Akaun",
     replyLabel: "Balas",
     productSummary: "Axora menyatukan cawangan, bajet, permintaan pembelian, kelulusan dan pemenuhan dalam satu ruang kerja yang selamat.",
-    helpLabel: "Bantuan",
+    helpLabel: "Hubungi kami",
     loginLabel: "Log masuk",
     privacyLabel: "Privasi",
     invitationCreatedFor: "Jemputan ini dicipta untuk",
@@ -118,7 +118,7 @@ const TRANSLATIONS = {
     emailLine: "E-mel log masuk",
     linkLine: (expiry) => `Cipta kata laluan anda melalui pautan peribadi sekali guna ini sebelum ${expiry}:`,
     unexpected: "Jika anda tidak menjangkakan jemputan ini, jangan gunakan pautan tersebut. Balas e-mel ini untuk mendapatkan bantuan.",
-    helpLine: "Bantuan Axora",
+    helpLine: "Hubungi Axora",
     supportLine: "E-mel sokongan",
     ownerWelcome: "Selamat datang ke Axora",
     ownerPreheader: "Selesaikan persediaan akaun pemilik platform Axora anda.",
@@ -317,7 +317,7 @@ export async function renderAccountSetupEmail(input, options = {}) {
     accountSetup: true,
   });
   const loginUrl = secureApplicationUrl(new URL("/login", appBaseUrl), "Login URL", appBaseUrl);
-  const helpUrl = secureApplicationUrl(new URL(`/${locale}/help`, appBaseUrl), "Help URL", appBaseUrl);
+  const helpUrl = secureApplicationUrl(new URL(`/${locale}/contact`, appBaseUrl), "Contact URL", appBaseUrl);
   const privacyUrl = secureApplicationUrl(new URL(`/${locale}/privacy`, appBaseUrl), "Privacy URL", appBaseUrl);
   const branchName = input.branchName ? boundedText(input.branchName, "Branch name") : "";
   const expiresAt = formatExpiry(input.expiresAt, locale);

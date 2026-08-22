@@ -76,7 +76,7 @@ export async function saveOrganizationNodeAction(formData: FormData) {
     contactEmail: readFormText(formData, "contactEmail"),
     deliveryInstructions: readFormText(formData, "deliveryInstructions") || undefined,
     isPrimary: formData.get("isPrimary") === "true",
-    reason: readFormText(formData, "reason"),
+    reason: "ORGANIZATION_NODE_UPDATED",
   });
   await saveOrganizationNode(actor, {
     nodeType: input.nodeType,
@@ -118,7 +118,7 @@ export async function setOrganizationNodeActiveAction(formData: FormData) {
   const nodeId = z.uuid().parse(readFormText(formData, "nodeId"));
   const active = z.enum(["true", "false"]).transform((value) => value === "true")
     .parse(readFormText(formData, "active"));
-  const reason = z.string().trim().min(3).max(1000).parse(readFormText(formData, "reason"));
+  const reason = active ? "ORGANIZATION_NODE_ACTIVATED" : "ORGANIZATION_NODE_DEACTIVATED";
   await setOrganizationNodeActive(actor, nodeType, nodeId, active, reason);
   revalidatePath(route);
   revalidatePath("/branches");

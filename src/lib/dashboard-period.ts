@@ -19,7 +19,6 @@ export interface DashboardPeriodInput {
   preset?: string;
   start?: string;
   end?: string;
-  compare?: string;
 }
 
 export interface DashboardPeriodWindow {
@@ -31,8 +30,6 @@ export interface DashboardPeriodWindow {
 export interface DashboardPeriod extends DashboardPeriodWindow {
   preset: DashboardPeriodPreset;
   timeZone: string;
-  compare: boolean;
-  comparison?: DashboardPeriodWindow;
   generatedAt: string;
   issue?: DashboardPeriodIssue;
 }
@@ -201,21 +198,10 @@ export function normalizeDashboardPeriod(
     window = defaultCurrentMonth(today);
   }
 
-  const compare = ["1", "true", "on", "yes"].includes(
-    input.compare?.trim().toLowerCase() ?? "",
-  );
-  const start = parseDateOnly(window.startDate)!;
-  const endExclusive = parseDateOnly(window.endExclusiveDate)!;
-  const durationDays = daysBetween(start, endExclusive);
-
   return {
     ...window,
     preset,
     timeZone,
-    compare,
-    ...(compare ? {
-      comparison: windowFromDates(addDays(start, -durationDays), start),
-    } : {}),
     generatedAt: now.toISOString(),
     ...(issue ? { issue } : {}),
   };
@@ -230,21 +216,6 @@ export function dashboardPeriodSearchParams(
     params.set("start", period.startDate);
     params.set("end", period.endDate);
   }
-  if (period.compare) params.set("compare", "1");
   if (branchId) params.set("branch", branchId);
   return params;
-}
-
-export function calculateDashboardComparison(
-  current: number,
-  previous: number,
-): DashboardComparison {
-  const absolute = current - previous;
-  return {
-    absolute,
-    percentage: previous === 0
-      ? current === 0 ? 0 : null
-      : (absolute / Math.abs(previous)) * 100,
-    direction: absolute > 0 ? "up" : absolute < 0 ? "down" : "same",
-  };
 }

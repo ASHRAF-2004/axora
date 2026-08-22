@@ -43,7 +43,6 @@ export function BranchDeliveryLocationForm({
   const router = useRouter();
   const addressRef = useRef<HTMLTextAreaElement>(null);
   const instructionsRef = useRef<HTMLTextAreaElement>(null);
-  const reasonRef = useRef<HTMLTextAreaElement>(null);
   const [confirmedCoordinates, setConfirmedCoordinates] = useState<DeliveryCoordinates | null>(initialCoordinates);
   const [draftCoordinates, setDraftCoordinates] = useState<DeliveryCoordinates | null>(initialCoordinates);
   const [state, formAction, pending] = useActionState(
@@ -59,13 +58,11 @@ export function BranchDeliveryLocationForm({
     }
     if (state.field === "addressLabel") addressRef.current?.focus();
     if (state.field === "instructions") instructionsRef.current?.focus();
-    if (state.field === "reason") reasonRef.current?.focus();
   }, [router, state]);
 
   const coordinatesReady = sameCoordinates(draftCoordinates, confirmedCoordinates);
   const addressInvalid = state.status === "error" && state.field === "addressLabel";
   const instructionsInvalid = state.status === "error" && state.field === "instructions";
-  const reasonInvalid = state.status === "error" && state.field === "reason";
 
   return <form action={formAction} className="panel form-panel" aria-busy={pending} noValidate>
     <input name="branchId" type="hidden" value={branchId} />
@@ -110,20 +107,6 @@ export function BranchDeliveryLocationForm({
       />
       <small id="branch-delivery-instructions-help">{copy.instructionsHelp}</small>
     </label>
-    <label>
-      {copy.reason}
-      <textarea
-        ref={reasonRef}
-        name="reason"
-        minLength={3}
-        maxLength={1_000}
-        required
-        aria-invalid={reasonInvalid}
-        aria-describedby="branch-delivery-reason-help"
-      />
-      <small id="branch-delivery-reason-help">{copy.reasonHelp}</small>
-    </label>
-
     {!coordinatesReady ? <p className="form-alert" role="alert">{copy.confirmationRequired}</p> : null}
     {state.status !== "idle"
       ? <p className={state.status === "success" ? "form-success" : "form-alert"} role={state.status === "success" ? "status" : "alert"}>{state.message}</p>

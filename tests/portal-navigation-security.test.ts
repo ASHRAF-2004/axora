@@ -35,7 +35,6 @@ describe("role-specific portal navigation boundaries", () => {
     expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).toEqual([
       "/receiving", "/branches", "/budgets", "/wallet",
       `/companies/${companyId}/users`, "/settings/procurement",
-      "/reports", "/audit", "/settings", "/help",
     ]);
     expect(canAccess(companyAdmin, "manage_catalog")).toBe(false);
     expect(canAccess(companyAdmin, "manage_commercial_pricing")).toBe(false);
@@ -50,7 +49,7 @@ describe("role-specific portal navigation boundaries", () => {
     expect(PRIMARY_NAVIGATION.some((item) => item.href === "/supplier")).toBe(false);
     expect(DRAWER_NAVIGATION.some((item) => item.href === "/supplier")).toBe(false);
     expect(hrefs(PRIMARY_NAVIGATION, driver)).toEqual(["/driver"]);
-    expect(hrefs(DRAWER_NAVIGATION, driver)).toEqual(["/driver", "/settings", "/help"]);
+    expect(hrefs(DRAWER_NAVIGATION, driver)).toEqual(["/driver"]);
   });
 
   it("keeps support and auditors read-only while receivers see only receiving work", () => {
@@ -67,15 +66,15 @@ describe("role-specific portal navigation boundaries", () => {
     };
 
     expect(hrefs(PRIMARY_NAVIGATION, support)).toEqual([]);
-    expect(hrefs(DRAWER_NAVIGATION, support)).toEqual(["/support", "/settings", "/help"]);
+    expect(hrefs(DRAWER_NAVIGATION, support)).toEqual([]);
     expect(hrefs(PRIMARY_NAVIGATION, auditor)).toEqual([
       "/dashboard", "/products", "/requests", "/budgets", "/deliveries", "/finance",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, auditor)).toEqual([
-      "/branches", "/budgets", "/reports", "/audit", "/settings", "/help",
+      "/branches", "/budgets",
     ]);
     expect(hrefs(PRIMARY_NAVIGATION, receiver)).toEqual(["/receiving"]);
-    expect(hrefs(DRAWER_NAVIGATION, receiver)).toEqual(["/receiving", "/settings", "/help"]);
+    expect(hrefs(DRAWER_NAVIGATION, receiver)).toEqual(["/receiving"]);
 
     for (const subject of [support, auditor]) {
       expect(canAccess(subject, "manage_catalog")).toBe(false);
@@ -100,7 +99,7 @@ describe("role-specific portal navigation boundaries", () => {
     expect(profileActions).toContain("landingPathForSession(actor)");
   });
 
-  it("exposes email operations only to the authorized platform operations boundary", () => {
+  it("shows Email Status only to the canonical Platform Owner", () => {
     const owner: AccessSubject = {
       role: "PLATFORM_OWNER", isOwner: true, accountKind: "PLATFORM",
       scopeType: "PLATFORM",
@@ -118,10 +117,9 @@ describe("role-specific portal navigation boundaries", () => {
       scopeType: "COMPANY", companyId,
     };
 
-    for (const subject of [owner, operations]) {
-      expect(hrefs(DRAWER_NAVIGATION, subject)).toContain("/email-operations");
-      expect(canAccess(subject, "view_email_operations")).toBe(true);
-    }
+    expect(hrefs(DRAWER_NAVIGATION, owner)).toContain("/email-operations");
+    expect(hrefs(DRAWER_NAVIGATION, operations)).not.toContain("/email-operations");
+    expect(canAccess(operations, "view_email_operations")).toBe(true);
     expect(canAccess(owner, "manage_email_operations")).toBe(true);
     expect(canAccess(operations, "manage_email_operations")).toBe(true);
     expect(canAccess(manager, "view_email_operations")).toBe(false);
@@ -139,7 +137,7 @@ describe("role-specific portal navigation boundaries", () => {
       companyId,
     };
     expect(hrefs(PRIMARY_NAVIGATION, forged)).toEqual([]);
-    expect(hrefs(DRAWER_NAVIGATION, forged)).toEqual(["/settings", "/help"]);
+    expect(hrefs(DRAWER_NAVIGATION, forged)).toEqual([]);
     expect(canAccess(forged, "manage_companies")).toBe(false);
   });
 });

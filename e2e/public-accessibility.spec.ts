@@ -20,7 +20,6 @@ async function expectNoAutomatedWcagViolations(
 const publicRoutes = [
   { path: "/login", heading: "Sign in to Axora" },
   { path: "/account/setup", heading: "Your Axora access starts here." },
-  { path: "/account/setup/help", heading: "Get your account ready safely." },
   {
     path: "/privacy",
     heading: "How Axora handles account and procurement information.",
@@ -126,7 +125,6 @@ test("critical public and authenticated surfaces pass automated WCAG A/AA checks
     "/en",
     "/en/contact",
     "/login",
-    "/account/setup/help",
   ] as const) {
     await test.step(route, async () => {
       await page.goto(route);

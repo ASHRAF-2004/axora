@@ -22,35 +22,24 @@ const scopedRequester:DemoRoleSession={
   branchId:"88888888-8888-4888-8888-888888888888",
 };
 
-test("request filters and matching export retain the same authorized URL state",async ({page}) => {
+test("request search and status retain the same compact URL state",async ({page}) => {
   await signInAsDemoOwner(page);
   await page.goto("/requests?q=paper&status=open&sort=amount-desc");
   await expect(page.getByRole("heading",{level:1,name:"Purchase requests"})).toBeVisible();
   await expect(page.getByLabel("Search requests")).toHaveValue("paper");
     await expect(page.getByLabel("Filter by status")).toHaveValue("open");
-  await expect(page.getByLabel("Sort requests")).toHaveValue("amount-desc");
-  await expect(page.getByRole("link",{name:"Export CSV"})).toHaveAttribute("href",/q=paper.*status=open.*sort=amount-desc/);
+  await expect(page).toHaveURL(/\/requests\?q=paper&status=open$/);
+  await expect(page.getByLabel("Sort requests")).toHaveCount(0);
+  await expect(page.getByRole("link",{name:"Export CSV"})).toHaveCount(0);
   await page.reload();
-  await expect(page).toHaveURL(/\/requests\?q=paper&status=open&sort=amount-desc$/);
+  await expect(page).toHaveURL(/\/requests\?q=paper&status=open$/);
 });
 
-test("request option failures preserve state and expose a real retry",async ({page}) => {
-  let failed=false;
-  await page.route("**/api/requests/filter-options?*",async (route) => {
-    if (!failed) {
-      failed=true;
-      await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Unavailable"})});
-      return;
-    }
-    await route.continue();
-  });
+test("request filters do not expose the retired advanced controls",async ({page}) => {
   await signInAsDemoOwner(page);
   await page.goto("/requests");
-  await page.getByLabel("Request category").fill("office");
-  const optionError=page.locator(".request-filter-options .form-alert");
-  await expect(optionError).toContainText("Authorized options could not be loaded");
-  await optionError.getByRole("button",{name:"Retry"}).click();
-  await expect(optionError).toHaveCount(0);
+  await expect(page.getByLabel("Request category")).toHaveCount(0);
+  await expect(page.getByText("Advanced filters",{exact:true})).toHaveCount(0);
 });
 
 test("company catalogue exposes a bookmarkable complete view without platform pricing",async ({page}) => {
@@ -107,7 +96,6 @@ test("Shopping keeps URL state and the canonical cart survives refresh through f
   await expect.poll(() => page.evaluate(() => Object.keys(localStorage)
     .filter((key) => key.startsWith("axora-request-draft:")).length)).toBe(0);
 
-  await page.getByLabel("Cancellation reason").fill("No longer required by this branch.");
   await page.getByRole("button",{name:"Cancel request"}).click();
   await expect(page).toHaveURL(/cancelNotice=complete/);
   await expect(page.getByRole("status").filter({hasText:"cancelled"})).toBeVisible();

@@ -12,7 +12,7 @@ export type BranchDeliveryLocationActionState = {
   status: "idle" | "success" | "error";
   message: string;
   submissionId: string;
-  field?: "addressLabel" | "coordinates" | "instructions" | "reason";
+  field?: "addressLabel" | "coordinates" | "instructions";
 };
 
 const coordinate = z.string().trim()
@@ -34,14 +34,13 @@ const formSchema = z.strictObject({
   latitude: coordinate.pipe(z.number().min(-90).max(90)),
   longitude: coordinate.pipe(z.number().min(-180).max(180)),
   instructions: z.string().trim().max(5_000).optional(),
-  reason: z.string().trim().min(3).max(1_000),
   commandId: z.uuid(),
 });
 
 function actionField(error: z.ZodError): BranchDeliveryLocationActionState["field"] {
   const field = error.issues[0]?.path[0];
   if (field === "latitude" || field === "longitude") return "coordinates";
-  if (field === "addressLabel" || field === "instructions" || field === "reason") return field;
+  if (field === "addressLabel" || field === "instructions") return field;
   return undefined;
 }
 
@@ -58,7 +57,6 @@ export async function saveBranchDeliveryLocationAction(
     latitude: readFormText(formData, "latitude"),
     longitude: readFormText(formData, "longitude"),
     instructions: readFormText(formData, "instructions") || undefined,
-    reason: readFormText(formData, "reason"),
     commandId: readFormText(formData, "commandId"),
   });
   if (!parsed.success) {
@@ -79,7 +77,7 @@ export async function saveBranchDeliveryLocationAction(
         longitude: parsed.data.longitude,
       },
       instructions: parsed.data.instructions,
-      reason: parsed.data.reason,
+      reason: "DELIVERY_LOCATION_UPDATED",
       commandId: parsed.data.commandId,
     });
     revalidatePath(`/branches/${parsed.data.branchId}`);

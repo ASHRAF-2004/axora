@@ -79,7 +79,7 @@ export async function updateStatusAction(id: string, formData: FormData) {
   await updateAuthorizedRequestStatus(
     id,
     status,
-    readFormText(formData, "reason"),
+    `REQUEST_STATUS_UPDATED_${status.toUpperCase().replaceAll(" ", "_")}`,
     user,
   );
   revalidatePath(`/requests/${id}`);
@@ -95,12 +95,10 @@ export async function cancelPurchaseRequestAction(id: string, formData: FormData
   const input = z.object({
     requestId: z.string().trim().min(1).max(160),
     approvalRevision: z.coerce.number().int().positive(),
-    reason: z.string().trim().min(3).max(1_000),
     commandId: z.string().uuid(),
   }).safeParse({
     requestId: id,
     approvalRevision: readFormText(formData, "approvalRevision"),
-    reason: readFormText(formData, "reason"),
     commandId: readFormText(formData, "commandId"),
   });
   if (!input.success) redirect(`/requests/${id}?cancelNotice=failed`);
@@ -110,7 +108,7 @@ export async function cancelPurchaseRequestAction(id: string, formData: FormData
       requestId: input.data.requestId,
       expectedApprovalRevision: input.data.approvalRevision,
       action: "CANCEL",
-      reason: input.data.reason,
+      reason: "REQUEST_CANCELLED",
       idempotencyKey: input.data.commandId,
     });
   } catch {
@@ -127,12 +125,10 @@ export async function approveAndPayRequestAction(id: string, formData: FormData)
   const input = z.object({
     requestId: z.string().uuid(),
     approvalRevision: z.coerce.number().int().positive(),
-    reason: z.string().trim().min(3).max(1_000),
     commandId: z.string().uuid(),
   }).safeParse({
     requestId: id,
     approvalRevision: readFormText(formData, "approvalRevision"),
-    reason: readFormText(formData, "reason"),
     commandId: readFormText(formData, "commandId"),
   });
   if (!input.success) redirect(`/requests/${id}?financeError=invalid`);
@@ -141,7 +137,7 @@ export async function approveAndPayRequestAction(id: string, formData: FormData)
     result = await approveAndPay(actor, {
       requestId: input.data.requestId,
       expectedApprovalRevision: input.data.approvalRevision,
-      reason: input.data.reason,
+      reason: "REQUEST_APPROVED_AND_PAID",
       commandId: input.data.commandId,
     });
   } catch {

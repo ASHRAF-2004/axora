@@ -23,12 +23,12 @@ export async function releaseStuckDeliveryJobAction(jobId: string, formData: For
     jobId: z.uuid(),
     driverId: z.uuid(),
     commandId: z.uuid(),
-    reason: z.string().trim().min(3).max(1000),
+    reason: z.literal("DELIVERY_ASSIGNMENT_RELEASED"),
   }).parse({
     jobId,
     driverId: formData.get("driverId"),
     commandId: formData.get("commandId"),
-    reason: formData.get("reason"),
+    reason: "DELIVERY_ASSIGNMENT_RELEASED",
   });
   await releaseStuckDeliveryJob(actor, input.jobId, input.commandId, input.reason);
   revalidatePath("/deliveries");

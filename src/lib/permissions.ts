@@ -14,6 +14,7 @@ export type Permission =
   | "view_deliveries"
   | "view_branches"
   | "manage_companies"
+  | "create_companies"
   | "manage_catalog"
   | "manage_branches"
   | "manage_branch_budget"
@@ -77,6 +78,7 @@ const platformOwnerPermissions: readonly Permission[] = [
     "request_wallet_top_up",
     "record_wallet_top_up",
     "manage_companies",
+  "create_companies",
   "manage_catalog",
   "manage_branches",
   "manage_deliveries",
@@ -188,7 +190,7 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   PLATFORM_OWNER: platformOwnerPermissions,
   CLIENT_ACCOUNT_MANAGER: [
     "view_dashboard", "view_catalog", "view_requests", "view_deliveries",
-    "view_branches", "manage_companies", "view_invoices", "view_reports", "manage_users",
+    "view_branches", "manage_companies", "create_companies", "view_invoices", "manage_users",
   ],
   HUMAN_RESOURCES_MANAGEMENT: ["view_dashboard", "manage_companies"],
   PLATFORM_OPERATIONS: [

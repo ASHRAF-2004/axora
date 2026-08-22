@@ -13,12 +13,12 @@ export async function updateCategoryPolicyAction(formData: FormData) {
     scopeType: z.enum(["COMPANY", "BRANCH", "DEPARTMENT"]),
     companyId: z.string().uuid(), branchId: z.string().uuid().optional(),
     departmentId: z.string().uuid().optional(), expectedVersion: z.coerce.number().int().min(0),
-    reason: z.string().trim().min(3).max(1_000), commandId: z.string().uuid(),
+    reason: z.literal("PURCHASING_RULE_UPDATED"), commandId: z.string().uuid(),
   }).safeParse({
     scopeType: formData.get("scopeType"), companyId: formData.get("companyId"),
     branchId: formData.get("branchId") || undefined,
     departmentId: formData.get("departmentId") || undefined,
-    expectedVersion: formData.get("expectedVersion"), reason: formData.get("reason"),
+    expectedVersion: formData.get("expectedVersion"), reason: "PURCHASING_RULE_UPDATED",
     commandId: formData.get("commandId") || randomUUID(),
   });
   if (!input.success) redirect("/settings/procurement?notice=failed");

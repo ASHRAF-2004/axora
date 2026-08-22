@@ -23,7 +23,7 @@ describe("core portal internationalization", () => {
       expect(Object.keys(copy.dashboard.role).sort()).toEqual(Object.keys(CORE_PORTAL_MESSAGES.en.dashboard.role).sort());
       expect(Object.keys(copy.requestForm)).toEqual(Object.keys(CORE_PORTAL_MESSAGES.en.requestForm));
       expect(copy.requests.create).toBeTruthy();
-      expect(copy.approvals.rejectionReason).toBeTruthy();
+      expect(copy.approvals.decisionHelp).toBeTruthy();
       expect(copy.branches.setBudget).toBeTruthy();
       expect(copy.products.shopTitle).toBeTruthy();
       expect(copy.users.resend).toBeTruthy();

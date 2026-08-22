@@ -74,12 +74,10 @@ export type DashboardPeriodReport =
   | {
     scope: "company";
     current: CompanyDashboardSnapshot;
-    previous?: CompanyDashboardSnapshot;
   }
   | {
     scope: "platform";
     current: PlatformDashboardSnapshot;
-    previous?: PlatformDashboardSnapshot;
   };
 
 interface SummaryRow extends QueryResultRow {
@@ -661,19 +659,14 @@ export async function getAuthorizedDashboardPeriodReport(
   if (isDemoMode()) {
     const requests = await listAuthorizedRequests(actor);
     const current = demoSnapshot(actor, requests, period, scope, capturedAt);
-    const previous = period.comparison
-      ? demoSnapshot(actor, requests, period.comparison, scope, capturedAt)
-      : undefined;
     return scope.platformAnalytics
       ? {
         scope: "platform",
         current: current as PlatformDashboardSnapshot,
-        ...(previous ? { previous: previous as PlatformDashboardSnapshot } : {}),
       }
       : {
         scope: "company",
         current: current as CompanyDashboardSnapshot,
-        ...(previous ? { previous: previous as CompanyDashboardSnapshot } : {}),
       };
   }
 
@@ -691,31 +684,14 @@ export async function getAuthorizedDashboardPeriodReport(
           scope,
           true,
         );
-        const previous = period.comparison
-          ? await loadDatabaseSnapshot(
-            client,
-            actor,
-            actor.roleAssignmentId!,
-            capturedAt,
-            period.comparison,
-            scope,
-            false,
-          )
-          : undefined;
         return scope.platformAnalytics
           ? {
             scope: "platform" as const,
             current: current as PlatformDashboardSnapshot,
-            ...(previous ? {
-              previous: previous as PlatformDashboardSnapshot,
-            } : {}),
           }
           : {
             scope: "company" as const,
             current: current as CompanyDashboardSnapshot,
-            ...(previous ? {
-              previous: previous as CompanyDashboardSnapshot,
-            } : {}),
           };
       },
     );

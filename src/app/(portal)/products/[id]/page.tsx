@@ -25,7 +25,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const copy = corePortalMessages(locale).products;
   const local = detailCopy[locale];
   const canViewCost = canAccess(actor, "view_internal_cost");
-  const canEdit = canAccess(actor, "manage_commercial_pricing");
+  const canEdit = canAccess(actor, "manage_catalog");
 
   return <>
     <PageHeader eyebrow={local.eyebrow} title={product.name} description={product.description || copy.operationsDescription} />

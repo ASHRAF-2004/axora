@@ -46,11 +46,10 @@ approved Axora logo is owner-supplied artwork and is not derived from Lucide.
 - Licenses: ISC, with MIT terms for Feather-derived icons
 - Full license text: `licenses/LUCIDE-ISC.txt`
 
-## Noto fonts embedded in the user manuals
+## Noto fonts used by map glyph assets
 
-The generated English and Arabic PDF manuals embed subsets of Noto Sans and
-Noto Sans Arabic from the Ubuntu `fonts-noto-core` package. The font software
-is used without renaming or modification and is not sold separately.
+The self-hosted map glyph assets use Noto Sans font data. The font software is
+used without renaming or modification and is not sold separately.
 
 - Project: https://github.com/notofonts
 - License: SIL Open Font License 1.1

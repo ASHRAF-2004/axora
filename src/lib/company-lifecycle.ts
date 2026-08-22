@@ -1,6 +1,8 @@
 import type { PoolClient, QueryResultRow } from "pg";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { AuthenticatedSessionUser, SessionUser } from "./auth";
+import { canAccess } from "./permissions";
 import { getDemoStore } from "./demo-data";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { STANDARD_BILLING_TERMS } from "./types";
@@ -267,12 +269,12 @@ export type CompanyLifecycleManager = z.infer<typeof managerSchema>;
 
 export interface NewCompanyDirectInput {
   name: string;
-  legalName: string;
-  industry: string;
+  legalName?: string;
+  industry?: string;
   companyInformation?: string;
   websiteUrl?: string;
   mainContactName: string;
-  billingCycle: string;
+  billingCycle?: string;
   notes?: string;
 }
 
@@ -292,8 +294,7 @@ export class CompanyCreationCommandConflictError extends Error {
 
 function requiredAssignment(actor: SessionUser) {
   const parsed = uuid.safeParse(actor.roleAssignmentId);
-  if (!parsed.success) throw new CompanyLifecycleUnavailableError();
-  return parsed.data;
+  return parsed.success ? parsed.data : null;
 }
 
 function parseMutation(raw: unknown) {
@@ -341,7 +342,7 @@ export function demoCompanyVisibleToActor(
   if (actor.accountKind === "COMPANY") return actor.companyId === companyId;
   return actor.accountKind === "PLATFORM"
     && actor.role === "CLIENT_ACCOUNT_MANAGER"
-    && demoCompanyManagerAssignments().get(companyId)?.managerUserId === actor.id;
+    && canAccess(actor, "manage_companies");
 }
 
 export function registerDemoCompanyDirect(
@@ -354,7 +355,7 @@ export function registerDemoCompanyDirect(
     id: companyId,
     code: `C-${String(store.companies.length + 1).padStart(3, "0")}`,
     name: input.name,
-    industry: input.industry,
+    industry: input.industry ?? "",
     ...(input.companyInformation
       ? { companyInformation: input.companyInformation }
       : {}),
@@ -367,7 +368,7 @@ export function registerDemoCompanyDirect(
     billingContactPhone: "",
     billingAddress: "",
     paymentTerms: STANDARD_BILLING_TERMS,
-    billingCycle: input.billingCycle,
+    billingCycle: input.billingCycle ?? "Monthly",
     taxRate: 0,
     estimatedDeliveryFee: 0,
     ...(input.notes ? { notes: input.notes } : {}),
@@ -468,14 +469,9 @@ function demoWorkspace(actor: AuthenticatedSessionUser): CompanyLifecycleWorkspa
     });
   return {
     capturedAt,
-    canCreate: actor.isOwner,
-    canViewAll: actor.isOwner,
-    managers: actor.isOwner ? [{
-      ...DEMO_CLIENT_ACCOUNT_MANAGER,
-      activePrimaryAssignments: [...demoCompanyManagerAssignments().values()]
-        .filter((assignment) => assignment.managerUserId === DEMO_CLIENT_ACCOUNT_MANAGER.id)
-        .length,
-    }] : [],
+    canCreate: actor.isOwner || canAccess(actor, "create_companies"),
+    canViewAll: actor.isOwner || (actor.role === "CLIENT_ACCOUNT_MANAGER" && canAccess(actor, "manage_companies")),
+    managers: [],
     companies,
   };
 }
@@ -520,7 +516,7 @@ export async function createCompanyDirectInTransaction(
   logoSha256: string,
   capturedAt = new Date(),
 ) {
-  if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+  if (actor.accountKind !== "PLATFORM" || (!actor.isOwner && !canAccess(actor, "create_companies"))) {
     throw new CompanyLifecycleUnavailableError();
   }
   const result = await client.query<SnapshotRow>(`
@@ -533,12 +529,12 @@ export async function createCompanyDirectInTransaction(
     uuid.parse(commandId),
     z.string().regex(/^[0-9a-f]{64}$/).parse(logoSha256),
     input.name,
-    input.legalName,
-    input.industry,
+    input.legalName ?? input.name,
+    input.industry ?? "",
     input.companyInformation ?? "",
     input.websiteUrl ?? null,
     input.mainContactName,
-    input.billingCycle,
+    input.billingCycle ?? "Monthly",
     input.notes ?? null,
     capturedAt,
   ]);
@@ -548,6 +544,51 @@ export async function createCompanyDirectInTransaction(
   const parsed = directCompanyCreationSchema.safeParse(result.rows[0]?.snapshot);
   if (!parsed.success) throw new CompanyLifecycleUnavailableError();
   return parsed.data;
+}
+
+export async function createCompanyWithoutBrand(
+  input: NewCompanyDirectInput,
+  actor: SessionUser,
+  commandId: string,
+  capturedAt = new Date(),
+) {
+  if (actor.accountKind !== "PLATFORM" || (!actor.isOwner && !canAccess(actor, "create_companies"))) {
+    throw new CompanyLifecycleUnavailableError();
+  }
+  const parsedCommandId = uuid.parse(commandId);
+  if (isDemoMode()) {
+    const bytes = createHash("sha256").update(`company:${parsedCommandId}`).digest("hex");
+    const companyId = `${bytes.slice(0, 8)}-${bytes.slice(8, 12)}-4${bytes.slice(13, 16)}-8${bytes.slice(17, 20)}-${bytes.slice(20, 32)}`;
+    registerDemoCompanyDirect(companyId, input);
+    return { companyId, created: true };
+  }
+  return withAuditTransaction({ actor, reason: "COMPANY_CREATED" }, async (client) => {
+    const result = await client.query<SnapshotRow>(`
+      SELECT public.axora_create_company_direct(
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+      ) AS snapshot
+    `, [
+      actor.id,
+      requiredAssignment(actor),
+      parsedCommandId,
+      input.name,
+      input.legalName ?? input.name,
+      input.industry ?? "",
+      input.companyInformation ?? "",
+      input.websiteUrl ?? null,
+      input.mainContactName,
+      input.billingCycle ?? "Monthly",
+      input.notes ?? null,
+      capturedAt,
+    ]);
+    if (companyCreationCommandConflictSchema.safeParse(result.rows[0]?.snapshot).success) {
+      throw new CompanyCreationCommandConflictError();
+    }
+    const mutation = directCompanyCreationSchema.safeParse(result.rows[0]?.snapshot);
+    if (!mutation.success) throw new CompanyLifecycleUnavailableError();
+    await notifyCompanyLifecycleMutation(client, mutation.data, actor);
+    return mutation.data;
+  });
 }
 
 export async function markCompanyBrandReadyInTransaction(

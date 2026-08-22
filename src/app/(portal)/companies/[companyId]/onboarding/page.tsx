@@ -1,51 +1,28 @@
+import { CompanyWorkspaceNav } from "@/components/CompanyWorkspaceNav";
 import { PageHeader } from "@/components/PageHeader";
-import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
-import {
-  COMPANY_ONBOARDING_STEPS,
-  CompanyOnboardingUnavailableError,
-  loadCompanyOnboardingWorkspace,
-} from "@/lib/company-onboarding";
-import {
-  companyOnboardingBlockerLabel,
-  companyOnboardingMessages,
-  companyOnboardingStepLabel,
-  companyVerificationStatusLabel,
-} from "@/lib/company-onboarding-i18n";
-import { formatDateTime } from "@/lib/domain";
-import Link from "next/link";
+import { CompanyOnboardingUnavailableError, loadCompanyOnboardingWorkspace } from "@/lib/company-onboarding";
 import { notFound } from "next/navigation";
-import {
-  reviewCompanyVerificationAction,
-  saveCompanyOnboardingAction,
-  submitCompanyVerificationAction,
-  updateCompanyOnboardingItemAction,
-} from "./actions";
+import { saveCompanyOnboardingAction } from "./actions";
 
-const TIMEZONES = [
-  "Asia/Kuala_Lumpur",
-  "Asia/Singapore",
-  "Asia/Riyadh",
-  "Asia/Dubai",
-  "Asia/Jakarta",
-  "Asia/Manila",
-  "UTC",
-] as const;
+const TIMEZONES = ["Asia/Kuala_Lumpur", "Asia/Singapore", "Asia/Riyadh", "Asia/Dubai", "Asia/Jakarta", "Asia/Manila", "UTC"] as const;
+
+const text = {
+  en: { title: "Company setup", body: "Keep the company’s essential workspace details current.", saved: "Company setup saved.", legal: "Legal name", contact: "Main contact name", industry: "Industry", language: "Default language", timezone: "Timezone", save: "Save company setup", unavailable: "Company setup is read-only for your role." },
+  ar: { title: "إعداد الشركة", body: "حافظ على تحديث البيانات الأساسية لمساحة عمل الشركة.", saved: "تم حفظ إعداد الشركة.", legal: "الاسم القانوني", contact: "اسم جهة الاتصال الرئيسية", industry: "القطاع", language: "اللغة الافتراضية", timezone: "المنطقة الزمنية", save: "حفظ إعداد الشركة", unavailable: "إعداد الشركة للقراءة فقط لدورك." },
+  ms: { title: "Persediaan syarikat", body: "Pastikan butiran penting ruang kerja syarikat sentiasa terkini.", saved: "Persediaan syarikat disimpan.", legal: "Nama sah", contact: "Nama hubungan utama", industry: "Industri", language: "Bahasa lalai", timezone: "Zon waktu", save: "Simpan persediaan syarikat", unavailable: "Persediaan syarikat adalah baca sahaja untuk peranan anda." },
+} as const;
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function CompanyOnboardingPage({
-  params,
-  searchParams,
-}: {
+export default async function CompanySetupPage({ params, searchParams }: {
   params: Promise<{ companyId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const actor = await requirePagePermission("manage_companies");
   const locale = actor.preferredLocale ?? "en";
-  const copy = companyOnboardingMessages(locale);
   const [{ companyId }, query] = await Promise.all([params, searchParams]);
   let workspace: Awaited<ReturnType<typeof loadCompanyOnboardingWorkspace>>;
   try {
@@ -55,92 +32,22 @@ export default async function CompanyOnboardingPage({
     throw error;
   }
   const company = workspace.company;
-  const notice = first(query.notice) === "saved" ? copy.saved
-    : first(query.notice) === "item-saved" ? copy.itemSaved
-      : first(query.notice) === "submitted" ? copy.submitted
-        : first(query.notice) === "approve" ? copy.approved
-          : first(query.notice) === "request_changes" ? copy.changesRequested
-            : first(query.notice) === "reject" ? copy.rejected : undefined;
-  const industryName = (industry: typeof workspace.industries[number]) => locale === "ar"
-    ? industry.nameAr : locale === "ms" ? industry.nameMs : industry.nameEn;
-  const statusLabel = (status: typeof workspace.items[number]["status"]) => status === "PASSED"
-    ? copy.passed : status === "FAILED" ? copy.failed : status === "WAIVED" ? copy.waived : copy.pending;
-
+  const copy = text[locale];
   return <>
-    <PageHeader eyebrow={copy.eyebrow} title={`${copy.title}: ${company.name}`} description={copy.description} />
-    <div className="action-row" style={{ marginBlockEnd: 16 }}>
-      <Link className="button button-secondary" href="/companies">{copy.back}</Link>
-      <StatusBadge>{companyVerificationStatusLabel(locale, company.verificationStatus)}</StatusBadge>
-    </div>
-    {notice ? <section className="panel" role="status" aria-live="polite"><strong>{notice}</strong></section> : null}
-
-    <section className="panel" style={{ marginBlockStart: 16 }}>
-      <div className="panel-header"><div><h2>{copy.submission}</h2><p>{copy.submissionHelp}</p></div></div>
-      <div className="detail-grid">
-        <div><strong>{copy.companyInformation}</strong><p>{company.companyInformation || copy.notAvailable}</p></div>
-        <div><strong>{copy.website}</strong><p>{company.websiteUrl ?? copy.notAvailable}</p></div>
-        <div><strong>{copy.internalNotes}</strong><p>{company.internalNotes ?? copy.notAvailable}</p></div>
-      </div>
-    </section>
-
-    <section className="panel form-panel" style={{ marginBlockStart: 16 }}>
-      <div className="panel-header"><div><h2>{copy.profile}</h2><p>{copy.profileHelp}</p></div><span className="subtle">{company.code} · v{company.version}</span></div>
-      <form action={saveCompanyOnboardingAction}>
+    <PageHeader eyebrow={company.name} title={copy.title} description={copy.body} />
+    <CompanyWorkspaceNav companyId={company.id} locale={locale} active="setup" />
+    {first(query.notice) === "saved" ? <div className="form-success" role="status"><strong>{copy.saved}</strong></div> : null}
+    <section className="panel form-panel">
+      {workspace.canEdit ? <form action={saveCompanyOnboardingAction} className="form-grid">
         <input type="hidden" name="companyId" value={company.id} />
         <input type="hidden" name="expectedVersion" value={company.version} />
-        <div className="form-grid">
-          <label>{copy.legalName}<input name="legalName" defaultValue={company.legalName} required maxLength={300} disabled={!workspace.canEdit} /></label>
-          <label>{copy.registrationCountry}<input name="registrationCountryCode" defaultValue={company.registrationCountryCode} required pattern="[A-Za-z]{2}" maxLength={2} disabled={!workspace.canEdit} /></label>
-          <label>{copy.taxNumber}<input name="taxRegistrationNumber" defaultValue={company.taxRegistrationNumber} maxLength={160} disabled={!workspace.canEdit} /></label>
-          <label>{copy.industry}<select name="industryCode" defaultValue={company.industryCode} disabled={!workspace.canEdit}>{workspace.industries.map((industry) => <option key={industry.code} value={industry.code}>{industryName(industry)}</option>)}</select></label>
-          <label>{copy.industryOther}<input name="industryOtherText" defaultValue={company.industryOtherText} maxLength={300} disabled={!workspace.canEdit} /></label>
-          <label className="field-full">{copy.registeredAddress}<textarea name="registeredAddress" defaultValue={company.registeredAddress} required maxLength={5000} disabled={!workspace.canEdit} /></label>
-          <label className="field-full">{copy.operatingAddress}<textarea name="operatingAddress" defaultValue={company.operatingAddress} required maxLength={5000} disabled={!workspace.canEdit} /></label>
-          <label>{copy.mainContactName}<input name="mainContactName" defaultValue={company.mainContactName} required disabled={!workspace.canEdit} /></label>
-          <label>{copy.billingContactName}<input name="billingContactName" defaultValue={company.billingContactName} disabled={!workspace.canEdit} /></label>
-          <label>{copy.billingContactEmail}<input name="billingContactEmail" type="email" defaultValue={company.billingContactEmail} disabled={!workspace.canEdit} /></label>
-          <label className="field-full">{copy.billingAddress}<textarea name="billingAddress" defaultValue={company.billingAddress} required disabled={!workspace.canEdit} /></label>
-          <label>{copy.billingCycle}<input name="billingCycle" defaultValue={company.billingCycle} required disabled={!workspace.canEdit} /></label>
-          <label>{copy.locale}<select name="defaultLocale" defaultValue={company.defaultLocale} disabled={!workspace.canEdit}><option value="en">{copy.english}</option><option value="ar">{copy.arabic}</option><option value="ms">{copy.malay}</option></select></label>
-          <label>{copy.timezone}<select name="timezone" defaultValue={company.timezone} disabled={!workspace.canEdit}>{!TIMEZONES.includes(company.timezone as typeof TIMEZONES[number]) ? <option value={company.timezone}>{company.timezone}</option> : null}{TIMEZONES.map((timezone) => <option key={timezone} value={timezone}>{timezone.replaceAll("_", " ")}</option>)}</select></label>
-          <label>{copy.currentStep}<select name="currentStep" defaultValue={company.currentStep} disabled={!workspace.canEdit}>{COMPANY_ONBOARDING_STEPS.map((step) => <option key={step} value={step}>{companyOnboardingStepLabel(locale, step)}</option>)}</select></label>
-          <fieldset className="field-full"><legend>{copy.completedSteps}</legend><div className="action-row">{COMPANY_ONBOARDING_STEPS.map((step) => <label key={step}><input type="checkbox" name="completedSteps" value={step} defaultChecked={company.completedSteps.includes(step)} disabled={!workspace.canEdit} /> {companyOnboardingStepLabel(locale, step)}</label>)}</div></fieldset>
-          <label className="field-full">{copy.reason}<textarea name="reason" required minLength={3} maxLength={1000} disabled={!workspace.canEdit} /></label>
-        </div>
-        {workspace.canEdit ? <div className="form-actions"><button className="button button-primary" type="submit">{copy.save}</button></div> : null}
-      </form>
-    </section>
-
-    <section style={{ marginBlockStart: 17 }}>
-      <div className="panel-header"><div><h2>{copy.checklist}</h2><p>{copy.checklistHelp}</p></div></div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,360px),1fr))", gap: 16 }}>
-        {workspace.items.map((item) => <article className="panel form-panel" key={item.id}>
-          <div className="panel-header"><div><h3>{companyOnboardingBlockerLabel(locale, item.code)}</h3><p>{item.description}</p></div><StatusBadge>{statusLabel(item.status)}</StatusBadge></div>
-          <p className="subtle">{item.required ? copy.required : copy.optional}{item.completedAt ? ` · ${copy.completedAt}: ${formatDateTime(item.completedAt.toISOString(), locale, company.timezone)}` : ""}</p>
-          {workspace.canEdit ? <form action={updateCompanyOnboardingItemAction} className="form-grid">
-            <input type="hidden" name="companyId" value={company.id} />
-            <input type="hidden" name="expectedVersion" value={company.version} />
-            <input type="hidden" name="itemCode" value={item.code} />
-            <label>{copy.status}<select name="status" defaultValue={item.status}><option value="PENDING">{copy.pending}</option><option value="PASSED">{copy.passed}</option><option value="FAILED">{copy.failed}</option>{workspace.canApproveExceptions ? <option value="WAIVED">{copy.waived}</option> : null}</select></label>
-            <label>{copy.responsible}<select name="responsibleUserId" defaultValue={item.responsibleUserId ?? ""}><option value="">{copy.unassigned}</option>{workspace.responsibleUsers.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label>
-            <label className="field-full">{copy.notes}<textarea name="notes" defaultValue={item.notes} maxLength={3000} /></label>
-            <label className="field-full">{copy.evidence}<input name="evidenceReference" defaultValue={item.evidenceReference} maxLength={1000} /><small>{copy.evidenceHelp}</small></label>
-            <label>{copy.dueAt}<input name="dueAt" type="datetime-local" /></label>
-            {workspace.canApproveExceptions ? <><label>{copy.exceptionReason}<input name="exceptionReason" defaultValue={item.exceptionReason} maxLength={1000} /></label><label>{copy.exceptionExpiry}<input name="exceptionExpiresAt" type="datetime-local" /></label></> : null}
-            <label className="field-full">{copy.reason}<input name="reason" required minLength={3} maxLength={1000} /></label>
-            <div className="form-actions field-full"><button className="button button-secondary" type="submit">{copy.updateItem}</button></div>
-          </form> : null}
-        </article>)}
-      </div>
-    </section>
-
-    <section className="detail-grid" style={{ marginBlockStart: 17 }}>
-      <article className="panel form-panel"><h2>{copy.verification}</h2><p>{copy.verificationHelp}</p>
-        <h3>{copy.blockers}</h3>{company.activationBlockers.length ? <ul>{company.activationBlockers.map((blocker) => <li key={blocker}>{companyOnboardingBlockerLabel(locale, blocker)}</li>)}</ul> : <p>{copy.noBlockers}</p>}
-        {workspace.canSubmit ? <form action={submitCompanyVerificationAction} className="table-action-stack"><input type="hidden" name="companyId" value={company.id} /><input type="hidden" name="expectedVersion" value={company.version} /><label>{copy.reason}<textarea name="reason" required minLength={3} maxLength={1000} /></label><button className="button button-primary" type="submit">{copy.submitForVerification}</button></form> : null}
-        {workspace.canReview ? <form action={reviewCompanyVerificationAction} className="table-action-stack"><input type="hidden" name="companyId" value={company.id} /><input type="hidden" name="expectedVersion" value={company.version} /><label>{copy.reason}<textarea name="reason" required minLength={3} maxLength={1000} /></label><div className="form-actions"><button className="button button-primary" name="decision" value="APPROVE" type="submit">{copy.approve}</button>{workspace.canRequestChanges ? <button className="button button-secondary" name="decision" value="REQUEST_CHANGES" type="submit">{copy.requestChanges}</button> : null}{workspace.canReject ? <button className="button button-danger" name="decision" value="REJECT" type="submit">{copy.reject}</button> : null}</div></form> : null}
-      </article>
-      <article className="panel"><h2>{copy.history}</h2>{workspace.verificationHistory.length ? <ol>{workspace.verificationHistory.map((entry) => <li key={entry.id}><strong>{companyVerificationStatusLabel(locale, entry.toStatus)}</strong><br /><span className="subtle">{entry.reason} · {formatDateTime(entry.changedAt.toISOString(), locale, company.timezone)} · {entry.changedByName ?? copy.system}</span></li>)}</ol> : <p className="subtle">{copy.notAvailable}</p>}</article>
+        <label>{copy.legal}<input name="legalName" defaultValue={company.legalName} required maxLength={300} /></label>
+        <label>{copy.contact}<input name="mainContactName" defaultValue={company.mainContactName} required maxLength={300} /></label>
+        <label>{copy.industry}<select name="industryCode" defaultValue={company.industryCode}>{workspace.industries.map((industry) => <option key={industry.code} value={industry.code}>{locale === "ar" ? industry.nameAr : locale === "ms" ? industry.nameMs : industry.nameEn}</option>)}</select></label>
+        <label>{copy.language}<select name="defaultLocale" defaultValue={company.defaultLocale}><option value="en">English</option><option value="ar">العربية</option><option value="ms">Bahasa Melayu</option></select></label>
+        <label>{copy.timezone}<select name="timezone" defaultValue={company.timezone}>{!TIMEZONES.includes(company.timezone as typeof TIMEZONES[number]) ? <option value={company.timezone}>{company.timezone}</option> : null}{TIMEZONES.map((timezone) => <option key={timezone} value={timezone}>{timezone.replaceAll("_", " ")}</option>)}</select></label>
+        <div className="form-actions field-full"><button className="button button-primary" type="submit">{copy.save}</button></div>
+      </form> : <p>{copy.unavailable}</p>}
     </section>
   </>;
 }

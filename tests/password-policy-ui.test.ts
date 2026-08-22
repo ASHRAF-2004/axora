@@ -29,12 +29,11 @@ describe("password policy user experience", () => {
     expect(html).not.toContain("onpaste");
   });
 
-  it("keeps setup, reset, account, and help guidance aligned in every locale", async () => {
+  it("keeps setup, reset, and account guidance aligned in every locale", async () => {
     for (const copy of Object.values(ACCOUNT_LIFECYCLE_MESSAGES)) {
       const surfaces = JSON.stringify({
         reset: copy.reset,
         account: copy.account,
-        help: copy.help,
       });
       expect(surfaces).toContain("15");
       expect(surfaces).toContain("128");

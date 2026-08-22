@@ -2,6 +2,8 @@ import type { PoolClient, QueryResultRow } from "pg";
 import { z } from "zod";
 import type { AuthenticatedSessionUser, SessionUser } from "./auth";
 import { isDemoMode, query, withAuditTransaction } from "./db";
+import { getDemoStore } from "./demo-data";
+import { canAccess } from "./permissions";
 import { appendWorkflowEvent, notifyWorkflowUsers } from "./workflow-repository";
 import type { WorkflowNotificationMessage } from "./workflow-notification-i18n";
 
@@ -193,14 +195,48 @@ export interface CompanyOnboardingItemInput {
 }
 
 const DEMO_ONBOARDING_COMPANY_ID = "10000000-0000-4000-8000-000000000001";
+type DemoSetup = {
+  legalName: string;
+  mainContactName: string;
+  industryCode: string;
+  defaultLocale: "en" | "ar" | "ms";
+  timezone: string;
+  version: number;
+};
+const demoSetups = new Map<string, DemoSetup>([[DEMO_ONBOARDING_COMPANY_ID, {
+  legalName: "YourUni Education Sdn. Bhd.",
+  mainContactName: "Company administrator",
+  industryCode: "EDUCATION",
+  defaultLocale: "en",
+  timezone: "Asia/Kuala_Lumpur",
+  version: 1,
+}]]);
 
-function demoOnboardingWorkspace(companyId: string, capturedAt: Date) {
-  if (companyId !== DEMO_ONBOARDING_COMPANY_ID) {
-    throw new CompanyOnboardingUnavailableError();
-  }
+function demoSetupFor(companyId: string) {
+  const existing = demoSetups.get(companyId);
+  if (existing) return existing;
+  const company = getDemoStore().companies.find((item) => item.id === companyId);
+  if (!company) throw new CompanyOnboardingUnavailableError();
+  const industryCode = (company.industry || "OTHER").normalize("NFKC")
+    .toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const setup: DemoSetup = {
+    legalName: company.name,
+    mainContactName: company.mainContactName || "Main contact",
+    industryCode: /^[A-Z][A-Z0-9_]{1,63}$/.test(industryCode) ? industryCode : "OTHER",
+    defaultLocale: "en",
+    timezone: "Asia/Kuala_Lumpur",
+    version: 1,
+  };
+  demoSetups.set(companyId, setup);
+  return setup;
+}
+
+function demoOnboardingWorkspace(actor: AuthenticatedSessionUser, companyId: string, capturedAt: Date) {
+  const demoCompany = getDemoStore().companies.find((item) => item.id === companyId);
+  const setup = demoSetupFor(companyId);
   return workspaceSchema.parse({
     capturedAt,
-    canEdit: false,
+    canEdit: canAccess(actor, "manage_companies"),
     canApproveExceptions: false,
     canVerify: false,
     canReview: false,
@@ -209,18 +245,18 @@ function demoOnboardingWorkspace(companyId: string, capturedAt: Date) {
     canReject: false,
     company: {
       id: companyId,
-      code: "C-100",
-      name: "YourUni",
+      code: demoCompany?.code ?? "C-100",
+      name: demoCompany?.name ?? "YourUni",
       companyInformation: "Demo education company",
       status: "ONBOARDING",
-      legalName: "YourUni Education Sdn. Bhd.",
+      legalName: setup.legalName,
       registrationNumber: "DEMO-REG-100",
       registrationCountryCode: "MY",
       taxRegistrationNumber: "",
-      industryCode: "EDUCATION",
+      industryCode: setup.industryCode,
       registeredAddress: "Cyberjaya, Selangor",
       operatingAddress: "Cyberjaya, Selangor",
-      mainContactName: "Company administrator",
+      mainContactName: setup.mainContactName,
       mainContactEmail: "admin@youruni.example",
       mainContactPhone: "+60 00-000 0000",
       billingContactName: "Company administrator",
@@ -228,20 +264,20 @@ function demoOnboardingWorkspace(companyId: string, capturedAt: Date) {
       billingContactPhone: "+60 00-000 0000",
       billingAddress: "Cyberjaya, Selangor",
       billingCycle: "Monthly",
-      defaultLocale: "en",
-      timezone: "Asia/Kuala_Lumpur",
+      defaultLocale: setup.defaultLocale,
+      timezone: setup.timezone,
       currentStep: "REVIEW",
       completedSteps: COMPANY_ONBOARDING_STEPS.filter((step) => step !== "REVIEW"),
-      version: 1,
+      version: setup.version,
       savedAt: capturedAt,
       verificationStatus: "PENDING_VERIFICATION",
       activationBlockers: ["ONBOARDING_VERIFICATION"],
     },
     industries: [{
-      code: "EDUCATION",
-      nameEn: "Education",
-      nameAr: "التعليم",
-      nameMs: "Pendidikan",
+      code: setup.industryCode,
+      nameEn: demoCompany?.industry || "Education",
+      nameAr: demoCompany?.industry || "التعليم",
+      nameMs: demoCompany?.industry || "Pendidikan",
       allowsCustomLabel: false,
     }],
     responsibleUsers: [],
@@ -328,7 +364,7 @@ export async function loadCompanyOnboardingWorkspace(
   if (!Number.isFinite(capturedAt.getTime())) {
     throw new CompanyOnboardingUnavailableError();
   }
-  if (isDemoMode()) return demoOnboardingWorkspace(companyId, capturedAt);
+  if (isDemoMode()) return demoOnboardingWorkspace(actor, companyId, capturedAt);
   try {
     const result = await query<SnapshotRow>(
       "SELECT public.axora_company_verification_workspace($1,$2,$3,$4) AS snapshot",
@@ -421,7 +457,27 @@ export async function saveCompanyOnboarding(
   actor: AuthenticatedSessionUser,
   input: CompanyOnboardingProfileInput,
 ) {
-  if (isDemoMode()) throw new CompanyOnboardingUnavailableError();
+  if (isDemoMode()) {
+    const setup = demoSetupFor(input.companyId);
+    if (!canAccess(actor, "manage_companies")
+      || input.expectedVersion !== setup.version) {
+      throw new CompanyOnboardingUnavailableError();
+    }
+    setup.legalName = input.legalName;
+    setup.mainContactName = input.mainContactName;
+    setup.industryCode = input.industryCode;
+    setup.defaultLocale = input.defaultLocale;
+    setup.timezone = input.timezone;
+    setup.version += 1;
+    const companyName = getDemoStore().companies.find((item) => item.id === input.companyId)?.name ?? "YourUni";
+    return mutationSchema.parse({
+      companyId: input.companyId,
+      companyName,
+      version: setup.version,
+      eventKey: "company.onboarding.updated",
+      notificationRecipientIds: [],
+    });
+  }
   const capturedAt = new Date();
   return withAuditTransaction({ actor, reason: input.reason }, async (client) => {
     // The current database signature retains these historical columns so an

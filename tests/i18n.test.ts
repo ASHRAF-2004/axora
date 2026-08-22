@@ -64,14 +64,12 @@ describe("locale selection and public dictionaries", () => {
     const requiredRoutes = [
       "/dashboard", "/products", "/requests", "/approvals",
       "/deliveries", "/finance", "/companies", "/branches",
-      "/users", "/reports", "/audit", "/support", "/settings", "/help",
+      "/users", "/settings", "/email-operations",
       "/driver", "/receiving",
     ];
     for (const locale of SUPPORTED_LOCALES) {
       const dictionary = PORTAL_MESSAGES[locale];
       expect(dictionary.shell.language.length).toBeGreaterThan(0);
-      expect(dictionary.tutorial.skipStep.length).toBeGreaterThan(0);
-      expect(dictionary.tutorial.stepOf(2, 5)).toContain("2");
       for (const role of requiredRoles) expect(dictionary.roles[role]?.length).toBeGreaterThan(0);
       for (const route of requiredRoutes) expect(dictionary.navigation[route]?.label.length).toBeGreaterThan(0);
     }

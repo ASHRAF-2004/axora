@@ -26,7 +26,6 @@ function inputFromRequest(request: NextRequest): DashboardPeriodInput {
     preset: request.nextUrl.searchParams.get("preset") ?? undefined,
     start: request.nextUrl.searchParams.get("start") ?? undefined,
     end: request.nextUrl.searchParams.get("end") ?? undefined,
-    compare: request.nextUrl.searchParams.get("compare") ?? undefined,
   };
 }
 
@@ -51,7 +50,6 @@ export async function GET(request: NextRequest) {
     const locale = actor.preferredLocale ?? "en";
     const copy = dashboardPeriodMessages(locale);
     const current = report.current as unknown as Record<string, unknown>;
-    const previous = report.previous as unknown as Record<string, unknown> | undefined;
 
     if (report.scope === "company") {
       const branches = scope.directory.branches.filter((branch) => (
@@ -70,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     const lines = [
-      row("record_type", "key", "current_value", "previous_value", "detail"),
+      row("record_type", "key", "current_value", "detail"),
       row("metadata", "scope", report.scope, "", scope.branchName ?? "all-authorized"),
       row("metadata", "preset", period.preset, "", copy.presets[period.preset]),
       row("metadata", "start_inclusive", period.startDate, "", period.timeZone),
@@ -78,9 +76,6 @@ export async function GET(request: NextRequest) {
       row("metadata", "displayed_end_inclusive", period.endDate, "", period.timeZone),
       row("metadata", "generated_at", period.generatedAt, "", period.timeZone),
       row("metadata", "locale", locale, "", "Saved profile locale"),
-      row("metadata", "comparison", period.compare, "", period.comparison
-        ? period.comparison.startDate + "/" + period.comparison.endExclusiveDate
-        : "disabled"),
       row("metadata", "date_semantics", "inclusive_start_exclusive_end", "", "PostgreSQL AT TIME ZONE"),
       row("metadata", "freshness", "live", "", "No shared dashboard cache"),
     ];
@@ -90,7 +85,6 @@ export async function GET(request: NextRequest) {
         "metric",
         definition.key,
         current[definition.key],
-        previous?.[definition.key],
         definition.meaning + " | " + definition.dateField + " | " + definition.statuses,
       ));
     }

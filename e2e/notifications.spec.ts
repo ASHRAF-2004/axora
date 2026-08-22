@@ -23,7 +23,7 @@ test("notification centre exposes grouped controls and refreshes the shell count
 
   await expect(page.getByRole("heading",{level:1,name:"Notification centre"})).toBeVisible();
   await expect(page.locator(".notification-centre")).toBeVisible();
-  await expect(page.locator(".notification-filter-bar select")).toHaveCount(2);
+  await expect(page.locator(".notification-filter-bar select")).toHaveCount(1);
   await expect(page.locator(".notification-preferences input[type=checkbox]:disabled").first()).toBeChecked();
   await expect(page.locator('a[href="/notifications"]').first()).toBeVisible();
   await expect.poll(()=>summaryRequests.length).toBeGreaterThan(0);
@@ -34,19 +34,16 @@ test("notification filters survive refresh and browser Back and Forward",async (
   await page.goto("/notifications");
 
   await page.locator('select[name="status"]').selectOption("UNREAD");
-  await page.locator('select[name="category"]').selectOption("DELIVERY");
   await page.locator(".notification-filter-bar").getByRole("button").click();
-  await expect(page).toHaveURL(/\/notifications\?status=UNREAD&category=DELIVERY$/);
+  await expect(page).toHaveURL(/\/notifications\?status=UNREAD$/);
 
   await page.reload();
   await expect(page.locator('select[name="status"]')).toHaveValue("UNREAD");
-  await expect(page.locator('select[name="category"]')).toHaveValue("DELIVERY");
 
   await page.goto("/requests");
   await page.goBack();
-  await expect(page).toHaveURL(/\/notifications\?status=UNREAD&category=DELIVERY$/);
+  await expect(page).toHaveURL(/\/notifications\?status=UNREAD$/);
   await expect(page.locator('select[name="status"]')).toHaveValue("UNREAD");
-  await expect(page.locator('select[name="category"]')).toHaveValue("DELIVERY");
 
   await page.goForward();
   await expect(page).toHaveURL(/\/requests$/);

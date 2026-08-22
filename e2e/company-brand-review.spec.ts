@@ -59,7 +59,7 @@ test("owner previews reviewed company branding across device, Arabic, and reduce
   await page.goto(`/companies/${companyId}/onboarding`);
   await expect(page.getByRole("heading", {
     level: 1,
-    name: /Onboarding workspace: YourUni/,
+    name: "Company setup",
   })).toBeVisible();
   expect(optimizedOfficialLogoRequests).toEqual([]);
   await page.screenshot({

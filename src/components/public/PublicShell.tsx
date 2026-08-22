@@ -80,7 +80,6 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
             <strong>{messages.footer.company}</strong>
             <Link href={`${prefix}/about`}>{messages.nav.about}</Link>
             <Link href={`${prefix}/contact`}>{messages.nav.contact}</Link>
-            <Link href={`${prefix}/help`}>{messages.footer.help}</Link>
           </div>
           <div>
             <strong>{messages.footer.legal}</strong>

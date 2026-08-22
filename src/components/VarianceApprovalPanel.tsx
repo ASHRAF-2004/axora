@@ -53,7 +53,6 @@ export function VarianceApprovalPanel({
                   <label><span>{messages.fundingOption}</span><select name="fundingOption" defaultValue="APPROVE_ADDITIONAL"><option value="APPROVE_ADDITIONAL">{messages.standardAdditional}</option><option value="TRANSFER_RESERVE">{messages.transferReserve}</option><option value="TEMPORARY_INCREASE">{messages.temporaryIncrease}</option></select></label>
                   <label><span>{messages.sourceAccount}</span><select name="sourceBudgetAccountId" defaultValue=""><option value="">-</option>{submission.sourceAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} / {money(account.available, submission.currency, locale)}</option>)}</select></label>
                 </div>
-                <label><span>{messages.reason}</span><textarea name="reason" minLength={3} maxLength={1000} required /></label>
                 <div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.secondaryAction} name="decision" value="RETURN">{messages.return}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div>
               </form>
             </article>

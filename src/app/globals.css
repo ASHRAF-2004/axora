@@ -68,6 +68,9 @@ summary { min-height: 44px; }
 .button-secondary { color: var(--navy-900); background: var(--white); border: 1px solid var(--slate-200); }
 .button-danger { color: white; background: var(--red-600); }
 .button-full { width: 100%; }
+.page-actions { margin-block: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.company-workspace-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
+.company-workspace-nav .button { min-width: 0; padding-inline: 12px; text-align: center; }
 
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .metric-card { padding: 20px; min-height: 166px; border: 1px solid var(--slate-200); border-radius: var(--radius); background: var(--axora-surface); box-shadow: var(--axora-shadow-sm); position: relative; overflow: hidden; }
@@ -674,30 +677,6 @@ button[data-ux-pending="true"]::after {
 .profile-required-overlay p:not(.eyebrow) { margin: 0 0 8px; font-size: 13px; line-height: 1.65; }
 .profile-required-overlay form { margin: 0; }
 
-.tutorial-launcher-slot { min-width: 44px; min-height: 44px; margin-inline-start: auto; display: flex; align-items: center; justify-content: flex-end; }
-.tutorial-launcher { min-width: 44px; min-height: 44px; padding: 0 14px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--tenant-primary-foreground, #fff); background: var(--tenant-primary, #0b3157); border: 0; border-radius: 999px; box-shadow: 0 6px 18px rgba(7,33,61,.18); font-size: 12px; font-weight: 800; text-transform: none; }
-.tutorial-coach { position: fixed; inset-inline-end: 24px; bottom: max(22px, env(safe-area-inset-bottom)); z-index: 220; width: min(410px, calc(100vw - 32px)); padding: 0 22px 20px; color: var(--slate-600); background: var(--axora-surface-elevated); border: 1px solid var(--tenant-border, var(--slate-200)); border-radius: 20px; box-shadow: var(--axora-shadow-lg); outline: none; }
-.tutorial-coach > header { min-height: 54px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--slate-100); }
-.tutorial-coach > header span { display: flex; align-items: center; gap: 8px; color: var(--axora-link); font-size: 12px; font-weight: 850; text-transform: uppercase; letter-spacing: .09em; }
-.tutorial-coach > header button { width: 40px; height: 40px; display: grid; place-items: center; color: var(--slate-500); background: transparent; border: 0; border-radius: 10px; }
-.tutorial-progress { height: 4px; margin: 0 -22px 18px; overflow: hidden; background: var(--slate-100); }
-.tutorial-progress span { height: 100%; display: block; background: var(--tenant-accent, #eaa63a); transition: width .25s ease; }
-.tutorial-coach .eyebrow { margin: 0 0 7px; }
-.tutorial-coach h2 { margin: 0; color: var(--navy-900); font-size: 20px; }
-.tutorial-coach > p:not(.eyebrow) { min-height: 64px; margin: 9px 0 13px; font-size: 12px; line-height: 1.65; }
-.tutorial-open-area { min-height: 38px; padding: 0 11px; display: inline-flex; align-items: center; gap: 7px; color: var(--axora-link); background: var(--axora-surface-muted); border-radius: 9px; font-size: 12px; font-weight: 800; }
-.tutorial-coach footer { margin-top: 16px; padding-top: 15px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--slate-100); }
-.tutorial-coach footer > div { display: flex; align-items: center; gap: 8px; }
-.tutorial-coach footer .button { min-height: 41px; margin: 0; display: inline-flex; align-items: center; gap: 7px; }
-.tour-target-active { position: relative; z-index: 210 !important; outline: 4px solid rgba(234,166,58,.55) !important; outline-offset: 4px !important; border-radius: 8px; }
-.tutorial-summary { margin-bottom: 18px; padding: 20px 22px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, 220px) auto; align-items: center; gap: 22px; color: var(--slate-600); background: linear-gradient(120deg, rgba(11,49,87,.055), rgba(234,166,58,.08)); border: 1px solid var(--slate-200); border-radius: 17px; }
-.tutorial-summary > div:first-child { display: flex; align-items: center; gap: 13px; }
-.tutorial-summary-icon { width: 46px; height: 46px; flex: none; display: grid; place-items: center; color: var(--tenant-primary-foreground, #fff); background: var(--tenant-primary, #0b3157); border-radius: 13px; }
-.tutorial-summary h2 { margin: 2px 0 3px; color: var(--navy-900); font-size: 16px; }
-.tutorial-summary p:not(.eyebrow) { margin: 0; font-size: 12px; }
-.tutorial-summary-progress { height: 7px; overflow: hidden; background: rgba(11,49,87,.1); border-radius: 999px; }
-.tutorial-summary-progress span { height: 100%; display: block; background: var(--tenant-accent, #eaa63a); }
-.tutorial-summary .button { margin: 0; }
 
 @media (max-width: 760px) {
   .profile-layout { grid-template-columns: 1fr; }
@@ -705,14 +684,9 @@ button[data-ux-pending="true"]::after {
   .profile-form { padding: 22px 17px; }
   .profile-submit-row { align-items: stretch; flex-direction: column; }
   .profile-submit-row .button { width: 100%; justify-content: center; }
-  .tutorial-launcher span { display: none; }
-  .tutorial-coach { inset-inline: 12px; bottom: max(12px, env(safe-area-inset-bottom)); width: auto; }
-  .tutorial-summary { grid-template-columns: 1fr; gap: 15px; }
-  .tutorial-summary .button { width: 100%; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tutorial-progress span { transition: none; }
 }
 
 /* P1-13/P1-14 permission-scoped procurement discovery */

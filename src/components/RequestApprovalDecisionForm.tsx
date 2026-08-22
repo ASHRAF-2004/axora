@@ -44,10 +44,6 @@ export function RequestApprovalDecisionForm({
           </label>
         </div>
       ) : null}
-      <label>
-        <span>{messages.reason}</span>
-        <textarea name="reason" minLength={3} maxLength={1000} required />
-      </label>
       <p className={styles.formHelp}>{request.canApproveAndPay
         ? messages.approveAndPayHelp
         : messages.approveHelp}</p>

@@ -21,12 +21,12 @@ export async function decideRequestApprovalAction(formData: FormData) {
   const action = rawAction === "APPROVE" || rawAction === "APPROVE_AND_PAY"
     || rawAction === "REJECT"
     || rawAction === "RETURN" || rawAction === "CANCEL" ? rawAction : null;
-  const reason = field(formData, "reason");
+  const reason = `REQUEST_${rawAction || "DECISION"}`;
   const rawOption = field(formData, "optionCode").toUpperCase();
   const optionCode = rawOption === "ONE_TIME_EXCEPTION"
     || rawOption === "TRANSFER_RESERVE"
     || rawOption === "TEMPORARY_PERIOD_INCREASE" ? rawOption : undefined;
-  if (!requestId || !Number.isInteger(revision) || revision<1 || !action || reason.length<3) {
+  if (!requestId || !Number.isInteger(revision) || revision<1 || !action) {
     redirect("/approvals?error=invalid");
   }
   if (action === "APPROVE_AND_PAY") {
@@ -80,12 +80,12 @@ export async function decideRequestActualAction(formData: FormData) {
   const expectedRevision = Number(field(formData, "approvalRevision"));
   const decision = field(formData, "decision").toUpperCase();
   const fundingOption = field(formData, "fundingOption").toUpperCase();
-  const reason = field(formData, "reason");
+  const reason = `REQUEST_ACTUAL_${decision || "DECISION"}`;
   if (!submissionId || !Number.isInteger(expectedRevision) || expectedRevision<1
     || !["APPROVE","RETURN","REJECT"].includes(decision)
     || (fundingOption
       && !["APPROVE_ADDITIONAL","TRANSFER_RESERVE","TEMPORARY_INCREASE"].includes(fundingOption))
-    || reason.length<3 || reason.length>1000) {
+    ) {
     redirect("/approvals?error=actual-invalid");
   }
   try {

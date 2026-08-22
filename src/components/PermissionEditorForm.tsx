@@ -7,9 +7,9 @@ import { useFormStatus } from "react-dom";
 import { PermissionChecklist, type PermissionChecklistOption } from "./PermissionChecklist";
 
 const messages = {
-  en: { save: "Save effective access", saving: "Saving access...", reason: "Reason for this access change", reasonHint: "Required for the immutable permission audit trail." },
-  ar: { save: "حفظ الصلاحيات الفعلية", saving: "جارٍ حفظ الصلاحيات...", reason: "سبب تغيير الصلاحيات", reasonHint: "مطلوب لسجل تدقيق الصلاحيات غير القابل للتغيير." },
-  ms: { save: "Simpan akses berkesan", saving: "Menyimpan akses...", reason: "Sebab perubahan akses", reasonHint: "Diperlukan untuk jejak audit kebenaran yang tidak boleh diubah." },
+  en: { save: "Save permissions", saving: "Saving permissions..." },
+  ar: { save: "حفظ الصلاحيات", saving: "جارٍ حفظ الصلاحيات..." },
+  ms: { save: "Simpan kebenaran", saving: "Menyimpan kebenaran..." },
 } as const;
 
 function SaveButton({ locale }: { locale: SupportedLocale }) {
@@ -33,10 +33,6 @@ export function PermissionEditorForm({
   const [selected, setSelected] = useState(new Set(initialPermissions));
   return <form action={action} className="panel form-panel" data-draft-id="effective-access">
     <PermissionChecklist locale={locale} options={options} selected={selected} onChange={setSelected} />
-    <label className="field-full">{messages[locale].reason}
-      <textarea name="reason" required minLength={3} maxLength={500} />
-      <small>{messages[locale].reasonHint}</small>
-    </label>
     <div className="form-actions"><SaveButton locale={locale} /></div>
   </form>;
 }

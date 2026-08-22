@@ -36,7 +36,7 @@ function initials(name: string) {
 function lifecycleRoute(path: string) {
   try {
     const pathname = new URL(path, "https://axora.management").pathname;
-    return ["/profile", "/account", "/help"].some((prefix) => (
+    return ["/profile", "/account"].some((prefix) => (
       pathname === prefix || pathname.startsWith(`${prefix}/`)
     ));
   } catch {
@@ -160,7 +160,7 @@ export default async function PortalLayout({ children }: { children: React.React
         }}
         primaryItems={primary}
         drawerItems={visiblePortalNavigation(DRAWER_NAVIGATION, user, messages)
-          .filter((item) => onboardingComplete || item.href === "/help")
+          .filter(() => onboardingComplete)
           .map((item) => (
           item.href === "/products" && isPlatformWorkspace
             ? { ...item, label: messages.quickActions.catalog }

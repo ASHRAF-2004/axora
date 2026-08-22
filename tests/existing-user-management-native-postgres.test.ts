@@ -17,6 +17,7 @@ import { removeApprovalLimit, setApprovalLimit } from "@/lib/approval-limit-mana
 import type { AuthenticatedSessionUser } from "@/lib/auth";
 import { updateManagedUserProfile } from "@/lib/existing-user-management";
 import { replaceUserRoleScope } from "@/lib/role-scope-management";
+import { listProducts } from "@/lib/repository";
 import type { AccountKind, KnownUserRole, RoleScopeType } from "@/lib/types";
 import { listAuthorizedUsers, setAuthorizedUserActive } from "@/lib/user-isolation";
 
@@ -465,7 +466,7 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
     expect(after.rows[0]).toEqual(before.rows[0]);
   }, 30_000);
 
-  it("replaces permissions, rejects unauthorized escalation, and makes DENY authoritative until audited removal", async () => {
+  it("returns unchecked toggles to role defaults and keeps explicit DENY authoritative until removal", async () => {
     const before = await loadAccessAdministration(owner,requester.id,requesterAssignmentId);
     const currentPermissions = before.permissionOptions.filter((permission) => permission.effective)
       .map((permission) => permission.code);
@@ -476,10 +477,10 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
       permissions: currentPermissions.filter((permission) => permission !== "request.submit"),
       reason: "Remove submit authority for native Prompt 5 test",
     });
-    expect(replaced.changed).toBe(true);
-    expect(await sessionRevoked(permissionSession)).toBe(true);
+    expect(replaced.changed).toBe(false);
+    expect(await sessionRevoked(permissionSession)).toBe(false);
     let snapshot = await loadAccessAdministration(owner,requester.id,requesterAssignmentId);
-    expect(snapshot.permissionOptions.find((permission) => permission.code === "request.submit")?.effective).toBe(false);
+    expect(snapshot.permissionOptions.find((permission) => permission.code === "request.submit")?.effective).toBe(true);
     await expect(setUserPermissionOverride(branchAdmin, {
       targetUserId: requester.id,targetRoleAssignmentId: requesterAssignmentId,
       permission: "analytics.platform.view",effect: "GRANT",
@@ -502,7 +503,33 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
     });
     snapshot = await loadAccessAdministration(owner,requester.id,requesterAssignmentId);
     expect(snapshot.permissionOptions.find((permission) => permission.code === "product.view")?.effective).toBe(true);
-    expect(snapshot.permissionOptions.find((permission) => permission.code === "request.submit")?.effective).toBe(false);
+    expect(snapshot.permissionOptions.find((permission) => permission.code === "request.submit")?.effective).toBe(true);
+  }, 35_000);
+
+  it("turns a CAM product DENY into Manage Products access and revokes the existing session", async () => {
+    const cam = await createActiveUser({
+      name: "Prompt 12 Existing CAM",role: "CLIENT_ACCOUNT_MANAGER",
+      accountKind: "PLATFORM",scopeType: "PLATFORM",
+    });
+    await setUserPermissionOverride(owner, {
+      targetUserId: cam.id,targetRoleAssignmentId: cam.roleAssignmentId!,
+      permission: "product.manage",effect: "DENY",scope: { type: "PLATFORM" },
+      startsAt: new Date(),reason: "Prompt 12 stale product deny fixture",
+    });
+    const session = await createSession(cam.id);
+    const before = await loadAccessAdministration(owner,cam.id,cam.roleAssignmentId);
+    const selected = before.permissionOptions.filter((permission) => permission.effective)
+      .map((permission) => permission.code).concat("product.manage");
+    const changed = await replaceUserPermissionSet(owner, {
+      targetUserId: cam.id,targetRoleAssignmentId: cam.roleAssignmentId!,
+      permissions: selected,reason: "USER_PERMISSION_UPDATED",
+    });
+    expect(changed.changed).toBe(true);
+    expect(await sessionRevoked(session)).toBe(true);
+    const after = await loadAccessAdministration(owner,cam.id,cam.roleAssignmentId);
+    expect(after.permissionOptions.find((permission) => permission.code === "product.manage")?.effective).toBe(true);
+    await expect(listProducts({ ...cam,effectivePermissions: ["view_catalog","manage_catalog"] }))
+      .resolves.toBeDefined();
   }, 35_000);
 
   it("sets and removes a USER-specific approval limit, revokes sessions, and rejects invalid self-approval configuration", async () => {
@@ -613,7 +640,7 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
     expect((await activeAssignment(invited.userId)).current.id).toBe(changed.roleAssignmentId);
   }, 30_000);
 
-  it("does not let an old setup bearer restore permissions changed while invited", async () => {
+  it("does not let an old setup bearer alter role-default permissions while invited", async () => {
     const invited = await createInvitedUser({
       email: `prompt5-permissions-${randomUUID()}@example.test`,displayName: "Prompt 5 Permission Invite",
       role: "REQUESTER",companyId: organizationA.companyId,branchId: organizationA.branchOneId,
@@ -633,7 +660,7 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
     });
     const activated = await loadAccessAdministration(owner,invited.userId,current.current.id);
     expect(activated.identity.accountStatus).toBe("ACTIVE");
-    expect(activated.permissionOptions.find((permission) => permission.code === "request.submit")?.effective).toBe(false);
+    expect(activated.permissionOptions.find((permission) => permission.code === "request.submit")?.effective).toBe(true);
   }, 40_000);
 
   it("deactivation invalidates pending setup and reactivation cannot revive the old bearer", async () => {
