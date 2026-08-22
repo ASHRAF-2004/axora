@@ -131,9 +131,18 @@ test("creates one catalogue product without losing the route after insertion", a
     "public/catalog/categories/other.webp",
   ]);
   await imageUpload.getByLabel("Alternative text for this upload").fill("Controlled product image");
-  await imageUpload.getByRole("button", { name: "Upload images" }).click();
+  const uploadResponsePromise = page.waitForResponse(
+    (response) => response.request().method() === "POST"
+      && Boolean(response.request().headers()["next-action"]),
+    { timeout: 15_000 },
+  );
+  const [, uploadResponse] = await Promise.all([
+    imageUpload.getByRole("button", { name: "Upload images" }).click(),
+    uploadResponsePromise,
+  ]);
+  expect(uploadResponse.status()).toBeLessThan(400);
   const gallery = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: "Manage gallery" }) });
-  await expect(gallery.locator("article")).toHaveCount(2);
+  await expect(gallery.locator("article")).toHaveCount(2, { timeout: 15_000 });
   await gallery.getByRole("button", { name: "Make primary" }).click();
   await expect(gallery.getByText("Primary", { exact: true })).toHaveCount(1);
 
