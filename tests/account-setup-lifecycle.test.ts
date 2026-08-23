@@ -114,6 +114,9 @@ describe("account setup transactional lifecycle", () => {
       if (sql.includes("pg_advisory_xact_lock")) {
         return { rowCount: 1, rows: [{}] };
       }
+      if (sql.includes('account.account_status AS "accountStatus"')) {
+        return { rowCount: 0, rows: [] };
+      }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: actor.id, companyId: actor.companyId }] };
       }
@@ -171,8 +174,9 @@ describe("account setup transactional lifecycle", () => {
     });
     expect(result.rawToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
     const statements = mocks.client.query.mock.calls.map(([sql]) => String(sql));
-    expect(statements[0]).toContain("axora-account-invite-actor:");
-    expect(statements[1]).toContain("axora-account-invite-company:");
+    expect(statements.some((sql) => sql.includes("axora-account-invite-email:"))).toBe(true);
+    expect(statements.some((sql) => sql.includes("axora-account-invite-actor:"))).toBe(true);
+    expect(statements.some((sql) => sql.includes("axora-account-invite-company:"))).toBe(true);
     expect(statements.find((sql) => sql.includes('AS "actorId"')))
       .toContain("FOR KEY SHARE OF u,c");
     expect(statements.findIndex((sql) => sql.includes('AS "actorCount"')))
@@ -222,6 +226,9 @@ describe("account setup transactional lifecycle", () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
       if (sql.includes("pg_advisory_xact_lock")) {
         return { rowCount: 1, rows: [{}] };
+      }
+      if (sql.includes('account.account_status AS "accountStatus"')) {
+        return { rowCount: 0, rows: [] };
       }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: actor.id, companyId: actor.companyId }] };
@@ -314,6 +321,9 @@ describe("account setup transactional lifecycle", () => {
       if (sql.includes("pg_advisory_xact_lock")) {
         return { rowCount: 1, rows: [{}] };
       }
+      if (sql.includes('account.account_status AS "accountStatus"')) {
+        return { rowCount: 0, rows: [] };
+      }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: platformOwner.id }] };
       }
@@ -386,6 +396,9 @@ describe("account setup transactional lifecycle", () => {
       if (sql.includes("pg_advisory_xact_lock")) {
         return { rowCount: 1, rows: [{}] };
       }
+      if (sql.includes('account.account_status AS "accountStatus"')) {
+        return { rowCount: 0, rows: [] };
+      }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: actor.id, companyId: actor.companyId }] };
       }
@@ -413,6 +426,9 @@ describe("account setup transactional lifecycle", () => {
     mocks.client.query.mockImplementation(async (sql: string) => {
       if (sql.includes("pg_advisory_xact_lock")) {
         return { rowCount: 1, rows: [{}] };
+      }
+      if (sql.includes('account.account_status AS "accountStatus"')) {
+        return { rowCount: 0, rows: [] };
       }
       if (sql.includes('AS "actorId"')) {
         return { rowCount: 1, rows: [{ actorId: actor.id, companyId: actor.companyId }] };

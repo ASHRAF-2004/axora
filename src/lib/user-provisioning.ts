@@ -14,6 +14,13 @@ export interface UserProvisioningRoleConfig {
   showDepartment: boolean;
 }
 
+export class UserProvisioningValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UserProvisioningValidationError";
+  }
+}
+
 const CREATION_SCOPES: Partial<Record<UserRole, readonly RoleScopeType[]>> = {
   PLATFORM_OWNER: ["PLATFORM"],
   HUMAN_RESOURCES_MANAGEMENT: ["PLATFORM"],
@@ -71,31 +78,33 @@ export function validateProvisioningOrganizationShape(input: {
 }) {
   const config = userProvisioningRoleConfig(input.role);
   if (!config || !isCreatableProvisioningRole(input.role)) {
-    throw new Error("Choose an approved account role.");
+    throw new UserProvisioningValidationError("Choose an approved account role.");
   }
-  if (input.supplierId) throw new Error("Supplier scope is not supported by Create User.");
+  if (input.supplierId) {
+    throw new UserProvisioningValidationError("Supplier scope is not supported by Create User.");
+  }
 
   if (!config.showCompany && input.companyId) {
-    throw new Error("The selected role does not accept a customer company scope.");
+    throw new UserProvisioningValidationError("The selected role does not accept a customer company scope.");
   }
   if (!config.showBranch && input.branchId) {
-    throw new Error("The selected role does not accept a branch scope.");
+    throw new UserProvisioningValidationError("The selected role does not accept a branch scope.");
   }
   if (!config.showDepartment && input.departmentId) {
-    throw new Error("The selected role does not accept a department scope.");
+    throw new UserProvisioningValidationError("The selected role does not accept a department scope.");
   }
   if (config.showCompany && !input.companyId) {
-    throw new Error("Select the approved customer company for this user.");
+    throw new UserProvisioningValidationError("Select the approved customer company for this user.");
   }
   if (config.creationScopes.length === 1 && config.creationScopes[0] === "BRANCH" && !input.branchId) {
-    throw new Error("Select the branch this person will work with.");
+    throw new UserProvisioningValidationError("Select the branch this person will work with.");
   }
   if (config.creationScopes.length === 1 && config.creationScopes[0] === "DEPARTMENT"
     && (!input.branchId || !input.departmentId)) {
-    throw new Error("Select the branch and department this person will work with.");
+    throw new UserProvisioningValidationError("Select the branch and department this person will work with.");
   }
   if (input.departmentId && !input.branchId) {
-    throw new Error("Select a branch before selecting a department.");
+    throw new UserProvisioningValidationError("Select a branch before selecting a department.");
   }
 }
 

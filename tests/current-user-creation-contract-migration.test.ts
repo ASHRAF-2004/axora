@@ -7,6 +7,7 @@ const ids = {
   ownerAssignment: "95000000-0000-4000-8000-000000000002",
   support: "95000000-0000-4000-8000-000000000003",
   supportAssignment: "95000000-0000-4000-8000-000000000004",
+  supportCamAssignment: "95000000-0000-4000-8000-00000000000a",
   company: "95000000-0000-4000-8000-000000000005",
   companyAdmin: "95000000-0000-4000-8000-000000000006",
   companyAdminAssignment: "95000000-0000-4000-8000-000000000007",
@@ -138,6 +139,121 @@ async function permissionFixtureIds(db: PGlite) {
 }
 
 describe("current canonical user-creation database contract", () => {
+  it("resolves a canonical Owner without a session assignment claim and keeps non-Owners fail-closed", async () => {
+    const db = await fixture();
+    try {
+      await db.query(`
+        UPDATE companies
+        SET active=false,lifecycle_status='ONBOARDING',
+          portal_access_enabled=false,activated_at=NULL,
+          verification_status='DRAFT'
+        WHERE id=$1
+      `, [ids.company]);
+
+      await db.exec("SET ROLE axora_app");
+      let result: Awaited<ReturnType<typeof db.query<{
+        firstAdmin: unknown;
+        platformUser: unknown;
+        deliveryUser: unknown;
+        staleVersion: unknown;
+        missingNonOwnerAssignment: unknown;
+      }>>>;
+      try {
+        result = await db.query(`
+          SELECT
+            axora_lock_company_admin_invitation_scope(
+              $1,NULL,1,$3,now()
+            ) AS "firstAdmin",
+            axora_lock_user_creation_scope(
+              $1,NULL,1,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
+              NULL,NULL,NULL,NULL,now()
+            ) AS "platformUser",
+            axora_lock_user_creation_scope(
+              $1,NULL,1,'DELIVERY_GUY','DELIVERY',
+              NULL,NULL,NULL,NULL,now()
+            ) AS "deliveryUser",
+            axora_lock_company_admin_invitation_scope(
+              $1,NULL,2,$3,now()
+            ) AS "staleVersion",
+            axora_lock_user_creation_scope(
+              $2,NULL,1,'HUMAN_RESOURCES_MANAGEMENT','PLATFORM',
+              NULL,NULL,NULL,NULL,now()
+            ) AS "missingNonOwnerAssignment"
+        `, [ids.owner, ids.support, ids.company]);
+      } finally {
+        await db.exec("RESET ROLE");
+      }
+
+      expect(result.rows[0]?.firstAdmin).toMatchObject({
+        role: "COMPANY_ADMIN",
+        accountKind: "COMPANY",
+        scope: { type: "COMPANY", companyId: ids.company },
+      });
+      expect(result.rows[0]?.platformUser).toMatchObject({
+        role: "HUMAN_RESOURCES_MANAGEMENT",
+        accountKind: "PLATFORM",
+      });
+      expect(result.rows[0]?.deliveryUser).toMatchObject({
+        role: "DELIVERY_GUY",
+        accountKind: "DELIVERY",
+      });
+      expect(result.rows[0]?.staleVersion).toBeNull();
+      expect(result.rows[0]?.missingNonOwnerAssignment).toBeNull();
+
+      await db.query(`
+        UPDATE users
+        SET role_id=(SELECT id FROM roles WHERE role_key='CLIENT_ACCOUNT_MANAGER')
+        WHERE id=$1
+      `, [ids.support]);
+      await db.query(`
+        UPDATE role_assignments
+        SET active=false,revoked_at=now()
+        WHERE id=$1
+      `, [ids.supportAssignment]);
+      await db.query(`
+        INSERT INTO role_assignments(
+          id,user_id,role_id,scope_type,active,assigned_by,assigned_at
+        ) VALUES (
+          $1,$2,(SELECT id FROM roles WHERE role_key='CLIENT_ACCOUNT_MANAGER'),
+          'PLATFORM',true,$3,now()
+        )
+      `, [ids.supportCamAssignment, ids.support, ids.owner]);
+      await db.exec("SET ROLE axora_app");
+      let camFirstAdmin: Awaited<ReturnType<typeof db.query<{ snapshot: unknown }>>>;
+      try {
+        camFirstAdmin = await db.query<{ snapshot: unknown }>(`
+          SELECT axora_lock_company_admin_invitation_scope(
+            $1,$2,1,$3,now()
+          ) AS snapshot
+        `, [ids.support, ids.supportCamAssignment, ids.company]);
+      } finally {
+        await db.exec("RESET ROLE");
+      }
+      expect(camFirstAdmin.rows[0]?.snapshot).toMatchObject({
+        role: "COMPANY_ADMIN",
+        scope: { type: "COMPANY", companyId: ids.company },
+      });
+
+      await db.query(`
+        INSERT INTO user_permission_overrides(
+          user_id,permission_id,effect,scope_type,starts_at,active,reason,changed_by
+        ) VALUES (
+          $1,(SELECT id FROM permissions WHERE permission_code='user.create'),
+          'DENY','PLATFORM',now()-interval '1 minute',true,
+          'Explicit denial remains final in the first administrator path',$1
+        )
+      `, [ids.owner]);
+      const denied = await db.query<{ snapshot: unknown }>(`
+        SELECT axora_lock_company_admin_invitation_scope(
+          $1,NULL,1,$2,now()
+        ) AS snapshot
+      `, [ids.owner, ids.company]);
+      expect(denied.rows[0]?.snapshot).toBeNull();
+    } finally {
+      await db.close();
+    }
+  }, 45_000);
+
   it("allows the Platform Owner to lock HR, platform Manager, and Delivery Guy scopes", async () => {
     const db = await fixture();
     try {

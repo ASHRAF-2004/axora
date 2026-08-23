@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   },
   AccessUnavailableError: class AccessUnavailableError extends Error {},
   requirePermission: vi.fn(),
+  requireSession: vi.fn(),
+  canAccess: vi.fn(() => true),
   createInvitedUser: vi.fn(),
   resendInvitation: vi.fn(),
   recordDelivery: vi.fn(),
@@ -31,6 +33,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({
   requirePermission: mocks.requirePermission,
+  requireSession: mocks.requireSession,
+}));
+
+vi.mock("@/lib/permissions", () => ({
+  canAccess: mocks.canAccess,
 }));
 
 vi.mock("@/lib/account-setup", () => ({
@@ -66,6 +73,8 @@ import {
   createUserAction,
   resendAccountSetupInvitationAction,
 } from "@/app/(portal)/users/actions";
+import { AccountInvitationAccessUnavailableError } from "@/lib/account-invitation-isolation";
+import { UserCreationError } from "@/lib/users";
 
 const actor = {
   id: "90000000-0000-4000-8000-000000000001",
@@ -107,6 +116,8 @@ describe("account invitation actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requirePermission.mockResolvedValue(actor);
+    mocks.requireSession.mockResolvedValue(actor);
+    mocks.canAccess.mockReturnValue(true);
     mocks.createInvitedUser.mockResolvedValue(invitation);
     mocks.resendInvitation.mockResolvedValue(invitation);
     mocks.recordDelivery.mockResolvedValue(true);
@@ -227,7 +238,7 @@ describe("account invitation actions", () => {
       accountKind: "PLATFORM",
       isOwner: true,
     };
-    mocks.requirePermission.mockResolvedValue(owner);
+    mocks.requireSession.mockResolvedValue(owner);
     mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
     const form = new FormData();
     form.set("creationContext", "DELIVERY");
@@ -246,7 +257,7 @@ describe("account invitation actions", () => {
   });
 
   it("rejects a delivery identity forged into the Axora Users workspace", async () => {
-    mocks.requirePermission.mockResolvedValue({
+    mocks.requireSession.mockResolvedValue({
       ...actor,
       role: "PLATFORM_OWNER",
       accountKind: "PLATFORM",
@@ -266,7 +277,7 @@ describe("account invitation actions", () => {
   });
 
   it("keeps protected Platform Owner permissions on canonical defaults", async () => {
-    mocks.requirePermission.mockResolvedValue({
+    mocks.requireSession.mockResolvedValue({
       ...actor,
       role: "PLATFORM_OWNER",
       accountKind: "PLATFORM",
@@ -288,7 +299,7 @@ describe("account invitation actions", () => {
   });
 
   it("rejects owner-only wallet recording on a company identity", async () => {
-    mocks.requirePermission.mockResolvedValue({
+    mocks.requireSession.mockResolvedValue({
       ...actor,
       role: "PLATFORM_OWNER",
       accountKind: "PLATFORM",
@@ -326,6 +337,63 @@ describe("account invitation actions", () => {
     );
     expect(mocks.sendEmail).not.toHaveBeenCalled();
     expect(mocks.recordDelivery).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["invitation-pending", "user-invitation-pending"],
+    ["account-active", "user-account-active"],
+    ["account-deactivated", "user-account-deactivated"],
+    ["account-exists", "user-account-exists"],
+    ["resource-unavailable", "user-creation-stale"],
+  ] as const)("keeps the expected %s outcome on the user list", async (reason, notice) => {
+    mocks.createInvitedUser.mockRejectedValue(new UserCreationError(reason));
+
+    await expect(createUserAction(userForm())).rejects.toThrow(
+      `REDIRECT:/users?notice=${notice}`,
+    );
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.recordDelivery).not.toHaveBeenCalled();
+  });
+
+  it("shows a local authorization notice for a stale or denied invitation scope", async () => {
+    mocks.createInvitedUser.mockRejectedValue(
+      new AccountInvitationAccessUnavailableError(),
+    );
+
+    await expect(createUserAction(userForm())).rejects.toThrow(
+      "REDIRECT:/users?notice=user-creation-not-authorized",
+    );
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("redirects an actor without user-management access before provisioning", async () => {
+    mocks.canAccess.mockReturnValue(false);
+
+    await expect(createUserAction(userForm())).rejects.toThrow(
+      "REDIRECT:/access-denied",
+    );
+    expect(mocks.createInvitedUser).not.toHaveBeenCalled();
+  });
+
+  it("sends one email when duplicate create submissions race", async () => {
+    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
+    mocks.createInvitedUser
+      .mockResolvedValueOnce(invitation)
+      .mockRejectedValueOnce(new UserCreationError("invitation-pending"));
+
+    const results = await Promise.allSettled([
+      createUserAction(userForm()),
+      createUserAction(userForm()),
+    ]);
+
+    expect(results.map((result) => (
+      result.status === "rejected" ? String(result.reason) : "resolved"
+    ))).toEqual(expect.arrayContaining([
+      expect.stringContaining("REDIRECT:/users?notice=user-invited"),
+      expect.stringContaining("REDIRECT:/users?notice=user-invitation-pending"),
+    ]));
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+    expect(mocks.recordDelivery).toHaveBeenCalledTimes(1);
   });
 
   it("reports an unconfirmed outcome when delivery tracking cannot be saved", async () => {

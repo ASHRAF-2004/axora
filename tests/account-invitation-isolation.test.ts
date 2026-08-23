@@ -100,6 +100,7 @@ describe("account invitation isolation", () => {
       [
         ids.actor,
         ids.assignment,
+        3,
         "REQUESTER",
         "BRANCH",
         ids.company,
@@ -140,6 +141,46 @@ describe("account invitation isolation", () => {
         capturedAt,
       )).rejects.toBeInstanceOf(AccountInvitationAccessUnavailableError);
     }
+  });
+
+  it("lets PostgreSQL resolve a canonical Owner whose session omits an assignment claim", async () => {
+    const owner = {
+      ...actor,
+      role: "PLATFORM_OWNER" as const,
+      accountKind: "PLATFORM" as const,
+      scopeType: "PLATFORM" as const,
+      companyId: undefined,
+      roleAssignmentId: undefined,
+      isOwner: true,
+    };
+    const firstAdministrator: ResolvedUserCreation = {
+      ...resolved,
+      role: "COMPANY_ADMIN",
+      scopeType: "COMPANY",
+      branchId: undefined,
+    };
+    const client = {
+      query: vi.fn().mockResolvedValue({
+        rowCount: 1,
+        rows: [{ snapshot: {
+          ...creationSnapshot(),
+          role: "COMPANY_ADMIN",
+          scope: { type: "COMPANY", companyId: ids.company },
+          branchName: undefined,
+        } }],
+      }),
+    };
+
+    await expect(lockAuthorizedInvitationCreationScope(
+      client as never,
+      owner,
+      firstAdministrator,
+      capturedAt,
+    )).resolves.toMatchObject({ role: "COMPANY_ADMIN" });
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining("axora_lock_company_admin_invitation_scope"),
+      [ids.actor, null, 3, ids.company, capturedAt],
+    );
   });
 
   it("locks invitation replacement through the exact target assignment", async () => {

@@ -11,7 +11,8 @@ import {
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
 import { AccessManagementUnavailableError } from "@/lib/access-management";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireSession } from "@/lib/auth";
+import { AccountInvitationAccessUnavailableError } from "@/lib/account-invitation-isolation";
 import { removeAuthorizedUser, setAuthorizedUserActive } from "@/lib/user-isolation";
 import { deactivateAuthorizedProfileImage } from "@/lib/profile-images";
 import { isUserRole, type UserRole } from "@/lib/types";
@@ -26,9 +27,14 @@ import {
   permissionIsCompatibleWithAccountKind,
   type PermissionCode,
 } from "@/lib/authorization-policy";
-import { validateProvisioningOrganizationShape } from "@/lib/user-provisioning";
+import {
+  UserProvisioningValidationError,
+  validateProvisioningOrganizationShape,
+} from "@/lib/user-provisioning";
 import { accountRoleDefinition } from "@/lib/role-catalog";
 import { isDemoMode } from "@/lib/db";
+import { canAccess } from "@/lib/permissions";
+import { UserCreationError } from "@/lib/users";
 
 const scopedIdentifierSchema = z.string().trim().min(1).max(120).refine(
   (value) => z.uuid().safeParse(value).success
@@ -91,8 +97,18 @@ function invitationQuotaNotice(error: AccountSetupInvitationQuotaError) {
   return `user-invitation-quota-${error.reason}`;
 }
 
+function userCreationNotice(error: UserCreationError) {
+  if (error.reason === "invitation-pending") return "user-invitation-pending";
+  if (error.reason === "account-active") return "user-account-active";
+  if (error.reason === "account-deactivated") return "user-account-deactivated";
+  if (error.reason === "account-exists") return "user-account-exists";
+  if (error.reason === "resource-unavailable") return "user-creation-stale";
+  return "user-creation-invalid";
+}
+
 export async function createUserAction(formData: FormData) {
-  const actor = await requirePermission("manage_users");
+  const actor = await requireSession();
+  if (!canAccess(actor, "manage_users")) redirect("/access-denied");
   const rawCompanyId = readFormText(formData, "companyId");
   const contextValue = readFormText(formData, "creationContext");
   const requestedContext = z.enum(["PLATFORM", "COMPANY", "DELIVERY"]).safeParse(contextValue);
@@ -109,14 +125,12 @@ export async function createUserAction(formData: FormData) {
     formData,
     "permissionsCustomized",
   ) === "true";
-  let input: z.infer<typeof userSchema>;
   const creationContext: "PLATFORM" | "COMPANY" | "DELIVERY" | "LEGACY" =
     requestedContext.success ? requestedContext.data : "LEGACY";
   const returnCompanyId = scopedIdentifierSchema.safeParse(rawCompanyId).success
     ? rawCompanyId
     : undefined;
-  try {
-    input = userSchema.parse({ email: readFormText(formData, "email"), displayName: readFormText(formData, "displayName"),
+  const parsedInput = userSchema.safeParse({ email: readFormText(formData, "email"), displayName: readFormText(formData, "displayName"),
       role: readFormText(formData, "role"),
       companyId: rawCompanyId || undefined,
       branchId: readFormText(formData, "branchId") || undefined,
@@ -130,48 +144,54 @@ export async function createUserAction(formData: FormData) {
         )
         : undefined,
     });
-    const definition = accountRoleDefinition(input.role);
-    if (!definition
-      || (creationContext === "PLATFORM" && (
-        definition.accountKind !== "PLATFORM"
-        || actor.accountKind !== "PLATFORM"
-        || !actor.isOwner
-      ))
-      || (creationContext === "DELIVERY" && (
-        definition.accountKind !== "DELIVERY"
-        || actor.accountKind !== "PLATFORM"
-        || !actor.isOwner
-      ))
-      || (creationContext === "COMPANY" && (
-        definition.accountKind !== "COMPANY" || !input.companyId
-      ))) {
-      throw new Error("The selected role is unavailable in this user workspace.");
-    }
-    validateProvisioningOrganizationShape(input);
-    if (input.permissions) {
-      if (input.role === "PLATFORM_OWNER") {
-        throw new Error("Protected Platform Owner permissions use canonical defaults.");
-      }
-      const selectedScope = input.departmentId
-        ? "DEPARTMENT"
-        : input.branchId ? "BRANCH" : definition.allowedScopes[0];
-      const roleDefaults = new Set(defaultPermissionsForRole(
-        input.role,
-        selectedScope,
-        input.role === "PLATFORM_OWNER",
-      ));
-      if (input.permissions.some((permission) => (
-        !roleDefaults.has(permission)
-        && !permissionIsCompatibleWithAccountKind(
-          permission,
-          definition.accountKind,
-        )
-      ))) {
-        throw new Error("A selected permission is incompatible with the account type.");
-      }
-    }
-  } catch {
+  if (!parsedInput.success) {
     redirect(`${routeFor(creationContext, returnCompanyId)}?notice=user-creation-invalid`);
+  }
+  const input: z.infer<typeof userSchema> = parsedInput.data;
+  const definition = accountRoleDefinition(input.role);
+  if (!definition
+    || (creationContext === "PLATFORM" && (
+      definition.accountKind !== "PLATFORM"
+      || actor.accountKind !== "PLATFORM"
+      || !actor.isOwner
+    ))
+    || (creationContext === "DELIVERY" && (
+      definition.accountKind !== "DELIVERY"
+      || actor.accountKind !== "PLATFORM"
+      || !actor.isOwner
+    ))
+    || (creationContext === "COMPANY" && (
+      definition.accountKind !== "COMPANY" || !input.companyId
+    ))) {
+    redirect(`${routeFor(creationContext, returnCompanyId)}?notice=user-creation-invalid`);
+  }
+  try {
+    validateProvisioningOrganizationShape(input);
+  } catch (error) {
+    if (!(error instanceof UserProvisioningValidationError)) throw error;
+    redirect(`${routeFor(creationContext, returnCompanyId)}?notice=user-creation-invalid`);
+  }
+  if (input.permissions) {
+    if (input.role === "PLATFORM_OWNER") {
+      redirect(`${routeFor(creationContext, returnCompanyId)}?notice=user-creation-invalid`);
+    }
+    const selectedScope = input.departmentId
+      ? "DEPARTMENT"
+      : input.branchId ? "BRANCH" : definition.allowedScopes[0];
+    const roleDefaults = new Set(defaultPermissionsForRole(
+      input.role,
+      selectedScope,
+      input.role === "PLATFORM_OWNER",
+    ));
+    if (input.permissions.some((permission) => (
+      !roleDefaults.has(permission)
+      && !permissionIsCompatibleWithAccountKind(
+        permission,
+        definition.accountKind,
+      )
+    ))) {
+      redirect(`${routeFor(creationContext, returnCompanyId)}?notice=user-creation-invalid`);
+    }
   }
   const destination = routeFor(creationContext, input.companyId);
   let invitation: AccountSetupInvitationResult;
@@ -180,6 +200,12 @@ export async function createUserAction(formData: FormData) {
   } catch (error) {
     if (error instanceof AccountSetupInvitationQuotaError) {
       redirect(`${destination}?notice=${invitationQuotaNotice(error)}`);
+    }
+    if (error instanceof UserCreationError) {
+      redirect(`${destination}?notice=${userCreationNotice(error)}`);
+    }
+    if (error instanceof AccountInvitationAccessUnavailableError) {
+      redirect(`${destination}?notice=user-creation-not-authorized`);
     }
     if (error instanceof AccessManagementUnavailableError) {
       redirect(`${destination}?notice=user-permission-selection-unavailable`);
@@ -205,8 +231,10 @@ export async function createCompanyUserAction(
   companyId: string,
   formData: FormData,
 ) {
+  const parsedCompanyId = scopedIdentifierSchema.safeParse(companyId);
+  if (!parsedCompanyId.success) redirect("/users?notice=user-creation-invalid");
   formData.set("creationContext", "COMPANY");
-  formData.set("companyId", scopedIdentifierSchema.parse(companyId));
+  formData.set("companyId", parsedCompanyId.data);
   formData.delete("supplierId");
   return createUserAction(formData);
 }
