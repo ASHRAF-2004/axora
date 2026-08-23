@@ -58,21 +58,27 @@ describe("current account invitation contract", () => {
   );
 
   it("allows every current platform invitation role in inspection and consumption", () => {
-    const source = readFileSync(
+    const accountSetup = readFileSync(
       new URL("../src/lib/account-setup.ts", import.meta.url),
+      "utf8",
+    );
+    const source = readFileSync(
+      new URL("../database/migrations/111_account_setup_link_reliability.sql", import.meta.url),
       "utf8",
     );
     const platformClauses = source.match(
       /intended_role\.role_key IN \(\s*'PLATFORM_OWNER'[\s\S]*?'TECHNICAL_SUPPORT'\s*\)/g,
     );
 
-    expect(platformClauses).toHaveLength(2);
+    expect(platformClauses).toHaveLength(1);
     for (const clause of platformClauses ?? []) {
       expect(clause).toContain("'HUMAN_RESOURCES_MANAGEMENT'");
       expect(clause).toContain("'CLIENT_ACCOUNT_MANAGER'");
       expect(clause).toContain("'PLATFORM_OPERATIONS'");
       expect(clause).toContain("'TECHNICAL_SUPPORT'");
     }
+    expect(accountSetup.match(/axora_account_setup_invitation_is_eligible/g))
+      .toHaveLength(2);
   });
 
   it("offers explicit creation-time customization while server-side overrides remain gated", () => {

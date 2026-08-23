@@ -22,8 +22,7 @@ const mocks = vi.hoisted(() => ({
   canAccess: vi.fn(() => true),
   createInvitedUser: vi.fn(),
   resendInvitation: vi.fn(),
-  recordDelivery: vi.fn(),
-  sendEmail: vi.fn(),
+  deliverInvitation: vi.fn(),
   revalidatePath: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`);
@@ -46,15 +45,14 @@ vi.mock("@/lib/account-setup", () => ({
   AccountSetupResendEligibilityError: mocks.ResendEligibilityError,
   createInvitedUser: mocks.createInvitedUser,
   resendAccountSetupInvitation: mocks.resendInvitation,
-  recordAccountSetupDelivery: mocks.recordDelivery,
 }));
 
 vi.mock("@/lib/access-management", () => ({
   AccessManagementUnavailableError: mocks.AccessUnavailableError,
 }));
 
-vi.mock("@/lib/account-email", () => ({
-  sendAccountSetupEmail: mocks.sendEmail,
+vi.mock("@/lib/account-invitation-delivery", () => ({
+  deliverAccountSetupInvitation: mocks.deliverInvitation,
 }));
 
 vi.mock("@/lib/user-isolation", () => ({
@@ -70,6 +68,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import {
+  createCompanyUserAction,
   createUserAction,
   resendAccountSetupInvitationAction,
 } from "@/app/(portal)/users/actions";
@@ -120,11 +119,10 @@ describe("account invitation actions", () => {
     mocks.canAccess.mockReturnValue(true);
     mocks.createInvitedUser.mockResolvedValue(invitation);
     mocks.resendInvitation.mockResolvedValue(invitation);
-    mocks.recordDelivery.mockResolvedValue(true);
+    mocks.deliverInvitation.mockResolvedValue("sent");
   });
 
   it("creates an invitation without accepting an administrator password", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
     const form = userForm();
     form.set("password", "this field must be ignored");
 
@@ -140,17 +138,33 @@ describe("account invitation actions", () => {
       preferredLocale: "ar",
       permissions: undefined,
     }), actor);
-    expect(mocks.sendEmail).toHaveBeenCalledWith(invitation);
-    expect(mocks.recordDelivery).toHaveBeenCalledWith(invitation.invitationId, {
-      succeeded: true,
-      providerMessageId: undefined,
-      providerName: undefined,
-      status: "sent",
-    });
+    expect(mocks.deliverInvitation).toHaveBeenCalledWith(invitation, actor);
+  });
+
+  it("uses the canonical delivery boundary from the Company Users creation page", async () => {
+    await expect(createCompanyUserAction(actor.companyId, userForm())).rejects.toThrow(
+      `REDIRECT:/companies/${actor.companyId}/users?notice=user-invited`,
+    );
+
+    expect(mocks.createInvitedUser).toHaveBeenCalledWith(expect.objectContaining({
+      role: "COMPANY_ADMIN",
+      companyId: actor.companyId,
+    }), actor);
+    expect(mocks.deliverInvitation).toHaveBeenCalledWith(invitation, actor);
+    expect(mocks.deliverInvitation).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a recoverable Company lifecycle synchronization failure", async () => {
+    mocks.deliverInvitation.mockResolvedValue("sent-lifecycle-sync-failed");
+
+    await expect(createCompanyUserAction(actor.companyId, userForm())).rejects.toThrow(
+      `REDIRECT:/companies/${actor.companyId}/users?notice=user-created-lifecycle-sync-failed`,
+    );
+    expect(mocks.createInvitedUser).toHaveBeenCalledTimes(1);
+    expect(mocks.deliverInvitation).toHaveBeenCalledTimes(1);
   });
 
   it("does not turn unchanged role defaults into explicit permission overrides", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
     const form = userForm();
     form.append("permissions", "dashboard.view");
     form.append("permissions", "company.view");
@@ -167,7 +181,6 @@ describe("account invitation actions", () => {
   });
 
   it("passes only an explicitly customized permission selection", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
     const form = userForm();
     form.append("permissions", "dashboard.view");
     form.append("permissions", "company.view");
@@ -196,7 +209,7 @@ describe("account invitation actions", () => {
     await expect(createUserAction(form)).rejects.toThrow(
       "REDIRECT:/users?notice=user-permission-selection-unavailable",
     );
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.deliverInvitation).not.toHaveBeenCalled();
   });
 
   it("rejects the removed supplier actor before creating an account", async () => {
@@ -217,7 +230,7 @@ describe("account invitation actions", () => {
       "REDIRECT:/users?notice=user-creation-invalid",
     );
     expect(mocks.createInvitedUser).not.toHaveBeenCalled();
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.deliverInvitation).not.toHaveBeenCalled();
   });
 
   it("keeps invalid company-user feedback inside the fixed company workspace", async () => {
@@ -239,7 +252,6 @@ describe("account invitation actions", () => {
       isOwner: true,
     };
     mocks.requireSession.mockResolvedValue(owner);
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
     const form = new FormData();
     form.set("creationContext", "DELIVERY");
     form.set("email", "driver@example.test");
@@ -317,16 +329,12 @@ describe("account invitation actions", () => {
   });
 
   it("keeps the account and reports when email delivery is disabled", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: false, status: "disabled" });
+    mocks.deliverInvitation.mockResolvedValue("disabled");
 
     await expect(createUserAction(userForm())).rejects.toThrow(
       "REDIRECT:/users?notice=user-created-email-disabled",
     );
-    expect(mocks.recordDelivery).toHaveBeenCalledWith(invitation.invitationId, {
-      succeeded: false,
-      providerMessageId: undefined,
-      status: "disabled",
-    });
+    expect(mocks.deliverInvitation).toHaveBeenCalledWith(invitation, actor);
   });
 
   it("reports the administrator invitation quota without creating an account", async () => {
@@ -335,8 +343,7 @@ describe("account invitation actions", () => {
     await expect(createUserAction(userForm())).rejects.toThrow(
       "REDIRECT:/users?notice=user-invitation-quota-actor",
     );
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
-    expect(mocks.recordDelivery).not.toHaveBeenCalled();
+    expect(mocks.deliverInvitation).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -351,8 +358,7 @@ describe("account invitation actions", () => {
     await expect(createUserAction(userForm())).rejects.toThrow(
       `REDIRECT:/users?notice=${notice}`,
     );
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
-    expect(mocks.recordDelivery).not.toHaveBeenCalled();
+    expect(mocks.deliverInvitation).not.toHaveBeenCalled();
   });
 
   it("shows a local authorization notice for a stale or denied invitation scope", async () => {
@@ -363,7 +369,7 @@ describe("account invitation actions", () => {
     await expect(createUserAction(userForm())).rejects.toThrow(
       "REDIRECT:/users?notice=user-creation-not-authorized",
     );
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.deliverInvitation).not.toHaveBeenCalled();
   });
 
   it("redirects an actor without user-management access before provisioning", async () => {
@@ -376,7 +382,6 @@ describe("account invitation actions", () => {
   });
 
   it("sends one email when duplicate create submissions race", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
     mocks.createInvitedUser
       .mockResolvedValueOnce(invitation)
       .mockRejectedValueOnce(new UserCreationError("invitation-pending"));
@@ -392,13 +397,11 @@ describe("account invitation actions", () => {
       expect.stringContaining("REDIRECT:/users?notice=user-invited"),
       expect.stringContaining("REDIRECT:/users?notice=user-invitation-pending"),
     ]));
-    expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
-    expect(mocks.recordDelivery).toHaveBeenCalledTimes(1);
+    expect(mocks.deliverInvitation).toHaveBeenCalledTimes(1);
   });
 
   it("reports an unconfirmed outcome when delivery tracking cannot be saved", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
-    mocks.recordDelivery.mockRejectedValue(new Error("database unavailable"));
+    mocks.deliverInvitation.mockResolvedValue("unconfirmed");
 
     await expect(createUserAction(userForm())).rejects.toThrow(
       "REDIRECT:/users?notice=user-created-email-unconfirmed",
@@ -406,14 +409,13 @@ describe("account invitation actions", () => {
   });
 
   it("delegates exact target authorization to the resend transaction", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
 
     await expect(resendAccountSetupInvitationAction(
       { status: "idle" }, resendForm(),
     )).resolves.toEqual({ status: "success", code: "sent" });
 
     expect(mocks.resendInvitation).toHaveBeenCalledWith(invitation.userId, actor);
-    expect(mocks.sendEmail).toHaveBeenCalledWith(invitation);
+    expect(mocks.deliverInvitation).toHaveBeenCalledWith(invitation, actor);
   });
 
   it("shows a safe notice when invitations are resent too quickly", async () => {
@@ -422,7 +424,7 @@ describe("account invitation actions", () => {
     await expect(resendAccountSetupInvitationAction(
       { status: "idle" }, resendForm(),
     )).resolves.toEqual({ status: "error", code: "cooldown" });
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.deliverInvitation).not.toHaveBeenCalled();
   });
 
   it("reports the company-wide invitation quota during resend", async () => {
@@ -431,11 +433,10 @@ describe("account invitation actions", () => {
     await expect(resendAccountSetupInvitationAction(
       { status: "idle" }, resendForm(),
     )).resolves.toEqual({ status: "error", code: "quota" });
-    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.deliverInvitation).not.toHaveBeenCalled();
   });
 
   it("queues one logical email when concurrent stale resends race", async () => {
-    mocks.sendEmail.mockResolvedValue({ succeeded: true, status: "sent" });
     mocks.resendInvitation
       .mockResolvedValueOnce(invitation)
       .mockRejectedValueOnce(new mocks.ResendEligibilityError("pending"));
@@ -449,7 +450,6 @@ describe("account invitation actions", () => {
       { status: "success", code: "sent" },
       { status: "error", code: "pending" },
     ]));
-    expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
-    expect(mocks.recordDelivery).toHaveBeenCalledTimes(1);
+    expect(mocks.deliverInvitation).toHaveBeenCalledTimes(1);
   });
 });

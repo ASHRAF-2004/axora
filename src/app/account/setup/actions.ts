@@ -21,7 +21,10 @@ export type AccountSetupInspectionState =
     expiresAt: string;
     locale: SupportedLocale;
   }
-  | { status: "invalid" | "unavailable" };
+  | {
+    status: "missing" | "malformed" | "invalid" | "expired" | "used"
+      | "revoked" | "unavailable";
+  };
 
 export interface AccountSetupCompletionState {
   status: "idle" | "error" | "invalid";
@@ -45,7 +48,7 @@ export async function inspectAccountSetupTokenAction(
         expiresAt: invitation.expiresAt,
         locale: invitation.locale,
       }
-      : { status: "invalid" };
+      : { status: invitation.reason };
   } catch {
     return { status: "unavailable" };
   }

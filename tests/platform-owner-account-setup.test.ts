@@ -37,7 +37,13 @@ describe("platform owner account setup lifecycle", () => {
       recipientName: "First Owner",
       recipientEmail: "first.owner@example.test",
       companyName: "Axora",
+      role: "PLATFORM_OWNER",
       expiresAt: "2026-08-03T00:00:00Z",
+      locale: "en",
+      eligible: true,
+      consumed: false,
+      revoked: false,
+      expired: false,
     }] });
     mocks.client.query.mockImplementation(async (sql: string) => {
       if (sql.includes('AS "invitationId"')) {
@@ -79,8 +85,10 @@ describe("platform owner account setup lifecycle", () => {
       String(sql).includes("FOR UPDATE OF i,u")
     )?.[0];
     expect(String(lockedSql)).toContain("u.company_id IS NOT DISTINCT FROM i.company_id");
-    expect(String(lockedSql)).toContain("intended_role.role_key IN");
-    expect(String(lockedSql)).toContain("u.is_owner=(intended_role.role_key='PLATFORM_OWNER')");
+    expect(String(lockedSql)).toContain(
+      "axora_account_setup_invitation_is_eligible(i.id,now())",
+    );
+    expect(String(lockedSql)).toContain("intended_assignment.revoked_at IS NULL");
   });
 
   it("authorizes a company-less owner invitation using only its token digest", async () => {

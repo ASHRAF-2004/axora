@@ -1,13 +1,12 @@
 "use server";
 
 import { requirePermission, requireSession } from "@/lib/auth";
-import { sendAccountSetupEmail } from "@/lib/account-email";
 import {
   AccountSetupInvitationQuotaError,
   createInvitedUser,
-  recordAccountSetupDelivery,
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
+import { deliverAccountSetupInvitation } from "@/lib/account-invitation-delivery";
 import {
   activateCompany,
   CompanyCreationCommandConflictError,
@@ -237,47 +236,17 @@ export async function inviteCompanyAdministratorAction(formData: FormData) {
     throw error;
   }
 
-  let delivery: Awaited<ReturnType<typeof sendAccountSetupEmail>>;
-  try {
-    delivery = await sendAccountSetupEmail(invitation);
-  } catch {
-    delivery = { succeeded: false, status: "failed" };
-  }
-  let deliveryRecorded = false;
-  try {
-    await recordAccountSetupDelivery(invitation.invitationId, {
-      succeeded: delivery.succeeded,
-      providerMessageId: delivery.providerMessageId,
-      providerName: delivery.providerName,
-      status: delivery.status,
-    });
-    deliveryRecorded = true;
-  } catch {
-    deliveryRecorded = false;
-  }
-  if (delivery.succeeded && deliveryRecorded) {
-    try {
-      await syncCompanyAdministrator(
-        actor,
-        input.companyId,
-        "Secure Company Administrator invitation delivered",
-      );
-    } catch (error) {
-      console.error(JSON.stringify({
-        event: "company_administrator_lifecycle_sync_failed",
-        errorName: error instanceof Error ? error.name : "UnknownError",
-      }));
-      companyUsersRedirect("user-created-lifecycle-sync-failed", input.companyId);
-    }
-  }
+  const delivery = await deliverAccountSetupInvitation(invitation, actor);
   companyUsersRedirect(
-    delivery.succeeded && deliveryRecorded
+    delivery === "sent"
       ? "user-invited"
-      : !deliveryRecorded
-        ? "user-created-email-unconfirmed"
-        : delivery.status === "disabled"
-          ? "user-created-email-disabled"
-          : "user-created-email-failed",
+      : delivery === "sent-lifecycle-sync-failed"
+        ? "user-created-lifecycle-sync-failed"
+        : delivery === "unconfirmed"
+          ? "user-created-email-unconfirmed"
+          : delivery === "disabled"
+            ? "user-created-email-disabled"
+            : "user-created-email-failed",
     input.companyId,
   );
 }

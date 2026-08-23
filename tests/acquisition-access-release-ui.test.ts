@@ -75,11 +75,16 @@ describe("acquisition and account access release UI", () => {
       new URL("../src/lib/account-invitation-isolation.ts", import.meta.url),
       "utf8",
     );
+    const reliability = readFileSync(
+      new URL("../database/migrations/111_account_setup_link_reliability.sql", import.meta.url),
+      "utf8",
+    );
     expect(accountSetup).toContain("intended_department_id");
     expect(accountSetup).toContain("department_assignments");
     expect(accountSetup).toContain("departmentId: invitation.departmentId");
     expect(accountSetup).toContain("resolved.role === \"COMPANY_ADMIN\"");
-    expect(accountSetup).toContain("'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED'");
+    expect(reliability).toContain("'ONBOARDING','PORTAL_DRAFT','COMPANY_REVIEW'");
+    expect(reliability).toContain("'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED'");
     expect(isolation).toContain("resolved.departmentId ?? null");
     expect(isolation).toContain("snapshot.scope.departmentId === resolved.departmentId");
   });

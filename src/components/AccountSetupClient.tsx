@@ -61,16 +61,24 @@ export function readAndClearSetupTokenFragment(
 type ValidInspection = Extract<AccountSetupInspectionState, { status: "valid" }>;
 type SetupView =
   | { status: "loading" }
-  | { status: "invalid" | "unavailable" }
+  | {
+    status: "missing" | "malformed" | "invalid" | "expired" | "used"
+      | "revoked" | "unavailable";
+  }
   | { status: "valid"; rawToken: string; invitation: ValidInspection };
 
 const setupCopy = {
   en: {
-    accountSetup: "Account setup", retryTitle: "Try again shortly", newLinkTitle: "Request a new link",
-    unavailable: "Axora could not verify this setup link right now.", invalid: "This setup link is missing, invalid, expired, or has already been used.",
+    accountSetup: "Account setup", retryTitle: "Try again shortly",
+    missingTitle: "Open your invitation email", invalidTitle: "Invitation unavailable",
+    expiredTitle: "Invitation expired", usedTitle: "Setup already completed", revokedTitle: "Invitation replaced",
+    unavailable: "Axora could not verify this setup link right now.", missing: "This page needs the private link from your invitation email.",
+    invalid: "This setup link is invalid or unavailable.", expired: "This setup invitation has expired.",
+    used: "This setup invitation has already been completed.", revoked: "A newer invitation has replaced this setup link.",
     unavailableHelp: "Reopen the newest invitation email in a moment. If the problem continues, contact your administrator.",
-    invalidHelp: "Open the newest invitation directly from your email, or ask your company administrator to resend it.",
-    setupHelp: "Setup help", signIn: "Return to sign in", welcome: (company: string) => `Welcome to ${company}`,
+    invalidHelp: "Open the newest invitation directly from your email, or ask your administrator to resend it.",
+    usedHelp: "Sign in with the password you created. If you did not complete setup, contact your administrator.",
+    setupHelp: "Contact Axora", signIn: "Return to sign in", welcome: (company: string) => `Welcome to ${company}`,
     createTitle: "Create your password", password: "New password", confirm: "Confirm password",
     displayName: "Your display name", role: "Assigned access", terms: "I accept the Axora account terms.", privacy: "I acknowledge the Axora privacy notice.",
     showPassword: "Show password", hidePassword: "Hide password",
@@ -82,11 +90,16 @@ const setupCopy = {
     errors: { password_mismatch: "The passwords do not match. Enter the same password in both fields.", invalid_link: "This setup link is invalid, expired, or has already been used.", password_policy: "Use 15–128 Unicode characters. Your password is never truncated.", policy_required: "Accept the account terms and privacy notice to activate this invitation.", save_failed: "Axora could not save your password. Your link was not used; please try again." },
   },
   ar: {
-    accountSetup: "إعداد الحساب", retryTitle: "حاول بعد قليل", newLinkTitle: "اطلب رابطًا جديدًا",
-    unavailable: "تعذر على Axora التحقق من رابط الإعداد الآن.", invalid: "رابط الإعداد مفقود أو غير صالح أو منتهي الصلاحية أو سبق استخدامه.",
+    accountSetup: "إعداد الحساب", retryTitle: "حاول بعد قليل",
+    missingTitle: "افتح رسالة الدعوة", invalidTitle: "الدعوة غير متاحة",
+    expiredTitle: "انتهت صلاحية الدعوة", usedTitle: "اكتمل إعداد الحساب", revokedTitle: "تم استبدال الدعوة",
+    unavailable: "تعذر على Axora التحقق من رابط الإعداد الآن.", missing: "تحتاج هذه الصفحة إلى الرابط الخاص الموجود في رسالة الدعوة.",
+    invalid: "رابط الإعداد غير صالح أو غير متاح.", expired: "انتهت صلاحية دعوة الإعداد هذه.",
+    used: "تم إكمال دعوة الإعداد هذه مسبقًا.", revoked: "استبدلت دعوة أحدث رابط الإعداد هذا.",
     unavailableHelp: "افتح أحدث رسالة دعوة بعد قليل. إذا استمرت المشكلة، تواصل مع مديرك.",
-    invalidHelp: "افتح أحدث دعوة مباشرة من بريدك أو اطلب من مدير الشركة إعادة إرسالها.",
-    setupHelp: "مساعدة الإعداد", signIn: "العودة إلى تسجيل الدخول", welcome: (company: string) => `مرحبًا بك في ${company}`,
+    invalidHelp: "افتح أحدث دعوة مباشرة من بريدك أو اطلب من مديرك إعادة إرسالها.",
+    usedHelp: "سجّل الدخول بكلمة المرور التي أنشأتها. إذا لم تُكمل الإعداد، فتواصل مع مديرك.",
+    setupHelp: "تواصل مع Axora", signIn: "العودة إلى تسجيل الدخول", welcome: (company: string) => `مرحبًا بك في ${company}`,
     createTitle: "أنشئ كلمة مرورك", password: "كلمة المرور الجديدة", confirm: "تأكيد كلمة المرور",
     displayName: "اسم العرض", role: "الوصول المسند", terms: "أوافق على شروط حساب Axora.", privacy: "أقر بإشعار خصوصية Axora.",
     showPassword: "إظهار كلمة المرور", hidePassword: "إخفاء كلمة المرور",
@@ -98,11 +111,16 @@ const setupCopy = {
     errors: { password_mismatch: "كلمتا المرور غير متطابقتين. أدخل كلمة المرور نفسها في الحقلين.", invalid_link: "رابط الإعداد غير صالح أو منتهي الصلاحية أو سبق استخدامه.", password_policy: "استخدم من 15 إلى 128 محرف Unicode. لا يتم اقتطاع كلمة المرور.", policy_required: "وافق على شروط الحساب وإشعار الخصوصية لتفعيل الدعوة.", save_failed: "تعذر على Axora حفظ كلمة المرور. لم يُستخدم الرابط؛ حاول مرة أخرى." },
   },
   ms: {
-    accountSetup: "Persediaan akaun", retryTitle: "Cuba lagi sebentar lagi", newLinkTitle: "Minta pautan baharu",
-    unavailable: "Axora tidak dapat mengesahkan pautan persediaan ini sekarang.", invalid: "Pautan persediaan ini tiada, tidak sah, telah tamat tempoh atau telah digunakan.",
+    accountSetup: "Persediaan akaun", retryTitle: "Cuba lagi sebentar lagi",
+    missingTitle: "Buka e-mel jemputan anda", invalidTitle: "Jemputan tidak tersedia",
+    expiredTitle: "Jemputan telah tamat tempoh", usedTitle: "Persediaan telah selesai", revokedTitle: "Jemputan telah diganti",
+    unavailable: "Axora tidak dapat mengesahkan pautan persediaan ini sekarang.", missing: "Halaman ini memerlukan pautan peribadi daripada e-mel jemputan anda.",
+    invalid: "Pautan persediaan ini tidak sah atau tidak tersedia.", expired: "Jemputan persediaan ini telah tamat tempoh.",
+    used: "Jemputan persediaan ini telah pun diselesaikan.", revoked: "Jemputan yang lebih baharu telah menggantikan pautan persediaan ini.",
     unavailableHelp: "Buka semula e-mel jemputan terbaharu sebentar lagi. Jika masalah berterusan, hubungi pentadbir anda.",
-    invalidHelp: "Buka jemputan terbaharu terus daripada e-mel, atau minta pentadbir syarikat menghantarnya semula.",
-    setupHelp: "Bantuan persediaan", signIn: "Kembali ke log masuk", welcome: (company: string) => `Selamat datang ke ${company}`,
+    invalidHelp: "Buka jemputan terbaharu terus daripada e-mel, atau minta pentadbir anda menghantarnya semula.",
+    usedHelp: "Log masuk dengan kata laluan yang anda cipta. Jika anda tidak melengkapkan persediaan, hubungi pentadbir anda.",
+    setupHelp: "Hubungi Axora", signIn: "Kembali ke log masuk", welcome: (company: string) => `Selamat datang ke ${company}`,
     createTitle: "Cipta kata laluan anda", password: "Kata laluan baharu", confirm: "Sahkan kata laluan",
     displayName: "Nama paparan anda", role: "Akses yang ditugaskan", terms: "Saya menerima terma akaun Axora.", privacy: "Saya mengakui notis privasi Axora.",
     showPassword: "Tunjukkan kata laluan", hidePassword: "Sembunyikan kata laluan",
@@ -127,24 +145,38 @@ function formatExpiry(value: string, locale: SupportedLocale) {
   }).format(new Date(value));
 }
 
-function SetupMessageCard({ unavailable = false, locale }: { unavailable?: boolean; locale: SupportedLocale }) {
+function SetupMessageCard({ status, locale }: {
+  status: Exclude<SetupView["status"], "loading" | "valid">;
+  locale: SupportedLocale;
+}) {
   const copy = setupCopy[locale];
+  const unavailable = status === "unavailable";
+  const title = unavailable ? copy.retryTitle
+    : status === "missing" ? copy.missingTitle
+      : status === "expired" ? copy.expiredTitle
+        : status === "used" ? copy.usedTitle
+          : status === "revoked" ? copy.revokedTitle
+            : copy.invalidTitle;
+  const message = unavailable ? copy.unavailable
+    : status === "missing" ? copy.missing
+      : status === "expired" ? copy.expired
+        : status === "used" ? copy.used
+          : status === "revoked" ? copy.revoked
+            : copy.invalid;
   return (
     <article className="login-card" aria-labelledby="invalid-setup-title" lang={locale} dir={LOCALE_NAMES[locale].dir}>
       <div className="login-icon"><KeyRound size={24} /></div>
       <p className="eyebrow">{copy.accountSetup}</p>
       <h2 id="invalid-setup-title">
-        {unavailable ? copy.retryTitle : copy.newLinkTitle}
+        {title}
       </h2>
       <div className="form-alert" role="alert">
-        {unavailable
-          ? copy.unavailable
-          : copy.invalid}
+        {message}
       </div>
       <p className="muted">
         {unavailable
           ? copy.unavailableHelp
-          : copy.invalidHelp}
+          : status === "used" ? copy.usedHelp : copy.invalidHelp}
       </p>
       <div className="public-info-actions">
         <Link className="button button-secondary" href={`/${locale}/contact`}>{copy.setupHelp}</Link>
@@ -245,12 +277,18 @@ export function AccountSetupClient({ initialLocale = "en" }: { initialLocale?: S
   useLayoutEffect(() => {
     let active = true;
     if (tokenRef.current === undefined) {
+      const fragmentPresent = window.location.hash.length > 0;
       tokenRef.current = readAndClearSetupTokenFragment(window.location, window.history);
+      if (!tokenRef.current) {
+        inspectionRef.current = Promise.resolve({
+          status: fragmentPresent ? "malformed" : "missing",
+        });
+      }
     }
     const rawToken = tokenRef.current;
     inspectionRef.current ??= rawToken
       ? inspectAccountSetupTokenAction(rawToken)
-      : Promise.resolve({ status: "invalid" });
+      : Promise.resolve({ status: "missing" });
 
     void inspectionRef.current
       .then((inspection) => {
@@ -288,7 +326,7 @@ export function AccountSetupClient({ initialLocale = "en" }: { initialLocale?: S
     );
   }
   if (view.status !== "valid") {
-    return <SetupMessageCard unavailable={view.status === "unavailable"} locale={initialLocale} />;
+    return <SetupMessageCard status={view.status} locale={initialLocale} />;
   }
   return <AccountSetupForm invitation={view.invitation} rawToken={view.rawToken} />;
 }

@@ -59,6 +59,7 @@ describe("public account setup action", () => {
       recipientName: "New User",
       recipientEmail: "new@example.test",
       companyName: "Example Company",
+      role: "COMPANY_ADMIN",
       expiresAt: "2026-08-03T00:00:00.000Z",
       locale: "ms",
     });
@@ -68,11 +69,32 @@ describe("public account setup action", () => {
       recipientName: "New User",
       recipientEmail: "new@example.test",
       companyName: "Example Company",
+      role: "COMPANY_ADMIN",
       expiresAt: "2026-08-03T00:00:00.000Z",
       locale: "ms",
     });
     expect(mocks.inspect).toHaveBeenCalledWith(rawToken);
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it.each(["malformed", "invalid", "expired", "used", "revoked"] as const)(
+    "returns the controlled %s inspection state without account enumeration",
+    async (reason) => {
+      mocks.inspect.mockResolvedValue({ valid: false, reason });
+
+      await expect(inspectAccountSetupTokenAction(rawToken)).resolves.toEqual({
+        status: reason,
+      });
+      expect(mocks.redirect).not.toHaveBeenCalled();
+    },
+  );
+
+  it("distinguishes temporary inspection unavailability", async () => {
+    mocks.inspect.mockRejectedValue(new Error("database unavailable"));
+
+    await expect(inspectAccountSetupTokenAction(rawToken)).resolves.toEqual({
+      status: "unavailable",
+    });
   });
 
   it("consumes the single-use token then sends the recipient to sign in", async () => {
