@@ -1,15 +1,17 @@
 "use server";
 
-import { sendAccountSetupEmail } from "@/lib/account-email";
 import {
   AccountSetupInvitationQuotaError,
   AccountSetupResendEligibilityError,
   AccountSetupResendRateLimitError,
   createInvitedUser,
-  recordAccountSetupDelivery,
   resendAccountSetupInvitation,
   type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
+import {
+  deliverAccountSetupInvitation,
+  type AccountInvitationDeliveryOutcome,
+} from "@/lib/account-invitation-delivery";
 import { AccessManagementUnavailableError } from "@/lib/access-management";
 import { requirePermission, requireSession } from "@/lib/auth";
 import { AccountInvitationAccessUnavailableError } from "@/lib/account-invitation-isolation";
@@ -50,39 +52,15 @@ const userSchema = z.object({ email: z.email(), displayName: z.string().trim().m
   permissions: z.array(z.string().refine(isPermissionCode).transform((value) => value as PermissionCode)).max(120).optional(),
 });
 
-type InvitationDelivery = "sent" | "disabled" | "failed" | "unconfirmed";
-
-async function deliverInvitation(
-  invitation: AccountSetupInvitationResult,
-): Promise<InvitationDelivery> {
-  let delivery: Awaited<ReturnType<typeof sendAccountSetupEmail>>;
-  try {
-    delivery = await sendAccountSetupEmail(invitation);
-  } catch {
-    delivery = { succeeded: false, status: "failed" };
-  }
-
-  try {
-    await recordAccountSetupDelivery(invitation.invitationId, {
-      succeeded: delivery.succeeded,
-      providerMessageId: delivery.providerMessageId,
-      providerName: delivery.providerName,
-      status: delivery.status,
-    });
-  } catch {
-    return "unconfirmed";
-  }
-
-  if (delivery.succeeded) return "sent";
-  return delivery.status === "disabled" ? "disabled" : "failed";
-}
-
 function invitationNotice(
-  delivery: InvitationDelivery,
+  delivery: AccountInvitationDeliveryOutcome,
   operation: "created" | "resent",
 ) {
   if (operation === "created") {
     if (delivery === "sent") return "user-invited";
+    if (delivery === "sent-lifecycle-sync-failed") {
+      return "user-created-lifecycle-sync-failed";
+    }
     if (delivery === "disabled") return "user-created-email-disabled";
     if (delivery === "unconfirmed") return "user-created-email-unconfirmed";
     return "user-created-email-failed";
@@ -212,7 +190,7 @@ export async function createUserAction(formData: FormData) {
     }
     throw error;
   }
-  const delivery = await deliverInvitation(invitation);
+  const delivery = await deliverAccountSetupInvitation(invitation, actor);
   revalidatePath("/users");
   if (input.companyId) revalidatePath(`/companies/${input.companyId}/users`);
   redirect(`${destination}?notice=${invitationNotice(delivery, "created")}`);
@@ -251,7 +229,8 @@ export async function createDeliveryUserAction(formData: FormData) {
 export type InvitationResendActionState = {
   status: "idle" | "success" | "error";
   code?: "sent" | "disabled" | "failed" | "unconfirmed" | "pending"
-    | "delivered" | "cooldown" | "hourly" | "quota" | "ineligible";
+    | "delivered" | "cooldown" | "hourly" | "quota" | "ineligible"
+    | "lifecycle_sync_failed";
 };
 
 export async function resendAccountSetupInvitationAction(
@@ -276,11 +255,13 @@ export async function resendAccountSetupInvitationAction(
     }
     return { status: "error", code: "ineligible" };
   }
-  const delivery = await deliverInvitation(invitation);
+  const delivery = await deliverAccountSetupInvitation(invitation, actor);
   revalidatePath("/users");
   return {
     status: delivery === "sent" ? "success" : "error",
-    code: delivery,
+    code: delivery === "sent-lifecycle-sync-failed"
+      ? "lifecycle_sync_failed"
+      : delivery,
   };
 }
 

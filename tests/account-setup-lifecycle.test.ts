@@ -81,7 +81,7 @@ describe("account setup transactional lifecycle", () => {
       userId: "user-id",
       recipientName: "Pending User",
       recipientEmail: "pending@example.test",
-      role: "COMPANY_APPROVER",
+      role: "COMPANY_ADMIN",
       roleId: "normalized-role-id",
       accountKind: "COMPANY",
       scopeType: "COMPANY",
@@ -463,7 +463,7 @@ describe("account setup transactional lifecycle", () => {
           userId: "user-id",
           recipientName: "Pending User",
           recipientEmail: "pending@example.test",
-          role: "COMPANY_APPROVER",
+          role: "COMPANY_ADMIN",
           roleId: "normalized-role-id",
           accountKind: "COMPANY",
           scopeType: "COMPANY",
@@ -487,6 +487,9 @@ describe("account setup transactional lifecycle", () => {
       }
       if (sql.includes("UPDATE account_setup_invitations")) {
         return { rowCount: 1, rows: [] };
+      }
+      if (sql.includes("axora_complete_company_administrator_setup")) {
+        return { rowCount: 1, rows: [{ completed: true }] };
       }
       if (sql.includes("SELECT id::text FROM roles")) {
         return { rowCount: 1, rows: [{ id: "normalized-role-id" }] };
@@ -597,8 +600,13 @@ describe("account setup transactional lifecycle", () => {
       recipientName: "Pending User",
       recipientEmail: "pending@example.test",
       companyName: "Example Company",
+      role: "COMPANY_APPROVER",
       expiresAt: "2026-08-03T00:00:00Z",
       locale: "ar",
+      eligible: true,
+      consumed: false,
+      revoked: false,
+      expired: false,
     }] });
     mocks.client.query.mockImplementation(async (sql: string) => {
       if (sql.includes("SELECT i.id::text AS \"invitationId\"")) {
@@ -643,11 +651,12 @@ describe("account setup transactional lifecycle", () => {
     expect(user).toMatchObject({ id: "user-id", authVersion: 2 });
     expect(mocks.query.mock.calls[0]?.[1]).toEqual([
       expect.stringMatching(/^[0-9a-f]{64}$/),
-      PENDING_ACCOUNT_PASSWORD_HASH,
     ]);
     const lockedInvitationCall = mocks.client.query.mock.calls.find(([sql]) =>
       String(sql).includes("FOR UPDATE OF i,u"));
-    expect(lockedInvitationCall?.[1]?.[1]).toBe(PENDING_ACCOUNT_PASSWORD_HASH);
+    expect(lockedInvitationCall?.[1]).toEqual([
+      expect.stringMatching(/^[0-9a-f]{64}$/),
+    ]);
     expect(mocks.client.query.mock.calls.some(([sql, parameters]) =>
       String(sql).includes("set_config('axora.user_id'")
       && parameters?.[0] === "user-id")).toBe(true);
@@ -670,6 +679,8 @@ describe("account setup transactional lifecycle", () => {
     expect(completedProfile?.[1]).toEqual(["user-id", "Pending User", "ar"]);
     expect(String(userUpdate?.[0])).toContain("account_status='ACTIVE'");
     expect(String(userUpdate?.[0])).toContain("email_verified_at=COALESCE");
+    expect(mocks.client.query.mock.calls.some(([sql]) =>
+      String(sql).includes("axora_complete_company_administrator_setup"))).toBe(false);
     const membership = mocks.client.query.mock.calls.find(([sql]) =>
       String(sql).includes("INSERT INTO company_memberships"));
     expect(membership?.[1]).toEqual(["user-id", actor.companyId]);

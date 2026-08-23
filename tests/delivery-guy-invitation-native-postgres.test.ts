@@ -3,11 +3,14 @@ import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   authorizeAccountSetupDelivery,
+  consumeAccountSetupToken,
   createInvitedUser,
   inspectAccountSetupToken,
   recordAccountSetupDelivery,
 } from "@/lib/account-setup";
 import type { AuthenticatedSessionUser } from "@/lib/auth";
+import { authenticate } from "@/lib/auth";
+import { verifyPassword } from "@/lib/password-policy";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import {
   defaultPermissionsForRole,
@@ -153,6 +156,17 @@ nativeDescribe("Delivery Guy invitation native PostgreSQL regression", () => {
     expect(invitation.userId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(invitation.invitationId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(invitation.rawToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+
+    await expect(authorizeAccountSetupDelivery(
+      invitation.invitationId,
+      invitation.rawToken,
+    )).resolves.toBe(true);
+    await expect(recordAccountSetupDelivery(invitation.invitationId, {
+      succeeded: true,
+      providerMessageId: "native-delivery-provider-fixture",
+      providerName: "resend",
+      status: "sent",
+    })).resolves.toBe(true);
 
     const state = await admin.query<{
       userId: string;
@@ -356,10 +370,87 @@ nativeDescribe("Delivery Guy invitation native PostgreSQL regression", () => {
       companyId,
       eventKey: "company.administrator_invited",
     });
-    const lifecycle = await admin.query<{ status: string }>(`
-      SELECT lifecycle_status AS status FROM public.companies WHERE id=$1
-    `, [companyId]);
-    expect(lifecycle.rows[0]?.status).toBe("COMPANY_ADMINISTRATOR_INVITED");
+    await expect(inspectAccountSetupToken(invitation.rawToken)).resolves.toMatchObject({
+      valid: true,
+      role: "COMPANY_ADMIN",
+      locale: "ar",
+    });
+
+    const password = "Native-First-Admin-Setup-Password!2026";
+    const completions = await Promise.allSettled([
+      consumeAccountSetupToken(invitation.rawToken, password, {
+        displayName: "Native Company Administrator",
+        locale: "ar",
+        termsAccepted: true,
+        privacyAccepted: true,
+      }),
+      consumeAccountSetupToken(invitation.rawToken, password, {
+        displayName: "Native Company Administrator",
+        locale: "ar",
+        termsAccepted: true,
+        privacyAccepted: true,
+      }),
+    ]);
+    expect(completions.filter((outcome) => outcome.status === "fulfilled"))
+      .toHaveLength(1);
+    expect(completions.filter((outcome) => outcome.status === "rejected"))
+      .toHaveLength(1);
+
+    const lifecycle = await admin.query<{
+      status: string;
+      accountStatus: string;
+      membershipStatus: string;
+      consumed: number;
+      assignments: number;
+    }>(`
+      SELECT company.lifecycle_status AS status,
+        account.account_status AS "accountStatus",
+        membership.status AS "membershipStatus",
+        (SELECT count(*)::int FROM public.account_setup_invitations current
+          WHERE current.id=$2 AND current.consumed_at IS NOT NULL) AS consumed,
+        (SELECT count(*)::int FROM public.role_assignments current
+          WHERE current.user_id=$3 AND current.active AND current.revoked_at IS NULL)
+          AS assignments
+      FROM public.companies company
+      JOIN public.users account ON account.id=$3
+      JOIN public.company_memberships membership
+        ON membership.user_id=account.id AND membership.company_id=company.id
+      WHERE company.id=$1
+    `, [companyId, invitation.invitationId, invitation.userId]);
+    expect(lifecycle.rows[0]).toEqual({
+      status: "COMPANY_ADMINISTRATOR_ACTIVATED",
+      accountStatus: "ACTIVE",
+      membershipStatus: "ACTIVE",
+      consumed: 1,
+      assignments: 1,
+    });
+    const credential = await admin.query<{ passwordHash: string }>(`
+      SELECT password_hash AS "passwordHash"
+      FROM public.account_credentials WHERE user_id=$1
+    `, [invitation.userId]);
+    await expect(verifyPassword(
+      password,
+      credential.rows[0]?.passwordHash ?? "invalid",
+    )).resolves.toBe(true);
+    const previousSessionSecret = process.env.SESSION_SECRET;
+    const authenticated = await (async () => {
+      process.env.SESSION_SECRET = previousSessionSecret
+        ?? "public-native-postgres-session-secret-fixture";
+      try {
+        return await authenticate(email, password, {
+          networkIdentifier: "127.0.0.1",
+        });
+      } finally {
+        if (previousSessionSecret === undefined) delete process.env.SESSION_SECRET;
+        else process.env.SESSION_SECRET = previousSessionSecret;
+      }
+    })();
+    expect(authenticated).toMatchObject({
+      id: invitation.userId,
+      role: "COMPANY_ADMIN",
+      companyId,
+      scopeType: "COMPANY",
+    });
   }, 30_000);
 
   it("creates Platform and later active-Company users without an assignment claim", async () => {

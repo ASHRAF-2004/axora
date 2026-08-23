@@ -82,6 +82,24 @@ describe("active normalized identity resolution", () => {
     }
   });
 
+  it("admits only the activated Company Administrator before Company activation", () => {
+    expect(resolveActiveIdentityCandidates([companyCandidate({
+      legacyRole: "ADMIN",
+      assignedRole: "COMPANY_ADMIN",
+      scopeCompanyActive: false,
+      scopeCompanyLifecycleStatus: "COMPANY_ADMINISTRATOR_ACTIVATED",
+    })])).toMatchObject({
+      role: "COMPANY_ADMIN",
+      companyId: companyOne,
+      scopeType: "COMPANY",
+    });
+    expect(resolveActiveIdentityCandidates([companyCandidate({
+      assignedRole: "COMPANY_APPROVER",
+      scopeCompanyActive: false,
+      scopeCompanyLifecycleStatus: "COMPANY_ADMINISTRATOR_ACTIVATED",
+    })])).toBeNull();
+  });
+
   it("does not reuse one tenant's legacy membership for another tenant", () => {
     const crossTenant = companyCandidate({
       companyId: companyTwo,

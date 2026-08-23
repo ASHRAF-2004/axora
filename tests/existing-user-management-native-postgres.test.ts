@@ -2,10 +2,13 @@ import { createHash, randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  authorizeAccountSetupDelivery,
   createInvitedUser,
   consumeAccountSetupToken,
   inspectAccountSetupToken,
+  recordAccountSetupDelivery,
   resendAccountSetupInvitation,
+  type AccountSetupInvitationResult,
 } from "@/lib/account-setup";
 import {
   removeUserPermissionOverride,
@@ -29,6 +32,20 @@ function requiredEnvironment(name: string) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required for native PostgreSQL integration.`);
   return value;
+}
+
+async function confirmFixtureDelivery(invitation: AccountSetupInvitationResult) {
+  await expect(authorizeAccountSetupDelivery(
+    invitation.invitationId,
+    invitation.rawToken,
+  )).resolves.toBe(true);
+  await expect(recordAccountSetupDelivery(invitation.invitationId, {
+    succeeded: true,
+    providerMessageId: `native-provider-${invitation.invitationId}`,
+    providerName: "resend",
+    status: "sent",
+  })).resolves.toBe(true);
+  return invitation;
 }
 
 interface OrganizationFixture {
@@ -583,10 +600,10 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
 
   it("revokes stale pending role intent and creates exactly one new valid invitation through existing resend", async () => {
     if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
-    const invited = await createInvitedUser({
+    const invited = await confirmFixtureDelivery(await createInvitedUser({
       email: `prompt5-hrm-${randomUUID()}@example.test`,displayName: "Prompt 5 Pending HRM",
       role: "HUMAN_RESOURCES_MANAGEMENT",preferredLocale: "en",
-    }, owner);
+    }, owner));
     const current = await activeAssignment(invited.userId);
     expect((await inspectAccountSetupToken(invited.rawToken)).valid).toBe(true);
     const changed = await replaceUserRoleScope(owner, {
@@ -598,7 +615,9 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
     const pending = await loadAccessAdministration(owner,invited.userId,changed.roleAssignmentId);
     expect(pending.identity).toMatchObject({ accountStatus: "INVITED",setupCompleted: false });
     expect(pending.assignments[0]).toMatchObject({ roleKey: "CLIENT_ACCOUNT_MANAGER",scope: { type: "PLATFORM" } });
-    const replacement = await resendAccountSetupInvitation(invited.userId,owner);
+    const replacement = await confirmFixtureDelivery(
+      await resendAccountSetupInvitation(invited.userId,owner),
+    );
     expect(replacement.rawToken).not.toBe(invited.rawToken);
     expect((await inspectAccountSetupToken(invited.rawToken)).valid).toBe(false);
     expect(await inspectAccountSetupToken(replacement.rawToken)).toMatchObject({ valid: true,role: "CLIENT_ACCOUNT_MANAGER" });
@@ -612,11 +631,11 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
 
   it("invalidates stale pending scope intent and binds replacement invitation to the new department", async () => {
     if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
-    const invited = await createInvitedUser({
+    const invited = await confirmFixtureDelivery(await createInvitedUser({
       email: `prompt5-scope-${randomUUID()}@example.test`,displayName: "Prompt 5 Pending Requester",
       role: "REQUESTER",companyId: organizationA.companyId,branchId: organizationA.branchOneId,
       preferredLocale: "en",
-    }, owner);
+    }, owner));
     const current = await activeAssignment(invited.userId);
     const changed = await replaceUserRoleScope(owner, {
       commandId: randomUUID(),targetUserId: invited.userId,currentRoleAssignmentId: current.current.id,
@@ -626,7 +645,9 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
       },reason: "Move pending requester to one department",
     });
     expect((await inspectAccountSetupToken(invited.rawToken)).valid).toBe(false);
-    const replacement = await resendAccountSetupInvitation(invited.userId,owner);
+    const replacement = await confirmFixtureDelivery(
+      await resendAccountSetupInvitation(invited.userId,owner),
+    );
     expect((await inspectAccountSetupToken(replacement.rawToken)).valid).toBe(true);
     const intent = await admin.query<{ scopeType: string; branchId: string; departmentId: string }>(
       `SELECT intended_scope_type AS "scopeType",intended_branch_id::text AS "branchId",
@@ -641,11 +662,11 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
   }, 30_000);
 
   it("does not let an old setup bearer alter role-default permissions while invited", async () => {
-    const invited = await createInvitedUser({
+    const invited = await confirmFixtureDelivery(await createInvitedUser({
       email: `prompt5-permissions-${randomUUID()}@example.test`,displayName: "Prompt 5 Permission Invite",
       role: "REQUESTER",companyId: organizationA.companyId,branchId: organizationA.branchOneId,
       preferredLocale: "en",
-    }, owner);
+    }, owner));
     const current = await activeAssignment(invited.userId);
     const pending = await loadAccessAdministration(owner,invited.userId,current.current.id);
     const selected = pending.permissionOptions.filter((permission) => permission.effective)
@@ -664,10 +685,10 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
   }, 40_000);
 
   it("deactivation invalidates pending setup and reactivation cannot revive the old bearer", async () => {
-    const invited = await createInvitedUser({
+    const invited = await confirmFixtureDelivery(await createInvitedUser({
       email: `prompt5-deactivate-${randomUUID()}@example.test`,displayName: "Prompt 5 Pending Deactivation",
       role: "CLIENT_ACCOUNT_MANAGER",preferredLocale: "en",
-    }, owner);
+    }, owner));
     const before = await accountState(invited.userId);
     await setAuthorizedUserActive(invited.userId,false,owner);
     const suspended = await accountState(invited.userId);
@@ -676,7 +697,9 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
     expect((await inspectAccountSetupToken(invited.rawToken)).valid).toBe(false);
     await setAuthorizedUserActive(invited.userId,true,owner);
     expect((await inspectAccountSetupToken(invited.rawToken)).valid).toBe(false);
-    const replacement = await resendAccountSetupInvitation(invited.userId,owner);
+    const replacement = await confirmFixtureDelivery(
+      await resendAccountSetupInvitation(invited.userId,owner),
+    );
     expect((await inspectAccountSetupToken(replacement.rawToken)).valid).toBe(true);
   }, 30_000);
 
@@ -696,10 +719,10 @@ nativeDescribe("Prompt 5 existing-user management native PostgreSQL", () => {
 
   it("rolls a replacement back completely when failure occurs after new assignment insert", async () => {
     if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
-    const invited = await createInvitedUser({
+    const invited = await confirmFixtureDelivery(await createInvitedUser({
       email: `prompt5-rollback-${randomUUID()}@example.test`,displayName: "Prompt 5 Rollback Invite",
       role: "HUMAN_RESOURCES_MANAGEMENT",preferredLocale: "en",
-    }, owner);
+    }, owner));
     const current = await activeAssignment(invited.userId);
     const commandId = randomUUID();
     await admin.query(`

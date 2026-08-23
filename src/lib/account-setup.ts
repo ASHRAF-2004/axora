@@ -49,6 +49,7 @@ export interface AccountSetupInvitationResult {
   recipientName: string;
   recipientEmail: string;
   companyName: string;
+  companyId?: string;
   role: UserRole;
   branchName?: string;
   departmentName?: string;
@@ -69,7 +70,10 @@ export type AccountSetupTokenInspection =
     expiresAt: string;
     locale: SupportedLocale;
   }
-  | { valid: false };
+  | {
+    valid: false;
+    reason: "invalid" | "malformed" | "expired" | "used" | "revoked";
+  };
 
 const activationInputSchema = z.object({
   displayName: z.string().trim().min(2).max(200),
@@ -142,7 +146,9 @@ function validateDemoUserCreation(
 }
 
 export class AccountSetupTokenError extends Error {
-  constructor() {
+  constructor(
+    public readonly reason: "invalid" | "malformed" | "expired" | "used" | "revoked" = "invalid",
+  ) {
     super("This account setup link is invalid or has expired. Request a new invitation from your administrator.");
     this.name = "AccountSetupTokenError";
   }
@@ -365,6 +371,7 @@ export async function createInvitedUser(
       recipientName: resolved.displayName,
       recipientEmail: resolved.email,
       companyName: validated.organizationName,
+      companyId: resolved.companyId,
       role: resolved.role,
       branchName: validated.branchName,
       departmentName: validated.departmentName,
@@ -439,6 +446,7 @@ export async function createInvitedUser(
           recipientName: resolved.displayName,
           recipientEmail: resolved.email,
           companyName: validated.organizationName,
+          companyId: resolved.companyId,
           role: resolved.role,
           branchName: validated.branchName,
           departmentName: validated.departmentName,
@@ -638,6 +646,7 @@ export async function resendAccountSetupInvitation(
       recipientEmail: replaced.email,
       companyName: replaced.companyName ?? replaced.supplierName
         ?? (replaced.accountKind === "DELIVERY" ? "Axora delivery network" : "Axora"),
+      companyId: replaced.companyId,
       role: replaced.role,
       branchName: replaced.branchName,
       departmentName: replaced.departmentName,
@@ -725,6 +734,7 @@ export async function resendAccountSetupInvitation(
         recipientName: target.recipientName,
         recipientEmail: target.recipientEmail,
         companyName: target.companyName,
+        companyId: target.companyId,
         role: target.role,
         branchName: target.branchName,
         departmentName: target.departmentName,
@@ -927,7 +937,8 @@ export async function authorizeAccountSetupDelivery(
 export async function inspectAccountSetupToken(
   rawToken: string,
 ): Promise<AccountSetupTokenInspection> {
-  if (isDemoMode() || !validToken(rawToken)) return { valid: false };
+  if (isDemoMode()) return { valid: false, reason: "invalid" };
+  if (!validToken(rawToken)) return { valid: false, reason: "malformed" };
   const tokenHash = hashAccountSetupToken(rawToken);
   const result = await query<{
     recipientName: string;
@@ -937,6 +948,10 @@ export async function inspectAccountSetupToken(
     jobTitle?: string;
     expiresAt: string;
     locale: SupportedLocale;
+    eligible: boolean;
+    consumed: boolean;
+    revoked: boolean;
+    expired: boolean;
   }>(
     `SELECT u.display_name AS "recipientName",u.email AS "recipientEmail",
        COALESCE(c.name,supplier.name,
@@ -944,107 +959,39 @@ export async function inspectAccountSetupToken(
            THEN 'Axora delivery network' ELSE 'Axora' END
        ) AS "companyName",
        intended_role.role_key AS role,profile.job_title AS "jobTitle",
-       i.expires_at::text AS "expiresAt",i.email_locale AS locale
+       i.expires_at::text AS "expiresAt",i.email_locale AS locale,
+       public.axora_account_setup_invitation_is_eligible(i.id,now()) AS eligible,
+       i.consumed_at IS NOT NULL AS consumed,
+       i.revoked_at IS NOT NULL AS revoked,
+       i.expires_at<=now() AS expired
      FROM account_setup_invitations i
      JOIN users u ON u.id=i.user_id
-       AND u.company_id IS NOT DISTINCT FROM i.company_id
-       AND u.branch_id IS NOT DISTINCT FROM i.intended_branch_id
      LEFT JOIN user_profiles profile ON profile.user_id=u.id
      JOIN roles intended_role ON intended_role.id=i.intended_role_id
-     JOIN role_assignments intended_assignment
-       ON intended_assignment.user_id=u.id
-      AND intended_assignment.role_id=i.intended_role_id
-      AND intended_assignment.scope_type=i.intended_scope_type
-      AND intended_assignment.company_id IS NOT DISTINCT FROM i.company_id
-     AND intended_assignment.branch_id IS NOT DISTINCT FROM i.intended_branch_id
-      AND intended_assignment.department_id IS NOT DISTINCT FROM i.intended_department_id
-      AND intended_assignment.supplier_id IS NOT DISTINCT FROM i.intended_supplier_id
-      AND intended_assignment.active=true
      LEFT JOIN companies c ON c.id=i.company_id
      LEFT JOIN suppliers supplier ON supplier.id=i.intended_supplier_id
-     JOIN account_credentials credential
-       ON credential.user_id=u.id AND credential.password_hash IS NULL
-     LEFT JOIN company_memberships company_membership
-       ON company_membership.user_id=u.id
-      AND company_membership.company_id=i.company_id
-     LEFT JOIN branches b ON b.id=i.intended_branch_id
-       AND b.company_id=i.company_id
-     LEFT JOIN branch_assignments branch_assignment
-       ON branch_assignment.user_id=u.id
-      AND branch_assignment.company_id=i.company_id
-      AND branch_assignment.branch_id=i.intended_branch_id
-     LEFT JOIN LATERAL (
-       SELECT public.axora_auth_department_scope(
-         u.id,intended_assignment.id
-       ) AS snapshot
-     ) department_scope ON i.intended_scope_type='DEPARTMENT'
-     LEFT JOIN supplier_memberships supplier_membership
-       ON supplier_membership.user_id=u.id
-      AND supplier_membership.supplier_id=i.intended_supplier_id
-     LEFT JOIN delivery_agent_profiles driver ON driver.user_id=u.id
      WHERE i.token_hash=$1
-       AND i.consumed_at IS NULL AND i.revoked_at IS NULL
-       AND i.expires_at > now()
-       AND u.account_setup_completed_at IS NULL AND u.password_hash=$2
-       AND u.account_status='INVITED'
-       AND u.active=true
-       AND public.axora_account_setup_inviter_can_activate(i.id,now())
-       AND (
-         (i.intended_scope_type='PLATFORM'
-           AND u.account_kind='PLATFORM'
-           AND intended_role.role_key IN (
-             'PLATFORM_OWNER','HUMAN_RESOURCES_MANAGEMENT',
-             'CLIENT_ACCOUNT_MANAGER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
-           )
-           AND u.is_owner=(intended_role.role_key='PLATFORM_OWNER'))
-         OR (i.intended_scope_type='COMPANY'
-           AND u.account_kind='COMPANY' AND u.is_owner=false
-           AND c.lifecycle_status IN (
-             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
-             'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
-           ) AND company_membership.status='INVITED'
-           AND intended_role.role_key IN (
-             'COMPANY_ADMIN','COMPANY_APPROVER','FINANCE_REVIEWER',
-             'AUDITOR','RECEIVING_USER'
-           ))
-         OR (i.intended_scope_type='BRANCH'
-           AND u.account_kind='COMPANY' AND u.is_owner=false
-           AND c.lifecycle_status IN (
-             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
-             'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
-           ) AND b.active=true
-           AND company_membership.status='INVITED'
-           AND branch_assignment.status='ACTIVE'
-           AND intended_role.role_key IN (
-             'BRANCH_ADMIN','BRANCH_APPROVER','REQUESTER',
-             'FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
-           ))
-         OR (i.intended_scope_type='DEPARTMENT'
-           AND u.account_kind='COMPANY' AND u.is_owner=false
-           AND c.lifecycle_status IN (
-             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
-             'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
-           ) AND COALESCE(
-             (department_scope.snapshot->>'branchActive')::boolean,true
-           )
-           AND (department_scope.snapshot->>'departmentActive')::boolean=true
-           AND (department_scope.snapshot->>'branchId')::uuid
-             IS NOT DISTINCT FROM i.intended_branch_id
-           AND company_membership.status='INVITED'
-           AND (i.intended_branch_id IS NULL OR branch_assignment.status='ACTIVE')
-           AND department_scope.snapshot->>'assignmentStatus'='ACTIVE'
-           AND intended_role.role_key IN (
-             'DEPARTMENT_ADMIN','REQUESTER','FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
-           ))
-         OR (i.intended_scope_type='DELIVERY'
-           AND u.account_kind='DELIVERY' AND u.is_owner=false
-           AND driver.active=true
-           AND intended_role.role_key IN ('DELIVERY_DRIVER','DELIVERY_GUY'))
-       )
     `,
-    [tokenHash, PENDING_ACCOUNT_PASSWORD_HASH],
+    [tokenHash],
   );
-  return result.rows[0] ? { valid: true, ...result.rows[0] } : { valid: false };
+  const invitation = result.rows[0];
+  if (!invitation) return { valid: false, reason: "invalid" };
+  if (!invitation.eligible) {
+    if (invitation.consumed) return { valid: false, reason: "used" };
+    if (invitation.revoked) return { valid: false, reason: "revoked" };
+    if (invitation.expired) return { valid: false, reason: "expired" };
+    return { valid: false, reason: "invalid" };
+  }
+  return {
+    valid: true,
+    recipientName: invitation.recipientName,
+    recipientEmail: invitation.recipientEmail,
+    companyName: invitation.companyName,
+    role: invitation.role,
+    ...(invitation.jobTitle ? { jobTitle: invitation.jobTitle } : {}),
+    expiresAt: invitation.expiresAt,
+    locale: invitation.locale,
+  };
 }
 
 export async function consumeAccountSetupToken(
@@ -1052,14 +999,14 @@ export async function consumeAccountSetupToken(
   newPassword: string,
   activationInput: AccountSetupActivationInput,
 ): Promise<SessionUser> {
-  if (!validToken(rawToken)) throw new AccountSetupTokenError();
+  if (!validToken(rawToken)) throw new AccountSetupTokenError("malformed");
   assertPasswordPolicy(newPassword);
   const activation = activationInputSchema.parse(activationInput);
 
   // Avoid an expensive public Argon2id operation for random or stale links. The
   // transaction below repeats every condition under row locks for single use.
   const inspection = await inspectAccountSetupToken(rawToken);
-  if (!inspection.valid) throw new AccountSetupTokenError();
+  if (!inspection.valid) throw new AccountSetupTokenError(inspection.reason);
   const passwordHash = await hashPassword(newPassword);
   const tokenHash = hashAccountSetupToken(rawToken);
 
@@ -1106,89 +1053,11 @@ export async function consumeAccountSetupToken(
           AND intended_assignment.department_id IS NOT DISTINCT FROM i.intended_department_id
           AND intended_assignment.supplier_id IS NOT DISTINCT FROM i.intended_supplier_id
           AND intended_assignment.active=true
-         LEFT JOIN companies c ON c.id=i.company_id
-         LEFT JOIN suppliers supplier ON supplier.id=i.intended_supplier_id
-         JOIN account_credentials credential
-           ON credential.user_id=u.id AND credential.password_hash IS NULL
-         LEFT JOIN company_memberships company_membership
-           ON company_membership.user_id=u.id
-          AND company_membership.company_id=i.company_id
-         LEFT JOIN branches b ON b.id=i.intended_branch_id
-           AND b.company_id=i.company_id
-         LEFT JOIN branch_assignments branch_assignment
-           ON branch_assignment.user_id=u.id
-          AND branch_assignment.company_id=i.company_id
-          AND branch_assignment.branch_id=i.intended_branch_id
-         LEFT JOIN LATERAL (
-           SELECT public.axora_auth_department_scope(
-             u.id,intended_assignment.id
-           ) AS snapshot
-         ) department_scope ON i.intended_scope_type='DEPARTMENT'
-         LEFT JOIN supplier_memberships supplier_membership
-           ON supplier_membership.user_id=u.id
-          AND supplier_membership.supplier_id=i.intended_supplier_id
-         LEFT JOIN delivery_agent_profiles driver ON driver.user_id=u.id
+          AND intended_assignment.revoked_at IS NULL
          WHERE i.token_hash=$1
-           AND i.consumed_at IS NULL AND i.revoked_at IS NULL
-           AND i.expires_at > now()
-           AND u.account_setup_completed_at IS NULL AND u.password_hash=$2
-           AND u.account_status='INVITED'
-           AND u.active=true
-           AND public.axora_account_setup_inviter_can_activate(i.id,now())
-           AND (
-             (i.intended_scope_type='PLATFORM'
-               AND u.account_kind='PLATFORM'
-               AND intended_role.role_key IN (
-                 'PLATFORM_OWNER','HUMAN_RESOURCES_MANAGEMENT',
-                 'CLIENT_ACCOUNT_MANAGER','PLATFORM_OPERATIONS','TECHNICAL_SUPPORT'
-               )
-               AND u.is_owner=(intended_role.role_key='PLATFORM_OWNER'))
-             OR (i.intended_scope_type='COMPANY'
-               AND u.account_kind='COMPANY' AND u.is_owner=false
-               AND c.lifecycle_status IN (
-                 'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
-                 'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
-               ) AND company_membership.status='INVITED'
-               AND intended_role.role_key IN (
-                 'COMPANY_ADMIN','COMPANY_APPROVER','FINANCE_REVIEWER',
-                 'AUDITOR','RECEIVING_USER'
-               ))
-             OR (i.intended_scope_type='BRANCH'
-               AND u.account_kind='COMPANY' AND u.is_owner=false
-               AND c.lifecycle_status IN (
-                 'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
-                 'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
-               ) AND b.active=true
-               AND company_membership.status='INVITED'
-               AND branch_assignment.status='ACTIVE'
-               AND intended_role.role_key IN (
-                 'BRANCH_ADMIN','BRANCH_APPROVER','REQUESTER',
-                 'FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
-               ))
-             OR (i.intended_scope_type='DEPARTMENT'
-               AND u.account_kind='COMPANY' AND u.is_owner=false
-               AND c.lifecycle_status IN (
-                 'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED',
-                 'COMPANY_ADMINISTRATOR_ACTIVATED','ACTIVE'
-               ) AND COALESCE(
-                 (department_scope.snapshot->>'branchActive')::boolean,true
-               )
-               AND (department_scope.snapshot->>'departmentActive')::boolean=true
-               AND (department_scope.snapshot->>'branchId')::uuid
-                 IS NOT DISTINCT FROM i.intended_branch_id
-               AND company_membership.status='INVITED'
-               AND (i.intended_branch_id IS NULL OR branch_assignment.status='ACTIVE')
-               AND department_scope.snapshot->>'assignmentStatus'='ACTIVE'
-               AND intended_role.role_key IN (
-                 'DEPARTMENT_ADMIN','REQUESTER','FINANCE_REVIEWER','AUDITOR','RECEIVING_USER'
-               ))
-             OR (i.intended_scope_type='DELIVERY'
-               AND u.account_kind='DELIVERY' AND u.is_owner=false
-               AND driver.active=true
-               AND intended_role.role_key IN ('DELIVERY_DRIVER','DELIVERY_GUY'))
-           )
+           AND public.axora_account_setup_invitation_is_eligible(i.id,now())
          FOR UPDATE OF i,u`,
-        [tokenHash, PENDING_ACCOUNT_PASSWORD_HASH],
+        [tokenHash],
       );
       const invitation = invitationResult.rows[0];
       if (!invitation) throw new AccountSetupTokenError();
@@ -1298,6 +1167,20 @@ export async function consumeAccountSetupToken(
            AND consumed_at IS NULL AND revoked_at IS NULL`,
         [invitation.userId, invitation.invitationId],
       );
+
+      if (invitation.role === "COMPANY_ADMIN"
+        && invitation.scopeType === "COMPANY"
+        && invitation.companyId) {
+        const lifecycle = await client.query<{ completed: boolean }>(
+          `SELECT public.axora_complete_company_administrator_setup(
+             $1,now()
+           ) AS completed`,
+          [invitation.invitationId],
+        );
+        if (lifecycle.rows[0]?.completed !== true) {
+          throw new Error("Company Administrator setup lifecycle did not complete.");
+        }
+      }
 
       if (invitation.companyId) {
         const acceptedEvent = await appendWorkflowEvent(client, {

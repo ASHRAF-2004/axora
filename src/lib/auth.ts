@@ -90,6 +90,7 @@ export interface IdentityCandidateRow {
   departmentId?: string;
   supplierId?: string;
   scopeCompanyActive?: boolean;
+  scopeCompanyLifecycleStatus?: string;
   companyMembershipStatus?: string;
   companyMembershipPrimary?: boolean;
   scopeBranchActive?: boolean;
@@ -160,6 +161,7 @@ const identityRowsSql = `
     assignment.department_id::text AS "departmentId",
     assignment.supplier_id::text AS "supplierId",
     scope_company.active AS "scopeCompanyActive",
+    scope_company.lifecycle_status AS "scopeCompanyLifecycleStatus",
     scope_membership.status AS "companyMembershipStatus",
     scope_membership.is_primary AS "companyMembershipPrimary",
     scope_branch.active AS "scopeBranchActive",
@@ -417,8 +419,11 @@ function validAssignmentCandidate(row: IdentityCandidateRow) {
   if (row.scopeType === "COMPANY") {
     const platformManager = row.accountKind === "PLATFORM"
       && row.assignedRole === "CLIENT_ACCOUNT_MANAGER";
+    const activatedCompanyAdministrator = row.accountKind === "COMPANY"
+      && row.assignedRole === "COMPANY_ADMIN"
+      && row.scopeCompanyLifecycleStatus === "COMPANY_ADMINISTRATOR_ACTIVATED";
     return Boolean(row.companyId) && !row.branchId && !row.departmentId && !row.supplierId
-      && row.scopeCompanyActive === true
+      && (row.scopeCompanyActive === true || activatedCompanyAdministrator)
       && (platformManager || (
         row.accountKind === "COMPANY"
         && row.companyMembershipStatus === "ACTIVE"

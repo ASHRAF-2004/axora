@@ -259,17 +259,28 @@ describe("secure account setup primitives", () => {
       new URL("../src/lib/account-setup.ts", import.meta.url),
       "utf8",
     );
+    const migration = readFileSync(
+      new URL("../database/migrations/111_account_setup_link_reliability.sql", import.meta.url),
+      "utf8",
+    );
+    const eligibility = migration.slice(
+      migration.indexOf("CREATE OR REPLACE FUNCTION public.axora_account_setup_invitation_is_eligible"),
+      migration.indexOf("-- The previous image keeps using this signature"),
+    );
 
     expect(source.match(
-      /axora_auth_department_scope\(\s*u\.id,intended_assignment\.id\s*\)/g,
+      /axora_account_setup_invitation_is_eligible\(i\.id,now\(\)\)/g,
     )).toHaveLength(2);
-    expect(source).toContain(
+    expect(eligibility).toContain(
+      "axora_auth_department_scope(",
+    );
+    expect(eligibility).toContain(
       "department_scope.snapshot->>'departmentActive'",
     );
-    expect(source).toContain(
+    expect(eligibility).toContain(
       "department_scope.snapshot->>'assignmentStatus'",
     );
-    expect(source).not.toMatch(/JOIN departments department/);
-    expect(source).not.toMatch(/JOIN department_assignments department_assignment/);
+    expect(eligibility).not.toMatch(/JOIN public\.departments department/);
+    expect(eligibility).not.toMatch(/JOIN public\.department_assignments department_assignment/);
   });
 });

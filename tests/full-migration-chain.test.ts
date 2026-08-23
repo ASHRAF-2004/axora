@@ -7,11 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 110 to an empty database", async () => {
+  it("applies every numbered migration through 111 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-66)).toEqual([
+      expect(available.slice(-67)).toEqual([
         "045_request_resource_isolation.sql",
         "046_document_resource_isolation.sql",
         "047_isolation_closure_capabilities.sql",
@@ -78,6 +78,7 @@ describe("complete forward migration chain", () => {
         "108_resend_quota_snapshot.sql",
         "109_axora_email_usage_tracking.sql",
         "110_user_creation_first_attempt_reliability.sql",
+        "111_account_setup_link_reliability.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)
@@ -228,6 +229,47 @@ describe("complete forward migration chain", () => {
         invitations: before.rows[0]?.invitations,
         ownerCreationOverload: expect.stringContaining("axora_lock_user_creation_scope"),
         lifecycleSyncOverload: expect.stringContaining("axora_sync_company_administrator"),
+      });
+    } finally {
+      await db.close();
+    }
+  }, 30_000);
+
+  it("upgrades an existing 110 schema to 111 without changing account data", async () => {
+    const db = new PGlite();
+    try {
+      await db.exec("CREATE ROLE axora_app NOLOGIN");
+      await applyMigrations(db, { through: "110_user_creation_first_attempt_reliability.sql" });
+      const before = await db.query<{ users: number; invitations: number }>(`
+        SELECT
+          (SELECT count(*)::int FROM users) AS users,
+          (SELECT count(*)::int FROM account_setup_invitations) AS invitations
+      `);
+      await db.exec(await readFile(
+        migrationUrl("111_account_setup_link_reliability.sql"),
+        "utf8",
+      ));
+      const after = await db.query<{
+        users: number;
+        invitations: number;
+        eligibility: string | null;
+        completion: string | null;
+      }>(`
+        SELECT
+          (SELECT count(*)::int FROM users) AS users,
+          (SELECT count(*)::int FROM account_setup_invitations) AS invitations,
+          to_regprocedure(
+            'public.axora_account_setup_invitation_is_eligible(uuid,timestamptz)'
+          )::text AS eligibility,
+          to_regprocedure(
+            'public.axora_complete_company_administrator_setup(uuid,timestamptz)'
+          )::text AS completion
+      `);
+      expect(after.rows[0]).toMatchObject({
+        users: before.rows[0]?.users,
+        invitations: before.rows[0]?.invitations,
+        eligibility: expect.stringContaining("axora_account_setup_invitation_is_eligible"),
+        completion: expect.stringContaining("axora_complete_company_administrator_setup"),
       });
     } finally {
       await db.close();

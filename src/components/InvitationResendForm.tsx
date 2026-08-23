@@ -20,6 +20,7 @@ const messages = {
     cooldown: "Wait one minute before replacing this invitation again.",
     hourly: "This account reached the hourly invitation limit.",
     quota: "The invitation safety limit has been reached. Try again later.",
+    lifecycle_sync_failed: "The email was sent, but Company setup status needs recovery. Do not resend or recreate the account; contact Axora.",
     ineligible: "This account is no longer eligible for an invitation resend.",
   },
   ms: {
@@ -33,6 +34,7 @@ const messages = {
     cooldown: "Tunggu satu minit sebelum mengganti jemputan ini lagi.",
     hourly: "Akaun ini telah mencapai had jemputan setiap jam.",
     quota: "Had keselamatan jemputan telah dicapai. Cuba lagi kemudian.",
+    lifecycle_sync_failed: "E-mel telah dihantar tetapi status persediaan Syarikat perlu dipulihkan. Jangan hantar semula atau cipta semula akaun; hubungi Axora.",
     ineligible: "Akaun ini tidak lagi layak menerima penghantaran semula jemputan.",
   },
   ar: {
@@ -46,6 +48,7 @@ const messages = {
     cooldown: "انتظر دقيقة قبل استبدال هذه الدعوة مرة أخرى.",
     hourly: "بلغ هذا الحساب الحد الأقصى للدعوات خلال الساعة.",
     quota: "تم بلوغ حد أمان الدعوات. حاول لاحقًا.",
+    lifecycle_sync_failed: "تم إرسال البريد، لكن حالة إعداد الشركة تحتاج إلى معالجة. لا تُعد الإرسال ولا تنشئ الحساب مجددًا؛ تواصل مع Axora.",
     ineligible: "لم يعد هذا الحساب مؤهلًا لإعادة إرسال الدعوة.",
   },
 } as const;
