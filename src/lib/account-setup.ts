@@ -18,6 +18,7 @@ import {
   registerDemoInvitedUser,
   replaceDemoInvitation,
   resolveUserCreation,
+  UserCreationError,
   updateDemoInvitationDelivery,
   type ResolvedUserCreation,
   type UserCreationInput,
@@ -108,24 +109,30 @@ function validateDemoUserCreation(
   if (input.accountKind === "COMPANY") {
     const company = store.companies.find((item) => item.id === input.companyId);
     if (!company || !demoCompanyVisibleToActor(actor, company.id)) {
-      throw new Error("The selected company is unavailable.");
+      throw new UserCreationError("resource-unavailable", "The selected company is unavailable.");
     }
     let branchName: string | undefined;
     if (input.branchId) {
       const branch = store.branches.find((item) => (
         item.id === input.branchId && item.companyId === company.id && item.status === "Active"
       ));
-      if (!branch) throw new Error("The selected branch is unavailable.");
+      if (!branch) {
+        throw new UserCreationError("resource-unavailable", "The selected branch is unavailable.");
+      }
       branchName = branch.name;
     }
     // The current demo fixture has no department catalogue. Never accept a
     // browser-supplied department identifier without an authoritative record.
-    if (input.departmentId) throw new Error("The selected department is unavailable.");
+    if (input.departmentId) {
+      throw new UserCreationError("resource-unavailable", "The selected department is unavailable.");
+    }
     return { ...input, organizationName: company.name, branchName };
   }
   if (input.accountKind === "SUPPLIER") {
     const supplier = store.suppliers.find((item) => item.id === input.supplierId);
-    if (!supplier) throw new Error("The selected supplier is unavailable.");
+    if (!supplier) {
+      throw new UserCreationError("resource-unavailable", "The selected supplier is unavailable.");
+    }
     return { ...input, organizationName: supplier.name };
   }
   return {
@@ -197,7 +204,8 @@ async function enforceInvitationQuota(
        WHERE u.id=$1 AND u.active=true AND u.account_status='ACTIVE'
          AND c.id=$2 AND (
            c.active=true OR ($3::boolean AND c.lifecycle_status IN (
-             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED'
+             'ONBOARDING','PORTAL_DRAFT','COMPANY_REVIEW',
+             'COMPANY_ADMINISTRATOR_INVITED'
            ))
          )
        FOR KEY SHARE OF u,c`,
@@ -211,7 +219,10 @@ async function enforceInvitationQuota(
       [actorId],
     );
   if (!scope.rowCount) {
-    throw new Error("The account invitation scope is no longer active.");
+    throw new UserCreationError(
+      "resource-unavailable",
+      "The account invitation scope is no longer active.",
+    );
   }
 
   const usage = await client.query<{ actorCount: number; companyCount: number }>(
@@ -236,6 +247,65 @@ async function enforceInvitationQuota(
     && Number(usage.rows[0]?.companyCount ?? 0) >= MAX_INVITATIONS_PER_COMPANY_DAY) {
     throw new AccountSetupInvitationQuotaError("company");
   }
+}
+
+interface ExistingAccountRow {
+  accountStatus: "INVITED" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+  sameScope: boolean;
+}
+
+async function lockInvitationEmail(
+  client: PoolClient,
+  input: ResolvedUserCreation,
+) {
+  await client.query(
+    `SELECT pg_advisory_xact_lock(
+       hashtextextended('axora-account-invite-email:' || lower($1::text),0)
+     )`,
+    [input.email],
+  );
+  const existing = await client.query<ExistingAccountRow>(
+    `SELECT account.account_status AS "accountStatus",
+       (
+         account.account_kind=$2
+         AND EXISTS (
+           SELECT 1
+           FROM role_assignments assignment
+           WHERE assignment.user_id=account.id
+             AND assignment.active
+             AND assignment.revoked_at IS NULL
+             AND assignment.scope_type=$3
+             AND assignment.company_id IS NOT DISTINCT FROM $4::uuid
+             AND assignment.branch_id IS NOT DISTINCT FROM $5::uuid
+             AND assignment.department_id IS NOT DISTINCT FROM $6::uuid
+             AND assignment.supplier_id IS NOT DISTINCT FROM $7::uuid
+         )
+       ) AS "sameScope"
+     FROM users account
+     WHERE lower(account.email)=lower($1)
+     FOR KEY SHARE OF account`,
+    [
+      input.email,
+      input.accountKind,
+      input.scopeType,
+      input.companyId ?? null,
+      input.branchId ?? null,
+      input.departmentId ?? null,
+      input.supplierId ?? null,
+    ],
+  );
+  const account = existing.rows[0];
+  if (!account) return;
+  if (account.sameScope && account.accountStatus === "INVITED") {
+    throw new UserCreationError("invitation-pending");
+  }
+  if (account.sameScope && account.accountStatus === "ACTIVE") {
+    throw new UserCreationError("account-active");
+  }
+  if (account.sameScope && account.accountStatus === "DEACTIVATED") {
+    throw new UserCreationError("account-deactivated");
+  }
+  throw new UserCreationError("account-exists");
 }
 
 export function generateAccountSetupToken() {
@@ -313,67 +383,68 @@ export async function createInvitedUser(
   const result = await withAuditTransaction(
     { actor, reason: "Account invitation created" },
     async (client) => {
-      await lockAuthorizedInvitationCreationScope(client, actor, resolved);
-      await enforceInvitationQuota(
-        client,
-        actor.id,
-        resolved.companyId,
-        resolved.role === "COMPANY_ADMIN",
-      );
-      const { userId, validated } = await createScopedUserInTransaction(client, resolved, {
-        passwordHash: PENDING_ACCOUNT_PASSWORD_HASH,
-        setupCompleted: false,
-      });
-      const invitedIdentity = await initializeInvitedIdentity(
-        client,
-        userId,
-        resolved,
-        actor.id,
-      );
-      if (resolved.permissions) {
-        await replaceUserPermissionSetInTransaction(client, actor, {
-          targetUserId: userId,
-          targetRoleAssignmentId: invitedIdentity.roleAssignmentId,
-          permissions: resolved.permissions,
-          reason: "Initial permissions selected during account invitation",
-        });
-      }
-      const invitation = await client.query<{ id: string; expiresAt: string }>(
-        `INSERT INTO account_setup_invitations(
-           user_id,company_id,token_hash,expires_at,created_by,id,
-           email_locale,
-           intended_role_id,intended_branch_id,intended_department_id,
-           intended_scope_type,intended_supplier_id
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-         RETURNING id::text,expires_at::text AS "expiresAt"`,
-        [
-          userId,
-          resolved.companyId ?? null,
-          tokenHash,
-          expiresAt,
+        await lockAuthorizedInvitationCreationScope(client, actor, resolved);
+        await lockInvitationEmail(client, resolved);
+        await enforceInvitationQuota(
+          client,
           actor.id,
-          invitationId,
-          resolved.preferredLocale,
-          invitedIdentity.roleId,
-          resolved.branchId ?? null,
-          resolved.departmentId ?? null,
-          resolved.scopeType,
-          resolved.supplierId ?? null,
-        ],
-      );
+          resolved.companyId,
+          resolved.role === "COMPANY_ADMIN",
+        );
+        const { userId, validated } = await createScopedUserInTransaction(client, resolved, {
+          passwordHash: PENDING_ACCOUNT_PASSWORD_HASH,
+          setupCompleted: false,
+        });
+        const invitedIdentity = await initializeInvitedIdentity(
+          client,
+          userId,
+          resolved,
+          actor.id,
+        );
+        if (resolved.permissions) {
+          await replaceUserPermissionSetInTransaction(client, actor, {
+            targetUserId: userId,
+            targetRoleAssignmentId: invitedIdentity.roleAssignmentId,
+            permissions: resolved.permissions,
+            reason: "INITIAL_USER_PERMISSIONS_APPLIED",
+          });
+        }
+        const invitation = await client.query<{ id: string; expiresAt: string }>(
+          `INSERT INTO account_setup_invitations(
+             user_id,company_id,token_hash,expires_at,created_by,id,
+             email_locale,
+             intended_role_id,intended_branch_id,intended_department_id,
+             intended_scope_type,intended_supplier_id
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+           RETURNING id::text,expires_at::text AS "expiresAt"`,
+          [
+            userId,
+            resolved.companyId ?? null,
+            tokenHash,
+            expiresAt,
+            actor.id,
+            invitationId,
+            resolved.preferredLocale,
+            invitedIdentity.roleId,
+            resolved.branchId ?? null,
+            resolved.departmentId ?? null,
+            resolved.scopeType,
+            resolved.supplierId ?? null,
+          ],
+        );
 
-      return {
-        invitationId: invitation.rows[0].id,
-        userId,
-        recipientName: resolved.displayName,
-        recipientEmail: resolved.email,
-        companyName: validated.organizationName,
-        role: resolved.role,
-        branchName: validated.branchName,
-        departmentName: validated.departmentName,
-        expiresAt: invitation.rows[0].expiresAt,
-        locale: resolved.preferredLocale,
-      };
+        return {
+          invitationId: invitation.rows[0].id,
+          userId,
+          recipientName: resolved.displayName,
+          recipientEmail: resolved.email,
+          companyName: validated.organizationName,
+          role: resolved.role,
+          branchName: validated.branchName,
+          departmentName: validated.departmentName,
+          expiresAt: invitation.rows[0].expiresAt,
+          locale: resolved.preferredLocale,
+        };
     },
   );
 

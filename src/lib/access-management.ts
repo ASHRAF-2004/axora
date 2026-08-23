@@ -95,8 +95,8 @@ export interface PermissionChangeResult {
 }
 
 export class AccessManagementUnavailableError extends Error {
-  constructor() {
-    super("The requested access change could not be completed.");
+  constructor(cause?: unknown) {
+    super("The requested access change could not be completed.", { cause });
     this.name = "AccessManagementUnavailableError";
   }
 }
@@ -207,16 +207,22 @@ export async function replaceUserPermissionSetInTransaction(
   actor: SessionUser,
   input: z.input<typeof replacePermissionSetSchema>,
 ) {
-  if (!actor.roleAssignmentId) throw new AccessManagementUnavailableError();
+  const actorAuthVersion = z.coerce.number().int().positive().safeParse(actor.authVersion);
+  if (!actorAuthVersion.success) throw new AccessManagementUnavailableError();
+  const actorRoleAssignmentId = actor.roleAssignmentId
+    ? uuidSchema.safeParse(actor.roleAssignmentId)
+    : { success: true as const, data: null };
+  if (!actorRoleAssignmentId.success) throw new AccessManagementUnavailableError();
   const parsed = replacePermissionSetSchema.parse(input);
   try {
     const result = await client.query<{ payload: unknown }>(
       `SELECT public.axora_replace_user_permission_set(
-         $1,$2,$3,$4,$5::text[],$6,now()
+         $1,$2,$3,$4,$5,$6::text[],$7,now()
        ) AS payload`,
       [
         actor.id,
-        actor.roleAssignmentId,
+        actorRoleAssignmentId.data,
+        actorAuthVersion.data,
         parsed.targetUserId,
         parsed.targetRoleAssignmentId,
         [...new Set(parsed.permissions)].sort(),
@@ -226,7 +232,7 @@ export async function replaceUserPermissionSetInTransaction(
     return permissionSetResultSchema.parse(result.rows[0]?.payload);
   } catch (error) {
     if (error instanceof AccessManagementUnavailableError) throw error;
-    throw new AccessManagementUnavailableError();
+    throw new AccessManagementUnavailableError(error);
   }
 }
 

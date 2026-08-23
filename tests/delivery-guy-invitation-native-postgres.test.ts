@@ -2,11 +2,18 @@ import { createHash, randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  authorizeAccountSetupDelivery,
   createInvitedUser,
   inspectAccountSetupToken,
+  recordAccountSetupDelivery,
 } from "@/lib/account-setup";
 import type { AuthenticatedSessionUser } from "@/lib/auth";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
+import {
+  defaultPermissionsForRole,
+  type PermissionCode,
+} from "@/lib/authorization-policy";
+import { syncCompanyAdministrator } from "@/lib/company-lifecycle";
 
 const nativeDescribe = process.env.AXORA_NATIVE_POSTGRES_INTEGRATION === "true"
   ? describe
@@ -28,6 +35,7 @@ interface PersistenceCounts {
 nativeDescribe("Delivery Guy invitation native PostgreSQL regression", () => {
   let admin: Client | undefined;
   let owner: AuthenticatedSessionUser;
+  let ownerAssignmentId: string;
 
   beforeAll(async () => {
     const port = Number.parseInt(requiredEnvironment("AXORA_NATIVE_POSTGRES_PORT"), 10);
@@ -45,7 +53,7 @@ nativeDescribe("Delivery Guy invitation native PostgreSQL regression", () => {
     await admin.connect();
 
     const ownerId = randomUUID();
-    const ownerAssignmentId = randomUUID();
+    ownerAssignmentId = randomUUID();
     const ownerRole = await admin.query<{ id: string }>(
       "SELECT id::text FROM public.roles WHERE role_key='PLATFORM_OWNER'",
     );
@@ -97,7 +105,6 @@ nativeDescribe("Delivery Guy invitation native PostgreSQL regression", () => {
       role: "PLATFORM_OWNER",
       accountKind: "PLATFORM",
       scopeType: "PLATFORM",
-      roleAssignmentId: ownerAssignmentId,
       isOwner: true,
       authVersion: 1,
       preferredLocale: "en",
@@ -236,7 +243,7 @@ nativeDescribe("Delivery Guy invitation native PostgreSQL regression", () => {
       locale: "en",
     });
 
-    const directory = await listAuthorizedUsers(owner);
+    const directory = await listAuthorizedUsers({ ...owner, roleAssignmentId: ownerAssignmentId });
     const created = directory.find((user) => user.id === invitation.userId);
     expect(created).toMatchObject({
       email,
@@ -252,6 +259,263 @@ nativeDescribe("Delivery Guy invitation native PostgreSQL regression", () => {
     expect(created?.branchId).toBeUndefined();
     expect(created?.departmentId).toBeUndefined();
     expect(created?.supplierId).toBeUndefined();
+  }, 30_000);
+
+  it("creates one onboarding Company Administrator graph on the first attempt without an assignment claim", async () => {
+    if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
+    const companyId = randomUUID();
+    const email = `native-company-admin-${randomUUID()}@example.test`;
+    await admin.query(
+      `INSERT INTO public.companies(
+         id,company_code,name,legal_name,registration_number,industry,
+         active,lifecycle_status,portal_access_enabled,contractual_ceiling,created_by
+       ) VALUES (
+         $1,$2,'Native onboarding company','Native onboarding company','',
+         'Operations',false,'ONBOARDING',false,0,$3
+       )`,
+      [companyId, `NATIVE-${companyId.slice(0, 8)}`, owner.id],
+    );
+
+    const invitation = await createInvitedUser({
+      email,
+      displayName: "Native Company Administrator",
+      role: "COMPANY_ADMIN",
+      companyId,
+      preferredLocale: "ar",
+    }, owner);
+
+    const graph = await admin.query<{
+      users: number;
+      profiles: number;
+      credentials: number;
+      memberships: number;
+      assignments: number;
+      invitations: number;
+    }>(`
+      SELECT
+        count(DISTINCT account.id)::int AS users,
+        count(DISTINCT profile.user_id)::int AS profiles,
+        count(DISTINCT credential.user_id)::int AS credentials,
+        count(DISTINCT membership.user_id)::int AS memberships,
+        count(DISTINCT assignment.id)::int AS assignments,
+        count(DISTINCT invitation.id)::int AS invitations
+      FROM public.users account
+      LEFT JOIN public.user_profiles profile ON profile.user_id=account.id
+      LEFT JOIN public.account_credentials credential ON credential.user_id=account.id
+      LEFT JOIN public.company_memberships membership
+        ON membership.user_id=account.id AND membership.company_id=$2
+      LEFT JOIN public.role_assignments assignment
+        ON assignment.user_id=account.id AND assignment.company_id=$2 AND assignment.active
+      LEFT JOIN public.account_setup_invitations invitation
+        ON invitation.user_id=account.id AND invitation.company_id=$2
+      WHERE account.id=$1
+    `, [invitation.userId, companyId]);
+    expect(graph.rows[0]).toEqual({
+      users: 1,
+      profiles: 1,
+      credentials: 1,
+      memberships: 1,
+      assignments: 1,
+      invitations: 1,
+    });
+
+    await expect(createInvitedUser({
+      email,
+      displayName: "Native Company Administrator",
+      role: "COMPANY_ADMIN",
+      companyId,
+      preferredLocale: "ar",
+    }, owner)).rejects.toMatchObject({
+      name: "UserCreationError",
+      reason: "invitation-pending",
+    });
+
+    const afterDuplicate = await admin.query<{ users: number; invitations: number }>(`
+      SELECT
+        (SELECT count(*)::int FROM public.users WHERE lower(email)=lower($1)) AS users,
+        (SELECT count(*)::int FROM public.account_setup_invitations
+          WHERE company_id=$2) AS invitations
+    `, [email, companyId]);
+    expect(afterDuplicate.rows[0]).toEqual({ users: 1, invitations: 1 });
+
+    await expect(authorizeAccountSetupDelivery(
+      invitation.invitationId,
+      invitation.rawToken,
+    )).resolves.toBe(true);
+    await recordAccountSetupDelivery(invitation.invitationId, {
+      succeeded: true,
+      providerMessageId: "native-provider-fixture",
+      providerName: "resend",
+      status: "sent",
+    });
+    await expect(syncCompanyAdministrator(
+      owner,
+      companyId,
+      "Native delivered invitation lifecycle synchronization",
+    )).resolves.toMatchObject({
+      companyId,
+      eventKey: "company.administrator_invited",
+    });
+    const lifecycle = await admin.query<{ status: string }>(`
+      SELECT lifecycle_status AS status FROM public.companies WHERE id=$1
+    `, [companyId]);
+    expect(lifecycle.rows[0]?.status).toBe("COMPANY_ADMINISTRATOR_INVITED");
+  }, 30_000);
+
+  it("creates Platform and later active-Company users without an assignment claim", async () => {
+    if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
+    const companyId = randomUUID();
+    const platformEmail = `native-platform-${randomUUID()}@example.test`;
+    const companyEmail = `native-company-later-${randomUUID()}@example.test`;
+    await admin.query(
+      `INSERT INTO public.companies(
+         id,company_code,name,legal_name,registration_number,industry,
+         active,lifecycle_status,portal_access_enabled,contractual_ceiling,created_by
+       ) VALUES (
+         $1,$2,'Native active company','Native active company','',
+         'Operations',true,'ACTIVE',true,0,$3
+       )`,
+      [companyId, `ACTIVE-${companyId.slice(0, 8)}`, owner.id],
+    );
+
+    const [platformInvitation, companyInvitation] = await Promise.all([
+      createInvitedUser({
+        email: platformEmail,
+        displayName: "Native Human Resources",
+        role: "HUMAN_RESOURCES_MANAGEMENT",
+        preferredLocale: "en",
+      }, owner),
+      createInvitedUser({
+        email: companyEmail,
+        displayName: "Native Company Approver",
+        role: "COMPANY_APPROVER",
+        companyId,
+        preferredLocale: "ms",
+      }, owner),
+    ]);
+
+    const graph = await admin.query<{ count: number }>(`
+      SELECT count(*)::int AS count
+      FROM public.users account
+      JOIN public.role_assignments assignment
+        ON assignment.user_id=account.id AND assignment.active
+      JOIN public.account_setup_invitations invitation
+        ON invitation.user_id=account.id
+      WHERE account.id IN ($1,$2)
+        AND (
+          (account.account_kind='PLATFORM' AND assignment.scope_type='PLATFORM')
+          OR (
+            account.account_kind='COMPANY'
+            AND assignment.scope_type='COMPANY'
+            AND assignment.company_id=$3
+          )
+        )
+    `, [platformInvitation.userId, companyInvitation.userId, companyId]);
+    expect(graph.rows[0]?.count).toBe(2);
+  }, 30_000);
+
+  it("serializes concurrent duplicate invitations into one account graph", async () => {
+    if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
+    const companyId = randomUUID();
+    const email = `native-concurrent-${randomUUID()}@example.test`;
+    await admin.query(
+      `INSERT INTO public.companies(
+         id,company_code,name,legal_name,registration_number,industry,
+         active,lifecycle_status,portal_access_enabled,contractual_ceiling,created_by
+       ) VALUES (
+         $1,$2,'Native concurrent company','Native concurrent company','',
+         'Operations',true,'ACTIVE',true,0,$3
+       )`,
+      [companyId, `RACE-${companyId.slice(0, 8)}`, owner.id],
+    );
+    const payload = {
+      email,
+      displayName: "Native Concurrent Approver",
+      role: "COMPANY_APPROVER" as const,
+      companyId,
+      preferredLocale: "en" as const,
+    };
+
+    const outcomes = await Promise.allSettled([
+      createInvitedUser(payload, owner),
+      createInvitedUser(payload, owner),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === "rejected");
+    expect(rejected).toMatchObject({
+      status: "rejected",
+      reason: { name: "UserCreationError", reason: "invitation-pending" },
+    });
+
+    const graph = await admin.query<{ users: number; invitations: number }>(`
+      SELECT
+        (SELECT count(*)::int FROM public.users
+          WHERE lower(email)=lower($1)) AS users,
+        (SELECT count(*)::int
+          FROM public.account_setup_invitations invitation
+          JOIN public.users account ON account.id=invitation.user_id
+          WHERE lower(account.email)=lower($1)) AS invitations
+    `, [email]);
+    expect(graph.rows[0]).toEqual({ users: 1, invitations: 1 });
+  }, 30_000);
+
+  it("applies a valid customized Company Administrator permission selection without an assignment claim", async () => {
+    if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
+    const companyId = randomUUID();
+    const email = `native-company-custom-${randomUUID()}@example.test`;
+    const defaults = defaultPermissionsForRole("COMPANY_ADMIN", "COMPANY", false);
+    const extraPermission = await admin.query<{ code: PermissionCode }>(`
+      SELECT permission.permission_code AS code
+      FROM public.permissions permission
+      JOIN public.role_permissions owner_permission
+        ON owner_permission.permission_id=permission.id
+      JOIN public.roles owner_role
+        ON owner_role.id=owner_permission.role_id
+       AND owner_role.role_key='PLATFORM_OWNER'
+      WHERE permission.active
+        AND public.axora_permission_allowed_for_account_kind(
+          'COMPANY',permission.permission_code
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.role_permissions target_permission
+          JOIN public.roles target_role ON target_role.id=target_permission.role_id
+          WHERE target_role.role_key='COMPANY_ADMIN'
+            AND target_permission.permission_id=permission.id
+        )
+      ORDER BY permission.permission_code
+      LIMIT 1
+    `);
+    const extra = extraPermission.rows[0]?.code;
+    if (!extra) throw new Error("A compatible custom permission fixture is unavailable.");
+    await admin.query(
+      `INSERT INTO public.companies(
+         id,company_code,name,legal_name,registration_number,industry,
+         active,lifecycle_status,portal_access_enabled,contractual_ceiling,created_by
+       ) VALUES (
+         $1,$2,'Native custom company','Native custom company','',
+         'Operations',false,'ONBOARDING',false,0,$3
+       )`,
+      [companyId, `CUSTOM-${companyId.slice(0, 8)}`, owner.id],
+    );
+
+    const invitation = await createInvitedUser({
+      email,
+      displayName: "Native Custom Administrator",
+      role: "COMPANY_ADMIN",
+      companyId,
+      preferredLocale: "en",
+      permissions: [...defaults, extra],
+    }, owner);
+    expect(invitation.userId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const history = await admin.query<{ count: number }>(`
+      SELECT count(*)::int AS count
+      FROM public.permission_change_history
+      WHERE actor_user_id=$1 AND target_user_id=$2
+        AND reason='INITIAL_USER_PERMISSIONS_APPLIED'
+    `, [owner.id, invitation.userId]);
+    expect(history.rows[0]?.count).toBe(1);
   }, 30_000);
 
   it("rolls back every partial account row when delivery identity initialization fails", async () => {

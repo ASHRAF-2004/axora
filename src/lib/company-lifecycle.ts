@@ -764,9 +764,16 @@ export function syncCompanyAdministrator(
     actor,
     "Company Administrator lifecycle synchronized",
     `SELECT public.axora_sync_company_administrator(
-       $1,$2,$3,$4,$5
+       $1,$2,$3,$4,$5,$6
      ) AS snapshot`,
-    [actor.id, requiredAssignment(actor), uuid.parse(companyId), reason, new Date()],
+    [
+      actor.id,
+      requiredAssignment(actor),
+      actor.authVersion,
+      uuid.parse(companyId),
+      reason,
+      new Date(),
+    ],
   );
 }
 

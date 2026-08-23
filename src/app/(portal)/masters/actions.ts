@@ -1,6 +1,6 @@
 "use server";
 
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, requireSession } from "@/lib/auth";
 import { sendAccountSetupEmail } from "@/lib/account-email";
 import {
   AccountSetupInvitationQuotaError,
@@ -37,6 +37,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { calculateCommercialSellingPrice } from "@/lib/procurement-rules";
+import { canAccess } from "@/lib/permissions";
+import { AccountInvitationAccessUnavailableError } from "@/lib/account-invitation-isolation";
+import { UserCreationError } from "@/lib/users";
 
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 function productInput(formData: FormData) {
@@ -110,6 +113,21 @@ function lifecycleRedirect(notice: string, companyId: string) {
   redirect(`/companies?notice=${notice}&created=${encodeURIComponent(companyId)}`);
 }
 
+function companyUsersRedirect(notice: string, companyId: string) {
+  revalidatePath("/users");
+  revalidatePath(`/companies/${companyId}/users`);
+  redirect(`/companies/${encodeURIComponent(companyId)}/users?notice=${notice}`);
+}
+
+function companyAdministratorCreationNotice(error: UserCreationError) {
+  if (error.reason === "invitation-pending") return "user-invitation-pending";
+  if (error.reason === "account-active") return "user-account-active";
+  if (error.reason === "account-deactivated") return "user-account-deactivated";
+  if (error.reason === "account-exists") return "user-account-exists";
+  if (error.reason === "resource-unavailable") return "user-creation-stale";
+  return "user-creation-invalid";
+}
+
 export async function transitionCompanyLifecycleAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
   const companyId = z.uuid().parse(readFormText(formData, "companyId"));
@@ -174,18 +192,27 @@ export async function syncCompanyAdministratorAction(formData: FormData) {
 }
 
 export async function inviteCompanyAdministratorAction(formData: FormData) {
-  const actor = await requirePermission("manage_companies");
-  const input = z.object({
+  const actor = await requireSession();
+  if (!canAccess(actor, "manage_companies")) redirect("/access-denied");
+  const parsedInput = z.object({
     companyId: z.uuid(),
     displayName: z.string().trim().min(2).max(200),
     email: z.email().max(254),
     preferredLocale: z.enum(SUPPORTED_LOCALES),
-  }).parse({
+  }).safeParse({
     companyId: readFormText(formData, "companyId"),
     displayName: readFormText(formData, "displayName"),
     email: readFormText(formData, "email"),
     preferredLocale: readFormText(formData, "preferredLocale") || "en",
   });
+  if (!parsedInput.success) {
+    const companyId = readFormText(formData, "companyId");
+    if (z.uuid().safeParse(companyId).success) {
+      companyUsersRedirect("user-creation-invalid", companyId);
+    }
+    redirect("/companies?notice=user-creation-invalid");
+  }
+  const input = parsedInput.data;
 
   let invitation: AccountSetupInvitationResult;
   try {
@@ -199,7 +226,13 @@ export async function inviteCompanyAdministratorAction(formData: FormData) {
     }, actor);
   } catch (error) {
     if (error instanceof AccountSetupInvitationQuotaError) {
-      lifecycleRedirect("company-administrator-invitation-rate-limited", input.companyId);
+      companyUsersRedirect(`user-invitation-quota-${error.reason}`, input.companyId);
+    }
+    if (error instanceof UserCreationError) {
+      companyUsersRedirect(companyAdministratorCreationNotice(error), input.companyId);
+    }
+    if (error instanceof AccountInvitationAccessUnavailableError) {
+      companyUsersRedirect("user-creation-not-authorized", input.companyId);
     }
     throw error;
   }
@@ -223,17 +256,28 @@ export async function inviteCompanyAdministratorAction(formData: FormData) {
     deliveryRecorded = false;
   }
   if (delivery.succeeded && deliveryRecorded) {
-    await syncCompanyAdministrator(
-      actor,
-      input.companyId,
-      "Secure Company Administrator invitation delivered",
-    );
+    try {
+      await syncCompanyAdministrator(
+        actor,
+        input.companyId,
+        "Secure Company Administrator invitation delivered",
+      );
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: "company_administrator_lifecycle_sync_failed",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      }));
+      companyUsersRedirect("user-created-lifecycle-sync-failed", input.companyId);
+    }
   }
-  revalidatePath("/users");
-  lifecycleRedirect(
+  companyUsersRedirect(
     delivery.succeeded && deliveryRecorded
-      ? "company-administrator-invited"
-      : "company-administrator-email-failed",
+      ? "user-invited"
+      : !deliveryRecorded
+        ? "user-created-email-unconfirmed"
+        : delivery.status === "disabled"
+          ? "user-created-email-disabled"
+          : "user-created-email-failed",
     input.companyId,
   );
 }

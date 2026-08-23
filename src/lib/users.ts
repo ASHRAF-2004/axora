@@ -138,6 +138,26 @@ export interface ValidatedUserCreation extends ResolvedUserCreation {
   departmentName?: string;
 }
 
+export type UserCreationFailureReason =
+  | "invalid"
+  | "role-unavailable"
+  | "scope-unavailable"
+  | "resource-unavailable"
+  | "account-exists"
+  | "invitation-pending"
+  | "account-active"
+  | "account-deactivated";
+
+export class UserCreationError extends Error {
+  constructor(
+    public readonly reason: UserCreationFailureReason,
+    message = "The user account could not be created in its requested state.",
+  ) {
+    super(message);
+    this.name = "UserCreationError";
+  }
+}
+
 export function registerDemoInvitedUser(
   input: ResolvedUserCreation,
   details: {
@@ -149,8 +169,20 @@ export function registerDemoInvitedUser(
   },
 ) {
   if (!isDemoMode()) throw new Error("Demo account registration is unavailable.");
-  if (demoUsers().some((user) => user.email.toLowerCase() === input.email.toLowerCase())) {
-    throw new Error("An account already uses this email address.");
+  const existing = demoUsers().find(
+    (user) => user.email.toLowerCase() === input.email.toLowerCase(),
+  );
+  if (existing) {
+    throw new UserCreationError(
+      existing.accountStatus === "INVITED"
+        ? "invitation-pending"
+        : existing.accountStatus === "ACTIVE"
+          ? "account-active"
+          : existing.accountStatus === "DEACTIVATED"
+            ? "account-deactivated"
+            : "account-exists",
+      "An account already uses this email address.",
+    );
   }
   const record: UserRecord = {
     id: details.userId,
@@ -222,32 +254,39 @@ export function resolveUserCreation(
   const role = canonicalAccountRole(input.role, actor.branchId ?? input.branchId);
   const definition = accountRoleDefinition(role);
   if (!definition || !creatableAccountRoles(actor).some((allowedRole) => allowedRole.key === role)) {
-    throw new Error("Your account cannot create this role.");
+    throw new UserCreationError("role-unavailable", "Your account cannot create this role.");
   }
 
   const email = input.email.trim().toLowerCase();
   const displayName = input.displayName.trim();
   if (!USER_EMAIL_SCHEMA.safeParse(email).success) {
-    throw new Error("Enter a valid work email address.");
+    throw new UserCreationError("invalid", "Enter a valid work email address.");
   }
   if (displayName.length < 2 || displayName.length > 200) {
-    throw new Error("Enter a name between 2 and 200 characters.");
+    throw new UserCreationError("invalid", "Enter a name between 2 and 200 characters.");
   }
   const jobTitle = input.jobTitle?.trim() || undefined;
-  if (jobTitle && jobTitle.length > 160) throw new Error("Job title cannot exceed 160 characters.");
+  if (jobTitle && jobTitle.length > 160) {
+    throw new UserCreationError("invalid", "Job title cannot exceed 160 characters.");
+  }
   const preferredLocale = input.preferredLocale ?? actor.preferredLocale ?? "en";
   const permissions = input.permissions
     ? [...new Set(input.permissions.filter(isPermissionCode))].sort()
     : undefined;
   if (input.permissions && permissions?.length !== input.permissions.length) {
-    throw new Error("One or more selected permissions are unavailable.");
+    throw new UserCreationError("invalid", "One or more selected permissions are unavailable.");
   }
 
   if (definition.accountKind === "PLATFORM") {
     return { email, displayName, role, accountKind: "PLATFORM", scopeType: "PLATFORM", jobTitle, preferredLocale, permissions };
   }
   if (definition.accountKind === "SUPPLIER") {
-    if (!actor.isOwner || !input.supplierId) throw new Error("Select the supplier organization for this user.");
+    if (!actor.isOwner || !input.supplierId) {
+      throw new UserCreationError(
+        "scope-unavailable",
+        "Select the supplier organization for this user.",
+      );
+    }
     return { email, displayName, role, accountKind: "SUPPLIER", scopeType: "SUPPLIER", supplierId: input.supplierId, jobTitle, preferredLocale, permissions };
   }
   if (definition.accountKind === "DELIVERY") {
@@ -255,7 +294,12 @@ export function resolveUserCreation(
   }
 
   const companyId = actor.accountKind === "PLATFORM" ? input.companyId : actor.companyId;
-  if (!companyId) throw new Error("Select the approved customer company for this user.");
+  if (!companyId) {
+    throw new UserCreationError(
+      "scope-unavailable",
+      "Select the approved customer company for this user.",
+    );
+  }
   const requestedBranchId = actor.branchId ?? input.branchId;
   const requestedDepartmentId = actor.departmentId ?? input.departmentId;
   const scopeType: RoleScopeType = requestedDepartmentId
@@ -265,17 +309,26 @@ export function resolveUserCreation(
       ? "BRANCH"
       : "COMPANY";
   if (!definition.allowedScopes.includes(scopeType)) {
-    throw new Error("Select the branch or department this person will work with.");
+    throw new UserCreationError(
+      "scope-unavailable",
+      "Select the branch or department this person will work with.",
+    );
   }
   const branchId = scopeType === "BRANCH" || scopeType === "DEPARTMENT"
     ? requestedBranchId : undefined;
   const departmentId = scopeType === "DEPARTMENT" ? requestedDepartmentId : undefined;
   if (actor.role === "BRANCH_ADMIN" && (!branchId || branchId !== actor.branchId)) {
-    throw new Error("A branch administrator can create users only in their assigned branch.");
+    throw new UserCreationError(
+      "scope-unavailable",
+      "A branch administrator can create users only in their assigned branch.",
+    );
   }
   if (actor.role === "DEPARTMENT_ADMIN"
     && (!departmentId || departmentId !== actor.departmentId)) {
-    throw new Error("A department administrator can create users only in their assigned department.");
+    throw new UserCreationError(
+      "scope-unavailable",
+      "A department administrator can create users only in their assigned department.",
+    );
   }
 
   return { email, displayName, role, accountKind: "COMPANY", scopeType, companyId, branchId, departmentId, jobTitle, preferredLocale, permissions };
@@ -296,14 +349,17 @@ async function validateUserCreation(
          active=true OR (
            $2='COMPANY_ADMIN'
            AND lifecycle_status IN (
-             'COMPANY_REVIEW','COMPANY_ADMINISTRATOR_INVITED'
+             'ONBOARDING','PORTAL_DRAFT','COMPANY_REVIEW',
+             'COMPANY_ADMINISTRATOR_INVITED'
            )
          )
        )
        FOR KEY SHARE`,
       [input.companyId, input.role],
     );
-    if (!company.rowCount) throw new Error("The selected company is not active.");
+    if (!company.rowCount) {
+      throw new UserCreationError("resource-unavailable", "The selected company is not active.");
+    }
     organizationName = company.rows[0].name;
   }
   if (input.scopeType === "BRANCH") {
@@ -314,7 +370,10 @@ async function validateUserCreation(
       [input.branchId, input.companyId],
     );
     if (!branch.rowCount) {
-      throw new Error("The selected branch is not active or belongs to another company.");
+      throw new UserCreationError(
+        "resource-unavailable",
+        "The selected branch is not active or belongs to another company.",
+      );
     }
     branchName = branch.rows[0].name;
   }
@@ -331,7 +390,10 @@ async function validateUserCreation(
       [input.departmentId, input.companyId, input.branchId ?? null],
     );
     if (!department.rowCount) {
-      throw new Error("The selected department is not active or belongs to another company.");
+      throw new UserCreationError(
+        "resource-unavailable",
+        "The selected department is not active or belongs to another company.",
+      );
     }
     departmentName = department.rows[0].name;
     branchName = department.rows[0].branchName;
@@ -341,7 +403,9 @@ async function validateUserCreation(
       "SELECT name FROM suppliers WHERE id=$1 AND active=true FOR KEY SHARE",
       [input.supplierId],
     );
-    if (!supplier.rowCount) throw new Error("The selected supplier is not active.");
+    if (!supplier.rowCount) {
+      throw new UserCreationError("resource-unavailable", "The selected supplier is not active.");
+    }
     organizationName = supplier.rows[0].name;
   }
 

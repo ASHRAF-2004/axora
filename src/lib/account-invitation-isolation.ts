@@ -125,6 +125,17 @@ function requireAssignment(actor: SessionUser) {
   return parsed.data;
 }
 
+function claimedAssignment(actor: SessionUser) {
+  if (actor.roleAssignmentId === undefined) return null;
+  return requireAssignment(actor);
+}
+
+function requireAuthVersion(actor: SessionUser) {
+  const parsed = z.coerce.number().int().positive().safeParse(actor.authVersion);
+  if (!parsed.success) throw new AccountInvitationAccessUnavailableError();
+  return parsed.data;
+}
+
 function creationMatches(
   resolved: ResolvedUserCreation,
   snapshot: z.infer<typeof creationScopeSchema>,
@@ -150,23 +161,30 @@ export async function lockAuthorizedInvitationCreationScope(
   }
 
   try {
-    const onboardingCompanyAdministrator = actor.isOwner
+    const onboardingCompanyAdministrator = actor.accountKind === "PLATFORM"
       && resolved.role === "COMPANY_ADMIN"
       && resolved.scopeType === "COMPANY"
       && resolved.companyId;
     const result = onboardingCompanyAdministrator
       ? await client.query<SnapshotRow>(`
           SELECT public.axora_lock_company_admin_invitation_scope(
-            $1,$2,$3,$4
-          ) AS snapshot
-        `, [actor.id, requireAssignment(actor), resolved.companyId, capturedAt])
-      : await client.query<SnapshotRow>(`
-          SELECT public.axora_lock_user_creation_scope(
-            $1,$2,$3,$4,$5,$6,$7,$8,$9
+            $1,$2,$3,$4,$5
           ) AS snapshot
         `, [
           actor.id,
-          requireAssignment(actor),
+          claimedAssignment(actor),
+          requireAuthVersion(actor),
+          resolved.companyId,
+          capturedAt,
+        ])
+      : await client.query<SnapshotRow>(`
+          SELECT public.axora_lock_user_creation_scope(
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+          ) AS snapshot
+        `, [
+          actor.id,
+          claimedAssignment(actor),
+          requireAuthVersion(actor),
           resolved.role,
           resolved.scopeType,
           resolved.companyId ?? null,
@@ -230,8 +248,14 @@ export async function lockAuthorizedInvitationResendTarget(
   }
   try {
     const result = await client.query<SnapshotRow>(`
-      SELECT public.axora_account_setup_resend_target($1,$2,$3,$4) AS snapshot
-    `, [actor.id, requireAssignment(actor), targetUserId, capturedAt]);
+      SELECT public.axora_account_setup_resend_target($1,$2,$3,$4,$5) AS snapshot
+    `, [
+      actor.id,
+      claimedAssignment(actor),
+      requireAuthVersion(actor),
+      targetUserId,
+      capturedAt,
+    ]);
     const parsed = resendTargetSchema.safeParse(result.rows[0]?.snapshot);
     if (!parsed.success || parsed.data.userId !== targetUserId) {
       throw new AccountInvitationAccessUnavailableError();
