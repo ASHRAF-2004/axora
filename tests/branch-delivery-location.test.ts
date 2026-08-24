@@ -62,6 +62,22 @@ describe("branch delivery location capability parsing", () => {
     expect(result.commandId).toBe(ids.command);
   });
 
+  it("accepts migration 113 snapshots whose null optional fields were stripped", () => {
+    const withoutInstructions = { ...workspace().location as Record<string, unknown> };
+    delete withoutInstructions.instructions;
+    const result = branchDeliveryLocationInternals.parseWorkspace(
+      workspace({ location: withoutInstructions }),
+      ids.branch,
+      capturedAt,
+    );
+
+    expect(result.location).toMatchObject({
+      addressLabel: "Axora receiving bay",
+      coordinates: { latitude: 3.139, longitude: 101.6869 },
+    });
+    expect(result.location?.instructions).toBeUndefined();
+  });
+
   it("fails closed on branch/time confusion and malformed coordinate pairs", () => {
     expect(() => branchDeliveryLocationInternals.parseWorkspace(
       workspace({ branchId: ids.company }),
