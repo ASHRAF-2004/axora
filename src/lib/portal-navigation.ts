@@ -21,6 +21,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/products", label: "Shopping", permission: "view_catalog" },
   { href: "/requests", label: "Requests", permission: "view_requests" },
   { href: "/approvals", label: "Approvals", permission: "view_approvals" },
+  { href: "/branches", label: "Branches", permission: "view_branches", companyOnly: true },
   { href: "/budgets", label: "Budgets", permission: "view_budgets", companyOnly: true },
   { href: "/wallet", label: "Company Wallet", permission: "view_wallet" },
   { href: "/deliveries", label: "Deliveries", permission: "view_deliveries" },
@@ -36,7 +37,6 @@ export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/budgets", label: "Budgets", description: "Budgets and available balances", permission: "view_budgets", companyOnly: true, group: "administration" },
   { href: "/wallet", label: "Company Wallet", description: "Actual funds, top-ups and immutable wallet evidence", permission: "view_wallet", group: "administration" },
   { href: "/users", label: "Users", description: "People, roles and access", permission: "manage_users", group: "administration" },
-  { href: "/settings/procurement", label: "Purchasing rules", description: "Category policy by company, branch and department", permission: "manage_category_policy", companyOnly: true, group: "administration" },
   { href: "/email-operations", label: "Email Status", description: "Service status, usage and failed email retries", ownerOnly: true, group: "administration" },
 ];
 
@@ -53,9 +53,7 @@ export function visiblePortalNavigation(
     if (item.companyOnly && user.accountKind !== "COMPANY") return false;
     return !item.permission || canAccess(user, item.permission);
   }).map((item) => ({
-    href: item.href === "/users" && user.accountKind === "COMPANY" && user.companyId
-      ? `/companies/${user.companyId}/users`
-      : item.href,
+    href: item.href,
     label: messages.navigation[
       item.href === "/users" && user.accountKind === "COMPANY" ? "/company-users" : item.href
     ]?.label ?? item.label,

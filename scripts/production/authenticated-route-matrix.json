@@ -914,9 +914,54 @@
       "apis": [],
       "expectedFinalUrl": "/wallet",
       "landmark": "main h1"
+    },
+    {
+      "route": "/branches/[branchId]/people",
+      "accountRole": "COMPANY_ADMIN",
+      "companyScope": "exact-authorized-branch",
+      "expectedAccess": ["C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "expectedDenial": ["OWNER_1", "OWNER_2", "foreign-company-resource"],
+      "mode": "read-only",
+      "apis": [],
+      "expectedFinalUrl": "/branches/[branchId]/people",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/branches/[branchId]/edit",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "exact-authorized-branch-derived-server-side",
+      "expectedAccess": ["OWNER_1", "OWNER_2", "C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "expectedDenial": ["foreign-company-resource"],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/branches/[branchId]/edit",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/budgets/[branchId]",
+      "accountRole": "COMPANY_ADMIN",
+      "companyScope": "exact-authorized-branch-budget",
+      "expectedAccess": ["C100_ADMIN", "C101_ADMIN", "C102_ADMIN"],
+      "expectedDenial": ["OWNER_1", "OWNER_2", "foreign-company-resource"],
+      "mode": "mixed",
+      "apis": [],
+      "expectedFinalUrl": "/budgets/[branchId]",
+      "landmark": "main h1"
     }
   ],
   "apiRoutes": [
+    {
+      "route": "/api/geocoding/autocomplete",
+      "authentication": "authenticated",
+      "scope": "self-hosted-map-coverage",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/geocoding/reverse",
+      "authentication": "authenticated",
+      "scope": "self-hosted-map-coverage",
+      "mode": "read-only"
+    },
     {
       "route": "/api/health/live",
       "authentication": "public-health",

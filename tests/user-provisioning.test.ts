@@ -12,7 +12,6 @@ const expectedRoles = [
   "CLIENT_ACCOUNT_MANAGER",
   "COMPANY_ADMIN",
   "BRANCH_ADMIN",
-  "DEPARTMENT_ADMIN",
   "COMPANY_APPROVER",
   "BRANCH_APPROVER",
   "REQUESTER",
@@ -41,7 +40,6 @@ describe("Create User provisioning configuration", () => {
     ["CLIENT_ACCOUNT_MANAGER", "PLATFORM", false, false, false],
     ["COMPANY_ADMIN", "COMPANY", true, false, false],
     ["BRANCH_ADMIN", "BRANCH", true, true, false],
-    ["DEPARTMENT_ADMIN", "DEPARTMENT", true, true, true],
     ["COMPANY_APPROVER", "COMPANY", true, false, false],
     ["BRANCH_APPROVER", "BRANCH", true, true, false],
     ["DELIVERY_GUY", "DELIVERY", false, false, false],
@@ -56,12 +54,12 @@ describe("Create User provisioning configuration", () => {
     });
   });
 
-  it("keeps Requester limited to branch or department scope", () => {
+  it("keeps Requester limited to the exposed branch scope", () => {
     expect(userProvisioningRoleConfig("REQUESTER")).toMatchObject({
-      creationScopes: ["BRANCH", "DEPARTMENT"],
+      creationScopes: ["BRANCH"],
       showCompany: true,
       showBranch: true,
-      showDepartment: true,
+      showDepartment: false,
     });
   });
 });
@@ -101,7 +99,7 @@ describe("Create User payload shape validation", () => {
       role: "DEPARTMENT_ADMIN",
       companyId: "10000000-0000-4000-8000-000000000001",
       departmentId: "30000000-0000-4000-8000-000000000001",
-    })).toThrow(/branch and department|branch before/i);
+    })).toThrow(/approved account role/i);
   });
 });
 
@@ -121,9 +119,7 @@ describe("Create User progressive UI source contract", () => {
     expect(source).toContain("permissionsCustomized");
     expect(source).toContain("customizablePermissions");
     expect(source).toContain("requesterScopeFixedToDepartment");
-    expect(source).toContain(
-      'role === "REQUESTER" && !requesterScopeFixedToDepartment',
-    );
+    expect(source).toContain('config?.creationScopes.includes("DEPARTMENT")');
   });
 
   it("uses centralized English, Arabic and Malay role/access copy", async () => {

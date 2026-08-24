@@ -37,14 +37,15 @@ export default async function BranchDeliveryLocationPage({
       commandId={commandId}
       coordinates={location?.coordinates ?? null}
       instructions={location?.instructions}
+      providerAttribution={location?.providerAttribution}
+      providerId={location?.providerId}
+      providerPlaceId={location?.providerPlaceId}
       key={commandId}
       locale={locale}
     /> : <section className="panel form-panel">
       <p className="callout">{copy.readOnly}</p>
       <dl className="summary-list">
         <div><dt>{copy.addressLabel}</dt><dd>{location?.addressLabel ?? "—"}</dd></div>
-        <div><dt>{copy.latitude}</dt><dd>{location?.coordinates?.latitude ?? copy.noCoordinates}</dd></div>
-        <div><dt>{copy.longitude}</dt><dd>{location?.coordinates?.longitude ?? copy.noCoordinates}</dd></div>
         <div><dt>{copy.instructions}</dt><dd>{location?.instructions ?? "—"}</dd></div>
         <div><dt>{copy.lastUpdated}</dt><dd>{location ? new Intl.DateTimeFormat(locale, {
           dateStyle: "medium",

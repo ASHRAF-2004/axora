@@ -27,9 +27,9 @@ describe("organization directory UI isolation", () => {
 
   it("does not render branch financial values without field-level visibility", async () => {
     const branchesPage = await readFile(branchesPageUrl, "utf8");
-    expect(branchesPage).toContain("branch.canViewBudget");
-    expect(branchesPage).toContain("showBudgetColumns");
-    expect(branchesPage).toContain("committedAmount ?? 0");
-    expect(branchesPage).toContain("remainingAmount == null");
+    expect(branchesPage).not.toContain("branch.canViewBudget");
+    expect(branchesPage).not.toContain("showBudgetColumns");
+    expect(branchesPage).not.toContain("committedAmount ?? 0");
+    expect(branchesPage).not.toContain("remainingAmount == null");
   });
 });

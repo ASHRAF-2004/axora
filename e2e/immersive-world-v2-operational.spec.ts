@@ -38,7 +38,7 @@ async function visibleAppearanceButton(page: Page, appearance: "Light" | "Dark")
   return drawerButton;
 }
 
-test("owner create routes are single-purpose and obsolete budget access is unavailable", async ({ page }, testInfo) => {
+test("owner create routes are single-purpose and Company budgets deny cleanly", async ({ page }, testInfo) => {
   await signInAsDemoOwner(page);
 
   await page.goto("/companies/new");
@@ -59,7 +59,8 @@ test("owner create routes are single-purpose and obsolete budget access is unava
   await expect(page.getByRole("table")).toHaveCount(0);
 
   await page.goto("/budgets");
-  await expect(page.getByRole("heading", { name: /not found|could not be found/i })).toBeVisible();
+  await expect(page).toHaveURL(/\/access-denied$/);
+  await expect(page.getByRole("heading", { level: 1, name: "This page is not part of your role" })).toBeVisible();
 });
 
 test("owner sees Manage Drivers, a live driver detail map, and no normal assignment control", async ({ page }, testInfo) => {

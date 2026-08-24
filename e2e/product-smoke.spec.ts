@@ -9,7 +9,7 @@ const authenticatedRoutes = [
   { path: "/receiving", heading: "Confirm delivered quantities" },
   { path: "/finance", heading: "Invoices and payments" },
   { path: "/companies", heading: "Companies" },
-  { path: "/branches", heading: "Branches & monthly budgets" },
+  { path: "/branches", heading: "Branches" },
   { path: "/users", heading: "Axora Users" },
   { path: "/email-operations", heading: "Email Status" },
 ] as const;

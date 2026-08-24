@@ -241,7 +241,8 @@ export function UserCreateForm({
           </section>
         ) : null}
 
-        {role === "REQUESTER" && !requesterScopeFixedToDepartment ? (
+        {role === "REQUESTER" && config?.creationScopes.includes("DEPARTMENT")
+          && !requesterScopeFixedToDepartment ? (
           <label className="field-full">{copy.assignmentLevel}
             <select value={requesterScope} onChange={(event) => changeRequesterScope(event.target.value as "BRANCH" | "DEPARTMENT")}>
               <option value="BRANCH">{copy.branchScope}</option>

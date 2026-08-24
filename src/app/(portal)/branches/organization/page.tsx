@@ -5,6 +5,7 @@ import { requirePagePermission } from "@/lib/auth";
 import { loadOrganizationStructureWorkspace } from "@/lib/organization-structure";
 import { organizationStructureMessages } from "@/lib/organization-structure-i18n";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { saveOrganizationNodeAction, setOrganizationNodeActiveAction } from "./actions";
 
 const TIMEZONES = ["Asia/Kuala_Lumpur", "Asia/Singapore", "Asia/Riyadh", "Asia/Dubai", "UTC"];
@@ -34,6 +35,7 @@ export default async function OrganizationPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const actor = await requirePagePermission("view_branches");
+  if (actor.accountKind === "COMPANY") redirect("/branches");
   const locale = actor.preferredLocale ?? "en";
   const copy = organizationStructureMessages(locale);
   const [workspace, query] = await Promise.all([

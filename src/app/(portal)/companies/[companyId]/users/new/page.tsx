@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { UserCreateForm } from "@/components/UserCreateForm";
 import {
@@ -27,6 +27,11 @@ export default async function NewCompanyUserPage({
   const locale = actor.preferredLocale ?? "en";
   const copy = peopleWorkspaceMessages(locale);
   const { companyId } = await params;
+  if (actor.accountKind === "COMPANY") {
+    if (actor.companyId !== companyId) redirect("/access-denied");
+    redirect("/users/new");
+  }
+  if (actor.accountKind !== "PLATFORM") redirect("/access-denied");
   const [organization, structure] = await Promise.all([
     loadOrganizationDirectory(actor),
     loadOrganizationStructureWorkspace(actor),

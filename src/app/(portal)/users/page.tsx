@@ -12,8 +12,9 @@ import { accountRoleLabel } from "@/lib/role-catalog";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { profileImageMessages } from "@/lib/profile-image-i18n";
 import { peopleWorkspaceMessages } from "@/lib/people-workspaces-i18n";
+import { canAccess } from "@/lib/permissions";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import {
   setUserActiveAction,
   deactivateUserProfileImageAction,
@@ -72,7 +73,9 @@ function invitationTimeline(user: Awaited<ReturnType<typeof listAuthorizedUsers>
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const actor = await requirePagePermission("manage_users");
-  if (actor.accountKind !== "PLATFORM") notFound();
+  if (actor.accountKind !== "PLATFORM" && actor.accountKind !== "COMPANY") {
+    redirect("/access-denied");
+  }
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const portalCopy = corePortalMessages(locale);
@@ -83,6 +86,55 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const deletionCopy = permanentDeletionMessages[locale];
   const workspaceCopy = peopleWorkspaceMessages(locale);
   const [directoryUsers, params] = await Promise.all([listAuthorizedUsers(actor), searchParams]);
+  if (actor.accountKind === "COMPANY") {
+    if (!actor.companyId) redirect("/access-denied");
+    const companyUsers = directoryUsers.filter((user) => (
+      user.accountKind === "COMPANY"
+      && user.companyId === actor.companyId
+      && user.accountStatus !== "DEACTIVATED"
+    ));
+    const companyName = companyUsers.find((user) => user.companyName)?.companyName
+      ?? workspaceCopy.companyTitle;
+    const standardNotice = params.notice ? portalCopy.notices[params.notice] : undefined;
+    const localNotice = params.notice === "user-creation-invalid"
+      ? { message: workspaceCopy.invalidUser, tone: "error" as const }
+      : params.notice === "user-permission-selection-unavailable"
+        ? { message: workspaceCopy.unavailablePermissions, tone: "error" as const }
+        : undefined;
+    const notice = standardNotice ?? localNotice;
+    return <>
+      <PageHeader eyebrow={workspaceCopy.companyEyebrow}
+        title={workspaceCopy.companyTitle}
+        description={workspaceCopy.companyDescription.replace("{company}", companyName)} />
+      <div className="page-actions">
+        {canAccess(actor, "create_company_users")
+          ? <Link className="button button-primary" href="/users/new">{workspaceCopy.createCompany}</Link>
+          : null}
+      </div>
+      {notice ? <div className={notice.tone === "error" ? "form-alert" : "callout"}
+        role={notice.tone === "error" ? "alert" : "status"}><strong>{notice.message}</strong></div> : null}
+      <section className="panel" style={{ marginBlockStart: 17 }}>
+        {companyUsers.length ? <div className="data-table-wrap"><table className="data-table">
+          <thead><tr><th>{copy.user}</th><th>{copy.role}</th><th>{copy.scope}</th><th>{common.status}</th><th>{copy.lastLogin}</th><th>{copy.action}</th></tr></thead>
+          <tbody>{companyUsers.map((user) => {
+            const setupPending = user.active && !user.accountSetupCompletedAt;
+            const scope = user.branchName ?? workspaceCopy.companyScope;
+            return <tr key={user.id}>
+              <td><div className="profile-user-cell"><UserAvatar name={user.displayName} size={40} userId={user.avatarAvailable ? user.id : undefined} /><div><strong>{user.displayName}</strong>{user.id === actor.id ? ` · ${copy.currentSession}` : ""}<br /><span className="subtle">{user.email}</span></div></div></td>
+              <td>{localizedAccountRole(user.role, locale)?.label ?? accountRoleLabel(user.role)}</td>
+              <td>{scope}</td>
+              <td><StatusBadge status={invitationStatus(user)}>{localizedStatus(invitationStatus(user), locale)}</StatusBadge></td>
+              <td>{setupPending ? <span className="subtle">{invitationTimeline(user, locale, timeZone, copy)}</span> : formatDateTime(user.lastLoginAt, locale, timeZone)}</td>
+              <td><div className="action-row">
+                <Link className="button button-secondary" href={`/users/${user.id}/access`}>{accessCopy.openAccess}</Link>
+                {setupPending ? <InvitationResendForm userId={user.id} userName={user.displayName} locale={locale} /> : null}
+              </div></td>
+            </tr>;
+          })}</tbody>
+        </table></div> : <p>{workspaceCopy.noUsers}</p>}
+      </section>
+    </>;
+  }
   const users = directoryUsers.filter((user) => (
     user.accountKind === "PLATFORM" && user.accountStatus !== "DEACTIVATED"
   ));
