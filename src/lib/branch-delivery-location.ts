@@ -28,7 +28,7 @@ const rawLocationSchema = z.strictObject({
   addressLabel: z.string().trim().min(3).max(5_000),
   latitude: coordinateText.nullable(),
   longitude: coordinateText.nullable(),
-  instructions: z.string().max(5_000).nullable(),
+  instructions: z.string().max(5_000).nullable().optional(),
   providerId: z.string().trim().min(2).max(100).nullable().optional(),
   providerPlaceId: z.string().trim().max(500).nullable().optional(),
   providerAttribution: z.string().trim().max(1_000).nullable().optional(),
