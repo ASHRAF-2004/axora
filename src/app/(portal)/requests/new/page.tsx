@@ -10,6 +10,7 @@ import { STANDARD_BILLING_TERMS, type Branch, type Company } from "@/lib/types";
 import { commandProcurementCart } from "@/lib/procurement-cart";
 import { redirect } from "next/navigation";
 import { requestSubmitMessage } from "@/lib/request-submit-i18n";
+import { loadShoppingBranchContexts, resolveShoppingBranch } from "@/lib/shopping-context";
 
 export default async function NewRequestPage({
   searchParams,
@@ -23,11 +24,12 @@ export default async function NewRequestPage({
   const params = await searchParams;
   const notice = requestSubmitMessage(locale, params.notice);
 
-  const [organization, initialProduct] = await Promise.all([
+  const [organization, initialProduct, shoppingBranches] = await Promise.all([
     loadOrganizationDirectory(actor),
     params.product
       ? getCustomerCatalogProductByPublicRef(params.product, actor)
       : Promise.resolve(undefined),
+    loadShoppingBranchContexts(actor),
   ]);
   const companies: Company[] = organization.companies.map((company) => ({
     ...company,
@@ -38,9 +40,9 @@ export default async function NewRequestPage({
     committedAmount: branch.committedAmount ?? 0,
   }));
   const companyId = actor.companyId ?? companies[0]?.id;
-  const branchId = actor.branchId ?? params.branch
-    ?? branches.find((branch) => branch.status === "Active")?.id;
-  if (!branchId) redirect("/products?notice=purchasing-scope-required");
+  const shoppingBranch = resolveShoppingBranch(actor, shoppingBranches, params.branch);
+  const branchId = shoppingBranch?.ready ? shoppingBranch.id : undefined;
+  if (!branchId) redirect("/products?notice=shopping-branch-required");
   let initialCart;
   try {
     initialCart = await commandProcurementCart(actor, {

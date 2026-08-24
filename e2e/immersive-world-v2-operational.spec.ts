@@ -8,7 +8,7 @@ const companyAdmin: DemoRoleSession = {
   role: "COMPANY_ADMIN",
   accountKind: "COMPANY",
   scopeType: "COMPANY",
-  companyId: "10000000-0000-4000-8000-000000000001",
+  companyId: "11111111-1111-4111-8111-111111111111",
 };
 
 const deliveryGuy: DemoRoleSession = {
@@ -251,6 +251,7 @@ test("authenticated users select Light or Dark while company branding remains au
 test("customer catalogue uses licensed local category artwork and no product identifiers", async ({ page }, testInfo) => {
   await signInAsDemoRole(page, companyAdmin);
   await page.goto("/products");
+  await page.getByRole("button", { name: "Shop for Authorized E2E branch" }).click();
   await expect(page.locator('img[src^="/catalog/categories/"]').first()).toBeVisible();
   await expect(page.locator('img[src^="http"]')).toHaveCount(0);
   await expect(page.getByText(/product id/i)).toHaveCount(0);

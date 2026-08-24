@@ -27,7 +27,7 @@ export async function createRequestAction(formData: FormData) {
   const parsedInput = requestSchema.safeParse({
     companyId: readFormText(formData, "companyId") || "canonical-cart",
     branchId: readFormText(formData, "branchId") || "canonical-cart",
-    requestType: readFormText(formData, "requestType"),
+    requestType: "Standard",
     department: readFormText(formData, "department"),
     neededByDate: readFormText(formData, "neededByDate"),
     urgency: readFormText(formData, "urgency"),

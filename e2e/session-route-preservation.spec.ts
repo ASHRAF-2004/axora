@@ -206,7 +206,7 @@ test("request draft fields recover after a hard refresh", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Create purchase request" }))
     .toBeVisible();
 
-  await page.getByLabel("Request type").selectOption("Recurring");
+  await expect(page.getByLabel("Request type")).toHaveCount(0);
   await page.getByLabel("Department").fill("Operations and facilities");
   await page.getByLabel("Priority").selectOption("High");
   await page.getByLabel("Notes").fill("Preserve this safe draft across refresh.");
@@ -215,7 +215,7 @@ test("request draft fields recover after a hard refresh", async ({ page }) => {
 
   await page.reload();
 
-  await expect(page.getByLabel("Request type")).toHaveValue("Recurring");
+  await expect(page.getByLabel("Request type")).toHaveCount(0);
   await expect(page.getByLabel("Department"))
     .toHaveValue("Operations and facilities");
   await expect(page.getByLabel("Priority")).toHaveValue("High");

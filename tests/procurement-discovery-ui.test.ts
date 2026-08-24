@@ -24,7 +24,7 @@ describe("procurement discovery UI and API",() => {
       source("src/components/ShopCategoryHub.tsx"),source("src/lib/catalog.ts"),
       source("src/app/api/catalog/route.ts"),
     ]);
-    expect(shop).toContain('href="/products?view=all"');
+    expect(shop).toContain('href={`/products?branch=${encodeURIComponent(selectedBranchId)}&view=all`}');
     expect(shop).toContain("useSearchParams");
     expect(shop).toContain("shop-pagination");
     expect(shop).toContain('tabIndex={0}');
