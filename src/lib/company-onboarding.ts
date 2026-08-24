@@ -3,6 +3,10 @@ import { z } from "zod";
 import type { AuthenticatedSessionUser, SessionUser } from "./auth";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { getDemoStore } from "./demo-data";
+import {
+  approveDemoCompanyVerification,
+  demoCompanyActivationState,
+} from "./demo-company-activation";
 import { canAccess } from "./permissions";
 import { appendWorkflowEvent, notifyWorkflowUsers } from "./workflow-repository";
 import type { WorkflowNotificationMessage } from "./workflow-notification-i18n";
@@ -152,11 +156,26 @@ const mutationSchema = z.object({
   notificationRecipientIds: z.array(uuid),
 }).strict();
 
+const verificationApprovalResultSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("VERIFIED"), mutation: mutationSchema }).strict(),
+  z.object({
+    status: z.literal("BLOCKED"),
+    blockedReasons: z.array(z.string().regex(/^[A-Z][A-Z0-9_]{2,79}$/)),
+  }).strict(),
+  z.object({ status: z.literal("STALE") }).strict(),
+  z.object({ status: z.literal("ALREADY_VERIFIED") }).strict(),
+  z.object({ status: z.literal("UNAVAILABLE") }).strict(),
+  z.object({ status: z.literal("DENIED") }).strict(),
+]);
+
 interface SnapshotRow extends QueryResultRow { snapshot: unknown }
 
 export type CompanyOnboardingWorkspace = z.infer<typeof workspaceSchema>;
 export type CompanyOnboardingItemStatus = z.infer<typeof itemSchema>["status"];
 export type CompanyOnboardingStep = typeof COMPANY_ONBOARDING_STEPS[number];
+export type CompanyVerificationApprovalResult = z.infer<
+  typeof verificationApprovalResultSchema
+>;
 
 export interface CompanyOnboardingProfileInput {
   companyId: string;
@@ -568,6 +587,63 @@ export function reviewCompanyVerification(
       decision, reason, new Date(),
     ],
   );
+}
+
+export function approveCompanyVerification(
+  actor: AuthenticatedSessionUser,
+  companyId: string,
+  expectedVersion: number,
+): Promise<CompanyVerificationApprovalResult> {
+  if (isDemoMode()) {
+    if (!actor.isOwner || actor.accountKind !== "PLATFORM") {
+      return Promise.resolve({ status: "DENIED" });
+    }
+    const outcome = approveDemoCompanyVerification(
+      actor.id,
+      companyId,
+      expectedVersion,
+    );
+    if (outcome !== "VERIFIED") return Promise.resolve({ status: outcome });
+    const company = getDemoStore().companies.find((item) => item.id === companyId);
+    const state = demoCompanyActivationState(actor.id, companyId);
+    if (!company || !state) return Promise.resolve({ status: "UNAVAILABLE" });
+    return Promise.resolve({
+      status: "VERIFIED",
+      mutation: mutationSchema.parse({
+        companyId,
+        companyName: company.name,
+        version: state.verificationVersion,
+        eventKey: "company.verification.approved",
+        notificationRecipientIds: [],
+      }),
+    });
+  }
+  const reason = "COMPANY_VERIFICATION_APPROVED";
+  return withAuditTransaction({ actor, reason }, async (client) => {
+    const result = await client.query<SnapshotRow>(
+      `SELECT public.axora_review_company_verification(
+         $1,$2,$3,$4,$5,$6,$7,$8
+       ) AS snapshot`,
+      [
+        actor.id,
+        assignmentId(actor),
+        actor.authVersion,
+        uuid.parse(companyId),
+        z.coerce.number().int().positive().parse(expectedVersion),
+        "APPROVE",
+        reason,
+        new Date(),
+      ],
+    );
+    const parsed = verificationApprovalResultSchema.safeParse(
+      result.rows[0]?.snapshot,
+    );
+    if (!parsed.success) throw new CompanyOnboardingUnavailableError();
+    if (parsed.data.status === "VERIFIED") {
+      await notifyMutation(client, parsed.data.mutation, actor);
+    }
+    return parsed.data;
+  });
 }
 
 export const companyOnboardingInternals = { mutationSchema, workspaceSchema };

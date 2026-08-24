@@ -152,12 +152,27 @@ export async function resolveCompanyDuplicateAction(formData: FormData) {
 export async function activateCompanyAction(formData: FormData) {
   const actor = await requirePermission("manage_companies");
   const companyId = z.uuid().parse(readFormText(formData, "companyId"));
-  const reason = "COMPANY_ACTIVATED";
-  const mutation = await activateCompany(actor, companyId, reason);
-  lifecycleRedirect(
-    mutation.blockedReasons?.length ? "company-activation-blocked" : "company-activated",
-    companyId,
+  const expectedVersion = z.coerce.number().int().positive().parse(
+    readFormText(formData, "expectedVersion"),
   );
+  const reason = "COMPANY_ACTIVATED";
+  const result = await activateCompany(actor, companyId, expectedVersion, reason);
+  revalidatePath("/companies");
+  revalidatePath(`/companies/${companyId}`);
+  revalidatePath("/dashboard");
+  if (result.status === "ACTIVATED") {
+    redirect(`/companies/${companyId}?notice=company-activated`);
+  }
+  if (result.status === "BLOCKED") {
+    redirect(`/companies/${companyId}?notice=company-activation-blocked`);
+  }
+  if (result.status === "STALE") {
+    redirect(`/companies/${companyId}?notice=company-activation-stale`);
+  }
+  if (result.status === "ALREADY_ACTIVE") {
+    redirect(`/companies/${companyId}?notice=company-already-active`);
+  }
+  redirect(`/companies?notice=company-activation-unavailable`);
 }
 
 export async function suspendCompanyAction(formData: FormData) {
