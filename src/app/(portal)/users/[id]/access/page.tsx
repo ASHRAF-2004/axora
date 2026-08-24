@@ -39,8 +39,7 @@ export default async function UserAccessPage({ params, searchParams }: {
     .filter((permission) => isMvpVisiblePermission(snapshot.identity.accountKind, permission.code))
     .map((permission) => localizePermissionOption(permission, locale));
   const notice = accessAdministrationNotice(locale, query.notice);
-  const back = snapshot.identity.accountKind === "COMPANY" && snapshot.selectedScope.companyId
-    ? `/companies/${snapshot.selectedScope.companyId}/users` : "/users";
+  const back = "/users";
   return <>
     <PageHeader eyebrow={copy.eyebrow} title={copy.title(snapshot.identity.displayName)} description={local.description} />
     <div className="page-actions"><Link className="button button-secondary" href={back}>{local.back}</Link></div>

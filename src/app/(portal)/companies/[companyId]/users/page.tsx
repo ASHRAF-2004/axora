@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { InvitationResendForm } from "@/components/InvitationResendForm";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -28,6 +28,11 @@ export default async function CompanyUsersPage({
   const locale = actor.preferredLocale ?? "en";
   const copy = peopleWorkspaceMessages(locale);
   const { companyId } = await params;
+  if (actor.accountKind === "COMPANY") {
+    if (actor.companyId !== companyId) redirect("/access-denied");
+    redirect("/users");
+  }
+  if (actor.accountKind !== "PLATFORM") redirect("/access-denied");
   const [directory, authorizedUsers, parameters] = await Promise.all([
     loadOrganizationDirectory(actor),
     listAuthorizedUsers(actor),

@@ -34,6 +34,9 @@ const formSchema = z.strictObject({
   latitude: coordinate.pipe(z.number().min(-90).max(90)),
   longitude: coordinate.pipe(z.number().min(-180).max(180)),
   instructions: z.string().trim().max(5_000).optional(),
+  providerId: z.string().trim().min(2).max(100),
+  providerPlaceId: z.string().trim().max(500).optional(),
+  providerAttribution: z.string().trim().max(1_000).optional(),
   commandId: z.uuid(),
 });
 
@@ -57,6 +60,9 @@ export async function saveBranchDeliveryLocationAction(
     latitude: readFormText(formData, "latitude"),
     longitude: readFormText(formData, "longitude"),
     instructions: readFormText(formData, "instructions") || undefined,
+    providerId: readFormText(formData, "providerId"),
+    providerPlaceId: readFormText(formData, "providerPlaceId") || undefined,
+    providerAttribution: readFormText(formData, "providerAttribution") || undefined,
     commandId: readFormText(formData, "commandId"),
   });
   if (!parsed.success) {
@@ -77,6 +83,9 @@ export async function saveBranchDeliveryLocationAction(
         longitude: parsed.data.longitude,
       },
       instructions: parsed.data.instructions,
+      providerId: parsed.data.providerId,
+      providerPlaceId: parsed.data.providerPlaceId,
+      providerAttribution: parsed.data.providerAttribution,
       reason: "DELIVERY_LOCATION_UPDATED",
       commandId: parsed.data.commandId,
     });

@@ -10,7 +10,8 @@ describe("single-purpose portal routes", () => {
     expect(list).not.toContain("setBranchBudgetAction");
     expect(list).not.toContain("setMasterActiveAction");
     expect(list).toContain("/branches/${branch.id}");
-    expect(detail).toContain("setBranchBudgetAction");
+    expect(detail).not.toContain("setBranchBudgetAction");
+    expect(detail).toContain("/budgets/${branch.id}");
     expect(detail).toContain("setMasterActiveAction");
   });
 
@@ -37,7 +38,7 @@ describe("single-purpose portal routes", () => {
     ]);
     expect(navigation).toContain('href: "/budgets", label: "Budgets", permission: "view_budgets", companyOnly: true');
     expect(budgetPage).toContain('actor.accountKind !== "COMPANY"');
-    expect(budgetPage).toContain("notFound()");
+    expect(budgetPage).toContain('redirect("/access-denied")');
   });
 
   it("uses authenticated SSE for notification summaries with polling only as fallback", async () => {

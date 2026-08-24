@@ -7,9 +7,8 @@ import {
   saveBranchDeliveryLocationAction,
   type BranchDeliveryLocationActionState,
 } from "@/app/(portal)/branches/[branchId]/delivery-location/actions";
-import { BranchDeliveryLocationPicker } from "@/components/BranchDeliveryLocationPicker";
+import { BranchDeliveryLocationPicker, type DeliveryLocationSelection } from "@/components/BranchDeliveryLocationPicker";
 import { branchDeliveryLocationMessages } from "@/lib/branch-delivery-location-i18n";
-import type { DeliveryCoordinates } from "@/lib/delivery-navigation";
 import type { SupportedLocale } from "@/lib/i18n";
 
 const initialActionState: BranchDeliveryLocationActionState = {
@@ -18,10 +17,11 @@ const initialActionState: BranchDeliveryLocationActionState = {
   submissionId: "",
 };
 
-function sameCoordinates(left: DeliveryCoordinates | null, right: DeliveryCoordinates | null) {
+function sameSelection(left: DeliveryLocationSelection | null, right: DeliveryLocationSelection | null) {
   return Boolean(left && right
     && left.latitude === right.latitude
-    && left.longitude === right.longitude);
+    && left.longitude === right.longitude
+    && left.addressLabel === right.addressLabel);
 }
 
 export function BranchDeliveryLocationForm({
@@ -31,20 +31,32 @@ export function BranchDeliveryLocationForm({
   coordinates: initialCoordinates,
   instructions,
   locale = "en",
+  providerAttribution,
+  providerId,
+  providerPlaceId,
 }: {
   addressLabel: string;
   branchId: string;
   commandId: string;
-  coordinates: DeliveryCoordinates | null;
+  coordinates: { latitude: number; longitude: number } | null;
   instructions?: string;
   locale?: SupportedLocale;
+  providerAttribution?: string;
+  providerId?: string;
+  providerPlaceId?: string;
 }) {
   const copy = branchDeliveryLocationMessages(locale);
   const router = useRouter();
-  const addressRef = useRef<HTMLTextAreaElement>(null);
   const instructionsRef = useRef<HTMLTextAreaElement>(null);
-  const [confirmedCoordinates, setConfirmedCoordinates] = useState<DeliveryCoordinates | null>(initialCoordinates);
-  const [draftCoordinates, setDraftCoordinates] = useState<DeliveryCoordinates | null>(initialCoordinates);
+  const initialSelection = initialCoordinates ? {
+    ...initialCoordinates,
+    addressLabel,
+    providerId: providerId ?? "legacy",
+    ...(providerPlaceId ? { providerPlaceId } : {}),
+    ...(providerAttribution ? { providerAttribution } : {}),
+  } : null;
+  const [confirmedSelection, setConfirmedSelection] = useState<DeliveryLocationSelection | null>(initialSelection);
+  const [draftSelection, setDraftSelection] = useState<DeliveryLocationSelection | null>(initialSelection);
   const [state, formAction, pending] = useActionState(
     saveBranchDeliveryLocationAction,
     initialActionState,
@@ -56,45 +68,32 @@ export function BranchDeliveryLocationForm({
       router.refresh();
       return;
     }
-    if (state.field === "addressLabel") addressRef.current?.focus();
     if (state.field === "instructions") instructionsRef.current?.focus();
   }, [router, state]);
 
-  const coordinatesReady = sameCoordinates(draftCoordinates, confirmedCoordinates);
-  const addressInvalid = state.status === "error" && state.field === "addressLabel";
+  const coordinatesReady = sameSelection(draftSelection, confirmedSelection);
   const instructionsInvalid = state.status === "error" && state.field === "instructions";
 
   return <form action={formAction} className="panel form-panel" aria-busy={pending} noValidate>
     <input name="branchId" type="hidden" value={branchId} />
     <input name="commandId" type="hidden" value={initialCommandId} />
-    <input name="latitude" type="hidden" value={confirmedCoordinates?.latitude.toFixed(6) ?? ""} />
-    <input name="longitude" type="hidden" value={confirmedCoordinates?.longitude.toFixed(6) ?? ""} />
+    <input name="addressLabel" type="hidden" value={confirmedSelection?.addressLabel ?? ""} />
+    <input name="latitude" type="hidden" value={confirmedSelection?.latitude.toFixed(6) ?? ""} />
+    <input name="longitude" type="hidden" value={confirmedSelection?.longitude.toFixed(6) ?? ""} />
+    <input name="providerId" type="hidden" value={confirmedSelection?.providerId ?? ""} />
+    <input name="providerPlaceId" type="hidden" value={confirmedSelection?.providerPlaceId ?? ""} />
+    <input name="providerAttribution" type="hidden" value={confirmedSelection?.providerAttribution ?? ""} />
 
     <BranchDeliveryLocationPicker
       locale={locale}
-      initialCoordinates={initialCoordinates}
+      initialSelection={initialSelection}
       disabled={pending}
-      onDraftChange={setDraftCoordinates}
-      onConfirm={(coordinates) => {
-        setConfirmedCoordinates(coordinates);
-        setDraftCoordinates(coordinates);
+      onDraftChange={setDraftSelection}
+      onConfirm={(selection) => {
+        setConfirmedSelection(selection);
+        setDraftSelection(selection);
       }}
     />
-
-    <label>
-      {copy.addressLabel}
-      <textarea
-        ref={addressRef}
-        name="addressLabel"
-        defaultValue={addressLabel}
-        minLength={3}
-        maxLength={5_000}
-        required
-        aria-invalid={addressInvalid}
-        aria-describedby="branch-delivery-address-help"
-      />
-      <small id="branch-delivery-address-help">{copy.addressHelp}</small>
-    </label>
     <label>
       {copy.instructions}
       <textarea
@@ -112,7 +111,7 @@ export function BranchDeliveryLocationForm({
       ? <p className={state.status === "success" ? "form-success" : "form-alert"} role={state.status === "success" ? "status" : "alert"}>{state.message}</p>
       : null}
     <div className="form-actions">
-      <button className="button button-primary" type="submit" disabled={pending || !coordinatesReady || !confirmedCoordinates}>
+      <button className="button button-primary" type="submit" disabled={pending || !coordinatesReady || !confirmedSelection}>
         {pending ? copy.saving : copy.save}
       </button>
     </div>

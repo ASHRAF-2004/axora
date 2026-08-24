@@ -10,6 +10,7 @@ import {
   type DeliveryCoordinates,
 } from "@/lib/delivery-navigation";
 import { isDemoMode, query, withAuditTransaction } from "@/lib/db";
+import { getDemoStore } from "@/lib/demo-data";
 import { loadEffectiveAccess } from "@/lib/effective-access";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
 
@@ -28,6 +29,9 @@ const rawLocationSchema = z.strictObject({
   latitude: coordinateText.nullable(),
   longitude: coordinateText.nullable(),
   instructions: z.string().max(5_000).nullable(),
+  providerId: z.string().trim().min(2).max(100).nullable().optional(),
+  providerPlaceId: z.string().trim().max(500).nullable().optional(),
+  providerAttribution: z.string().trim().max(1_000).nullable().optional(),
   updatedAt: z.coerce.date(),
 }).superRefine((location, context) => {
   if ((location.latitude === null) !== (location.longitude === null)) {
@@ -56,6 +60,9 @@ const saveInputSchema = z.strictObject({
   instructions: safeOperationalText(0, 5_000).optional(),
   reason: safeOperationalText(3, 1_000),
   commandId: uuid,
+  providerId: safeOperationalText(2, 100).optional().default("legacy"),
+  providerPlaceId: safeOperationalText(0, 500).optional(),
+  providerAttribution: safeOperationalText(0, 1_000).optional(),
 });
 const demoSaveInputSchema = saveInputSchema.extend({ branchId: demoBranchId });
 
@@ -69,6 +76,9 @@ export type BranchDeliveryLocation = {
   coordinates: DeliveryCoordinates | null;
   instructions?: string;
   updatedAt: Date;
+  providerId?: string;
+  providerPlaceId?: string;
+  providerAttribution?: string;
 };
 
 export type BranchDeliveryLocationWorkspace = {
@@ -148,6 +158,9 @@ function parseWorkspace(
       addressLabel: rawLocation.addressLabel,
       coordinates,
       ...(rawLocation.instructions ? { instructions: rawLocation.instructions } : {}),
+      ...(rawLocation.providerId ? { providerId: rawLocation.providerId } : {}),
+      ...(rawLocation.providerPlaceId ? { providerPlaceId: rawLocation.providerPlaceId } : {}),
+      ...(rawLocation.providerAttribution ? { providerAttribution: rawLocation.providerAttribution } : {}),
       updatedAt: rawLocation.updatedAt,
     };
   }
@@ -248,6 +261,9 @@ export async function saveBranchDeliveryLocation(
       latitude: input.coordinates.latitude.toFixed(6),
       longitude: input.coordinates.longitude.toFixed(6),
       instructions: input.instructions ?? "",
+      providerId: input.providerId,
+      providerPlaceId: input.providerPlaceId ?? "",
+      providerAttribution: input.providerAttribution ?? "",
       reason: input.reason,
     })).digest("hex");
     const existing = state.commands.get(commandKey);
@@ -262,10 +278,18 @@ export async function saveBranchDeliveryLocation(
       addressLabel: input.addressLabel,
       coordinates: Object.freeze({ ...input.coordinates }),
       ...(input.instructions ? { instructions: input.instructions } : {}),
+      providerId: input.providerId,
+      ...(input.providerPlaceId ? { providerPlaceId: input.providerPlaceId } : {}),
+      ...(input.providerAttribution ? { providerAttribution: input.providerAttribution } : {}),
       updatedAt: capturedAt,
     });
     state.locations.set(input.branchId, location);
     state.commands.set(commandKey, { payloadHash, location });
+    const branch = getDemoStore().branches.find((candidate) => candidate.id === input.branchId);
+    if (branch) {
+      branch.deliveryAddress = input.addressLabel;
+      branch.deliveryInstructions = input.instructions || undefined;
+    }
     return { ...workspace, location };
   }
   try {
@@ -275,8 +299,8 @@ export async function saveBranchDeliveryLocation(
       commandId: input.commandId,
     }, async (client) => {
       const result = await client.query<SnapshotRow>(
-        `SELECT public.axora_save_branch_delivery_location(
-           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+        `SELECT public.axora_save_branch_delivery_location_v2(
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
          ) AS snapshot`,
         [
           actor.id,
@@ -289,6 +313,9 @@ export async function saveBranchDeliveryLocation(
           input.reason,
           input.commandId,
           capturedAt,
+          input.providerId,
+          input.providerPlaceId ?? "",
+          input.providerAttribution ?? "",
         ],
       );
       const workspace = parseWorkspace(

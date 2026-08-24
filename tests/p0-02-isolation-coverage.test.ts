@@ -57,8 +57,8 @@ describe("P0-02 active isolation coverage", () => {
       ]);
 
     expect(users).toContain("listAuthorizedUsers(actor)");
-    expect(newUser).not.toContain("loadOrganizationDirectory(actor)");
-    expect(newUser).toContain('creationContext="PLATFORM"');
+    expect(newUser).toContain("loadOrganizationDirectory(actor)");
+    expect(newUser).toContain('creationContext="COMPANY"');
     expect(newCompanyUser).toContain("loadOrganizationDirectory(actor)");
     expect(newCompanyUser).toContain('creationContext="COMPANY"');
     expect(users).not.toContain("listUsers(actor)");

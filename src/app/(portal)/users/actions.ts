@@ -87,15 +87,24 @@ function userCreationNotice(error: UserCreationError) {
 export async function createUserAction(formData: FormData) {
   const actor = await requireSession();
   if (!canAccess(actor, "manage_users")) redirect("/access-denied");
-  const rawCompanyId = readFormText(formData, "companyId");
+  const submittedCompanyId = readFormText(formData, "companyId");
+  if (actor.accountKind === "COMPANY"
+    && (!actor.companyId || (submittedCompanyId && submittedCompanyId !== actor.companyId))) {
+    redirect("/users?notice=user-creation-not-authorized");
+  }
+  const rawCompanyId = actor.accountKind === "COMPANY"
+    ? actor.companyId ?? ""
+    : submittedCompanyId;
   const contextValue = readFormText(formData, "creationContext");
   const requestedContext = z.enum(["PLATFORM", "COMPANY", "DELIVERY"]).safeParse(contextValue);
   const routeFor = (
     context: "PLATFORM" | "COMPANY" | "DELIVERY" | "LEGACY",
     companyId?: string,
   ) => (
-    context === "COMPANY" && companyId
-      ? `/companies/${encodeURIComponent(companyId)}/users`
+    context === "COMPANY" && actor.accountKind === "COMPANY"
+      ? "/users"
+      : context === "COMPANY" && companyId
+        ? `/companies/${encodeURIComponent(companyId)}/users`
       : context === "DELIVERY" ? "/deliveries"
       : "/users"
   );
@@ -104,7 +113,9 @@ export async function createUserAction(formData: FormData) {
     "permissionsCustomized",
   ) === "true";
   const creationContext: "PLATFORM" | "COMPANY" | "DELIVERY" | "LEGACY" =
-    requestedContext.success ? requestedContext.data : "LEGACY";
+    actor.accountKind === "COMPANY"
+      ? "COMPANY"
+      : requestedContext.success ? requestedContext.data : "LEGACY";
   const returnCompanyId = scopedIdentifierSchema.safeParse(rawCompanyId).success
     ? rawCompanyId
     : undefined;
@@ -140,6 +151,7 @@ export async function createUserAction(formData: FormData) {
     ))
     || (creationContext === "COMPANY" && (
       definition.accountKind !== "COMPANY" || !input.companyId
+      || input.role === "DEPARTMENT_ADMIN"
     ))) {
     redirect(`${routeFor(creationContext, returnCompanyId)}?notice=user-creation-invalid`);
   }
@@ -213,6 +225,19 @@ export async function createCompanyUserAction(
   if (!parsedCompanyId.success) redirect("/users?notice=user-creation-invalid");
   formData.set("creationContext", "COMPANY");
   formData.set("companyId", parsedCompanyId.data);
+  formData.delete("supplierId");
+  return createUserAction(formData);
+}
+
+export async function createOwnCompanyUserAction(formData: FormData) {
+  const actor = await requireSession();
+  if (actor.accountKind !== "COMPANY" || !actor.companyId
+    || !canAccess(actor, "create_company_users")) {
+    redirect("/access-denied");
+  }
+  formData.set("creationContext", "COMPANY");
+  formData.set("companyId", actor.companyId);
+  formData.delete("departmentId");
   formData.delete("supplierId");
   return createUserAction(formData);
 }

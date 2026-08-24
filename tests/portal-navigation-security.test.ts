@@ -30,11 +30,11 @@ describe("role-specific portal navigation boundaries", () => {
     };
 
     expect(hrefs(PRIMARY_NAVIGATION, companyAdmin)).toEqual([
-      "/dashboard", "/receiving", "/products", "/requests", "/approvals", "/budgets", "/wallet", "/deliveries", "/finance",
+      "/dashboard", "/receiving", "/products", "/requests", "/approvals", "/branches", "/budgets", "/wallet", "/deliveries", "/finance",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).toEqual([
       "/receiving", "/branches", "/budgets", "/wallet",
-      `/companies/${companyId}/users`, "/settings/procurement",
+      "/users",
     ]);
     expect(canAccess(companyAdmin, "manage_catalog")).toBe(false);
     expect(canAccess(companyAdmin, "manage_commercial_pricing")).toBe(false);
@@ -68,7 +68,7 @@ describe("role-specific portal navigation boundaries", () => {
     expect(hrefs(PRIMARY_NAVIGATION, support)).toEqual([]);
     expect(hrefs(DRAWER_NAVIGATION, support)).toEqual([]);
     expect(hrefs(PRIMARY_NAVIGATION, auditor)).toEqual([
-      "/dashboard", "/products", "/requests", "/budgets", "/deliveries", "/finance",
+      "/dashboard", "/products", "/requests", "/branches", "/budgets", "/deliveries", "/finance",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, auditor)).toEqual([
       "/branches", "/budgets",

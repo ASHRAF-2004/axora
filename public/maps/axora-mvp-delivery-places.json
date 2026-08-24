@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "provider": "OpenStreetMap",
+  "sourceDate": "2026-08-24",
+  "attribution": {
+    "label": "© OpenStreetMap contributors",
+    "url": "https://www.openstreetmap.org/copyright"
+  },
+  "places": [
+    {
+      "id": "osm-way-824624308",
+      "name": "Verdi Eco-Dominiums",
+      "formattedAddress": "Verdi Eco-Dominiums, Persiaran Bestari, Cyber 9, 63000 Cyberjaya, Selangor, Malaysia",
+      "latitude": 2.9188294,
+      "longitude": 101.6411689,
+      "kind": "Residential development"
+    },
+    {
+      "id": "osm-way-878223691",
+      "name": "Kenwingston Square Garden",
+      "formattedAddress": "Kenwingston Square Garden, Persiaran Bestari, Cyber 9, 63000 Cyberjaya, Selangor, Malaysia",
+      "latitude": 2.9104009,
+      "longitude": 101.6396263,
+      "kind": "Residential and business development"
+    },
+    {
+      "id": "osm-node-12993793843",
+      "name": "Kenwingston Business Centre",
+      "formattedAddress": "Kenwingston Business Centre, Persiaran Bestari, Cyber 9, 63000 Cyberjaya, Selangor, Malaysia",
+      "latitude": 2.9113765,
+      "longitude": 101.6388703,
+      "kind": "Business centre"
+    }
+  ]
+}

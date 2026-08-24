@@ -125,6 +125,17 @@ async function fixture(): Promise<Fixture> {
   `, [ids.requesterAssignment, ids.approverAssignment, ids.requester,
     ids.approver, role.requester, role.approver, ids.company, ids.branch,
     ids.adminAssignment, ids.admin, role.admin]);
+  await db.query(`
+    INSERT INTO company_wallet_ledger_entries(
+      company_id,entry_type,amount_delta,currency,effective_date,
+      business_reference,reason,correlation_id,idempotency_key,
+      actor_user_id,actor_role_assignment_id,posted_at
+    ) VALUES (
+      $1,'TOP_UP',100000,'MYR',CURRENT_DATE,'Budget core test funding',
+      'Controlled funding for budget renewal tests',gen_random_uuid(),
+      'budget-core-wallet-funding',$2,$3,now()
+    )
+  `, [ids.company, ids.admin, ids.adminAssignment]);
   await addApprovalLimit(db, role.approver, "request.approve.other", 10_000);
 
   const account = await db.query<{ accountId: string; periodId: string }>(`

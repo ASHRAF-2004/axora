@@ -37,11 +37,30 @@ export async function listUsers(actor: SessionUser): Promise<UserRecord[]> {
   if (isDemoMode()) {
     if (actor.isOwner) return demoUsers().map((user) => ({ ...user }));
     if (actor.accountKind !== "COMPANY" || !actor.companyId) return [];
-    return demoUsers().filter((user) => (
+    const visible = demoUsers().filter((user) => (
       user.accountKind === "COMPANY"
       && user.companyId === actor.companyId
       && (!actor.branchId || user.branchId === actor.branchId || user.id === actor.id)
     )).map((user) => ({ ...user }));
+    if (!visible.some((user) => user.id === actor.id)) {
+      visible.unshift({
+        id: actor.id,
+        email: actor.email,
+        displayName: actor.name,
+        role: actor.role,
+        active: true,
+        isOwner: false,
+        accountKind: "COMPANY",
+        scopeType: actor.scopeType,
+        companyId: actor.companyId,
+        branchId: actor.branchId,
+        departmentId: actor.departmentId,
+        accountStatus: "ACTIVE",
+        accountSetupCompletedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+    }
+    return visible;
   }
   const result = await query<UserRecord>(`SELECT u.id::text,u.email,u.display_name AS "displayName",
     COALESCE(scoped_role.role_key,legacy_role.role_key) AS role,u.active,
