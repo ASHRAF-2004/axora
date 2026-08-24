@@ -233,10 +233,17 @@
 .marker {
   inline-size: 1.75rem;
   block-size: 1.75rem;
+}
+
+.marker::before {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
   border: .25rem solid var(--axora-surface);
   border-radius: 50% 50% 50% 0;
   background: var(--axora-map-marker);
   box-shadow: var(--axora-shadow-md);
+  content: "";
   rotate: -45deg;
 }
 

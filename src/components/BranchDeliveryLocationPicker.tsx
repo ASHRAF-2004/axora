@@ -19,6 +19,7 @@ import {
 
 type MarkerConstructor = typeof import("maplibre-gl")["Marker"];
 type MapState = "checking" | "loading" | "ready" | "failed";
+const DELIVERY_LOCATION_SELECTED_ZOOM = 18;
 
 export type DeliveryLocationSelection = DeliveryCoordinates & {
   addressLabel: string;
@@ -197,7 +198,7 @@ export function BranchDeliveryLocationPicker({ disabled = false, initialSelectio
           container: mapHostRef.current,
           maxBounds: [[runtimeConfig.coverage.bounds[0], runtimeConfig.coverage.bounds[1]], [runtimeConfig.coverage.bounds[2], runtimeConfig.coverage.bounds[3]]],
           style: style as StyleSpecification,
-          zoom: inCoverage ? 16 : 10,
+          zoom: inCoverage ? DELIVERY_LOCATION_SELECTED_ZOOM : 10,
         });
         mapRef.current = map;
         map.addControl(new mapLibrary.NavigationControl({ showCompass: false }), "top-right");
@@ -231,7 +232,7 @@ export function BranchDeliveryLocationPicker({ disabled = false, initialSelectio
       return;
     }
     ensureMarker(draft);
-    mapRef.current?.easeTo({ center: [draft.longitude, draft.latitude], zoom: 16, duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 350 });
+    mapRef.current?.easeTo({ center: [draft.longitude, draft.latitude], zoom: DELIVERY_LOCATION_SELECTED_ZOOM, duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 350 });
   }, [copy.outsideCoverage, draft, ensureMarker, mapState, runtimeConfig]);
 
   useEffect(() => {
@@ -344,5 +345,5 @@ export function BranchDeliveryLocationPicker({ disabled = false, initialSelectio
 }
 
 export const branchDeliveryLocationPickerInternals = {
-  fieldIsValid, formattedCoordinate, parsedCoordinateText, sameCoordinates, sameSelection,
+  DELIVERY_LOCATION_SELECTED_ZOOM, fieldIsValid, formattedCoordinate, parsedCoordinateText, sameCoordinates, sameSelection,
 };

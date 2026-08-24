@@ -5,6 +5,10 @@ import { branchDeliveryLocationPickerInternals } from "@/components/BranchDelive
 import { branchDeliveryLocationMessages } from "@/lib/branch-delivery-location-i18n";
 
 describe("branch delivery location picker coordinate fallback", () => {
+  it("zooms selected delivery places closely enough to show building footprints", () => {
+    expect(branchDeliveryLocationPickerInternals.DELIVERY_LOCATION_SELECTED_ZOOM).toBeGreaterThanOrEqual(18);
+  });
+
   it("accepts bounded decimal coordinate text without geocoding", () => {
     expect(branchDeliveryLocationPickerInternals.parsedCoordinateText("3.139000", "101.686900"))
       .toEqual({ latitude: 3.139, longitude: 101.6869 });

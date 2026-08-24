@@ -6,10 +6,10 @@ import { CATEGORY_IMAGE_CATEGORIES } from "@/lib/category-images";
 describe("catalogue and map asset provenance", () => {
   it("has exactly one validated provenance record for every runtime third-party file", async () => {
     const output = execFileSync(process.execPath, ["scripts/validate-third-party-assets.mjs"], { cwd: process.cwd(), encoding: "utf8" });
-    expect(output).toContain("Validated 34 self-hosted third-party assets");
+    expect(output).toContain("Validated 35 self-hosted third-party assets");
     const manifest = JSON.parse(await readFile(new URL("../third-party-assets.json", import.meta.url), "utf8")) as { assets: Array<{ path: string }> };
-    expect(manifest.assets).toHaveLength(34);
-    expect(new Set(manifest.assets.map((asset) => asset.path)).size).toBe(34);
+    expect(manifest.assets).toHaveLength(35);
+    expect(new Set(manifest.assets.map((asset) => asset.path)).size).toBe(35);
   });
 
   it("restores software notices and verifies every local licence reference", () => {
