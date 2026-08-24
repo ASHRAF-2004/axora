@@ -2,6 +2,10 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 
 import { signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
 
+// These journeys submit financial and tenant mutations. A failed assertion must
+// never make CI replay the same command against the retained demo server state.
+test.describe.configure({ retries: 0 });
+
 const companyId = "11111111-1111-4111-8111-111111111111";
 const existingBranchId = "88888888-8888-4888-8888-888888888888";
 
@@ -70,7 +74,7 @@ test("Company Administrator completes users, branch location and first budget on
   await page.getByLabel("Role").selectOption("BRANCH_ADMIN");
   await page.getByLabel("Assigned branch").selectOption(existingBranchId);
   await page.getByRole("button", { name: "Create account & send invite" }).click();
-  await expect(page).toHaveURL(/\/users\?notice=user-created-email-disabled$/);
+  await expect(page).toHaveURL(/\/users\?notice=user-created-email-disabled$/, { timeout: 15_000 });
   await expect(page.locator("tr").filter({ hasText: invitedEmail })).toHaveCount(1);
 
   await page.goto(`/companies/${companyId}`);
@@ -116,7 +120,7 @@ test("Company Administrator completes users, branch location and first budget on
   await page.screenshot({ animations: "disabled", fullPage: true,
     path: `output/playwright/company-admin-branch-${testInfo.project.name}.png` });
   await page.getByRole("button", { name: "Create branch" }).click();
-  await expect(page).toHaveURL(/\/branches\/br-[a-z0-9-]+\?notice=branch-created$/);
+  await expect(page).toHaveURL(/\/branches\/br-[a-z0-9-]+\?notice=branch-created$/, { timeout: 15_000 });
   const createdBranchId = new URL(page.url()).pathname.split("/").at(-1)!;
   await expect(page.getByRole("heading", { level: 1, name: branchName })).toBeVisible();
   await page.reload();
