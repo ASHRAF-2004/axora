@@ -1,7 +1,11 @@
 "use server";
 
 import { requirePermission } from "@/lib/auth";
-import { loadCompanyOnboardingWorkspace, saveCompanyOnboarding } from "@/lib/company-onboarding";
+import {
+  approveCompanyVerification,
+  loadCompanyOnboardingWorkspace,
+  saveCompanyOnboarding,
+} from "@/lib/company-onboarding";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
@@ -51,4 +55,33 @@ export async function saveCompanyOnboardingAction(formData: FormData) {
   revalidatePath(`/companies/${input.companyId}`);
   revalidatePath("/companies");
   redirect(`/companies/${input.companyId}/onboarding?notice=saved`);
+}
+
+export async function approveCompanyVerificationAction(formData: FormData) {
+  const actor = await requirePermission("manage_companies");
+  const companyId = z.uuid().parse(readFormText(formData, "companyId"));
+  const expectedVersion = z.coerce.number().int().positive().parse(
+    readFormText(formData, "expectedVersion"),
+  );
+  const result = await approveCompanyVerification(
+    actor,
+    companyId,
+    expectedVersion,
+  );
+  revalidatePath("/companies");
+  revalidatePath(`/companies/${companyId}`);
+  revalidatePath(`/companies/${companyId}/onboarding`);
+  if (result.status === "VERIFIED") {
+    redirect(`/companies/${companyId}?notice=company-verification-approved`);
+  }
+  if (result.status === "BLOCKED") {
+    redirect(`/companies/${companyId}?notice=company-verification-blocked`);
+  }
+  if (result.status === "STALE") {
+    redirect(`/companies/${companyId}?notice=company-verification-stale`);
+  }
+  if (result.status === "ALREADY_VERIFIED") {
+    redirect(`/companies/${companyId}?notice=company-already-verified`);
+  }
+  redirect(`/companies?notice=company-verification-unavailable`);
 }

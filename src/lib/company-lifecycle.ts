@@ -4,6 +4,10 @@ import { z } from "zod";
 import type { AuthenticatedSessionUser, SessionUser } from "./auth";
 import { canAccess } from "./permissions";
 import { getDemoStore } from "./demo-data";
+import {
+  activateDemoCompany,
+  demoCompanyActivationState,
+} from "./demo-company-activation";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { STANDARD_BILLING_TERMS } from "./types";
 import { appendWorkflowEvent, notifyWorkflowUsers } from "./workflow-repository";
@@ -247,6 +251,36 @@ const mutationSchema = z.object({
   blockedReasons: z.array(z.string()).optional(),
 }).strict();
 
+const activationContractSchema = z.object({
+  capturedAt: z.coerce.date(),
+  companyId: uuid,
+  verificationStatus: z.enum([
+    "DRAFT",
+    "PENDING_VERIFICATION",
+    "CHANGES_REQUESTED",
+    "VERIFIED",
+    "REJECTED",
+    "INACTIVE",
+  ]),
+  verificationVersion: z.coerce.number().int().positive(),
+  verificationApprovalAvailable: z.boolean(),
+  verificationApprovalBlockers: z.array(
+    z.string().regex(/^[A-Z][A-Z0-9_]{2,79}$/),
+  ),
+}).strict();
+
+const activationCommandResultSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("ACTIVATED"), mutation: mutationSchema }).strict(),
+  z.object({
+    status: z.literal("BLOCKED"),
+    blockedReasons: z.array(z.string().regex(/^[A-Z][A-Z0-9_]{2,79}$/)),
+  }).strict(),
+  z.object({ status: z.literal("STALE") }).strict(),
+  z.object({ status: z.literal("ALREADY_ACTIVE") }).strict(),
+  z.object({ status: z.literal("UNAVAILABLE") }).strict(),
+  z.object({ status: z.literal("DENIED") }).strict(),
+]);
+
 const directCompanyCreationSchema = mutationSchema.extend({
   created: z.boolean(),
   creationLogoId: uuid.nullable(),
@@ -266,6 +300,8 @@ export type CompanyLifecycleWorkspace = z.infer<typeof workspaceSchema>;
 export type CompanyLifecycleMutation = z.infer<typeof mutationSchema>;
 export type DirectCompanyCreationMutation = z.infer<typeof directCompanyCreationSchema>;
 export type CompanyLifecycleManager = z.infer<typeof managerSchema>;
+export type CompanyActivationContract = z.infer<typeof activationContractSchema>;
+export type CompanyActivationCommandResult = z.infer<typeof activationCommandResultSchema>;
 
 export interface NewCompanyDirectInput {
   name: string;
@@ -403,6 +439,10 @@ function demoWorkspace(actor: AuthenticatedSessionUser): CompanyLifecycleWorkspa
     .filter((company) => demoCompanyVisibleToActor(actor, company.id))
     .map((company): CompanyLifecycleRecord => {
       const assignment = demoCompanyManagerAssignments().get(company.id);
+      const activationState = demoCompanyActivationState(actor.id, company.id);
+      const lifecycleStatus = activationState?.lifecycleStatus
+        ?? (company.status === "Active" ? "ACTIVE" : "INACTIVE");
+      const companyActive = lifecycleStatus === "ACTIVE";
       const primaryManager = assignment ? {
         id: assignment.managerUserId,
         name: DEMO_CLIENT_ACCOUNT_MANAGER.name,
@@ -438,15 +478,15 @@ function demoWorkspace(actor: AuthenticatedSessionUser): CompanyLifecycleWorkspa
       paymentTerms: String(company.paymentTerms),
       billingCycle: company.billingCycle,
       notes: company.notes ?? null,
-      status: company.status === "Active" ? "ACTIVE" : "INACTIVE",
-      version: 1,
-      active: company.status === "Active",
-      portalAccessEnabled: company.status === "Active",
+      status: lifecycleStatus,
+      version: activationState?.lifecycleVersion ?? 1,
+      active: companyActive,
+      portalAccessEnabled: companyActive,
       isPubliclyListed: false,
       duplicateReviewStatus: "CLEAR",
       createdAt: capturedAt,
       updatedAt: capturedAt,
-      activatedAt: company.status === "Active" ? capturedAt : null,
+      activatedAt: companyActive ? capturedAt : null,
       suspendedAt: null,
       suspensionReason: null,
       serviceRegionCode: "GLOBAL",
@@ -458,13 +498,21 @@ function demoWorkspace(actor: AuthenticatedSessionUser): CompanyLifecycleWorkspa
       managerCoverage: assignment
         ? { status: "COVERED", reason: assignment.reason, lastChangedAt: assignment.assignedAt }
         : { status: "GAP", reason: null, lastChangedAt: null },
-      onboarding: { required: 8, passed: company.status === "Active" ? 8 : 3, items: [] },
+      onboarding: { required: 8, passed: activationState ? 8 : companyActive ? 8 : 3, items: [] },
       duplicateCandidates: [],
       history: [],
-      activationBlockedReasons: company.status === "Active" ? [] : ["PRIMARY_MANAGER"],
-      availableActions: actor.isOwner
-        ? assignment ? ["REASSIGN", "ADD_BACKUP"] : ["ASSIGN"]
-        : [],
+      activationBlockedReasons: activationState
+        ? activationState.verificationStatus === "VERIFIED"
+          ? []
+          : ["COMPANY_VERIFICATION_REQUIRED"]
+        : companyActive ? [] : ["PRIMARY_MANAGER"],
+      availableActions: activationState
+        ? actor.isOwner
+          ? companyActive ? ["SUSPEND"] : ["ACTIVATE"]
+          : []
+        : actor.isOwner
+          ? assignment ? ["REASSIGN", "ADD_BACKUP"] : ["ASSIGN"]
+          : [],
     });
     });
   return {
@@ -506,6 +554,57 @@ export function findAuthorizedCompanyLifecycleRecord(
   companyId: string,
 ) {
   return workspace.companies.find((company) => company.id === companyId);
+}
+
+export async function loadCompanyActivationContract(
+  actor: AuthenticatedSessionUser,
+  companyId: string,
+  capturedAt = new Date(),
+): Promise<CompanyActivationContract> {
+  if (!Number.isFinite(capturedAt.getTime())) {
+    throw new CompanyLifecycleUnavailableError();
+  }
+  if (isDemoMode()) {
+    const company = getDemoStore().companies.find((item) => item.id === companyId);
+    if (!company || !demoCompanyVisibleToActor(actor, companyId)) {
+      throw new CompanyLifecycleUnavailableError();
+    }
+    const activationState = demoCompanyActivationState(actor.id, companyId);
+    return activationContractSchema.parse({
+      capturedAt,
+      companyId,
+      verificationStatus: activationState?.verificationStatus
+        ?? (company.status === "Active" ? "VERIFIED" : "DRAFT"),
+      verificationVersion: activationState?.verificationVersion ?? 1,
+      verificationApprovalAvailable: Boolean(
+        activationState
+        && actor.isOwner
+        && actor.accountKind === "PLATFORM"
+        && activationState.verificationStatus === "DRAFT",
+      ),
+      verificationApprovalBlockers: activationState || company.status === "Active"
+        ? []
+        : ["COMPANY_LIFECYCLE_REQUIRED"],
+    });
+  }
+  try {
+    const result = await query<SnapshotRow>(
+      `SELECT public.axora_company_activation_contract_workspace(
+         $1,$2,$3,$4
+       ) AS snapshot`,
+      [actor.id, requiredAssignment(actor), uuid.parse(companyId), capturedAt],
+    );
+    const parsed = activationContractSchema.safeParse(result.rows[0]?.snapshot);
+    if (!parsed.success
+      || parsed.data.capturedAt.getTime() !== capturedAt.getTime()
+      || parsed.data.companyId !== companyId) {
+      throw new CompanyLifecycleUnavailableError();
+    }
+    return parsed.data;
+  } catch (error) {
+    if (error instanceof CompanyLifecycleUnavailableError) throw error;
+    throw new CompanyLifecycleUnavailableError();
+  }
 }
 
 export async function createCompanyDirectInTransaction(
@@ -780,13 +879,64 @@ export function syncCompanyAdministrator(
 export function activateCompany(
   actor: AuthenticatedSessionUser,
   companyId: string,
+  expectedLifecycleVersion: number,
   reason: string,
 ) {
-  return mutate(
-    actor,
-    "Company activated after onboarding checks",
-    `SELECT public.axora_activate_company($1,$2,$3,$4,$5) AS snapshot`,
-    [actor.id, requiredAssignment(actor), uuid.parse(companyId), reason, new Date()],
+  if (isDemoMode()) {
+    const company = getDemoStore().companies.find((item) => item.id === companyId);
+    if (!company || !actor.isOwner || actor.accountKind !== "PLATFORM") {
+      return Promise.resolve({ status: "DENIED" } as const);
+    }
+    const outcome = activateDemoCompany(actor.id, companyId, expectedLifecycleVersion);
+    if (outcome === "BLOCKED") {
+      return Promise.resolve({
+        status: "BLOCKED",
+        blockedReasons: ["COMPANY_VERIFICATION_REQUIRED"],
+      } as const);
+    }
+    if (outcome !== "ACTIVATED") {
+      return Promise.resolve({ status: outcome } as const);
+    }
+    const activated = demoWorkspace(actor).companies.find(
+      (candidate) => candidate.id === companyId,
+    );
+    if (!activated) return Promise.resolve({ status: "UNAVAILABLE" } as const);
+    return Promise.resolve({
+      status: "ACTIVATED",
+      mutation: {
+        company: activated,
+        companyId,
+        companyName: company.name,
+        companyVersion: activated.version,
+        eventKey: "company.activated",
+        notificationRecipientIds: [],
+      },
+    } as const);
+  }
+  return withAuditTransaction(
+    { actor, reason: "Company activated after onboarding checks" },
+    async (client) => {
+      const result = await client.query<SnapshotRow>(
+        `SELECT public.axora_activate_company(
+           $1,$2,$3,$4,$5,$6,$7
+         ) AS snapshot`,
+        [
+          actor.id,
+          requiredAssignment(actor),
+          actor.authVersion,
+          uuid.parse(companyId),
+          z.coerce.number().int().positive().parse(expectedLifecycleVersion),
+          reason,
+          new Date(),
+        ],
+      );
+      const parsed = activationCommandResultSchema.safeParse(result.rows[0]?.snapshot);
+      if (!parsed.success) throw new CompanyLifecycleUnavailableError();
+      if (parsed.data.status === "ACTIVATED") {
+        await notifyCompanyLifecycleMutation(client, parsed.data.mutation, actor);
+      }
+      return parsed.data;
+    },
   );
 }
 
