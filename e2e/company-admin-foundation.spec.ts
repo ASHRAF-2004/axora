@@ -118,6 +118,18 @@ test("Company Administrator completes users, branch location and first budget on
   const people = page.locator("article.panel").filter({ has: page.getByRole("heading", { name: "People" }) });
   await expect(people.getByText("0 assigned")).toBeVisible();
 
+  await page.getByRole("link", { name: "Edit delivery address" }).click();
+  await page.getByLabel("Search place, building or address").fill("kenwingston business");
+  const updatedLocation = page.getByRole("option").filter({ hasText: "Kenwingston Business Centre" }).first();
+  await expect(updatedLocation).toBeVisible();
+  await updatedLocation.getByRole("button").click();
+  await page.getByRole("button", { name: "Confirm location" }).click();
+  await expect(page.getByText("Location confirmed. Save the form to finish.")).toBeVisible();
+  await page.getByRole("button", { name: "Save delivery location" }).click();
+  await page.reload();
+  await expect(page.getByText(/Kenwingston Business Centre/).last()).toBeVisible();
+  await page.getByRole("link", { name: "Back to branch" }).click();
+
   await page.getByRole("link", { name: "View budget" }).click();
   await expect(page).toHaveURL(new RegExp(`/budgets/${createdBranchId}$`));
   await page.getByLabel("Amount").fill("1000");
