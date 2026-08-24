@@ -62,7 +62,7 @@ describe("production driver map readiness", () => {
     expect((await stat(outputPath)).mode & 0o777).toBe(0o644);
   });
 
-  it("ships a real same-origin MVP style with roads, labels, glyphs and matching coverage", async () => {
+  it("ships a real same-origin MVP style with buildings, roads, labels, glyphs and matching coverage", async () => {
     const config = JSON.parse(await readFile(new URL("../public/maps/driver-map-config.json", import.meta.url), "utf8"));
     const shippedStyle = JSON.parse(await readFile(new URL("../public/maps/axora-mvp-operational-style.json", import.meta.url), "utf8"));
     expect(() => assertOperationalStyle(shippedStyle)).not.toThrow();
@@ -70,6 +70,12 @@ describe("production driver map readiness", () => {
     expect(shippedStyle.metadata["axora:coverage"]).toEqual(config.coverage.bounds);
     expect(shippedStyle.sources["mvp-roads"].data).toBe("/maps/mvp-klang-valley-roads.geojson");
     expect(shippedStyle.sources["mvp-places"].data).toBe("/maps/mvp-klang-valley-places.geojson");
+    expect(shippedStyle.sources["mvp-buildings"].data).toBe("/maps/mvp-cyberjaya-buildings.geojson");
+    expect(shippedStyle.layers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "mvp-building-fill", type: "fill", minzoom: 15 }),
+      expect.objectContaining({ id: "mvp-building-outline", type: "line", minzoom: 16 }),
+      expect.objectContaining({ id: "mvp-building-labels", type: "symbol", minzoom: 17 }),
+    ]));
     expect(shippedStyle.glyphs).toBe("/maps/fonts/{fontstack}/{range}.pbf");
   });
 });

@@ -572,6 +572,25 @@
       "repositoryFileSha256": "2eca7561f9f566bcacfda5dd04fb5880baec1328ec0f5484678289a13994de8a"
     },
     {
+      "path": "public/maps/mvp-cyberjaya-buildings.geojson",
+      "assetName": "Cyberjaya MVP building footprints",
+      "originalFilename": "openstreetmap-api-0.6-map-cyberjaya-two-bounds.osm",
+      "creator": "OpenStreetMap contributors",
+      "canonicalSource": "https://api.openstreetmap.org/api/0.6/map",
+      "exactPackOrItem": "Two OpenStreetMap API map extracts for bounds 101.6345,2.9070,101.6430,2.9155 and 101.6360,2.9145,101.6455,2.9235, downloaded 2026-08-24",
+      "originalFileSha256": "9660651a195475a240d9a7bca491684ccb0df0f5a69fe000968ef9aca879d48e",
+      "restrictions": "Coverage is limited to the supported Cyberjaya MVP place-search area; OpenStreetMap attribution and an ODbL link must remain visible. The application does not call the OSM API or public tile services at runtime.",
+      "license": {
+        "name": "Open Database License 1.0",
+        "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+        "recordPath": "third_party/licenses/ODbL-1.0.txt"
+      },
+      "downloadDate": "2026-08-24",
+      "attributionRequired": true,
+      "repositoryFileSha256": "0345946002e1f068d0bd918e3e88d7c84c8dba0b427ab3434649f2953372272a",
+      "modifications": "Deterministically retained closed ways tagged building, removed unrelated source objects and tags, deduplicated overlapping bounds by OSM way ID, preserved names and building levels when available, and exported 443 Polygon features as compact GeoJSON."
+    },
+    {
       "path": "public/maps/mvp-klang-valley-places.geojson",
       "assetName": "Klang Valley MVP places and local labels",
       "originalFilename": "malaysia-singapore-brunei-latest.osm.pbf",

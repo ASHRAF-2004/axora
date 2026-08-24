@@ -93,6 +93,21 @@ test("Company Administrator completes users, branch location and first budget on
   await expect(page.getByText(/Verdi Eco-Dominiums/).last()).toBeVisible();
   await expect(page.locator("canvas.maplibregl-canvas")).toBeVisible();
   await expect(page.locator(".maplibregl-marker")).toBeVisible();
+  await expect.poll(async () => {
+    const [marker, map] = await Promise.all([
+      page.locator(".maplibregl-marker").boundingBox(),
+      page.locator("canvas.maplibregl-canvas").boundingBox(),
+    ]);
+    if (!marker || !map) return Number.POSITIVE_INFINITY;
+    return Math.hypot(
+      marker.x + marker.width / 2 - (map.x + map.width / 2),
+      marker.y + marker.height / 2 - (map.y + map.height / 2),
+    );
+  }).toBeLessThan(3);
+  await page.locator(".maplibregl-map").screenshot({
+    animations: "disabled",
+    path: `output/playwright/company-admin-location-map-${testInfo.project.name}.png`,
+  });
   const confirm = page.getByRole("button", { name: "Confirm location" });
   await expect(confirm).toBeEnabled();
   await confirm.click();
