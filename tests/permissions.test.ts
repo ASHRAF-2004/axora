@@ -116,7 +116,7 @@ describe("normalized least-privilege permissions", () => {
         scopeType: "COMPANY",
         companyId,
       },
-      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_receiving", "confirm_receipts", "view_branches", "manage_branches", "manage_branch_budget", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings"],
+      allowed: ["view_dashboard", "view_catalog", "view_requests", "view_deliveries", "view_receiving", "confirm_receipts", "view_branches", "manage_branches", "manage_branch_budget", "create_requests", "view_approvals", "approve_requests", "view_invoices", "view_documents", "manage_documents", "view_reports", "view_audit", "manage_users", "manage_settings"],
     },
     {
       subject: {

@@ -11,11 +11,15 @@ import { listShopDepartments } from "@/lib/catalog";
 import Link from "next/link";
 import { setMasterActiveAction } from "../masters/actions";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
-import { loadOrganizationDirectory } from "@/lib/organization-access";
+import { ShoppingBranchChooser } from "@/components/ShoppingBranchChooser";
+import { commandProcurementCart } from "@/lib/procurement-cart";
+import { loadShoppingBranchContexts, resolveShoppingBranch } from "@/lib/shopping-context";
+import { shoppingContextMessages } from "@/lib/shopping-context-i18n";
+import { redirect } from "next/navigation";
 
 export default async function ProductsPage({
   searchParams,
-}: { searchParams: Promise<{ branch?: string }> }) {
+}: { searchParams: Promise<{ branch?: string; notice?: string; [key: string]: string | string[] | undefined }> }) {
   const actor = await requirePagePermission("view_catalog");
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).products;
@@ -23,29 +27,50 @@ export default async function ProductsPage({
   const canManageCatalog = canAccess(actor, "manage_catalog");
 
   if (!canManageCatalog) {
-    const organization = await loadOrganizationDirectory(actor);
-    const branches = organization.branches
-      .filter((branch) => branch.status === "Active")
-      .map((branch) => ({ id: branch.id, name: branch.name, code: branch.code }));
-    const requestedBranch = (await searchParams).branch;
-    const selectedBranchId = actor.branchId
-      ?? branches.find((branch) => branch.id === requestedBranch)?.id
-      ?? branches[0]?.id;
-    const departments = await listShopDepartments(actor, selectedBranchId);
+    const params = await searchParams;
+    if (actor.branchId && params.branch !== actor.branchId) {
+      const canonical = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) {
+        if (key === "branch" || value === undefined) continue;
+        if (Array.isArray(value)) value.forEach((item) => canonical.append(key, item));
+        else canonical.set(key, value);
+      }
+      canonical.set("branch", actor.branchId);
+      redirect(`/products?${canonical.toString()}`);
+    }
+    const contexts = await loadShoppingBranchContexts(actor);
+    const selectedBranch = resolveShoppingBranch(actor, contexts, params.branch);
+    const invalidSelection = Boolean(params.branch && !selectedBranch)
+      || params.notice === "shopping-branch-invalid";
+    const contextCopy = shoppingContextMessages(locale);
+
+    if (!selectedBranch?.ready) {
+      return <>
+        <PageHeader eyebrow={contextCopy.chooserEyebrow} title={contextCopy.chooserTitle} description={contextCopy.chooserDescription} />
+        <ShoppingBranchChooser branches={contexts} locale={locale} invalidSelection={invalidSelection} />
+      </>;
+    }
+
+    const canRequest = canAccess(actor, "create_requests");
+    const [departments, initialCart] = await Promise.all([
+      listShopDepartments(actor, selectedBranch.id),
+      canRequest ? commandProcurementCart(actor, { branchId: selectedBranch.id, operation: "READ" }) : Promise.resolve(null),
+    ]);
 
     return (
       <>
         <PageHeader
           eyebrow={copy.shopEyebrow}
-          title={copy.shopTitle}
+          title={`${copy.shopTitle} — ${selectedBranch.code}`}
           description={copy.shopDescription}
         />
 
         <ShopCategoryHub
           departments={departments}
-          canRequest={canAccess(actor, "create_requests")}
-          purchasingBranches={branches}
-          selectedBranchId={selectedBranchId}
+          canRequest={canRequest}
+          selectedBranch={selectedBranch}
+          initialCart={initialCart}
+          canSwitchBranch={!actor.branchId}
           locale={locale}
         />
       </>

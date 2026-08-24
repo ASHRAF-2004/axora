@@ -106,6 +106,10 @@ function cloneCart(cart: ProcurementCartSnapshot): ProcurementCartSnapshot {
   return structuredClone(cart);
 }
 
+function cartBusinessError(message: string, code: string) {
+  return Object.assign(new Error(message), { code });
+}
+
 export async function getCatalogPurchasingScope(
   actor: SessionUser,
   branchId: string,
@@ -145,9 +149,9 @@ export async function commandProcurementCart(
     branchId: z.string().trim().min(1).max(160),
     operation: z.enum(["READ", "ADD", "SET", "REMOVE", "ACKNOWLEDGE_PRICES"]),
     productRef: z.string().trim().max(160).optional().default(""),
-    quantity: z.coerce.number().int().min(1).max(1_000_000).optional(),
+    quantity: z.number().int().min(1).max(1_000_000).optional(),
     specification: z.string().trim().max(1_000).optional().default(""),
-    expectedVersion: z.coerce.number().int().positive().optional(),
+    expectedVersion: z.number().int().positive().optional(),
     commandId: uuid.optional().default(() => randomUUID()),
   }).parse(input);
   if (!isDemoMode() && !uuid.safeParse(parsed.branchId).success) {
@@ -158,12 +162,12 @@ export async function commandProcurementCart(
     const fingerprint = JSON.stringify(parsed);
     const replay = state.commands.get(parsed.commandId);
     if (replay) {
-      if (replay.fingerprint !== fingerprint) throw new Error("The cart command is unavailable.");
+      if (replay.fingerprint !== fingerprint) throw cartBusinessError("The cart command is unavailable.", "P8203");
       return cloneCart(replay.snapshot);
     }
     const cart = demoCart(actor, parsed.branchId);
     if (parsed.expectedVersion && parsed.expectedVersion !== cart.version) {
-      throw new Error("The cart changed before this command was recorded.");
+      throw cartBusinessError("The cart changed before this command was recorded.", "P8203");
     }
     if (["ADD", "SET", "REMOVE"].includes(parsed.operation)) {
       const source = getDemoStore().products.find((product) => (
@@ -171,7 +175,7 @@ export async function commandProcurementCart(
           .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64)}`
           === parsed.productRef
       ));
-      if (!source || source.status !== "Active") throw new Error("The product is unavailable.");
+      if (!source || source.status !== "Active") throw cartBusinessError("The product is unavailable.", "P8204");
       const product = withDemoCommercialDefaults(source);
       const index = cart.items.findIndex((item) => item.publicRef === parsed.productRef);
       if (parsed.operation === "REMOVE") {
@@ -180,6 +184,9 @@ export async function commandProcurementCart(
         const quantity = parsed.operation === "ADD" && index >= 0
           ? cart.items[index].quantity + (parsed.quantity ?? 1)
           : parsed.quantity ?? 1;
+        if (quantity > 1_000_000) {
+          throw cartBusinessError("The cart quantity exceeds the accepted range.", "23514");
+        }
         const item: ProcurementCartItem = {
           publicRef: parsed.productRef, name: product.name, category: product.category,
           subcategory: product.subcategory, brand: product.brand, size: product.size,

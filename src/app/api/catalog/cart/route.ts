@@ -1,28 +1,29 @@
 import { getSession } from "@/lib/auth";
 import { canAccess } from "@/lib/permissions";
+import {
+  procurementCartCommandSchema,
+  procurementCartErrorCode,
+  type ProcurementCartCommandCode,
+} from "@/lib/procurement-cart-command";
 import { commandProcurementCart } from "@/lib/procurement-cart";
-import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-const commandSchema = z.object({
-  branchId: z.string().trim().min(1).max(160),
-  operation: z.enum(["READ", "ADD", "SET", "REMOVE", "ACKNOWLEDGE_PRICES"]),
-  productRef: z.string().trim().max(160).optional(),
-  quantity: z.coerce.number().int().min(1).max(1_000_000).optional(),
-  specification: z.string().trim().max(1_000).optional(),
-  expectedVersion: z.coerce.number().int().positive().optional(),
-  commandId: z.string().uuid().optional(),
-}).strict();
-
 function businessError(error: unknown) {
-  const code = error && typeof error === "object" && "code" in error
-    ? String(error.code) : "";
-  if (code === "P8202") return { code: "REPRICED", error: "A cart item price changed and requires review." };
-  if (code === "P8203") return { code: "STALE_CART", error: "The cart changed. Refresh and try again." };
-  if (code === "P8204") return { code: "PRODUCT_NOT_ALLOWED", error: "This product is unavailable for the selected purchasing scope." };
-  if (code === "P8205") return { code: "EMPTY_CART", error: "The cart is empty." };
-  return { code: "CART_UNAVAILABLE", error: "The cart is unavailable." };
+  const code = procurementCartErrorCode(error);
+  const messages: Record<ProcurementCartCommandCode, string> = {
+    AUTH_REQUIRED: "Authentication is required.",
+    CART_FORBIDDEN: "Cart access is unavailable.",
+    INVALID_COMMAND: "The cart command is invalid.",
+    INVALID_QUANTITY: "Quantity must be a whole number between 1 and 1,000,000.",
+    REPRICED: "A cart item price changed and requires review.",
+    STALE_CART: "The cart changed. The latest cart must be reviewed.",
+    PRODUCT_NOT_ALLOWED: "This product is unavailable for the selected purchasing scope.",
+    EMPTY_CART: "The cart is empty.",
+    CART_UNAVAILABLE: "The cart is unavailable.",
+  };
+  return { code, error: messages[code] };
 }
 
 export async function POST(request: Request) {
@@ -31,13 +32,32 @@ export async function POST(request: Request) {
   if (!canAccess(actor, "view_catalog") || !canAccess(actor, "create_requests")) {
     return Response.json({ code: "CART_FORBIDDEN" }, { status: 403 });
   }
+  let input;
+  let cart;
   try {
-    const input = commandSchema.parse(await request.json());
-    const cart = await commandProcurementCart(actor, input);
-    return Response.json({ cart }, {
+    input = procurementCartCommandSchema.parse(await request.json());
+    cart = await commandProcurementCart(actor, input);
+  } catch (error) {
+    const body = businessError(error);
+    const status = body.code === "STALE_CART" ? 409
+      : body.code === "INVALID_COMMAND" || body.code === "INVALID_QUANTITY" ? 422
+        : body.code === "PRODUCT_NOT_ALLOWED" ? 403 : 400;
+    return Response.json(body, {
+      status,
       headers: { "Cache-Control": "private, no-store", Vary: "Cookie" },
     });
-  } catch (error) {
-    return Response.json(businessError(error), { status: 400 });
   }
+  let revalidationPending = false;
+  if (input.operation !== "READ") {
+    try {
+      revalidatePath("/products");
+      revalidatePath("/cart");
+      revalidatePath("/requests/new");
+    } catch {
+      revalidationPending = true;
+    }
+  }
+  return Response.json({ cart, ...(revalidationPending ? { revalidationPending } : {}) }, {
+    headers: { "Cache-Control": "private, no-store", Vary: "Cookie" },
+  });
 }

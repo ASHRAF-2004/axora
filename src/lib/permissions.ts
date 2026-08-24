@@ -139,6 +139,7 @@ const companyAdminPermissions: readonly Permission[] = [
   "view_branches",
   "manage_branches",
   "manage_branch_budget",
+  "create_requests",
   "view_approvals",
   "view_budgets",
   "view_wallet",

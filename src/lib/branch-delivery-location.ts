@@ -16,6 +16,7 @@ import { loadOrganizationDirectory } from "@/lib/organization-access";
 
 const uuid = z.string().uuid();
 const demoBranchId = z.string().regex(/^br-[a-z0-9-]{3,80}$/);
+const demoBranchIdentifier = z.union([uuid, demoBranchId]);
 const safeOperationalText = (minimum: number, maximum: number) => z.string()
   .trim()
   .min(minimum)
@@ -221,7 +222,7 @@ export async function loadBranchDeliveryLocationWorkspace(
   branchIdInput: string,
   capturedAt = new Date(),
 ) {
-  const branchId = (isDemoMode() ? demoBranchId : uuid).safeParse(branchIdInput);
+  const branchId = (isDemoMode() ? demoBranchIdentifier : uuid).safeParse(branchIdInput);
   if (!branchId.success || !Number.isFinite(capturedAt.getTime())) {
     throw new BranchDeliveryLocationUnavailableError();
   }

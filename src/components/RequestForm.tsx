@@ -3,6 +3,8 @@
 import type { RequestBudgetChoice } from "@/lib/budget-ledger";
 
 import { createRequestAction } from "@/app/(portal)/requests/actions";
+import { runCartCommandAction } from "@/app/(portal)/cart/actions";
+import { publishCartChanged } from "@/lib/cart-client-events";
 import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import type { SessionUser } from "@/lib/auth";
 import { formatCurrency, roundMoney } from "@/lib/domain";
@@ -226,21 +228,30 @@ export function RequestForm({
     if (!changed.length) setPricesAcknowledged(true);
   }
 
-  async function runCartCommand(input: Record<string, unknown>) {
+  async function runCartCommand(input: {
+    operation: "SET" | "REMOVE" | "ACKNOWLEDGE_PRICES";
+    productRef?: string;
+    quantity?: number;
+    specification?: string;
+  }) {
     setCartBusy(true);
     try {
-      const response = await fetch("/api/catalog/cart", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          branchId, expectedVersion: cartVersionRef.current, ...input,
-        }),
-      });
-      const payload = await response.json() as { cart?: ProcurementCartSnapshot; code?: string };
-      if (!response.ok || !payload.cart) {
-        throw new Error(cartCopy.cartError(payload.code));
+      let result;
+      try {
+        result = await runCartCommandAction({
+          branchId, expectedVersion: cartVersionRef.current,
+          commandId: crypto.randomUUID(), ...input,
+        });
+      } catch {
+        throw new Error(cartCopy.cartUnconfirmed);
       }
-      applyCart(payload.cart);
-      return payload.cart;
+      if (!result.ok) {
+        if (result.code === "STALE_CART" && result.cart) applyCart(result.cart);
+        throw new Error(cartCopy.cartError(result.code));
+      }
+      applyCart(result.cart);
+      publishCartChanged({ branchId, version: result.cart.version });
+      return result.cart;
     } finally {
       setCartBusy(false);
     }
@@ -528,15 +539,6 @@ export function RequestForm({
               {copy.branchHint}
             </span>
           )}
-        </label>
-
-        <label>
-          {copy.requestType}
-          <select name="requestType" defaultValue="Standard">
-            <option value="Standard">{copy.standard}</option>
-            <option value="Ad-hoc">{copy.adHoc}</option>
-            <option value="Recurring">{copy.recurring}</option>
-          </select>
         </label>
 
         <label>

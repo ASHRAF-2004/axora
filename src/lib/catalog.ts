@@ -305,21 +305,16 @@ export async function searchCatalogProducts(
     );
   }
 
-  if (isDemoMode()) {
-    return searchDemoCatalog(actor, rawInput);
-  }
-
   const input = normalizeInput(rawInput);
   const purchasingScope = input.branchId
     ? await getCatalogPurchasingScope(actor, input.branchId)
     : null;
   if (actor.accountKind === "COMPANY" && !purchasingScope) {
-    return {
-      products: [], total: 0, page: input.page, limit: input.limit,
-      totalPages: 1,
-      facets: { categories: [], subcategories: [], brands: [], units: [],
-        minimumPrice: 0, maximumPrice: 0 },
-    };
+    throw new Error("An authorized shopping branch is required.");
+  }
+
+  if (isDemoMode()) {
+    return searchDemoCatalog(actor, input);
   }
   const values: unknown[] = [];
   const conditions = [
@@ -831,6 +826,11 @@ export async function listShopDepartments(
     );
   }
 
+  const purchasingScope = branchId
+    ? await getCatalogPurchasingScope(actor, branchId)
+    : null;
+  if (actor.accountKind === "COMPANY" && !purchasingScope) return [];
+
   if (isDemoMode()) {
     const visibleProducts = getDemoStore().products.filter(
       (product) =>
@@ -913,11 +913,6 @@ export async function listShopDepartments(
         left.name.localeCompare(right.name),
       );
   }
-
-  const purchasingScope = branchId
-    ? await getCatalogPurchasingScope(actor, branchId)
-    : null;
-  if (actor.accountKind === "COMPANY" && !purchasingScope) return [];
 
   interface ShopDepartmentRow {
     category: string;

@@ -12,6 +12,10 @@ import { corePortalMessages } from "@/lib/core-portal-i18n";
 import { formatCurrency, roundMoney } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
 import type { ProcurementCartSnapshot } from "@/lib/procurement-cart";
+import type { ShoppingBranchContext } from "@/lib/shopping-context";
+import { shoppingContextMessages } from "@/lib/shopping-context-i18n";
+import { runCartCommandAction } from "@/app/(portal)/cart/actions";
+import { publishCartChanged, subscribeCartChanged } from "@/lib/cart-client-events";
 import { shopMessages } from "@/lib/shop-i18n";
 import {
   ArrowLeft,
@@ -35,18 +39,22 @@ import { useUxFeedback } from "./UxFeedbackProvider";
 export function ShopCategoryHub({
   departments,
   canRequest,
-  purchasingBranches,
-  selectedBranchId,
+  selectedBranch,
+  initialCart,
+  canSwitchBranch,
   locale="en",
 }: {
   departments:ShopCategorySummary[];
   canRequest:boolean;
-  purchasingBranches:Array<{id:string;name:string;code:string}>;
-  selectedBranchId?:string;
+  selectedBranch:ShoppingBranchContext;
+  initialCart:ProcurementCartSnapshot|null;
+  canSwitchBranch:boolean;
   locale?:SupportedLocale;
 }) {
   const productCopy=corePortalMessages(locale).products;
   const shopCopy=shopMessages(locale);
+  const contextCopy=shoppingContextMessages(locale);
+  const selectedBranchId=selectedBranch.id;
   const router=useRouter();
   const pathname=usePathname();
   const searchParams=useSearchParams();
@@ -66,8 +74,9 @@ export function ShopCategoryHub({
   const [products,setProducts]=useState<CustomerCatalogProduct[]>([]);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
-  const [cart,setCart]=useState<ProcurementCartSnapshot|null>(null);
+  const [cart,setCart]=useState<ProcurementCartSnapshot|null>(initialCart);
   const [cartBusy,setCartBusy]=useState(false);
+  const cartRef=useRef<ProcurementCartSnapshot|null>(initialCart);
   const focusAfterLoad=useRef(false);
   const productHeading=useRef<HTMLHeadingElement>(null);
   const {notify}=useUxFeedback();
@@ -91,24 +100,26 @@ export function ShopCategoryHub({
     const timer=window.setTimeout(() => updateUrl({q:searchText.trim() || null,page:null},true),350);
     return () => window.clearTimeout(timer);
   },[query,searchText,updateUrl]);
+  const applyAuthoritativeCart=useCallback((next:ProcurementCartSnapshot) => {
+    if (next.version<(cartRef.current?.version ?? 0)) return;
+    cartRef.current=next;setCart(next);
+  },[]);
+  const readLatestCart=useCallback(async () => {
+    if (!canRequest) return;
+    const result=await runCartCommandAction({branchId:selectedBranchId,operation:"READ"});
+    if (result.ok) applyAuthoritativeCart(result.cart);
+  },[applyAuthoritativeCart,canRequest,selectedBranchId]);
+  useEffect(() => subscribeCartChanged((message) => {
+    if (message.branchId===selectedBranchId && message.version>(cartRef.current?.version ?? 0)) void readLatestCart();
+  }),[readLatestCart,selectedBranchId]);
   useEffect(() => {
-    if (!canRequest || !selectedBranchId) return;
-    const controller=new AbortController();
-    queueMicrotask(() => { if (!controller.signal.aborted) setCartBusy(true); });
-    void fetch("/api/catalog/cart",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({branchId:selectedBranchId,operation:"READ"}),
-      signal:controller.signal,
-    }).then(async (response) => {
-      const payload=await response.json() as {cart?:ProcurementCartSnapshot;code?:string};
-      if (!response.ok || !payload.cart) throw new Error(shopCopy.cartError(payload.code));
-      setCart(payload.cart);
-    }).catch((cartError:unknown) => {
-      if (cartError instanceof DOMException && cartError.name==="AbortError") return;
-      notify(cartError instanceof Error ? cartError.message : shopCopy.loadError,"error");
-    }).finally(() => {if (!controller.signal.aborted) setCartBusy(false);});
-    return () => controller.abort();
-  },[canRequest,notify,selectedBranchId,shopCopy]);
+    const refresh=() => void readLatestCart();
+    const pageShown=(event:PageTransitionEvent) => {if (event.persisted) refresh();};
+    const visible=() => {if (document.visibilityState==="visible") refresh();};
+    window.addEventListener("focus",refresh);window.addEventListener("pageshow",pageShown);window.addEventListener("popstate",refresh);window.addEventListener("online",refresh);
+    document.addEventListener("visibilitychange",visible);
+    return () => {window.removeEventListener("focus",refresh);window.removeEventListener("pageshow",pageShown);window.removeEventListener("popstate",refresh);window.removeEventListener("online",refresh);document.removeEventListener("visibilitychange",visible);};
+  },[readLatestCart]);
 
   const showingProducts=Boolean(query || selectedSubcategory || view==="category" || view==="all");
   const buildParams=useCallback(() => {
@@ -159,21 +170,24 @@ export function ShopCategoryHub({
     updateUrl({subcategory:name,view:null,sort:null,page:null});
   }
   async function addToCart(product:CustomerCatalogProduct) {
-    if (!selectedBranchId) return;
+    if (!cartRef.current) return;
     setCartBusy(true);
     try {
-      const response=await fetch("/api/catalog/cart",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({branchId:selectedBranchId,operation:"ADD",
-          productRef:product.publicRef,quantity:1,expectedVersion:cart?.version}),
+      const previous=cartRef.current;
+      const result=await runCartCommandAction({branchId:selectedBranchId,operation:"ADD",
+        productRef:product.publicRef,quantity:1,expectedVersion:previous.version,commandId:crypto.randomUUID(),
       });
-      const payload=await response.json() as {cart?:ProcurementCartSnapshot;code?:string};
-      if (!response.ok || !payload.cart) throw new Error(shopCopy.cartError(payload.code));
-      const existed=Boolean(cart?.items.some((item) => item.publicRef===product.publicRef));
-      setCart(payload.cart);
+      if (!result.ok) {
+        if (result.code==="STALE_CART" && result.cart) applyAuthoritativeCart(result.cart);
+        notify(shopCopy.cartError(result.code),"error");
+        return;
+      }
+      const existed=Boolean(previous.items.some((item) => item.publicRef===product.publicRef));
+      applyAuthoritativeCart(result.cart);
+      publishCartChanged({branchId:selectedBranchId,version:result.cart.version});
       notify(existed ? shopCopy.duplicateNotice(product.name) : shopCopy.addedNotice(product.name),existed ? "info" : "success");
-    } catch (cartError) {
-      notify(cartError instanceof Error ? cartError.message : shopCopy.loadError,"error");
+    } catch {
+      notify(shopCopy.cartUnconfirmed,"error");
     } finally { setCartBusy(false); }
   }
 
@@ -199,16 +213,14 @@ export function ShopCategoryHub({
           {searchText ? <button type="button" aria-label={shopCopy.clearSearch} data-ux-silent="true" onClick={() => {setSearchText("");updateUrl({q:null,page:null},true);}}><X size={18} /></button> : null}
         </div>
       </div>
-      {canRequest && purchasingBranches.length>1 ? <label className="shop-purchasing-scope">
-        <span>{locale==="ar" ? "فرع الشراء" : locale==="ms" ? "Cawangan pembelian" : "Purchasing branch"}</span>
-        <select value={selectedBranchId ?? ""} onChange={(event) => updateUrl({branch:event.target.value,page:null})}>
-          {purchasingBranches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} · {branch.name}</option>)}
-        </select>
-      </label> : null}
+      <aside className="shop-branch-context" aria-label={contextCopy.branchContext(selectedBranch.name)}>
+        <div><span>{contextCopy.deliverTo}</span><strong>{selectedBranch.code} · {selectedBranch.name}</strong><small>{[selectedBranch.city,selectedBranch.address].filter(Boolean).join(" · ")}</small></div>
+        {canSwitchBranch ? <Link className="button button-secondary" href="/products">{contextCopy.changeBranch}</Link> : null}
+      </aside>
       {canRequest ? <aside className={cartItems.length ? "shop-cart-bar has-items" : "shop-cart-bar"} aria-label={shopCopy.cartAria}>
         <div className="shop-cart-bar-icon"><ShoppingCart size={21} aria-hidden="true" />{cartItems.length ? <span>{cartItems.length}</span> : null}</div>
         <div className="shop-cart-bar-copy"><strong>{cartItems.length ? shopCopy.cartItems(cartItems.length) : shopCopy.emptyCart}</strong><span>{cartItems.length ? shopCopy.cartSummary(cartQuantity,formatCurrency(cartSubtotal,locale)) : shopCopy.emptyCartBody}</span></div>
-        <Link href={`/cart?branch=${encodeURIComponent(selectedBranchId ?? "")}`} className="button button-primary" aria-disabled={!cartItems.length || cartBusy} tabIndex={cartItems.length && !cartBusy ? undefined : -1}>{shopCopy.review}<ArrowRight className="directional-icon" size={16} aria-hidden="true" /></Link>
+        <Link href={`/cart?branch=${encodeURIComponent(selectedBranchId)}`} className="button button-primary" aria-disabled={!cartItems.length || cartBusy} tabIndex={cartItems.length && !cartBusy ? undefined : -1}>{shopCopy.review}<ArrowRight className="directional-icon" size={16} aria-hidden="true" /></Link>
       </aside> : null}
       {categoryName ? <nav className="shop-breadcrumb" aria-label={shopCopy.breadcrumb}>
         <button type="button" data-ux-silent="true" onClick={returnToDepartments}>{shopCopy.shop}</button><ChevronRight size={14} aria-hidden="true" />
@@ -217,7 +229,7 @@ export function ShopCategoryHub({
       </nav> : null}
       {!categoryName && !query && view!=="all" ? <>
         <div className="shop-section-heading"><div><span>{shopCopy.browse}</span><h2>{shopCopy.byCategory}</h2><p>{shopCopy.chooseDepartment}</p></div>
-          <div className="shop-section-actions"><strong>{departments.length} {departments.length===1 ? shopCopy.department : shopCopy.departments}</strong><Link className="button button-primary" href="/products?view=all" onClick={() => {focusAfterLoad.current=true;}}><Grid3X3 size={17} />{shopCopy.seeAllProducts}</Link></div>
+          <div className="shop-section-actions"><strong>{departments.length} {departments.length===1 ? shopCopy.department : shopCopy.departments}</strong><Link className="button button-primary" href={`/products?branch=${encodeURIComponent(selectedBranchId)}&view=all`} onClick={() => {focusAfterLoad.current=true;}}><Grid3X3 size={17} />{shopCopy.seeAllProducts}</Link></div>
         </div>
         <div className="shop-department-grid">{departments.map((department) => { const art=categoryImage(department.name,locale); return <button key={department.name} type="button" className="shop-department-card" data-ux-silent="true" onClick={() => openCategory(department)}>
           <div className="shop-department-image"><picture><source srcSet={art.avif} type="image/avif" /><img src={art.webp} alt={art.alt} loading="lazy" width="640" height="400" /></picture><span className="shop-department-count">{department.count} {department.count===1 ? shopCopy.product : shopCopy.products}</span></div>

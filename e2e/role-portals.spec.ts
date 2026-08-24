@@ -49,7 +49,7 @@ test("company and branch administrators retain scoped people, budget and request
   await page.goto("/users");
   await expect(page.locator("main h1")).toBeVisible();
   await page.goto("/products");
-  await expect(page.getByRole("heading", { level: 1, name: "Shop for your branch" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Choose a branch" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create global product" })).toHaveCount(0);
 
   await page.context().clearCookies();
