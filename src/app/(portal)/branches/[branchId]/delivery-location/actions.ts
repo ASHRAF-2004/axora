@@ -97,5 +97,3 @@ export async function saveBranchDeliveryLocationAction(
     return { status: "error", message: copy.saveError, submissionId };
   }
 }
-
-export const branchDeliveryLocationActionInternals = { actionField, formSchema };
