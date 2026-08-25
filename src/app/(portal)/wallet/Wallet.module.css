@@ -6,9 +6,16 @@
   --wallet-border: var(--axora-border);
   --wallet-primary: var(--axora-brand);
   --wallet-accent-text: var(--axora-link);
+  --wallet-credit: var(--teal-600);
+  --wallet-debit: var(--red-600);
   display: grid;
   gap: 1.25rem;
   color: var(--wallet-text);
+}
+
+:global(.app-shell[data-appearance="dark"]) .page {
+  --wallet-credit: #86efac;
+  --wallet-debit: #fca5a5;
 }
 
 .hero {
@@ -139,8 +146,8 @@
 .tableWrap td { font-size: .875rem; }
 .credit,
 .debit { font-weight: 800; font-variant-numeric: tabular-nums; }
-.credit { color: var(--teal-600); }
-.debit { color: var(--red-600); }
+.credit { color: var(--wallet-credit); }
+.debit { color: var(--wallet-debit); }
 
 @media (max-width: 44rem) {
   .companySelector,

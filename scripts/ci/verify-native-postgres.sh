@@ -67,6 +67,35 @@ if [[ "$ready" != true ]]; then
   exit 1
 fi
 
+# The official image first runs init scripts against a temporary postmaster,
+# then shuts it down and starts the long-lived server. The migration ledger can
+# become complete in the narrow interval before that intentional shutdown, so
+# wait for the entrypoint's init-complete marker and the final postmaster before
+# issuing grant or test commands.
+final_ready=false
+for _ in $(seq 1 120); do
+  if docker logs "$CONTAINER_NAME" 2>&1 \
+      | grep -Fq 'PostgreSQL init process complete; ready for start up.' \
+    && docker exec \
+      --env "PGPASSWORD=$ADMIN_PASSWORD" \
+      "$CONTAINER_NAME" psql --quiet --tuples-only --no-align \
+        --username "$ADMIN_USER" --dbname "$DATABASE_NAME" \
+        --command 'SELECT 1' 2>/dev/null | grep -qx '1'; then
+    final_ready=true
+    break
+  fi
+  if [[ "$(docker inspect --format '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null || true)" != "true" ]]; then
+    docker logs "$CONTAINER_NAME" >&2
+    exit 1
+  fi
+  sleep 1
+done
+if [[ "$final_ready" != true ]]; then
+  docker logs "$CONTAINER_NAME" >&2
+  printf 'Native PostgreSQL final postmaster did not become ready.\n' >&2
+  exit 1
+fi
+
 docker exec \
   --env "PGPASSWORD=$ADMIN_PASSWORD" \
   "$CONTAINER_NAME" psql --quiet --set=ON_ERROR_STOP=1 \
@@ -123,6 +152,7 @@ run_native_test() {
 run_native_test tests/company-activation-contract-native-postgres.test.ts
 run_native_test tests/delivery-guy-invitation-native-postgres.test.ts
 run_native_test tests/operating-model-concurrency-native-postgres.test.ts
+run_native_test tests/company-admin-direct-purchase-native-postgres.test.ts
 run_native_test tests/existing-user-management-native-postgres.test.ts
 
 docker exec --interactive \
@@ -241,7 +271,8 @@ BEGIN
       'company_wallet_top_up_requests',
       'company_wallet_ledger_entries',
       'company_wallet_top_up_events',
-      'approve_and_pay_commands'
+      'approve_and_pay_commands',
+      'company_admin_direct_purchase_commands'
     )
     AND (NOT relrowsecurity OR NOT relforcerowsecurity);
   IF coalesce(cardinality(missing_rls), 0) <> 0 THEN
@@ -257,7 +288,7 @@ BEGIN
       'branch_delivery_location_commands',
       'company_wallets','company_wallet_top_up_requests',
       'company_wallet_ledger_entries','company_wallet_top_up_events',
-      'approve_and_pay_commands'
+      'approve_and_pay_commands','company_admin_direct_purchase_commands'
     );
   IF coalesce(cardinality(exposed_prompt7_tables), 0) <> 0 THEN
     RAISE EXCEPTION 'Prompt 7 raw tables are exposed to axora_app: %',
@@ -280,7 +311,9 @@ BEGIN
       'axora_emit_company_finance_event',
       'axora_complete_payment_internal',
       'axora_approve_and_pay_internal',
-      'axora_finalize_request_budget'
+      'axora_finalize_request_budget',
+      'axora_company_admin_direct_purchase_internal',
+      'axora_store_company_admin_direct_purchase_result'
     )
     AND has_function_privilege('axora_app', oid, 'EXECUTE');
   IF coalesce(cardinality(exposed_prompt7_functions), 0) <> 0 THEN
@@ -299,6 +332,9 @@ BEGIN
     ('axora_record_company_wallet_top_up'),
     ('axora_request_approval_workspace_v2'),
     ('axora_approve_and_pay'),
+    ('axora_company_admin_direct_purchase_workspace'),
+    ('axora_company_admin_direct_purchase'),
+    ('axora_company_admin_direct_purchase_result'),
     ('axora_delivery_evidence_file'),
     ('axora_final_invoice_summary'),
     ('axora_complete_payment'),

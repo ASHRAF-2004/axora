@@ -2,12 +2,20 @@
 
 import { requirePermission } from "@/lib/auth";
 import {
+  directPurchaseCommandSchema,
+  placeCompanyAdminDirectPurchase,
+  reconcileCompanyAdminDirectPurchase,
+  type CompanyAdminDirectPurchaseReconciliation,
+  type CompanyAdminDirectPurchaseResult,
+} from "@/lib/company-admin-direct-purchase";
+import {
   procurementCartCommandSchema,
   procurementCartErrorCode,
   type ProcurementCartCommand,
 } from "@/lib/procurement-cart-command";
 import { commandProcurementCart, type ProcurementCartSnapshot } from "@/lib/procurement-cart";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 export type CartCommandActionResult =
   | { ok: true; cart: ProcurementCartSnapshot }
@@ -39,4 +47,49 @@ export async function runCartCommandAction(
     revalidatePath("/requests/new");
   }
   return { ok: true, cart };
+}
+
+export type DirectPurchaseActionResult =
+  | { ok: true; result: CompanyAdminDirectPurchaseResult }
+  | { ok: false; code: "UNAVAILABLE" };
+
+export async function runCompanyAdminDirectPurchaseAction(
+  rawCommand: unknown,
+): Promise<DirectPurchaseActionResult> {
+  const actor = await requirePermission("direct_purchase");
+  const parsed = directPurchaseCommandSchema.safeParse(rawCommand);
+  if (!parsed.success) return { ok: false, code: "UNAVAILABLE" };
+  try {
+    const result = await placeCompanyAdminDirectPurchase(actor, parsed.data);
+    revalidatePath("/products");
+    revalidatePath("/cart");
+    revalidatePath("/requests");
+    revalidatePath("/approvals");
+    revalidatePath("/wallet");
+    revalidatePath("/deliveries");
+    if ("requestId" in result) revalidatePath(`/requests/${result.requestId}`);
+    return { ok: true, result };
+  } catch {
+    return { ok: false, code: "UNAVAILABLE" };
+  }
+}
+
+export type DirectPurchaseReconciliationActionResult =
+  | { ok: true; result: CompanyAdminDirectPurchaseReconciliation }
+  | { ok: false; code: "UNAVAILABLE" };
+
+export async function reconcileCompanyAdminDirectPurchaseAction(
+  rawInput: unknown,
+): Promise<DirectPurchaseReconciliationActionResult> {
+  const actor = await requirePermission("direct_purchase");
+  const parsed = z.object({ commandId: z.string().uuid() }).strict().safeParse(rawInput);
+  if (!parsed.success) return { ok: false, code: "UNAVAILABLE" };
+  try {
+    return {
+      ok: true,
+      result: await reconcileCompanyAdminDirectPurchase(actor, parsed.data.commandId),
+    };
+  } catch {
+    return { ok: false, code: "UNAVAILABLE" };
+  }
 }

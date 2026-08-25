@@ -42,6 +42,7 @@ export function ShopCategoryHub({
   selectedBranch,
   initialCart,
   canSwitchBranch,
+  directPurchase=false,
   locale="en",
 }: {
   departments:ShopCategorySummary[];
@@ -49,6 +50,7 @@ export function ShopCategoryHub({
   selectedBranch:ShoppingBranchContext;
   initialCart:ProcurementCartSnapshot|null;
   canSwitchBranch:boolean;
+  directPurchase?:boolean;
   locale?:SupportedLocale;
 }) {
   const productCopy=corePortalMessages(locale).products;
@@ -204,6 +206,11 @@ export function ShopCategoryHub({
   const cartSubtotal=cartItems.reduce((total,item) => total+roundMoney(item.quantity*Number(item.unitPrice)),0);
   const from=catalog?.total ? (catalog.page-1)*catalog.limit+1 : 0;
   const to=catalog ? Math.min(catalog.page*catalog.limit,catalog.total) : 0;
+  const cartAria=directPurchase ? shopCopy.directCartAria : shopCopy.cartAria;
+  const cartItemsCopy=directPurchase ? shopCopy.directCartItems : shopCopy.cartItems;
+  const emptyCart=directPurchase ? shopCopy.directEmptyCart : shopCopy.emptyCart;
+  const emptyCartBody=directPurchase ? shopCopy.directEmptyCartBody : shopCopy.emptyCartBody;
+  const reviewCart=directPurchase ? shopCopy.directReview : shopCopy.review;
 
   return (
     <section className="shop-hub" aria-label={shopCopy.aria}>
@@ -217,10 +224,10 @@ export function ShopCategoryHub({
         <div><span>{contextCopy.deliverTo}</span><strong>{selectedBranch.code} · {selectedBranch.name}</strong><small>{[selectedBranch.city,selectedBranch.address].filter(Boolean).join(" · ")}</small></div>
         {canSwitchBranch ? <Link className="button button-secondary" href="/products">{contextCopy.changeBranch}</Link> : null}
       </aside>
-      {canRequest ? <aside className={cartItems.length ? "shop-cart-bar has-items" : "shop-cart-bar"} aria-label={shopCopy.cartAria}>
+      {canRequest ? <aside className={cartItems.length ? "shop-cart-bar has-items" : "shop-cart-bar"} aria-label={cartAria}>
         <div className="shop-cart-bar-icon"><ShoppingCart size={21} aria-hidden="true" />{cartItems.length ? <span>{cartItems.length}</span> : null}</div>
-        <div className="shop-cart-bar-copy"><strong>{cartItems.length ? shopCopy.cartItems(cartItems.length) : shopCopy.emptyCart}</strong><span>{cartItems.length ? shopCopy.cartSummary(cartQuantity,formatCurrency(cartSubtotal,locale)) : shopCopy.emptyCartBody}</span></div>
-        <Link href={`/cart?branch=${encodeURIComponent(selectedBranchId)}`} className="button button-primary" aria-disabled={!cartItems.length || cartBusy} tabIndex={cartItems.length && !cartBusy ? undefined : -1}>{shopCopy.review}<ArrowRight className="directional-icon" size={16} aria-hidden="true" /></Link>
+        <div className="shop-cart-bar-copy"><strong>{cartItems.length ? cartItemsCopy(cartItems.length) : emptyCart}</strong><span>{cartItems.length ? shopCopy.cartSummary(cartQuantity,formatCurrency(cartSubtotal,locale)) : emptyCartBody}</span></div>
+        <Link href={`/cart?branch=${encodeURIComponent(selectedBranchId)}`} className="button button-primary" aria-disabled={!cartItems.length || cartBusy} tabIndex={cartItems.length && !cartBusy ? undefined : -1}>{reviewCart}<ArrowRight className="directional-icon" size={16} aria-hidden="true" /></Link>
       </aside> : null}
       {categoryName ? <nav className="shop-breadcrumb" aria-label={shopCopy.breadcrumb}>
         <button type="button" data-ux-silent="true" onClick={returnToDepartments}>{shopCopy.shop}</button><ChevronRight size={14} aria-hidden="true" />

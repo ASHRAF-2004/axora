@@ -221,6 +221,7 @@ export interface RequestLine {
 
 export interface ProcurementRequest {
   id: string;
+  purchaseMode?: "REQUEST" | "COMPANY_ADMIN_DIRECT";
   createdById?: string;
   clientSubmissionKey?: string;
   orderCode: string;

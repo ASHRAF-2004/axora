@@ -61,6 +61,7 @@ export default async function RequestDetailPage({
   const canViewProfit = platformView && canAccess(actor, "view_platform_profit");
   const request = await getAuthorizedRequest(actor, id);
   if (!request) notFound();
+  const isDirectOrder = request.purchaseMode === "COMPANY_ADMIN_DIRECT";
   const canViewInvoices = request.invoiceStatus !== undefined
     || request.paymentStatus !== undefined
     || request.invoiceNumber !== undefined;
@@ -91,12 +92,14 @@ export default async function RequestDetailPage({
     && nextStatuses.length > 0
     && !(request.status === "New Request" && request.approvalStatus !== "Approved");
   const canFinalizeApprovedRequest = !platformView
+    && !isDirectOrder
     && canAccess(actor, "approve_requests")
     && request.createdById !== actor.id
     && request.approvalStatus === "Approved"
     && !finalInvoice
     && Boolean(request.approvalRevision);
   const canCancelRequest = !platformView
+    && !isDirectOrder
     && request.createdById === actor.id
     && (request.approvalStatus === "Pending" || request.approvalStatus === "Approved")
     && request.paymentStatus !== "Paid"
@@ -108,18 +111,18 @@ export default async function RequestDetailPage({
         ? <RequestDraftCleanup scope={{ userId: actor.id, companyId: request.companyId }} />
         : null}
       <PageHeader
-        eyebrow={platformView ? detail.platformEyebrow : detail.companyEyebrow}
+        eyebrow={platformView ? detail.platformEyebrow : isDirectOrder ? detail.companyOrderEyebrow : detail.companyEyebrow}
         title={request.orderCode}
         description={platformView
-          ? `${request.companyName} · ${request.branchName} · ${detail.itemCount(request.lines.length)}`
-          : `${request.branchName} · ${detail.itemCount(request.lines.length)}`}
+          ? `${request.companyName} · ${request.branchName} · ${isDirectOrder ? detail.orderedItemCount(request.lines.length) : detail.itemCount(request.lines.length)}`
+          : `${request.branchName} · ${isDirectOrder ? detail.orderedItemCount(request.lines.length) : detail.itemCount(request.lines.length)}`}
       />
 
       <section className="request-summary">
-        <div className="summary-box"><span>{requestCopy.approval}</span><strong><StatusBadge status={request.approvalStatus}>{localizedStatus(request.approvalStatus, locale)}</StatusBadge></strong></div>
+        <div className="summary-box"><span>{isDirectOrder ? detail.payment : requestCopy.approval}</span><strong><StatusBadge status={isDirectOrder ? "Paid" : request.approvalStatus}>{localizedStatus(isDirectOrder ? "Paid" : request.approvalStatus, locale)}</StatusBadge></strong></div>
         <div className="summary-box"><span>{requestCopy.fulfilment}</span><strong><StatusBadge status={request.status}>{localizedStatus(request.status, locale)}</StatusBadge></strong></div>
         <div className="summary-box"><span>{requestCopy.neededBy}</span><strong>{formatDate(request.neededByDate, locale, timeZone)}</strong></div>
-        {!platformView || canViewRevenue ? <div className="summary-box"><span>{platformView ? requestCopy.customerTotal : requestCopy.estimatedTotal}</span><strong>{formatCurrency(request.estimatedTotal, locale)}</strong></div> : null}
+        {!platformView || canViewRevenue ? <div className="summary-box"><span>{platformView ? requestCopy.customerTotal : isDirectOrder ? detail.orderTotal : requestCopy.estimatedTotal}</span><strong>{formatCurrency(request.estimatedTotal, locale)}</strong></div> : null}
         {platformView ? <>
           {canViewCost ? <div className="summary-box"><span>{detail.buyTotal}</span><strong>{formatCurrency(totals.buyingCost, locale)}</strong></div> : null}
           {canViewProfit ?
@@ -134,7 +137,7 @@ export default async function RequestDetailPage({
         taxRate={request.taxRate ?? 0}
         taxAmount={request.taxAmount ?? 0}
         estimatedTotal={request.estimatedTotal}
-        totalLabel={platformView ? requestCopy.customerTotal : requestCopy.estimatedTotal}
+        totalLabel={platformView ? requestCopy.customerTotal : isDirectOrder ? detail.orderTotal : requestCopy.estimatedTotal}
         locale={locale}
       /> : null}
 
@@ -143,8 +146,8 @@ export default async function RequestDetailPage({
           <article className="panel">
             <div className="panel-header">
               <div>
-                <h2>{detail.requestedItems}</h2>
-                <p>{platformView ? detail.platformItemsBody : detail.companyItemsBody}</p>
+                <h2>{isDirectOrder ? detail.orderedItems : detail.requestedItems}</h2>
+                <p>{platformView ? detail.platformItemsBody : isDirectOrder ? detail.companyOrderItemsBody : detail.companyItemsBody}</p>
               </div>
             </div>
             <div className="data-table-wrap">
@@ -177,11 +180,11 @@ export default async function RequestDetailPage({
           </article>
 
           <article className="panel">
-            <div className="panel-header"><div><h2>{platformView ? detail.operationsInfo : detail.requestInfo}</h2><p>{platformView ? detail.operationsBody : detail.requestBody}</p></div></div>
+            <div className="panel-header"><div><h2>{platformView ? detail.operationsInfo : isDirectOrder ? detail.orderInfo : detail.requestInfo}</h2><p>{platformView ? detail.operationsBody : isDirectOrder ? detail.orderInfoBody : detail.requestBody}</p></div></div>
             <div className="panel-body">
               <div className="form-grid">
                 <div className="readiness-item"><UserRound size={19} /><div><strong>{request.requestedBy}</strong><p>{request.department} · {request.requesterContact}</p></div></div>
-                <div className="readiness-item"><Route size={19} /><div><strong>{request.branchName}</strong><p>{request.requestType} · {localizedStatus(request.urgency, locale)}</p></div></div>
+                <div className="readiness-item"><Route size={19} /><div><strong>{request.branchName}</strong><p>{isDirectOrder ? detail.directOrder : `${request.requestType} · ${localizedStatus(request.urgency, locale)}`}</p></div></div>
                 {canViewInvoices ? <div className="readiness-item"><PackageCheck size={19} /><div><strong>{request.invoiceNumber || detail.noInvoice}</strong><p>{localizedStatus(request.invoiceStatus ?? detail.notAssigned, locale)} · {localizedStatus(request.paymentStatus ?? "Unpaid", locale)}</p></div></div> : null}
                 {platformView
                   ? canViewRevenue ? <div className="readiness-item"><CircleDollarSign size={19} /><div><strong>{formatCurrency(totals.delivery, locale)} {detail.deliveryFees}</strong><p>{detail.deliveryFeesBody}</p></div></div> : null
@@ -209,42 +212,51 @@ export default async function RequestDetailPage({
                   </form>
                 : <div className="callout"><strong>{nextStatuses.length ? detail.readOnly : detail.closed}</strong><p>{nextStatuses.length ? detail.readOnlyBody : detail.closedBody}</p></div>}
           </> : <>
-            <h2>{detail.companyApproval}</h2>
-            <p>{detail.companyApprovalBody}</p>
-            <div className="callout">
-              <strong>{request.approvalStatus === "Pending"
-                ? detail.waitingDecision
-                : request.approvalStatus === "Approved"
-                  ? detail.approvedBy(request.approvedByName)
-                  : detail.companyRejected}</strong>
-              <p>{request.approvalReason || (request.approvalStatus === "Pending"
-                ? detail.afterApproval
-                : detail.decisionRecorded)}</p>
-            </div>
-            {request.approvalStatus === "Pending" && canAccess(actor, "approve_requests")
-              ? <div className="form-actions"><Link className="button button-primary" href="/approvals">{detail.reviewApproval}</Link></div>
-              : null}
-            {feedback.cancelNotice ? <div className="callout" role={feedback.cancelNotice === "complete" ? "status" : "alert"} style={{ marginBlockStart: 20 }}>
-              <strong>{feedback.cancelNotice === "complete" ? detail.cancellationComplete : detail.cancellationFailed}</strong>
-            </div> : null}
-            {canCancelRequest ? <form action={cancelPurchaseRequestAction.bind(null, id)} style={{ marginBlockStart: 20 }}>
-              <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
-              <input type="hidden" name="commandId" value={randomUUID()} />
-              <div className="callout"><strong>{detail.cancellationTitle}</strong><p>{detail.cancellationBody}</p></div>
-              <div className="form-actions"><button className="button button-danger" type="submit">{detail.cancelRequest}</button></div>
-            </form> : null}
-            {financeResult ? <div className="callout" role={financeResult === "SUCCESS" || financeResult === "ALREADY_PROCESSED" ? "status" : "alert"} style={{ marginBlockStart: 20 }}>
-              <strong>{approveAndPayResultCopy(locale, financeResult, financeState).title}</strong>
-              <p>{approveAndPayResultCopy(locale, financeResult, financeState).body}</p>
-            </div> : null}
-            {feedback.financeError ? <div className="callout" role="alert" style={{ marginBlockStart: 20 }}><strong>{walletCopy.unavailable}</strong><p>{walletCopy.invalidSubmission}</p></div> : null}
-            {canFinalizeApprovedRequest ? <form action={approveAndPayRequestAction.bind(null, id)} style={{ marginBlockStart: 20 }}>
-              <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
-              <input type="hidden" name="commandId" value={randomUUID()} />
-              <div className="callout"><strong>{walletCopy.approveAndPay}</strong><p>{walletCopy.approveAndPayIntro}</p></div>
-              <div className="form-actions"><button className="button button-primary" type="submit">{walletCopy.approveAndPay}</button></div>
-            </form> : null}
-            {finalInvoice ? <div className="callout" style={{ marginBlockStart: 20 }}>
+            {isDirectOrder ? <>
+              <h2>{detail.directOrder}</h2>
+              <p>{detail.directOrderCustomerBody}</p>
+              <div className="callout" role="status">
+                <strong>{detail.orderPaid}</strong>
+                <p>{detail.directOrderEvidence}</p>
+              </div>
+            </> : <>
+              <h2>{detail.companyApproval}</h2>
+              <p>{detail.companyApprovalBody}</p>
+              <div className="callout">
+                <strong>{request.approvalStatus === "Pending"
+                  ? detail.waitingDecision
+                  : request.approvalStatus === "Approved"
+                    ? detail.approvedBy(request.approvedByName)
+                    : detail.companyRejected}</strong>
+                <p>{request.approvalReason || (request.approvalStatus === "Pending"
+                  ? detail.afterApproval
+                  : detail.decisionRecorded)}</p>
+              </div>
+              {request.approvalStatus === "Pending" && canAccess(actor, "approve_requests")
+                ? <div className="form-actions"><Link className="button button-primary" href="/approvals">{detail.reviewApproval}</Link></div>
+                : null}
+              {feedback.cancelNotice ? <div className="callout" role={feedback.cancelNotice === "complete" ? "status" : "alert"} style={{ marginBlockStart: 20 }}>
+                <strong>{feedback.cancelNotice === "complete" ? detail.cancellationComplete : detail.cancellationFailed}</strong>
+              </div> : null}
+              {canCancelRequest ? <form action={cancelPurchaseRequestAction.bind(null, id)} style={{ marginBlockStart: 20 }}>
+                <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
+                <input type="hidden" name="commandId" value={randomUUID()} />
+                <div className="callout"><strong>{detail.cancellationTitle}</strong><p>{detail.cancellationBody}</p></div>
+                <div className="form-actions"><button className="button button-danger" type="submit">{detail.cancelRequest}</button></div>
+              </form> : null}
+              {financeResult ? <div className="callout" role={financeResult === "SUCCESS" || financeResult === "ALREADY_PROCESSED" ? "status" : "alert"} style={{ marginBlockStart: 20 }}>
+                <strong>{approveAndPayResultCopy(locale, financeResult, financeState).title}</strong>
+                <p>{approveAndPayResultCopy(locale, financeResult, financeState).body}</p>
+              </div> : null}
+              {feedback.financeError ? <div className="callout" role="alert" style={{ marginBlockStart: 20 }}><strong>{walletCopy.unavailable}</strong><p>{walletCopy.invalidSubmission}</p></div> : null}
+              {canFinalizeApprovedRequest ? <form action={approveAndPayRequestAction.bind(null, id)} style={{ marginBlockStart: 20 }}>
+                <input type="hidden" name="approvalRevision" value={request.approvalRevision} />
+                <input type="hidden" name="commandId" value={randomUUID()} />
+                <div className="callout"><strong>{walletCopy.approveAndPay}</strong><p>{walletCopy.approveAndPayIntro}</p></div>
+                <div className="form-actions"><button className="button button-primary" type="submit">{walletCopy.approveAndPay}</button></div>
+              </form> : null}
+            </>}
+            {finalInvoice ? <div id="invoice" className="callout" style={{ marginBlockStart: 20 }}>
               <strong>{detail.paid}</strong>
               <p>{finalInvoice.invoiceNumber} · {formatMoneyDecimal(finalInvoice.amount, finalInvoice.currency, locale)} · {formatDateTime(finalInvoice.paidAt, locale, timeZone)}</p>
               <p>{detail.invoiceEmailStatus(finalInvoice.emailStatus ?? "PENDING")}</p>
@@ -258,8 +270,10 @@ export default async function RequestDetailPage({
               <div className="timeline-item" key={`approval-${event.id}`}>
                 <div className="timeline-dot" />
                 <div>
-                  <strong>{approvalActionLabel(locale, event.action)} · {approvalStateLabel(locale, event.stateAfter)}</strong>
-                  <p>{formatDateTime(event.decidedAt, locale, timeZone)} · {event.reason}</p>
+                  <strong>{isDirectOrder && event.action === "DIRECT_PURCHASE"
+                    ? detail.orderPlaced
+                    : `${approvalActionLabel(locale, event.action)} · ${approvalStateLabel(locale, event.stateAfter)}`}</strong>
+                  <p>{formatDateTime(event.decidedAt, locale, timeZone)}{isDirectOrder && event.action === "DIRECT_PURCHASE" ? ` · ${detail.directOrderEvidence}` : ` · ${event.reason}`}</p>
                 </div>
               </div>
             ))}
@@ -272,8 +286,8 @@ export default async function RequestDetailPage({
                 </div>
               </div>
             )) : <>
-              <div className="timeline-item"><div className="timeline-dot" /><div><strong>{detail.requestCreated}</strong><p>{formatDateTime(request.requestDate, locale, timeZone)}{detail.byActor(request.requestedBy)}</p></div></div>
-              <div className="timeline-item"><div className="timeline-dot" /><div><strong>{detail.approvalTimeline(localizedStatus(request.approvalStatus, locale))}</strong><p>{request.approvedByName || (request.approvalStatus === "Pending" ? detail.awaitingApprover : detail.decisionRecorded)}</p></div></div>
+              <div className="timeline-item"><div className="timeline-dot" /><div><strong>{isDirectOrder ? detail.orderPlaced : detail.requestCreated}</strong><p>{formatDateTime(request.requestDate, locale, timeZone)}{detail.byActor(request.requestedBy)}</p></div></div>
+              {!isDirectOrder ? <div className="timeline-item"><div className="timeline-dot" /><div><strong>{detail.approvalTimeline(localizedStatus(request.approvalStatus, locale))}</strong><p>{request.approvedByName || (request.approvalStatus === "Pending" ? detail.awaitingApprover : detail.decisionRecorded)}</p></div></div> : null}
               <div className="timeline-item"><div className="timeline-dot" /><div><strong>{localizedStatus(request.status, locale)}</strong><p>{detail.currentPosition}</p></div></div>
             </>}
           </div>

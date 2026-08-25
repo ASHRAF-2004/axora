@@ -2,6 +2,11 @@ import { CartReview } from "@/components/CartReview";
 import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
 import { cartMessages } from "@/lib/cart-i18n";
+import {
+  canPlaceCompanyAdminDirectPurchase,
+  getCompanyAdminDirectPurchaseWorkspace,
+  usesCompanyAdministratorDirectPurchase,
+} from "@/lib/company-admin-direct-purchase";
 import { commandProcurementCart } from "@/lib/procurement-cart";
 import { SHOPPING_BRANCH_COOKIE, loadShoppingBranchContexts, resolveShoppingBranch } from "@/lib/shopping-context";
 import { cookies } from "next/headers";
@@ -22,5 +27,17 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
   const branch = resolveShoppingBranch(actor, contexts, params.branch ?? cookieStore.get(SHOPPING_BRANCH_COOKIE)?.value);
   if (!branch?.ready) redirect("/products?notice=shopping-branch-required");
   const cart = await commandProcurementCart(actor, { branchId: branch.id, operation: "READ" });
-  return <><PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} /><CartReview initialCart={cart} branch={branch} locale={locale} /></>;
+  const isCompanyAdministrator = usesCompanyAdministratorDirectPurchase(actor);
+  const canDirectPurchase = canPlaceCompanyAdminDirectPurchase(actor);
+  const directPurchase = canDirectPurchase
+    ? await getCompanyAdminDirectPurchaseWorkspace(actor, cart)
+    : undefined;
+  return <><PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} /><CartReview
+    initialCart={cart}
+    branch={branch}
+    locale={locale}
+    checkoutMode={canDirectPurchase ? "DIRECT" : isCompanyAdministrator ? "DIRECT_DENIED" : "REQUEST"}
+    directPurchase={directPurchase}
+    purchaseRecoveryScope={actor.id}
+  /></>;
 }

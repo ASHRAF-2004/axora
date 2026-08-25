@@ -628,6 +628,7 @@ export const ADDITIVE_PERMISSION_CATALOG = [
   { "code": "product.archive", "group": "Catalogue", "label": "Archive products", "description": "Activate, deactivate, or archive product records.", "highRisk": true },
   { "code": "category.manage", "group": "Catalogue", "label": "Manage categories", "description": "Manage product category classifications.", "highRisk": true },
   { "code": "procurement.category_policy.manage", "group": "Procurement", "label": "Manage category purchasing policy", "description": "Narrow the categories that may be purchased within an authorized company scope.", "highRisk": true },
+  { "code": "procurement.direct_purchase", "group": "Procurement", "label": "Place direct company orders", "description": "Place a paid company order from an exact reviewed Cart version when branch budget and Company Wallet funds are sufficient.", "highRisk": true },
   { "code": "analytics.revenue.view", "group": "Financial visibility", "label": "View revenue", "description": "View Axora revenue totals and revenue reporting.", "highRisk": true },
   {
     "code": "email.operations.manage",
@@ -657,7 +658,7 @@ const GRANULAR_ROLE_DEFAULT_PERMISSIONS: Readonly<Partial<Record<KnownUserRole, 
     "company_user.view", "company_user.create", "company_user.invite",
     "company_user.edit", "company_user.deactivate", "company_user.permission.manage",
     "finance.wallet.view", "finance.wallet.top_up.request",
-    "procurement.category_policy.manage",
+    "procurement.category_policy.manage", "procurement.direct_purchase",
   ],
   BRANCH_ADMIN: [
     "company_user.view", "company_user.create", "company_user.invite",
@@ -1219,7 +1220,8 @@ export function permissionIsCompatibleWithAccountKind(
   accountKind: AccountKind,
 ) {
   if (accountKind === "COMPANY") {
-    return !COMPANY_ACCOUNT_FORBIDDEN_EXACT.has(permission)
+    return permission !== "procurement.direct_purchase"
+      && !COMPANY_ACCOUNT_FORBIDDEN_EXACT.has(permission)
       && !DELIVERY_AGENT_ONLY_PERMISSIONS.has(permission)
       && !COMPANY_ACCOUNT_FORBIDDEN_PERMISSIONS.some((prefix) => (
         permission.startsWith(prefix)
@@ -1235,6 +1237,7 @@ export function permissionIsCompatibleWithAccountKind(
       || permission === "document.download";
   }
   return !permission.startsWith("supplier.")
+    && permission !== "procurement.direct_purchase"
     && !DELIVERY_AGENT_ONLY_PERMISSIONS.has(permission);
 }
 
@@ -1247,6 +1250,7 @@ export function creationPermissionOptions(
   return PERMISSION_CATALOG.filter((permission) => (
     defaults.has(permission.code)
     || (allowExpandedSelection
+      && permission.code !== "procurement.direct_purchase"
       && permissionIsCompatibleWithAccountKind(permission.code, accountKind))
   ));
 }

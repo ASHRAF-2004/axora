@@ -11,6 +11,7 @@ import { commandProcurementCart } from "@/lib/procurement-cart";
 import { redirect } from "next/navigation";
 import { requestSubmitMessage } from "@/lib/request-submit-i18n";
 import { loadShoppingBranchContexts, resolveShoppingBranch } from "@/lib/shopping-context";
+import { usesCompanyAdministratorDirectPurchase } from "@/lib/company-admin-direct-purchase";
 
 export default async function NewRequestPage({
   searchParams,
@@ -18,10 +19,15 @@ export default async function NewRequestPage({
   searchParams: Promise<{ product?: string; branch?: string; notice?: string }>;
 }) {
   const actor = await requirePagePermission("create_requests");
-  const budgetChoices = await getRequestBudgetChoices(actor);
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).requests;
   const params = await searchParams;
+  if (usesCompanyAdministratorDirectPurchase(actor)) {
+    redirect(params.branch
+      ? `/cart?branch=${encodeURIComponent(params.branch)}`
+      : "/products?notice=shopping-branch-required");
+  }
+  const budgetChoices = await getRequestBudgetChoices(actor);
   const notice = requestSubmitMessage(locale, params.notice);
 
   const [organization, initialProduct, shoppingBranches] = await Promise.all([
