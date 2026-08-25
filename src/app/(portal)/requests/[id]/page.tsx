@@ -131,7 +131,7 @@ export default async function RequestDetailPage({
           <div><dt>{receiptCopy.paidFromWallet}</dt><dd className="financial-value">{finalInvoice
             ? formatMoneyDecimal(finalInvoice.amount, finalInvoice.currency, locale)
             : formatCurrency(request.estimatedTotal, locale)}</dd></div>
-          <div><dt>{receiptCopy.deliveringTo}</dt><dd>{branchBudget?.branchCode ?? request.branchName}</dd></div>
+          <div><dt>{receiptCopy.deliveringTo}</dt><dd>{request.branchName}</dd></div>
         </dl>
         <div className="form-actions">
           <Link className="button button-primary" href={`/requests/${encodeURIComponent(request.id)}`}>{receiptCopy.viewOrder}</Link>

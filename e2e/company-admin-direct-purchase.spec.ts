@@ -163,7 +163,7 @@ test("Company Administrator places one order and reconciles a lost success respo
     "axora:e2e:purchase-response-dropped",
   ))).toBe("true");
   await expect(success.getByText("Paid from Company Wallet")).toBeVisible();
-  await expect(success.getByText("E2E-MAIN", { exact: true })).toBeVisible();
+  await expect(success.getByText("Authorized E2E branch", { exact: true })).toBeVisible();
   const orderReference = (await success.locator("dd").first().textContent())?.trim();
   expect(orderReference).toMatch(/^ORD-DEMO-/);
   expect(await page.evaluate((key) => sessionStorage.getItem(key),
