@@ -27,6 +27,7 @@ import {
   isApproveAndPayResultStatus,
 } from "@/lib/finance-business-results";
 import { approveAndPayResultCopy, walletMessages } from "@/lib/wallet-i18n";
+import { cartMessages } from "@/lib/cart-i18n";
 
 export default async function RequestDetailPage({
   params,
@@ -39,6 +40,7 @@ export default async function RequestDetailPage({
     financeError?: string;
     cancelNotice?: string;
     notice?: string;
+    placed?: string;
   }>;
 }) {
   const { id } = await params;
@@ -47,6 +49,7 @@ export default async function RequestDetailPage({
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const requestCopy = corePortalMessages(locale).requests;
   const detail = requestDetailMessages(locale);
+  const receiptCopy = cartMessages(locale);
   const walletCopy = walletMessages(locale);
   const feedback = await searchParams;
   const financeResult = isApproveAndPayResultStatus(feedback.financeResult)
@@ -62,6 +65,9 @@ export default async function RequestDetailPage({
   const request = await getAuthorizedRequest(actor, id);
   if (!request) notFound();
   const isDirectOrder = request.purchaseMode === "COMPANY_ADMIN_DIRECT";
+  const showPlacedReceipt = feedback.placed === "1"
+    && isDirectOrder
+    && request.paymentStatus === "Paid";
   const canViewInvoices = request.invoiceStatus !== undefined
     || request.paymentStatus !== undefined
     || request.invoiceNumber !== undefined;
@@ -117,6 +123,22 @@ export default async function RequestDetailPage({
           ? `${request.companyName} · ${request.branchName} · ${isDirectOrder ? detail.orderedItemCount(request.lines.length) : detail.itemCount(request.lines.length)}`
           : `${request.branchName} · ${isDirectOrder ? detail.orderedItemCount(request.lines.length) : detail.itemCount(request.lines.length)}`}
       />
+
+      {showPlacedReceipt ? <section className="cart-purchase-success" aria-labelledby="order-placed-title" role="status">
+        <h2 id="order-placed-title">{receiptCopy.orderPlaced}</h2>
+        <dl>
+          <div><dt>{receiptCopy.order}</dt><dd translate="no">{request.orderCode}</dd></div>
+          <div><dt>{receiptCopy.paidFromWallet}</dt><dd className="financial-value">{finalInvoice
+            ? formatMoneyDecimal(finalInvoice.amount, finalInvoice.currency, locale)
+            : formatCurrency(request.estimatedTotal, locale)}</dd></div>
+          <div><dt>{receiptCopy.deliveringTo}</dt><dd>{branchBudget?.branchCode ?? request.branchName}</dd></div>
+        </dl>
+        <div className="form-actions">
+          <Link className="button button-primary" href={`/requests/${encodeURIComponent(request.id)}`}>{receiptCopy.viewOrder}</Link>
+          <Link className="button button-secondary" href={`/requests/${encodeURIComponent(request.id)}#invoice`}>{receiptCopy.viewInvoice}</Link>
+          <Link className="button button-secondary" href="/deliveries">{receiptCopy.viewDelivery}</Link>
+        </div>
+      </section> : null}
 
       <section className="request-summary">
         <div className="summary-box"><span>{isDirectOrder ? detail.payment : requestCopy.approval}</span><strong><StatusBadge status={isDirectOrder ? "Paid" : request.approvalStatus}>{localizedStatus(isDirectOrder ? "Paid" : request.approvalStatus, locale)}</StatusBadge></strong></div>
@@ -185,7 +207,7 @@ export default async function RequestDetailPage({
               <div className="form-grid">
                 <div className="readiness-item"><UserRound size={19} /><div><strong>{request.requestedBy}</strong><p>{request.department} · {request.requesterContact}</p></div></div>
                 <div className="readiness-item"><Route size={19} /><div><strong>{request.branchName}</strong><p>{isDirectOrder ? detail.directOrder : `${request.requestType} · ${localizedStatus(request.urgency, locale)}`}</p></div></div>
-                {canViewInvoices ? <div className="readiness-item"><PackageCheck size={19} /><div><strong>{request.invoiceNumber || detail.noInvoice}</strong><p>{localizedStatus(request.invoiceStatus ?? detail.notAssigned, locale)} · {localizedStatus(request.paymentStatus ?? "Unpaid", locale)}</p></div></div> : null}
+                {canViewInvoices ? <div id={finalInvoice ? undefined : "invoice"} className="readiness-item"><PackageCheck size={19} /><div><strong>{request.invoiceNumber || detail.noInvoice}</strong><p>{localizedStatus(request.invoiceStatus ?? detail.notAssigned, locale)} · {localizedStatus(request.paymentStatus ?? "Unpaid", locale)}</p></div></div> : null}
                 {platformView
                   ? canViewRevenue ? <div className="readiness-item"><CircleDollarSign size={19} /><div><strong>{formatCurrency(totals.delivery, locale)} {detail.deliveryFees}</strong><p>{detail.deliveryFeesBody}</p></div></div> : null
                   : <div className="readiness-item"><WalletCards size={19} /><div>

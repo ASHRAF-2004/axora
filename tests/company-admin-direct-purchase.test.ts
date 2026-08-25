@@ -83,7 +83,7 @@ describe("Company Administrator direct-purchase application contract", () => {
     }
   });
 
-  it("keeps one confirmation, stable-command reconciliation, and supported result links", () => {
+  it("keeps one confirmation and sends every committed result to a durable receipt", () => {
     const cart = readFileSync(
       new URL("../src/components/CartReview.tsx",import.meta.url),"utf8",
     );
@@ -112,13 +112,23 @@ describe("Company Administrator direct-purchase application contract", () => {
     expect(cart).toContain("<dialog");
     expect(cart).toContain("dialog.showModal()");
     expect(cart).toContain("placeOrderRef.current?.focus()");
-    expect(cart).toContain("/requests/${purchaseResult.requestId}#invoice");
-    expect(cart).toContain('href="/deliveries"');
+    expect(cart).toContain('window.location.replace(`/requests/${encodeURIComponent(result.requestId)}?placed=1`)');
+    expect(cart).not.toContain("setPurchaseResult");
+    expect(cart).not.toContain("if (purchaseResult");
     expect(cart).not.toMatch(/name=["'](?:total|companyId|wallet|budget|price)/);
     expect(action).toContain('requirePermission("direct_purchase")');
     expect(action).toContain('revalidatePath("/approvals")');
     expect(detail).toContain('id="invoice"');
     expect(detail).toContain('request.purchaseMode === "COMPANY_ADMIN_DIRECT"');
+    expect(detail).toContain('feedback.placed === "1"');
+    expect(detail).toContain('request.paymentStatus === "Paid"');
+    expect(detail).toContain('getAuthorizedRequest(actor, id)');
+    expect(detail).toContain('className="cart-purchase-success"');
+    expect(detail).toContain("finalInvoice.amount");
+    expect(detail).toContain("request.orderCode");
+    expect(detail).toContain("branchBudget?.branchCode ?? request.branchName");
+    expect(detail).toContain("/requests/${encodeURIComponent(request.id)}#invoice");
+    expect(detail).toContain('href="/deliveries"');
     expect(requestAction).toContain("usesCompanyAdministratorDirectPurchase(user)");
     expect(newRequestPage).toContain("usesCompanyAdministratorDirectPurchase(actor)");
     expect(productsPage).toContain("usesCompanyAdministratorDirectPurchase(actor)");
