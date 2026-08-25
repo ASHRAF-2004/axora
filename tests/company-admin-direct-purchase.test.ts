@@ -126,7 +126,7 @@ describe("Company Administrator direct-purchase application contract", () => {
     expect(detail).toContain('className="cart-purchase-success"');
     expect(detail).toContain("finalInvoice.amount");
     expect(detail).toContain("request.orderCode");
-    expect(detail).toContain("branchBudget?.branchCode ?? request.branchName");
+    expect(detail).toContain("<dd>{request.branchName}</dd>");
     expect(detail).toContain("/requests/${encodeURIComponent(request.id)}#invoice");
     expect(detail).toContain('href="/deliveries"');
     expect(requestAction).toContain("usesCompanyAdministratorDirectPurchase(user)");
