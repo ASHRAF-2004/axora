@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { SupportedLocale } from "@/lib/i18n";
 import type { BrowserSessionScope } from "@/lib/browser-session-scope";
+import { clearDeliveryBrowserState } from "@/lib/delivery-browser-state";
 import { clearRequestCart } from "@/lib/request-cart";
 import { clearRequestDraft } from "@/lib/request-draft";
 import {
@@ -43,6 +44,7 @@ export function clearBrowserSessionWorkspace(scope: BrowserSessionScope) {
   clearBrowserReturnPath();
   clearRequestCart(scope);
   clearRequestDraft(scope);
+  clearDeliveryBrowserState(scope.userId);
 }
 
 export function SessionContinuity({

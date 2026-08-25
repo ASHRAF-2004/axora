@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 
 describe("delivery tracking interfaces", () => {
   it("keeps geolocation private, bounded, retryable and visibly active", async () => {
-    const [panel, trackingService, styles, copy, nextConfig, caddy, productionCaddy] = await Promise.all([
+    const [panel, map, trackingService, styles, copy, nextConfig, caddy, productionCaddy] = await Promise.all([
       readFile(new URL(
         "../src/components/role-portals/DeliveryTrackingPanels.tsx",
+        import.meta.url,
+      ), "utf8"),
+      readFile(new URL(
+        "../src/components/role-portals/DeliveryDestinationMap.tsx",
         import.meta.url,
       ), "utf8"),
       readFile(new URL("../src/lib/delivery-tracking.ts", import.meta.url), "utf8"),
@@ -26,11 +30,21 @@ describe("delivery tracking interfaces", () => {
     expect(panel).toContain("MAX_BUFFERED_POINTS = 100");
     expect(panel).toContain("MAX_BUFFER_BYTES = 256 * 1024");
     expect(panel).toContain("PERMISSION_DENIED");
+    expect(panel).toContain('action: "PAUSE"');
+    expect(panel).toContain('action: "RESUME"');
+    expect(panel).not.toContain('action: "END"');
+    expect(panel).toContain("if (!activeSessionId || !sharingEnabled) return");
+    expect(panel).toContain('window.addEventListener("axora:delivery-terminal"');
+    expect(panel).toContain('window.addEventListener("axora:delivery-completion-pending"');
+    expect(panel).toContain("writeQueue(actorId, [])");
     expect(copy).toContain("Delivery status was not changed");
     expect(panel).toContain("REFRESH_INTERVAL_MS = 15_000");
-    expect(panel).toContain('role="img"');
-    expect(panel).toContain("latitudeDelta");
-    expect(panel).toContain("longitudeDelta");
+    expect(panel).toContain("DeliveryDestinationMap");
+    expect(map).toContain("delivery-direct-estimate");
+    expect(map).toContain('"line-dasharray"');
+    expect(map).toContain("fitBounds");
+    expect(map).toContain("destinationMarker");
+    expect(map).toContain("currentMarker");
     expect(panel).not.toContain('M74 122 C190 18 370 164 526 54');
     expect(trackingService).toContain("latitude: session.latitude");
     expect(trackingService).toContain("destinationLatitude: session.destinationLatitude");

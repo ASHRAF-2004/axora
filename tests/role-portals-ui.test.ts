@@ -39,6 +39,8 @@ const queued: DriverOfflineEvent = {
 describe("role-aware portal landing", () => {
   it("routes each supported external role to its dedicated workspace", () => {
     expect(landingPathForSession({ role: "DELIVERY_DRIVER", accountKind: "DELIVERY", isOwner: false })).toBe("/driver");
+    expect(landingPathForSession({ role: "DELIVERY_AGENT", accountKind: "DELIVERY", isOwner: false })).toBe("/driver");
+    expect(landingPathForSession({ role: "DELIVERY_GUY", accountKind: "DELIVERY", isOwner: false })).toBe("/driver");
     expect(landingPathForSession({ role: "RECEIVING_USER", accountKind: "COMPANY", isOwner: false })).toBe("/receiving");
     expect(landingPathForSession({ role: "TECHNICAL_SUPPORT", accountKind: "PLATFORM", isOwner: false })).toBe("/dashboard");
   });

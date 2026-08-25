@@ -27,10 +27,10 @@ export const ACCOUNT_ROLE_CATALOG: readonly AccountRoleDefinition[] = [
   { key: "FINANCE_REVIEWER", label: "Finance reviewer", description: "Historical compatibility role.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company", availableForCreation: false },
   { key: "AUDITOR", label: "Read-only auditor", description: "Historical compatibility role.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company", availableForCreation: false },
   { key: "RECEIVING_USER", label: "Receiving user", description: "Historical compatibility role.", accountKind: "COMPANY", allowedScopes: ["COMPANY", "BRANCH", "DEPARTMENT"], category: "Company", availableForCreation: false },
-  { key: "DELIVERY_GUY", label: "Delivery Guy", description: "Buys requested items and completes only assigned deliveries with receipt evidence.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery" },
+  { key: "DELIVERY_GUY", label: "Delivery Agent", description: "Acquires requested items and completes only assigned deliveries with proof.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery" },
   { key: "DELIVERY_TEAM_SUPERVISOR", label: "Legacy delivery supervisor", description: "Historical compatibility role.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
-  { key: "DELIVERY_AGENT", label: "Legacy delivery account", description: "Historical compatibility role.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
-  { key: "DELIVERY_DRIVER", label: "Legacy delivery assignment", description: "Historical compatibility role.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
+  { key: "DELIVERY_AGENT", label: "Delivery Agent", description: "Historical compatibility role mapped to the Delivery Agent workspace.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
+  { key: "DELIVERY_DRIVER", label: "Delivery Agent", description: "Historical compatibility role mapped to the Delivery Agent workspace.", accountKind: "DELIVERY", allowedScopes: ["DELIVERY"], category: "Delivery", availableForCreation: false },
 ] as const;
 
 const roleByKey = new Map(ACCOUNT_ROLE_CATALOG.map((role) => [role.key, role]));

@@ -1,0 +1,16 @@
+.availability { display: flex; gap: .75rem; flex-wrap: wrap; margin-block: 1rem; }
+.availability button { min-block-size: 44px; touch-action: manipulation; }
+.availability button[aria-pressed="true"] { color: var(--axora-brand-foreground); background: var(--axora-brand); border-color: var(--axora-brand); }
+.success { margin: 0 0 1rem; padding: .85rem 1rem; border: 1px solid var(--axora-success-border); border-inline-start-width: .3rem; border-radius: .8rem; color: var(--axora-success); background: var(--axora-success-bg); }
+.jobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
+.job { display: grid; gap: 1rem; min-inline-size: 0; padding: 1rem; border: 1px solid var(--axora-border); border-radius: 1rem; background: var(--axora-surface-elevated); }
+.jobHeading { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem; }
+.jobHeading div, .facts dd { display: grid; gap: .2rem; min-inline-size: 0; }
+.jobHeading span, .facts dt { color: var(--axora-text-muted); font-size: .78rem; font-weight: 800; }
+.jobHeading strong, .jobHeading small, .facts dd { overflow-wrap: anywhere; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: 0; }
+.facts div { min-inline-size: 0; padding: .7rem; border-radius: .7rem; background: var(--axora-surface-muted); }
+.facts dd { margin: .2rem 0 0; font-weight: 700; }
+.facts small { color: var(--axora-text-muted); }
+.job > button { inline-size: 100%; min-block-size: 48px; touch-action: manipulation; }
+@media (max-width: 560px) { .availability button { flex: 1 1 40%; } .facts { grid-template-columns: 1fr; } }

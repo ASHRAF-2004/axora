@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth";
 import {
   getDriverDeliveryTracking,
   recordDeliveryTrackingPoint,
-  reportOrEndDriverTracking,
+  controlDriverTracking,
 } from "@/lib/delivery-tracking";
 import { canAccess } from "@/lib/permissions";
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const body = await request.json() as { action?: string };
     const value = body.action === "POINT"
       ? await recordDeliveryTrackingPoint(actor, body)
-      : await reportOrEndDriverTracking(actor, body);
+      : await controlDriverTracking(actor, body);
     return Response.json(value, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
     return Response.json({ error: "Delivery tracking unavailable" }, { status: 409 });

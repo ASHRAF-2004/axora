@@ -132,7 +132,7 @@ export async function recordDriverEvent(actor: SessionUser, input: {
     ...(input.lineOutcomes !== undefined ? { lineOutcomes: input.lineOutcomes } : {}),
   });
   if (isDemoMode()) return { accepted: true as const, eventId: input.clientEventId };
-  return withAuditTransaction({ actor, reason: `Driver delivery event ${input.eventType}` }, async (client) => {
+  return withAuditTransaction({ actor, reason: `Delivery Agent event ${input.eventType}` }, async (client) => {
     const scope = await activeDriverScope(actor, client);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`driver-event:${input.deliveryJobId}`]);
     const assignment = await client.query<{ id: string; companyId: string; branchId: string; requestId: string; jobCode: string; jobStatus: DeliveryJobStatus; deliveryJobId: string; driverUserId: string; status: "ASSIGNED" | "ACCEPTED" | "REJECTED" | "REASSIGNED" | "CANCELLED" | "COMPLETED"; assignedAt: string; endedAt?: string }>(`
@@ -311,7 +311,7 @@ export async function uploadDriverEvidence(actor: SessionUser, input: {
   });
   const stored = await storePersistentUpload({ namespace: "delivery-evidence", scopeSegments: [actor.id, input.deliveryJobId], file: input.file });
   try {
-    return await withAuditTransaction({ actor, reason: "Driver delivery evidence uploaded" }, async (client) => {
+    return await withAuditTransaction({ actor, reason: "Delivery Agent evidence uploaded" }, async (client) => {
       const scope = await activeDriverScope(actor, client);
       if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(stored.contentType)) {
         throw new Error("Delivery evidence type is unavailable.");

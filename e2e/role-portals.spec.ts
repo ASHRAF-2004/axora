@@ -11,7 +11,7 @@ const principals = {
   branchAdmin: { id: "40444444-4444-4444-8444-444444444444", email: "branch-admin.fixture@axora.invalid", name: "Branch administrator fixture", role: "BRANCH_ADMIN", accountKind: "COMPANY", scopeType: "BRANCH", companyId, branchId },
   requester: { id: "50555555-5555-4555-8555-555555555555", email: "requester.fixture@axora.invalid", name: "Requester fixture", role: "REQUESTER", accountKind: "COMPANY", scopeType: "BRANCH", companyId, branchId },
   approver: { id: "60666666-6666-4666-8666-666666666666", email: "approver.fixture@axora.invalid", name: "Approver fixture", role: "COMPANY_APPROVER", accountKind: "COMPANY", scopeType: "COMPANY", companyId },
-  deliveryGuy: { id: "70777777-7777-4777-8777-777777777777", email: "delivery.fixture@axora.invalid", name: "Delivery Guy fixture", role: "DELIVERY_GUY", accountKind: "DELIVERY", scopeType: "DELIVERY" },
+  deliveryGuy: { id: "70777777-7777-4777-8777-777777777777", email: "delivery.fixture@axora.invalid", name: "Delivery Agent fixture", role: "DELIVERY_GUY", accountKind: "DELIVERY", scopeType: "DELIVERY" },
 } satisfies Record<string, DemoRoleSession>;
 
 async function expectShell(page: Parameters<typeof signInAsDemoRole>[0]) {
@@ -75,14 +75,76 @@ test("Requester submits but cannot approve, while Approver cannot create request
   await expect(page).toHaveURL(/\/access-denied$/);
 });
 
-test("Delivery Guy receives only the assigned buying and delivery workspace", async ({ page }) => {
+test("Delivery Agent lands in a contained delivery-only workspace", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signInAsDemoRole(page, principals.deliveryGuy);
-  await page.goto("/driver");
+  await page.goto("/dashboard");
+  await expect(page).toHaveURL(/\/driver$/);
   await expect(page.getByRole("heading", { level: 1, name: "Assigned deliveries" })).toBeVisible();
   await expectShell(page);
-  await page.goto("/finance");
-  await expect(page).toHaveURL(/\/access-denied$/);
+  await page.getByRole("button", { name: "Open application menu" }).click();
+  const deliveryLink = page.getByRole("dialog", { name: "Menu" })
+    .locator('a[href="/driver"]');
+  await expect(deliveryLink).toBeVisible();
+  await expect(deliveryLink.getByText("Delivery", { exact: true })).toBeVisible();
+  for (const href of ["/budgets", "/wallet", "/approvals", "/settings/procurement", "/users", "/finance"]) {
+    await expect(page.locator(`a[href="${href}"]`)).toHaveCount(0);
+  }
+  await expect(page.getByText(/company wallet|branch budget|approved spend|purchasing rules/i))
+    .toHaveCount(0);
+
+  for (const route of ["/budgets", "/wallet", "/approvals", "/settings/procurement", "/users", "/finance"]) {
+    await page.goto(route);
+    await expect(page).toHaveURL(/\/access-denied$/);
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+  }
+  for (const route of ["/company-wallet", "/company/users"]) {
+    await page.goto(route);
+    await expect(page.getByRole("heading", { level: 1, name: "404" })).toBeVisible();
+    await expect(page.getByText("Something went wrong")).toHaveCount(0);
+    await expect(page.getByText(/company wallet balance|available budget|company users/i))
+      .toHaveCount(0);
+  }
+});
+
+test("Malay Delivery Agent workspace is dark-mode and phone-landscape safe", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await signInAsDemoRole(page, {
+    ...principals.deliveryGuy,
+    id: "70777777-7777-4777-8777-777777777778",
+    email: "delivery-ms.fixture@axora.invalid",
+    preferredLocale: "ms",
+  });
+  await page.goto("/driver");
+  expect((await page.request.patch("/api/profile/appearance", {
+    data: { appearance: "dark" },
+    headers: { Origin: "http://127.0.0.1:3100" },
+  })).status()).toBe(200);
+  await page.reload();
+
+  await expect(page.locator("html")).toHaveAttribute("lang", "ms");
+  await expect(page.locator(".app-shell")).toHaveAttribute("data-appearance", "dark");
+  await expect(page.getByRole("heading", { level: 1, name: "Penghantaran ditugaskan" }))
+    .toBeVisible();
+  expect(await page.evaluate(() => (
+    document.documentElement.scrollWidth - document.documentElement.clientWidth
+  ))).toBeLessThanOrEqual(2);
+
+  const targets = await page.locator("main button:visible").evaluateAll((elements) => (
+    elements.map((element) => ({
+      height: element.getBoundingClientRect().height,
+      width: element.getBoundingClientRect().width,
+    }))
+  ));
+  for (const target of targets) {
+    expect(target.height, JSON.stringify(targets)).toBeGreaterThanOrEqual(44);
+    expect(target.width, JSON.stringify(targets)).toBeGreaterThanOrEqual(44);
+  }
+
+  await page.setViewportSize({ width: 667, height: 375 });
+  expect(await page.evaluate(() => (
+    document.documentElement.scrollWidth - document.documentElement.clientWidth
+  ))).toBeLessThanOrEqual(2);
 });
 
 test("Platform Owner retains company authority and the Owner-only Email Status", async ({ page }) => {

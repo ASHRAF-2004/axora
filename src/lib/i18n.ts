@@ -180,7 +180,7 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "Employees request", body: "Authorized employees choose catalog items, quantities, branch, required date, and supporting context. They see only their permitted company and branch data." },
       { title: "Companies decide", body: "The correct approver reviews the request, budget effect, supporting files, and history. A requester cannot approve their own request." },
       { title: "Axora prepares and delivers", body: "After approval and Pay, Axora finalizes the invoice, prepares the order and delivers it without exposing private operational information." },
-      { title: "Delivery is independently received", body: "A driver records operational evidence. An authorized company receiver separately confirms quantities, damage, missing items, and discrepancies." },
+      { title: "Delivery is independently received", body: "A Delivery Agent records operational evidence. An authorized company receiver separately confirms quantities, damage, missing items, and discrepancies." },
     ],
   },
   "procurement-process": {
@@ -219,11 +219,11 @@ const englishPages: Record<PublicPageSlug, PublicPageContent> = {
   "delivery-tracking": {
     eyebrow: "Delivery tracking",
     title: "Simple field updates, reliable evidence, independent receiving.",
-    intro: "Drivers get a mobile-first list of assigned work with clear actions and minimal customer information.",
+    intro: "Delivery Agents get a mobile-first list of assigned work with clear actions and minimal customer information.",
     sections: [
       { title: "The next delivery is obvious", body: "Branch, approved address, contact action, package summary, availability window, and special instructions are prioritized." },
-      { title: "Status updates survive weak networks", body: "Idempotent delivery status events can queue on the driver’s device and synchronize later. Evidence files upload only while online and show clear retry feedback." },
-      { title: "Evidence is not approval", body: "Driver photos, delivery notes, handover names, and reported quantities remain distinct from the customer receiver’s quantity and inspection confirmation." },
+      { title: "Status updates survive weak networks", body: "Idempotent delivery status events can queue on the Delivery Agent’s device and synchronize later. Evidence files upload only while online and show clear retry feedback." },
+      { title: "Evidence is not approval", body: "Delivery Agent photos, delivery notes, handover names, and reported quantities remain distinct from the customer receiver’s quantity and inspection confirmation." },
     ],
   },
   "security-and-privacy": {
@@ -279,7 +279,7 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "الموظفون يطلبون", body: "يختار الموظفون المخوّلون أصناف الكتالوج والكميات والفرع والموعد المطلوب والمعلومات الداعمة. ولا يرون إلا بيانات الشركة والفروع المسموح بها." },
       { title: "الشركات تقرر", body: "يراجع المعتمد الصحيح الطلب وتأثيره في الميزانية والملفات والسجل. ولا يمكن لمقدم الطلب اعتماد طلبه بنفسه." },
       { title: "أكسورا تجهز وتسلم", body: "بعد الاعتماد والدفع، تنهي أكسورا الفاتورة وتجهز الطلب وتسلمه من دون كشف المعلومات التشغيلية الخاصة." },
-      { title: "الاستلام مستقل عن التسليم", body: "يسجل السائق دليل التسليم، ثم يؤكد مستلم مخوّل من الشركة الكميات والتلف والنواقص والفروقات بصورة مستقلة." },
+      { title: "الاستلام مستقل عن التسليم", body: "يسجل مسؤول التوصيل دليل التسليم، ثم يؤكد مستلم مخوّل من الشركة الكميات والتلف والنواقص والفروقات بصورة مستقلة." },
     ],
   },
   "procurement-process": {
@@ -318,11 +318,11 @@ const arabicPages: Record<PublicPageSlug, PublicPageContent> = {
   "delivery-tracking": {
     eyebrow: "تتبع التسليم",
     title: "تحديثات ميدانية بسيطة وأدلة موثوقة واستلام مستقل.",
-    intro: "يحصل السائق على قائمة جوال للمهام المسندة، بإجراءات واضحة وأقل قدر لازم من بيانات العميل.",
+    intro: "يحصل مسؤول التوصيل على قائمة جوال للمهام المسندة، بإجراءات واضحة وأقل قدر لازم من بيانات العميل.",
     sections: [
       { title: "التسليم التالي واضح", body: "يظهر الفرع والعنوان المعتمد وخيار الاتصال وملخص الطرود ووقت التوفر والتعليمات الخاصة في المقدمة." },
-      { title: "تحديثات الحالة تتحمل ضعف الشبكة", body: "يمكن حفظ أحداث حالة التسليم ذات المعرّف الفريد على جهاز السائق ومزامنتها لاحقًا. ترفع ملفات الدليل عند توفر الاتصال مع إظهار حالة إعادة المحاولة بوضوح." },
-      { title: "الدليل ليس اعتمادًا", body: "تبقى صور السائق وسندات التسليم وأسماء التسليم والكميات التي أبلغ عنها منفصلة عن تأكيد الكميات والفحص الذي يسجله مستلم الشركة." },
+      { title: "تحديثات الحالة تتحمل ضعف الشبكة", body: "يمكن حفظ أحداث حالة التسليم ذات المعرّف الفريد على جهاز مسؤول التوصيل ومزامنتها لاحقًا. ترفع ملفات الدليل عند توفر الاتصال مع إظهار حالة إعادة المحاولة بوضوح." },
+      { title: "الدليل ليس اعتمادًا", body: "تبقى صور مسؤول التوصيل وسندات التسليم وأسماء التسليم والكميات التي أبلغ عنها منفصلة عن تأكيد الكميات والفحص الذي يسجله مستلم الشركة." },
     ],
   },
   "security-and-privacy": {
@@ -378,7 +378,7 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "Pekerja membuat permintaan", body: "Pekerja yang diberi kuasa memilih item katalog, kuantiti, cawangan, tarikh diperlukan dan konteks sokongan. Mereka hanya melihat data syarikat dan cawangan yang dibenarkan." },
       { title: "Syarikat membuat keputusan", body: "Pelulus yang betul menyemak permintaan, kesan bajet, fail sokongan dan sejarah. Pemohon tidak boleh meluluskan permintaannya sendiri." },
       { title: "Axora menyediakan dan menghantar", body: "Selepas kelulusan dan Bayar, Axora memuktamadkan invois, menyediakan pesanan dan menghantarnya tanpa mendedahkan maklumat operasi persendirian." },
-      { title: "Penerimaan disahkan secara berasingan", body: "Pemandu merekod bukti operasi. Penerima syarikat yang diberi kuasa mengesahkan kuantiti, kerosakan, kekurangan dan perbezaan secara berasingan." },
+      { title: "Penerimaan disahkan secara berasingan", body: "Ejen Penghantaran merekod bukti operasi. Penerima syarikat yang diberi kuasa mengesahkan kuantiti, kerosakan, kekurangan dan perbezaan secara berasingan." },
     ],
   },
   "procurement-process": {
@@ -401,7 +401,7 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
       { title: "Pemohon dan pelulus", body: "Pemohon membuat dan menjejak permintaan sendiri. Pelulus menerima barisan keputusan dengan konteks bajet dan bukti; pengasingan tugas menghalang kelulusan sendiri." },
       { title: "Pentadbir syarikat dan cawangan", body: "Pentadbir mengurus orang, skop cawangan, bajet, kelulusan, status penghantaran dan laporan yang dibenarkan." },
       { title: "Kewangan dan juruaudit", body: "Penyemak kewangan mengurus invois, bukti payment, padanan dan pengecualian. Juruaudit mendapat bukti baca sahaja dan sejarah peristiwa kekal." },
-      { title: "Penghantar dan penerima", body: "Penghantar hanya melihat kerja berbayar yang ditugaskan, manakala penerima pelanggan merekod penerimaan dan pengecualian secara bebas." },
+      { title: "Ejen Penghantaran dan penerima", body: "Ejen Penghantaran hanya melihat kerja berbayar yang ditugaskan, manakala penerima pelanggan merekod penerimaan dan pengecualian secara bebas." },
     ],
   },
   "company-procurement": {
@@ -417,11 +417,11 @@ const malayPages: Record<PublicPageSlug, PublicPageContent> = {
   "delivery-tracking": {
     eyebrow: "Penjejakan penghantaran",
     title: "Kemas kini lapangan mudah, bukti boleh dipercayai dan penerimaan bebas.",
-    intro: "Pemandu mendapat senarai mudah alih bagi tugas yang diberikan dengan tindakan jelas dan data pelanggan minimum.",
+    intro: "Ejen Penghantaran mendapat senarai mudah alih bagi tugas yang diberikan dengan tindakan jelas dan data pelanggan minimum.",
     sections: [
       { title: "Penghantaran seterusnya jelas", body: "Cawangan, alamat diluluskan, tindakan hubungan, ringkasan bungkusan, waktu penerimaan dan arahan khas diberi keutamaan." },
-      { title: "Kemas kini status tahan rangkaian lemah", body: "Peristiwa status penghantaran beridentiti unik boleh disimpan pada peranti pemandu dan diselaraskan kemudian. Fail bukti dimuat naik hanya ketika dalam talian dengan maklum balas cuba semula yang jelas." },
-      { title: "Bukti bukan kelulusan", body: "Foto pemandu, nota penghantaran, nama serahan dan kuantiti dilaporkan kekal berasingan daripada pengesahan kuantiti serta pemeriksaan penerima syarikat." },
+      { title: "Kemas kini status tahan rangkaian lemah", body: "Peristiwa status penghantaran beridentiti unik boleh disimpan pada peranti Ejen Penghantaran dan diselaraskan kemudian. Fail bukti dimuat naik hanya ketika dalam talian dengan maklum balas cuba semula yang jelas." },
+      { title: "Bukti bukan kelulusan", body: "Foto Ejen Penghantaran, nota penghantaran, nama serahan dan kuantiti dilaporkan kekal berasingan daripada pengesahan kuantiti serta pemeriksaan penerima syarikat." },
     ],
   },
   "security-and-privacy": {
@@ -620,7 +620,7 @@ const malay: PublicMessages = {
     rolesLead: "Setiap orang melihat kerja seterusnya yang dimiliki, bukan semua modul platform.",
     roles: [
       { title: "Syarikat", body: "Urus orang, cawangan, bajet, permintaan, kelulusan, penerimaan dan rekod kewangan yang dibenarkan.", href: "company-procurement" },
-      { title: "Penghantar", body: "Gunakan aliran mudah alih untuk melengkapkan penghantaran yang ditugaskan dan merekod bukti.", href: "delivery-tracking" },
+      { title: "Ejen Penghantaran", body: "Gunakan aliran mudah alih untuk melengkapkan penghantaran yang ditugaskan dan merekod bukti.", href: "delivery-tracking" },
     ],
     trackingTitle: "Garis masa yang menerangkan apa yang berlaku",
     trackingBody: "Permintaan, kelulusan, bayaran, invois, persediaan, penghantaran dan penerimaan menghasilkan peristiwa konsisten dalam skop penyewa.",

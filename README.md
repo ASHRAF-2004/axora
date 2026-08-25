@@ -1,8 +1,8 @@
 # Axora procurement
 
 Axora is a self-hosted, secure multi-company procurement platform. It gives
-company requesters and approvers, Axora Agents, HR Management, and Delivery Guys,
-Human Resources Management users, Client Account Managers, and Delivery Guys focused workspaces
+company requesters and approvers, Axora Agents, HR Management, and Delivery Agents,
+Human Resources Management users, Client Account Managers, and Delivery Agents focused workspaces
 while preserving one tenant-scoped, append-only lifecycle from need through
 payment, fulfilment, receipt, invoice, and delivery evidence.
 
@@ -38,7 +38,7 @@ authorized Axora platform owner explicitly approves decommissioning.
   draft; passwords, tokens, secrets and file contents are never persisted.
 - Automatically derived accessible company branding from validated logos;
   company users receive no color/theme editor.
-- Global catalogue management, Delivery Guy execution, and independent receiver
+- Global catalogue management, Delivery Agent execution, and independent receiver
   flows, invoice reconciliation, workflow timelines, and in-app/email
   outboxes. Axora has no supplier account or supplier-facing portal.
 - Optional sanitized demonstration data for isolated local development only.
@@ -212,7 +212,7 @@ tenant and route. Draft restoration is silent; passwords, tokens, secrets and
 file contents are never persisted.
 Axora supports exactly **Light** and **Dark** appearance modes across public and authenticated application surfaces. Public first paint is cookie-authoritative; authenticated users use a server-resolved database preference. For company users, the reviewed company Light/Dark token sets and company identity remain authoritative while the user's appearance selects the appropriate approved surface/text set.
 
-Paid requests enter an available delivery-job pool. Active Delivery Guys claim work atomically; Platform Owners monitor drivers and may only release a genuinely stuck job through an audited recovery action. Driver location requires explicit browser permission, is collected only for active work, and is exposed to customers only as privacy-safe status and ETA.
+Paid requests enter an available delivery-job pool. Active Delivery Agents claim work atomically; Platform Owners monitor drivers and may only release a genuinely stuck job through an audited recovery action. Driver location requires explicit browser permission, is collected only for active work, and is exposed to customers only as privacy-safe status and ETA.
 
 The controlled three-company MVP uses a bounded, self-hosted Klang Valley street map and the explicit `mvp-conservative` retention mode. Protected financial, delivery, proof, security and audit evidence is access-revoked and retained without automatic purge; broader map coverage and a general-availability retention review remain post-pilot decisions.
 

@@ -27,14 +27,15 @@ describe("delivery destination snapshot projection", () => {
     const result = deliveryExecutionDestinationInternals.attachDestinationCoordinates(
       [job()],
       [
-        { id: jobId, destinationLatitude: "3.139000", destinationLongitude: "101.686900" },
-        { id: otherJobId, destinationLatitude: "4", destinationLongitude: "102" },
+        { id: jobId, companyName: "Controlled company", destinationLatitude: "3.139000", destinationLongitude: "101.686900" },
+        { id: otherJobId, companyName: "Other company", destinationLatitude: "4", destinationLongitude: "102" },
       ],
     );
 
     expect(result[0]).toMatchObject({
       destinationLatitude: 3.139,
       destinationLongitude: 101.6869,
+      companyName: "Controlled company",
     });
     expect(result).toHaveLength(1);
   });
@@ -42,7 +43,7 @@ describe("delivery destination snapshot projection", () => {
   it("leaves a legacy paired-null destination absent", () => {
     expect(deliveryExecutionDestinationInternals.attachDestinationCoordinates(
       [job()],
-      [{ id: jobId, destinationLatitude: null, destinationLongitude: null }],
+      [{ id: jobId, companyName: "Controlled company", destinationLatitude: null, destinationLongitude: null }],
     )[0]).not.toHaveProperty("destinationLatitude");
   });
 
@@ -55,12 +56,27 @@ describe("delivery destination snapshot projection", () => {
   ])("fails closed on an invalid assigned destination %#", (coordinates) => {
     expect(() => deliveryExecutionDestinationInternals.attachDestinationCoordinates(
       [job()],
-      [{ id: jobId, ...coordinates }],
+      [{ id: jobId, companyName: "Controlled company", ...coordinates }],
     )).toThrow("unavailable");
   });
 });
 
 describe("delivery evidence replay storage selection", () => {
+  it("accepts bounded proof images and rejects PDF content as photo evidence", () => {
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    );
+    expect(deliveryExecutionDestinationInternals.deliveryEvidenceImageDimensions(
+      "image/png",
+      png,
+    )).toEqual({ width: 1, height: 1 });
+    expect(deliveryExecutionDestinationInternals.deliveryEvidenceImageDimensions(
+      "application/pdf",
+      Buffer.from("%PDF-1.7\nfixture\n%%EOF"),
+    )).toBeNull();
+  });
+
   it("removes the newly staged file, never the durable replay path", () => {
     const stagedPath = "delivery-evidence/new/request-file.jpg";
     const durablePath = "delivery-evidence/existing/durable-file.jpg";

@@ -4,6 +4,7 @@ import {
   claimAvailableDeliveryJob,
   driverAvailableJobInternals,
   getAvailableDeliveryJobs,
+  getDeliveryClaimResult,
   setDriverAvailability,
   type AvailableDeliveryWorkspace,
 } from "@/lib/driver-operations";
@@ -12,10 +13,16 @@ import {
   getDeliveryExecutionWorkspace,
   recordCanonicalDeliveryEvent,
 } from "@/lib/delivery-execution";
+import {
+  controlDriverTracking,
+  getDriverDeliveryTracking,
+  recordDeliveryTrackingPoint,
+} from "@/lib/delivery-tracking";
 
 const workspace: AvailableDeliveryWorkspace = {
   sequence: 1,
   capturedAt: "2026-08-20T02:03:04.000Z",
+  availability: "AVAILABLE",
   jobs: [{
     id: "10000000-0000-4000-8000-000000000001",
     code: "DEL-001",
@@ -46,6 +53,7 @@ describe("available delivery job application guard", () => {
   beforeEach(() => {
     global.__axoraDemoDeliveryClaimState = undefined;
     global.__axoraDemoDeliveryExecutionState = undefined;
+    global.__axoraDemoDeliveryTrackingState = undefined;
   });
 
   it("hides the pool while the authenticated driver has a current job", () => {
@@ -77,6 +85,13 @@ describe("available delivery job application guard", () => {
     const first = outcomes.find((outcome) => outcome.status === "fulfilled");
     const replay = await claimAvailableDeliveryJob(winner, job.id, winningCommand);
     expect(first?.status === "fulfilled" ? first.value : null).toEqual(replay);
+    await expect(getDeliveryClaimResult(winner, job.id, winningCommand))
+      .resolves.toEqual({ ...replay, created: false });
+    await expect(getDeliveryClaimResult(
+      winner.id === driverA.id ? driverB : driverA,
+      job.id,
+      winningCommand,
+    )).resolves.toBeNull();
     expect((await getAvailableDeliveryJobs(driverA)).jobs).toEqual([]);
     expect((await getAvailableDeliveryJobs(driverB)).jobs).toEqual([]);
     expect(driverAvailableJobInternals.demoDeliveryClaimState().claimedByJob.size).toBe(1);
@@ -104,6 +119,11 @@ describe("available delivery job application guard", () => {
       job.id,
       "70000000-0000-4000-8000-000000000007",
     );
+    await setDriverAvailability(actor, "UNAVAILABLE");
+    await expect(getAvailableDeliveryJobs(actor)).resolves.toMatchObject({
+      availability: "UNAVAILABLE",
+      jobs: [],
+    });
 
     const initial = (await getDeliveryExecutionWorkspace(actor)).jobs[0]!;
     expect(initial).toMatchObject({
@@ -111,6 +131,12 @@ describe("available delivery job application guard", () => {
       workflowVersion: 1,
       destinationLatitude: 3.1516,
       destinationLongitude: 101.7113,
+    });
+    const pendingTracking = await getDriverDeliveryTracking(actor);
+    expect(pendingTracking.sessions[0]).toMatchObject({
+      jobId: job.id,
+      status: "NOT_STARTED",
+      pointCount: 0,
     });
 
     let version = initial.workflowVersion;
@@ -150,5 +176,47 @@ describe("available delivery job application guard", () => {
     expect(events.map((event) => event.type)).toEqual([
       "ASSIGNED", "ACCEPTED", "SHOPPING_STARTED", "ITEMS_ACQUIRED", "OUT_FOR_DELIVERY",
     ]);
+
+    const activeTracking = await getDriverDeliveryTracking(actor);
+    const sessionId = activeTracking.sessions[0]!.sessionId;
+    expect(activeTracking.sessions[0]).toMatchObject({
+      jobId: job.id,
+      status: "ACTIVE",
+      destinationLatitude: initial.destinationLatitude,
+      destinationLongitude: initial.destinationLongitude,
+      locationAvailable: false,
+    });
+    const point = {
+      action: "POINT" as const,
+      sessionId,
+      pointId: "73000000-0000-4000-8000-000000000001",
+      deviceId: "74000000-0000-4000-8000-000000000001",
+      deviceSequence: 1,
+      latitude: 3.15,
+      longitude: 101.7,
+      accuracyMeters: 20,
+      speedMps: 8,
+      headingDegrees: 90,
+      recordedAt: new Date(),
+    };
+    await expect(recordDeliveryTrackingPoint(actor, point)).resolves
+      .toMatchObject({ pointId: point.pointId, replayed: false });
+    await expect(recordDeliveryTrackingPoint(actor, point)).resolves
+      .toMatchObject({ pointId: point.pointId, replayed: true });
+    await expect(recordDeliveryTrackingPoint(actor, {
+      ...point,
+      pointId: "73000000-0000-4000-8000-000000000002",
+    })).rejects.toThrow(/out of order/i);
+    await expect(controlDriverTracking(actor, {
+      action: "PAUSE",
+      sessionId,
+      reason: "Delivery Agent paused location sharing",
+    })).resolves.toMatchObject({ status: "PAUSED" });
+    expect((await getDriverDeliveryTracking(actor)).sessions[0]!.status).toBe("PAUSED");
+    await expect(controlDriverTracking(actor, {
+      action: "RESUME",
+      sessionId,
+      reason: "Delivery Agent resumed location sharing",
+    })).resolves.toMatchObject({ status: "ACTIVE" });
   });
 });

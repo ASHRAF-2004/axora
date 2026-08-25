@@ -274,14 +274,13 @@ describe("new canonical role compatibility permissions", () => {
     ]);
   });
 
-  it("gives the single Delivery Guy role only assigned-delivery authority", () => {
+  it("gives the Delivery Agent role only assigned-delivery authority", () => {
     expectExactPermissions({
       role: "DELIVERY_GUY",
       isOwner: false,
       accountKind: "DELIVERY",
       scopeType: "DELIVERY",
     }, [
-      "view_dashboard",
       "view_delivery_portal",
       "update_assigned_deliveries",
     ]);

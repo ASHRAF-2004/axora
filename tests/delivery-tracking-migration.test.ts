@@ -313,14 +313,62 @@ describe("live delivery tracking migration", () => {
         INSERT INTO delivery_jobs(
           id,company_id,branch_id,request_id,job_code,status,
           scheduled_window_start,scheduled_window_end,
-          delivery_address_snapshot,idempotency_key,created_by
+          delivery_address_snapshot,destination_latitude,
+          destination_longitude,idempotency_key,created_by
         ) VALUES (
           '68200000-0000-4000-8000-000000000001',$1,$2,$3,
-          'DEL-TRACKING-068','ASSIGNED',now(),now()+interval '3 hours',
-          'Tracking destination','delivery-tracking-068',$4
+          'DEL-TRACKING-068','AWAITING_ASSIGNMENT',now(),now()+interval '3 hours',
+          'Tracking destination',3.141200,101.690000,
+          'delivery-tracking-068',$4
         );
       `, [ids.company_id, ids.branch_id, ids.request_id, ownerIds.id]);
       await db.exec("ALTER TABLE delivery_jobs ENABLE TRIGGER delivery_jobs_paid_request_guard");
+      await db.exec(`
+        SELECT set_config(
+          'axora.user_id','68100000-0000-4000-8000-000000000003',false
+        );
+        SELECT set_config(
+          'axora.role_assignment_id',
+          '68100000-0000-4000-8000-000000000004',false
+        );
+      `);
+      const preparing = await db.query<{ value: { sessions: Array<{
+        sessionId: string;
+        jobId: string;
+        status: string;
+        jobStatus: string;
+        pointCount: number;
+        stale: boolean;
+        destinationLatitude: number;
+        destinationLongitude: number;
+        agentUserId: null;
+      }> } }>(`
+        SELECT axora_company_delivery_tracking_workspace(
+          '68100000-0000-4000-8000-000000000003',
+          '68100000-0000-4000-8000-000000000004',now()
+        ) AS value
+      `);
+      expect(preparing.rows[0].value.sessions).toHaveLength(1);
+      expect(preparing.rows[0].value.sessions[0]).toMatchObject({
+        sessionId: "68200000-0000-4000-8000-000000000001",
+        jobId: "68200000-0000-4000-8000-000000000001",
+        status: "NOT_STARTED",
+        jobStatus: "AWAITING_ASSIGNMENT",
+        pointCount: 0,
+        stale: false,
+        destinationLatitude: 3.141,
+        destinationLongitude: 101.69,
+        agentUserId: null,
+      });
+      await db.query(`
+        SELECT set_config('axora.user_id',$1,false),
+          set_config('axora.role_assignment_id',$2,false)
+      `, [ownerIds.id, ownerIds.role_assignment_id]);
+      await db.query(`
+        UPDATE delivery_jobs
+        SET status='ASSIGNED',status_changed_at=now(),updated_at=now()
+        WHERE id='68200000-0000-4000-8000-000000000001'
+      `);
       await db.query(`
         INSERT INTO delivery_job_assignments(
           id,company_id,delivery_job_id,driver_user_id,status,assigned_by,
@@ -398,7 +446,7 @@ describe("live delivery tracking migration", () => {
 
       await db.query(`
         SELECT axora_configure_delivery_tracking(
-          $1,$2,$3,3.141200,101.690000,'APPROXIMATE',true,
+          $1,$2,$3,3.141200,101.690000,'EXACT',true,
           'AXORA_RELAY',30,'Van','White','AXR 204',
           'Approved tracking policy for integration test',now()
         )
@@ -432,14 +480,116 @@ describe("live delivery tracking migration", () => {
           3.139000,101.686900,12,NULL,NULL,now(),now()
         )
       `, [created.rows[0].id]);
+      const firstDriverProjection = await db.query<{ value: { sessions: Array<{
+        latitude: number;
+        longitude: number;
+        remainingMeters: number;
+        routeMode: string;
+        pointCount: number;
+      }> } }>(`
+        SELECT axora_driver_delivery_tracking_workspace(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',now()
+        ) AS value
+      `);
+      expect(firstDriverProjection.rows[0].value.sessions[0]).toMatchObject({
+        latitude: 3.139,
+        longitude: 101.6869,
+        routeMode: "DIRECT_ESTIMATE",
+        pointCount: 1,
+      });
+      expect(firstDriverProjection.rows[0].value.sessions[0]!.remainingMeters)
+        .toBeGreaterThan(0);
+
+      const paused = await db.query<{ value: { status: string } }>(`
+        SELECT axora_control_delivery_tracking(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',$1,
+          'PAUSE','Delivery Agent explicitly paused browser sharing',NULL,now()
+        ) AS value
+      `, [created.rows[0].id]);
+      expect(paused.rows[0].value.status).toBe("PAUSED");
       await expect(db.query(`
         SELECT axora_record_delivery_location(
           '68100000-0000-4000-8000-000000000001',
           '68100000-0000-4000-8000-000000000002',$1,
           '68400000-0000-4000-8000-000000000003',
           '68400000-0000-4000-8000-000000000002',2,
-          40.712800,-74.006000,12,NULL,NULL,
+          3.139010,101.686910,12,NULL,NULL,
           now()+interval '1 second',now()+interval '1 second'
+        )
+      `, [created.rows[0].id])).rejects.toThrow(/location is unavailable/i);
+      await expect(db.query(`
+        SELECT axora_control_delivery_tracking(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',$1,
+          'END','Driver must not end active tracking',NULL,now()
+        )
+      `, [created.rows[0].id])).rejects.toThrow(/command is unavailable/i);
+      const resumed = await db.query<{ value: { status: string } }>(`
+        SELECT axora_control_delivery_tracking(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',$1,
+          'RESUME','Delivery Agent resumed browser sharing',NULL,now()
+        ) AS value
+      `, [created.rows[0].id]);
+      expect(resumed.rows[0].value.status).toBe("ACTIVE");
+      const secondRecordedAt = new Date(Date.now() + 2_000).toISOString();
+      const secondPoint = await db.query<{ value: { replayed: boolean } }>(`
+        SELECT axora_record_delivery_location(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',$1,
+          '68400000-0000-4000-8000-000000000004',
+          '68400000-0000-4000-8000-000000000002',2,
+          3.139010,101.686910,12,NULL,NULL,
+          $2::timestamptz,now()+interval '2 seconds'
+        ) AS value
+      `, [created.rows[0].id, secondRecordedAt]);
+      expect(secondPoint.rows[0].value.replayed).toBe(false);
+      const replayedPoint = await db.query<{ value: { replayed: boolean } }>(`
+        SELECT axora_record_delivery_location(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',$1,
+          '68400000-0000-4000-8000-000000000004',
+          '68400000-0000-4000-8000-000000000002',2,
+          3.139010,101.686910,12,NULL,NULL,
+          $2::timestamptz,now()+interval '2 seconds'
+        ) AS value
+      `, [created.rows[0].id, secondRecordedAt]);
+      expect(replayedPoint.rows[0].value.replayed).toBe(true);
+      const secondDriverProjection = await db.query<{ value: { sessions: Array<{
+        remainingMeters: number;
+        etaSeconds: number;
+        pointCount: number;
+      }> } }>(`
+        SELECT axora_driver_delivery_tracking_workspace(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',now()+interval '2 seconds'
+        ) AS value
+      `);
+      expect(secondDriverProjection.rows[0].value.sessions[0]!.pointCount).toBe(2);
+      expect(secondDriverProjection.rows[0].value.sessions[0]!.remainingMeters)
+        .toBeLessThan(firstDriverProjection.rows[0].value.sessions[0]!.remainingMeters);
+      expect(secondDriverProjection.rows[0].value.sessions[0]!.etaSeconds)
+        .toBeGreaterThan(0);
+      await expect(db.query(`
+        SELECT axora_record_delivery_location(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',$1,
+          '68400000-0000-4000-8000-000000000005',
+          '68400000-0000-4000-8000-000000000002',1,
+          3.139020,101.686920,12,NULL,NULL,
+          now()+interval '3 seconds',now()+interval '3 seconds'
+        )
+      `, [created.rows[0].id])).rejects.toThrow(/out of order/i);
+      await expect(db.query(`
+        SELECT axora_record_delivery_location(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',$1,
+          '68400000-0000-4000-8000-000000000003',
+          '68400000-0000-4000-8000-000000000002',3,
+          40.712800,-74.006000,12,NULL,NULL,
+          now()+interval '4 seconds',now()+interval '4 seconds'
         )
       `, [created.rows[0].id])).rejects.toThrow(/movement validation/);
 
@@ -484,10 +634,22 @@ describe("live delivery tracking migration", () => {
         permission: true,
         receiving_assignment: true,
       });
+      await expect(db.query(`
+        SELECT axora_control_delivery_tracking(
+          '68100000-0000-4000-8000-000000000003',
+          '68100000-0000-4000-8000-000000000004',$1,
+          'PAUSE','Foreign recipient cannot control driver tracking',NULL,now()
+        )
+      `, [created.rows[0].id])).rejects.toThrow(/command is unavailable/i);
       const company = await db.query<{ value: { sessions: Array<{
         sessionId: string;
         visibilityPrecision: string;
         vehicleRegistration: string;
+        routeMode: string;
+        pointCount: number;
+        latitude: number;
+        longitude: number;
+        accuracyMeters: number;
       }> } }>(`
         SELECT axora_company_delivery_tracking_workspace(
           '68100000-0000-4000-8000-000000000003',
@@ -499,6 +661,11 @@ describe("live delivery tracking migration", () => {
         sessionId: created.rows[0].id,
         visibilityPrecision: "APPROXIMATE",
         vehicleRegistration: "AXR 204",
+        routeMode: "PRIVACY_SAFE_DIRECT_ESTIMATE",
+        pointCount: 2,
+        latitude: 3.139,
+        longitude: 101.687,
+        accuracyMeters: 150,
       });
 
       await db.exec(`
@@ -583,7 +750,7 @@ describe("live delivery tracking migration", () => {
           $1,$2,'68200000-0000-4000-8000-000000000001',now()
         ) AS value
       `, [ownerIds.id, ownerIds.role_assignment_id]);
-      expect(history.rows[0].value.sessions[0].points).toHaveLength(1);
+      expect(history.rows[0].value.sessions[0].points).toHaveLength(2);
       const expiredHistory = await db.query<{ value: { sessions: Array<{
         points: unknown[];
       }> } }>(`
@@ -593,6 +760,80 @@ describe("live delivery tracking migration", () => {
         ) AS value
       `, [ownerIds.id, ownerIds.role_assignment_id]);
       expect(expiredHistory.rows[0].value.sessions[0].points).toEqual([]);
+
+      await db.query(`
+        INSERT INTO delivery_job_assignments(
+          id,company_id,delivery_job_id,driver_user_id,status,assigned_by,
+          assigned_at,accepted_at,driver_role_assignment_id,
+          supervisor_role_assignment_id,expected_job_version,
+          assignment_reason,acceptance_deadline,command_id
+        ) VALUES (
+          '68300000-0000-4000-8000-000000000010',$1,
+          '68200000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000001','ACCEPTED',$2,
+          now(),now(),'68100000-0000-4000-8000-000000000002',$3,1,
+          'Terminal tracking projection fixture',now()+interval '1 hour',
+          '68300000-0000-4000-8000-000000000011'
+        )
+      `, [ids.company_id, ownerIds.id, ownerIds.role_assignment_id]);
+      const terminalSession = await db.query<{ id: string }>(`
+        SELECT id FROM delivery_tracking_sessions
+        WHERE assignment_id='68300000-0000-4000-8000-000000000010'
+      `);
+      await db.query(`
+        SELECT axora_control_delivery_tracking(
+          $1,$2,$3,'RESUME','Started terminal projection tracking',NULL,now()
+        )
+      `, [ownerIds.id, ownerIds.role_assignment_id, terminalSession.rows[0].id]);
+      await db.exec(`
+        UPDATE delivery_job_assignments
+        SET status='COMPLETED',ended_at=now(),updated_at=now()
+        WHERE id='68300000-0000-4000-8000-000000000010';
+        UPDATE delivery_jobs
+        SET status='COMPLETED',status_changed_at=now(),
+          tracking_stopped_at=now(),updated_at=now()
+        WHERE id='68200000-0000-4000-8000-000000000001';
+      `);
+      await expect(db.query(`
+        SELECT axora_record_delivery_location(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',$1,
+          '68400000-0000-4000-8000-000000000010',
+          '68400000-0000-4000-8000-000000000002',10,
+          3.141000,101.690000,12,NULL,NULL,now(),now()
+        )
+      `, [terminalSession.rows[0].id])).rejects.toThrow(/location is unavailable/i);
+      const terminalDriver = await db.query<{ value: { sessions: unknown[] } }>(`
+        SELECT axora_driver_delivery_tracking_workspace(
+          '68100000-0000-4000-8000-000000000001',
+          '68100000-0000-4000-8000-000000000002',now()
+        ) AS value
+      `);
+      expect(terminalDriver.rows[0].value.sessions).toEqual([]);
+      const terminalCompany = await db.query<{ value: { sessions: Array<{
+        status: string;
+        jobStatus: string;
+        latitude: number | null;
+        longitude: number | null;
+        destinationLatitude: number | null;
+        contactMode: string;
+        vehicleRegistration: string | null;
+      }> } }>(`
+        SELECT axora_company_delivery_tracking_workspace(
+          '68100000-0000-4000-8000-000000000003',
+          '68100000-0000-4000-8000-000000000004',now()
+        ) AS value
+      `);
+      expect(terminalCompany.rows[0].value.sessions).toHaveLength(1);
+      expect(terminalCompany.rows[0].value.sessions[0]).toMatchObject({
+        status: "ENDED",
+        jobStatus: "COMPLETED",
+        latitude: null,
+        longitude: null,
+        destinationLatitude: null,
+        contactMode: "NONE",
+        vehicleRegistration: null,
+      });
     } finally {
       await db.close();
     }
@@ -605,6 +846,8 @@ describe("live delivery tracking migration", () => {
       const definitions = await db.query<{
         point: string;
         company: string;
+        driver: string;
+        control: string;
         lifecycle: string;
         history: string;
         purge: string;
@@ -616,6 +859,12 @@ describe("live delivery tracking migration", () => {
           pg_get_functiondef(
             'axora_company_delivery_tracking_workspace(uuid,uuid,timestamptz)'::regprocedure
           ) AS company,
+          pg_get_functiondef(
+            'axora_driver_delivery_tracking_workspace(uuid,uuid,timestamptz)'::regprocedure
+          ) AS driver,
+          pg_get_functiondef(
+            'axora_control_delivery_tracking(uuid,uuid,uuid,text,text,text,timestamptz)'::regprocedure
+          ) AS control,
           pg_get_functiondef(
             'axora_delivery_tracking_job_lifecycle()'::regprocedure
           ) AS lifecycle,
@@ -632,7 +881,14 @@ describe("live delivery tracking migration", () => {
       expect(row.point).toContain("movement validation");
       expect(row.company).toContain("'receiving.confirm','BRANCH'");
       expect(row.company).toContain("axora_user_can_receive");
-      expect(row.company).toContain("session.status IN ('ACTIVE','PAUSED')");
+      expect(row.company).toContain("session.status IN ('NOT_STARTED','ACTIVE','PAUSED')");
+      expect(row.company).toContain("session.status='ENDED'");
+      expect(row.company).toContain("'PRIVACY_SAFE_DIRECT_ESTIMATE'");
+      expect(row.company).toContain("WHEN session.status='ENDED' THEN NULL");
+      expect(row.driver).toContain("'DIRECT_ESTIMATE'");
+      expect(row.driver).toContain("ORDER BY location.recorded_at DESC");
+      expect(row.control).toContain("p_operation='END' AND NOT manager_allowed");
+      expect(row.control).toContain("manager_allowed OR driver_allowed");
       expect(row.lifecycle).toContain("NEW.status='OUT_FOR_DELIVERY'");
       expect(row.lifecycle).toContain("'COMPLETED','CANCELLED','FAILED','RETURNED'");
       expect(row.history).toContain("delivery.tracking.history");

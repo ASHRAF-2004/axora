@@ -8,7 +8,7 @@ export async function PATCH(request: Request) {
   if (!actor) return Response.json({ error: "Authentication required" }, { status: 401 });
   if (!canAccess(actor, "view_delivery_portal")) return Response.json({ error: "Availability unavailable" }, { status: 403 });
   try {
-    const { availability } = z.object({ availability: z.enum(["AVAILABLE","UNAVAILABLE","OFFLINE"]) }).parse(await request.json());
+    const { availability } = z.object({ availability: z.enum(["AVAILABLE","UNAVAILABLE"]) }).parse(await request.json());
     return Response.json({ availability: await setDriverAvailability(actor, availability) }, {
       headers: { "Cache-Control": "private, no-store" },
     });

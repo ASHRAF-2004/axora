@@ -790,7 +790,6 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "company.lead.reassign"
   ],
   "DELIVERY_GUY": [
-    "dashboard.view",
     "delivery.portal.view",
     "delivery.assignment.update",
     "delivery.claim"
@@ -1185,7 +1184,6 @@ const COMPANY_ACCOUNT_FORBIDDEN_EXACT = new Set<PermissionCode>([
 ]);
 
 const DELIVERY_ACCOUNT_PERMISSIONS = new Set<PermissionCode>([
-  "dashboard.view",
   "delivery.view",
   "delivery.claim",
   "delivery.accept",

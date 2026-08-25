@@ -629,13 +629,15 @@
       "mode": "mutating",
       "apis": [
         "/api/driver/workspace",
+        "/api/driver/command-result",
         "/api/driver/workflow",
         "/api/driver/acquisition",
         "/api/driver/tracking",
         "/api/driver/evidence",
         "/api/driver/events",
         "/api/driver/otp",
-        "/api/driver/proof"
+        "/api/driver/proof",
+        "/api/driver/jobs/claim-result"
       ],
       "expectedFinalUrl": "/access-denied",
       "landmark": "main"
@@ -1071,6 +1073,12 @@
       "mode": "read-only"
     },
     {
+      "route": "/api/driver/command-result",
+      "authentication": "view_delivery_portal",
+      "scope": "actor-command",
+      "mode": "read-only"
+    },
+    {
       "route": "/api/driver/workflow",
       "authentication": "update_assigned_deliveries",
       "scope": "assigned-delivery",
@@ -1177,6 +1185,12 @@
       "authentication": "authenticated",
       "scope": "delivery-self",
       "mode": "mutating"
+    },
+    {
+      "route": "/api/driver/jobs/claim-result",
+      "authentication": "view_delivery_portal",
+      "scope": "actor-command",
+      "mode": "read-only"
     },
     {
       "route": "/api/drivers/[driverId]/live",

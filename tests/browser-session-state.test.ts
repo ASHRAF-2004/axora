@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrowserSessionScope } from "@/lib/browser-session-scope";
+import { clearDeliveryBrowserState } from "@/lib/delivery-browser-state";
 import {
   clearRequestCart,
   readRequestCart,
@@ -161,5 +162,28 @@ describe("browser session state isolation", () => {
     clearRequestCart(scopeA);
     expect(readRequestCart(scopeA)).toEqual([]);
     expect(readRequestCart(scopeB)).toEqual(cart);
+  });
+
+  it("clears only the signed-out Delivery Agent's operational browser state", () => {
+    const currentKeys = [
+      `axora:delivery-commands:v2:${scopeA.userId}`,
+      `axora:delivery-claim:v1:${scopeA.userId}`,
+      `axora:delivery-reconciliation:v1:${scopeA.userId}`,
+      `axora:driver:${scopeA.userId}:event-queue:v1`,
+      `axora:delivery-location:v1:${scopeA.userId}`,
+      `axora:delivery-location-device:v1:${scopeA.userId}`,
+      `axora:delivery-location-paused:v1:${scopeA.userId}`,
+      `axora:delivery-device:${scopeA.userId}`,
+    ];
+    const otherKey = `axora:delivery-location:v1:${scopeB.userId}`;
+    for (const key of currentKeys) localStorage.setItem(key, "private-driver-state");
+    localStorage.setItem(otherKey, "other-driver-state");
+    localStorage.setItem("unrelated-application-state", "keep");
+
+    clearDeliveryBrowserState(scopeA.userId);
+
+    expect(currentKeys.every((key) => localStorage.getItem(key) === null)).toBe(true);
+    expect(localStorage.getItem(otherKey)).toBe("other-driver-state");
+    expect(localStorage.getItem("unrelated-application-state")).toBe("keep");
   });
 });

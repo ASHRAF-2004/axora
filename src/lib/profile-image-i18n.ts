@@ -72,13 +72,13 @@ const en: ProfileImageMessages = {
   },
   settingsTitle: "Profile photo policy",
   settingsBody: "Control delivery identity requirements and customer visibility without exposing private image files.",
-  deliveryRequired: "Require a processed photo before assigning a Delivery Guy",
-  deliveryRequiredHelp: "Existing assignments continue; every new assignment is rejected at the database boundary until the Delivery Guy has an active photo.",
-  companyDisplay: "Show the assigned Delivery Guy photo during an active delivery",
-  companyDisplayHelp: "Company receivers can see only the currently assigned Delivery Guy and only while the assignment remains active.",
+  deliveryRequired: "Require a processed photo before assigning a Delivery Agent",
+  deliveryRequiredHelp: "Existing assignments continue; every new assignment is rejected at the database boundary until the Delivery Agent has an active photo.",
+  companyDisplay: "Show the assigned Delivery Agent photo during an active delivery",
+  companyDisplayHelp: "Company receivers can see only the currently assigned Delivery Agent and only while the assignment remains active.",
   savePolicy: "Save photo policy",
   policySaved: "Profile photo policy updated.",
-  assignedAgent: "Assigned Delivery Guy",
+  assignedAgent: "Assigned Delivery Agent",
   removeFor: (name) => `Deactivate profile photo for ${name}`,
 };
 

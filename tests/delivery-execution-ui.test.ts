@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 
 describe("delivery execution role interfaces", () => {
   it("keeps versioned offline commands, buying progress, proof and recipient OTP visible", async () => {
-    const [driver, destinationMap, availableJobs, receiver, styles, copy] = await Promise.all([
+    const [driver, trackingPanel, destinationMap, availableJobs, receiver, styles, copy] = await Promise.all([
       readFile(new URL("../src/components/role-portals/DeliveryExecutionPanel.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/components/role-portals/DeliveryTrackingPanels.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/components/role-portals/DeliveryDestinationMap.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/components/role-portals/AvailableDeliveryJobs.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/components/role-portals/ReceivingOtpPanel.tsx", import.meta.url), "utf8"),
@@ -26,16 +27,27 @@ describe("delivery execution role interfaces", () => {
     expect(driver).toContain("UNAVAILABLE");
     expect(driver).toContain("/api/driver/proof");
     expect(driver).toContain("/api/driver/otp");
-    expect(driver).toContain("DeliveryDestinationMap");
+    expect(driver).toContain("/api/driver/command-result");
+    expect(driver).toContain("authoritativeJobResult");
+    expect(driver).toContain("readCommandResult");
+    expect(driver).toContain("void refreshAfterCommit()");
+    expect(driver).toContain('new CustomEvent("axora:delivery-terminal"');
+    expect(driver).toContain('["DELIVERED", "PARTIALLY_DELIVERED", "COMPLETED"].includes(type) && !job.proofSatisfied');
+    expect(trackingPanel).toContain("DeliveryDestinationMap");
     expect(driver).toContain('"OUT_FOR_DELIVERY"');
     expect(driver).toContain("destinationLatitude");
     expect(destinationMap).toContain("buildDeliveryNavigationLinks");
     expect(destinationMap).toContain("links.waze");
     expect(destinationMap).toContain("links.googleMaps");
     expect(destinationMap).toContain("OPERATIONAL_MAP_CONFIG_URL");
+    expect(destinationMap).toContain('"line-dasharray"');
+    expect(copy).toContain("Direct distance estimate");
     expect(availableJobs).toContain("/api/driver/jobs");
     expect(availableJobs).toContain("This job was already claimed.");
     expect(availableJobs).toContain("crypto.randomUUID()");
+    expect(availableJobs).toContain("commitClaim(result)");
+    expect(availableJobs).toContain("Claim succeeded. Refreshing delivery workspace");
+    expect(availableJobs).not.toContain("window.location.reload");
     expect(availableJobs).not.toContain("driverRoleAssignmentId");
     expect(receiver).toContain("oneTimeWarning");
     expect(styles).toContain("border-inline-start");

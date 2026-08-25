@@ -38,7 +38,7 @@ const refreshCases: Array<{
     route: "/companies?status=active#companies",
   },
   {
-    name: "delivery guy",
+    name: "delivery agent",
     actor: {
       id: "44444444-4444-4444-8444-444444444444",
       email: "driver.fixture@axora.invalid",

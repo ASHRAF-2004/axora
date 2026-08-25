@@ -32,6 +32,10 @@ const eventType = z.enum([
 const allowedFileTypes = new Set([
   "application/pdf", "image/jpeg", "image/png", "image/webp",
 ]);
+const deliveryEvidenceFileTypes = new Set([
+  "image/jpeg", "image/png", "image/webp",
+]);
+const MAX_DELIVERY_UPLOAD_BYTES = 5 * 1024 * 1024;
 const moneyDecimal = z.string().regex(/^\d{1,12}(?:\.\d{1,6})?$/);
 const acquisitionLine = z.discriminatedUnion("resolution", [
   z.object({
@@ -53,6 +57,9 @@ const acquisitionRegistration = z.object({
   storagePath: z.string(),
   unavailableLines: z.number().int().nonnegative().optional().default(0),
 });
+const deliveryCommandResultKind = z.enum([
+  "EVENT", "ACQUISITION", "EVIDENCE", "OTP",
+]);
 
 export interface DeliveryEvidenceSummary {
   id: string;
@@ -80,6 +87,7 @@ export interface DeliveryExecutionWorkspace {
     destinationTimezone: string;
     destinationLatitude?: number;
     destinationLongitude?: number;
+    companyName?: string;
     evidence: DeliveryEvidenceSummary[];
   }>;
 }
@@ -87,6 +95,7 @@ export interface DeliveryExecutionWorkspace {
 interface JsonRow<T> extends QueryResultRow { value: T | null }
 interface DestinationRow extends QueryResultRow {
   id: string;
+  companyName: string;
   destinationLatitude: string | null;
   destinationLongitude: string | null;
 }
@@ -187,6 +196,7 @@ function demoDeliveryExecutionWorkspace(actor: AuthenticatedSessionUser): Delive
       assignmentId: current.assignmentId,
       requestId: "60000000-0000-4000-8000-000000000001",
       requestNumber: claimed.job.requestReference,
+      companyName: claimed.job.companyName,
       branchName: claimed.job.branchName,
       destinationTimezone: claimed.job.destinationTimezone,
       scheduledLocalStart: "2026-08-21T10:00:00",
@@ -266,13 +276,18 @@ function attachDestinationCoordinates(
   rows: DestinationRow[],
 ) {
   const jobIds = new Set(jobs.map((job) => job.id));
-  const coordinates = new Map<string, { latitude: number; longitude: number }>();
+  const destinations = new Map<string, {
+    companyName: string;
+    latitude?: number;
+    longitude?: number;
+  }>();
   for (const row of rows) {
     if (!jobIds.has(row.id)) continue;
     if (row.destinationLatitude === null || row.destinationLongitude === null) {
       if (row.destinationLatitude !== row.destinationLongitude) {
         throw new Error("The delivery destination is unavailable.");
       }
+      destinations.set(row.id, { companyName: row.companyName });
       continue;
     }
     const parsed = z.object({
@@ -283,14 +298,17 @@ function attachDestinationCoordinates(
       longitude: Number(row.destinationLongitude),
     });
     if (!parsed.success) throw new Error("The delivery destination is unavailable.");
-    coordinates.set(row.id, parsed.data);
+    destinations.set(row.id, { companyName: row.companyName, ...parsed.data });
   }
   return jobs.map((job) => {
-    const destination = coordinates.get(job.id);
+    const destination = destinations.get(job.id);
     return destination ? {
       ...job,
-      destinationLatitude: destination.latitude,
-      destinationLongitude: destination.longitude,
+      companyName: destination.companyName,
+      ...(destination.latitude === undefined ? {} : {
+        destinationLatitude: destination.latitude,
+        destinationLongitude: destination.longitude,
+      }),
     } : job;
   });
 }
@@ -312,12 +330,25 @@ function deliveryEvidenceBytesMatch(
     && createHash("sha256").update(bytes).digest("hex") === expectedSha256;
 }
 
+function deliveryEvidenceImageDimensions(contentType: string, bytes: Buffer) {
+  if (!deliveryEvidenceFileTypes.has(contentType)
+    || bytes.length < 1 || bytes.length > MAX_DELIVERY_UPLOAD_BYTES
+    || !uploadedContentMatchesMime(contentType, bytes)) return null;
+  return deliveryImageDimensions(contentType, bytes);
+}
+
 export async function getDeliveryExecutionWorkspace(actor: AuthenticatedSessionUser) {
   if (isDemoMode()) return demoDeliveryExecutionWorkspace(actor);
-  const workspace = await jsonCapability<DeliveryExecutionWorkspace>(
+  let workspace = await jsonCapability<DeliveryExecutionWorkspace>(
     "SELECT public.axora_delivery_execution_workspace($1,$2,$3) AS value",
     [actor.id, assignmentId(actor), new Date()],
   );
+  if (!workspace.jobs.length) {
+    workspace = await jsonCapability<DeliveryExecutionWorkspace>(
+      "SELECT public.axora_driver_recent_delivery_completion($1,$2,$3) AS value",
+      [actor.id, assignmentId(actor), new Date()],
+    );
+  }
   const jobIds = workspace.jobs.map((job) => uuid.parse(job.id));
   const destinationRows = jobIds.length ? await withAuditTransaction({
     actor,
@@ -325,6 +356,7 @@ export async function getDeliveryExecutionWorkspace(actor: AuthenticatedSessionU
   }, async (client) => {
     const result = await client.query<DestinationRow>(`
       SELECT job.id::text,
+        company.name AS "companyName",
         job.destination_latitude::text AS "destinationLatitude",
         job.destination_longitude::text AS "destinationLongitude"
       FROM public.delivery_jobs job
@@ -334,6 +366,7 @@ export async function getDeliveryExecutionWorkspace(actor: AuthenticatedSessionU
        AND assignment.driver_role_assignment_id=$2
        AND assignment.status IN ('ASSIGNED','ACCEPTED')
        AND assignment.ended_at IS NULL
+      JOIN public.companies company ON company.id=job.company_id
       WHERE job.id=ANY($3::uuid[])
         AND job.status NOT IN ('COMPLETED','CANCELLED')
     `, [actor.id, assignmentId(actor), jobIds]);
@@ -354,6 +387,7 @@ export async function getDeliveryExecutionWorkspace(actor: AuthenticatedSessionU
 export const deliveryExecutionDestinationInternals = {
   attachDestinationCoordinates,
   deliveryEvidenceBytesMatch,
+  deliveryEvidenceImageDimensions,
   demoDeliveryExecutionState,
   demoDeliveryExecutionWorkspace,
   stagedEvidenceReplayPath,
@@ -555,6 +589,43 @@ export async function recordCanonicalDeliveryEvent(
     if (!result.rows[0]?.value) throw new Error("The delivery event is unavailable.");
     return result.rows[0].value;
   });
+}
+
+export async function getDriverDeliveryCommandResult(
+  actor: AuthenticatedSessionUser,
+  input: unknown,
+) {
+  const parsed = z.object({
+    jobId: uuid,
+    kind: deliveryCommandResultKind,
+    commandId: uuid,
+    relatedCommandId: uuid.optional(),
+  }).superRefine((value, context) => {
+    if (value.kind === "ACQUISITION" && !value.relatedCommandId) {
+      context.addIssue({
+        code: "custom",
+        message: "The related acquisition event command is required.",
+        path: ["relatedCommandId"],
+      });
+    }
+  }).parse(input);
+  if (isDemoMode()) {
+    const { claimed, current } = demoDeliveryJobState(actor);
+    if (claimed.job.id !== parsed.jobId) return null;
+    const command = current.commands.get(
+      parsed.kind === "ACQUISITION"
+        ? parsed.relatedCommandId!
+        : parsed.commandId,
+    );
+    return command?.result ?? null;
+  }
+  const result = await query<JsonRow<Record<string, unknown>>>(`
+    SELECT public.axora_driver_delivery_command_result(
+      $1,$2,$3,$4,$5,$6,$7
+    ) AS value
+  `, [actor.id, assignmentId(actor), parsed.jobId, parsed.kind,
+    parsed.commandId, parsed.relatedCommandId ?? null, new Date()]);
+  return result.rows[0]?.value ?? null;
 }
 
 export async function submitDeliveryShoppingActual(
@@ -765,9 +836,8 @@ export async function uploadCanonicalDeliveryEvidence(
   }
   if (isDemoMode()) {
     const bytes = Buffer.from(await file.arrayBuffer());
-    if (bytes.length !== file.size || !allowedFileTypes.has(file.type)
-      || !uploadedContentMatchesMime(file.type, bytes)
-      || (file.type.startsWith("image/") && !deliveryImageDimensions(file.type, bytes))) {
+    if (bytes.length !== file.size
+      || !deliveryEvidenceImageDimensions(file.type, bytes)) {
       throw new Error("The delivery evidence is unavailable.");
     }
     const { claimed, current } = demoDeliveryJobState(actor);
@@ -814,9 +884,11 @@ export async function uploadCanonicalDeliveryEvidence(
     namespace: "delivery-evidence", scopeSegments: [actor.id, parsed.jobId], file,
   });
   try {
-    if (!allowedFileTypes.has(stored.contentType)) throw new Error("The delivery evidence is unavailable.");
-    const dimensions = stored.contentType.startsWith("image/")
-      ? deliveryImageDimensions(stored.contentType, stored.bytes) : null;
+    const dimensions = deliveryEvidenceImageDimensions(
+      stored.contentType,
+      stored.bytes,
+    );
+    if (!dimensions) throw new Error("The delivery evidence is unavailable.");
     const now = new Date();
     const registration = await withAuditTransaction({ actor, reason: "Delivery proof uploaded", commandId: parsed.clientEvidenceId }, async (client) => {
       const result = await client.query<JsonRow<unknown>>(`
@@ -827,8 +899,8 @@ export async function uploadCanonicalDeliveryEvidence(
         parsed.clientEvidenceId, parsed.type, stored.safeFileName, stored.contentType,
         stored.relativePath, createHash("sha256").update(stored.bytes).digest("hex"), parsed.capturedAt,
         parsed.recipientIdentity || null, parsed.type === "SIGNATURE" ? "delivery-consent-v1" : null,
-        parsed.type === "SIGNATURE" ? parsed.capturedAt : null, dimensions?.width ?? null,
-        dimensions?.height ?? null, parsed.supersedesEvidenceId || null,
+        parsed.type === "SIGNATURE" ? parsed.capturedAt : null, dimensions.width,
+        dimensions.height, parsed.supersedesEvidenceId || null,
         JSON.stringify({ source: "driver-portal" }), now]);
       const parsedRegistration = deliveryEvidenceRegistrationSchema.safeParse(result.rows[0]?.value);
       if (!parsedRegistration.success) throw new Error("The delivery evidence is unavailable.");
@@ -864,14 +936,32 @@ export async function createReceivingDeliveryOtp(actor: AuthenticatedSessionUser
 }
 
 export async function verifyDriverDeliveryOtp(actor: AuthenticatedSessionUser, input: unknown) {
-  const parsed = z.object({ jobId: uuid, challengeId: uuid, code: z.string().regex(/^\d{6}$/) }).parse(input);
+  const parsed = z.object({
+    jobId: uuid,
+    challengeId: uuid,
+    code: z.string().regex(/^\d{6}$/),
+    commandId: uuid,
+  }).parse(input);
   const now = new Date();
-  return withAuditTransaction({ actor, reason: "Recipient delivery code verified" }, async (client) => {
-    const result = await client.query<{ verified: boolean }>(`
-      SELECT public.axora_verify_delivery_otp($1,$2,$3,$4,$5,$6) AS verified
+  return withAuditTransaction({
+    actor,
+    reason: "Recipient delivery code verified",
+    commandId: parsed.commandId,
+  }, async (client) => {
+    const result = await client.query<JsonRow<{
+      jobId: string;
+      challengeId: string;
+      verified: boolean;
+    }>>(`
+      SELECT public.axora_verify_delivery_otp_command(
+        $1,$2,$3,$4,$5,$6,$7
+      ) AS value
     `, [actor.id, assignmentId(actor), parsed.jobId, parsed.challengeId,
-      hashDeliveryOtp(parsed.jobId, parsed.code), now]);
-    return { verified: result.rows[0]?.verified === true };
+      hashDeliveryOtp(parsed.jobId, parsed.code), parsed.commandId, now]);
+    if (!result.rows[0]?.value) {
+      throw new Error("The delivery confirmation is unavailable.");
+    }
+    return result.rows[0].value;
   });
 }
 

@@ -11,10 +11,10 @@ const companyAdmin: DemoRoleSession = {
   companyId: "11111111-1111-4111-8111-111111111111",
 };
 
-const deliveryGuy: DemoRoleSession = {
+const deliveryAgent: DemoRoleSession = {
   id: "44444444-4444-4444-8444-444444444444",
   email: "delivery.fixture@axora.invalid",
-  name: "Demo Delivery Guy",
+  name: "Demo Delivery Agent",
   role: "DELIVERY_GUY",
   accountKind: "DELIVERY",
   scopeType: "DELIVERY",
@@ -63,10 +63,10 @@ test("owner create routes are single-purpose and Company budgets deny cleanly", 
   await expect(page.getByRole("heading", { level: 1, name: "This page is not part of your role" })).toBeVisible();
 });
 
-test("owner sees Manage Drivers, a live driver detail map, and no normal assignment control", async ({ page }, testInfo) => {
+test("owner sees Delivery Agents, a live agent detail map, and no normal assignment control", async ({ page }, testInfo) => {
   await signInAsDemoOwner(page);
   await page.goto("/deliveries");
-  await expect(page.getByRole("heading", { level: 1, name: "Manage Drivers" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Manage Delivery Agents" })).toBeVisible();
   await expect(page.getByText(/assign or reassign/i)).toHaveCount(0);
   await page.screenshot({ animations: "disabled", path: `output/playwright/v2-manage-drivers-${testInfo.project.name}.png`, fullPage: true });
 
@@ -100,8 +100,8 @@ test("owner sees Manage Drivers, a live driver detail map, and no normal assignm
     if (/\/maps\/(?:mvp-klang-valley-(?:roads|places)\.geojson|fonts\/)/.test(response.url()) && response.ok()) sourceResponses.push(response.url());
   });
   await page.goto("/deliveries/drivers/44444444-4444-4444-8444-444444444444");
-  await expect(page.getByRole("heading", { level: 1, name: "Demo Delivery Guy" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Live driver map" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Demo Delivery Agent" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Live Delivery Agent map" })).toBeVisible();
   const map = page.locator('[data-map-provider="axora-mvp-klang-valley"]');
   await expect(map).toHaveAttribute("data-map-state", "ready", { timeout: 15_000 });
   await expect(map).toHaveAttribute("data-route-point-count", "2");
@@ -159,7 +159,7 @@ test("a configured map provider failure shows an honest unavailable state", asyn
 });
 
 test("delivery users receive the live self-claim pool without owner assignment controls", async ({ page }, testInfo) => {
-  await signInAsDemoRole(page, deliveryGuy);
+  await signInAsDemoRole(page, deliveryAgent);
   await page.goto("/driver");
   await expect(page.getByRole("heading", { name: "Available delivery jobs" })).toBeVisible();
   await expect(page.getByText(/owner assign|assigned by owner/i)).toHaveCount(0);

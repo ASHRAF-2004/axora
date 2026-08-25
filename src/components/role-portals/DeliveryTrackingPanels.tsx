@@ -6,15 +6,16 @@ import {
   useMemo,
   useRef,
   useState,
-  type FormEvent,
 } from "react";
 import { UserAvatar } from "@/components/UserAvatar";
+import { DeliveryDestinationMap } from "./DeliveryDestinationMap";
 import {
   deliveryTrackingMessages,
   deliveryTrackingStatusLabel,
   customerDeliveryStatusLabel,
   type DeliveryTrackingLocale,
 } from "@/lib/delivery-tracking-i18n";
+import { deliveryWorkflowStatusLabel } from "@/lib/delivery-workflow-i18n";
 import styles from "./DeliveryTracking.module.css";
 
 type TrackingSession = {
@@ -37,11 +38,12 @@ type TrackingSession = {
   destinationLongitude?: number | null;
   remainingMeters?: number | null;
   etaSeconds?: number | null;
+  routeMode?: "DIRECT_ESTIMATE" | "PRIVACY_SAFE_DIRECT_ESTIMATE" | string;
   visibilityPrecision: "APPROXIMATE" | "EXACT";
   showVehicleDetails?: boolean;
   contactMode?: "AXORA_RELAY" | "NONE";
   contactPath?: string | null;
-  rawRetentionDays: number;
+  rawRetentionDays?: number;
   vehicleType?: string | null;
   vehicleColour?: string | null;
   vehicleRegistration?: string | null;
@@ -56,6 +58,13 @@ type TrackingWorkspace = {
   actorId?: string;
   capturedAt: string;
   sessions: TrackingSession[];
+};
+
+export type DriverDeliveryReference = {
+  id: string;
+  address: string;
+  destinationLatitude?: number;
+  destinationLongitude?: number;
 };
 
 type QueuedPoint = {
@@ -82,6 +91,10 @@ function queueKey(actorId: string) {
 
 function deviceKey(actorId: string) {
   return `axora:delivery-location-device:v1:${actorId}`;
+}
+
+function pausedSharingKey(actorId: string) {
+  return `axora:delivery-location-paused:v1:${actorId}`;
 }
 
 function readQueue(actorId: string): QueuedPoint[] {
@@ -128,12 +141,6 @@ function formattedTime(value: string | null | undefined, locale: DeliveryTrackin
   }).format(new Date(value));
 }
 
-function formattedDistance(value: number | null | undefined, locale: DeliveryTrackingLocale) {
-  if (value === null || value === undefined) return "—";
-  if (value < 1_000) return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value)} m`;
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value / 1_000)} km`;
-}
-
 function formattedEta(value: number | null | undefined, locale: DeliveryTrackingLocale) {
   if (value === null || value === undefined) return null;
   const minutes = Math.max(1, Math.ceil(value / 60));
@@ -150,9 +157,11 @@ async function postJson(endpoint: string, body: Record<string, unknown>) {
 
 export function DriverTrackingPanel({
   actorId,
+  deliveries = [],
   locale = "en",
 }: {
   actorId: string;
+  deliveries?: DriverDeliveryReference[];
   locale?: DeliveryTrackingLocale;
 }) {
   const copy = deliveryTrackingMessages(locale);
@@ -160,12 +169,56 @@ export function DriverTrackingPanel({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [sharingEnabled, setSharingEnabled] = useState(false);
+  const [resumeRequired, setResumeRequired] = useState(false);
+  const [controlBusy, setControlBusy] = useState(false);
+  const workspaceRef = useRef<TrackingWorkspace | null>(null);
   const failureReported = useRef("");
+  const terminalJobIds = useRef(new Set<string>());
+  const browserWatchId = useRef<number | null>(null);
+  const collectionEpoch = useRef(0);
+  const deliveriesById = useMemo(() => new Map(
+    deliveries.map((delivery) => [delivery.id, delivery]),
+  ), [deliveries]);
+
+  const rememberResumeRequired = useCallback((sessionId: string) => {
+    localStorage.setItem(pausedSharingKey(actorId), sessionId);
+    setResumeRequired(true);
+  }, [actorId]);
+
+  const clearResumeRequired = useCallback(() => {
+    localStorage.removeItem(pausedSharingKey(actorId));
+    setResumeRequired(false);
+  }, [actorId]);
+
+  const stopBrowserCollection = useCallback(() => {
+    collectionEpoch.current += 1;
+    const watchId = browserWatchId.current;
+    browserWatchId.current = null;
+    if (watchId !== null && "geolocation" in navigator) {
+      navigator.geolocation.clearWatch(watchId);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setResumeRequired(Boolean(localStorage.getItem(pausedSharingKey(actorId))));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [actorId]);
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/driver/tracking", { cache: "no-store" });
     if (!response.ok) throw new Error();
-    setWorkspace(await response.json() as TrackingWorkspace);
+    const next = await response.json() as TrackingWorkspace;
+    const authoritative = {
+      ...next,
+      sessions: next.sessions.filter((session) => (
+        !terminalJobIds.current.has(session.jobId)
+      )),
+    };
+    workspaceRef.current = authoritative;
+    setWorkspace(authoritative);
+    return authoritative;
   }, []);
 
   useEffect(() => {
@@ -181,23 +234,93 @@ export function DriverTrackingPanel({
     };
   }, [copy.unavailable, refresh]);
 
-  const active = useMemo(
-    () => workspace?.sessions.find((session) => session.status === "ACTIVE"),
+  useEffect(() => {
+    const progressed = () => {
+      void refresh().catch(() => setError(copy.unavailable));
+    };
+    window.addEventListener("axora:delivery-claimed", progressed);
+    window.addEventListener("axora:delivery-progressed", progressed);
+    return () => {
+      window.removeEventListener("axora:delivery-claimed", progressed);
+      window.removeEventListener("axora:delivery-progressed", progressed);
+    };
+  }, [copy.unavailable, refresh]);
+
+  useEffect(() => {
+    const completionPending = (event: Event) => {
+      const detail = (event as CustomEvent<{ jobId?: string }>).detail;
+      if (!detail?.jobId) return;
+      const session = workspaceRef.current?.sessions.find((item) => (
+        item.jobId === detail.jobId && ["ACTIVE", "PAUSED"].includes(item.status)
+      ));
+      // Completing a handover is a privacy boundary. Stop the browser watch
+      // before awaiting the command response; if completion is rejected or
+      // remains unresolved, the still-visible session offers an explicit
+      // Resume action and RESUME is idempotent against an ACTIVE session.
+      stopBrowserCollection();
+      setSharingEnabled(false);
+      writeQueue(actorId, []);
+      if (session) rememberResumeRequired(session.sessionId);
+      setNotice(copy.commandChecking);
+    };
+    window.addEventListener("axora:delivery-completion-pending", completionPending);
+    return () => window.removeEventListener(
+      "axora:delivery-completion-pending",
+      completionPending,
+    );
+  }, [
+    actorId,
+    copy.commandChecking,
+    rememberResumeRequired,
+    stopBrowserCollection,
+  ]);
+
+  useEffect(() => {
+    const terminal = (event: Event) => {
+      const detail = (event as CustomEvent<{ jobId?: string }>).detail;
+      if (!detail?.jobId) return;
+      terminalJobIds.current.add(detail.jobId);
+      stopBrowserCollection();
+      setSharingEnabled(false);
+      writeQueue(actorId, []);
+      clearResumeRequired();
+      setWorkspace((snapshot) => snapshot ? {
+        ...snapshot,
+        sessions: snapshot.sessions.filter((session) => (
+          session.jobId !== detail.jobId
+        )),
+      } : snapshot);
+      setNotice(copy.endedIndicator);
+    };
+    window.addEventListener("axora:delivery-terminal", terminal);
+    return () => window.removeEventListener("axora:delivery-terminal", terminal);
+  }, [actorId, clearResumeRequired, copy.endedIndicator, stopBrowserCollection]);
+
+  const current = useMemo(
+    () => workspace?.sessions.find((session) => ["ACTIVE", "PAUSED"].includes(session.status)),
     [workspace],
   );
-  const activeSessionId = active?.sessionId;
+  const activeSessionId = current?.status === "ACTIVE" ? current.sessionId : undefined;
+  const hasControllableSession = Boolean(current);
   const workspaceLoaded = workspace !== null;
 
   useEffect(() => {
-    if (!activeSessionId) {
-      if (workspaceLoaded) writeQueue(actorId, []);
+    if (!hasControllableSession) {
+      if (workspaceLoaded) {
+        writeQueue(actorId, []);
+        localStorage.removeItem(pausedSharingKey(actorId));
+        const timer = window.setTimeout(() => setResumeRequired(false), 0);
+        return () => window.clearTimeout(timer);
+      }
       return;
     }
-    if (!sharingEnabled) return;
+    if (!activeSessionId || !sharingEnabled) return;
     let disposed = false;
     let flushing = false;
     let lastSampleAt = 0;
     let watchId: number | undefined;
+    const epoch = collectionEpoch.current + 1;
+    collectionEpoch.current = epoch;
     const storedDevice = localStorage.getItem(deviceKey(actorId));
     const deviceId = storedDevice ?? crypto.randomUUID();
     if (!storedDevice) localStorage.setItem(deviceKey(actorId), deviceId);
@@ -206,16 +329,35 @@ export function DriverTrackingPanel({
       if (failureReported.current === `${activeSessionId}:${failureCode}`) return;
       failureReported.current = `${activeSessionId}:${failureCode}`;
       setError(message);
+      stopBrowserCollection();
+      setSharingEnabled(false);
+      rememberResumeRequired(activeSessionId);
       await postJson("/api/driver/tracking", {
         action: "REPORT_FAILURE",
         sessionId: activeSessionId,
         reason: failureCode,
         failureCode,
       }).catch(() => undefined);
+      const paused = await postJson("/api/driver/tracking", {
+        action: "PAUSE",
+        sessionId: activeSessionId,
+        reason: "Location sharing paused after browser location failure",
+      }).catch(() => null);
+      if (paused?.ok) {
+        setWorkspace((snapshot) => snapshot ? {
+          ...snapshot,
+          sessions: snapshot.sessions.map((session) => session.sessionId === activeSessionId
+            ? { ...session, status: "PAUSED", pausedAt: new Date().toISOString() }
+            : session),
+        } : snapshot);
+      } else if (!paused || paused.status >= 500) {
+        void refresh().catch(() => undefined);
+      }
     };
 
     const flush = async () => {
-      if (flushing || !navigator.onLine || disposed) return;
+      if (flushing || !navigator.onLine || disposed
+        || collectionEpoch.current !== epoch) return;
       flushing = true;
       let pending = readQueue(actorId).filter(
         (point) => point.sessionId === activeSessionId,
@@ -229,6 +371,7 @@ export function DriverTrackingPanel({
             setNotice(copy.offlineBuffered);
             break;
           }
+          if (disposed || collectionEpoch.current !== epoch) break;
           if (response.ok || [401, 403, 404, 409].includes(response.status)) {
             pending = pending.slice(1);
             writeQueue(actorId, pending);
@@ -238,7 +381,7 @@ export function DriverTrackingPanel({
         }
         if (!pending.length) {
           setNotice(copy.activeIndicator);
-          void refresh();
+          void refresh().catch(() => setError(copy.unavailable));
         }
       } finally {
         flushing = false;
@@ -246,6 +389,7 @@ export function DriverTrackingPanel({
     };
 
     const capture = (position: GeolocationPosition) => {
+      if (disposed || collectionEpoch.current !== epoch) return;
       const now = Date.now();
       const stationary = position.coords.speed !== null && position.coords.speed < 1;
       const minimumDelay = stationary ? 60_000 : 15_000;
@@ -290,6 +434,7 @@ export function DriverTrackingPanel({
         maximumAge: 10_000,
         timeout: 20_000,
       });
+      browserWatchId.current = watchId;
     }
     const online = () => { void flush(); };
     window.addEventListener("online", online);
@@ -298,6 +443,8 @@ export function DriverTrackingPanel({
       disposed = true;
       window.removeEventListener("online", online);
       if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+      if (browserWatchId.current === watchId) browserWatchId.current = null;
+      if (collectionEpoch.current === epoch) collectionEpoch.current += 1;
     };
   }, [
     activeSessionId,
@@ -306,34 +453,110 @@ export function DriverTrackingPanel({
     copy.locationUnavailable,
     copy.offlineBuffered,
     copy.permissionDenied,
+    copy.unavailable,
     refresh,
     sharingEnabled,
     workspaceLoaded,
+    hasControllableSession,
+    rememberResumeRequired,
+    stopBrowserCollection,
   ]);
 
-  const endSharing = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!active) return;
+  const startOrResumeSharing = async () => {
+    if (!current || controlBusy) return;
+    setControlBusy(true);
     setError("");
-    const response = await postJson("/api/driver/tracking", {
-      action: "END",
-      sessionId: active.sessionId,
-      reason: "DELIVERY_TRACKING_ENDED",
-    });
-    if (!response.ok) {
+    const mustResume = current.status === "PAUSED" || resumeRequired
+      || localStorage.getItem(pausedSharingKey(actorId)) === current.sessionId;
+    let resumed = !mustResume;
+    if (mustResume) {
+      // RESUME targets ACTIVE and is idempotent. It safely resolves a PAUSE
+      // whose HTTP response was lost, while an initial Start can still capture
+      // into the bounded offline queue without network access.
+      const response = await postJson("/api/driver/tracking", {
+        action: "RESUME",
+        sessionId: current.sessionId,
+        reason: "Delivery Agent started or resumed browser location sharing",
+      }).catch(() => null);
+      resumed = response?.ok === true;
+      if (!resumed) {
+        setNotice(copy.commandChecking);
+        try {
+          const authoritative = await refresh();
+          resumed = authoritative.sessions.some((session) => (
+            session.sessionId === current.sessionId && session.status === "ACTIVE"
+          ));
+        } catch { /* Keep browser sharing disabled while unresolved. */ }
+      }
+    }
+    if (!resumed) {
+      setNotice(copy.commandUnconfirmed);
       setError(copy.commandFailed);
+      setControlBusy(false);
       return;
     }
-    writeQueue(actorId, []);
-    setNotice(copy.commandSaved);
-    await refresh();
+    setWorkspace((snapshot) => snapshot ? {
+      ...snapshot,
+      sessions: snapshot.sessions.map((session) => session.sessionId === current.sessionId
+        ? { ...session, status: "ACTIVE" }
+        : session),
+    } : snapshot);
+    clearResumeRequired();
+    failureReported.current = "";
+    setSharingEnabled(true);
+    setNotice(copy.activeIndicator);
+    setControlBusy(false);
+    void refresh().catch(() => setNotice(copy.commandSaved));
+  };
+
+  const pauseSharing = async () => {
+    if (!current || current.status !== "ACTIVE" || controlBusy) return;
+    setControlBusy(true);
+    setError("");
+    // Stop the browser watch immediately on the user's privacy action. The
+    // server command is then reconciled independently.
+    stopBrowserCollection();
+    setSharingEnabled(false);
+    rememberResumeRequired(current.sessionId);
+    const response = await postJson("/api/driver/tracking", {
+      action: "PAUSE",
+      sessionId: current.sessionId,
+      reason: "Delivery Agent paused browser location sharing",
+    }).catch(() => null);
+    let paused = response?.ok === true;
+    if (!paused) {
+      setNotice(copy.commandChecking);
+      try {
+        const authoritative = await refresh();
+        paused = authoritative.sessions.some((session) => (
+          session.sessionId === current.sessionId && session.status === "PAUSED"
+        ));
+      } catch { /* Browser collection is already stopped. */ }
+    }
+    if (!paused) {
+      setNotice(copy.commandUnconfirmed);
+      setError(copy.commandFailed);
+      setControlBusy(false);
+      return;
+    }
+    setWorkspace((snapshot) => snapshot ? {
+      ...snapshot,
+      sessions: snapshot.sessions.map((session) => session.sessionId === current.sessionId
+        ? { ...session, status: "PAUSED", pausedAt: new Date().toISOString() }
+        : session),
+    } : snapshot);
+    setNotice(copy.pausedIndicator);
+    setControlBusy(false);
+    void refresh().catch(() => setNotice(copy.commandSaved));
   };
 
   return <section className={styles.driverPanel} aria-label={copy.driverTitle}>
     <header className={styles.panelHeader}>
       <div><span>{copy.status}</span><h2>{copy.driverTitle}</h2></div>
-      {active ? <strong className={styles.liveIndicator} role="status">
-        <span aria-hidden="true" />{copy.activeIndicator}
+      {current ? <strong className={sharingEnabled ? styles.liveIndicator : styles.readyIndicator} role="status">
+        <span aria-hidden="true" />{sharingEnabled ? copy.activeIndicator
+          : current.status === "PAUSED" || resumeRequired
+            ? copy.pausedIndicator : copy.readyIndicator}
       </strong> : null}
     </header>
     <p className={styles.explanation}>{copy.driverExplanation}</p>
@@ -344,78 +567,46 @@ export function DriverTrackingPanel({
       : <div className={styles.sessionList}>{workspace.sessions.map((session) =>
         <article className={styles.sessionCard} key={session.sessionId}>
           <div className={styles.sessionHeading}>
-            <div><strong>{session.jobCode}</strong><small>{session.jobStatus}</small></div>
+            <div><strong>{session.jobCode}</strong><small>{deliveryWorkflowStatusLabel(session.jobStatus, locale)}</small></div>
             <span data-status={session.status}>
-              {deliveryTrackingStatusLabel(session.status, locale)}
+              {session.status === "ACTIVE" && session.sessionId === current?.sessionId
+                && !sharingEnabled ? resumeRequired ? copy.pausedIndicator : copy.readyIndicator
+                : deliveryTrackingStatusLabel(session.status, locale)}
             </span>
           </div>
           <dl className={styles.compactFacts}>
-            <div><dt>{copy.status}</dt><dd>{session.status}</dd></div>
+            <div><dt>{copy.status}</dt><dd>{deliveryTrackingStatusLabel(session.status, locale)}</dd></div>
             <div><dt>{copy.points}</dt><dd>{session.pointCount ?? 0}</dd></div>
             <div><dt>{copy.lastUpdated}</dt><dd>{formattedTime(session.lastUpdatedAt, locale)}</dd></div>
             <div><dt>{copy.precision}</dt><dd>{session.visibilityPrecision === "EXACT" ? copy.exact : copy.approximate}</dd></div>
           </dl>
+          {typeof session.destinationLatitude === "number"
+            && typeof session.destinationLongitude === "number" ? <DeliveryDestinationMap
+              address={deliveriesById.get(session.jobId)?.address ?? session.branchName ?? copy.destinationUnavailable}
+              currentLatitude={session.latitude}
+              currentLongitude={session.longitude}
+              etaSeconds={session.stale ? null : session.etaSeconds}
+              latitude={session.destinationLatitude}
+              locale={locale}
+              longitude={session.destinationLongitude}
+              remainingMeters={session.remainingMeters}
+              trackingStatus={sharingEnabled && session.sessionId === current?.sessionId
+                ? copy.activeIndicator : deliveryTrackingStatusLabel(session.status, locale)}
+            /> : null}
           {session.lastFailureCode ? <p className={styles.warning}>
             {copy.failure}: {session.lastFailureCode}
           </p> : null}
-          {session.status === "ACTIVE" ? <form className={styles.endForm} onSubmit={endSharing}>
-            <button type="submit">{copy.end}</button>
-          </form> : null}
+          {session.sessionId === current?.sessionId ? <div className={styles.sharingControls}>
+            {sharingEnabled && session.status === "ACTIVE"
+              ? <button type="button" disabled={controlBusy} onClick={() => void pauseSharing()}>{copy.pauseSharing}</button>
+              : <button type="button" disabled={controlBusy} onClick={() => void startOrResumeSharing()}>
+                {session.status === "PAUSED" || resumeRequired || (session.pointCount ?? 0) > 0
+                  ? copy.resumeSharing : copy.startSharing}
+              </button>}
+          </div> : null}
         </article>,
       )}</div>}
-    {active && !sharingEnabled ? <button type="button" onClick={() => setSharingEnabled(true)}>{copy.startSharing}</button> : null}
   </section>;
-}
-
-function RouteFigure({
-  session,
-  locale,
-}: {
-  session: TrackingSession;
-  locale: DeliveryTrackingLocale;
-}) {
-  const copy = deliveryTrackingMessages(locale);
-  const hasPoint = session.locationAvailable === true || (
-    session.latitude !== null && session.latitude !== undefined
-    && session.longitude !== null && session.longitude !== undefined
-  );
-  const hasDestination = session.destinationLatitude !== null
-    && session.destinationLatitude !== undefined
-    && session.destinationLongitude !== null
-    && session.destinationLongitude !== undefined;
-  if (!hasPoint) return <p className={styles.empty}>{copy.awaitingPoint}</p>;
-  if (!hasDestination) return <p className={styles.warning}>{copy.destinationUnavailable}</p>;
-  const latitudeDelta = Number(session.destinationLatitude) - Number(session.latitude);
-  const longitudeDelta = Number(session.destinationLongitude) - Number(session.longitude);
-  const longitudeScale = Math.cos(Number(session.latitude) * Math.PI / 180);
-  const vectorX = longitudeDelta * longitudeScale;
-  const vectorY = -latitudeDelta;
-  const magnitude = Math.hypot(vectorX, vectorY);
-  const scale = magnitude > 0 ? 390 / magnitude : 0;
-  const endX = magnitude > 0 ? 105 + vectorX * scale : 105;
-  const endY = magnitude > 0 ? 90 + vectorY * scale : 90;
-  const boundedEndX = Math.min(525, Math.max(75, endX));
-  const boundedEndY = Math.min(145, Math.max(35, endY));
-  const accuracyRadius = Math.min(34, Math.max(12,
-    Number(session.accuracyMeters ?? 150) / 10));
-  return <figure className={styles.routeFigure} data-stale={session.stale}>
-    <svg viewBox="0 0 600 180" role="img" aria-label={copy.routeLabel}>
-      <defs>
-        <linearGradient id={`route-${session.sessionId}`} x1="0" x2="1">
-          <stop offset="0" stopColor="currentColor" stopOpacity=".35" />
-          <stop offset="1" stopColor="currentColor" />
-        </linearGradient>
-      </defs>
-      <path d={`M105 90 L${boundedEndX} ${boundedEndY}`} fill="none" stroke={`url(#route-${session.sessionId})`} strokeWidth="10" strokeLinecap="round" />
-      <circle className={styles.accuracy} cx="105" cy="90" r={accuracyRadius} />
-      <circle className={styles.currentMarker} cx="105" cy="90" r="11" />
-      <circle className={styles.destinationMarker} cx={boundedEndX} cy={boundedEndY} r="15" />
-    </svg>
-    <figcaption>
-      <span>{session.visibilityPrecision === "EXACT" ? copy.exact : copy.approximate}</span>
-      <strong>{copy.remaining}: {formattedDistance(session.remainingMeters, locale)}</strong>
-    </figcaption>
-  </figure>;
 }
 
 export function DeliveryTrackingBoard({
@@ -495,13 +686,29 @@ export function DeliveryTrackingBoard({
               <small>{session.companyName ? `${session.companyName} · ` : ""}{session.branchName}</small>
               <h3>{session.jobCode}</h3>
             </div>
-            <span data-status={session.status}>{deliveryTrackingStatusLabel(session.status, locale)}</span>
+            <span data-status={session.status}>{session.status === "ACTIVE" && !session.locationAvailable
+              ? copy.readyIndicator : deliveryTrackingStatusLabel(session.status, locale)}</span>
           </div>
           {session.agentUserId && session.agentName ? <div className={styles.agent}>
             <UserAvatar deliveryJobId={session.jobId} name={session.agentName} size={48} userId={session.agentUserId} />
             <div><small>{copy.agent}</small><strong>{session.agentName}</strong></div>
           </div> : null}
-          <RouteFigure session={session} locale={locale} />
+          {typeof session.destinationLatitude === "number"
+            && typeof session.destinationLongitude === "number" ? <DeliveryDestinationMap
+              address={session.branchName ?? copy.destinationUnavailable}
+              currentLatitude={session.latitude}
+              currentLongitude={session.longitude}
+              etaSeconds={session.stale ? null : session.etaSeconds}
+              latitude={session.destinationLatitude}
+              locale={locale}
+              longitude={session.destinationLongitude}
+              remainingMeters={session.remainingMeters}
+              showNavigationLinks={false}
+              trackingStatus={session.status === "ACTIVE" && !session.locationAvailable
+                ? copy.readyIndicator : deliveryTrackingStatusLabel(session.status, locale)}
+            /> : session.status === "ENDED" ? null
+              : session.locationAvailable ? <p className={styles.warning}>{copy.destinationUnavailable}</p>
+                : <p className={styles.empty}>{copy.awaitingPoint}</p>}
           <dl className={styles.compactFacts}>
             <div><dt>{copy.lastUpdated}</dt><dd>{formattedTime(session.lastUpdatedAt, locale)}</dd></div>
             <div><dt>{copy.eta}</dt><dd>{session.stale ? copy.etaUnavailable : formattedEta(session.etaSeconds, locale) ?? copy.etaUnavailable}</dd></div>

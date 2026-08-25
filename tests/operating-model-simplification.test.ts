@@ -47,7 +47,7 @@ describe("operating model simplification", () => {
     await expect(source("src/app/(portal)/documents/page.tsx")).rejects.toThrow();
   });
 
-  it("uses HR, Agent, and Delivery Guy role templates", () => {
+  it("uses HR, Agent, and Delivery Agent role templates", () => {
     const visible = ACCOUNT_ROLE_CATALOG.filter((role) => role.availableForCreation !== false)
       .map((role) => role.key);
     expect(visible).toContain("HUMAN_RESOURCES_MANAGEMENT");
@@ -55,6 +55,8 @@ describe("operating model simplification", () => {
     expect(visible).toContain("DELIVERY_GUY");
     expect(visible).not.toContain("DELIVERY_AGENT");
     expect(visible).not.toContain("DELIVERY_TEAM_SUPERVISOR");
+    expect(ACCOUNT_ROLE_CATALOG.find((role) => role.key === "DELIVERY_GUY")?.label)
+      .toBe("Delivery Agent");
   });
 
   it("moves approved work directly toward paid delivery", () => {

@@ -114,9 +114,9 @@ describe("localized role portals", () => {
     mocks.actor.preferredLocale = "ms";
     const html = renderToStaticMarkup(await DriverPage());
 
-    expect(html).toContain("Ruang kerja pemandu");
+    expect(html).toContain("Ruang kerja Ejen Penghantaran");
     expect(html).toContain("Penghantaran ditugaskan");
-    expect(html).toContain("Larian pemenuhan");
+    expect(html).toContain("Penghantaran saya");
     expect(html).toContain("Muat semula");
     expect(html).toContain("Memuatkan ruang kerja penghantaran");
     expect(html).not.toContain("Loading delivery workspace");
@@ -129,7 +129,7 @@ describe("localized role portals", () => {
     }));
 
     expect(html).toContain("Penerimaan pelanggan");
-    expect(html).toContain("Penerimaan disahkan dan direkodkan secara berasingan daripada bukti pemandu");
+    expect(html).toContain("Penerimaan disahkan dan direkodkan secara berasingan daripada bukti Ejen Penghantaran");
     expect(html).toContain("Periksa semua 1 baris");
     expect(html).toContain("Klasifikasi pemeriksaan");
     expect(html).toContain("Sahkan penerimaan pelanggan");

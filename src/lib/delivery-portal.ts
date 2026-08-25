@@ -155,7 +155,7 @@ function closeQuantity(left: number, right: number) {
 
 function normalizeLineOutcomes(value: unknown) {
   if (!Array.isArray(value) || value.length === 0 || value.length > 100) {
-    throw new Error("Driver-reported delivery quantities are invalid.");
+    throw new Error("Delivery Agent-reported delivery quantities are invalid.");
   }
   const seen = new Set<string>();
   return value.map((candidate) => {
@@ -163,7 +163,7 @@ function normalizeLineOutcomes(value: unknown) {
       || Object.keys(candidate).some((key) => ![
         "deliveryJobLineId", "deliveredQuantity", "damagedQuantity", "missingQuantity",
       ].includes(key))) {
-      throw new Error("Driver-reported delivery quantities are invalid.");
+      throw new Error("Delivery Agent-reported delivery quantities are invalid.");
     }
     const deliveryJobLineId = String(candidate.deliveryJobLineId ?? "");
     assertUuid(deliveryJobLineId, "Delivery job line id");
@@ -173,7 +173,7 @@ function normalizeLineOutcomes(value: unknown) {
     const damagedQuantity = reportedQuantity(candidate.damagedQuantity, "Damaged quantity");
     const missingQuantity = reportedQuantity(candidate.missingQuantity, "Missing quantity");
     if (damagedQuantity > deliveredQuantity) {
-      throw new Error("Driver-reported damaged quantity cannot exceed delivered quantity.");
+      throw new Error("Delivery Agent-reported damaged quantity cannot exceed delivered quantity.");
     }
     return { deliveryJobLineId, deliveredQuantity, damagedQuantity, missingQuantity };
   });
@@ -201,7 +201,7 @@ export function validateDeliveryEventDetails(
     details.issueCode = value.issueCode as DeliveryIssueCode;
   }
   if (value.receiverName !== undefined) {
-    details.receiverName = boundedText(value.receiverName, "Driver-reported receiver name", 2, 200);
+    details.receiverName = boundedText(value.receiverName, "Delivery Agent-reported receiver name", 2, 200);
   }
   if (value.lineOutcomes !== undefined) details.lineOutcomes = normalizeLineOutcomes(value.lineOutcomes);
 
@@ -211,7 +211,7 @@ export function validateDeliveryEventDetails(
   if (eventType === "ISSUE_REPORTED" && (!details.note || details.note.length < 3)) {
     throw new Error("Describe the delivery issue.");
   }
-  if (eventType === "NOTE_ADDED" && !details.note) throw new Error("A driver note is required.");
+  if (eventType === "NOTE_ADDED" && !details.note) throw new Error("A Delivery Agent note is required.");
   if (!issueEvent && eventType !== "FAILED" && details.issueCode) {
     throw new Error("An issue reason is not valid for this delivery event.");
   }
@@ -222,7 +222,7 @@ export function validateDeliveryEventDetails(
     throw new Error("A partial delivery requires the handover name and every line quantity.");
   }
   if (outcomeEvent && Boolean(details.receiverName) !== Boolean(details.lineOutcomes)) {
-    throw new Error("Handover name and driver-reported line quantities must be recorded together.");
+    throw new Error("Handover name and Delivery Agent-reported line quantities must be recorded together.");
   }
 
   if (details.lineOutcomes && expectedLines) {
@@ -320,9 +320,9 @@ export function resolveDeliveryDriverScope(
   userId: string,
   profile: DeliveryDriverProfile | undefined,
 ): DeliveryDriverScope {
-  assertUuid(userId, "Driver user id");
+  assertUuid(userId, "Delivery Agent user id");
   if (!profile || profile.userId !== userId || !profile.active) {
-    throw new Error("An active Delivery Guy profile is required.");
+    throw new Error("An active Delivery Agent profile is required.");
   }
   return Object.freeze({ driverUserId: userId, [driverScopeBrand]: true as const });
 }
@@ -350,7 +350,7 @@ function assignmentForEvent(
 ) {
   if (assignment.driverUserId !== scope.driverUserId
     || assignment.deliveryJobId !== deliveryJobId) {
-    throw new Error("A driver may only record events for their own assignment.");
+    throw new Error("A Delivery Agent may only record events for their own assignment.");
   }
   const assignedAt = new Date(assignment.assignedAt);
   const endedAt = assignment.endedAt ? new Date(assignment.endedAt) : null;
@@ -359,7 +359,7 @@ function assignmentForEvent(
   }
   if (clientRecordedAt.getTime() < assignedAt.getTime() - 5 * 60_000
     || (endedAt && clientRecordedAt.getTime() > endedAt.getTime() + 15 * 60_000)) {
-    throw new Error("Delivery event is outside the driver assignment window.");
+    throw new Error("Delivery event is outside the Delivery Agent assignment window.");
   }
 }
 
@@ -534,7 +534,7 @@ export function buildDriverEvidence(
   input: BuildDriverEvidenceInput,
 ): DriverEvidenceDraft {
   if (event.driverUserId !== scope.driverUserId) {
-    throw new Error("Driver evidence must belong to the driver's own event.");
+    throw new Error("Delivery Agent evidence must belong to the Delivery Agent's own event.");
   }
   assertUuid(input.deliveryJobEventId, "Delivery job event id");
   assertUuid(input.clientEvidenceId, "Client evidence id");

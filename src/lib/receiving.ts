@@ -129,7 +129,7 @@ export function assertCustomerReceivingActor(input: {
     throw new Error("Receipt confirmation requires a scoped customer receiving user.");
   }
   if (input.assignedDriverUserIds.includes(input.receivingUserId)) {
-    throw new Error("Driver evidence cannot be used as customer receiving confirmation.");
+    throw new Error("Delivery Agent evidence cannot be used as customer receiving confirmation.");
   }
 }
 

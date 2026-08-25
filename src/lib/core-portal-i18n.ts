@@ -75,7 +75,7 @@ const en: CorePortalMessages = {
       hr: { eyebrow: "Human Resources Management", description: "Create internal accounts and support direct company onboarding.", actions: ["Manage Axora users", "Support company setup", "People & access"] },
       agent: { eyebrow: "Client Account Manager workspace", description: "Create and manage customer companies, then monitor their requests, invoices, and deliveries.", actions: ["Add company", "Companies", "Company requests", "Company invoices"] },
       operations: { eyebrow: "Axora operations workspace", description: "Manage the global catalogue, paid requests, and delivery coordination.", actions: ["Review paid requests", "Coordinate deliveries", "Manage catalog", "Company operations"] },
-      deliveryGuy: { eyebrow: "Delivery Guy workspace", description: "Review assigned paid requests, buy the required items, deliver them, and capture receipt evidence.", actions: ["Assigned deliveries", "Delivery overview"] },
+      deliveryGuy: { eyebrow: "Delivery Agent workspace", description: "Review assigned paid requests, acquire the required items, deliver them, and capture proof.", actions: ["Assigned deliveries", "Delivery overview"] },
       companyAdmin: { eyebrow: "Company administrator workspace", description: "Manage branches, budgets, people, approvals, and company request progress.", actions: ["Company Users", "Branches", "Budgets", "Review requests"] },
       branchAdmin: { eyebrow: "Branch administrator workspace", description: "Keep your assigned branch team, requests, budget, and deliveries moving.", actions: ["Branch people", "Branch budget", "Branch requests", "Branch deliveries"] },
       approver: { eyebrow: "Approver decision queue", description: "{count} requests currently await an authorized decision. Self-approval is always blocked.", actions: ["Review approvals", "Check request history", "Review budget"] },
@@ -184,7 +184,7 @@ Object.assign(ms.dashboard.role, {
   hr: { eyebrow: "Pengurusan Sumber Manusia", description: "Cipta akaun dalaman dan sokong persediaan syarikat secara langsung.", actions: ["Urus pengguna Axora", "Sokong persediaan syarikat", "Orang & akses"] },
   agent: { eyebrow: "Ruang kerja Pengurus Akaun Pelanggan", description: "Cipta dan urus syarikat pelanggan, kemudian pantau permintaan, invois serta penghantaran.", actions: ["Tambah syarikat", "Syarikat", "Permintaan syarikat", "Invois syarikat"] },
   operations: { eyebrow: "Ruang kerja operasi Axora", description: "Urus katalog global, permintaan berbayar dan penyelarasan penghantaran.", actions: ["Semak permintaan berbayar", "Selaras penghantaran", "Urus katalog", "Operasi syarikat"] },
-  deliveryGuy: { eyebrow: "Ruang kerja Penghantar", description: "Semak permintaan berbayar yang ditugaskan, beli item diperlukan, hantar dan rekod bukti penerimaan.", actions: ["Penghantaran ditugaskan", "Gambaran penghantaran"] },
+  deliveryGuy: { eyebrow: "Ruang kerja Ejen Penghantaran", description: "Semak permintaan berbayar yang ditugaskan, beli item diperlukan, hantar dan rekod bukti penerimaan.", actions: ["Penghantaran ditugaskan", "Gambaran penghantaran"] },
 });
 
 Object.assign(ar.notices, {
