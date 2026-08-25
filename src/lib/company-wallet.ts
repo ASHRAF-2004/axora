@@ -701,4 +701,45 @@ export const companyWalletInternals = {
   recordTopUpInputSchema,
   requestTopUpInputSchema,
   walletWorkspaceSchema,
+  demoBalance(companyId: string) {
+    return demoFinanceState().balances.get(companyId) ?? parseMoneyDecimal("0.00");
+  },
+  commitDemoDirectPurchaseDebit(input: {
+    companyId: string;
+    amount: MoneyDecimalString;
+    commandId: string;
+    requestId: string;
+    invoiceId: string;
+    reference: string;
+    actor: AuthenticatedSessionUser;
+  }) {
+    const state = demoFinanceState();
+    const balance = state.balances.get(input.companyId) ?? parseMoneyDecimal("0.00");
+    const balanceMinor = moneyDecimalToMinorUnits(balance);
+    const amountMinor = moneyDecimalToMinorUnits(input.amount);
+    if (amountMinor <= 0n || balanceMinor < amountMinor
+      || state.ledger.has(input.commandId)) {
+      throw new CompanyWalletUnavailableError();
+    }
+    const postedAt = new Date();
+    state.balances.set(input.companyId, moneyDecimalFromMinorUnits(
+      balanceMinor - amountMinor,
+    ));
+    state.ledger.set(input.commandId, {
+      companyId: input.companyId,
+      entry: freezeDemoResult<CompanyWalletLedgerEntry>({
+        id: input.commandId,
+        type: "PAYMENT",
+        amountDelta: moneyDecimalFromMinorUnits(-amountMinor),
+        currency: "MYR",
+        effectiveDate: postedAt.toISOString().slice(0, 10),
+        reference: input.reference,
+        reason: "COMPANY_ADMIN_DIRECT_PURCHASE",
+        requestId: input.requestId,
+        invoiceId: input.invoiceId,
+        postedAt,
+        actorUserId: input.actor.id,
+      }),
+    });
+  },
 };

@@ -173,9 +173,9 @@ const stateLabels: Record<SupportedLocale, Record<string, string>> = {
 };
 
 const actionLabels: Record<SupportedLocale, Record<string, string>> = {
-  en: { BACKFILL: "Opening state", SUBMIT: "Submitted", APPROVE: "Approved", REJECT: "Rejected", RETURN: "Returned", CANCEL: "Cancelled", ESCALATE: "Escalated", FINALIZE: "Final amount recorded", ADDITIONAL_ACTUAL_REQUIRED: "Additional actual approval required" },
-  ar: { BACKFILL: "الحالة الافتتاحية", SUBMIT: "تم التقديم", APPROVE: "تمت الموافقة", REJECT: "تم الرفض", RETURN: "تمت الإعادة", CANCEL: "تم الإلغاء", ESCALATE: "تم التصعيد", FINALIZE: "تم تسجيل المبلغ النهائي", ADDITIONAL_ACTUAL_REQUIRED: "تلزم موافقة على الزيادة الفعلية" },
-  ms: { BACKFILL: "Keadaan pembukaan", SUBMIT: "Dihantar", APPROVE: "Diluluskan", REJECT: "Ditolak", RETURN: "Dikembalikan", CANCEL: "Dibatalkan", ESCALATE: "Dinaikkan", FINALIZE: "Amaun akhir direkodkan", ADDITIONAL_ACTUAL_REQUIRED: "Kelulusan amaun sebenar tambahan diperlukan" },
+  en: { BACKFILL: "Opening state", SUBMIT: "Submitted", APPROVE: "Approved", DIRECT_PURCHASE: "Direct company order placed", REJECT: "Rejected", RETURN: "Returned", CANCEL: "Cancelled", ESCALATE: "Escalated", FINALIZE: "Final amount recorded", ADDITIONAL_ACTUAL_REQUIRED: "Additional actual approval required" },
+  ar: { BACKFILL: "الحالة الافتتاحية", SUBMIT: "تم التقديم", APPROVE: "تمت الموافقة", DIRECT_PURCHASE: "تم تقديم طلب شركة مباشر", REJECT: "تم الرفض", RETURN: "تمت الإعادة", CANCEL: "تم الإلغاء", ESCALATE: "تم التصعيد", FINALIZE: "تم تسجيل المبلغ النهائي", ADDITIONAL_ACTUAL_REQUIRED: "تلزم موافقة على الزيادة الفعلية" },
+  ms: { BACKFILL: "Keadaan pembukaan", SUBMIT: "Dihantar", APPROVE: "Diluluskan", DIRECT_PURCHASE: "Pesanan terus syarikat dibuat", REJECT: "Ditolak", RETURN: "Dikembalikan", CANCEL: "Dibatalkan", ESCALATE: "Dinaikkan", FINALIZE: "Amaun akhir direkodkan", ADDITIONAL_ACTUAL_REQUIRED: "Kelulusan amaun sebenar tambahan diperlukan" },
 };
 
 export function approvalStateLabel(locale: SupportedLocale, state: string) {

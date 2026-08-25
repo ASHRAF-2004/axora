@@ -203,6 +203,23 @@ export async function commandProcurementCart(
         };
         if (index >= 0) cart.items[index] = item; else cart.items.push(item);
       }
+    } else if (parsed.operation === "ACKNOWLEDGE_PRICES") {
+      for (const item of cart.items) {
+        const source = getDemoStore().products.find((product) => (
+          `demo-${product.name.normalize("NFKD").toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64)}`
+            === item.publicRef
+        ));
+        if (!source || source.status !== "Active") continue;
+        const product = withDemoCommercialDefaults(source);
+        item.unitPrice = product.defaultSellPrice.toFixed(2);
+        item.displayedUnitPrice = product.defaultSellPrice.toFixed(2);
+        item.priceRuleVersion = product.priceRuleVersion ?? 1;
+        item.displayedPriceRuleVersion = product.priceRuleVersion ?? 1;
+        item.currency = product.priceCurrency ?? "MYR";
+        item.lineTotal = (item.quantity * product.defaultSellPrice).toFixed(2);
+        item.repriced = false;
+      }
     }
     if (parsed.operation !== "READ") {
       cart.version += 1;
@@ -266,9 +283,10 @@ export function consumeDemoProcurementCart(
   input: { cartId: string; expectedVersion: number; requestId: string },
 ) {
   if (!isDemoMode()) throw new Error("Demo cart access is unavailable.");
-  const cart = [...demoState().carts.values()].find((candidate) => (
-    candidate.id === input.cartId && candidate.status === "ACTIVE"
-  ));
+  const cart = [...demoState().carts.entries()].find(([key, candidate]) => (
+    key.startsWith(`${actor.id}:`)
+    && candidate.id === input.cartId && candidate.status === "ACTIVE"
+  ))?.[1];
   if (!cart || cart.version !== input.expectedVersion
     || cart.companyId !== actor.companyId
     || (actor.branchId && cart.branchId !== actor.branchId)) {
@@ -277,4 +295,19 @@ export function consumeDemoProcurementCart(
   cart.status = "SUBMITTED";
   cart.version += 1;
   cart.updatedAt = new Date().toISOString();
+}
+
+export function readDemoProcurementCartById(
+  actor: AuthenticatedSessionUser,
+  cartId: string,
+) {
+  if (!isDemoMode()) throw new Error("Demo cart access is unavailable.");
+  const cart = [...demoState().carts.entries()].find(([key, candidate]) => (
+    key.startsWith(`${actor.id}:`) && candidate.id === cartId
+  ))?.[1];
+  if (!cart || cart.companyId !== actor.companyId
+    || (actor.branchId && cart.branchId !== actor.branchId)) {
+    throw new Error("The cart is unavailable.");
+  }
+  return cloneCart(cart);
 }

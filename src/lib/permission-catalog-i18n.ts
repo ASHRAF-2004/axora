@@ -84,6 +84,7 @@ const resources = {
   company_user: { ar: "مستخدمي الشركة", ms: "pengguna syarikat" },
   delivery_user: { ar: "مستخدمي التسليم", ms: "pengguna penghantaran" },
   category: { ar: "فئات المنتجات", ms: "kategori produk" },
+  procurement: { ar: "مشتريات الشركة", ms: "perolehan syarikat" },
   "procurement.category_policy": { ar: "سياسة فئات الشراء", ms: "polisi kategori pembelian" },
 } as const;
 
@@ -130,6 +131,7 @@ const actions = {
   claim: { ar: "استلام", ms: "Tuntut" },
   history: { ar: "عرض سجل", ms: "Lihat sejarah" },
   archive: { ar: "أرشفة", ms: "Arkibkan" },
+  directPurchase: { ar: "تقديم طلب مباشر ضمن", ms: "Buat pesanan terus dalam" },
 } as const;
 
 type LocalizedAction = keyof typeof actions;
@@ -147,6 +149,7 @@ function permissionParts(code: PermissionCode): {
     [".approve.over_budget", "approveOverBudget"],
     [".approve.other", "approveOther"],
     [".approve.self", "approveSelf"],
+    [".direct_purchase", "directPurchase"],
     [".dispatch.company", "dispatchCompany"],
   ];
   for (const [suffix, action] of special) {

@@ -35,6 +35,7 @@ export type Permission =
   | "manage_users"
   | "manage_settings"
   | "manage_category_policy"
+  | "direct_purchase"
   | "manage_commercial_pricing"
   | "view_system_diagnostics"
   | "view_email_operations"
@@ -153,6 +154,7 @@ const companyAdminPermissions: readonly Permission[] = [
   "manage_users",
   "manage_settings",
   "manage_category_policy",
+  "direct_purchase",
 ];
 
 // Legacy capabilities remain byte-for-byte compatible while active canonical

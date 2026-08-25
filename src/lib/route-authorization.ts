@@ -40,6 +40,7 @@ const ROUTE_PERMISSION_CODES: Readonly<Record<Permission, readonly PermissionCod
   ],
   manage_settings: ["settings.manage"],
   manage_category_policy: ["procurement.category_policy.manage"],
+  direct_purchase: ["procurement.direct_purchase"],
   manage_commercial_pricing: ["commercial.pricing.manage"],
   view_system_diagnostics: ["system.diagnostics.view"],
   view_email_operations: ["email.operations.view"],

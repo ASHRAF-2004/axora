@@ -24,6 +24,7 @@ import { sanitizeCustomerWorkflowEvent } from "./customer-workflow-privacy";
 
 interface RequestRow extends QueryResultRow {
   id: string;
+  purchaseMode: NonNullable<ProcurementRequest["purchaseMode"]>;
   createdById?: string;
   orderCode: string;
   requestDate: string;
@@ -88,6 +89,7 @@ function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
     if (!requests.has(row.id)) {
       requests.set(row.id, {
         id: row.id,
+        purchaseMode: row.purchaseMode,
         createdById: row.createdById,
         orderCode: row.orderCode,
         requestDate: row.requestDate,
@@ -166,12 +168,15 @@ function minimizeCustomerProductReferences(
       supplierName: undefined,
       quotationReference: undefined,
       supplierConfirmationStatus: undefined,
+      unitBuyPrice: 0,
+      deliveryCharge: 0,
     })),
   }));
 }
 
 const requestSelect = `SELECT
   r.id::text,
+  r.purchase_mode AS "purchaseMode",
   r.created_by::text AS "createdById",
   r.order_code AS "orderCode",
   r.request_date::text AS "requestDate",
@@ -189,7 +194,8 @@ const requestSelect = `SELECT
   rs.label AS status,
   r.notes,
   r.issue_reason AS "issueReason",
-  COALESCE(approval.status,'Pending') AS "approvalStatus",
+  CASE WHEN r.purchase_mode='COMPANY_ADMIN_DIRECT' THEN 'Approved'
+    ELSE COALESCE(approval.status,'Pending') END AS "approvalStatus",
   r.approval_revision::int AS "approvalRevision",
   approval.reason AS "approvalReason",
   approval.reviewer_name AS "approvedByName",

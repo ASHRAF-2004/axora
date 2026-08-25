@@ -350,6 +350,33 @@ BEGIN
   END IF;
 END $$;
 
+-- Company Administrator direct purchase keeps replay and financial command
+-- evidence private. The application role receives only the three audited
+-- SECURITY DEFINER capabilities used to read the Cart workspace, execute the
+-- atomic purchase, and reconcile an uncertain network outcome.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.company_admin_direct_purchase_commands') IS NOT NULL
+    AND to_regprocedure(
+      'public.axora_company_admin_direct_purchase(uuid,uuid,uuid,integer,uuid,timestamp with time zone)'
+    ) IS NOT NULL
+  THEN
+    REVOKE ALL ON TABLE public.company_admin_direct_purchase_commands
+      FROM axora_app;
+    REVOKE ALL ON FUNCTION
+      public.axora_company_admin_direct_purchase_authorized(jsonb,uuid,uuid),
+      public.axora_store_company_admin_direct_purchase_result(uuid,text,uuid,uuid,uuid,uuid,uuid,integer,text,jsonb,uuid,uuid,uuid,uuid,timestamptz),
+      public.axora_company_admin_direct_purchase_internal(uuid,uuid,uuid,integer,uuid,timestamptz,text)
+      FROM axora_app;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_company_admin_direct_purchase_workspace(uuid,uuid,uuid,integer,timestamptz),
+      public.axora_company_admin_direct_purchase(uuid,uuid,uuid,integer,uuid,timestamptz),
+      public.axora_company_admin_direct_purchase_result(uuid,uuid,uuid,timestamptz)
+      TO axora_app;
+  END IF;
+END $$;
+
 -- Prompt 7 operating-model capabilities. Historical columns and callable
 -- signatures remain for rollback compatibility; private evidence tables and
 -- internal financial primitives are never exposed to the application role.

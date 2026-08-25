@@ -15,6 +15,7 @@ import { approveAndPay } from "@/lib/company-wallet";
 import { isApproveAndPayLocalNotReadyState } from "@/lib/finance-business-results";
 import { decideRequestApproval } from "@/lib/request-approval";
 import { canAccess } from "@/lib/permissions";
+import { usesCompanyAdministratorDirectPurchase } from "@/lib/company-admin-direct-purchase";
 
 const requestSubmissionKeySchema = z.string().uuid();
 const cartSubmissionSchema = z.object({
@@ -24,6 +25,12 @@ const cartSubmissionSchema = z.object({
 
 export async function createRequestAction(formData: FormData) {
   const user = await requirePermission("create_requests");
+  if (usesCompanyAdministratorDirectPurchase(user)) {
+    const branchId = readFormText(formData, "branchId");
+    redirect(branchId
+      ? `/cart?branch=${encodeURIComponent(branchId)}`
+      : "/products?notice=shopping-branch-required");
+  }
   const parsedInput = requestSchema.safeParse({
     companyId: readFormText(formData, "companyId") || "canonical-cart",
     branchId: readFormText(formData, "branchId") || "canonical-cart",

@@ -16,6 +16,7 @@ import { commandProcurementCart } from "@/lib/procurement-cart";
 import { loadShoppingBranchContexts, resolveShoppingBranch } from "@/lib/shopping-context";
 import { shoppingContextMessages } from "@/lib/shopping-context-i18n";
 import { redirect } from "next/navigation";
+import { usesCompanyAdministratorDirectPurchase } from "@/lib/company-admin-direct-purchase";
 
 export default async function ProductsPage({
   searchParams,
@@ -71,6 +72,7 @@ export default async function ProductsPage({
           selectedBranch={selectedBranch}
           initialCart={initialCart}
           canSwitchBranch={!actor.branchId}
+          directPurchase={usesCompanyAdministratorDirectPurchase(actor)}
           locale={locale}
         />
       </>
