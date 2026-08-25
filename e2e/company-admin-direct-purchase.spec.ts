@@ -96,6 +96,7 @@ test("Company Administrator places one order and reconciles a lost success respo
   await expect(page.getByText(/Pending approval|Approve & Pay|Buying Cost|margin/i)).toHaveCount(0);
 
   const placeOrder = page.getByRole("button", { name: "Place order", exact: true });
+  await expect(placeOrder).toBeEnabled({ timeout: 15_000 });
   await placeOrder.focus();
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: "Place order for E2E-MAIN?" });
@@ -125,7 +126,14 @@ test("Company Administrator places one order and reconciles a lost success respo
     "Your Cart changed after you reviewed it.",
   );
   await expect(page.locator(".cart-purchase-success")).toHaveCount(0);
-  await expect(placeOrder).toBeEnabled();
+  // The Cart snapshot arrives in the typed stale result immediately. The
+  // financial workspace is refreshed independently through the RSC boundary,
+  // so keep the control locked until both authoritative versions agree.
+  await expect(page.getByRole("spinbutton", {
+    name: "Quantity",
+    exact: true,
+  })).toHaveValue("2");
+  await expect(placeOrder).toBeEnabled({ timeout: 15_000 });
   await placeOrder.click();
   await expect(dialog).toBeVisible();
 
