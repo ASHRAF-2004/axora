@@ -250,16 +250,21 @@ export function CartReview({
 
   useEffect(() => {
     if (checkoutMode !== "DIRECT" || recoveryStarted.current) return;
-    recoveryStarted.current = true;
-    const pending = readPendingPurchase(pendingPurchaseKey);
-    if (!pending) {
-      const readyTimer = window.setTimeout(() => setRecoveryReady(true), 0);
-      return () => window.clearTimeout(readyTimer);
-    }
-    const reconcileTimer = window.setTimeout(() => {
+    // Mark recovery as started only after the deferred task begins. React
+    // Strict Mode may mount, clean up, and mount this effect again before the
+    // first timer fires; marking it earlier would leave checkout locked in
+    // development after that timer is cancelled.
+    const recoveryTimer = window.setTimeout(() => {
+      if (recoveryStarted.current) return;
+      recoveryStarted.current = true;
+      const pending = readPendingPurchase(pendingPurchaseKey);
+      if (!pending) {
+        setRecoveryReady(true);
+        return;
+      }
       void reconcile(pending).finally(() => setRecoveryReady(true));
     }, 0);
-    return () => window.clearTimeout(reconcileTimer);
+    return () => window.clearTimeout(recoveryTimer);
   }, [checkoutMode, pendingPurchaseKey, reconcile]);
 
   async function submitPurchase(pending: PendingPurchase) {
