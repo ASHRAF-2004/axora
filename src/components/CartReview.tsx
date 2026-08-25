@@ -120,7 +120,6 @@ export function CartReview({
   const [recoveryReady, setRecoveryReady] = useState(checkoutMode !== "DIRECT");
   const [pendingPurchase, setPendingPurchase] = useState<PendingPurchase>();
   const [confirmation, setConfirmation] = useState<PurchaseConfirmation>();
-  const [purchaseResult, setPurchaseResult] = useState<CompanyAdminDirectPurchaseResult>();
   const cartRef = useRef(cart);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const placeOrderRef = useRef<HTMLButtonElement>(null);
@@ -187,7 +186,6 @@ export function CartReview({
   const handlePurchaseResult = useCallback((
     result: CompanyAdminDirectPurchaseResult,
   ) => {
-    setPurchaseBusy(false);
     setUnknownOutcome(false);
     setStatusAction(null);
     if (result.status === "SUCCESS"
@@ -195,12 +193,13 @@ export function CartReview({
       || result.status === "CART_ALREADY_PURCHASED") {
       clearPendingPurchase(pendingPurchaseKey);
       setPendingPurchase(undefined);
-      setPurchaseResult(result);
-      setStatus("");
+      setPurchaseBusy(true);
+      setStatus(copy.orderPlaced);
       publishCartChanged({ branchId: branch.id, version: result.consumedCartVersion });
-      router.refresh();
+      window.location.replace(`/requests/${encodeURIComponent(result.requestId)}?placed=1`);
       return;
     }
+    setPurchaseBusy(false);
     clearPendingPurchase(pendingPurchaseKey);
     setPendingPurchase(undefined);
     if (result.status === "PRICE_CHANGED") {
@@ -348,26 +347,6 @@ export function CartReview({
     const item = cartRef.current.items.find((candidate) => candidate.publicRef === productRef);
     const quantity = Number(value);
     if (item && item.quantity !== quantity) void mutate(productRef, "SET", quantity);
-  }
-
-  if (purchaseResult && (purchaseResult.status === "SUCCESS"
-    || purchaseResult.status === "ALREADY_PROCESSED"
-    || purchaseResult.status === "CART_ALREADY_PURCHASED")) {
-    return (
-      <section className="cart-purchase-success" aria-labelledby="order-placed-title" role="status">
-        <h2 id="order-placed-title">{copy.orderPlaced}</h2>
-        <dl>
-          <div><dt>{copy.order}</dt><dd translate="no">{purchaseResult.orderReference}</dd></div>
-          <div><dt>{copy.paidFromWallet}</dt><dd className="financial-value">{formatMoneyDecimal(purchaseResult.amount, purchaseResult.currency, locale)}</dd></div>
-          <div><dt>{copy.deliveringTo}</dt><dd>{purchaseResult.branchCode}</dd></div>
-        </dl>
-        <div className="form-actions">
-          <Link className="button button-primary" href={`/requests/${purchaseResult.requestId}`}>{copy.viewOrder}</Link>
-          <Link className="button button-secondary" href={`/requests/${purchaseResult.requestId}#invoice`}>{copy.viewInvoice}</Link>
-          <Link className="button button-secondary" href="/deliveries">{copy.viewDelivery}</Link>
-        </div>
-      </section>
-    );
   }
 
   const directWorkspaceCurrent = checkoutMode === "DIRECT"

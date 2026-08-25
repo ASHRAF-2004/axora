@@ -148,7 +148,7 @@ test("Company Administrator places one order and reconciles a lost success respo
       if (!dropped && method === "POST" && new URL(url, location.href).pathname === "/cart") {
         dropped = true;
         await response.arrayBuffer();
-        document.documentElement.dataset.purchaseResponseDropped = "true";
+        sessionStorage.setItem("axora:e2e:purchase-response-dropped", "true");
         throw new TypeError("Controlled direct-purchase response loss");
       }
       return response;
@@ -158,7 +158,10 @@ test("Company Administrator places one order and reconciles a lost success respo
 
   const success = page.locator(".cart-purchase-success");
   await expect(success.getByRole("heading", { name: "Order placed" })).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator("html")).toHaveAttribute("data-purchase-response-dropped", "true");
+  await expect(page).toHaveURL(/\/requests\/.+\?placed=1$/);
+  expect(await page.evaluate(() => sessionStorage.getItem(
+    "axora:e2e:purchase-response-dropped",
+  ))).toBe("true");
   await expect(success.getByText("Paid from Company Wallet")).toBeVisible();
   await expect(success.getByText("E2E-MAIN", { exact: true })).toBeVisible();
   const orderReference = (await success.locator("dd").first().textContent())?.trim();
@@ -166,12 +169,53 @@ test("Company Administrator places one order and reconciles a lost success respo
   expect(await page.evaluate((key) => sessionStorage.getItem(key),
     `axora:company-admin-direct-purchase:${actor.id}`)).toBeNull();
 
+  const receiptUrl = page.url();
+  let receiptMutationRequests = 0;
+  page.on("request", (request) => {
+    if (request.method() !== "GET" && request.url().includes(`/requests/${receiptUrl.split("/").at(-1)?.split("?")[0]}`)) {
+      receiptMutationRequests += 1;
+    }
+  });
+  await page.reload();
+  await expect(page).toHaveURL(receiptUrl);
+  await expect(success.getByRole("heading", { name: "Order placed" })).toBeVisible();
+  await expect(success.getByText(orderReference!, { exact: true })).toBeVisible();
+  await expect(page.getByText("Sticky notes", { exact: true })).toBeVisible();
+  expect(receiptMutationRequests).toBe(0);
+
   await success.getByRole("link", { name: "View order" }).click();
+  await expect(page).not.toHaveURL(/\?placed=1/);
   await expect(page.getByRole("heading", { level: 1, name: orderReference! })).toBeVisible();
   await expect(page.getByText("Direct company order", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Placed and paid", { exact: true })).toBeVisible();
   await expect(page.getByText(/self-approval|Pending approval|Approve & Pay/i)).toHaveCount(0);
   await expect(page.locator("body")).not.toContainText("Buying Cost");
+
+  await page.goBack();
+  await expect(page).toHaveURL(receiptUrl);
+  await expect(success.getByRole("heading", { name: "Order placed" })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole("heading", { level: 1, name: orderReference! })).toBeVisible();
+  await page.goBack();
+  await success.getByRole("link", { name: "View invoice" }).click();
+  await expect(page).toHaveURL(/\/requests\/.+#invoice$/);
+  await expect(page.locator("#invoice")).toBeVisible();
+  await page.goBack();
+  await expect(success.getByRole("heading", { name: "Order placed" })).toBeVisible();
+  await success.getByRole("link", { name: "View delivery" }).click();
+  await expect(page).toHaveURL(/\/deliveries$/);
+  await page.goBack();
+  await expect(page).toHaveURL(receiptUrl);
+
+  await page.getByRole("button", { name: /My profile:/ }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/login/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByText(orderReference!, { exact: true })).toHaveCount(0);
+  await signInAsDemoRole(page, actor);
+  await page.goto(receiptUrl);
+  await expect(success.getByRole("heading", { name: "Order placed" })).toBeVisible();
 
   await page.goto("/approvals");
   await expect(page.getByText(orderReference!, { exact: true })).toHaveCount(0);
@@ -182,6 +226,65 @@ test("Company Administrator places one order and reconciles a lost success respo
   await page.goBack();
   await page.goForward();
   await expect(page.getByText("Your cart is empty.")).toBeVisible();
+
+  await signInAsDemoRole(page, {
+    ...actor,
+    id: `d6000000-0000-4000-8000-00000000000${projectSuffix(testInfo.project.name)}`,
+    email: `foreign-receipt-${testInfo.project.name}@axora.invalid`,
+    companyId: "22222222-2222-4222-8222-222222222222",
+  });
+  await page.goto(receiptUrl);
+  await expect(page.getByText(orderReference!, { exact: true })).toHaveCount(0);
+
+  await signInAsDemoRole(page, {
+    id: `d7000000-0000-4000-8000-00000000000${projectSuffix(testInfo.project.name)}`,
+    email: `delivery-receipt-${testInfo.project.name}@axora.invalid`,
+    name: `Delivery receipt probe ${testInfo.project.name}`,
+    role: "DELIVERY_AGENT",
+    accountKind: "DELIVERY",
+    scopeType: "DELIVERY",
+  });
+  await page.goto(receiptUrl);
+  await expect(page.getByText(orderReference!, { exact: true })).toHaveCount(0);
+});
+
+test("a normal successful response replaces Cart with the authoritative receipt", async ({ page }, testInfo) => {
+  const suffix = projectSuffix(testInfo.project.name);
+  const actor: DemoRoleSession = {
+    ...directAdministrator(testInfo.project.name),
+    id: `d5000000-0000-4000-8000-00000000000${suffix}`,
+    email: `direct-receipt-${testInfo.project.name}@axora.invalid`,
+  };
+  await signInAsDemoRole(page, actor);
+  await clearCart(page);
+  await addStickyNotes(page);
+  await page.goto(`/cart?branch=${branchId}`);
+  await page.getByRole("button", { name: "Place order", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Place order for E2E-MAIN?" });
+  await dialog.getByRole("button", { name: "Place order", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/requests\/.+\?placed=1$/, { timeout: 15_000 });
+  const receipt = page.locator(".cart-purchase-success");
+  await expect(receipt.getByRole("heading", { name: "Order placed" })).toBeVisible();
+  const receiptUrl = page.url();
+  await page.reload();
+  await expect(page).toHaveURL(receiptUrl);
+  await expect(receipt.getByRole("heading", { name: "Order placed" })).toBeVisible();
+  await page.goto(`/cart?branch=${branchId}`);
+  await expect(page.getByText("Your cart is empty.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Place order", exact: true })).toHaveCount(0);
+
+  await page.goto(`/products?branch=${branchId}&view=all&q=A4%20paper`);
+  const newCartProduct = page.locator(".shop-product-card").filter({
+    has: page.getByRole("heading", { name: "A4 paper 70gsm" }),
+  });
+  await newCartProduct.getByRole("button", { name: "Add to cart" }).click();
+  await page.goto(receiptUrl);
+  await expect(page.getByText("Sticky notes", { exact: true })).toBeVisible();
+  await expect(page.getByText("A4 paper 70gsm", { exact: true })).toHaveCount(0);
+  await page.goto(`/cart?branch=${branchId}`);
+  await expect(page.getByRole("heading", { name: "A4 paper 70gsm" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sticky notes" })).toHaveCount(0);
 });
 
 test("subordinate purchase requests retain separation of duties", async ({ page }, testInfo) => {
