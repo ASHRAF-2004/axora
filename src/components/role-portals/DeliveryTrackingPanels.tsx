@@ -176,6 +176,7 @@ export function DriverTrackingPanel({
   const terminalJobIds = useRef(new Set<string>());
   const browserWatchId = useRef<number | null>(null);
   const collectionEpoch = useRef(0);
+  const controlEpoch = useRef(0);
   const deliveriesById = useMemo(() => new Map(
     deliveries.map((delivery) => [delivery.id, delivery]),
   ), [deliveries]);
@@ -197,6 +198,11 @@ export function DriverTrackingPanel({
     if (watchId !== null && "geolocation" in navigator) {
       navigator.geolocation.clearWatch(watchId);
     }
+  }, []);
+
+  const invalidatePendingControl = useCallback(() => {
+    controlEpoch.current += 1;
+    setControlBusy(false);
   }, []);
 
   useEffect(() => {
@@ -257,6 +263,7 @@ export function DriverTrackingPanel({
       // before awaiting the command response; if completion is rejected or
       // remains unresolved, the still-visible session offers an explicit
       // Resume action and RESUME is idempotent against an ACTIVE session.
+      invalidatePendingControl();
       stopBrowserCollection();
       setSharingEnabled(false);
       writeQueue(actorId, []);
@@ -271,6 +278,7 @@ export function DriverTrackingPanel({
   }, [
     actorId,
     copy.commandChecking,
+    invalidatePendingControl,
     rememberResumeRequired,
     stopBrowserCollection,
   ]);
@@ -280,6 +288,7 @@ export function DriverTrackingPanel({
       const detail = (event as CustomEvent<{ jobId?: string }>).detail;
       if (!detail?.jobId) return;
       terminalJobIds.current.add(detail.jobId);
+      invalidatePendingControl();
       stopBrowserCollection();
       setSharingEnabled(false);
       writeQueue(actorId, []);
@@ -294,7 +303,13 @@ export function DriverTrackingPanel({
     };
     window.addEventListener("axora:delivery-terminal", terminal);
     return () => window.removeEventListener("axora:delivery-terminal", terminal);
-  }, [actorId, clearResumeRequired, copy.endedIndicator, stopBrowserCollection]);
+  }, [
+    actorId,
+    clearResumeRequired,
+    copy.endedIndicator,
+    invalidatePendingControl,
+    stopBrowserCollection,
+  ]);
 
   const current = useMemo(
     () => workspace?.sessions.find((session) => ["ACTIVE", "PAUSED"].includes(session.status)),
@@ -464,6 +479,8 @@ export function DriverTrackingPanel({
 
   const startOrResumeSharing = async () => {
     if (!current || controlBusy) return;
+    const operationEpoch = controlEpoch.current + 1;
+    controlEpoch.current = operationEpoch;
     setControlBusy(true);
     setError("");
     const mustResume = current.status === "PAUSED" || resumeRequired
@@ -489,6 +506,7 @@ export function DriverTrackingPanel({
         } catch { /* Keep browser sharing disabled while unresolved. */ }
       }
     }
+    if (controlEpoch.current !== operationEpoch) return;
     if (!resumed) {
       setNotice(copy.commandUnconfirmed);
       setError(copy.commandFailed);
@@ -511,6 +529,8 @@ export function DriverTrackingPanel({
 
   const pauseSharing = async () => {
     if (!current || current.status !== "ACTIVE" || controlBusy) return;
+    const operationEpoch = controlEpoch.current + 1;
+    controlEpoch.current = operationEpoch;
     setControlBusy(true);
     setError("");
     // Stop the browser watch immediately on the user's privacy action. The
@@ -533,6 +553,7 @@ export function DriverTrackingPanel({
         ));
       } catch { /* Browser collection is already stopped. */ }
     }
+    if (controlEpoch.current !== operationEpoch) return;
     if (!paused) {
       setNotice(copy.commandUnconfirmed);
       setError(copy.commandFailed);
