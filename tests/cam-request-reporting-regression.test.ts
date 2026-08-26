@@ -12,6 +12,10 @@ const migrationUrl = new URL(
   "../database/migrations/119_cam_received_quantity_authorization.sql",
   import.meta.url,
 );
+const invoiceMigrationUrl = new URL(
+  "../database/migrations/120_cam_customer_invoice_access.sql",
+  import.meta.url,
+);
 
 const owner: Actor = {
   userId: "a1190000-0000-4000-8000-000000000001",
@@ -92,6 +96,7 @@ async function createCam(
     companyId?: string;
     revoked?: boolean;
     denyRequestView?: boolean;
+    denyInvoiceView?: boolean;
   },
 ): Promise<Actor> {
   const actor = { userId: randomUUID(), assignmentId: randomUUID() };
@@ -149,6 +154,17 @@ async function createCam(
         'CAM_REQUEST_ACCESS_BLOCKED',$2
       FROM permissions permission
       WHERE permission.permission_code='request.view'
+    `, [actor.userId, owner.userId]);
+  }
+  if (input.denyInvoiceView) {
+    await db.query(`
+      INSERT INTO user_permission_overrides(
+        user_id,permission_id,effect,scope_type,starts_at,active,
+        reason,changed_by
+      ) SELECT $1,permission.id,'DENY','PLATFORM',now(),true,
+        'CAM_INVOICE_ACCESS_BLOCKED',$2
+      FROM permissions permission
+      WHERE permission.permission_code='finance.invoice.view'
     `, [actor.userId, owner.userId]);
   }
   return actor;
@@ -337,6 +353,11 @@ describe("CAM request and dashboard receipt authorization regression", () => {
         scopeType: "PLATFORM",
         revoked: true,
       });
+      const deniedInvoiceCam = await createCam(db, {
+        label: "invoice-denied",
+        scopeType: "PLATFORM",
+        denyInvoiceView: true,
+      });
 
       const fixtureEvidence = await db.query<{
         ordinaryRequests: number;
@@ -386,6 +407,38 @@ describe("CAM request and dashboard receipt authorization regression", () => {
       await expect(dashboardProjection(db, platformCam)).resolves.toMatchObject({
         rows: [{ attention: expect.any(Number) }],
       });
+
+      expect((await db.query(`
+        SELECT request_id
+        FROM axora_operation_request_access_rows(
+          $1,$2,'finance.invoice.view',now()
+        )
+      `, [platformCam.userId, platformCam.assignmentId])).rows).toEqual([]);
+
+      await db.exec(await readFile(invoiceMigrationUrl, "utf8"));
+
+      const camInvoiceRequests = await db.query<{ requestId: string }>(`
+        SELECT request_id::text AS "requestId"
+        FROM axora_operation_request_access_rows(
+          $1,$2,'finance.invoice.view',now()
+        )
+      `, [platformCam.userId, platformCam.assignmentId]);
+      expect(camInvoiceRequests.rows.some(
+        (row) => row.requestId === direct.requestId,
+      )).toBe(true);
+      expect((await db.query(`
+        SELECT request_id
+        FROM axora_operation_request_access_rows(
+          $1,$2,'finance.invoice.view',now()
+        )
+      `, [deniedInvoiceCam.userId, deniedInvoiceCam.assignmentId])).rows)
+        .toEqual([]);
+      expect((await db.query(`
+        SELECT request_id
+        FROM axora_operation_request_access_rows(
+          $1,$2,'finance.invoice.view',now()
+        )
+      `, [revokedCam.userId, revokedCam.assignmentId])).rows).toEqual([]);
 
       const companySnapshot = await db.query<{
         snapshot: unknown;

@@ -2,6 +2,7 @@ import type { QueryResultRow } from "pg";
 import type { AuthenticatedSessionUser } from "./auth";
 import { getDemoOperations } from "./demo-operations";
 import { isDemoMode, query } from "./db";
+import { canAccess } from "./permissions";
 import { listAuthorizedRequests } from "./request-reader";
 import type {
   ApprovalRecord,
@@ -120,13 +121,18 @@ export async function listAuthorizedDeliveries(
 
 interface InvoiceVisibilityRow extends QueryResultRow, InvoiceRecord {}
 
+export function canViewInternalFinance(
+  actor: AuthenticatedSessionUser,
+) {
+  return canAccess(actor, "manage_finance");
+}
+
 export async function listAuthorizedInvoices(
   actor: AuthenticatedSessionUser,
 ): Promise<InvoiceRecord[]> {
   if (isDemoMode()) {
     const { requestIds } = await visibleRequestIdentity(actor);
-    const platformInternal = actor.accountKind === "PLATFORM"
-      && actor.scopeType === "PLATFORM";
+    const platformInternal = canViewInternalFinance(actor);
     return getDemoOperations().invoices.filter((invoice) =>
       requestIds.has(invoice.requestId)
       && (invoice.direction === "CUSTOMER" || platformInternal));
@@ -157,8 +163,9 @@ export async function listAuthorizedInvoices(
         $1,$2,'finance.invoice.view',$3
       ) access ON access.request_id=request.id
       LEFT JOIN public.axora_operation_request_access_rows(
-        $1,$2,'platform.view',$3
-      ) platform_access ON platform_access.request_id=request.id
+        $1,$2,'finance.manage',$3
+      ) internal_finance_access
+        ON internal_finance_access.request_id=request.id
       LEFT JOIN public.companies company ON company.id=balance.company_id
       LEFT JOIN public.suppliers supplier ON supplier.id=balance.supplier_id
       JOIN public.lookup_values invoice_status
@@ -166,7 +173,7 @@ export async function listAuthorizedInvoices(
       JOIN public.lookup_values request_status
         ON request_status.id=request.status_id
       WHERE balance.direction='CUSTOMER'
-         OR platform_access.request_id IS NOT NULL
+         OR internal_finance_access.request_id IS NOT NULL
       ORDER BY balance.invoice_date DESC,balance.invoice_number,balance.id
     `, [actor.id, assignmentId(actor), capturedAt]);
     return result.rows;
@@ -205,11 +212,12 @@ export async function listAuthorizedPayments(
         $1,$2,'finance.invoice.view',$3
       ) access ON access.request_id=request.id
       LEFT JOIN public.axora_operation_request_access_rows(
-        $1,$2,'platform.view',$3
-      ) platform_access ON platform_access.request_id=request.id
+        $1,$2,'finance.manage',$3
+      ) internal_finance_access
+        ON internal_finance_access.request_id=request.id
       LEFT JOIN public.users recorder ON recorder.id=payment.recorded_by
       WHERE invoice.direction='CUSTOMER'
-         OR platform_access.request_id IS NOT NULL
+         OR internal_finance_access.request_id IS NOT NULL
       ORDER BY payment.payment_date DESC,payment.created_at DESC,payment.id
     `, [actor.id, assignmentId(actor), capturedAt]);
     return result.rows;

@@ -886,6 +886,7 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "request.view",
     "delivery.view",
     "budget.view",
+    "finance.invoice.view",
     "commercial.company_ceiling.view",
     "document.view",
     "document.download",
