@@ -2,7 +2,7 @@ import { DashboardPeriodControls } from "@/components/DashboardPeriodControls";
 import { MetricCard } from "@/components/MetricCard";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { requirePagePermission } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { normalizeDashboardPeriod, type DashboardPeriodInput } from "@/lib/dashboard-period";
 import { dashboardPeriodMessages } from "@/lib/dashboard-period-i18n";
@@ -13,6 +13,7 @@ import {
 import { formatCurrency, formatDate, timeOfDayGreeting } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
 import { canAccess } from "@/lib/permissions";
+import { isDeliveryAgentSession } from "@/lib/session-landing";
 import {
   AlertTriangle,
   ArrowRight,
@@ -27,6 +28,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 type DashboardSearchParams = Record<string, string | string[] | undefined>;
 
@@ -35,7 +37,7 @@ function first(value: string | string[] | undefined) {
 }
 
 function roleDashboard(
-  actor: Awaited<ReturnType<typeof requirePagePermission>>,
+  actor: Awaited<ReturnType<typeof requireSession>>,
   pendingApprovals: number,
   locale: SupportedLocale,
 ) {
@@ -92,7 +94,9 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<DashboardSearchParams>;
 }) {
-  const actor = await requirePagePermission("view_dashboard");
+  const actor = await requireSession();
+  if (isDeliveryAgentSession(actor)) redirect("/driver");
+  if (!canAccess(actor, "view_dashboard")) redirect("/access-denied");
   const raw = await searchParams;
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).dashboard;

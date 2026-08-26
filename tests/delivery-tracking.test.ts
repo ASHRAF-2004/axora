@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import type { AuthenticatedSessionUser } from "../src/lib/auth";
 import {
+  getCompanyDeliveryTracking,
   trackingConfigurationSchema,
   trackingControlSchema,
   trackingFailureSchema,
@@ -14,6 +16,12 @@ const ids = {
 };
 
 describe("live delivery tracking validation", () => {
+  beforeEach(() => {
+    global.__axoraDemoDeliveryClaimState = undefined;
+    global.__axoraDemoDeliveryExecutionState = undefined;
+    global.__axoraDemoDeliveryTrackingState = undefined;
+  });
+
   it("accepts bounded GPS samples and rejects impossible coordinate inputs", () => {
     expect(trackingPointSchema.parse({
       action: "POINT",
@@ -91,12 +99,27 @@ describe("live delivery tracking validation", () => {
     })).toThrow();
   });
 
-  it("keeps pause/resume supervisor-only commands distinct from agent failures", () => {
+  it("allows Delivery Agent pause/resume while reserving terminal END for supervisors", () => {
     expect(trackingControlSchema.parse({
       action: "PAUSE",
       sessionId: ids.session,
       reason: "Approved battery preservation condition",
     }).action).toBe("PAUSE");
+    expect(trackingFailureSchema.parse({
+      action: "RESUME",
+      sessionId: ids.session,
+      reason: "Delivery Agent resumed location sharing",
+    }).action).toBe("RESUME");
+    expect(() => trackingFailureSchema.parse({
+      action: "END",
+      sessionId: ids.session,
+      reason: "Delivery Agent attempted to end tracking",
+    })).toThrow();
+    expect(trackingControlSchema.parse({
+      action: "END",
+      sessionId: ids.session,
+      reason: "Supervisor ended an operational tracking session",
+    }).action).toBe("END");
     expect(trackingFailureSchema.parse({
       action: "REPORT_FAILURE",
       sessionId: ids.session,
@@ -120,5 +143,44 @@ describe("live delivery tracking validation", () => {
     }
     expect(deliveryTrackingMessages("ar").companyTitle).toContain("تسليم");
     expect(deliveryTrackingMessages("ms").companyTitle).toContain("Penghantaran");
+  });
+
+  it("shows an authorized company a privacy-safe preparing card before claim", async () => {
+    const companyActor: AuthenticatedSessionUser = {
+      id: "40000000-0000-4000-8000-000000000001",
+      email: "company-tracking@example.test",
+      name: "Company tracking fixture",
+      role: "COMPANY_ADMIN",
+      accountKind: "COMPANY",
+      scopeType: "COMPANY",
+      companyId: "66666666-6666-4666-8666-666666666666",
+      roleAssignmentId: "40000000-0000-4000-8000-000000000002",
+      isOwner: false,
+      authVersion: 1,
+    };
+    const workspace = await getCompanyDeliveryTracking(companyActor);
+    expect(workspace.sessions).toHaveLength(1);
+    expect(workspace.sessions[0]).toMatchObject({
+      sessionId: "customer:DEL-DEMO-AVAILABLE-001",
+      jobId: "",
+      jobCode: "DEL-DEMO-AVAILABLE-001",
+      jobStatus: "PREPARING",
+      status: "NOT_STARTED",
+      stale: false,
+      locationAvailable: false,
+      visibilityPrecision: "APPROXIMATE",
+      contactMode: "NONE",
+    });
+    expect(workspace.sessions[0]).not.toHaveProperty("agentUserId");
+    expect(workspace.sessions[0]).not.toHaveProperty("agentName");
+    expect(workspace.sessions[0]).not.toHaveProperty("rawRetentionDays");
+    expect(workspace.sessions[0]).not.toHaveProperty("pointCount");
+    expect(workspace.sessions[0]).not.toHaveProperty("accuracyMeters");
+
+    const foreign = await getCompanyDeliveryTracking({
+      ...companyActor,
+      companyId: "77777777-7777-4777-8777-777777777777",
+    });
+    expect(foreign.sessions).toEqual([]);
   });
 });

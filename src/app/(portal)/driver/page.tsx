@@ -15,7 +15,7 @@ export default async function DriverPage() {
         title={copy.title}
         description={copy.description}
       />
-      <AvailableDeliveryJobs locale={locale} />
+      <AvailableDeliveryJobs actorId={actor.id} locale={locale} />
       <DriverOfflineWorkspace locale={locale} />
     </>
   );

@@ -107,7 +107,7 @@ const REQUEST_STATUS: Record<SupportedLocale, Record<string, string>> = {
     Failed: "فشل",
     ACCEPTED: "تم قبول المهمة",
     STARTED: "بدأت الرحلة",
-    ARRIVED: "وصل السائق",
+    ARRIVED: "وصل مسؤول التوصيل",
     ATTEMPTED: "تمت محاولة التسليم",
     PARTIALLY_DELIVERED: "تم التسليم جزئيًا",
     DELIVERED: "تم التسليم",
@@ -136,7 +136,7 @@ const REQUEST_STATUS: Record<SupportedLocale, Record<string, string>> = {
     Failed: "gagal",
     ACCEPTED: "tugasan diterima",
     STARTED: "perjalanan dimulakan",
-    ARRIVED: "pemandu tiba",
+    ARRIVED: "Ejen Penghantaran tiba",
     ATTEMPTED: "penghantaran dicuba",
     PARTIALLY_DELIVERED: "dihantar sebahagian",
     DELIVERED: "dihantar",
@@ -349,9 +349,9 @@ export function renderWorkflowNotification(
       return { title: "Delivery scheduled", body: "Axora created a delivery job for this purchase request." };
     case "driver_assigned": {
       const jobCode = boundedParameter(message.jobCode, "Delivery job code");
-      if (locale === "ar") return { title: "مهمة تسليم جديدة", body: `التسليم ${jobCode} جاهز في مساحة عمل السائق.` };
-      if (locale === "ms") return { title: "Tugasan penghantaran baharu", body: `Penghantaran ${jobCode} sedia dalam ruang kerja pemandu anda.` };
-      return { title: "New delivery assignment", body: `Delivery ${jobCode} is ready in your driver workspace.` };
+      if (locale === "ar") return { title: "مهمة تسليم جديدة", body: `التسليم ${jobCode} جاهز في مساحة عمل مسؤول التوصيل.` };
+      if (locale === "ms") return { title: "Tugasan penghantaran baharu", body: `Penghantaran ${jobCode} sedia dalam ruang kerja Ejen Penghantaran anda.` };
+      return { title: "New delivery assignment", body: `Delivery ${jobCode} is ready in your Delivery Agent workspace.` };
     }
     case "delivery_status_updated": {
       const status = statusLabel(locale, message.status);
@@ -360,20 +360,20 @@ export function renderWorkflowNotification(
       return { title: "Delivery status updated", body: `The delivery status changed to ${status}.` };
     }
     case "driver_delivery_completed":
-      if (locale === "ar") return { title: "أبلغ السائق عن اكتمال التسليم", body: "سجل السائق التسليم، ولا يزال تأكيد الكميات من العميل مطلوبًا." };
-      if (locale === "ms") return { title: "Pemandu melaporkan penghantaran selesai", body: "Pemandu merekodkan penghantaran. Pengesahan kuantiti pelanggan masih diperlukan." };
-      return { title: "Delivery reported complete", body: "The driver recorded delivery. Customer quantity confirmation is still required." };
+      if (locale === "ar") return { title: "أبلغ مسؤول التوصيل عن اكتمال التسليم", body: "سجل مسؤول التوصيل التسليم، ولا يزال تأكيد الكميات من العميل مطلوبًا." };
+      if (locale === "ms") return { title: "Ejen Penghantaran melaporkan penghantaran selesai", body: "Ejen Penghantaran merekodkan penghantaran. Pengesahan kuantiti pelanggan masih diperlukan." };
+      return { title: "Delivery reported complete", body: "The Delivery Agent recorded delivery. Customer quantity confirmation is still required." };
     case "receipt_required": {
       const jobCode = boundedParameter(message.jobCode, "Delivery job code");
-      if (locale === "ar") return { title: "تأكيد الاستلام مطلوب", body: `سجل السائق نتيجة التسليم ${jobCode}. يجب على مستلم عميل مخوّل فحص الكميات وتأكيدها بصورة مستقلة.` };
-      if (locale === "ms") return { title: "Pengesahan penerimaan diperlukan", body: `Pemandu merekodkan hasil penghantaran ${jobCode}. Penerima pelanggan yang diberi kuasa mesti memeriksa dan mengesahkan kuantiti secara berasingan.` };
-      return { title: "Receiving confirmation required", body: `The driver recorded delivery outcome ${jobCode}. An authorized customer receiver must inspect and confirm quantities independently.` };
+      if (locale === "ar") return { title: "تأكيد الاستلام مطلوب", body: `سجل مسؤول التوصيل نتيجة التسليم ${jobCode}. يجب على مستلم عميل مخوّل فحص الكميات وتأكيدها بصورة مستقلة.` };
+      if (locale === "ms") return { title: "Pengesahan penerimaan diperlukan", body: `Ejen Penghantaran merekodkan hasil penghantaran ${jobCode}. Penerima pelanggan yang diberi kuasa mesti memeriksa dan mengesahkan kuantiti secara berasingan.` };
+      return { title: "Receiving confirmation required", body: `The Delivery Agent recorded delivery outcome ${jobCode}. An authorized customer receiver must inspect and confirm quantities independently.` };
     }
     case "driver_delivery_issue": {
       const jobCode = boundedParameter(message.jobCode, "Delivery job code");
-      if (locale === "ar") return { title: "أبلغ السائق عن مشكلة تسليم", body: `أبلغ السائق عن مشكلة في التسليم ${jobCode}.` };
-      if (locale === "ms") return { title: "Pemandu melaporkan isu penghantaran", body: `Pemandu melaporkan isu bagi penghantaran ${jobCode}.` };
-      return { title: "Delivery issue reported", body: `The driver reported an issue for delivery ${jobCode}.` };
+      if (locale === "ar") return { title: "أبلغ مسؤول التوصيل عن مشكلة تسليم", body: `أبلغ مسؤول التوصيل عن مشكلة في التسليم ${jobCode}.` };
+      if (locale === "ms") return { title: "Ejen Penghantaran melaporkan isu penghantaran", body: `Ejen Penghantaran melaporkan isu bagi penghantaran ${jobCode}.` };
+      return { title: "Delivery issue reported", body: `The Delivery Agent reported an issue for delivery ${jobCode}.` };
     }
     case "driver_delivery_status": {
       const jobCode = boundedParameter(message.jobCode, "Delivery job code");

@@ -36,7 +36,7 @@
   outline-offset: -3px;
 }
 
-.marker {
+.destinationMarker {
   inline-size: 1.75rem;
   block-size: 1.75rem;
   border: .25rem solid var(--axora-surface);
@@ -44,6 +44,15 @@
   background: var(--axora-map-marker);
   box-shadow: var(--axora-shadow-md);
   rotate: -45deg;
+}
+
+.currentMarker {
+  inline-size: 1.35rem;
+  block-size: 1.35rem;
+  border: .24rem solid var(--axora-surface);
+  border-radius: 50%;
+  background: var(--axora-map-route);
+  box-shadow: 0 0 0 .35rem color-mix(in srgb, var(--axora-map-route) 22%, transparent), var(--axora-shadow-md);
 }
 
 .overlay {
@@ -71,6 +80,36 @@
   background: var(--axora-warning-bg);
   line-height: 1.5;
 }
+
+.liveSummary {
+  display: flex;
+  gap: .65rem 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: .8rem;
+  border-radius: .75rem;
+  color: var(--axora-text);
+  background: var(--axora-surface-muted);
+  line-height: 1.45;
+}
+
+.legend {
+  display: inline-flex;
+  gap: .4rem;
+  align-items: center;
+}
+
+.legend i {
+  inline-size: .8rem;
+  block-size: .8rem;
+  flex: 0 0 auto;
+  border: 2px solid var(--axora-surface);
+  border-radius: 50%;
+  background: var(--axora-map-route);
+  box-shadow: 0 0 0 1px var(--axora-border-strong);
+}
+
+.legend i[data-marker="destination"] { background: var(--axora-map-marker); }
 
 .actions { display: flex; gap: .75rem; flex-wrap: wrap; }
 .actions a {

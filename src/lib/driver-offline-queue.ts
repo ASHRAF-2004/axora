@@ -95,7 +95,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function scopedStorageKey(actorId: string, suffix: string) {
-  if (!isUuid(actorId)) throw new Error("Driver identity is invalid.");
+  if (!isUuid(actorId)) throw new Error("Delivery Agent identity is invalid.");
   return `axora:driver:${actorId}:${suffix}:v1`;
 }
 
@@ -218,7 +218,7 @@ export function parseDriverOfflineQueue(
   raw: string | null,
   actorId: string,
 ): DriverOfflineQueueInspection {
-  if (!isUuid(actorId)) throw new Error("Driver identity is invalid.");
+  if (!isUuid(actorId)) throw new Error("Delivery Agent identity is invalid.");
   if (raw === null) return { status: "ready", events: [], format: "empty" };
   if (new TextEncoder().encode(raw).byteLength > MAX_QUEUE_STORAGE_BYTES) {
     return {
@@ -262,7 +262,7 @@ export function serializeDriverOfflineQueue(
   actorId: string,
   queue: readonly DriverOfflineEvent[],
 ) {
-  if (!isUuid(actorId)) throw new Error("Driver identity is invalid.");
+  if (!isUuid(actorId)) throw new Error("Delivery Agent identity is invalid.");
   if (queue.length > MAX_QUEUE_EVENTS) {
     throw new Error("Sync saved delivery updates before recording more on this device.");
   }

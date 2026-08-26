@@ -19,7 +19,7 @@ describe("workflow notification localization", () => {
       key: "driver_delivery_status",
       jobCode: "DEL-2048",
       status: "ARRIVED",
-    }, "ar").body).toBe("انتقل التسليم DEL-2048 إلى حالة: وصل السائق.");
+    }, "ar").body).toBe("انتقل التسليم DEL-2048 إلى حالة: وصل مسؤول التوصيل.");
     expect(renderWorkflowNotification({
       key: "request_status_updated",
       status: "Preparing for Delivery",

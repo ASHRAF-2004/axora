@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { getSession } from "@/lib/auth";
 import { claimAvailableDeliveryJob, getAvailableDeliveryJobs } from "@/lib/driver-operations";
 import { canAccess } from "@/lib/permissions";
@@ -23,7 +22,8 @@ export async function POST(request: Request) {
   if (!canAccess(actor, "view_delivery_portal")) return Response.json({ error: "Delivery job unavailable" }, { status: 403 });
   if (Number(request.headers.get("content-length") ?? 0) > 2048) return Response.json({ error: "Delivery job unavailable" }, { status: 413 });
   try {
-    const body = z.object({ jobId: z.uuid(), commandId: z.uuid().default(randomUUID()) }).parse(await request.json());
+    const body = z.object({ jobId: z.uuid(), commandId: z.uuid() })
+      .parse(await request.json());
     return Response.json(await claimAvailableDeliveryJob(actor, body.jobId, body.commandId), {
       headers: { "Cache-Control": "private, no-store" },
     });

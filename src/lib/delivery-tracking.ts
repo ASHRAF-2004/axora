@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { AuthenticatedSessionUser } from "./auth";
 import { isDemoMode, query, withAuditTransaction } from "./db";
+import { deliveryExecutionDestinationInternals } from "./delivery-execution";
+import { driverAvailableJobInternals } from "./driver-operations";
 
 const uuid = z.string().uuid();
 const reason = z.string().trim().min(3).max(1_000);
@@ -26,7 +28,7 @@ export const trackingPointSchema = z.object({
 });
 
 export const trackingFailureSchema = z.object({
-  action: z.enum(["REPORT_FAILURE", "END"]),
+  action: z.enum(["REPORT_FAILURE", "PAUSE", "RESUME"]),
   sessionId: uuid,
   reason,
   failureCode: z.enum([
@@ -94,6 +96,242 @@ interface JsonRow<T> extends QueryResultRow {
   value: T | null;
 }
 
+type DemoTrackingPoint = z.infer<typeof trackingPointSchema>;
+
+type DemoTrackingSession = {
+  actorId: string;
+  assignmentId: string;
+  sessionId: string;
+  jobId: string;
+  status: "NOT_STARTED" | "ACTIVE" | "PAUSED" | "ENDED";
+  createdAt: string;
+  startedAt: string | null;
+  pausedAt: string | null;
+  endedAt: string | null;
+  updatedAt: string;
+  lastFailureCode: string | null;
+  lastFailureAt: string | null;
+  latestPoint: DemoTrackingPoint | null;
+  points: Map<string, { fingerprint: string; result: Record<string, unknown> }>;
+  deviceSequences: Map<string, number>;
+};
+
+type DemoTrackingState = { sessionsByJob: Map<string, DemoTrackingSession> };
+
+declare global {
+  var __axoraDemoDeliveryTrackingState: DemoTrackingState | undefined;
+}
+
+function demoTrackingState() {
+  if (!global.__axoraDemoDeliveryTrackingState) {
+    global.__axoraDemoDeliveryTrackingState = { sessionsByJob: new Map() };
+  }
+  return global.__axoraDemoDeliveryTrackingState;
+}
+
+function directDistanceMeters(
+  latitude: number,
+  longitude: number,
+  destinationLatitude: number,
+  destinationLongitude: number,
+) {
+  const radians = (value: number) => value * Math.PI / 180;
+  const latitudeDelta = radians(destinationLatitude - latitude);
+  const longitudeDelta = radians(destinationLongitude - longitude);
+  const originLatitude = radians(latitude);
+  const targetLatitude = radians(destinationLatitude);
+  const haversine = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(originLatitude) * Math.cos(targetLatitude)
+    * Math.sin(longitudeDelta / 2) ** 2;
+  return Math.round(6_371_000 * 2 * Math.atan2(
+    Math.sqrt(haversine),
+    Math.sqrt(1 - haversine),
+  ));
+}
+
+function synchronizedDemoTrackingSession(actor: AuthenticatedSessionUser) {
+  const job = deliveryExecutionDestinationInternals
+    .demoDeliveryExecutionWorkspace(actor).jobs[0];
+  if (!job) return null;
+  const state = demoTrackingState();
+  let session = state.sessionsByJob.get(job.id);
+  if (!session) {
+    const now = new Date().toISOString();
+    session = {
+      actorId: actor.id,
+      assignmentId: job.assignmentId,
+      sessionId: randomUUID(),
+      jobId: job.id,
+      status: "NOT_STARTED",
+      createdAt: now,
+      startedAt: null,
+      pausedAt: null,
+      endedAt: null,
+      updatedAt: now,
+      lastFailureCode: null,
+      lastFailureAt: null,
+      latestPoint: null,
+      points: new Map(),
+      deviceSequences: new Map(),
+    };
+    state.sessionsByJob.set(job.id, session);
+  }
+  if (session.actorId !== actor.id || session.assignmentId !== job.assignmentId) {
+    throw new Error("The delivery tracking workspace is unavailable.");
+  }
+  const terminal = ["COMPLETED", "CANCELLED", "FAILED", "RETURNED"]
+    .includes(job.status);
+  const inTransit = [
+    "OUT_FOR_DELIVERY", "ARRIVED", "PARTIALLY_DELIVERED", "DELIVERED",
+  ].includes(job.status);
+  if (terminal && session.status !== "ENDED") {
+    const now = new Date().toISOString();
+    session.status = "ENDED";
+    session.endedAt = now;
+    session.updatedAt = now;
+  } else if (inTransit && session.status === "NOT_STARTED") {
+    const now = new Date().toISOString();
+    session.status = "ACTIVE";
+    session.startedAt = now;
+    session.updatedAt = now;
+  }
+  return { job, session };
+}
+
+function demoDriverTrackingWorkspace(actor: AuthenticatedSessionUser): TrackingWorkspace {
+  const synchronized = synchronizedDemoTrackingSession(actor);
+  if (!synchronized || synchronized.session.status === "ENDED") {
+    return { actorId: actor.id, capturedAt: new Date().toISOString(), sessions: [] };
+  }
+  const { job, session } = synchronized;
+  const point = session.latestPoint;
+  const destinationLatitude = typeof job.destinationLatitude === "number"
+    ? job.destinationLatitude : null;
+  const destinationLongitude = typeof job.destinationLongitude === "number"
+    ? job.destinationLongitude : null;
+  const remainingMeters = point && destinationLatitude !== null
+    && destinationLongitude !== null
+    ? directDistanceMeters(
+      point.latitude,
+      point.longitude,
+      destinationLatitude,
+      destinationLongitude,
+    ) : null;
+  const stale = !point || point.recordedAt.getTime() < Date.now() - 120_000;
+  return {
+    actorId: actor.id,
+    capturedAt: new Date().toISOString(),
+    sessions: [{
+      sessionId: session.sessionId,
+      jobId: job.id,
+      jobCode: job.code,
+      companyName: typeof job.companyName === "string" ? job.companyName : undefined,
+      branchName: typeof job.branchName === "string" ? job.branchName : undefined,
+      jobStatus: job.status,
+      status: session.status,
+      startedAt: session.startedAt,
+      pausedAt: session.pausedAt,
+      lastUpdatedAt: point?.recordedAt.toISOString() ?? session.updatedAt,
+      pointCount: session.points.size,
+      stale,
+      latitude: point?.latitude ?? null,
+      longitude: point?.longitude ?? null,
+      locationAvailable: Boolean(point),
+      accuracyMeters: point?.accuracyMeters ?? null,
+      destinationLatitude,
+      destinationLongitude,
+      remainingMeters,
+      etaSeconds: stale || remainingMeters === null ? null : Math.ceil(
+        remainingMeters / Math.max(
+          point?.speedMps && point.speedMps >= 1 ? point.speedMps : 8.33,
+          1,
+        ),
+      ),
+      routeMode: "DIRECT_ESTIMATE",
+      visibilityPrecision: "APPROXIMATE",
+      rawRetentionDays: 30,
+      lastFailureCode: session.lastFailureCode,
+      lastFailureAt: session.lastFailureAt,
+    }],
+  };
+}
+
+function demoCompanyTrackingWorkspace(actor: AuthenticatedSessionUser): TrackingWorkspace {
+  const capturedAt = new Date().toISOString();
+  if (actor.accountKind !== "COMPANY"
+    || actor.companyId !== driverAvailableJobInternals.demoDeliveryCompanyId) {
+    return { actorId: actor.id, capturedAt, sessions: [] };
+  }
+  const job = driverAvailableJobInternals.demoAvailableJob;
+  const claim = driverAvailableJobInternals.demoDeliveryClaimState()
+    .claimedByJob.get(job.id);
+  const execution = deliveryExecutionDestinationInternals
+    .demoDeliveryExecutionState().jobs.get(job.id);
+  const session = demoTrackingState().sessionsByJob.get(job.id);
+  const jobStatus = execution?.status ?? (claim ? "ASSIGNED" : "AWAITING_ASSIGNMENT");
+  const terminal = ["COMPLETED", "CANCELLED", "FAILED", "RETURNED"].includes(jobStatus);
+  if (session && terminal && session.status !== "ENDED") {
+    session.status = "ENDED";
+    session.endedAt = capturedAt;
+    session.updatedAt = capturedAt;
+  }
+  const point = terminal ? null : session?.latestPoint ?? null;
+  const latitude = point ? Math.round(point.latitude * 1_000) / 1_000 : null;
+  const longitude = point ? Math.round(point.longitude * 1_000) / 1_000 : null;
+  const destinationLatitude = terminal ? null : 3.152;
+  const destinationLongitude = terminal ? null : 101.711;
+  const remainingMeters = latitude !== null && longitude !== null
+    && destinationLatitude !== null && destinationLongitude !== null
+    ? directDistanceMeters(
+      latitude,
+      longitude,
+      destinationLatitude,
+      destinationLongitude,
+    ) : null;
+  const status = terminal ? "ENDED" : session?.status ?? "NOT_STARTED";
+  const stale = status === "NOT_STARTED" || status === "ENDED"
+    ? false
+    : Boolean(point && point.recordedAt.getTime() < Date.now() - 120_000);
+  return {
+    actorId: actor.id,
+    capturedAt,
+    sessions: [{
+      sessionId: session?.sessionId ?? job.id,
+      jobId: job.id,
+      jobCode: job.code,
+      companyName: job.companyName,
+      branchName: job.branchName,
+      jobStatus,
+      status,
+      startedAt: session?.startedAt ?? null,
+      pausedAt: session?.pausedAt ?? null,
+      lastUpdatedAt: point?.recordedAt.toISOString()
+        ?? session?.updatedAt
+        ?? capturedAt,
+      pointCount: session?.points.size ?? 0,
+      stale,
+      latitude,
+      longitude,
+      locationAvailable: latitude !== null && longitude !== null,
+      accuracyMeters: point ? Math.max(point.accuracyMeters, 150) : null,
+      destinationLatitude,
+      destinationLongitude,
+      remainingMeters,
+      etaSeconds: stale || remainingMeters === null ? null : Math.ceil(
+        remainingMeters / Math.max(
+          point?.speedMps && point.speedMps >= 1 ? point.speedMps : 8.33,
+          1,
+        ),
+      ),
+      routeMode: "PRIVACY_SAFE_DIRECT_ESTIMATE",
+      visibilityPrecision: "APPROXIMATE",
+      rawRetentionDays: 0,
+      showVehicleDetails: false,
+      contactMode: "NONE",
+    }],
+  };
+}
+
 function roleAssignmentId(actor: AuthenticatedSessionUser) {
   if (!actor.roleAssignmentId) {
     throw new Error("The delivery tracking workspace is unavailable.");
@@ -106,6 +344,12 @@ async function readWorkspace(
   capability: string,
 ): Promise<TrackingWorkspace> {
   if (isDemoMode()) {
+    if (capability === "axora_driver_delivery_tracking_workspace") {
+      return demoDriverTrackingWorkspace(actor);
+    }
+    if (capability === "axora_company_delivery_tracking_workspace") {
+      return demoCompanyTrackingWorkspace(actor);
+    }
     return { actorId: actor.id, capturedAt: new Date().toISOString(), sessions: [] };
   }
   const result = await query<JsonRow<TrackingWorkspace>>(
@@ -135,7 +379,7 @@ const CUSTOMER_DELIVERY_STATUS: Record<string, string> = {
   ITEMS_ACQUIRED: "PREPARING",
   AWAITING_DELIVERY: "PREPARING",
   OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
-  ARRIVED: "OUT_FOR_DELIVERY",
+  ARRIVED: "ARRIVED",
   DELIVERED: "DELIVERED",
   PARTIALLY_DELIVERED: "DELIVERED",
   COMPLETED: "COMPLETED",
@@ -150,15 +394,13 @@ function customerTrackingWorkspace(workspace: TrackingWorkspace): TrackingWorksp
   return {
     capturedAt: workspace.capturedAt,
     sessions: workspace.sessions.map((session) => ({
-      sessionId: session.sessionId,
+      sessionId: `customer:${String(session.jobCode)}`,
       jobId: "",
       jobCode: session.jobCode,
       branchName: session.branchName,
       companyName: session.companyName,
       status: session.status,
       jobStatus: customerVisibleDeliveryStatus(session.jobStatus),
-      startedAt: session.startedAt,
-      pausedAt: session.pausedAt,
       lastUpdatedAt: session.lastUpdatedAt,
       stale: Boolean(session.stale),
       locationAvailable: Number.isFinite(session.latitude)
@@ -172,11 +414,11 @@ function customerTrackingWorkspace(workspace: TrackingWorkspace): TrackingWorksp
       destinationLongitude: session.destinationLongitude,
       remainingMeters: session.remainingMeters,
       etaSeconds: session.etaSeconds,
+      routeMode: session.routeMode,
       visibilityPrecision: "APPROXIMATE",
       showVehicleDetails: Boolean(session.showVehicleDetails),
       contactMode: session.contactMode === "AXORA_RELAY" ? "AXORA_RELAY" : "NONE",
       contactPath: session.contactMode === "AXORA_RELAY" ? session.contactPath : null,
-      rawRetentionDays: 0,
       vehicleType: session.showVehicleDetails ? session.vehicleType : null,
       vehicleColour: session.showVehicleDetails ? session.vehicleColour : null,
       vehicleRegistration: session.showVehicleDetails ? session.vehicleRegistration : null,
@@ -196,12 +438,42 @@ export async function recordDeliveryTrackingPoint(
 ) {
   const parsed = trackingPointSchema.parse(input);
   if (isDemoMode()) {
-    return {
+    const synchronized = synchronizedDemoTrackingSession(actor);
+    if (!synchronized || synchronized.session.sessionId !== parsed.sessionId
+      || synchronized.session.status !== "ACTIVE") {
+      throw new Error("The delivery location is unavailable.");
+    }
+    const { session } = synchronized;
+    const fingerprint = JSON.stringify({
+      ...parsed,
+      recordedAt: parsed.recordedAt.toISOString(),
+    });
+    const replay = session.points.get(parsed.pointId);
+    if (replay) {
+      if (replay.fingerprint !== fingerprint) {
+        throw new Error("The delivery location is unavailable.");
+      }
+      return { ...replay.result, replayed: true };
+    }
+    const previousSequence = session.deviceSequences.get(parsed.deviceId);
+    if ((previousSequence !== undefined && parsed.deviceSequence <= previousSequence)
+      || (session.latestPoint
+        && parsed.recordedAt.getTime() <= session.latestPoint.recordedAt.getTime())) {
+      throw new Error("The delivery location is out of order.");
+    }
+    const result = {
       pointId: parsed.pointId,
       sessionId: parsed.sessionId,
       acceptedAt: new Date().toISOString(),
       replayed: false,
     };
+    session.points.set(parsed.pointId, { fingerprint, result });
+    session.deviceSequences.set(parsed.deviceId, parsed.deviceSequence);
+    session.latestPoint = parsed;
+    session.updatedAt = result.acceptedAt;
+    session.lastFailureCode = null;
+    session.lastFailureAt = null;
+    return result;
   }
   const now = new Date();
   return withAuditTransaction({
@@ -235,13 +507,43 @@ export async function recordDeliveryTrackingPoint(
   });
 }
 
-export async function reportOrEndDriverTracking(
+export async function controlDriverTracking(
   actor: AuthenticatedSessionUser,
   input: unknown,
 ) {
   const parsed = trackingFailureSchema.parse(input);
   if (isDemoMode()) {
-    return { sessionId: parsed.sessionId, status: parsed.action === "END" ? "ENDED" : "ACTIVE" };
+    const synchronized = synchronizedDemoTrackingSession(actor);
+    if (!synchronized || synchronized.session.sessionId !== parsed.sessionId) {
+      throw new Error("The delivery tracking command is unavailable.");
+    }
+    const { session } = synchronized;
+    if (parsed.action === "REPORT_FAILURE") {
+      if (!(["ACTIVE", "PAUSED"] as const).includes(
+        session.status as "ACTIVE" | "PAUSED",
+      )) throw new Error("The delivery tracking command is unavailable.");
+      session.lastFailureCode = parsed.failureCode ?? null;
+      session.lastFailureAt = new Date().toISOString();
+      session.updatedAt = session.lastFailureAt;
+      return {
+        sessionId: parsed.sessionId,
+        status: session.status,
+        failureCode: parsed.failureCode,
+      };
+    }
+    const expected = parsed.action === "PAUSE" ? "ACTIVE" : "PAUSED";
+    const next = parsed.action === "PAUSE" ? "PAUSED" : "ACTIVE";
+    if (session.status !== expected && session.status !== next) {
+      throw new Error("The delivery tracking command is unavailable.");
+    }
+    const now = new Date().toISOString();
+    session.status = next;
+    session.pausedAt = next === "PAUSED" ? now : session.pausedAt;
+    session.updatedAt = now;
+    return {
+      sessionId: parsed.sessionId,
+      status: next,
+    };
   }
   const now = new Date();
   return withAuditTransaction({
@@ -346,6 +648,8 @@ export async function controlSupervisorDeliveryTracking(
 }
 
 export const deliveryTrackingInternals = {
+  demoDriverTrackingWorkspace,
+  demoTrackingState,
   trackingPointSchema,
   trackingFailureSchema,
   trackingConfigurationSchema,

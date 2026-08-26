@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { PageHeader } from "@/components/PageHeader";
-import { requirePermission } from "@/lib/auth";
+import { requirePagePermission } from "@/lib/auth";
 import { getCategoryPolicyWorkspace } from "@/lib/category-policy";
 import { categoryPolicyMessages } from "@/lib/category-policy-i18n";
 import { updateCategoryPolicyAction } from "./actions";
@@ -8,7 +8,7 @@ import { updateCategoryPolicyAction } from "./actions";
 export default async function ProcurementSettingsPage({
   searchParams,
 }: { searchParams: Promise<{ notice?: string }> }) {
-  const actor = await requirePermission("manage_category_policy");
+  const actor = await requirePagePermission("manage_category_policy");
   const { notice } = await searchParams;
   const copy = categoryPolicyMessages(actor.preferredLocale ?? "en");
   const workspace = await getCategoryPolicyWorkspace(actor);

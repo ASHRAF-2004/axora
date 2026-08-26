@@ -50,6 +50,25 @@ describe("role-specific portal navigation boundaries", () => {
     expect(DRAWER_NAVIGATION.some((item) => item.href === "/supplier")).toBe(false);
     expect(hrefs(PRIMARY_NAVIGATION, driver)).toEqual(["/driver"]);
     expect(hrefs(DRAWER_NAVIGATION, driver)).toEqual(["/driver"]);
+    expect(canAccess(driver, "view_dashboard")).toBe(false);
+    expect(canAccess(driver, "view_wallet")).toBe(false);
+    expect(canAccess(driver, "view_budgets")).toBe(false);
+    expect(canAccess(driver, "view_approvals")).toBe(false);
+    expect(canAccess(driver, "manage_category_policy")).toBe(false);
+    expect(canAccess(driver, "manage_users")).toBe(false);
+  });
+
+  it("redirects Delivery Agents before dashboard reads and denies procurement settings cleanly", async () => {
+    const [dashboard, procurement] = await Promise.all([
+      readFile(new URL("../src/app/(portal)/dashboard/page.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/app/(portal)/settings/procurement/page.tsx", import.meta.url), "utf8"),
+    ]);
+    const deliveryRedirect = dashboard.indexOf("if (isDeliveryAgentSession(actor)) redirect(\"/driver\")");
+    const reportRead = dashboard.indexOf("const report = await getAuthorizedDashboardPeriodReport(");
+    expect(deliveryRedirect).toBeGreaterThan(-1);
+    expect(reportRead).toBeGreaterThan(deliveryRedirect);
+    expect(procurement).toContain('requirePagePermission("manage_category_policy")');
+    expect(procurement).not.toContain('requirePermission("manage_category_policy")');
   });
 
   it("keeps support and auditors read-only while receivers see only receiving work", () => {

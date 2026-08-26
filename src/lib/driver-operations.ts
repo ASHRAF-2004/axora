@@ -23,6 +23,7 @@ export type AvailableDeliveryJob = {
 export type AvailableDeliveryWorkspace = {
   sequence: number;
   capturedAt: string;
+  availability: "AVAILABLE" | "UNAVAILABLE" | "OFFLINE" | "DEACTIVATED";
   jobs: AvailableDeliveryJob[];
 };
 
@@ -103,6 +104,7 @@ const demoAvailableJob = Object.freeze({
   lineCount: 2,
   status: "AVAILABLE" as const,
 });
+const demoDeliveryCompanyId = "66666666-6666-4666-8666-666666666666";
 
 type DemoClaimResult = {
   assignmentId: string;
@@ -158,6 +160,7 @@ function demoAvailableDeliveryJobs(actor: AuthenticatedSessionUser): AvailableDe
   return {
     sequence: state.sequence,
     capturedAt: new Date().toISOString(),
+    availability: isAvailable ? "AVAILABLE" : "UNAVAILABLE",
     jobs: isAvailable && !hasActiveAssignment
       && !state.claimedByJob.has(demoAvailableJob.id)
       ? [{ ...demoAvailableJob }]
@@ -204,6 +207,8 @@ export async function getAvailableDeliveryJobs(actor: AuthenticatedSessionUser) 
 }
 
 export const driverAvailableJobInternals = {
+  demoAvailableJob,
+  demoDeliveryCompanyId,
   demoAvailableDeliveryJobs,
   demoDeliveryClaimState,
   demoClaimedDeliveryJob,
@@ -250,6 +255,32 @@ export async function claimAvailableDeliveryJob(actor: AuthenticatedSessionUser,
   });
 }
 
+export async function getDeliveryClaimResult(
+  actor: AuthenticatedSessionUser,
+  jobId: string,
+  commandId: string,
+) {
+  const parsedJobId = z.string().uuid().parse(jobId);
+  const parsedCommandId = z.string().uuid().parse(commandId);
+  if (isDemoMode()) {
+    requireDemoDeliveryActor(actor);
+    const command = demoDeliveryClaimState().commands.get(parsedCommandId);
+    return command?.actorId === actor.id && command.jobId === parsedJobId
+      ? { ...command.result, created: false }
+      : null;
+  }
+  const result = await query<ValueRow<{
+    assignmentId: string;
+    jobId: string;
+    status: "ASSIGNED";
+    created: false;
+  }>>(
+    "SELECT public.axora_driver_claim_result($1,$2,$3,$4,$5) AS value",
+    [actor.id, assignmentId(actor), parsedJobId, parsedCommandId, new Date()],
+  );
+  return result.rows[0]?.value ?? null;
+}
+
 export async function setDriverAvailability(actor: AuthenticatedSessionUser, availability: string) {
   if (isDemoMode()) {
     requireDemoDeliveryActor(actor);
@@ -270,7 +301,7 @@ export async function getDriverManagementWorkspace(actor: AuthenticatedSessionUs
 export async function getDriverDetailWorkspace(actor: AuthenticatedSessionUser, driverId: string) {
   if (isDemoMode()) return {
     id: driverId,
-    name: "Demo Delivery Guy",
+    name: "Demo Delivery Agent",
     email: "driver.fixture@axora.invalid",
     phone: "+60 12-000 0000",
     vehicle: "Axora van 01",

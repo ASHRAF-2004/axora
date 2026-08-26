@@ -75,6 +75,11 @@ export async function resolveEffectiveRoutePermissions(
   const access = (await loadEffectiveAccess(actor)).subject;
   const scope = actorScope(actor);
   return (Object.entries(ROUTE_PERMISSION_CODES) as [Permission, readonly PermissionCode[]][])
+    .filter(([permission]) => !(
+      permission === "view_dashboard"
+      && actor.accountKind === "DELIVERY"
+      && ["DELIVERY_AGENT", "DELIVERY_DRIVER", "DELIVERY_GUY"].includes(actor.role)
+    ))
     .filter(([, codes]) => codes.some((permission) => authorize({
       subject: access,
       permission,

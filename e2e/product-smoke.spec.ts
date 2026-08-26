@@ -5,7 +5,7 @@ const authenticatedRoutes = [
   { path: "/dashboard", heading: /Good (morning|afternoon|evening),/ },
   { path: "/products", heading: "Products" },
   { path: "/requests", heading: "Purchase requests" },
-  { path: "/deliveries", heading: "Manage Drivers" },
+  { path: "/deliveries", heading: "Manage Delivery Agents" },
   { path: "/receiving", heading: "Confirm delivered quantities" },
   { path: "/finance", heading: "Invoices and payments" },
   { path: "/companies", heading: "Companies" },

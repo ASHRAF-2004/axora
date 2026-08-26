@@ -322,16 +322,13 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
         scopeType: "BRANCH",companyId: financeCompanyId,branchId: financeBranchId,
       }));
     }
-    drivers = [
-      await createActor({
-        label: "Driver A",role: "DELIVERY_GUY",accountKind: "DELIVERY",
-        scopeType: "DELIVERY",
-      }),
-      await createActor({
-        label: "Driver B",role: "DELIVERY_GUY",accountKind: "DELIVERY",
-        scopeType: "DELIVERY",
-      }),
-    ];
+    drivers = [];
+    for (let index = 0; index < 10; index += 1) {
+      drivers.push(await createActor({
+        label: `Delivery Agent ${index + 1}`,role: "DELIVERY_GUY",
+        accountKind: "DELIVERY",scopeType: "DELIVERY",
+      }));
+    }
     await admin.query(`
       INSERT INTO public.approval_limits(
         role_id,permission_id,scope_type,company_id,branch_id,currency,
@@ -1095,17 +1092,18 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       latitude: "3.139000",longitude: "101.686900",
       label: "Original canonical destination",
     });
-    const claimCommands = [randomUUID(),randomUUID()];
+    const claimCommands = drivers.map(() => randomUUID());
     const claims = await Promise.allSettled(drivers.map((driver,index) => (
       withAppClient((client) => client.query(`
         SELECT public.axora_claim_available_delivery_job($1,$2,$3,$4,now())
       `, [driver.userId,driver.assignmentId,job.rows[0]!.id,claimCommands[index]]))
     )));
     expect(claims.filter((claim) => claim.status === "fulfilled")).toHaveLength(1);
-    expect(claims.filter((claim) => claim.status === "rejected")).toHaveLength(1);
-    const rejected = claims.find((claim) => claim.status === "rejected");
-    expect(rejected?.status === "rejected" ? String(rejected.reason) : "")
-      .toMatch(/already claimed/i);
+    expect(claims.filter((claim) => claim.status === "rejected")).toHaveLength(9);
+    for (const rejected of claims.filter((claim) => claim.status === "rejected")) {
+      expect(rejected.status === "rejected" ? String(rejected.reason) : "")
+        .toMatch(/already claimed/i);
+    }
     const assignmentEvidence = await admin.query<{
       assignments: number;
       status: string;
@@ -1180,20 +1178,46 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     expect(trackingDestination.rows[0]).toEqual({
       latitude: "3.139000",longitude: "101.686900",status: "NOT_STARTED",
     });
-    const claimReplay = await app.query<{
-      payload: { assignmentId: string; jobId: string; status: string; created: boolean };
+    const claimReplays = await Promise.all(Array.from({ length: 10 }, () => (
+      withAppClient((client) => client.query<{
+        payload: { assignmentId: string; jobId: string; status: string; created: boolean };
+      }>(`
+        SELECT public.axora_claim_available_delivery_job($1,$2,$3,$4,now()) AS payload
+      `, [
+        winningDriver.userId,winningDriver.assignmentId,
+        job.rows[0]!.id,winningClaimCommand,
+      ]))
+    )));
+    for (const replay of claimReplays) {
+      expect(replay.rows[0]!.payload).toEqual({
+        assignmentId: activeAssignment.assignmentId,
+        jobId: job.rows[0]!.id,
+        status: "ASSIGNED",
+        created: false,
+      });
+    }
+    const reconciledClaim = await app.query<{
+      payload: { assignmentId: string; jobId: string; status: string; created: boolean } | null;
     }>(`
-      SELECT public.axora_claim_available_delivery_job($1,$2,$3,$4,now()) AS payload
+      SELECT public.axora_driver_claim_result($1,$2,$3,$4,now()) AS payload
     `, [
       winningDriver.userId,winningDriver.assignmentId,
       job.rows[0]!.id,winningClaimCommand,
     ]);
-    expect(claimReplay.rows[0]!.payload).toEqual({
+    expect(reconciledClaim.rows[0]!.payload).toEqual({
       assignmentId: activeAssignment.assignmentId,
       jobId: job.rows[0]!.id,
       status: "ASSIGNED",
       created: false,
     });
+    const foreignClaimResult = await app.query<{ payload: unknown | null }>(`
+      SELECT public.axora_driver_claim_result($1,$2,$3,$4,now()) AS payload
+    `, [
+      drivers.find((driver) => driver.userId !== winningDriver.userId)!.userId,
+      drivers.find((driver) => driver.userId !== winningDriver.userId)!.assignmentId,
+      job.rows[0]!.id,winningClaimCommand,
+    ]);
+    expect(foreignClaimResult.rows[0]!.payload).toBeNull();
     await expect(withAppClient((client) => client.query(`
       SELECT public.axora_claim_available_delivery_job($1,$2,$3,$4,now())
     `, [
@@ -1220,7 +1244,7 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       ORDER BY permission.permission_code
     `);
     expect(deliveryDefaults.rows.map((row) => row.permissionCode)).toEqual([
-      "dashboard.view","delivery.accept","delivery.assignment.update","delivery.claim",
+      "delivery.accept","delivery.assignment.update","delivery.claim",
       "delivery.complete","delivery.portal.view","delivery.receipt.upload",
       "delivery.shop","delivery.track",
     ]);
@@ -1318,6 +1342,90 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       SELECT id::text FROM public.delivery_job_lines
       WHERE delivery_job_id=$1 ORDER BY created_at,id LIMIT 1
     `, [job.rows[0]!.id]);
+    const invalidAcquisition = async (input: {
+      lines: unknown;
+      actor?: Actor;
+      assignmentId?: string;
+      deliveryJobId?: string;
+      expectedVersion?: number;
+    }) => {
+      const attemptedBy = input.actor ?? winningDriver;
+      const capturedAt = new Date();
+      return withAppClient((client) => client.query(`
+        SELECT public.axora_register_delivery_acquisition(
+          $1,$2,$3,$4,$5,$6,$7,'invalid-receipt.pdf','application/pdf',$8,$9,
+          1024,$10,'Rejected controlled acquisition fixture',$11::jsonb,$10
+        )
+      `, [
+        attemptedBy.userId,attemptedBy.assignmentId,
+        input.deliveryJobId ?? job.rows[0]!.id,
+        input.assignmentId ?? activeAssignment.assignmentId,
+        input.expectedVersion ?? workflowVersion,randomUUID(),randomUUID(),
+        `delivery-receipts/${attemptedBy.userId}/${job.rows[0]!.id}/${randomUUID()}.pdf`,
+        "b".repeat(64),capturedAt,JSON.stringify(input.lines),
+      ]));
+    };
+    const rejectedAcquisitions = [
+      invalidAcquisition({ lines: [] }),
+      invalidAcquisition({ lines: [{
+        deliveryJobLineId: randomUUID(),resolution: "ACQUIRED",
+        actualInternalUnitCost: "700.000000",
+      }] }),
+      invalidAcquisition({ lines: [0,1].map(() => ({
+        deliveryJobLineId: deliveryLine.rows[0]!.id,resolution: "ACQUIRED",
+        actualInternalUnitCost: "700.000000",
+      })) }),
+      invalidAcquisition({ lines: [{
+        deliveryJobLineId: deliveryLine.rows[0]!.id,resolution: "ACQUIRED",
+        actualInternalUnitCost: "-1.000000",
+      }] }),
+      invalidAcquisition({ lines: [{
+        deliveryJobLineId: deliveryLine.rows[0]!.id,resolution: "ACQUIRED",
+        actualInternalUnitCost: "not-a-decimal",
+      }] }),
+      invalidAcquisition({ lines: [{
+        deliveryJobLineId: deliveryLine.rows[0]!.id,resolution: "UNAVAILABLE",
+        reason: "x",
+      }] }),
+      invalidAcquisition({
+        lines: [{
+          deliveryJobLineId: deliveryLine.rows[0]!.id,resolution: "ACQUIRED",
+          actualInternalUnitCost: "700.000000",
+        }],
+        assignmentId: randomUUID(),
+      }),
+      invalidAcquisition({
+        lines: [{
+          deliveryJobLineId: deliveryLine.rows[0]!.id,resolution: "ACQUIRED",
+          actualInternalUnitCost: "700.000000",
+        }],
+        deliveryJobId: randomUUID(),
+      }),
+      invalidAcquisition({
+        lines: [{
+          deliveryJobLineId: deliveryLine.rows[0]!.id,resolution: "ACQUIRED",
+          actualInternalUnitCost: "700.000000",
+        }],
+        expectedVersion: workflowVersion - 1,
+      }),
+      invalidAcquisition({
+        actor: losingDriver,
+        lines: [{
+          deliveryJobLineId: deliveryLine.rows[0]!.id,resolution: "ACQUIRED",
+          actualInternalUnitCost: "700.000000",
+        }],
+      }),
+    ];
+    const rejectedResults = await Promise.allSettled(rejectedAcquisitions);
+    expect(rejectedResults.every((result) => result.status === "rejected")).toBe(true);
+    const rejectedPersistence = await admin.query<{ submissions: number; lines: number }>(`
+      SELECT
+        (SELECT count(*)::int FROM public.delivery_acquisition_submissions
+          WHERE delivery_job_id=$1) AS submissions,
+        (SELECT count(*)::int FROM public.delivery_acquisition_lines
+          WHERE delivery_job_id=$1) AS lines
+    `, [job.rows[0]!.id]);
+    expect(rejectedPersistence.rows[0]).toEqual({ submissions: 0,lines: 0 });
     const unavailableCommand = randomUUID();
     const unavailableEventCommand = randomUUID();
     const unavailableCapturedAt = new Date();
@@ -1387,6 +1495,60 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     const arrived = await recordEvent("ARRIVED");
     expect(arrived.status).toBe("ARRIVED");
 
+    await admin.query(`
+      INSERT INTO public.branch_assignments(
+        user_id,company_id,branch_id,status,is_primary,created_by
+      ) VALUES ($1,$2,$3,'ACTIVE',true,$4)
+      ON CONFLICT(user_id,branch_id) DO UPDATE SET status='ACTIVE'
+    `, [companyAdmin.userId,financeCompanyId,financeBranchId,owner.userId]);
+    const otpChallenge = await app.query<{
+      payload: { challengeId: string };
+    }>(`
+      SELECT public.axora_create_delivery_otp(
+        $1,$2,$3,$4,now()
+      ) AS payload
+    `, [companyAdmin.userId,companyAdmin.assignmentId,job.rows[0]!.id,
+      "f".repeat(64)]);
+    const otpCommand = randomUUID();
+    const failedOtp = await app.query<{
+      payload: { jobId: string; challengeId: string; verified: boolean };
+    }>(`
+      SELECT public.axora_verify_delivery_otp_command(
+        $1,$2,$3,$4,$5,$6,now()
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      otpChallenge.rows[0]!.payload.challengeId,"e".repeat(64),otpCommand]);
+    expect(failedOtp.rows[0]!.payload.verified).toBe(false);
+    const failedOtpReplay = await app.query<{
+      payload: { jobId: string; challengeId: string; verified: boolean };
+    }>(`
+      SELECT public.axora_verify_delivery_otp_command(
+        $1,$2,$3,$4,$5,$6,now()
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      otpChallenge.rows[0]!.payload.challengeId,"e".repeat(64),otpCommand]);
+    expect(failedOtpReplay.rows[0]!.payload).toEqual(failedOtp.rows[0]!.payload);
+    const otpIntegrity = await admin.query<{
+      attempts: number;
+      commands: number;
+    }>(`
+      SELECT challenge.attempt_count AS attempts,
+        (SELECT count(*)::int FROM public.delivery_workflow_commands command
+          WHERE command.actor_user_id=$2 AND command.command_id=$3) AS commands
+      FROM public.delivery_otp_challenges challenge
+      WHERE challenge.id=$1
+    `, [otpChallenge.rows[0]!.payload.challengeId,winningDriver.userId,otpCommand]);
+    expect(otpIntegrity.rows[0]).toEqual({ attempts: 1,commands: 1 });
+    const otpCommandResult = await app.query<{
+      payload: { verified: boolean };
+    }>(`
+      SELECT public.axora_driver_delivery_command_result(
+        $1,$2,$3,'OTP',$4,NULL,now()
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      otpCommand]);
+    expect(otpCommandResult.rows[0]!.payload.verified).toBe(false);
+
     const evidenceCommand = randomUUID();
     const evidenceCapturedAt = new Date();
     const evidence = await app.query<{
@@ -1422,6 +1584,57 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       created: false,
       storagePath: `delivery-evidence/native/${job.rows[0]!.id}/proof.png`,
     });
+    const eventCommandResult = await app.query<{
+      payload: { eventId: string; status: string; workflowVersion: number };
+    }>(`
+      SELECT public.axora_driver_delivery_command_result(
+        $1,$2,$3,'EVENT',$4,NULL,now()
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      arrived.commandId]);
+    expect(eventCommandResult.rows[0]!.payload).toMatchObject({
+      eventId: arrived.eventId,status: "ARRIVED",workflowVersion,
+    });
+    const acquisitionCommandResult = await app.query<{
+      payload: {
+        registration: { submissionId: string; created: boolean; unavailableLines: number };
+        event: { status: string; workflowVersion: number };
+      };
+    }>(`
+      SELECT public.axora_driver_delivery_command_result(
+        $1,$2,$3,'ACQUISITION',$4,$5,now()
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      acquisitionCommand,acquisitionEventCommand]);
+    expect(acquisitionCommandResult.rows[0]!.payload).toMatchObject({
+      registration: {
+        submissionId: acquisition.rows[0]!.payload.submissionId,
+        created: false,
+        unavailableLines: 0,
+      },
+      event: { status: "ITEMS_ACQUIRED" },
+    });
+    const evidenceCommandResult = await app.query<{
+      payload: { evidenceId: string; version: number; validationStatus: string };
+    }>(`
+      SELECT public.axora_driver_delivery_command_result(
+        $1,$2,$3,'EVIDENCE',$4,NULL,now()
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId,job.rows[0]!.id,
+      evidenceCommand]);
+    expect(evidenceCommandResult.rows[0]!.payload).toEqual({
+      evidenceId: evidence.rows[0]!.payload.evidenceId,
+      version: 1,
+      validationStatus: "ACCEPTED",
+      created: false,
+    });
+    const foreignCommandResult = await app.query<{ payload: null }>(`
+      SELECT public.axora_driver_delivery_command_result(
+        $1,$2,$3,'EVIDENCE',$4,NULL,now()
+      ) AS payload
+    `, [losingDriver.userId,losingDriver.assignmentId,job.rows[0]!.id,
+      evidenceCommand]);
+    expect(foreignCommandResult.rows[0]!.payload).toBeNull();
     await expect(app.query(`
       SELECT public.axora_register_delivery_evidence(
         $1,$2,$3,$4,$5,'DELIVERY_NOTE','native-proof.pdf','application/pdf',$6,$7,
@@ -1445,7 +1658,7 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       { actor: losingDriver,allowed: false },
     ];
     const evidenceVisibility = await Promise.all(evidenceReaders.map(({ actor }) => (
-      app!.query<{
+      withAppClient((client) => client.query<{
         evidence_id: string;
         file_name: string;
         content_type: string;
@@ -1455,7 +1668,7 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
         evidence_version: number;
       }>(`SELECT * FROM public.axora_delivery_evidence_file($1,$2,$3,now())`, [
         actor.userId,actor.assignmentId,evidence.rows[0]!.payload.evidenceId,
-      ])
+      ]))
     )));
     expect(evidenceVisibility.map((result) => result.rowCount)).toEqual(
       evidenceReaders.map(({ allowed }) => allowed ? 1 : 0),
@@ -1554,6 +1767,8 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       acquisitionRows: number;
       customerInvoiceAmount: string;
       internalCost: string;
+      acquiredQuantity: string;
+      expectedQuantity: string;
       trackingSessionsEnded: number;
     }>(`
       SELECT
@@ -1605,6 +1820,16 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
           WHERE acquisition_line.delivery_job_id=job.id
             AND acquisition_line.actual_internal_unit_cost IS NOT NULL
           ORDER BY acquisition_line.created_at DESC LIMIT 1) AS "internalCost",
+        (SELECT acquisition_line.acquired_quantity::text
+          FROM public.delivery_acquisition_lines acquisition_line
+          WHERE acquisition_line.delivery_job_id=job.id
+            AND acquisition_line.actual_internal_unit_cost IS NOT NULL
+          ORDER BY acquisition_line.created_at DESC LIMIT 1) AS "acquiredQuantity",
+        (SELECT acquisition_line.expected_quantity::text
+          FROM public.delivery_acquisition_lines acquisition_line
+          WHERE acquisition_line.delivery_job_id=job.id
+            AND acquisition_line.actual_internal_unit_cost IS NOT NULL
+          ORDER BY acquisition_line.created_at DESC LIMIT 1) AS "expectedQuantity",
         (SELECT count(*)::int FROM public.delivery_tracking_sessions session
           WHERE session.delivery_job_id=job.id AND session.status='ENDED') AS "trackingSessionsEnded"
       FROM public.delivery_jobs job
@@ -1641,8 +1866,35 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       acquisitionRows: 2,
       customerInvoiceAmount: "1000.00",
       internalCost: "700.000000",
+      acquiredQuantity: "1.000",
+      expectedQuantity: "1.000",
       trackingSessionsEnded: 1,
     });
+    const recentCompletion = await app.query<{
+      payload: { jobs: Array<Record<string, unknown>> };
+    }>(`
+      SELECT public.axora_driver_recent_delivery_completion(
+        $1,$2,now()
+      ) AS payload
+    `, [winningDriver.userId,winningDriver.assignmentId]);
+    expect(recentCompletion.rows[0]!.payload.jobs).toHaveLength(1);
+    expect(recentCompletion.rows[0]!.payload.jobs[0]).toMatchObject({
+      id: job.rows[0]!.id,
+      status: "COMPLETED",
+      assignmentId: activeAssignment.assignmentId,
+      proofSatisfied: true,
+    });
+    const recentCompletionJson = JSON.stringify(recentCompletion.rows[0]!.payload);
+    expect(recentCompletionJson).not.toContain("Native recipient");
+    expect(recentCompletionJson).not.toContain("actualInternalUnitCost");
+    expect(recentCompletionJson).not.toContain("destinationLatitude");
+    expect(recentCompletionJson).not.toContain("recipientIdentity");
+    expect((await app.query<{ payload: { jobs: unknown[] } }>(`
+      SELECT public.axora_driver_recent_delivery_completion(
+        $1,$2,now()
+      ) AS payload
+    `, [losingDriver.userId,losingDriver.assignmentId])).rows[0]!.payload.jobs)
+      .toEqual([]);
     const finalDocument = await admin.query<{ snapshot: Record<string, unknown> }>(`
       SELECT public.axora_build_final_delivery_document_snapshot($1,now()) AS snapshot
     `, [request.requestId]);
