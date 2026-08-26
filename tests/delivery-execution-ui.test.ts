@@ -26,6 +26,7 @@ describe("delivery execution role interfaces", () => {
     expect(driver).toContain("actualInternalUnitCost");
     expect(driver).toContain("UNAVAILABLE");
     expect(driver).toContain("/api/driver/proof");
+    expect(driver).toContain('<option key={type} value={type}>{deliveryProofTypeLabel(type, initialLocale)}</option>');
     expect(driver).toContain("/api/driver/otp");
     expect(driver).toContain("/api/driver/command-result");
     expect(driver).toContain("authoritativeJobResult");
@@ -56,5 +57,6 @@ describe("delivery execution role interfaces", () => {
     expect(styles).toContain(":focus-visible");
     expect(copy).toContain("ar:");
     expect(copy).toContain("ms:");
+    expect(copy).toContain('legacyWaitingOne: "{count} saved update is waiting"');
   });
 });

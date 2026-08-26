@@ -119,7 +119,7 @@ test("a valid scoped queue survives page loading and a failed server retry byte-
   });
   await openOriginAndStore(page, raw);
 
-  await expect(page.getByText("1 update waiting")).toBeVisible();
+  await expect(page.getByText("1 saved update is waiting")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Saved delivery updates need attention" })).toHaveCount(0);
   expect(await page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(raw);
 });

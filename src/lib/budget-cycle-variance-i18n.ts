@@ -99,6 +99,46 @@ const messages = {
     temporaryIncrease: "Temporary period increase",
     noVarianceApprovals: "No actual-spend decision is waiting in your live scope.",
     state: "State",
+    statusUnavailable: "Status unavailable",
+    yes: "Yes",
+    no: "No",
+    rolloverResetFixed: "Reset to fixed allocation",
+    rolloverFull: "Carry forward the full balance",
+    rolloverNone: "Do not carry forward",
+    rolloverPartial: "Carry forward a percentage",
+    rolloverCustom: "Carry forward an approved amount",
+    toleranceNone: "No tolerance",
+    toleranceFixed: "Fixed amount",
+    tolerancePercentage: "Percentage",
+    toleranceLowerOnly: "Lower spend only",
+    adjustmentOneTime: "One-time adjustment",
+    adjustmentTemporary: "Temporary increase",
+    adjustmentPermanent: "Permanent allocation change",
+    adjustmentTransfer: "Transfer between budgets",
+    pending: "Pending",
+    leased: "In progress",
+    retry: "Retry scheduled",
+    succeeded: "Succeeded",
+    deadLetter: "Needs manual recovery",
+    cancelled: "Cancelled",
+    pendingCompany: "Awaiting company approval",
+    pendingAxora: "Awaiting Axora approval",
+    approved: "Approved",
+    rejected: "Rejected",
+    returned: "Returned",
+    finalized: "Finalized",
+    scheduled: "Scheduled",
+    periodActive: "Active",
+    closed: "Closed",
+    periodFailed: "Failed",
+    corrected: "Corrected",
+    alertLow: "Low balance",
+    alertCritical: "Critical balance",
+    alertZero: "Zero balance",
+    alertNegative: "Negative balance",
+    alertActive: "Alert active",
+    alertRearmed: "Alert rearmed",
+    refreshFailed: "Refresh failed. Review the authorized job record.",
     success: "The authorized workflow change was recorded.",
     failure: "The workflow change could not be recorded. Refresh and verify the live authorization and state.",
   },
@@ -200,6 +240,46 @@ const messages = {
     temporaryIncrease: "زيادة مؤقتة للفترة",
     noVarianceApprovals: "لا يوجد قرار إنفاق فعلي ينتظر ضمن نطاقك المباشر.",
     state: "الحالة",
+    statusUnavailable: "الحالة غير متاحة",
+    yes: "نعم",
+    no: "لا",
+    rolloverResetFixed: "إعادة التعيين إلى المخصص الثابت",
+    rolloverFull: "ترحيل الرصيد بالكامل",
+    rolloverNone: "عدم ترحيل الرصيد",
+    rolloverPartial: "ترحيل نسبة من الرصيد",
+    rolloverCustom: "ترحيل مبلغ معتمد",
+    toleranceNone: "دون هامش",
+    toleranceFixed: "مبلغ ثابت",
+    tolerancePercentage: "نسبة مئوية",
+    toleranceLowerOnly: "الإنفاق الأقل فقط",
+    adjustmentOneTime: "تعديل لمرة واحدة",
+    adjustmentTemporary: "زيادة مؤقتة",
+    adjustmentPermanent: "تغيير دائم للمخصص",
+    adjustmentTransfer: "تحويل بين الميزانيات",
+    pending: "قيد الانتظار",
+    leased: "قيد التنفيذ",
+    retry: "تمت جدولة إعادة المحاولة",
+    succeeded: "نجحت",
+    deadLetter: "تحتاج إلى استعادة يدوية",
+    cancelled: "ملغاة",
+    pendingCompany: "بانتظار اعتماد الشركة",
+    pendingAxora: "بانتظار اعتماد أكسورا",
+    approved: "معتمدة",
+    rejected: "مرفوضة",
+    returned: "مُعادة",
+    finalized: "نهائية",
+    scheduled: "مجدولة",
+    periodActive: "نشطة",
+    closed: "مغلقة",
+    periodFailed: "فشلت",
+    corrected: "مصححة",
+    alertLow: "رصيد منخفض",
+    alertCritical: "رصيد حرج",
+    alertZero: "الرصيد صفر",
+    alertNegative: "رصيد سالب",
+    alertActive: "التنبيه نشط",
+    alertRearmed: "أُعيد تفعيل التنبيه",
+    refreshFailed: "فشل التجديد. راجع سجل المهمة المصرح به.",
     success: "تم تسجيل تغيير سير العمل المصرح به.",
     failure: "تعذر تسجيل تغيير سير العمل. حدّث الصفحة وتحقق من التفويض والحالة المباشرين.",
   },
@@ -301,6 +381,46 @@ const messages = {
     temporaryIncrease: "Peningkatan tempoh sementara",
     noVarianceApprovals: "Tiada keputusan perbelanjaan sebenar menunggu dalam skop langsung anda.",
     state: "Keadaan",
+    statusUnavailable: "Status tidak tersedia",
+    yes: "Ya",
+    no: "Tidak",
+    rolloverResetFixed: "Tetap semula kepada peruntukan tetap",
+    rolloverFull: "Bawa hadapan baki penuh",
+    rolloverNone: "Jangan bawa baki ke hadapan",
+    rolloverPartial: "Bawa hadapan peratus baki",
+    rolloverCustom: "Bawa hadapan amaun diluluskan",
+    toleranceNone: "Tiada toleransi",
+    toleranceFixed: "Amaun tetap",
+    tolerancePercentage: "Peratus",
+    toleranceLowerOnly: "Perbelanjaan lebih rendah sahaja",
+    adjustmentOneTime: "Pelarasan sekali sahaja",
+    adjustmentTemporary: "Peningkatan sementara",
+    adjustmentPermanent: "Perubahan peruntukan kekal",
+    adjustmentTransfer: "Pindahan antara bajet",
+    pending: "Belum selesai",
+    leased: "Sedang diproses",
+    retry: "Cuba semula dijadualkan",
+    succeeded: "Berjaya",
+    deadLetter: "Perlu pemulihan manual",
+    cancelled: "Dibatalkan",
+    pendingCompany: "Menunggu kelulusan syarikat",
+    pendingAxora: "Menunggu kelulusan Axora",
+    approved: "Diluluskan",
+    rejected: "Ditolak",
+    returned: "Dikembalikan",
+    finalized: "Dimuktamadkan",
+    scheduled: "Dijadualkan",
+    periodActive: "Aktif",
+    closed: "Ditutup",
+    periodFailed: "Gagal",
+    corrected: "Dibetulkan",
+    alertLow: "Baki rendah",
+    alertCritical: "Baki kritikal",
+    alertZero: "Baki sifar",
+    alertNegative: "Baki negatif",
+    alertActive: "Amaran aktif",
+    alertRearmed: "Amaran diaktifkan semula",
+    refreshFailed: "Pembaharuan gagal. Semak rekod tugas yang dibenarkan.",
     success: "Perubahan aliran kerja yang dibenarkan telah direkodkan.",
     failure: "Perubahan aliran kerja tidak dapat direkodkan. Muat semula dan sahkan kebenaran serta keadaan langsung.",
   },
@@ -313,3 +433,119 @@ export function budgetCycleVarianceMessages(locale: SupportedLocale) {
 export type BudgetCycleVarianceMessages = ReturnType<
   typeof budgetCycleVarianceMessages
 >;
+
+type BudgetMessageKey = keyof typeof messages.en;
+
+function domainLabel(
+  value: string,
+  locale: SupportedLocale,
+  labels: Readonly<Record<string, BudgetMessageKey>>,
+) {
+  const key = labels[value];
+  return key ? messages[locale][key] : messages[locale].statusUnavailable;
+}
+
+const frequencyLabels = {
+  WEEKLY: "weekly",
+  MONTHLY: "monthly",
+  QUARTERLY: "quarterly",
+  ANNUAL: "yearly",
+  YEARLY: "yearly",
+  CUSTOM: "custom",
+  MANUAL: "manual",
+} as const satisfies Record<string, BudgetMessageKey>;
+
+const rolloverLabels = {
+  RESET_FIXED: "rolloverResetFixed",
+  FULL: "rolloverFull",
+  NONE: "rolloverNone",
+  PARTIAL_PERCENT: "rolloverPartial",
+  CUSTOM_AMOUNT: "rolloverCustom",
+} as const satisfies Record<string, BudgetMessageKey>;
+
+const toleranceLabels = {
+  NONE: "toleranceNone",
+  FIXED: "toleranceFixed",
+  PERCENTAGE: "tolerancePercentage",
+  LOWER_ONLY: "toleranceLowerOnly",
+} as const satisfies Record<string, BudgetMessageKey>;
+
+const adjustmentLabels = {
+  ONE_TIME: "adjustmentOneTime",
+  TEMPORARY: "adjustmentTemporary",
+  PERMANENT: "adjustmentPermanent",
+  TRANSFER: "adjustmentTransfer",
+} as const satisfies Record<string, BudgetMessageKey>;
+
+const workflowStateLabels = {
+  PENDING_COMPANY: "pendingCompany",
+  PENDING_AXORA: "pendingAxora",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+  RETURNED: "returned",
+  FINALIZED: "finalized",
+} as const satisfies Record<string, BudgetMessageKey>;
+
+const periodStatusLabels = {
+  SCHEDULED: "scheduled",
+  ACTIVE: "periodActive",
+  CLOSED: "closed",
+  FAILED: "periodFailed",
+  CORRECTED: "corrected",
+} as const satisfies Record<string, BudgetMessageKey>;
+
+const refreshJobStateLabels = {
+  PENDING: "pending",
+  LEASED: "leased",
+  RETRY: "retry",
+  SUCCEEDED: "succeeded",
+  DEAD_LETTER: "deadLetter",
+  CANCELLED: "cancelled",
+} as const satisfies Record<string, BudgetMessageKey>;
+
+const thresholdLabels = {
+  LOW: "alertLow",
+  CRITICAL: "alertCritical",
+  ZERO: "alertZero",
+  NEGATIVE: "alertNegative",
+} as const satisfies Record<string, BudgetMessageKey>;
+
+export function budgetFrequencyLabel(value: string, locale: SupportedLocale) {
+  return domainLabel(value, locale, frequencyLabels);
+}
+
+export function budgetRolloverModeLabel(value: string, locale: SupportedLocale) {
+  return domainLabel(value, locale, rolloverLabels);
+}
+
+export function budgetToleranceModeLabel(value: string, locale: SupportedLocale) {
+  return domainLabel(value, locale, toleranceLabels);
+}
+
+export function budgetAdjustmentTypeLabel(value: string, locale: SupportedLocale) {
+  return domainLabel(value, locale, adjustmentLabels);
+}
+
+export function budgetWorkflowStateLabel(value: string, locale: SupportedLocale) {
+  return domainLabel(value, locale, workflowStateLabels);
+}
+
+export function budgetPeriodStatusLabel(value: string, locale: SupportedLocale) {
+  return domainLabel(value, locale, periodStatusLabels);
+}
+
+export function budgetRefreshJobStateLabel(value: string, locale: SupportedLocale) {
+  return domainLabel(value, locale, refreshJobStateLabels);
+}
+
+export function budgetThresholdLabel(value: string, locale: SupportedLocale) {
+  return domainLabel(value, locale, thresholdLabels);
+}
+
+export function budgetAlertStateLabel(active: boolean, locale: SupportedLocale) {
+  return active ? messages[locale].alertActive : messages[locale].alertRearmed;
+}
+
+export function budgetBooleanLabel(value: boolean, locale: SupportedLocale) {
+  return value ? messages[locale].yes : messages[locale].no;
+}

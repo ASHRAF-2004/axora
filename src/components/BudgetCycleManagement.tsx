@@ -2,7 +2,18 @@ import { randomUUID } from "node:crypto";
 import { BudgetPeriodScheduleFields } from "@/components/BudgetPeriodScheduleFields";
 import type { SupportedLocale } from "@/lib/i18n";
 import type { BudgetCycleWorkspace } from "@/lib/budget-cycles";
-import { budgetCycleVarianceMessages } from "@/lib/budget-cycle-variance-i18n";
+import {
+  budgetAdjustmentTypeLabel,
+  budgetAlertStateLabel,
+  budgetCycleVarianceMessages,
+  budgetFrequencyLabel,
+  budgetPeriodStatusLabel,
+  budgetRefreshJobStateLabel,
+  budgetRolloverModeLabel,
+  budgetThresholdLabel,
+  budgetToleranceModeLabel,
+  budgetWorkflowStateLabel,
+} from "@/lib/budget-cycle-variance-i18n";
 import {
   customBudgetPeriodDefaults,
   isoLocalDateTimeInTimeZone,
@@ -72,14 +83,14 @@ export function BudgetCycleManagement({
         {workspace.accounts.map((account) => (
           <article className={styles.card} key={account.id}>
             <div className={styles.cardHeader}>
-              <div><span className={styles.state}>{account.schedule.frequency}</span><h2>{account.name}</h2></div>
+              <div><span className={styles.state}>{budgetFrequencyLabel(account.schedule.frequency, locale)}</span><h2>{account.name}</h2></div>
               <span className={styles.muted}>v{account.schedule.version}</span>
             </div>
             <div className={styles.metrics}>
               <div className={styles.metric}><span>{messages.nextRefresh}</span><strong>{dateTime(account.nextRefreshAt, locale, "UTC")}</strong></div>
               <div className={styles.metric}><span>{messages.timezone}</span><strong>{account.schedule.timezone}</strong></div>
               <div className={styles.metric}><span>{messages.fixedAllocation}</span><strong>{money(account.schedule.fixedAllocation, account.currency, locale)}</strong></div>
-              <div className={styles.metric}><span>{messages.rolloverMode}</span><strong>{account.schedule.rolloverMode.replaceAll("_", " ")}</strong></div>
+              <div className={styles.metric}><span>{messages.rolloverMode}</span><strong>{budgetRolloverModeLabel(account.schedule.rolloverMode, locale)}</strong></div>
             </div>
             {account.canRequest ? (
               <details>
@@ -103,7 +114,7 @@ export function BudgetCycleManagement({
                     <label><span>{messages.timezone}</span><input name="timezone" defaultValue={account.schedule.timezone} minLength={3} maxLength={100} required /></label>
                     <label><span>{messages.dst}</span><select name="dstResolution" defaultValue={account.schedule.dstResolution}><option value="EARLIER">{messages.earlier}</option><option value="LATER">{messages.later}</option></select></label>
                     <label><span>{messages.fixedAllocation}</span><input name="fixedAllocation" type="number" min="0" step="0.01" defaultValue={account.schedule.fixedAllocation} required /></label>
-                    <label><span>{messages.rolloverMode}</span><select name="rolloverMode" defaultValue={account.schedule.rolloverMode}>{rolloverModes.map((value) => <option value={value} key={value}>{value.replaceAll("_", " ")}</option>)}</select></label>
+                    <label><span>{messages.rolloverMode}</span><select name="rolloverMode" defaultValue={account.schedule.rolloverMode}>{rolloverModes.map((value) => <option value={value} key={value}>{budgetRolloverModeLabel(value, locale)}</option>)}</select></label>
                     <label><span>{messages.rolloverPercent}</span><input name="rolloverPercentage" type="number" min="0.01" max="99.99" step="0.01" defaultValue={account.schedule.rolloverPercentage} /></label>
                     <label><span>{messages.customRollover}</span><input name="customRolloverAmount" type="number" min="0" step="0.01" defaultValue={account.schedule.customRolloverAmount} /></label>
                     <label><span>{messages.lowThreshold}</span><input name="lowThresholdPercentage" type="number" min="1" max="99" step="0.01" defaultValue={account.schedule.lowThresholdPercentage} required /></label>
@@ -119,7 +130,7 @@ export function BudgetCycleManagement({
               <ul className={styles.ledgerList}>
                 {account.periods.map((period) => (
                   <li key={period.id}>
-                    <span><strong>{period.name}</strong><br /><small className={styles.muted}>{period.status} / v{period.scheduleVersion}</small></span>
+                    <span><strong>{period.name}</strong><br /><small className={styles.muted}>{budgetPeriodStatusLabel(period.status, locale)} / v{period.scheduleVersion}</small></span>
                     <span>{money(period.available, account.currency, locale)}<br /><small className={styles.muted}>{dateTime(period.endsAt, locale, account.schedule.timezone)}</small></span>
                   </li>
                 ))}
@@ -131,7 +142,7 @@ export function BudgetCycleManagement({
                 <input type="hidden" name="idempotencyKey" value={randomUUID()} />
                 <input type="hidden" name="budgetAccountId" value={account.id} />
                 <div className={styles.fieldGrid}>
-                  <label><span>{messages.adjustmentType}</span><select name="adjustmentType" defaultValue="ONE_TIME"><option value="ONE_TIME">ONE TIME</option><option value="TEMPORARY">TEMPORARY</option><option value="PERMANENT">PERMANENT</option><option value="TRANSFER">TRANSFER</option></select></label>
+                  <label><span>{messages.adjustmentType}</span><select name="adjustmentType" defaultValue="ONE_TIME">{(["ONE_TIME", "TEMPORARY", "PERMANENT", "TRANSFER"] as const).map((value) => <option value={value} key={value}>{budgetAdjustmentTypeLabel(value, locale)}</option>)}</select></label>
                   <label><span>{messages.amount}</span><input name="amount" type="number" min="0.01" step="0.01" required /></label>
                   <label><span>{messages.sourceAccount}</span><select name="sourceBudgetAccountId" defaultValue=""><option value="">-</option>{workspace.accounts.filter((item) => item.id!==account.id && item.companyId===account.companyId && item.currency===account.currency).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
                   <label><span>{messages.effectiveUntil}</span><input name="effectiveUntil" type="datetime-local" /></label>
@@ -148,8 +159,8 @@ export function BudgetCycleManagement({
           <ul className={styles.ledgerList}>
             {workspace.changeRequests.map((change) => (
               <li key={change.id}>
-                <span><strong>{change.accountName}</strong><br /><small className={styles.muted}>{change.state} / {messages.requestedBy}: {change.requestedBy}</small></span>
-                {change.canDecide ? <form action={decideBudgetCycleChangeAction} className={styles.adminForm}><input type="hidden" name="changeRequestId" value={change.id} /><input type="hidden" name="idempotencyKey" value={randomUUID()} /><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></form> : <span>{change.state}</span>}
+                <span><strong>{change.accountName}</strong><br /><small className={styles.muted}>{budgetWorkflowStateLabel(change.state, locale)} / {messages.requestedBy}: {change.requestedBy}</small></span>
+                {change.canDecide ? <form action={decideBudgetCycleChangeAction} className={styles.adminForm}><input type="hidden" name="changeRequestId" value={change.id} /><input type="hidden" name="idempotencyKey" value={randomUUID()} /><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></form> : <span>{budgetWorkflowStateLabel(change.state, locale)}</span>}
               </li>
             ))}
           </ul>
@@ -164,7 +175,7 @@ export function BudgetCycleManagement({
             <input type="hidden" name="companyId" value={policy.companyId} />
             <strong>{policy.companyName} / v{policy.version}</strong>
             <div className={styles.fieldGrid}>
-              <label><span>{messages.toleranceMode}</span><select name="toleranceMode" defaultValue={policy.toleranceMode}><option value="NONE">NONE</option><option value="FIXED">FIXED</option><option value="PERCENTAGE">PERCENTAGE</option><option value="LOWER_ONLY">LOWER ONLY</option></select></label>
+              <label><span>{messages.toleranceMode}</span><select name="toleranceMode" defaultValue={policy.toleranceMode}>{(["NONE", "FIXED", "PERCENTAGE", "LOWER_ONLY"] as const).map((value) => <option value={value} key={value}>{budgetToleranceModeLabel(value, locale)}</option>)}</select></label>
               <label><span>{messages.fixedTolerance}</span><input name="fixedTolerance" type="number" min="0" step="0.01" defaultValue={policy.fixedTolerance} /></label>
               <label><span>{messages.percentageTolerance}</span><input name="percentageTolerance" type="number" min="0" max="100" step="0.01" defaultValue={policy.percentageTolerance} /></label>
               <label><span>{messages.effective}</span><input name="effectiveAt" type="datetime-local" /></label>
@@ -177,7 +188,7 @@ export function BudgetCycleManagement({
             <input type="hidden" name="changeRequestId" value={change.id} />
             <input type="hidden" name="idempotencyKey" value={randomUUID()} />
             <strong>{change.companyName} / {change.requestedBy}</strong>
-            {change.canDecide ? <><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></> : <span>{change.state}</span>}
+            {change.canDecide ? <><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></> : <span>{budgetWorkflowStateLabel(change.state, locale)}</span>}
           </form>
         ))}
       </section>
@@ -188,20 +199,20 @@ export function BudgetCycleManagement({
             <form action={decideBudgetAdjustmentAction} className={styles.adminForm} key={adjustment.id}>
               <input type="hidden" name="adjustmentRequestId" value={adjustment.id} />
               <input type="hidden" name="idempotencyKey" value={randomUUID()} />
-              <strong>{adjustment.accountName}: {adjustment.adjustmentType} / {adjustment.amount}</strong>
+              <strong>{adjustment.accountName}: {budgetAdjustmentTypeLabel(adjustment.adjustmentType, locale)} / {adjustment.amount}</strong>
               <p className={styles.muted}>{adjustment.requestedBy}</p>
-              {adjustment.canDecide ? <><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.secondaryAction} name="decision" value="RETURN">{messages.return}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></> : <span>{adjustment.state}</span>}
+              {adjustment.canDecide ? <><div className={styles.actionRow}><button className={styles.primaryAction} name="decision" value="APPROVE">{messages.approve}</button><button className={styles.secondaryAction} name="decision" value="RETURN">{messages.return}</button><button className={styles.dangerAction} name="decision" value="REJECT">{messages.reject}</button></div></> : <span>{budgetWorkflowStateLabel(adjustment.state, locale)}</span>}
             </form>
           ))}
         </section>
       ) : null}
       <section className={styles.card}>
         <h2>{messages.refreshJobs}</h2>
-        {workspace.jobs.length ? <ul className={styles.ledgerList}>{workspace.jobs.map((job) => <li key={job.id}><span><strong>{job.accountName}</strong><br /><small className={styles.muted}>{job.state} / {job.attemptCount}/{job.maxAttempts} / {dateTime(job.dueAt, locale, "UTC")}</small></span>{job.canRerun ? <form action={rerunBudgetRefreshJobAction}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="idempotencyKey" value={randomUUID()} /><button className={styles.secondaryAction}>{messages.rerun}</button></form> : <span>{job.lastErrorCode ?? job.state}</span>}</li>)}</ul> : <p>{messages.noJobs}</p>}
+        {workspace.jobs.length ? <ul className={styles.ledgerList}>{workspace.jobs.map((job) => <li key={job.id}><span><strong>{job.accountName}</strong><br /><small className={styles.muted}>{budgetRefreshJobStateLabel(job.state, locale)} / {job.attemptCount}/{job.maxAttempts} / {dateTime(job.dueAt, locale, "UTC")}</small></span>{job.canRerun ? <form action={rerunBudgetRefreshJobAction}><input type="hidden" name="jobId" value={job.id} /><input type="hidden" name="idempotencyKey" value={randomUUID()} /><button className={styles.secondaryAction}>{messages.rerun}</button></form> : <span>{job.lastErrorCode ? messages.refreshFailed : budgetRefreshJobStateLabel(job.state, locale)}</span>}</li>)}</ul> : <p>{messages.noJobs}</p>}
       </section>
       <section className={styles.card}>
         <h2>{messages.alerts}</h2>
-        {workspace.alerts.length ? <ul className={styles.ledgerList}>{workspace.alerts.map((alert) => <li key={alert.id}><span><strong>{alert.accountName}</strong><br /><small className={styles.muted}>{alert.thresholdCode} / {alert.active ? "ACTIVE" : "REARMED"}</small></span><span>{alert.lastAvailable}</span></li>)}</ul> : <p>{messages.noAlerts}</p>}
+        {workspace.alerts.length ? <ul className={styles.ledgerList}>{workspace.alerts.map((alert) => <li key={alert.id}><span><strong>{alert.accountName}</strong><br /><small className={styles.muted}>{budgetThresholdLabel(alert.thresholdCode, locale)} / {budgetAlertStateLabel(alert.active, locale)}</small></span><span>{alert.lastAvailable}</span></li>)}</ul> : <p>{messages.noAlerts}</p>}
       </section>
     </>
   );

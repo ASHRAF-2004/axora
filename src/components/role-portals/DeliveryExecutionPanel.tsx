@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { deliveryWorkflowMessages, deliveryWorkflowStatusLabel, type DeliveryWorkflowLocale } from "@/lib/delivery-workflow-i18n";
+import { deliveryProofTypeLabel, deliveryWorkflowMessages, deliveryWorkflowStatusLabel, type DeliveryWorkflowLocale } from "@/lib/delivery-workflow-i18n";
 import { DriverTrackingPanel } from "./DeliveryTrackingPanels";
 import styles from "./DeliveryExecution.module.css";
 
@@ -932,7 +932,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
         })();
       }}>{copy.syncNow}</button>
     </div> : null}
-    {legacyQueue && !legacyQueue.needsAttention ? <p className={styles.notice} role="status">{legacyQueue.validCount} update waiting</p> : null}
+    {legacyQueue && !legacyQueue.needsAttention ? <p className={styles.notice} role="status">{(legacyQueue.validCount === 1 ? copy.legacyWaitingOne : copy.legacyWaiting).replace("{count}", new Intl.NumberFormat(initialLocale).format(legacyQueue.validCount))}</p> : null}
     {legacyQueue?.needsAttention ? <div className={styles.recovery} role="alert">
       <h2>{copy.legacyTitle}</h2>
       <p>{legacyQueue.message}</p>
@@ -1012,7 +1012,7 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
             <div className={styles.fact}><dt>{copy.schedule}</dt><dd>{job.scheduledLocalStart?.replace("T", " ")} – {job.scheduledLocalEnd?.slice(11, 16)}<br />{job.destinationTimezone}</dd></div>
             <div className={styles.fact}><dt>{copy.deadline}</dt><dd>{formatDate(job.acceptanceDeadline, initialLocale, job.destinationTimezone)}</dd></div>
             <div className={styles.fact}><dt>{copy.sla}</dt><dd>{formatDate(job.slaDueAt, initialLocale, job.destinationTimezone)}</dd></div>
-            <div className={styles.fact}><dt>{copy.proof}</dt><dd>{job.proofPolicy.join(" + ")}<br />{job.proofSatisfied ? copy.proofReady : copy.proofMissing}</dd></div>
+            <div className={styles.fact}><dt>{copy.proof}</dt><dd>{job.proofPolicy.map((type) => deliveryProofTypeLabel(type, initialLocale)).join(" + ")}<br />{job.proofSatisfied ? copy.proofReady : copy.proofMissing}</dd></div>
           </dl>
           <ul className={styles.itemList}>{job.lines.map((line) => <li key={line.id}><strong>{line.productName}</strong><span>×{line.quantity} {line.unitOfMeasure}</span></li>)}</ul>
           <p>{job.address}</p>
@@ -1039,11 +1039,11 @@ export function DeliveryExecutionPanel({ locale: initialLocale = "en" }: { local
             PARTIALLY_DELIVERED: copy.partial, DELIVERED: copy.delivered,
             COMPLETED: copy.completed, ISSUE_REPORTED: copy.reportIssue,
             FAILED: copy.reportIssue, NOTE_ADDED: copy.note,
-          } as Record<string, string>)[type] ?? type}</button>)}</div>
+          } as Record<string, string>)[type] ?? copy.statusUnavailable}</button>)}</div>
           {["ARRIVED", "PARTIALLY_DELIVERED", "DELIVERED"].includes(job.status)
-            && job.proofPolicy.some((type) => type === "PHOTO" || type === "SIGNATURE") ? <details className={styles.details}><summary>{copy.uploadProof}</summary><form className={styles.form} onSubmit={(event) => void uploadProof(event, job)}><div className={styles.formGrid}><label>{copy.event}<select name="eventId" required>{[...job.events].reverse().filter((item) => ["ARRIVED", "PARTIALLY_DELIVERED", "DELIVERED"].includes(item.type)).map((item) => <option key={item.id} value={item.id}>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</option>)}</select></label><label>{copy.evidenceType}<select name="type" value={proofTypes[job.id] ?? (job.proofPolicy.includes("PHOTO") ? "PHOTO" : "SIGNATURE")} onChange={(event) => setProofTypes((current) => ({ ...current, [job.id]: event.target.value as "PHOTO" | "SIGNATURE" }))}>{job.proofPolicy.filter((type) => type === "PHOTO" || type === "SIGNATURE").map((type) => <option key={type}>{type}</option>)}</select></label><label>{copy.file}<input name="file" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.recipient}<input name="recipientIdentity" minLength={2} maxLength={200} required /></label><label><input name="consented" type="checkbox" required={(proofTypes[job.id] ?? (job.proofPolicy.includes("PHOTO") ? "PHOTO" : "SIGNATURE")) === "SIGNATURE"} /> {copy.consent}</label><label>{copy.correctEvidence}<select name="supersedesEvidenceId" defaultValue=""><option value="">—</option>{job.evidence.map((item) => <option key={item.id} value={item.id}>{item.type} v{item.version}</option>)}</select></label></div><button className={styles.actionButton} disabled={jobBlocked} type="submit">{copy.uploadProof}</button></form></details> : null}
+            && job.proofPolicy.some((type) => type === "PHOTO" || type === "SIGNATURE") ? <details className={styles.details}><summary>{copy.uploadProof}</summary><form className={styles.form} onSubmit={(event) => void uploadProof(event, job)}><div className={styles.formGrid}><label>{copy.event}<select name="eventId" required>{[...job.events].reverse().filter((item) => ["ARRIVED", "PARTIALLY_DELIVERED", "DELIVERED"].includes(item.type)).map((item) => <option key={item.id} value={item.id}>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</option>)}</select></label><label>{copy.evidenceType}<select name="type" value={proofTypes[job.id] ?? (job.proofPolicy.includes("PHOTO") ? "PHOTO" : "SIGNATURE")} onChange={(event) => setProofTypes((current) => ({ ...current, [job.id]: event.target.value as "PHOTO" | "SIGNATURE" }))}>{job.proofPolicy.filter((type) => type === "PHOTO" || type === "SIGNATURE").map((type) => <option key={type} value={type}>{deliveryProofTypeLabel(type, initialLocale)}</option>)}</select></label><label>{copy.file}<input name="file" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required /></label><label>{copy.recipient}<input name="recipientIdentity" minLength={2} maxLength={200} required /></label><label><input name="consented" type="checkbox" required={(proofTypes[job.id] ?? (job.proofPolicy.includes("PHOTO") ? "PHOTO" : "SIGNATURE")) === "SIGNATURE"} /> {copy.consent}</label><label>{copy.correctEvidence}<select name="supersedesEvidenceId" defaultValue=""><option value="">—</option>{job.evidence.map((item) => <option key={item.id} value={item.id}>{deliveryProofTypeLabel(item.type, initialLocale)} · {copy.version} {new Intl.NumberFormat(initialLocale).format(item.version)}</option>)}</select></label></div><button className={styles.actionButton} disabled={jobBlocked} type="submit">{copy.uploadProof}</button></form></details> : null}
           {job.proofPolicy.includes("OTP") ? <details className={styles.details}><summary>{copy.verifyOtp}</summary><form className={styles.form} onSubmit={(event) => void verifyOtp(event, job)}><div className={styles.formGrid}><label>{copy.challengeId}<input name="challengeId" required /></label><label>{copy.code}<input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label></div><button className={styles.actionButton} disabled={jobBlocked} type="submit">{copy.verifyOtp}</button></form></details> : null}
-          {job.evidence.length ? <ul>{job.evidence.map((item) => <li key={item.id}>{item.accessUrl ? <a href={item.accessUrl}>{item.type} · {item.fileName} · v{item.version}</a> : item.fileName}</li>)}</ul> : null}
+          {job.evidence.length ? <ul>{job.evidence.map((item) => <li key={item.id}>{item.accessUrl ? <a href={item.accessUrl}>{deliveryProofTypeLabel(item.type, initialLocale)} · {item.fileName} · {copy.version} {new Intl.NumberFormat(initialLocale).format(item.version)}</a> : item.fileName}</li>)}</ul> : null}
           <details className={styles.details}><summary>{copy.timeline}</summary><ol className={styles.timeline}>{job.events.map((item) => <li className={styles.timelineItem} key={item.id}><strong>{deliveryWorkflowStatusLabel(item.type, initialLocale)}</strong><time>{formatDate(item.receivedAt, initialLocale, job.destinationTimezone)}</time></li>)}</ol></details>
         </div>
       </article>;
