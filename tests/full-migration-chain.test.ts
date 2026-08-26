@@ -7,11 +7,11 @@ const migrationUrl = (filename: string) =>
   new URL(`../database/migrations/${filename}`, import.meta.url);
 
 describe("complete forward migration chain", () => {
-  it("applies every numbered migration through 116 to an empty database", async () => {
+  it("applies every numbered migration through 117 to an empty database", async () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-70)).toEqual([
+      expect(available.slice(-71)).toEqual([
         "047_isolation_closure_capabilities.sql",
         "048_isolation_transaction_lock_hardening.sql",
         "049_active_request_write_boundary.sql",
@@ -82,6 +82,7 @@ describe("complete forward migration chain", () => {
         "114_company_admin_shopping_cart_contract.sql",
         "115_company_admin_direct_purchase.sql",
         "116_delivery_agent_e2e.sql",
+        "117_company_delivery_tracking_visibility.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)

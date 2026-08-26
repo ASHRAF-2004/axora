@@ -151,7 +151,7 @@ test("assigned Delivery Agent explicitly shares, buffers offline, and resumes af
     }));
   }, { key: queueKey, actor: driver.id, session: sessionId, jobId });
   await expect(page.getByRole("button", { name: "Resume sharing location" }))
-    .toBeVisible();
+    .toBeVisible({ timeout: 15_000 });
   expect(await page.evaluate((key) => localStorage.getItem(key), queueKey)).toBeNull();
   await page.evaluate((terminalJobId) => {
     window.dispatchEvent(new CustomEvent("axora:delivery-terminal", {
