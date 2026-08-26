@@ -10,7 +10,8 @@ import { createProductAction } from "../../masters/actions";
 export default async function NewProductPage() {
   const actor = await requirePagePermission("manage_catalog");
   const locale = actor.preferredLocale ?? "en";
-  const copy = corePortalMessages(locale).products;
+  const portalCopy = corePortalMessages(locale);
+  const copy = portalCopy.products;
   const rules = procurementRulesMessages(locale);
   return <>
     <PageHeader eyebrow={copy.operationsEyebrow} title={copy.createTitle} description={copy.createBody} />
@@ -28,7 +29,7 @@ export default async function NewProductPage() {
         <label className="field-full">{copy.images}<input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /><small>{copy.imagesHelp}</small></label>
         <label className="field-full">{copy.altText}<input name="imageAltText" placeholder={copy.altPlaceholder} maxLength={200} /><small>{copy.altHelp}</small></label>
       </div>
-      <Link className="button button-secondary" href="/products">Back</Link>
+      <Link className="button button-secondary" href="/products">{portalCopy.common.back}</Link>
     </ProductActionForm>
   </>;
 }

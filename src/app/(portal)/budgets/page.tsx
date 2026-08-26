@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
 import { branchBudgetMessages } from "@/lib/branch-budget-i18n";
+import { budgetFrequencyLabel } from "@/lib/budget-cycle-variance-i18n";
 import { getBudgetWorkspace } from "@/lib/budget-ledger";
 
 function money(value: string, currency: string, locale: string) { return new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).format(Number(value)); }
@@ -25,7 +26,7 @@ export default async function BudgetsPage() {
           const configured = Number(account.recurringAllocation) > 0 || Boolean(period && Number(period.allocated) > 0);
           return <tr key={account.id}><td><strong>{account.name.replace(/ budget$/i, "")}</strong><br /><small>{account.code}</small></td>
             <td>{configured && period ? money(period.allocated, account.currency, locale) : copy.noBudget}</td>
-            <td>{configured && period ? money(period.available, account.currency, locale) : "—"}</td><td>{configured ? account.refreshInterval : "—"}</td>
+            <td>{configured && period ? money(period.available, account.currency, locale) : "—"}</td><td>{configured ? budgetFrequencyLabel(account.refreshInterval, locale) : "—"}</td>
             <td><span className={configured ? "status status-active" : "status"}>{configured ? copy.active : copy.noBudget}</span></td>
             <td><Link className="button button-secondary button-small" href={`/budgets/${account.branchId}`}>{copy.manage}</Link></td></tr>;
         })}</tbody></table></div>

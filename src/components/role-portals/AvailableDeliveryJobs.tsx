@@ -430,7 +430,7 @@ export function AvailableDeliveryJobs({
     {notice ? <p className={styles.success} role="status" aria-live="polite">{notice}</p> : null}
     {error ? <p className="callout" role="alert">{error}</p> : null}
     {!workspace?.jobs.length ? <p className="subtle">{text.empty}</p> : <div className={styles.jobs}>{workspace.jobs.map((job) => <article className={styles.job} key={job.id}>
-      <div className={styles.jobHeading}><div><span>{text.job}</span><strong>{job.code}</strong><small>{job.requestReference}</small></div><span className="status-badge">{job.status}</span></div>
+      <div className={styles.jobHeading}><div><span>{text.job}</span><strong>{job.code}</strong><small>{job.requestReference}</small></div><span className="status-badge">{text.available}</span></div>
       <dl className={styles.facts}><div><dt>{text.company}</dt><dd>{job.companyName}<small>{job.branchName}</small></dd></div><div><dt>{text.area}</dt><dd>{job.area || "—"}</dd></div><div><dt>{text.items}</dt><dd>{job.lineCount}</dd></div></dl>
       <button className="button button-primary" disabled={Boolean(busy)} onClick={() => void claim(job.id)} type="button">{text.claim}</button>
     </article>)}</div>}

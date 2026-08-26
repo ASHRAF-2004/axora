@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { SupportedLocale } from "@/lib/i18n";
 import type { ProcurementVarianceApprovalWorkspace } from "@/lib/budget-variance";
-import { budgetCycleVarianceMessages } from "@/lib/budget-cycle-variance-i18n";
+import {
+  budgetBooleanLabel,
+  budgetCycleVarianceMessages,
+  budgetWorkflowStateLabel,
+} from "@/lib/budget-cycle-variance-i18n";
 import { decideRequestActualAction } from "@/app/(portal)/approvals/actions";
 import styles from "@/app/(portal)/budget-approval.module.css";
 
@@ -28,7 +32,7 @@ export function VarianceApprovalPanel({
         <div className={styles.approvalGrid}>
           {workspace.submissions.map((submission) => (
             <article className={styles.card} key={submission.id}>
-              <div className={styles.cardHeader}><div><span className={styles.state}>{submission.state}</span><h3>{submission.requestNumber}</h3></div><strong>{money(submission.submissionAmount, submission.currency, locale)}</strong></div>
+              <div className={styles.cardHeader}><div><span className={styles.state}>{budgetWorkflowStateLabel(submission.state, locale)}</span><h3>{submission.requestNumber}</h3></div><strong>{money(submission.submissionAmount, submission.currency, locale)}</strong></div>
               <p className={styles.muted}>{submission.companyName} / {submission.branchName} / {submission.submittedBy}</p>
               <div className={styles.metrics}>
                 <div className={styles.metric}><span>{messages.estimate}</span><strong>{money(submission.estimateAmount, submission.currency, locale)}</strong></div>
@@ -36,7 +40,7 @@ export function VarianceApprovalPanel({
                 <div className={styles.metric}><span>{messages.cumulative}</span><strong>{money(submission.cumulativeActualAmount, submission.currency, locale)}</strong></div>
                 <div className={styles.metric}><span>{messages.difference}</span><strong>{money(submission.differenceAmount, submission.currency, locale)}</strong></div>
               </div>
-              <p>{messages.receiptProvided}: {submission.receiptProvided ? "YES" : "NO"} / {messages.withinTolerance}: {submission.withinTolerance ? "YES" : "NO"} / {messages.substitute}: {submission.substitutePresent ? "YES" : "NO"}</p>
+              <p>{messages.receiptProvided}: {budgetBooleanLabel(submission.receiptProvided, locale)} / {messages.withinTolerance}: {budgetBooleanLabel(submission.withinTolerance, locale)} / {messages.substitute}: {budgetBooleanLabel(submission.substitutePresent, locale)}</p>
               <ul className={styles.lineList}>
                 {submission.lines.map((line) => (
                   <li key={line.id}>

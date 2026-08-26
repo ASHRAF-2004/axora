@@ -63,6 +63,7 @@ const catalog = {
     outcomeUnconfirmed: "The command outcome is still being checked. Refresh before trying again.",
     loading: "Loading delivery workspace…",
     workspaceUnavailable: "Delivery workspace unavailable.",
+    statusUnavailable: "Delivery status unavailable",
     commandConflict: "The delivery command conflicted with current server state.",
     queueLimit: "Offline command queue limit reached.",
     retainedConflict: "A retained command needs review against the current server version.",
@@ -72,6 +73,8 @@ const catalog = {
     legacyUnreadable: "The saved data could not be read.",
     legacyValidation: "{valid} of {total} saved items passed validation.",
     legacyTitle: "Saved delivery updates need attention",
+    legacyWaitingOne: "{count} saved update is waiting",
+    legacyWaiting: "{count} saved updates are waiting",
     unchanged: "Nothing was changed or deleted.",
     syncNow: "Sync now",
     retryValidation: "Retry validation",
@@ -83,6 +86,11 @@ const catalog = {
     discarded: "Saved delivery updates were discarded after confirmation.",
     event: "Event",
     evidenceType: "Type",
+    photoProof: "Photo",
+    signatureProof: "Signature",
+    oneTimeCodeProof: "One-time recipient code",
+    proofTypeUnavailable: "Proof type unavailable",
+    version: "Version",
     file: "File",
     correctEvidence: "Correct evidence",
     challengeId: "Challenge ID",
@@ -175,6 +183,7 @@ const catalog = {
     outcomeUnconfirmed: "لا تزال نتيجة الأمر قيد التحقق. حدّث الصفحة قبل المحاولة مرة أخرى.",
     loading: "جارٍ تحميل مساحة عمل التسليم…",
     workspaceUnavailable: "مساحة عمل التسليم غير متاحة.",
+    statusUnavailable: "حالة التسليم غير متاحة",
     commandConflict: "يتعارض أمر التسليم مع الحالة الحالية في الخادم.",
     queueLimit: "تم بلوغ حد أوامر وضع عدم الاتصال.",
     retainedConflict: "يحتاج أمر محفوظ إلى مراجعة مقابل إصدار الخادم الحالي.",
@@ -184,6 +193,8 @@ const catalog = {
     legacyUnreadable: "تعذرت قراءة البيانات المحفوظة.",
     legacyValidation: "اجتاز {valid} من أصل {total} عناصر محفوظة التحقق.",
     legacyTitle: "تحتاج تحديثات التسليم المحفوظة إلى مراجعة",
+    legacyWaitingOne: "يوجد تحديث محفوظ واحد بانتظار المزامنة",
+    legacyWaiting: "توجد {count} تحديثات محفوظة بانتظار المزامنة",
     unchanged: "لم يتم تغيير أي بيانات أو حذفها.",
     syncNow: "المزامنة الآن",
     retryValidation: "إعادة التحقق",
@@ -206,6 +217,11 @@ const catalog = {
     lineNote: "ملاحظة الصنف",
     event: "الحدث",
     evidenceType: "النوع",
+    photoProof: "صورة",
+    signatureProof: "توقيع",
+    oneTimeCodeProof: "رمز مستلم للاستخدام مرة واحدة",
+    proofTypeUnavailable: "نوع الإثبات غير متاح",
+    version: "الإصدار",
     file: "الملف",
     correctEvidence: "تصحيح إثبات",
     challengeId: "معرّف التحدي",
@@ -298,6 +314,7 @@ const catalog = {
     outcomeUnconfirmed: "Keputusan arahan masih disemak. Muat semula sebelum mencuba lagi.",
     loading: "Memuatkan ruang kerja penghantaran…",
     workspaceUnavailable: "Ruang kerja penghantaran tidak tersedia.",
+    statusUnavailable: "Status penghantaran tidak tersedia",
     commandConflict: "Arahan penghantaran bercanggah dengan keadaan semasa pelayan.",
     queueLimit: "Had baris gilir arahan luar talian telah dicapai.",
     retainedConflict: "Arahan tersimpan perlu disemak terhadap versi semasa pelayan.",
@@ -307,6 +324,8 @@ const catalog = {
     legacyUnreadable: "Data yang disimpan tidak dapat dibaca.",
     legacyValidation: "{valid} daripada {total} item tersimpan lulus pengesahan.",
     legacyTitle: "Kemas kini penghantaran tersimpan memerlukan perhatian",
+    legacyWaitingOne: "{count} kemas kini tersimpan sedang menunggu",
+    legacyWaiting: "{count} kemas kini tersimpan sedang menunggu",
     unchanged: "Tiada apa-apa yang diubah atau dipadam.",
     syncNow: "Segerakkan sekarang",
     retryValidation: "Cuba pengesahan semula",
@@ -318,6 +337,11 @@ const catalog = {
     discarded: "Kemas kini penghantaran tersimpan dibuang selepas pengesahan.",
     event: "Peristiwa",
     evidenceType: "Jenis",
+    photoProof: "Foto",
+    signatureProof: "Tandatangan",
+    oneTimeCodeProof: "Kod penerima sekali guna",
+    proofTypeUnavailable: "Jenis bukti tidak tersedia",
+    version: "Versi",
     file: "Fail",
     correctEvidence: "Betulkan bukti",
     challengeId: "ID cabaran",
@@ -356,7 +380,7 @@ const statusCatalog: Record<DeliveryWorkflowLocale, Record<string, string>> = {
     SHOPPING: "Buying", SHOPPING_STARTED: "Buying started", AWAITING_SUBSTITUTE_APPROVAL: "Awaiting substitute approval",
     AWAITING_ADDITIONAL_APPROVAL: "Awaiting additional approval", ITEMS_ACQUIRED: "Items bought",
     OUT_FOR_DELIVERY: "Out for delivery", ARRIVED: "Arrived", PARTIALLY_DELIVERED: "Partially delivered",
-    DELIVERED: "Delivered", COMPLETED: "Completed", FAILED: "Failed", CANCELLED: "Cancelled",
+    DELIVERED: "Delivered", COMPLETED: "Completed", RESCHEDULED: "Rescheduled", FAILED: "Failed", CANCELLED: "Cancelled", RETURNED: "Returned",
     REJECTED: "Rejected", ISSUE_REPORTED: "Issue reported", NOTE_ADDED: "Note added",
   },
   ar: {
@@ -364,7 +388,7 @@ const statusCatalog: Record<DeliveryWorkflowLocale, Record<string, string>> = {
     SHOPPING: "قيد التسوق", SHOPPING_STARTED: "بدأ التسوق", AWAITING_SUBSTITUTE_APPROVAL: "بانتظار اعتماد البديل",
     AWAITING_ADDITIONAL_APPROVAL: "بانتظار اعتماد إضافي", ITEMS_ACQUIRED: "تم شراء الأصناف",
     OUT_FOR_DELIVERY: "خرج للتسليم", ARRIVED: "وصل", PARTIALLY_DELIVERED: "تم التسليم جزئياً",
-    DELIVERED: "تم التسليم", COMPLETED: "مكتمل", FAILED: "تعذر التسليم", CANCELLED: "ملغي",
+    DELIVERED: "تم التسليم", COMPLETED: "مكتمل", RESCHEDULED: "أعيدت الجدولة", FAILED: "تعذر التسليم", CANCELLED: "ملغي", RETURNED: "مُعاد",
     REJECTED: "مرفوض", ISSUE_REPORTED: "تم الإبلاغ عن مشكلة", NOTE_ADDED: "تمت إضافة ملاحظة",
   },
   ms: {
@@ -372,7 +396,7 @@ const statusCatalog: Record<DeliveryWorkflowLocale, Record<string, string>> = {
     SHOPPING: "Sedang membeli", SHOPPING_STARTED: "Pembelian dimulakan", AWAITING_SUBSTITUTE_APPROVAL: "Menunggu kelulusan pengganti",
     AWAITING_ADDITIONAL_APPROVAL: "Menunggu kelulusan tambahan", ITEMS_ACQUIRED: "Item diperoleh",
     OUT_FOR_DELIVERY: "Keluar untuk penghantaran", ARRIVED: "Tiba", PARTIALLY_DELIVERED: "Dihantar sebahagian",
-    DELIVERED: "Dihantar", COMPLETED: "Selesai", FAILED: "Gagal", CANCELLED: "Dibatalkan",
+    DELIVERED: "Dihantar", COMPLETED: "Selesai", RESCHEDULED: "Dijadualkan semula", FAILED: "Gagal", CANCELLED: "Dibatalkan", RETURNED: "Dikembalikan",
     REJECTED: "Ditolak", ISSUE_REPORTED: "Isu dilaporkan", NOTE_ADDED: "Nota ditambah",
   },
 };
@@ -383,5 +407,14 @@ export function deliveryWorkflowMessages(locale?: string | null) {
 
 export function deliveryWorkflowStatusLabel(status: string, locale?: string | null) {
   const supported = locale === "ar" || locale === "ms" ? locale : "en";
-  return statusCatalog[supported][status] ?? status.replaceAll("_", " ");
+  return statusCatalog[supported][status] ?? catalog[supported].statusUnavailable;
+}
+
+export function deliveryProofTypeLabel(type: string, locale?: string | null) {
+  const copy = deliveryWorkflowMessages(locale);
+  return ({
+    PHOTO: copy.photoProof,
+    SIGNATURE: copy.signatureProof,
+    OTP: copy.oneTimeCodeProof,
+  } as Record<string, string>)[type] ?? copy.proofTypeUnavailable;
 }

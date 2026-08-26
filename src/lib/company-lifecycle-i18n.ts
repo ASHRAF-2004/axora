@@ -8,7 +8,7 @@ const en = {
   displayName: "Company name", legalName: "Legal name (optional)", industry: "Industry (optional)", website: "Website (optional)",
   logo: "Logo (optional)", logoHelp: "PNG, JPEG or WebP up to 2 MB. Axora uses fallback branding until a reviewed logo is available.",
   mainContact: "Main contact name", submit: "Create company", status: "Status",
-  continueSetup: "Continue setup",
+  continueSetup: "Continue setup", back: "Back to companies",
   creationCommandConflict: "This creation request was already used with different details. Review the form and try again.",
 } as const;
 
@@ -20,7 +20,7 @@ const ar: Copy = {
   displayName: "اسم الشركة", legalName: "الاسم القانوني (اختياري)", industry: "القطاع (اختياري)", website: "الموقع الإلكتروني (اختياري)",
   logo: "الشعار (اختياري)", logoHelp: "PNG أو JPEG أو WebP حتى 2 ميجابايت. تستخدم أكسورا الهوية الافتراضية حتى اعتماد الشعار.",
   mainContact: "اسم جهة الاتصال الرئيسية", submit: "إنشاء الشركة", status: "الحالة",
-  continueSetup: "متابعة الإعداد",
+  continueSetup: "متابعة الإعداد", back: "العودة إلى الشركات",
   creationCommandConflict: "استُخدم طلب الإنشاء هذا بتفاصيل مختلفة. راجع النموذج وحاول مجدداً.",
 };
 const ms: Copy = {
@@ -30,7 +30,7 @@ const ms: Copy = {
   displayName: "Nama syarikat", legalName: "Nama sah (pilihan)", industry: "Industri (pilihan)", website: "Laman web (pilihan)",
   logo: "Logo (pilihan)", logoHelp: "PNG, JPEG atau WebP sehingga 2 MB. Axora menggunakan penjenamaan lalai sehingga logo disemak.",
   mainContact: "Nama hubungan utama", submit: "Cipta syarikat", status: "Status",
-  continueSetup: "Teruskan persediaan",
+  continueSetup: "Teruskan persediaan", back: "Kembali ke syarikat",
   creationCommandConflict: "Permintaan penciptaan ini telah digunakan dengan butiran lain. Semak borang dan cuba lagi.",
 };
 

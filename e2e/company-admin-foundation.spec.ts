@@ -231,6 +231,8 @@ test("Arabic and Malay Company Administrator workspaces retain locale, RTL and c
     await expect(page.locator('#portal-main select[name="companyId"]')).toHaveCount(0);
     await page.goto("/budgets");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(locale === "ar" ? "الميزانيات" : "Bajet");
+    await expect(page.getByText(locale === "ar" ? "شهري" : "Bulanan", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("MONTHLY", { exact: true })).toHaveCount(0);
     await page.screenshot({ animations: "disabled", fullPage: true,
       path: `output/playwright/company-admin-locale-${locale}-chromium.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(2);

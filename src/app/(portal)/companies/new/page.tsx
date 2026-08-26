@@ -28,7 +28,7 @@ export default async function NewCompanyPage({
         <label>{copy.website}<input name="websiteUrl" type="url" inputMode="url" maxLength={500} placeholder="https://" /></label>
         <label className="field-full">{copy.logo}<input name="logo" type="file" accept="image/png,image/jpeg,image/webp" /><small>{copy.logoHelp}</small></label>
       </div>
-      <div className="form-actions"><Link className="button button-secondary" href="/companies">Back</Link><button className="button button-primary" type="submit">{copy.submit}</button></div>
+      <div className="form-actions"><Link className="button button-secondary" href="/companies">{copy.back}</Link><button className="button button-primary" type="submit">{copy.submit}</button></div>
     </form>
   </>;
 }

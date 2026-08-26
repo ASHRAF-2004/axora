@@ -5,6 +5,10 @@ import { BranchBudgetForm } from "@/components/BranchBudgetForm";
 import { PageHeader } from "@/components/PageHeader";
 import { requirePagePermission } from "@/lib/auth";
 import { branchBudgetMessages } from "@/lib/branch-budget-i18n";
+import {
+  budgetFrequencyLabel,
+  budgetPeriodStatusLabel,
+} from "@/lib/budget-cycle-variance-i18n";
 import { getBranchBudgetFundingState } from "@/lib/branch-budget";
 import { getBudgetWorkspace } from "@/lib/budget-ledger";
 import { isoDateInTimeZone } from "@/lib/budget-period-range";
@@ -31,9 +35,9 @@ export default async function BranchBudgetPage({ params }: { params: Promise<{ b
     {period ? <section className="panel"><dl className="summary-list">
       <div><dt>{copy.current}</dt><dd>{money(period.allocated, account.currency, locale)}</dd></div>
       <div><dt>{copy.remaining}</dt><dd>{money(period.available, account.currency, locale)}</dd></div>
-      <div><dt>{copy.cycle}</dt><dd>{account.refreshInterval}</dd></div>
+      <div><dt>{copy.cycle}</dt><dd>{budgetFrequencyLabel(account.refreshInterval, locale)}</dd></div>
       <div><dt>{copy.period}</dt><dd>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: actor.timezone ?? account.timezone }).formatRange(new Date(period.startsAt), new Date(period.endsAt))}</dd></div>
-      <div><dt>{copy.status}</dt><dd><span className="status status-active">{period.status}</span></dd></div>
+      <div><dt>{copy.status}</dt><dd><span className="status status-active">{budgetPeriodStatusLabel(period.status, locale)}</span></dd></div>
     </dl></section> : null}
     {configured ? <section className="panel"><p className="callout">{copy.immutable}</p></section> : <BranchBudgetForm branchId={branchId} locale={locale} today={today} />}
   </>;
