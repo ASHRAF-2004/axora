@@ -54,7 +54,7 @@ const englishNavigation: Record<string, PortalNavigationCopy> = {
   "/company-users": { label: "Company Users", description: "Company employees, roles and scoped access" },
   "/email-operations": { label: "Email Status", description: "Service status, usage and safe retries" },
   "/settings": { label: "Settings", description: "Personal and permitted administration" },
-  "/settings/procurement": { label: "Purchasing rules", description: "Category policy by company, branch and department" },
+  "/settings/procurement": { label: "Purchasing rules", description: "Category policy by company and branch" },
 };
 
 const english: PortalMessages = {
@@ -116,7 +116,7 @@ const arabic: PortalMessages = {
     "/company-users": { label: "مستخدمو الشركة", description: "موظفو الشركة وأدوارهم ووصولهم محدد النطاق" },
     "/email-operations": { label: "حالة البريد الإلكتروني", description: "حالة الخدمة والاستخدام وإعادة المحاولة الآمنة" },
     "/settings": { label: "الإعدادات", description: "الإعدادات الشخصية والإدارية المسموحة" },
-    "/settings/procurement": { label: "قواعد الشراء", description: "سياسة الفئات حسب الشركة والفرع والقسم" },
+    "/settings/procurement": { label: "قواعد الشراء", description: "سياسة الفئات حسب الشركة والفرع" },
   },
   quickActions: { newRequest: "طلب جديد", addCompany: "إضافة شركة", catalog: "الكتالوج" },
   shell: {
@@ -162,7 +162,7 @@ const malay: PortalMessages = {
     "/company-users": { label: "Pengguna Syarikat", description: "Pekerja syarikat, peranan dan akses berskop" },
     "/email-operations": { label: "Status E-mel", description: "Status perkhidmatan, penggunaan dan cubaan semula selamat" },
     "/settings": { label: "Tetapan", description: "Pentadbiran peribadi dan yang dibenarkan" },
-    "/settings/procurement": { label: "Peraturan pembelian", description: "Polisi kategori mengikut syarikat, cawangan dan jabatan" },
+    "/settings/procurement": { label: "Peraturan pembelian", description: "Polisi kategori mengikut syarikat dan cawangan" },
   },
   quickActions: { newRequest: "Permintaan baharu", addCompany: "Tambah syarikat", catalog: "Katalog" },
   shell: {

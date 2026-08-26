@@ -70,7 +70,6 @@ describe("granular role templates and effective access", () => {
       actorCompanyId: "33333333-3333-4333-8333-333333333333",
       branches: [],
       companies: [],
-      departments: [],
       defaultLocale: "en",
       roleOptions: [{
         value: "COMPANY_ADMIN",

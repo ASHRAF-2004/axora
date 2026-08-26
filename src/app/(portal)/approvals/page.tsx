@@ -96,7 +96,7 @@ export default async function ApprovalsPage({
                 </div>
                 <strong>{money(request.amount, request.currency, locale)}</strong>
               </div>
-              <p className={styles.muted}>{request.companyName} / {request.branchName}{request.departmentName ? ` / ${request.departmentName}` : ""}</p>
+              <p className={styles.muted}>{request.companyName} / {request.branchName}</p>
               <div className={styles.metrics}>
                 <div className={styles.metric}><span>{messages.requester}</span><strong>{request.requesterName}</strong></div>
                 <div className={styles.metric}><span>{messages.approvalLimit}</span><strong>{request.approvalLimit ? money(request.approvalLimit, request.currency, locale) : "-"}</strong></div>

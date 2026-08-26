@@ -49,7 +49,7 @@ describe("branch delivery location picker coordinate fallback", () => {
     }
   });
 
-  it("retires the text-only organization form in favor of the canonical map workspace", async () => {
+  it("retires the historical organization workspace and its stale actions", async () => {
     const [page, action] = await Promise.all([
       readFile(new URL(
         "../src/app/(portal)/branches/organization/page.tsx",
@@ -60,8 +60,9 @@ describe("branch delivery location picker coordinate fallback", () => {
         import.meta.url,
       ), "utf8"),
     ]);
-    expect(page).not.toContain('name="nodeType" value="DELIVERY_LOCATION"');
-    expect(action).not.toContain('nodeType: z.enum(ORGANIZATION_NODE_TYPES)');
-    expect(action).toContain('"BRANCH", "DEPARTMENT", "BUSINESS_UNIT", "COST_CENTRE"');
+    expect(page).toContain('permanentRedirect("/branches")');
+    expect(page).not.toContain("loadOrganizationStructureWorkspace");
+    expect(action.match(/permanentRedirect\("\/branches"\)/g)).toHaveLength(2);
+    expect(action).not.toContain("saveOrganizationNode(");
   });
 });

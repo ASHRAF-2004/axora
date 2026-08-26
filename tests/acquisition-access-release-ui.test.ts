@@ -35,11 +35,7 @@ describe("acquisition and account access release UI", () => {
     });
   });
 
-  it("ships English, Arabic and Malay company setup and hierarchy workspaces with logical responsive layout", () => {
-    const organizationCopy = readFileSync(
-      new URL("../src/lib/organization-structure-i18n.ts", import.meta.url),
-      "utf8",
-    );
+  it("ships localized company setup while retiring the historical hierarchy workspace", () => {
     const onboardingPage = readFileSync(
       new URL("../src/app/(portal)/companies/[companyId]/onboarding/page.tsx", import.meta.url),
       "utf8",
@@ -48,22 +44,13 @@ describe("acquisition and account access release UI", () => {
       new URL("../src/app/(portal)/branches/organization/page.tsx", import.meta.url),
       "utf8",
     );
-    const organizationStyles = readFileSync(
-      new URL("../src/app/globals.css", import.meta.url),
-      "utf8",
-    );
     expect(onboardingPage).toContain("en:");
     expect(onboardingPage).toContain("ar:");
     expect(onboardingPage).toContain("ms:");
-    expect(organizationCopy).toContain("const en");
-    expect(organizationCopy).toContain("const ar");
-    expect(organizationCopy).toContain("const ms");
-    expect(`${onboardingPage}\n${organizationCopy}`).toMatch(/[\u0600-\u06ff]/);
+    expect(onboardingPage).toMatch(/[\u0600-\u06ff]/);
     expect(onboardingPage).toContain('className="form-grid"');
-    expect(organizationPage).toContain("data-depth={depth(");
-    expect(organizationStyles).toContain("margin-inline-start");
-    expect(`${onboardingPage}\n${organizationPage}\n${organizationStyles}`)
-      .not.toMatch(/marginLeft|marginRight|margin-left|margin-right/);
+    expect(organizationPage).toContain('permanentRedirect("/branches")');
+    expect(organizationPage).not.toMatch(/departments|businessUnits|costCentres/);
   });
 
   it("carries immutable department scope through invitation creation and activation", () => {

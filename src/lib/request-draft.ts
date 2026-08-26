@@ -10,7 +10,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 
 export interface RequestDraftState {
   branchId: string;
-  department: string;
   neededByDate: string;
   requestType: "Standard" | "Ad-hoc" | "Recurring";
   urgency: "Low" | "Normal" | "High" | "Urgent";
@@ -33,8 +32,6 @@ function validDraft(value: unknown): value is RequestDraftState {
   return Boolean(
     typeof draft.branchId === "string"
       && draft.branchId.length <= 160
-      && typeof draft.department === "string"
-      && draft.department.length <= 200
       && validDate(draft.neededByDate)
       && REQUEST_TYPES.has(String(draft.requestType))
       && URGENCIES.has(String(draft.urgency))
@@ -76,7 +73,6 @@ export function writeRequestDraft(
   const value: RequestDraftState = {
     ...draft,
     branchId: draft.branchId.slice(0, 160),
-    department: draft.department.slice(0, 200),
     notes: draft.notes.slice(0, 3_000),
     updatedAt: new Date().toISOString(),
   };

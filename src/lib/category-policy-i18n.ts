@@ -11,7 +11,7 @@ const messages = {
     parent: "A child rule cannot allow a category blocked by its parent.",
     denied: "You are not authorized to manage this purchasing rule.",
     failed: "The purchasing rule could not be saved.",
-    company: "Company", branch: "Branch", department: "Department",
+    company: "Company", branch: "Branch",
     ruleHelp: "Turn on a restriction and select every category that remains allowed. Turning it off inherits the parent rule.",
   },
   ar: {
@@ -24,7 +24,7 @@ const messages = {
     parent: "لا يمكن لقاعدة فرعية السماح بفئة حظرها النطاق الأب.",
     denied: "غير مصرح لك بإدارة قاعدة الشراء هذه.",
     failed: "تعذر حفظ قاعدة الشراء.",
-    company: "الشركة", branch: "الفرع", department: "القسم",
+    company: "الشركة", branch: "الفرع",
     ruleHelp: "فعّل التقييد واختر كل الفئات التي تبقى مسموحة. إيقافه يرث قاعدة النطاق الأب.",
   },
   ms: {
@@ -37,7 +37,7 @@ const messages = {
     parent: "Peraturan anak tidak boleh membenarkan kategori yang disekat oleh induknya.",
     denied: "Anda tidak dibenarkan mengurus peraturan pembelian ini.",
     failed: "Peraturan pembelian tidak dapat disimpan.",
-    company: "Syarikat", branch: "Cawangan", department: "Jabatan",
+    company: "Syarikat", branch: "Cawangan",
     ruleHelp: "Hidupkan sekatan dan pilih semua kategori yang kekal dibenarkan. Mematikannya akan mewarisi peraturan induk.",
   },
 } as const;

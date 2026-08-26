@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { LOCALE_NAMES, SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n";
 import { userFormMessages } from "@/lib/user-form-i18n";
-import type { OrganizationDepartment } from "@/lib/organization-structure";
 import type { PermissionCode } from "@/lib/authorization-policy";
 import {
   accessGroupsForPermissions,
@@ -39,11 +38,9 @@ function CreateAccountButton({ disabled, locale }: { disabled: boolean; locale: 
 export function UserCreateForm({
   actorBranchId,
   actorCompanyId,
-  actorDepartmentId,
   actorIsOwner,
   branches,
   companies,
-  departments,
   roleOptions,
   defaultLocale,
   creationContext,
@@ -53,11 +50,9 @@ export function UserCreateForm({
 }: {
   actorBranchId?: string;
   actorCompanyId?: string;
-  actorDepartmentId?: string;
   actorIsOwner: boolean;
   branches: Branch[];
   companies: Company[];
-  departments: OrganizationDepartment[];
   roleOptions: UserRoleOption[];
   defaultLocale: SupportedLocale;
   creationContext?: "PLATFORM" | "COMPANY" | "DELIVERY";
@@ -68,11 +63,6 @@ export function UserCreateForm({
   const [role, setRole] = useState<UserRole | "">("");
   const [companyId, setCompanyId] = useState(fixedCompanyId ?? actorCompanyId ?? "");
   const [branchId, setBranchId] = useState(actorBranchId ?? "");
-  const [departmentId, setDepartmentId] = useState(actorDepartmentId ?? "");
-  const requesterScopeFixedToDepartment = Boolean(actorDepartmentId) && !actorIsOwner;
-  const [requesterScope, setRequesterScope] = useState<"BRANCH" | "DEPARTMENT">(
-    requesterScopeFixedToDepartment ? "DEPARTMENT" : "BRANCH",
-  );
   const [roleChanged, setRoleChanged] = useState(false);
   const [customizePermissions, setCustomizePermissions] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<PermissionCode>>(
@@ -85,19 +75,11 @@ export function UserCreateForm({
   const availableBranches = useMemo(() => branches.filter((branch) => (
     branch.status === "Active" && branch.companyId === companyId
   )), [branches, companyId]);
-  const availableDepartments = useMemo(() => departments.filter((department) => (
-    department.active
-    && department.companyId === companyId
-    && (!branchId || department.branchId === branchId)
-  )), [departments, companyId, branchId]);
-
-  const effectiveScope = role === "REQUESTER" ? requesterScope : config?.creationScopes[0];
+  const effectiveScope = config?.creationScopes[0];
   const showCompany = Boolean(config?.showCompany);
   const showBranch = Boolean(config?.showBranch && effectiveScope !== "COMPANY");
-  const showDepartment = Boolean(config?.showDepartment && effectiveScope === "DEPARTMENT");
   const companyFixed = showCompany && Boolean(fixedCompanyId || (actorCompanyId && !actorIsOwner));
   const branchFixed = showBranch && Boolean(actorBranchId) && !actorIsOwner;
-  const departmentFixed = showDepartment && Boolean(actorDepartmentId) && !actorIsOwner;
 
   const accessGroups = selectedRole
     ? accessGroupsForPermissions(selectedRole.defaultPermissions ?? [])
@@ -111,11 +93,6 @@ export function UserCreateForm({
     const nextConfig = userProvisioningRoleConfig(nextRole);
     setCompanyId(nextConfig?.showCompany ? fixedCompanyId ?? actorCompanyId ?? "" : "");
     setBranchId(nextConfig?.showBranch ? actorBranchId ?? "" : "");
-    setDepartmentId(nextConfig?.showDepartment ? actorDepartmentId ?? "" : "");
-    const firstScope = nextConfig?.creationScopes[0];
-    setRequesterScope(requesterScopeFixedToDepartment || firstScope === "DEPARTMENT"
-      ? "DEPARTMENT"
-      : "BRANCH");
   }
 
   function changeRole(nextRole: UserRole | "") {
@@ -123,7 +100,6 @@ export function UserCreateForm({
       setRole("");
       setCompanyId("");
       setBranchId("");
-      setDepartmentId("");
       setCustomizePermissions(false);
       setSelectedPermissions(new Set());
       return;
@@ -140,24 +116,16 @@ export function UserCreateForm({
   function changeCompany(nextCompanyId: string) {
     setCompanyId(nextCompanyId);
     setBranchId("");
-    setDepartmentId("");
   }
 
   function changeBranch(nextBranchId: string) {
     setBranchId(nextBranchId);
-    setDepartmentId("");
-  }
-
-  function changeRequesterScope(nextScope: "BRANCH" | "DEPARTMENT") {
-    setRequesterScope(nextScope);
-    setDepartmentId("");
   }
 
   const scopeReady = !config ? false
     : showCompany && !companyId ? false
       : showBranch && !branchId ? false
-        : showDepartment && !departmentId ? false
-          : true;
+        : true;
 
   return (
     <form action={createAction} data-draft-id="create-user">
@@ -241,16 +209,6 @@ export function UserCreateForm({
           </section>
         ) : null}
 
-        {role === "REQUESTER" && config?.creationScopes.includes("DEPARTMENT")
-          && !requesterScopeFixedToDepartment ? (
-          <label className="field-full">{copy.assignmentLevel}
-            <select value={requesterScope} onChange={(event) => changeRequesterScope(event.target.value as "BRANCH" | "DEPARTMENT")}>
-              <option value="BRANCH">{copy.branchScope}</option>
-              <option value="DEPARTMENT">{copy.departmentScope}</option>
-            </select>
-          </label>
-        ) : null}
-
         {showCompany && !companyFixed ? (
           <label>{copy.customerCompany}
             <select name="companyId" required value={companyId} onChange={(event) => changeCompany(event.target.value)}>
@@ -271,16 +229,6 @@ export function UserCreateForm({
           </label>
         ) : null}
         {branchFixed ? <input type="hidden" name="branchId" value={actorBranchId} /> : null}
-
-        {showDepartment && !departmentFixed ? (
-          <label>{copy.department}
-            <select name="departmentId" required value={departmentId} onChange={(event) => setDepartmentId(event.target.value)} disabled={!branchId}>
-              <option value="">{copy.selectDepartment}</option>
-              {availableDepartments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-            </select>
-          </label>
-        ) : null}
-        {departmentFixed ? <input type="hidden" name="departmentId" value={actorDepartmentId} /> : null}
 
         <div className="callout field-full" role="note">
           <strong>{copy.secureSetup}</strong>

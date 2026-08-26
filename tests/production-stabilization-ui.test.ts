@@ -2,29 +2,13 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("authenticated production route stabilization", () => {
-  it("keeps organization status forms at stable module scope", async () => {
+  it("keeps the retired organization hierarchy out of the MVP", async () => {
     const source = await readFile(new URL(
       "../src/app/(portal)/branches/organization/page.tsx",
       import.meta.url,
     ), "utf8");
-    expect(source.indexOf("function StatusForm")).toBeLessThan(
-      source.indexOf("export default async function OrganizationPage"),
-    );
-    expect(source).toContain("<StatusForm copy={copy}");
-    expect(source).not.toContain("style={{");
-    expect(source).toContain("data-depth={depth(");
-    expect(source).toContain('className="detail-grid organization-branch-actions"');
-    expect(source).not.toContain("<td><details><summary>{copy.edit}</summary>");
-    expect(source).toContain("<DeferredOrganizationActions label={copy.update}><form");
-    expect(source).toContain("<DeferredOrganizationActions label={copy.update}><section");
-
-    const deferredSource = await readFile(new URL(
-      "../src/components/DeferredOrganizationActions.tsx",
-      import.meta.url,
-    ), "utf8");
-    expect(deferredSource).toContain('"use client"');
-    expect(deferredSource).toContain("useSyncExternalStore");
-    expect(deferredSource).toContain("if (!ready)");
+    expect(source).toContain('permanentRedirect("/branches")');
+    expect(source).not.toMatch(/Department|Business unit|Cost centre|StatusForm/);
   });
 
   it("serves a read-only company delivery view without granting supervisor controls", async () => {

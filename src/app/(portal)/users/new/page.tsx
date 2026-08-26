@@ -67,9 +67,9 @@ export default async function NewUserPage() {
         <article className="panel form-panel">
           <UserCreateForm createAction={createOwnCompanyUserAction} creationContext="COMPANY"
             fixedCompanyId={authorizedCompany.id} actorBranchId={actor.branchId}
-            actorCompanyId={actor.companyId} actorDepartmentId={undefined}
+            actorCompanyId={actor.companyId}
             actorIsOwner={false} defaultLocale={locale} branches={branches}
-            companies={companies} departments={[]} roleOptions={roleOptions}
+            companies={companies} roleOptions={roleOptions}
             canCustomizePermissions />
         </article>
         <aside className="panel"><p>{description}</p><Link className="button button-secondary" href="/users">{copy.companyTitle}</Link></aside>
@@ -80,7 +80,7 @@ export default async function NewUserPage() {
     <PageHeader eyebrow={copy.axoraEyebrow} title={copy.createAxora} description={copy.axoraDescription} />
     <section className="detail-grid">
       <article className="panel form-panel">
-        <UserCreateForm createAction={createAxoraUserAction} creationContext="PLATFORM" actorBranchId={actor.branchId} actorCompanyId={actor.companyId} actorDepartmentId={actor.departmentId} actorIsOwner={actor.isOwner} defaultLocale={locale} branches={[]} companies={[]} departments={[]} roleOptions={roleOptions} canCustomizePermissions />
+        <UserCreateForm createAction={createAxoraUserAction} creationContext="PLATFORM" actorBranchId={actor.branchId} actorCompanyId={actor.companyId} actorIsOwner={actor.isOwner} defaultLocale={locale} branches={[]} companies={[]} roleOptions={roleOptions} canCustomizePermissions />
       </article>
       <aside className="panel"><p>{copy.axoraDescription}</p><Link className="button button-secondary" href="/users">{copy.axoraTitle}</Link></aside>
     </section>

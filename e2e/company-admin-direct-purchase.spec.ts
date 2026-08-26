@@ -296,7 +296,7 @@ test("subordinate purchase requests retain separation of duties", async ({ page 
   await page.getByRole("link", { name: "Review request" }).click();
   await expect(page.getByRole("button", { name: "Place order" })).toHaveCount(0);
   await page.getByRole("link", { name: "Submit purchase request" }).click();
-  await page.getByLabel("Department").fill("Administration");
+  await expect(page.getByLabel("Department")).toHaveCount(0);
   await page.getByRole("button", { name: /^Submit purchase request/ }).click();
   await expect(page).toHaveURL(/\/requests\/.+notice=request-submitted/, { timeout: 15_000 });
   const requestId = new URL(page.url()).pathname.split("/").at(-1)!;

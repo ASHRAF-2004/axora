@@ -87,7 +87,7 @@ export type ProductInput = z.infer<typeof productSchema>;
 
 export const requestSchema = z.object({
   companyId: required("Company"), branchId: required("Branch"), requestType: z.enum(["Standard", "Ad-hoc", "Recurring"]),
-  department: required("Department"),
+  department: z.string().trim().max(200).default(""),
   neededByDate: z.iso.date().refine(
     (value) => value >= new Date().toISOString().slice(0, 10),
     "Choose today or a future date. Past dates are not allowed.",

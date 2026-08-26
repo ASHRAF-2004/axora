@@ -35,7 +35,7 @@ export async function createRequestAction(formData: FormData) {
     companyId: readFormText(formData, "companyId") || "canonical-cart",
     branchId: readFormText(formData, "branchId") || "canonical-cart",
     requestType: "Standard",
-    department: readFormText(formData, "department"),
+    department: "",
     neededByDate: readFormText(formData, "neededByDate"),
     urgency: readFormText(formData, "urgency"),
     notes: readFormText(formData, "notes"),

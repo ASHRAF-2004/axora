@@ -39,7 +39,6 @@ interface SelectedLine {
 
 type RequestField =
   | "branch"
-  | "department"
   | "neededByDate"
   | "products"
   | "quantity"
@@ -136,7 +135,6 @@ export function RequestForm({
   const [cartBusy, setCartBusy] = useState(false);
   const [cartDirty, setCartDirty] = useState(false);
   const [branchId] = useState(initialCart.branchId || resolveDraftBranch(draftState?.branchId));
-  const [department, setDepartment] = useState(draftState?.department ?? "");
   const [neededByDate, setNeededByDate] = useState(() => {
     if (draftState?.neededByDate && draftState.neededByDate >= today) {
       return draftState.neededByDate;
@@ -157,7 +155,6 @@ export function RequestForm({
   const cartSyncingRef = useRef(false);
   const cartSubmitReadyRef = useRef(false);
   const branchRef = useRef<HTMLSelectElement | null>(null);
-  const departmentRef = useRef<HTMLInputElement | null>(null);
   const dateRef = useRef<HTMLInputElement | null>(null);
   const productsRef = useRef<HTMLDivElement | null>(null);
 
@@ -296,7 +293,6 @@ export function RequestForm({
       let target: HTMLElement | null = null;
 
       if (field === "branch") target = branchRef.current;
-      if (field === "department") target = departmentRef.current;
       if (field === "neededByDate") target = dateRef.current;
 
       if (field === "products") {
@@ -325,11 +321,6 @@ export function RequestForm({
     if (!branchId) {
       nextErrors.branch =
         locale === "ar" ? "اختر الفرع الذي سيستلم هذه البنود." : locale === "ms" ? "Pilih cawangan yang akan menerima item ini." : "Select the branch that will receive these items.";
-    }
-
-    if (!department.trim()) {
-      nextErrors.department =
-        locale === "ar" ? "أدخل القسم الذي يحتاج إلى هذه البنود." : locale === "ms" ? "Masukkan jabatan yang memerlukan item ini." : "Enter the department that needs these items.";
     }
 
     if (!neededByDate) {
@@ -539,41 +530,6 @@ export function RequestForm({
               {copy.branchHint}
             </span>
           )}
-        </label>
-
-        <label>
-          {copy.department}
-          <input
-            ref={departmentRef}
-            name="department"
-            value={department}
-            placeholder={copy.departmentPlaceholder}
-            className={
-              errors.department
-                ? "request-input-error"
-                : undefined
-            }
-            aria-invalid={Boolean(errors.department)}
-            aria-describedby={
-              errors.department
-                ? "department-error"
-                : undefined
-            }
-            onChange={(event) => {
-              setDepartment(event.target.value);
-              clearError("department");
-            }}
-          />
-
-          {errors.department ? (
-            <span
-              className="request-field-error-message"
-              id="department-error"
-            >
-              <AlertCircle size={14} aria-hidden="true" />
-              {errors.department}
-            </span>
-          ) : null}
         </label>
 
         <label>
