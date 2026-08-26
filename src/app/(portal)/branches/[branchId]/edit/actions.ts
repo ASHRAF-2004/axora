@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
 import { BranchDetailsError, updateBranchDetails } from "@/lib/branch-details";
 import { branchDetailsMessages } from "@/lib/branch-details-i18n";
+import { requiredPhoneNumberSchema } from "@/lib/phone-number";
 import { readFormText } from "@/lib/validation";
 
 export type BranchDetailsActionState = {
@@ -20,7 +21,7 @@ const formSchema = z.strictObject({
   name: z.string().trim().min(2).max(300),
   city: z.string().trim().min(2).max(300),
   contactName: z.string().trim().min(2).max(300),
-  contactPhone: z.string().trim().min(5).max(120),
+  contactPhone: requiredPhoneNumberSchema,
   contactEmail: z.union([z.literal(""), z.email().max(320)]),
   notes: z.string().trim().max(1_000).optional(),
   commandId: z.uuid(),

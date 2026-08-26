@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { requirePermission } from "@/lib/auth";
 import { BranchCreationError, createBranchWithLocation } from "@/lib/branch-creation";
+import { requiredPhoneNumberSchema } from "@/lib/phone-number";
 import { readFormText } from "@/lib/validation";
 
 export type BranchCreateState = { status: "idle" | "error" | "success"; message: string; branchId?: string; submissionId: string };
@@ -16,7 +17,7 @@ const formSchema = z.object({
   addressLabel: z.string().trim().min(3).max(5_000), latitude: coordinate.min(-90).max(90), longitude: coordinate.min(-180).max(180),
   providerId: z.string().trim().min(2).max(100), providerPlaceId: z.string().trim().max(500).optional(),
   providerAttribution: z.string().trim().max(1_000).optional(), contactName: z.string().trim().min(2).max(300),
-  contactPhone: z.string().trim().min(5).max(120), contactEmail: z.union([z.literal(""), z.email().max(320)]),
+  contactPhone: requiredPhoneNumberSchema, contactEmail: z.union([z.literal(""), z.email().max(320)]),
   deliveryInstructions: z.string().trim().max(5_000).optional(), notes: z.string().trim().max(1_000).optional(), commandId: z.string().uuid(),
 });
 

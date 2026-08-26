@@ -7,11 +7,12 @@ import {
   REQUIRED_POLICY_VERSION,
 } from "./onboarding-policy";
 import { demoProfileImageState } from "./profile-images";
+import { optionalPhoneNumberSchema } from "./phone-number";
 
 const profileSchema = z.object({
   displayName: z.string().trim().min(2).max(200),
   jobTitle: z.string().trim().max(160),
-  phone: z.string().trim().max(40),
+  phone: optionalPhoneNumberSchema,
   preferredLocale: z.string().refine(isSupportedLocale, "Choose a supported language."),
   timezone: z.string().trim().min(1).max(80),
   emailNotifications: z.boolean(),

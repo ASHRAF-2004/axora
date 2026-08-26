@@ -89,7 +89,7 @@ test("Company Administrator completes users, branch location and first budget on
   await page.getByLabel("Branch short code").fill(`VERDI-${suffix}`);
   await page.getByLabel("City / area").fill("Cyberjaya");
   await page.getByLabel("Contact name").fill("Operations desk");
-  await page.getByLabel("Contact phone").fill("+60300000000");
+  await page.getByLabel("Contact phone").fill("+12025550123");
   await page.getByLabel("Search place, building or address").fill("verdi");
   const option = page.getByRole("option").filter({ hasText: "Verdi Eco-Dominiums" }).first();
   await expect(option).toBeVisible();
@@ -128,11 +128,11 @@ test("Company Administrator completes users, branch location and first budget on
   await page.getByRole("link", { name: "Edit branch" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Edit branch information" })).toBeVisible();
   await expect(page.locator('form input[name="companyId"]')).toHaveCount(0);
-  await page.getByLabel("Contact phone").fill("+60311112222");
+  await page.getByLabel("Contact phone").fill("+12025550124");
   await page.getByLabel("Notes").fill("Call the receiving desk on arrival");
   await page.getByRole("button", { name: "Save branch" }).click();
   await expect(page).toHaveURL(new RegExp(`/branches/${createdBranchId}\\?notice=branch-updated$`));
-  await expect(page.getByText("+60311112222", { exact: true })).toBeVisible();
+  await expect(page.getByText("+12025550124", { exact: true })).toBeVisible();
   await expect(page.getByText("Call the receiving desk on arrival", { exact: true })).toBeVisible();
   const people = page.locator("article.panel").filter({ has: page.getByRole("heading", { name: "People" }) });
   await expect(people.getByText("0 assigned")).toBeVisible();

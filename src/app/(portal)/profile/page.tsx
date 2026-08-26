@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileImageManager } from "@/components/ProfileImageManager";
+import { InternationalPhoneInput } from "@/components/InternationalPhoneInput";
 import { requireAccountLifecycleSession } from "@/lib/auth";
 import { LOCALE_NAMES, SUPPORTED_LOCALES } from "@/lib/i18n";
 import { getMyProfile, myProfileMeetsRequiredOnboarding } from "@/lib/profile";
@@ -140,7 +141,8 @@ export default async function ProfilePage({
         <div className="form-grid">
           <label>{copy.displayName}<input name="displayName" defaultValue={profile.displayName} minLength={2} maxLength={200} autoComplete="name" required /></label>
           <label>{copy.jobTitle}<input name="jobTitle" defaultValue={profile.jobTitle} maxLength={160} autoComplete="organization-title" placeholder={copy.jobExample} /></label>
-          <label>{copy.phone}<input name="phone" defaultValue={profile.phone} maxLength={40} autoComplete="tel" inputMode="tel" /></label>
+          <InternationalPhoneInput defaultValue={profile.phone} label={copy.phone}
+            locale={profile.preferredLocale} name="phone" />
           <label>{copy.accountEmail}<input value={profile.email} type="email" readOnly aria-describedby="profile-email-help" /><small id="profile-email-help">{copy.emailHelp}</small></label>
         </div>
 

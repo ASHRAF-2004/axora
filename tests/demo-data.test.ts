@@ -48,7 +48,10 @@ describe("sanitized in-memory demonstration data", () => {
     ];
 
     expect(emails.every((email) => email.endsWith(".example"))).toBe(true);
-    expect(phones.every((phone) => phone.includes("-000-"))).toBe(true);
+    const branchPhones = new Set(store.branches.map((branch) => branch.contactPhone));
+    expect(store.branches.every((branch) => /^\+1202555011[0-3]$/.test(branch.contactPhone))).toBe(true);
+    expect(phones.filter((phone) => !branchPhones.has(phone))
+      .every((phone) => phone.includes("-000-"))).toBe(true);
   });
 
   it("uses unique order and request-line codes", () => {

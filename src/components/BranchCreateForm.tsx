@@ -6,6 +6,7 @@ import { useActionState, useEffect, useState } from "react";
 
 import { createBranchWithLocationAction, type BranchCreateState } from "@/app/(portal)/branches/new/actions";
 import { BranchDeliveryLocationPicker, type DeliveryLocationSelection } from "@/components/BranchDeliveryLocationPicker";
+import { InternationalPhoneInput } from "@/components/InternationalPhoneInput";
 import { branchDeliveryLocationMessages } from "@/lib/branch-delivery-location-i18n";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
@@ -55,7 +56,8 @@ export function BranchCreateForm({ companyId, companyName, locale, showCompany }
           onConfirm={(location) => { setSelection(location); setConfirmed(location); }} />
       </div>
       <label>{copy.contactName}<input name="contactName" required autoComplete="name" minLength={2} maxLength={300} /></label>
-      <label>{copy.contactPhone}<input name="contactPhone" type="tel" inputMode="tel" autoComplete="tel" required minLength={5} maxLength={120} /></label>
+      <InternationalPhoneInput disabled={pending} label={copy.contactPhone} locale={locale}
+        name="contactPhone" required />
       <label className="field-full">{copy.contactEmail}<input name="contactEmail" type="email" autoComplete="email" /></label>
       <label className="field-full">{copy.instructions}<textarea name="deliveryInstructions" maxLength={5_000} /></label>
       <label className="field-full">{copy.notes}<textarea name="notes" maxLength={1_000} /></label>

@@ -6,6 +6,7 @@ import type { AuthenticatedSessionUser } from "@/lib/auth";
 import { isDemoMode, withAuditTransaction } from "@/lib/db";
 import { getDemoStore } from "@/lib/demo-data";
 import { canAccess } from "@/lib/permissions";
+import { requiredPhoneNumberSchema } from "@/lib/phone-number";
 
 const cleanText = (minimum: number, maximum: number) => z.string().trim()
   .min(minimum).max(maximum)
@@ -16,7 +17,7 @@ export const branchDetailsSchema = z.strictObject({
   name: cleanText(2, 300),
   city: cleanText(2, 300),
   contactName: cleanText(2, 300),
-  contactPhone: cleanText(5, 120),
+  contactPhone: requiredPhoneNumberSchema,
   contactEmail: z.union([z.literal(""), z.email().max(320)]),
   notes: cleanText(0, 1_000).optional(),
   commandId: z.string().uuid(),

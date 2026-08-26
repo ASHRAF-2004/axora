@@ -39,9 +39,9 @@ INSERT INTO branches (
   id, branch_code_id, company_id, name, branch_code, delivery_address, city,
   contact_name, contact_phone, contact_email, delivery_instructions, active
 ) VALUES
-  ('20000000-0000-4000-8000-000000000001','B-001','10000000-0000-4000-8000-000000000001','YourUni main campus','YU-MAIN','Kuala Lumpur demo delivery point','Kuala Lumpur','Campus reception','012-000-1100','reception@youruni.example','Call the demo reception before delivery.',true),
-  ('20000000-0000-4000-8000-000000000002','B-002','10000000-0000-4000-8000-000000000002','Excel HQ','EX-HQ','Petaling Jaya demo delivery point','Petaling Jaya','HQ reception','013-000-2200','reception@excel.example',NULL,true),
-  ('20000000-0000-4000-8000-000000000003','B-003','10000000-0000-4000-8000-000000000003','Unibax centre','UB-CEN','Shah Alam demo delivery point','Shah Alam','Centre reception','014-000-3300','reception@unibax.example',NULL,true)
+  ('20000000-0000-4000-8000-000000000001','B-001','10000000-0000-4000-8000-000000000001','YourUni main campus','YU-MAIN','Kuala Lumpur demo delivery point','Kuala Lumpur','Campus reception','+12025550110','reception@youruni.example','Call the demo reception before delivery.',true),
+  ('20000000-0000-4000-8000-000000000002','B-002','10000000-0000-4000-8000-000000000002','Excel HQ','EX-HQ','Petaling Jaya demo delivery point','Petaling Jaya','HQ reception','+12025550111','reception@excel.example',NULL,true),
+  ('20000000-0000-4000-8000-000000000003','B-003','10000000-0000-4000-8000-000000000003','Unibax centre','UB-CEN','Shah Alam demo delivery point','Shah Alam','Centre reception','+12025550112','reception@unibax.example',NULL,true)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO suppliers (
