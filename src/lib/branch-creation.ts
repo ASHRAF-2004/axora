@@ -7,6 +7,7 @@ import { saveBranchDeliveryLocation } from "@/lib/branch-delivery-location";
 import { isDemoMode, withAuditTransaction } from "@/lib/db";
 import { getDemoStore } from "@/lib/demo-data";
 import { canAccess } from "@/lib/permissions";
+import { requiredPhoneNumberSchema } from "@/lib/phone-number";
 
 const text = (minimum: number, maximum: number) => z.string().trim().min(minimum).max(maximum)
   .refine((value) => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value));
@@ -23,7 +24,7 @@ export const createBranchWithLocationSchema = z.strictObject({
   providerPlaceId: text(0, 500).optional(),
   providerAttribution: text(0, 1_000).optional(),
   contactName: text(2, 300),
-  contactPhone: text(5, 120),
+  contactPhone: requiredPhoneNumberSchema,
   contactEmail: z.union([z.literal(""), z.email().max(320)]),
   deliveryInstructions: text(0, 5_000).optional(),
   notes: text(0, 1_000).optional(),

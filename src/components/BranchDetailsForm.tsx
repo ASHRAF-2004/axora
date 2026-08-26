@@ -8,6 +8,7 @@ import {
   updateBranchDetailsAction,
   type BranchDetailsActionState,
 } from "@/app/(portal)/branches/[branchId]/edit/actions";
+import { InternationalPhoneInput } from "@/components/InternationalPhoneInput";
 import { branchDetailsMessages } from "@/lib/branch-details-i18n";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
@@ -43,7 +44,8 @@ export function BranchDetailsForm({ branch, locale }: {
       <label>{copy.shortCode}<input value={branch.branchCode} readOnly aria-readonly="true" /></label>
       <label>{copy.city}<input name="city" defaultValue={branch.city} required minLength={2} maxLength={300} autoComplete="address-level2" /></label>
       <label>{copy.contactName}<input name="contactName" defaultValue={branch.contactName} required minLength={2} maxLength={300} autoComplete="name" /></label>
-      <label>{copy.contactPhone}<input name="contactPhone" defaultValue={branch.contactPhone} type="tel" inputMode="tel" autoComplete="tel" required minLength={5} maxLength={120} /></label>
+      <InternationalPhoneInput defaultValue={branch.contactPhone} disabled={pending}
+        label={copy.contactPhone} locale={locale} name="contactPhone" required />
       <label className="field-full">{copy.contactEmail}<input name="contactEmail" defaultValue={branch.contactEmail} type="email" autoComplete="email" maxLength={320} /></label>
       <label className="field-full">{copy.notes}<textarea name="notes" defaultValue={branch.notes ?? ""} maxLength={1_000} /></label>
     </div>
