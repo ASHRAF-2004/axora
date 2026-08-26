@@ -87,7 +87,7 @@ export default function PortalError({
   };
 
   return (
-    <main
+    <div
       className="content-shell"
       role="alert"
       aria-live="assertive"
@@ -128,6 +128,6 @@ export default function PortalError({
           </button>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
