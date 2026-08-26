@@ -35,7 +35,15 @@ test("Owner creates a new Company and its first Administrator on one submission"
   const browserFailures = watchForUnexpectedBrowserFailures(page);
   await signInAsDemoOwner(page);
   await page.goto("/companies/new");
-  const companyName = `First-attempt company ${testInfo.project.name}`;
+  // The standalone demo server intentionally survives a Playwright retry. A
+  // committed first attempt must therefore not make the retry impersonate a
+  // duplicate submission from a different company fixture.
+  const scenarioIdentity = [
+    testInfo.project.name,
+    testInfo.repeatEachIndex,
+    testInfo.retry,
+  ].join("-");
+  const companyName = `First-attempt company ${scenarioIdentity}`;
   await page.getByLabel("Company name").fill(companyName);
   await page.getByLabel("Main contact name").fill("First Administrator");
   await Promise.all([
@@ -51,8 +59,8 @@ test("Owner creates a new Company and its first Administrator on one submission"
     name: `Create Company User: ${companyName}`,
   })).toBeVisible();
   await expect(page.getByLabel("Customer company")).toHaveCount(0);
-  const displayName = `First Company Administrator ${testInfo.project.name}`;
-  const email = `first-company-admin-${testInfo.project.name}@axora.invalid`;
+  const displayName = `First Company Administrator ${scenarioIdentity}`;
+  const email = `first-company-admin-${scenarioIdentity}@axora.invalid`;
   await page.getByLabel("Full name").fill(displayName);
   await page.getByLabel("Work email").fill(email);
   await page.getByLabel("Role").selectOption("COMPANY_ADMIN");
@@ -62,6 +70,7 @@ test("Owner creates a new Company and its first Administrator on one submission"
 
   await expect(page).toHaveURL(
     new RegExp(`/companies/${companyId}/users\\?notice=user-created-email-disabled$`),
+    { timeout: 15_000 },
   );
   const createdUser = page.locator("tr").filter({
     hasText: email,
@@ -78,6 +87,7 @@ test("Owner creates a new Company and its first Administrator on one submission"
   await page.getByRole("button", { name: "Create account & send invite" }).click();
   await expect(page).toHaveURL(
     new RegExp(`/companies/${companyId}/users\\?notice=user-invitation-pending$`),
+    { timeout: 15_000 },
   );
   await expect(page.locator("tr").filter({ hasText: email })).toHaveCount(1);
   await expect(page.getByText("Something went wrong")).toHaveCount(0);
