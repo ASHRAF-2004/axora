@@ -110,6 +110,10 @@ test("creates a company on the first valid attempt without a logo or assignment"
 });
 
 test("creates one catalogue product without losing the route after insertion", async ({ page }, testInfo) => {
+  // This journey performs creation, two image uploads, a primary-image
+  // mutation, and a final update. Give a loaded serial CI worker enough total
+  // time while retaining the focused per-operation assertions below.
+  testInfo.setTimeout(60_000);
   await signInAsDemoOwner(page);
   await page.goto("/products/new");
   const name = `E2E catalogue product ${Date.now()}`;
