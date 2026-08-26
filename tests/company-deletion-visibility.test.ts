@@ -15,7 +15,7 @@ describe("company deletion visibility", () => {
       readFile("src/app/(portal)/companies/page.tsx","utf8"),
       readFile("src/app/(portal)/companies/[companyId]/page.tsx","utf8"),
     ]);
-    expect(list).toContain('item !== "ARCHIVED"');
+    expect(list).toContain('company.status !== "ARCHIVED"');
     expect(detail).toContain('company.status === "ARCHIVED"');
   });
 });
