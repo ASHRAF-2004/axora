@@ -344,9 +344,9 @@
       "expectedDenial": [
         "foreign-company-resource"
       ],
-      "mode": "mixed",
+      "mode": "removed",
       "apis": [],
-      "expectedFinalUrl": "/branches/organization",
+      "expectedFinalUrl": "/branches",
       "landmark": "main h1"
     },
     {

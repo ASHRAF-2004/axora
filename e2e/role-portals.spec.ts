@@ -51,6 +51,8 @@ test("company and branch administrators retain scoped people, budget and request
   await page.goto("/products");
   await expect(page.getByRole("heading", { level: 1, name: "Choose a branch" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create global product" })).toHaveCount(0);
+  await page.goto("/branches/organization");
+  await expect(page).toHaveURL(/\/branches$/);
 
   await page.context().clearCookies();
   await signInAsDemoRole(page, principals.branchAdmin);
@@ -64,6 +66,7 @@ test("Requester submits but cannot approve, while Approver cannot create request
   await signInAsDemoRole(page, principals.requester);
   await page.goto("/requests/new");
   await expect(page.getByRole("heading", { level: 1, name: "Create purchase request" })).toBeVisible();
+  await expect(page.getByLabel("Department")).toHaveCount(0);
   await page.goto("/approvals");
   await expect(page).toHaveURL(/\/access-denied$/);
 
@@ -155,6 +158,14 @@ test("Platform Owner retains company authority and the Owner-only Email Status",
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.goto("/email-operations");
   await expect(page.getByRole("heading", { level: 1, name: "Email Status" })).toBeVisible();
+  await page.goto("/branches/organization");
+  await expect(page).toHaveURL(/\/branches$/);
+  await page.goto("/companies/co-youruni/users/new");
+  const role = page.getByLabel("Role");
+  await expect(role.locator('option[value="DEPARTMENT_ADMIN"]')).toHaveCount(0);
+  await role.selectOption("REQUESTER");
+  await expect(page.getByLabel("Assignment level")).toHaveCount(0);
+  await expect(page.getByLabel("Department")).toHaveCount(0);
 });
 
 test("Arabic company dashboard remains RTL, mobile-safe and reduced-motion aware", async ({ page }) => {

@@ -10,14 +10,13 @@ import { z } from "zod";
 export async function updateCategoryPolicyAction(formData: FormData) {
   const actor = await requirePermission("manage_category_policy");
   const input = z.object({
-    scopeType: z.enum(["COMPANY", "BRANCH", "DEPARTMENT"]),
+    scopeType: z.enum(["COMPANY", "BRANCH"]),
     companyId: z.string().uuid(), branchId: z.string().uuid().optional(),
-    departmentId: z.string().uuid().optional(), expectedVersion: z.coerce.number().int().min(0),
+    expectedVersion: z.coerce.number().int().min(0),
     reason: z.literal("PURCHASING_RULE_UPDATED"), commandId: z.string().uuid(),
   }).safeParse({
     scopeType: formData.get("scopeType"), companyId: formData.get("companyId"),
     branchId: formData.get("branchId") || undefined,
-    departmentId: formData.get("departmentId") || undefined,
     expectedVersion: formData.get("expectedVersion"), reason: "PURCHASING_RULE_UPDATED",
     commandId: formData.get("commandId") || randomUUID(),
   });

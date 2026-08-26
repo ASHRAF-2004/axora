@@ -119,7 +119,6 @@ describe("browser session state isolation", () => {
     const submissionKey = newRequestSubmissionKey();
     writeRequestDraft({
       branchId: "60000000-0000-4000-8000-000000000050",
-      department: "Operations",
       neededByDate: "2026-08-10",
       requestType: "Recurring",
       urgency: "High",
@@ -128,7 +127,6 @@ describe("browser session state isolation", () => {
     }, scopeA);
 
     expect(readRequestDraft(scopeA)).toMatchObject({
-      department: "Operations",
       requestType: "Recurring",
       urgency: "High",
       submissionKey,

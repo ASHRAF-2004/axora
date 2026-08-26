@@ -55,7 +55,6 @@ export default async function NewDeliveryUserPage() {
           defaultLocale={locale}
           branches={[]}
           companies={[]}
-          departments={[]}
           roleOptions={roleOptions}
           canCustomizePermissions
         />

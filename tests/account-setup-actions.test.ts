@@ -154,6 +154,38 @@ describe("account invitation actions", () => {
     expect(mocks.deliverInvitation).toHaveBeenCalledTimes(1);
   });
 
+  it("drops a forged department scope at the current company-user boundary", async () => {
+    const form = userForm();
+    form.set("role", "REQUESTER");
+    form.set("branchId", "20000000-0000-4000-8000-000000000001");
+    form.set("departmentId", "30000000-0000-4000-8000-000000000001");
+
+    await expect(createCompanyUserAction(actor.companyId, form)).rejects.toThrow(
+      `REDIRECT:/companies/${actor.companyId}/users?notice=user-invited`,
+    );
+    expect(mocks.createInvitedUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: "REQUESTER",
+        branchId: "20000000-0000-4000-8000-000000000001",
+        departmentId: undefined,
+      }),
+      actor,
+    );
+  });
+
+  it("rejects a forged department scope at the generic company-user boundary", async () => {
+    const form = userForm();
+    form.set("creationContext", "COMPANY");
+    form.set("role", "REQUESTER");
+    form.set("branchId", "20000000-0000-4000-8000-000000000001");
+    form.set("departmentId", "30000000-0000-4000-8000-000000000001");
+
+    await expect(createUserAction(form)).rejects.toThrow(
+      `REDIRECT:/companies/${actor.companyId}/users?notice=user-creation-invalid`,
+    );
+    expect(mocks.createInvitedUser).not.toHaveBeenCalled();
+  });
+
   it("reports a recoverable Company lifecycle synchronization failure", async () => {
     mocks.deliverInvitation.mockResolvedValue("sent-lifecycle-sync-failed");
 

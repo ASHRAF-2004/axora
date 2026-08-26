@@ -25,6 +25,10 @@ export interface CategoryPolicyWorkspace {
   scopes: CategoryPolicyScope[];
 }
 
+export function mvpCategoryPolicyScopes(scopes: readonly CategoryPolicyScope[]) {
+  return scopes.filter((scope) => scope.type === "COMPANY" || scope.type === "BRANCH");
+}
+
 interface ValueRow<T> extends QueryResultRow { value: T | null }
 
 function assignmentId(actor: AuthenticatedSessionUser) {

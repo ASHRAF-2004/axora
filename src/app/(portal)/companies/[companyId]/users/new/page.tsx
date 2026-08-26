@@ -8,7 +8,6 @@ import {
 } from "@/lib/authorization-policy";
 import { requirePagePermission } from "@/lib/auth";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
-import { loadOrganizationStructureWorkspace } from "@/lib/organization-structure";
 import {
   peopleWorkspaceMessages,
   peopleWorkspaceText,
@@ -32,19 +31,16 @@ export default async function NewCompanyUserPage({
     redirect("/users/new");
   }
   if (actor.accountKind !== "PLATFORM") redirect("/access-denied");
-  const [organization, structure] = await Promise.all([
-    loadOrganizationDirectory(actor),
-    loadOrganizationStructureWorkspace(actor),
-  ]);
+  const organization = await loadOrganizationDirectory(actor);
   const authorizedCompany = organization.companies.find((company) => company.id === companyId);
   if (!authorizedCompany) notFound();
   const companies: Company[] = [{ ...authorizedCompany, paymentTerms: STANDARD_BILLING_TERMS }];
   const branches: Branch[] = organization.branches
     .filter((branch) => branch.companyId === companyId)
     .map((branch) => ({ ...branch, committedAmount: branch.committedAmount ?? 0 }));
-  const departments = structure.departments.filter((department) => department.companyId === companyId);
   const roles = creatableAccountRoles(actor).filter((role) => (
     accountRoleDefinition(role.key)?.accountKind === "COMPANY"
+    && role.key !== "DEPARTMENT_ADMIN"
   ));
   if (!roles.length) notFound();
   const roleOptions = roles.map((role) => {
@@ -77,13 +73,11 @@ export default async function NewCompanyUserPage({
           fixedCompanyId={authorizedCompany.id}
           actorBranchId={actor.branchId}
           actorCompanyId={actor.companyId}
-          actorDepartmentId={actor.departmentId}
           actorIsOwner={actor.isOwner}
           canCustomizePermissions
           defaultLocale={locale}
           branches={branches}
           companies={companies}
-          departments={departments}
           roleOptions={roleOptions}
         />
       </article>

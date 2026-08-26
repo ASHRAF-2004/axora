@@ -63,7 +63,6 @@ describe("core portal internationalization", () => {
       actorCompanyId: "10000000-0000-4000-8000-000000000001",
       branches: [],
       companies: [],
-      departments: [],
       defaultLocale: "ar",
       roleOptions: [{
         value: "REQUESTER",

@@ -104,7 +104,6 @@ export function RequestDraftBoundary({
 
     const persist = () => {
       const branch = formControl(form, "branchId")?.value ?? "";
-      const department = formControl(form, "department")?.value ?? "";
       const neededByDate = formControl(form, "neededByDate")?.value
         || localToday();
       const requestTypeValue = formControl(form, "requestType")?.value
@@ -113,7 +112,6 @@ export function RequestDraftBoundary({
       const notes = formControl(form, "notes")?.value ?? "";
       writeRequestDraft({
         branchId: branch,
-        department,
         neededByDate,
         requestType: REQUEST_TYPES.has(requestTypeValue)
           ? requestTypeValue as "Standard" | "Ad-hoc" | "Recurring"

@@ -15,7 +15,6 @@ const requestInput = {
   companyId: "company-1",
   branchId: "branch-1",
   requestType: "Standard" as const,
-  department: "Administration",
   neededByDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   urgency: "Normal" as const,
 };
@@ -28,10 +27,12 @@ describe("whole-number product quantities", () => {
   });
 
   it("accepts whole-number request quantities and rejects decimals", () => {
-    expect(requestSchema.safeParse({
+    const parsed = requestSchema.safeParse({
       ...requestInput,
       lines: [{ productId: "product-1", quantity: 3 }],
-    }).success).toBe(true);
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.department).toBe("");
 
     expect(requestSchema.safeParse({
       ...requestInput,

@@ -114,12 +114,12 @@ describe("Create User progressive UI source contract", () => {
     expect(source).toContain("roleChanged");
     expect(source).toContain("changeCompany");
     expect(source).toContain('setBranchId("")');
-    expect(source).toContain('setDepartmentId("")');
     expect(source).toContain("PermissionChecklist");
     expect(source).toContain("permissionsCustomized");
     expect(source).toContain("customizablePermissions");
-    expect(source).toContain("requesterScopeFixedToDepartment");
-    expect(source).toContain('config?.creationScopes.includes("DEPARTMENT")');
+    expect(source).not.toContain('name="departmentId"');
+    expect(source).not.toContain("requesterScopeFixedToDepartment");
+    expect(source).not.toContain('config?.creationScopes.includes("DEPARTMENT")');
   });
 
   it("uses centralized English, Arabic and Malay role/access copy", async () => {

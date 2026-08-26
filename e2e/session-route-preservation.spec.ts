@@ -207,7 +207,7 @@ test("request draft fields recover after a hard refresh", async ({ page }) => {
     .toBeVisible();
 
   await expect(page.getByLabel("Request type")).toHaveCount(0);
-  await page.getByLabel("Department").fill("Operations and facilities");
+  await expect(page.getByLabel("Department")).toHaveCount(0);
   await page.getByLabel("Priority").selectOption("High");
   await page.getByLabel("Notes").fill("Preserve this safe draft across refresh.");
   const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
@@ -216,8 +216,7 @@ test("request draft fields recover after a hard refresh", async ({ page }) => {
   await page.reload();
 
   await expect(page.getByLabel("Request type")).toHaveCount(0);
-  await expect(page.getByLabel("Department"))
-    .toHaveValue("Operations and facilities");
+  await expect(page.getByLabel("Department")).toHaveCount(0);
   await expect(page.getByLabel("Priority")).toHaveValue("High");
   await expect(page.getByLabel("Notes"))
     .toHaveValue("Preserve this safe draft across refresh.");

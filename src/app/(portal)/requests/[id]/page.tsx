@@ -205,7 +205,7 @@ export default async function RequestDetailPage({
             <div className="panel-header"><div><h2>{platformView ? detail.operationsInfo : isDirectOrder ? detail.orderInfo : detail.requestInfo}</h2><p>{platformView ? detail.operationsBody : isDirectOrder ? detail.orderInfoBody : detail.requestBody}</p></div></div>
             <div className="panel-body">
               <div className="form-grid">
-                <div className="readiness-item"><UserRound size={19} /><div><strong>{request.requestedBy}</strong><p>{request.department} · {request.requesterContact}</p></div></div>
+                <div className="readiness-item"><UserRound size={19} /><div><strong>{request.requestedBy}</strong><p>{request.requesterContact}</p></div></div>
                 <div className="readiness-item"><Route size={19} /><div><strong>{request.branchName}</strong><p>{isDirectOrder ? detail.directOrder : `${request.requestType} · ${localizedStatus(request.urgency, locale)}`}</p></div></div>
                 {canViewInvoices ? <div id={finalInvoice ? undefined : "invoice"} className="readiness-item"><PackageCheck size={19} /><div><strong>{request.invoiceNumber || detail.noInvoice}</strong><p>{localizedStatus(request.invoiceStatus ?? detail.notAssigned, locale)} · {localizedStatus(request.paymentStatus ?? "Unpaid", locale)}</p></div></div> : null}
                 {platformView

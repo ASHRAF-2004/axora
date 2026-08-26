@@ -152,6 +152,7 @@ export async function createUserAction(formData: FormData) {
     || (creationContext === "COMPANY" && (
       definition.accountKind !== "COMPANY" || !input.companyId
       || input.role === "DEPARTMENT_ADMIN"
+      || Boolean(input.departmentId)
     ))) {
     redirect(`${routeFor(creationContext, returnCompanyId)}?notice=user-creation-invalid`);
   }
@@ -225,6 +226,7 @@ export async function createCompanyUserAction(
   if (!parsedCompanyId.success) redirect("/users?notice=user-creation-invalid");
   formData.set("creationContext", "COMPANY");
   formData.set("companyId", parsedCompanyId.data);
+  formData.delete("departmentId");
   formData.delete("supplierId");
   return createUserAction(formData);
 }
