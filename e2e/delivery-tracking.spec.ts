@@ -23,9 +23,14 @@ const receiver: DemoRoleSession = {
 const sessionId = "10000000-0000-4000-8000-000000000068";
 const jobId = "20000000-0000-4000-8000-000000000068";
 
-test("assigned Delivery Agent explicitly shares, buffers offline, and resumes after a lost pause response", async ({ page, context }) => {
+test("assigned Delivery Agent buffers offline and completion preempts a stale resume response", async ({ page, context }) => {
   const points: Record<string, unknown>[] = [];
   const operations: string[] = [];
+  let resumeResponses = 0;
+  let releaseResumeResponse: (() => void) | undefined;
+  const resumeResponsePending = new Promise<void>((resolve) => {
+    releaseResumeResponse = resolve;
+  });
   let trackingStatus = "ACTIVE";
   await context.grantPermissions(["geolocation"], {
     origin: "http://127.0.0.1:3100",
@@ -64,11 +69,15 @@ test("assigned Delivery Agent explicitly shares, buffers offline, and resumes af
           await route.abort("connectionfailed");
           return;
         }
-        if (body.action === "RESUME") trackingStatus = "ACTIVE";
+        if (body.action === "RESUME") {
+          trackingStatus = "ACTIVE";
+          await resumeResponsePending;
+        }
       }
       await route.fulfill({ json: body.action === "POINT"
         ? { accepted: true }
         : { sessionId, status: trackingStatus } });
+      if (body.action === "RESUME") resumeResponses += 1;
       return;
     }
     await route.fulfill({ json: {
@@ -153,6 +162,10 @@ test("assigned Delivery Agent explicitly shares, buffers offline, and resumes af
   await expect(page.getByRole("button", { name: "Resume sharing location" }))
     .toBeVisible({ timeout: 15_000 });
   expect(await page.evaluate((key) => localStorage.getItem(key), queueKey)).toBeNull();
+  releaseResumeResponse?.();
+  await expect.poll(() => resumeResponses).toBe(1);
+  await expect(page.getByRole("button", { name: "Resume sharing location" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pause sharing" })).toHaveCount(0);
   await page.evaluate((terminalJobId) => {
     window.dispatchEvent(new CustomEvent("axora:delivery-terminal", {
       detail: { jobId: terminalJobId, status: "COMPLETED" },

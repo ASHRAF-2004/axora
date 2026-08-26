@@ -36,6 +36,8 @@ describe("delivery tracking interfaces", () => {
     expect(panel).toContain("if (!activeSessionId || !sharingEnabled) return");
     expect(panel).toContain('window.addEventListener("axora:delivery-terminal"');
     expect(panel).toContain('window.addEventListener("axora:delivery-completion-pending"');
+    expect(panel).toContain("invalidatePendingControl()");
+    expect(panel).toContain("controlEpoch.current !== operationEpoch");
     expect(panel).toContain("writeQueue(actorId, [])");
     expect(copy).toContain("Delivery status was not changed");
     expect(panel).toContain("REFRESH_INTERVAL_MS = 15_000");
