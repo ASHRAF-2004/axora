@@ -9,6 +9,9 @@ describe("profile image presentation", () => {
     expect(component).toMatch(/focalX[\s\S]+focalY[\s\S]+zoom/);
     expect(component).toMatch(/<progress/); expect(component).toMatch(/aria-live="polite"/);
     expect(component).toMatch(/removeAction/); expect(css).toMatch(/prefers-reduced-motion/);
+    expect(component).toContain("useSyncExternalStore");
+    expect(component).toMatch(/interactive \? <label[\s\S]+name="avatar"/);
+    expect(component).toMatch(/aria-busy="true" aria-disabled="true"/);
   });
   it("uses only authenticated scoped image URLs for users and deliveries", async () => {
     const [avatar, receiving, users] = await Promise.all([

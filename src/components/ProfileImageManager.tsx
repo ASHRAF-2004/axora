@@ -10,8 +10,12 @@ import {
 import { Camera, ImageUp, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { UserAvatar } from "./UserAvatar";
+
+function subscribeToHydration() {
+  return () => {};
+}
 
 interface ProfileImageManagerProps {
   name: string;
@@ -56,6 +60,7 @@ export function ProfileImageManager({
   const [clientNotice, setClientNotice] = useState<string>();
   const [activeAvailable, setActiveAvailable] = useState(available);
   const [activeVersion, setActiveVersion] = useState(version);
+  const interactive = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const inputRef = useRef<HTMLInputElement>(null);
   const requestRef = useRef<ActiveProfileImageRequest | null>(null);
 
@@ -193,10 +198,10 @@ export function ProfileImageManager({
       <input type="hidden" name="focalX" value={focalX} />
       <input type="hidden" name="focalY" value={focalY} />
       <input type="hidden" name="zoom" value={zoom} />
-      <label className="button button-secondary profile-image-picker"><Camera size={16} aria-hidden="true" />{activeAvailable ? copy.replace : copy.choose}<input
+      {interactive ? <label className="button button-secondary profile-image-picker"><Camera size={16} aria-hidden="true" />{activeAvailable ? copy.replace : copy.choose}<input
         accept="image/jpeg,image/png,image/webp" className="sr-only" name="avatar"
         disabled={busy} onChange={(event) => chooseFile(event.currentTarget.files?.[0])} ref={inputRef} required type="file"
-      /></label>
+      /></label> : <span aria-busy="true" aria-disabled="true" className="button button-secondary profile-image-picker"><Camera size={16} aria-hidden="true" />{activeAvailable ? copy.replace : copy.choose}</span>}
       {preview ? <div className="profile-image-crop-controls">
         <label>{copy.horizontal}<input aria-label={copy.horizontal} disabled={busy} max="100" min="0" onChange={(event) => setFocalX(Number(event.currentTarget.value))} type="range" value={focalX} /></label>
         <label>{copy.vertical}<input aria-label={copy.vertical} disabled={busy} max="100" min="0" onChange={(event) => setFocalY(Number(event.currentTarget.value))} type="range" value={focalY} /></label>
