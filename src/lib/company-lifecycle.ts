@@ -269,6 +269,10 @@ const activationContractSchema = z.object({
   ),
 }).strict();
 
+const demoActivationContractSchema = activationContractSchema.extend({
+  companyId: z.string().trim().min(1).max(160),
+});
+
 const activationCommandResultSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("ACTIVATED"), mutation: mutationSchema }).strict(),
   z.object({
@@ -570,7 +574,7 @@ export async function loadCompanyActivationContract(
       throw new CompanyLifecycleUnavailableError();
     }
     const activationState = demoCompanyActivationState(actor.id, companyId);
-    return activationContractSchema.parse({
+    return demoActivationContractSchema.parse({
       capturedAt,
       companyId,
       verificationStatus: activationState?.verificationStatus
