@@ -177,6 +177,23 @@ describe("live delivery tracking migration", () => {
         )
       `, [otherIds.company_id]);
       await db.query(`
+        INSERT INTO users(
+          id,email,display_name,password_hash,role_id,is_owner,account_kind,
+          account_status,email_verified_at,company_id
+        )
+        SELECT '68100000-0000-4000-8000-000000000007',
+          'tracking-company-admin@example.test','Tracking Company Admin',
+          'not-a-real-hash',id,false,'COMPANY','ACTIVE',now(),$1
+        FROM roles WHERE role_key='COMPANY_ADMIN';
+      `, [ids.company_id]);
+      await db.query(`
+        INSERT INTO company_memberships(
+          user_id,company_id,status,is_primary,joined_at
+        ) VALUES (
+          '68100000-0000-4000-8000-000000000007',$1,'ACTIVE',true,now()
+        );
+      `, [ids.company_id]);
+      await db.query(`
         INSERT INTO role_assignments(
           id,user_id,role_id,scope_type,company_id,branch_id,
           active,assigned_by,assigned_at
@@ -196,6 +213,16 @@ describe("live delivery tracking migration", () => {
           true,$3,now()-interval '1 day'
         FROM roles WHERE role_key='RECEIVING_USER';
       `, [otherIds.company_id, otherIds.branch_id, ownerIds.id]);
+      await db.query(`
+        INSERT INTO role_assignments(
+          id,user_id,role_id,scope_type,company_id,
+          active,assigned_by,assigned_at
+        )
+        SELECT '68100000-0000-4000-8000-000000000008',
+          '68100000-0000-4000-8000-000000000007',id,'COMPANY',$1,
+          true,$2,now()-interval '1 day'
+        FROM roles WHERE role_key='COMPANY_ADMIN';
+      `, [ids.company_id, ownerIds.id]);
       await db.exec("ALTER TABLE user_scopes DISABLE TRIGGER USER");
       await db.query(`
         INSERT INTO user_scopes(
@@ -222,6 +249,11 @@ describe("live delivery tracking migration", () => {
           (
             '68100000-0000-4000-8000-000000000005','BRANCH',$4,$5,
             'ROLE_ASSIGNMENT','68100000-0000-4000-8000-000000000006',
+            now()-interval '1 day',true,$3
+          ),
+          (
+            '68100000-0000-4000-8000-000000000007','COMPANY',$1,NULL,
+            'ROLE_ASSIGNMENT','68100000-0000-4000-8000-000000000008',
             now()-interval '1 day',true,$3
           );
       `, [ids.company_id, ids.branch_id, ownerIds.id,
@@ -323,6 +355,58 @@ describe("live delivery tracking migration", () => {
         );
       `, [ids.company_id, ids.branch_id, ids.request_id, ownerIds.id]);
       await db.exec("ALTER TABLE delivery_jobs ENABLE TRIGGER delivery_jobs_paid_request_guard");
+      await db.exec(`
+        SELECT set_config(
+          'axora.user_id','68100000-0000-4000-8000-000000000007',false
+        );
+        SELECT set_config(
+          'axora.role_assignment_id',
+          '68100000-0000-4000-8000-000000000008',false
+        );
+      `);
+      const companyAdminAccess = await db.query<{
+        delivery_view: boolean;
+        receiving_assignment: boolean;
+        branch_assignments: number;
+      }>(`
+        WITH auth_snapshot AS (
+          SELECT axora_live_authorization_snapshot(
+            '68100000-0000-4000-8000-000000000007',
+            '68100000-0000-4000-8000-000000000008',now()
+          ) snapshot
+        )
+        SELECT
+          axora_snapshot_has_permission(
+            auth_snapshot.snapshot,'delivery.view','BRANCH',$1,$2,NULL,NULL
+          ) AS delivery_view,
+          axora_user_can_receive(
+            '68100000-0000-4000-8000-000000000007',$1,$2
+          ) AS receiving_assignment,
+          (SELECT count(*)::integer FROM branch_assignments
+            WHERE user_id='68100000-0000-4000-8000-000000000007'
+              AND status='ACTIVE') AS branch_assignments
+        FROM auth_snapshot
+      `, [ids.company_id, ids.branch_id]);
+      expect(companyAdminAccess.rows[0]).toEqual({
+        delivery_view: true,
+        receiving_assignment: false,
+        branch_assignments: 0,
+      });
+      const companyAdminPreparing = await db.query<{ value: {
+        sessions: Array<{ jobId: string; jobStatus: string; status: string }>;
+      } }>(`
+        SELECT axora_company_delivery_tracking_workspace(
+          '68100000-0000-4000-8000-000000000007',
+          '68100000-0000-4000-8000-000000000008',now()
+        ) AS value
+      `);
+      expect(companyAdminPreparing.rows[0].value.sessions).toContainEqual(
+        expect.objectContaining({
+          jobId: "68200000-0000-4000-8000-000000000001",
+          jobStatus: "AWAITING_ASSIGNMENT",
+          status: "NOT_STARTED",
+        }),
+      );
       await db.exec(`
         SELECT set_config(
           'axora.user_id','68100000-0000-4000-8000-000000000003',false
@@ -881,6 +965,8 @@ describe("live delivery tracking migration", () => {
       expect(row.point).toContain("movement validation");
       expect(row.company).toContain("'receiving.confirm','BRANCH'");
       expect(row.company).toContain("axora_user_can_receive");
+      expect(row.company).toContain("'delivery.view','BRANCH'");
+      expect(row.company).toContain("snapshot->>'accountKind'='COMPANY'");
       expect(row.company).toContain("session.status IN ('NOT_STARTED','ACTIVE','PAUSED')");
       expect(row.company).toContain("session.status='ENDED'");
       expect(row.company).toContain("'PRIVACY_SAFE_DIRECT_ESTIMATE'");
