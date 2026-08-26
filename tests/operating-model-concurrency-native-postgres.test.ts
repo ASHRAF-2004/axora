@@ -1092,6 +1092,11 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       latitude: "3.139000",longitude: "101.686900",
       label: "Original canonical destination",
     });
+    await admin.query(`
+      UPDATE public.delivery_jobs
+      SET acceptance_deadline=now()-interval '1 day'
+      WHERE id=$1
+    `, [job.rows[0]!.id]);
     const claimCommands = drivers.map(() => randomUUID());
     const claims = await Promise.allSettled(drivers.map((driver,index) => (
       withAppClient((client) => client.query(`
@@ -1117,6 +1122,8 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       totalAssignments: number;
       fulfilmentAssignments: number;
       fulfilmentActor: string;
+      freshAcceptanceWindow: boolean;
+      matchingAcceptanceDeadlines: boolean;
     }>(`
       SELECT
         (SELECT count(*)::int FROM public.delivery_job_assignments
@@ -1137,7 +1144,11 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
         (SELECT item.assigned_user_id::text
           FROM public.fulfilment_purchase_assignments item
           WHERE item.request_id=job.request_id AND item.status='ASSIGNED'
-          ORDER BY item.assigned_at DESC LIMIT 1) AS "fulfilmentActor"
+          ORDER BY item.assigned_at DESC LIMIT 1) AS "fulfilmentActor",
+        assignment.acceptance_deadline>=assignment.assigned_at+interval '119 minutes'
+          AS "freshAcceptanceWindow",
+        assignment.acceptance_deadline IS NOT DISTINCT FROM job.acceptance_deadline
+          AS "matchingAcceptanceDeadlines"
       FROM public.delivery_jobs job
       JOIN public.delivery_job_assignments assignment
         ON assignment.delivery_job_id=job.id
@@ -1151,6 +1162,8 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       workflowVersion: 2,
       totalAssignments: 1,
       fulfilmentAssignments: 1,
+      freshAcceptanceWindow: true,
+      matchingAcceptanceDeadlines: true,
     });
 
     const activeAssignment = assignmentEvidence.rows[0]!;

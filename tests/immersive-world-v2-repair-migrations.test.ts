@@ -131,6 +131,163 @@ describe("immersive world V2 repair migrations", () => {
     }
   }, 30_000);
 
+  it("upgrades 117 by repairing only a pristine self-claim that inherited an already-expired deadline", async () => {
+    const db = new PGlite();
+    try {
+      await db.exec("CREATE ROLE axora_app");
+      await db.exec("CREATE ROLE axora_cleanup_worker");
+      await applyMigrations(db, {
+        through: "117_company_delivery_tracking_visibility.sql",
+      });
+      await applyDemoSeed(db);
+      await installOwner(db);
+      const payment = (await db.query<{ id: string }>(
+        "SELECT id FROM payments ORDER BY id LIMIT 1",
+      )).rows[0]!.id;
+      await makePaymentDeliverable(db, payment);
+      await configurePaymentBranchLocation(db, payment);
+      const jobId = (await db.query<{ value: string }>(
+        "SELECT axora_ensure_available_job_for_paid_payment($1,now()) AS value",
+        [payment],
+      )).rows[0]!.value;
+      const driver = {
+        user: "d7000000-0000-4000-8000-000000000001",
+        assignment: "d7000000-0000-4000-8000-000000000002",
+        command: "d7000000-0000-4000-8000-000000000003",
+      };
+      await db.query(`
+        INSERT INTO users(
+          id,email,display_name,password_hash,role_id,account_kind,
+          account_status,account_setup_completed_at
+        ) SELECT $1,'deadline-driver@fixture.invalid','Deadline Driver',
+          'fixture-hash',id,'DELIVERY','ACTIVE',now()
+        FROM roles WHERE role_key='DELIVERY_GUY'
+      `, [driver.user]);
+      await db.query(`
+        INSERT INTO role_assignments(
+          id,user_id,role_id,scope_type,active,assigned_by
+        ) SELECT $1,$2,id,'DELIVERY',true,$3
+        FROM roles WHERE role_key='DELIVERY_GUY'
+      `, [driver.assignment,driver.user,ownerId]);
+      await db.query(`
+        INSERT INTO delivery_agent_profiles(user_id,agent_code,active)
+        VALUES($1,'DEADLINE-DRIVER',true)
+      `, [driver.user]);
+      await db.query(`
+        UPDATE delivery_jobs
+        SET acceptance_deadline=now()-interval '1 day'
+        WHERE id=$1
+      `, [jobId]);
+      await db.query(
+        "SELECT axora_claim_available_delivery_job($1,$2,$3,$4,now())",
+        [driver.user,driver.assignment,jobId,driver.command],
+      );
+
+      const before = await db.query<{
+        impossibleDeadline: boolean;
+        matchingDeadlines: boolean;
+        jobStatus: string;
+        assignmentStatus: string;
+        workflowVersion: number;
+        events: number;
+        commands: number;
+        trackingStatus: string;
+      }>(`
+        SELECT
+          assignment.acceptance_deadline<=assignment.assigned_at
+            AS "impossibleDeadline",
+          assignment.acceptance_deadline IS NOT DISTINCT FROM job.acceptance_deadline
+            AS "matchingDeadlines",
+          job.status AS "jobStatus",assignment.status AS "assignmentStatus",
+          job.workflow_version::int AS "workflowVersion",
+          (SELECT count(*)::int FROM delivery_job_events event
+            WHERE event.delivery_job_id=job.id) AS events,
+          (SELECT count(*)::int FROM delivery_workflow_commands command
+            WHERE command.delivery_job_id=job.id) AS commands,
+          (SELECT session.status FROM delivery_tracking_sessions session
+            WHERE session.delivery_job_id=job.id) AS "trackingStatus"
+        FROM delivery_jobs job
+        JOIN delivery_job_assignments assignment
+          ON assignment.delivery_job_id=job.id AND assignment.ended_at IS NULL
+        WHERE job.id=$1
+      `, [jobId]);
+      expect(before.rows[0]).toEqual({
+        impossibleDeadline: true,
+        matchingDeadlines: true,
+        jobStatus: "ASSIGNED",
+        assignmentStatus: "ASSIGNED",
+        workflowVersion: 2,
+        events: 0,
+        commands: 0,
+        trackingStatus: "NOT_STARTED",
+      });
+
+      await applyMigration(db, "118_delivery_self_claim_acceptance_window.sql");
+
+      const after = await db.query<{
+        freshDeadline: boolean;
+        matchingDeadlines: boolean;
+        workflowVersion: number;
+        claimDefinition: string;
+        assignmentValidator: string;
+        appCanClaim: boolean;
+        assignmentId: string;
+      }>(`
+        SELECT
+          assignment.acceptance_deadline>=now()+interval '119 minutes'
+            AS "freshDeadline",
+          assignment.acceptance_deadline IS NOT DISTINCT FROM job.acceptance_deadline
+            AS "matchingDeadlines",
+          job.workflow_version::int AS "workflowVersion",
+          pg_get_functiondef(
+            'axora_claim_available_delivery_job(uuid,uuid,uuid,uuid,timestamptz)'::regprocedure
+          ) AS "claimDefinition",
+          pg_get_functiondef(
+            'validate_delivery_assignment()'::regprocedure
+          ) AS "assignmentValidator",
+          has_function_privilege(
+            'axora_app',
+            'axora_claim_available_delivery_job(uuid,uuid,uuid,uuid,timestamptz)',
+            'EXECUTE'
+          ) AS "appCanClaim",
+          assignment.id::text AS "assignmentId"
+        FROM delivery_jobs job
+        JOIN delivery_job_assignments assignment
+          ON assignment.delivery_job_id=job.id AND assignment.ended_at IS NULL
+        WHERE job.id=$1
+      `, [jobId]);
+      expect(after.rows[0]).toMatchObject({
+        freshDeadline: true,
+        matchingDeadlines: true,
+        workflowVersion: 2,
+        appCanClaim: true,
+      });
+      expect(after.rows[0]!.claimDefinition)
+        .toContain("acceptance_deadline=p_at+interval '2 hours'");
+      expect(after.rows[0]!.claimDefinition)
+        .not.toContain("COALESCE(job.acceptance_deadline");
+      expect(after.rows[0]!.assignmentValidator)
+        .not.toContain("updated_at','acceptance_deadline");
+
+      const accepted = await db.query<{
+        value: { status: string; workflowVersion: number };
+      }>(`
+        SELECT axora_record_delivery_event(
+          $1,$2,$3,$4,2,$5,$6,1,'ACCEPTED',now(),'{}'::jsonb,now()
+        ) AS value
+      `, [
+        driver.user,driver.assignment,jobId,after.rows[0]!.assignmentId,
+        "d7000000-0000-4000-8000-000000000004",
+        "d7000000-0000-4000-8000-000000000005",
+      ]);
+      expect(accepted.rows[0]!.value).toMatchObject({
+        status: "ACCEPTED",workflowVersion: 3,
+      });
+    } finally {
+      await db.close();
+    }
+  }, 30_000);
+
   it("allows one concurrent driver claim and only recovers objectively stale work", async () => {
     const db = new PGlite();
     try {
