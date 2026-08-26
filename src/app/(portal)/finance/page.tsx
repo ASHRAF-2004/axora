@@ -3,6 +3,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/domain";
 import { loadAuthorizedFinanceRegisters } from "@/lib/finance-isolation";
+import { canViewInternalFinance } from "@/lib/operational-isolation";
 import {
   operationalMessage,
   operationalNumber,
@@ -15,7 +16,7 @@ export default async function FinancePage() {
   const locale = actor.preferredLocale ?? "en";
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) =>
     operationalMessage(locale, key, values);
-  const platformFinance = actor.accountKind === "PLATFORM" && actor.scopeType === "PLATFORM";
+  const platformFinance = canViewInternalFinance(actor);
   const { invoices, payments } = await loadAuthorizedFinanceRegisters(actor);
 
   return <>
