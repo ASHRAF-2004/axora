@@ -66,7 +66,7 @@ export default async function ApprovalsPage({
     : undefined;
 
   return (
-    <main className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
+    <div className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
       <header className={styles.hero}>
         <span className={styles.eyebrow}>{messages.approvalTitle}</span>
         <h1>{messages.approvalTitle}</h1>
@@ -128,6 +128,6 @@ export default async function ApprovalsPage({
       {varianceWorkspace ? (
         <VarianceApprovalPanel workspace={varianceWorkspace} locale={locale} />
       ) : null}
-    </main>
+    </div>
   );
 }

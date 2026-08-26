@@ -59,7 +59,7 @@ export default async function CompanyWalletPage({
       : undefined;
 
   return (
-    <main className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
+    <div className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
       <header className={styles.hero}>
         <p className={styles.eyebrow}>{messages.companyWallet}</p>
         <h1>{messages.companyWallet}</h1>
@@ -233,6 +233,6 @@ export default async function CompanyWalletPage({
           </section>
         </>
       )}
-    </main>
+    </div>
   );
 }
