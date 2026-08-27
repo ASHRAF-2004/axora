@@ -47,7 +47,11 @@ export default async function DeliveriesPage({
       {notice ? <div className={notice.tone === "error" ? "form-alert" : "callout"} role={notice.tone === "error" ? "alert" : "status"}>
         <strong>{notice.message}</strong>
       </div> : null}
-      <ManageDriversPanel initialWorkspace={workspace} locale={locale} />
+      <ManageDriversPanel
+        initialWorkspace={workspace}
+        locale={locale}
+        timeZone={actor.timezone ?? "Asia/Kuala_Lumpur"}
+      />
     </>;
   }
   return <>

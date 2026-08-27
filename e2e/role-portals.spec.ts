@@ -34,6 +34,8 @@ test("Human Resources Management reaches companies while retired routes return t
 });
 
 test("Agent sees assigned company operations without platform financial fields", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
   await signInAsDemoRole(page, principals.agent);
   await page.goto("/dashboard");
   await expect(page.getByText("Client Account Manager workspace", { exact: true })).toBeVisible();
@@ -49,6 +51,10 @@ test("Agent sees assigned company operations without platform financial fields",
   await page.goto("/requests/not-a-valid-id");
   await expect(page.getByRole("heading", { level: 1, name: "404" })).toBeVisible();
   await expect(page.getByText("Something went wrong", { exact: true })).toHaveCount(0);
+  await page.goto("/deliveries");
+  await expect(page.locator("main h1")).toBeVisible();
+  await page.waitForTimeout(500);
+  expect(pageErrors).toEqual([]);
   await page.goto("/reports");
   await expect(page.getByText(/customer sales|buying cost|gross profit|gross margin/i)).toHaveCount(0);
 });

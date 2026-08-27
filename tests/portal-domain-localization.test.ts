@@ -269,6 +269,38 @@ describe("portal domain localization boundaries", () => {
     expect(deliveryProofTypeLabel("FUTURE_PROOF", "ms")).toBe("Jenis bukti tidak tersedia");
   });
 
+  it("renders Delivery Agent location time in the explicit profile timezone", () => {
+    const workspace = {
+      sequence: 1,
+      capturedAt: "2026-08-27T00:00:00.000Z",
+      drivers: [{
+        id: "e0000000-0000-4000-8000-000000000001",
+        name: "Delivery fixture",
+        email: "delivery.fixture@axora.invalid",
+        phone: "+60120000000",
+        active: true,
+        availability: "AVAILABLE" as const,
+        completedJobs: 1,
+        lastLocationAt: "2026-08-26T08:15:00.000Z",
+        locationStale: true,
+      }],
+    };
+
+    const utcHtml = renderToStaticMarkup(createElement(ManageDriversPanel, {
+      initialWorkspace: workspace,
+      locale: "en",
+      timeZone: "UTC",
+    }));
+    const malaysiaHtml = renderToStaticMarkup(createElement(ManageDriversPanel, {
+      initialWorkspace: workspace,
+      locale: "en",
+      timeZone: "Asia/Kuala_Lumpur",
+    }));
+
+    expect(utcHtml).toContain("Aug 26, 2026, 8:15 AM");
+    expect(malaysiaHtml).toContain("Aug 26, 2026, 4:15 PM");
+  });
+
   it("localizes create-route navigation and unavailable-company recovery copy", () => {
     expect(companyLifecycleMessages("ar").back).toBe("العودة إلى الشركات");
     expect(corePortalMessages("ar").common).toMatchObject({
