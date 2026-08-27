@@ -23,6 +23,8 @@ import type { RequestWorkflowEvent } from "./workflow-repository";
 import { sanitizeCustomerWorkflowEvent } from "./customer-workflow-privacy";
 import { canAccess } from "./permissions";
 
+const POSTGRES_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface RequestRow extends QueryResultRow {
   id: string;
   purchaseMode: NonNullable<ProcurementRequest["purchaseMode"]>;
@@ -642,7 +644,8 @@ export async function getAuthorizedRequest(
   requestId: string,
 ): Promise<ProcurementRequest | undefined> {
   const capturedAt = new Date();
-  if (isDemoMode()) {
+  const demo = isDemoMode();
+  if (demo) {
     return findVisibleDemoRequest(
       actor,
       getDemoStore().requests,
@@ -650,6 +653,10 @@ export async function getAuthorizedRequest(
       capturedAt,
     );
   }
+  // Production request identifiers are PostgreSQL UUIDs. Reject malformed
+  // route input before it reaches the UUID comparison so a controlled missing
+  // resource cannot be misclassified as an authorization-system outage.
+  if (!POSTGRES_UUID_PATTERN.test(requestId)) return undefined;
   const assignmentId = requireAssignment(actor);
   try {
     const result = await withAuditTransaction(
