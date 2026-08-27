@@ -6,9 +6,12 @@ import { corePortalMessages } from "@/lib/core-portal-i18n";
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from "@/lib/product-options";
 import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
 import { createProductAction } from "../../masters/actions";
+import { canManageCommercialCatalog } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 
 export default async function NewProductPage() {
   const actor = await requirePagePermission("manage_catalog");
+  if (!canManageCommercialCatalog(actor)) redirect("/access-denied");
   const locale = actor.preferredLocale ?? "en";
   const portalCopy = corePortalMessages(locale);
   const copy = portalCopy.products;

@@ -22,7 +22,7 @@ import { productEditorMessages } from "@/lib/product-editor-i18n";
 import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
 import { listProductCommercialHistory } from "@/lib/product-admin";
 import { formatCurrency } from "@/lib/domain";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, canManageCommercialCatalog } from "@/lib/permissions";
 
 function optionsWithCurrent(options: readonly string[], current: string) {
   return options.includes(current) ? options : [current, ...options];
@@ -30,7 +30,7 @@ function optionsWithCurrent(options: readonly string[], current: string) {
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requirePagePermission("manage_catalog");
-  if (!canAccess(actor, "manage_catalog")) notFound();
+  if (!canManageCommercialCatalog(actor)) notFound();
   const locale = actor.preferredLocale ?? "en";
   const productCopy = corePortalMessages(locale).products;
   const copy = productEditorMessages(locale);

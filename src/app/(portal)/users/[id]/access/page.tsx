@@ -6,6 +6,7 @@ import { accessAdministrationMessages, accessAdministrationNotice } from "@/lib/
 import { requirePagePermission } from "@/lib/auth";
 import { isMvpVisiblePermission } from "@/lib/mvp-permissions";
 import { localizePermissionOption } from "@/lib/permission-catalog-i18n";
+import { permissionIsCompatibleWithRole } from "@/lib/authorization-policy";
 import { localizedAccountRole } from "@/lib/user-form-i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -36,7 +37,14 @@ export default async function UserAccessPage({ params, searchParams }: {
   const assignment = snapshot.assignments.find((item) => item.id === snapshot.selectedAssignmentId);
   if (!assignment) notFound();
   const options = snapshot.permissionOptions
-    .filter((permission) => isMvpVisiblePermission(snapshot.identity.accountKind, permission.code))
+    .filter((permission) => (
+      isMvpVisiblePermission(snapshot.identity.accountKind, permission.code)
+      && permissionIsCompatibleWithRole(
+        permission.code,
+        assignment.roleKey,
+        assignment.scope.type,
+      )
+    ))
     .map((permission) => localizePermissionOption(permission, locale));
   const notice = accessAdministrationNotice(locale, query.notice);
   const back = "/users";

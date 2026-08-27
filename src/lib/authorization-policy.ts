@@ -681,6 +681,13 @@ export const PERMISSION_CATALOG = [
 
 export type PermissionCode = (typeof PERMISSION_CATALOG)[number]["code"];
 export type PermissionRisk = "NORMAL" | "HIGH";
+
+const CLIENT_ACCOUNT_MANAGER_FORBIDDEN_PERMISSIONS = new Set<PermissionCode>([
+  "commercial.cost.view",
+  "commercial.markup.view",
+  "commercial.platform_margin.view",
+  "commercial.pricing.manage",
+]);
 export type AuthorizationAccountStatus =
   | "INVITED"
   | "ACTIVE"
@@ -1244,13 +1251,22 @@ export function creationPermissionOptions(
   accountKind: AccountKind,
   roleDefaults: readonly PermissionCode[],
   allowExpandedSelection: boolean,
+  role?: UserRole | string,
+  scopeType?: RoleScopeType,
 ) {
   const defaults = new Set(roleDefaults);
   return PERMISSION_CATALOG.filter((permission) => (
-    defaults.has(permission.code)
-    || (allowExpandedSelection
-      && permission.code !== "procurement.direct_purchase"
-      && permissionIsCompatibleWithAccountKind(permission.code, accountKind))
+    (!role || permissionIsCompatibleWithRole(
+      permission.code,
+      role,
+      scopeType,
+      role === "PLATFORM_OWNER",
+    )) && (
+      defaults.has(permission.code)
+      || (allowExpandedSelection
+        && permission.code !== "procurement.direct_purchase"
+        && permissionIsCompatibleWithAccountKind(permission.code, accountKind))
+    )
   ));
 }
 
@@ -1272,6 +1288,17 @@ export function canonicalRoleForAuthorization(
   if (role === "IT_SUPPORT") return "TECHNICAL_SUPPORT";
   if (role === "DELIVERY_DRIVER") return "DELIVERY_AGENT";
   return role;
+}
+
+export function permissionIsCompatibleWithRole(
+  permission: PermissionCode,
+  role: UserRole | string,
+  scopeType?: RoleScopeType,
+  isOwner = false,
+) {
+  const canonical = canonicalRoleForAuthorization(role, scopeType, isOwner);
+  return canonical !== "CLIENT_ACCOUNT_MANAGER"
+    || !CLIENT_ACCOUNT_MANAGER_FORBIDDEN_PERMISSIONS.has(permission);
 }
 
 export function defaultPermissionsForRole(
@@ -1522,6 +1549,14 @@ export function authorize(
   const permission = isSelfApproval
     ? "request.approve.self"
     : input.permission;
+  if (!permissionIsCompatibleWithRole(
+    permission,
+    role,
+    subject.scopes[0]?.type,
+    subject.isOwner,
+  )) {
+    return { allowed: false, permission, reason: "PERMISSION_DENIED" };
+  }
   const source = permissionSource(subject, permission, resource, now);
   if (!source) {
     return {

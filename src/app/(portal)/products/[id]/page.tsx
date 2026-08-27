@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { formatCurrency } from "@/lib/domain";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, canManageCommercialCatalog } from "@/lib/permissions";
 import { listProducts } from "@/lib/repository";
 
 const detailCopy = {
@@ -17,6 +17,7 @@ const detailCopy = {
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requirePagePermission("manage_catalog");
+  if (!canManageCommercialCatalog(actor)) notFound();
   const { id } = await params;
   const product = (await listProducts(actor)).find((item) => item.id === id);
   if (!product) notFound();
@@ -25,7 +26,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const copy = corePortalMessages(locale).products;
   const local = detailCopy[locale];
   const canViewCost = canAccess(actor, "view_internal_cost");
-  const canEdit = canAccess(actor, "manage_catalog");
+  const canEdit = canManageCommercialCatalog(actor);
 
   return <>
     <PageHeader eyebrow={local.eyebrow} title={product.name} description={product.description || copy.operationsDescription} />

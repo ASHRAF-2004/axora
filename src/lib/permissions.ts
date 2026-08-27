@@ -236,6 +236,15 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   RECEIVING_USER: ["view_receiving", "confirm_receipts"],
 };
 
+// A Client Account Manager works with customer-facing commercial records, but
+// the role is never an Axora sourcing or profitability role. Keep this ceiling
+// final even when historical/custom permission rows contain broader grants.
+const clientAccountManagerForbiddenPermissions = new Set<Permission>([
+  "manage_commercial_pricing",
+  "view_internal_cost",
+  "view_platform_profit",
+]);
+
 function hasNormalizedScope(subject: AccessSubject) {
   return subject.accountKind !== undefined || subject.scopeType !== undefined;
 }
@@ -345,6 +354,10 @@ export function canAccess(subject: AccessSubject, permission: Permission) {
   if (useCanonicalScope ? !canonicalSubjectIsValid(subject) : !legacySubjectIsValid(subject)) {
     return false;
   }
+  if (subject.role === "CLIENT_ACCOUNT_MANAGER"
+    && clientAccountManagerForbiddenPermissions.has(permission)) {
+    return false;
+  }
   if (subject.isOwner) {
     if (subject.role !== "ADMIN" && subject.role !== "PLATFORM_OWNER") return false;
     return platformOwnerPermissions.includes(permission);
@@ -359,4 +372,9 @@ export function canAccess(subject: AccessSubject, permission: Permission) {
   // Legacy callers only carry branchId. Preserve the old audit restriction.
   if (permission === "view_audit" && !subject.scopeType && subject.branchId) return false;
   return Boolean(rolePermissions[subject.role]?.includes(permission));
+}
+
+export function canManageCommercialCatalog(subject: AccessSubject) {
+  return canAccess(subject, "manage_catalog")
+    && canAccess(subject, "manage_commercial_pricing");
 }

@@ -5,7 +5,7 @@ import { ProductImage } from "@/components/ProductImage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { formatCurrency } from "@/lib/domain";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, canManageCommercialCatalog } from "@/lib/permissions";
 import { listProducts } from "@/lib/repository";
 import { listShopDepartments } from "@/lib/catalog";
 import Link from "next/link";
@@ -25,7 +25,7 @@ export default async function ProductsPage({
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).products;
   const common = corePortalMessages(locale).common;
-  const canManageCatalog = canAccess(actor, "manage_catalog");
+  const canManageCatalog = canManageCommercialCatalog(actor);
 
   if (!canManageCatalog) {
     const params = await searchParams;

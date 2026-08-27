@@ -40,6 +40,12 @@ test("Agent sees assigned company operations without platform financial fields",
   await expectShell(page);
   await page.goto("/companies");
   await expect(page.locator("main h1")).toBeVisible();
+  await page.goto("/products");
+  await expect(page.getByRole("link", { name: "Create global product" })).toHaveCount(0);
+  await expect(page.getByText(/Axora internal cost|supplier cost|gross margin/i)).toHaveCount(0);
+  await page.goto("/requests/order-1");
+  await expect(page.locator("main h1")).toBeVisible();
+  await expect(page.getByText(/Internal line total|supplier cost|gross margin/i)).toHaveCount(0);
   await page.goto("/reports");
   await expect(page.getByText(/customer sales|buying cost|gross profit|gross margin/i)).toHaveCount(0);
 });

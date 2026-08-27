@@ -42,7 +42,13 @@ export default async function NewUserPage() {
       defaultPermissions: visibleDefaults,
       customizablePermissions: role.key === "PLATFORM_OWNER"
         ? []
-        : creationPermissionOptions(role.accountKind, defaults, actor.isOwner)
+        : creationPermissionOptions(
+          role.accountKind,
+          defaults,
+          actor.isOwner,
+          role.key,
+          role.allowedScopes[0],
+        )
           .filter((permission) => isMvpVisiblePermission(role.accountKind, permission.code)),
     };
   });

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { canAccess, type AccessSubject, type Permission } from "@/lib/permissions";
+import {
+  canAccess,
+  canManageCommercialCatalog,
+  type AccessSubject,
+  type Permission,
+} from "@/lib/permissions";
 import type { LegacyUserRole } from "@/lib/types";
 
 const allPermissions: Permission[] = [
@@ -246,6 +251,26 @@ describe("new canonical role compatibility permissions", () => {
       "view_invoices",
       "manage_users",
     ]);
+  });
+
+  it("keeps CAM commercial confidentiality final over historical explicit grants", () => {
+    const cam: AccessSubject = {
+      role: "CLIENT_ACCOUNT_MANAGER",
+      isOwner: false,
+      accountKind: "PLATFORM",
+      scopeType: "PLATFORM",
+      effectivePermissions: [
+        "manage_catalog",
+        "manage_commercial_pricing",
+        "view_internal_cost",
+        "view_platform_profit",
+      ],
+    };
+    expect(canAccess(cam, "manage_catalog")).toBe(true);
+    expect(canAccess(cam, "manage_commercial_pricing")).toBe(false);
+    expect(canAccess(cam, "view_internal_cost")).toBe(false);
+    expect(canAccess(cam, "view_platform_profit")).toBe(false);
+    expect(canManageCommercialCatalog(cam)).toBe(false);
   });
 
   it("scopes a department administrator to one department", () => {

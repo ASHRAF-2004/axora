@@ -27,6 +27,7 @@ import {
   defaultPermissionsForRole,
   isPermissionCode,
   permissionIsCompatibleWithAccountKind,
+  permissionIsCompatibleWithRole,
   type PermissionCode,
 } from "@/lib/authorization-policy";
 import {
@@ -175,10 +176,17 @@ export async function createUserAction(formData: FormData) {
       input.role === "PLATFORM_OWNER",
     ));
     if (input.permissions.some((permission) => (
-      !roleDefaults.has(permission)
-      && !permissionIsCompatibleWithAccountKind(
+      !permissionIsCompatibleWithRole(
         permission,
-        definition.accountKind,
+        input.role,
+        selectedScope,
+        input.role === "PLATFORM_OWNER",
+      ) || (
+        !roleDefaults.has(permission)
+        && !permissionIsCompatibleWithAccountKind(
+          permission,
+          definition.accountKind,
+        )
       )
     ))) {
       redirect(`${routeFor(creationContext, returnCompanyId)}?notice=user-creation-invalid`);

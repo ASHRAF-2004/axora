@@ -554,4 +554,111 @@ describe("CAM request and dashboard receipt authorization regression", () => {
       await db.close();
     }
   }, 45_000);
+
+  it("keeps CAM internal cost and margin private despite historical grants", async () => {
+    const db = new PGlite();
+    try {
+      await db.exec("CREATE ROLE axora_app NOLOGIN");
+      await applyMigrations(db);
+      await applyDemoSeed(db);
+      await createOwner(db);
+      const direct = await createDirectOrder(db);
+      const cam = await createCam(db, {
+        label: "commercial-ceiling",
+        scopeType: "PLATFORM",
+      });
+      const forbidden = [
+        "commercial.cost.view",
+        "commercial.markup.view",
+        "commercial.platform_margin.view",
+        "commercial.pricing.manage",
+      ];
+
+      await db.query(`
+        INSERT INTO user_permission_overrides(
+          user_id,permission_id,effect,scope_type,starts_at,active,
+          reason,changed_by
+        )
+        SELECT $1,permission.id,'GRANT','PLATFORM',now(),true,
+          'Historical broad CAM grant',$2
+        FROM permissions permission
+        WHERE permission.permission_code=ANY($3::text[])
+      `, [cam.userId, owner.userId, forbidden]);
+
+      const decisions = await db.query<{
+        permission: string;
+        baseAllowed: boolean;
+        effectiveAllowed: boolean;
+      }>(`
+        WITH snapshot AS (
+          SELECT axora_live_authorization_snapshot($1,$2,now()) AS value
+        )
+        SELECT permission_code AS permission,
+          axora_snapshot_has_permission_base(
+            snapshot.value,permission_code,'PLATFORM',NULL,NULL,NULL,NULL
+          ) AS "baseAllowed",
+          axora_snapshot_has_permission(
+            snapshot.value,permission_code,'PLATFORM',NULL,NULL,NULL,NULL
+          ) AS "effectiveAllowed"
+        FROM snapshot,unnest($3::text[]) permission_code
+        ORDER BY permission_code
+      `, [cam.userId, cam.assignmentId, forbidden]);
+      expect(decisions.rows).toHaveLength(forbidden.length);
+      expect(decisions.rows.every((row) => (
+        row.baseAllowed === false && row.effectiveAllowed === false
+      ))).toBe(true);
+
+      const requestAccess = await db.query<{ canViewCommercial: boolean }>(`
+        SELECT can_view_commercial AS "canViewCommercial"
+        FROM axora_request_access_rows($1,$2,now())
+        WHERE request_id=$3
+      `, [cam.userId, cam.assignmentId, direct.requestId]);
+      expect(requestAccess.rows).toEqual([{ canViewCommercial: false }]);
+
+      const ownerCost = await db.query<{ allowed: boolean }>(`
+        WITH snapshot AS (
+          SELECT axora_live_authorization_snapshot($1,$2,now()) AS value
+        )
+        SELECT axora_snapshot_has_permission_base(
+          snapshot.value,'commercial.cost.view','PLATFORM',NULL,NULL,NULL,NULL
+        ) AS allowed
+        FROM snapshot
+      `, [owner.userId, owner.assignmentId]);
+      expect(ownerCost.rows).toEqual([{ allowed: true }]);
+
+      await expect(db.query(`
+        SELECT axora_replace_user_permission_set(
+          $1,$2,$3,$4,
+          ARRAY['request.view','commercial.cost.view']::text[],
+          'Attempt forbidden CAM permission replacement',now()
+        )
+      `, [owner.userId, owner.assignmentId, cam.userId, cam.assignmentId]))
+        .rejects.toMatchObject({
+          message: "A selected permission exceeds the target role ceiling",
+        });
+
+      await expect(db.query(`
+        SELECT * FROM axora_set_user_permission_override(
+          $1,$2,$3,$4,'commercial.platform_margin.view','GRANT',
+          'PLATFORM',NULL,NULL,NULL,NULL,now(),NULL,
+          'Attempt forbidden CAM permission grant'
+        )
+      `, [owner.userId, owner.assignmentId, cam.userId, cam.assignmentId]))
+        .rejects.toMatchObject({
+          message: "The selected permission exceeds the target role ceiling",
+        });
+
+      const retainedAuditRows = await db.query<{ count: number }>(`
+        SELECT count(*)::int AS count
+        FROM user_permission_overrides override_row
+        JOIN permissions permission ON permission.id=override_row.permission_id
+        WHERE override_row.user_id=$1 AND override_row.active
+          AND override_row.effect='GRANT'
+          AND permission.permission_code=ANY($2::text[])
+      `, [cam.userId, forbidden]);
+      expect(retainedAuditRows.rows).toEqual([{ count: forbidden.length }]);
+    } finally {
+      await db.close();
+    }
+  }, 60_000);
 });

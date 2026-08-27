@@ -1,7 +1,7 @@
 import type { SessionUser } from "./auth";
 import { isDemoMode, withAuditTransaction } from "./db";
 import { getDemoStore } from "./demo-data";
-import { canAccess } from "./permissions";
+import { canAccess, canManageCommercialCatalog } from "./permissions";
 import { calculateCommercialSellingPrice, withDemoCommercialDefaults } from "./procurement-rules";
 import type { ProductInput } from "./validation";
 
@@ -44,7 +44,7 @@ export async function listProductCommercialHistory(productId: string, actor: Ses
 }
 
 export async function updateProduct(productId: string, input: ProductInput, actor: SessionUser) {
-  if (!canAccess(actor, "manage_catalog")) throw new Error("Your account cannot manage the product catalog.");
+  if (!canManageCommercialCatalog(actor)) throw new Error("Your account cannot manage confidential product pricing.");
 
   if (isDemoMode()) {
     const store = getDemoStore();
