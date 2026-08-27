@@ -36,7 +36,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { calculateCommercialSellingPrice } from "@/lib/procurement-rules";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, canManageCommercialCatalog } from "@/lib/permissions";
 import { AccountInvitationAccessUnavailableError } from "@/lib/account-invitation-isolation";
 import { UserCreationError } from "@/lib/users";
 
@@ -304,6 +304,7 @@ export async function createProductAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   const user = await requirePermission("manage_catalog");
+  if (!canManageCommercialCatalog(user)) redirect("/access-denied");
   let input: ReturnType<typeof productInput>;
   let preparedImages: Awaited<ReturnType<typeof prepareProductImages>>;
   try {
@@ -348,6 +349,7 @@ export async function updateProductAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   const user = await requirePermission("manage_catalog");
+  if (!canManageCommercialCatalog(user)) redirect("/access-denied");
   try {
     await updateProduct(productId, productInput(formData), user);
   } catch (error) {

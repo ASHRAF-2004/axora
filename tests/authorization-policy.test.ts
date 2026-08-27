@@ -7,6 +7,7 @@ import {
   defaultPermissionsForRole,
   isPermissionCode,
   permissionIsCompatibleWithAccountKind,
+  permissionIsCompatibleWithRole,
   type ApprovalLimit,
   type AuthorizationScope,
   type AuthorizationSubject,
@@ -178,6 +179,51 @@ describe("canonical authorization policy", () => {
       .toBe(true);
     expect(expanded.some((permission) => permission.code === "platform_user.edit"))
       .toBe(false);
+  });
+
+  it("does not let explicit grants cross the CAM commercial role ceiling", () => {
+    const platformScope: AuthorizationScope = { type: "PLATFORM" };
+    const manager = subject({
+      role: "CLIENT_ACCOUNT_MANAGER",
+      accountKind: "PLATFORM",
+      scopes: [platformScope],
+      explicitGrants: [
+        "commercial.cost.view",
+        "commercial.markup.view",
+        "commercial.platform_margin.view",
+        "commercial.pricing.manage",
+      ],
+    });
+    for (const permission of manager.explicitGrants ?? []) {
+      expect(permissionIsCompatibleWithRole(
+        permission,
+        manager.role,
+        "PLATFORM",
+      )).toBe(false);
+      expect(authorize({
+        subject: manager,
+        permission,
+        resource: { scope: platformScope },
+      })).toEqual({
+        allowed: false,
+        permission,
+        reason: "PERMISSION_DENIED",
+      });
+    }
+
+    const options = creationPermissionOptions(
+      "PLATFORM",
+      defaultPermissionsForRole("CLIENT_ACCOUNT_MANAGER", "PLATFORM"),
+      true,
+      "CLIENT_ACCOUNT_MANAGER",
+      "PLATFORM",
+    );
+    expect(options.map((option) => option.code)).not.toEqual(expect.arrayContaining([
+      "commercial.cost.view",
+      "commercial.markup.view",
+      "commercial.platform_margin.view",
+      "commercial.pricing.manage",
+    ]));
   });
 
   it("keeps an assigned client account manager inside assigned companies", () => {

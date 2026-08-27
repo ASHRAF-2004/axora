@@ -5,7 +5,7 @@ import { getDemoStore } from "./demo-data";
 import { getDemoOperations } from "./demo-operations";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { requireSession, type SessionUser } from "./auth";
-import { canAccess } from "./permissions";
+import { canAccess, canManageCommercialCatalog } from "./permissions";
 import type { Branch, Company, DashboardData, ProcurementRequest, Product, RequestStatus } from "./types";
 import { validateStatusTransition } from "./workflow";
 import { appendWorkflowEvent, notifyWorkflowAudience } from "./workflow-repository";
@@ -160,7 +160,7 @@ export async function listProducts(providedActor?: SessionUser): Promise<Product
       duplicateWarning: false,
     }));
   }
-  const platformActor = canAccess(actor, "manage_catalog");
+  const platformActor = canManageCommercialCatalog(actor);
   if (platformActor) {
     if (!actor.roleAssignmentId) throw new Error("Product catalog is unavailable.");
     const privileged = await query<{ products: Product[] }>(
@@ -609,7 +609,7 @@ export async function createProduct(
   >,
   actor: SessionUser,
 ) {
-  if (!canAccess(actor, "manage_catalog")) throw new Error("Only authorized Axora operations users can manage the product catalog.");
+  if (!canManageCommercialCatalog(actor)) throw new Error("Only authorized Axora commercial operations users can manage the product catalog.");
   if (isDemoMode()) {
     const store = getDemoStore();
     if (store.products.some((product) => product.name.trim().toLowerCase() === input.name.trim().toLowerCase())) {

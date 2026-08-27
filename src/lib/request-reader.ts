@@ -21,6 +21,7 @@ import type {
 } from "./workflow-events";
 import type { RequestWorkflowEvent } from "./workflow-repository";
 import { sanitizeCustomerWorkflowEvent } from "./customer-workflow-privacy";
+import { canAccess } from "./permissions";
 
 interface RequestRow extends QueryResultRow {
   id: string;
@@ -157,19 +158,21 @@ function minimizeCustomerProductReferences(
   actor: AuthenticatedSessionUser,
   requests: ProcurementRequest[],
 ) {
-  if (actor.accountKind !== "COMPANY") return requests;
+  const customerAccount = actor.accountKind === "COMPANY";
+  const canViewCommercial = canAccess(actor, "view_internal_cost");
+  if (!customerAccount && canViewCommercial) return requests;
   return requests.map((request) => ({
     ...request,
     lines: request.lines.map((line) => ({
       ...line,
-      productId: undefined,
-      productCode: undefined,
+      productId: customerAccount ? undefined : line.productId,
+      productCode: customerAccount ? undefined : line.productCode,
       supplierId: undefined,
       supplierName: undefined,
       quotationReference: undefined,
       supplierConfirmationStatus: undefined,
-      unitBuyPrice: 0,
-      deliveryCharge: 0,
+      unitBuyPrice: canViewCommercial ? line.unitBuyPrice : 0,
+      deliveryCharge: canViewCommercial ? line.deliveryCharge : 0,
     })),
   }));
 }

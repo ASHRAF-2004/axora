@@ -16,7 +16,10 @@ vi.mock("@/lib/db", () => ({
   withAuditTransaction: mocks.withAuditTransaction,
 }));
 
-vi.mock("@/lib/permissions", () => ({ canAccess: () => true }));
+vi.mock("@/lib/permissions", () => ({
+  canAccess: () => true,
+  canManageCommercialCatalog: () => true,
+}));
 
 import type { SessionUser } from "@/lib/auth";
 import { updateProduct } from "@/lib/product-admin";
