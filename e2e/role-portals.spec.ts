@@ -46,6 +46,9 @@ test("Agent sees assigned company operations without platform financial fields",
   await page.goto("/requests/order-1");
   await expect(page.locator("main h1")).toBeVisible();
   await expect(page.getByText(/Internal line total|supplier cost|gross margin/i)).toHaveCount(0);
+  await page.goto("/requests/not-a-valid-id");
+  await expect(page.getByRole("heading", { level: 1, name: "404" })).toBeVisible();
+  await expect(page.getByText("Something went wrong", { exact: true })).toHaveCount(0);
   await page.goto("/reports");
   await expect(page.getByText(/customer sales|buying cost|gross profit|gross margin/i)).toHaveCount(0);
 });
