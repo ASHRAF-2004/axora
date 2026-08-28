@@ -42,8 +42,12 @@ describe("Turnstile contact verification", () => {
 
   it("fails closed for upstream and malformed token failures", async () => {
     await expect(verifyTurnstileContact({ token: "", fetcher: result({}) }))
-      .rejects.toBeInstanceOf(TurnstileVerificationError);
+      .rejects.toMatchObject({ reason: "invalid_token" });
     await expect(verifyTurnstileContact({ token: "fresh-browser-token", fetcher: result({}, 503) }))
-      .rejects.toBeInstanceOf(TurnstileVerificationError);
+      .rejects.toMatchObject({ reason: "provider_http_error" });
+    await expect(verifyTurnstileContact({
+      token: "fresh-browser-token",
+      fetcher: async () => { throw new TypeError("network unavailable"); },
+    })).rejects.toMatchObject({ reason: "provider_unavailable" });
   });
 });

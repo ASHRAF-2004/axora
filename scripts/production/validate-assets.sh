@@ -322,7 +322,8 @@ jq --exit-status \
     and (.services.cloudflared.networks | keys) == ["edge"]
     and (.services.caddy.networks | keys | sort) == ["edge","frontend"]
     and (.services.db.networks | keys) == ["backend"]
-    and (.services.app.networks | keys | sort) == ["backend","frontend","mail"]
+    and (.services.app.networks | keys | sort) == ["backend","frontend","mail","turnstile-egress"]
+    and .services.app.networks["turnstile-egress"].gw_priority == 1
     and (.services["budget-worker"].networks | keys) == ["backend"]
     and (.services["document-worker"].networks | keys) == ["backend"]
     and (.services["company-deletion-cleanup-worker"].networks | keys) == ["backend"]
