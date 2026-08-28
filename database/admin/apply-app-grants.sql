@@ -643,6 +643,12 @@ BEGIN
       EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_record_transactional_email_attempt(uuid,text,text,integer,text,text,integer,text,text,text,integer,uuid) TO axora_app';
     END IF;
     IF to_regprocedure(
+      'public.axora_reconcile_transactional_email_delivery(uuid,text,text,timestamptz,text)'
+    ) IS NOT NULL THEN
+      EXECUTE 'REVOKE ALL ON FUNCTION public.axora_reconcile_transactional_email_delivery(uuid,text,text,timestamptz,text) FROM PUBLIC';
+      EXECUTE 'REVOKE ALL ON FUNCTION public.axora_reconcile_transactional_email_delivery(uuid,text,text,timestamptz,text) FROM axora_app';
+    END IF;
+    IF to_regprocedure(
       'public.axora_record_resend_email_event(uuid,text,text,text,text,boolean,timestamptz,integer)'
     ) IS NOT NULL THEN
       EXECUTE 'REVOKE ALL ON FUNCTION public.axora_record_resend_email_event(uuid,text,text,text,text,boolean,timestamptz,integer) FROM PUBLIC';
