@@ -9,17 +9,20 @@ describe("sanitized in-memory demonstration data", () => {
     expect(store.branches).toHaveLength(4);
     expect(store.suppliers).toHaveLength(10);
     expect(store.products).toHaveLength(25);
-    expect(store.requests).toHaveLength(15);
-    expect(store.requests.flatMap((request) => request.lines)).toHaveLength(17);
+    expect(store.requests).toHaveLength(16);
+    expect(store.requests.flatMap((request) => request.lines)).toHaveLength(18);
   });
 
-  it("contains five controlled request scenarios for each pilot company", () => {
+  it("contains five scenarios per pilot and one isolated browser fixture", () => {
     const counts = store.requests.reduce<Record<string, number>>((result, request) => {
       result[request.companyName] = (result[request.companyName] ?? 0) + 1;
       return result;
     }, {});
 
-    expect(counts).toEqual({ YourUni: 5, "Excel Language Centre": 5, Unibax: 5 });
+    expect(counts).toEqual({
+      YourUni: 5, "Excel Language Centre": 5, Unibax: 5,
+      "Axora E2E Company": 1,
+    });
   });
 
   it("keeps exactly one intentional product duplicate under review", () => {

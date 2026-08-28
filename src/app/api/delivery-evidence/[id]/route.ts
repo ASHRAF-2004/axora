@@ -22,9 +22,11 @@ export async function GET(
   const encoded = encodeURIComponent(file.fileName).replace(/['()*]/g, (value) => (
     `%${value.charCodeAt(0).toString(16).toUpperCase()}`
   ));
+  const disposition = url.searchParams.get("preview") === "1"
+    && file.contentType.startsWith("image/") ? "inline" : "attachment";
   return new Response(new Uint8Array(file.bytes), { headers: {
     "Content-Type": file.contentType,
-    "Content-Disposition": `attachment; filename="${fallback || "delivery-evidence"}"; filename*=UTF-8''${encoded}`,
+    "Content-Disposition": `${disposition}; filename="${fallback || "delivery-evidence"}"; filename*=UTF-8''${encoded}`,
     "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
     ETag: `"${file.sha256}"`,

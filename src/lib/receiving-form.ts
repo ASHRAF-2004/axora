@@ -14,6 +14,8 @@ function quantity(value: FormDataEntryValue | undefined, label: string, defaultV
 export function parseReceiptConfirmationForm(formData: FormData) {
   const deliveryJobId = String(formData.get("deliveryJobId") ?? "");
   if (!UUID_PATTERN.test(deliveryJobId)) throw new Error("Receiving job is invalid.");
+  const clientEventId = String(formData.get("clientEventId") ?? "");
+  if (clientEventId && !UUID_PATTERN.test(clientEventId)) throw new Error("Receipt command is invalid.");
   const deliveryJobLineIds = formData.getAll("deliveryJobLineId").map(String);
   const requestLineIds = formData.getAll("requestLineId").map(String);
   const delivered = formData.getAll("deliveredQuantity");
@@ -45,6 +47,7 @@ export function parseReceiptConfirmationForm(formData: FormData) {
   });
   return {
     deliveryJobId,
+    ...(clientEventId ? { clientEventId } : {}),
     notes: String(formData.get("notes") ?? "").trim() || undefined,
     lines,
   };

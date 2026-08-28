@@ -21,6 +21,12 @@ interface RequestDetailMessages {
   downloadInvoice: string; invoicePreparing: string; invoiceEmailStatus: (status: string) => string;
   cancellationTitle: string; cancellationBody: string;
   cancelRequest: string; cancellationComplete: string; cancellationFailed: string;
+  deliveryAndTracking: string; deliveryWorkspaceBody: string; deliveryCode: string;
+  deliveryAgent: string; receiver: string; reportedAt: string; viewDelivery: string;
+  proofOfDelivery: string; proofBody: string; viewProof: string; noProof: string;
+  customerInvoice: string; invoiceBody: string; invoiceNumber: string; invoiceStatus: string;
+  amount: string; paidAmount: string; outstanding: string; issueDate: string;
+  customerReceipt: string; receiptConfirmed: string;
 }
 
 const en: RequestDetailMessages = {
@@ -32,6 +38,7 @@ const en: RequestDetailMessages = {
   readyToPay: "Ready to pay", payBody: (amount) => `The final server-calculated total is ${amount}.`, pay: "Pay", paid: "Paid",
   downloadInvoice: "Download invoice PDF", invoicePreparing: "Your finalized invoice PDF is being prepared.", invoiceEmailStatus: (status) => `Invoice email: ${status.toLowerCase().replaceAll("_", " ")}`,
   cancellationTitle: "Cancel purchase request", cancellationBody: "Cancellation before payment releases the remaining budget reservation. Paid requests cannot be cancelled here.", cancelRequest: "Cancel request", cancellationComplete: "The request was cancelled and its remaining budget reservation was released.", cancellationFailed: "The request could not be cancelled in its current state.",
+  deliveryAndTracking: "Delivery & tracking", deliveryWorkspaceBody: "The canonical delivery state and customer-safe handover details for this order.", deliveryCode: "Delivery", deliveryAgent: "Delivery Agent", receiver: "Handover receiver", reportedAt: "Reported", viewDelivery: "Open delivery workspace", proofOfDelivery: "Proof of Delivery", proofBody: "Authorized delivery evidence. Private tracking and device telemetry are not shown.", viewProof: "View proof", noProof: "No customer-visible proof is available yet.", customerInvoice: "Invoice", invoiceBody: "Customer invoice and payment information for this order.", invoiceNumber: "Invoice number", invoiceStatus: "Invoice status", amount: "Amount", paidAmount: "Paid amount", outstanding: "Outstanding", issueDate: "Issue date", customerReceipt: "Customer receipt", receiptConfirmed: "Receipt confirmed",
 };
 
 const ar: RequestDetailMessages = {
@@ -40,6 +47,7 @@ const ar: RequestDetailMessages = {
   readyToPay: "جاهز للدفع", payBody: (amount) => `الإجمالي النهائي المحسوب من الخادم هو ${amount}.`, pay: "ادفع", paid: "مدفوع",
   downloadInvoice: "تنزيل الفاتورة PDF", invoicePreparing: "يتم إعداد ملف الفاتورة النهائية.", invoiceEmailStatus: (status) => `بريد الفاتورة: ${status.toLowerCase().replaceAll("_", " ")}`,
   cancellationTitle: "إلغاء طلب الشراء", cancellationBody: "يحرر الإلغاء قبل الدفع حجز الميزانية المتبقي. لا يمكن إلغاء الطلبات المدفوعة هنا.", cancelRequest: "إلغاء الطلب", cancellationComplete: "تم إلغاء الطلب وتحرير حجز الميزانية المتبقي.", cancellationFailed: "لا يمكن إلغاء الطلب في حالته الحالية.",
+  deliveryAndTracking: "التسليم والتتبع", deliveryWorkspaceBody: "حالة التسليم المعتمدة وتفاصيل التسليم الآمنة للعميل لهذا الطلب.", deliveryCode: "التسليم", deliveryAgent: "مسؤول التوصيل", receiver: "مستلم التسليم", reportedAt: "سُجل في", viewDelivery: "فتح مساحة التسليم", proofOfDelivery: "إثبات التسليم", proofBody: "أدلة التسليم المصرح بها. لا تظهر بيانات التتبع الخاصة أو قياسات الجهاز.", viewProof: "عرض الإثبات", noProof: "لا يتوفر إثبات ظاهر للعميل حتى الآن.", customerInvoice: "الفاتورة", invoiceBody: "معلومات فاتورة العميل والدفع لهذا الطلب.", invoiceNumber: "رقم الفاتورة", invoiceStatus: "حالة الفاتورة", amount: "المبلغ", paidAmount: "المبلغ المدفوع", outstanding: "المتبقي", issueDate: "تاريخ الإصدار", customerReceipt: "استلام العميل", receiptConfirmed: "تم تأكيد الاستلام",
 };
 
 const ms: RequestDetailMessages = {
@@ -48,6 +56,7 @@ const ms: RequestDetailMessages = {
   readyToPay: "Sedia untuk dibayar", payBody: (amount) => `Jumlah akhir yang dikira oleh pelayan ialah ${amount}.`, pay: "Bayar", paid: "Dibayar",
   downloadInvoice: "Muat turun PDF invois", invoicePreparing: "PDF invois muktamad sedang disediakan.", invoiceEmailStatus: (status) => `E-mel invois: ${status.toLowerCase().replaceAll("_", " ")}`,
   cancellationTitle: "Batalkan permintaan pembelian", cancellationBody: "Pembatalan sebelum bayaran melepaskan baki rizab bajet. Permintaan berbayar tidak boleh dibatalkan di sini.", cancelRequest: "Batalkan permintaan", cancellationComplete: "Permintaan dibatalkan dan baki rizab bajet dilepaskan.", cancellationFailed: "Permintaan tidak dapat dibatalkan dalam keadaan semasa.",
+  deliveryAndTracking: "Penghantaran & penjejakan", deliveryWorkspaceBody: "Status penghantaran kanonik dan butiran serahan yang selamat untuk pelanggan bagi pesanan ini.", deliveryCode: "Penghantaran", deliveryAgent: "Ejen Penghantaran", receiver: "Penerima serahan", reportedAt: "Dilaporkan", viewDelivery: "Buka ruang kerja penghantaran", proofOfDelivery: "Bukti Penghantaran", proofBody: "Bukti penghantaran yang dibenarkan. Telemetri penjejakan dan peranti peribadi tidak dipaparkan.", viewProof: "Lihat bukti", noProof: "Belum ada bukti yang boleh dilihat pelanggan.", customerInvoice: "Invois", invoiceBody: "Maklumat invois dan pembayaran pelanggan untuk pesanan ini.", invoiceNumber: "Nombor invois", invoiceStatus: "Status invois", amount: "Amaun", paidAmount: "Amaun dibayar", outstanding: "Tertunggak", issueDate: "Tarikh dikeluarkan", customerReceipt: "Penerimaan pelanggan", receiptConfirmed: "Penerimaan disahkan",
 };
 
 export const REQUEST_DETAIL_MESSAGES: Record<SupportedLocale, RequestDetailMessages> = { en, ar, ms };

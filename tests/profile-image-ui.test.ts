@@ -14,10 +14,10 @@ describe("profile image presentation", () => {
     expect(component).toMatch(/aria-busy="true" aria-disabled="true"/);
   });
   it("uses only authenticated scoped image URLs for users and deliveries", async () => {
-    const [avatar, receiving, users] = await Promise.all([
-      source("src/components/UserAvatar.tsx"), source("src/app/(portal)/receiving/page.tsx"), source("src/app/(portal)/users/page.tsx"),
+    const [avatar, requestDetail, users] = await Promise.all([
+      source("src/components/UserAvatar.tsx"), source("src/app/(portal)/requests/[id]/page.tsx"), source("src/app/(portal)/users/page.tsx"),
     ]);
     expect(avatar).toContain("/api/profile/avatar/"); expect(avatar).toContain("deliveryJobId");
-    expect(receiving).toContain("deliveryJobId={job.id}"); expect(users).toContain("user.avatarAvailable");
+    expect(requestDetail).toContain("deliveryJobId={orderWorkspace.delivery.id}"); expect(users).toContain("user.avatarAvailable");
   });
 });

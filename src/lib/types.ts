@@ -83,11 +83,17 @@ export type RequestStatus =
 export type Urgency = "Low" | "Normal" | "High" | "Urgent";
 export type DeliveryStatus =
   | "Not Scheduled"
+  | "Awaiting Assignment"
+  | "Assigned"
+  | "Accepted"
   | "Scheduled"
   | "Preparing"
+  | "Items Acquired"
   | "Out for Delivery"
+  | "Arrived"
   | "Partially Delivered"
   | "Delivered"
+  | "Completed"
   | "Delayed"
   | "Failed"
   | "Cancelled";

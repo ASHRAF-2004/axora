@@ -17,7 +17,7 @@ const receiver: DemoRoleSession = {
   role: "COMPANY_ADMIN",
   accountKind: "COMPANY",
   scopeType: "COMPANY",
-  companyId: "66666666-6666-4666-8666-666666666666",
+  companyId: "11111111-1111-4111-8111-111111111111",
 };
 
 const sessionId = "10000000-0000-4000-8000-000000000068";
@@ -323,7 +323,7 @@ test("company recipient sees active ETA, route, approved vehicle and no historic
     } })}\n\n`,
   }));
   await signInAsDemoRole(page, receiver);
-  await page.goto("/receiving");
+  await page.goto("/requests/order-16");
 
   const board = page.getByRole("region", { name: "Your delivery" });
   await expect(board).toBeVisible();
@@ -387,7 +387,7 @@ test("Company Administrator observes preparing through completed without reloadi
     sessions: [{ ...base, jobStatus: "PREPARING", status: "NOT_STARTED" }],
   } }));
   await signInAsDemoRole(page, receiver);
-  await page.goto("/receiving");
+  await page.goto("/requests/order-16");
   const board = page.getByRole("region", { name: "Your delivery" });
   await expect(board.getByText("Preparing", { exact: true })).toBeVisible();
 
@@ -476,12 +476,13 @@ test("Arabic small-phone tracking marks stale data and disables ETA without moti
   await page.setViewportSize({ width: 320, height: 740 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await signInAsDemoRole(page, arabicReceiver);
-  await page.goto("/receiving");
+  await page.goto("/requests/order-16");
 
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.getByText("الموقع قديم")).toBeVisible();
   await expect(page.getByText("وقت الوصول غير متاح")).toBeVisible();
-  const card = page.locator("article").filter({ hasText: "DEL-LIVE-068" });
+  const card = page.getByRole("region", { name: "تسليمك" })
+    .getByRole("article").filter({ hasText: "DEL-LIVE-068" });
   expect(await card.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
   expect(await page.evaluate(() => document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
 });

@@ -12,6 +12,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Keep standalone tracing anchored to the checkout being built. Production
+  // CI builds at the repository root, while maintenance work uses attached Git
+  // worktrees beneath the live checkout and must not trace the live tree.
+  outputFileTracingRoot: process.cwd(),
+  turbopack: { root: process.cwd() },
   // `pg-cloudflare` exposes a different implementation when OpenNext bundles
   // for workerd. Next's Node.js file tracer otherwise copies only
   // `dist/empty.js`, leaving the Cloudflare build without `dist/index.js`.

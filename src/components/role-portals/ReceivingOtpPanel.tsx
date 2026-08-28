@@ -12,7 +12,15 @@ type Job = {
 };
 type Issued = { challengeId: string; expiresAt: string; recipientIdentity: string; code: string };
 
-export function ReceivingOtpPanel({ locale = "en" }: { locale?: DeliveryWorkflowLocale }) {
+export function ReceivingOtpPanel({
+  locale = "en",
+  deliveryJobId,
+  compact = false,
+}: {
+  locale?: DeliveryWorkflowLocale;
+  deliveryJobId?: string;
+  compact?: boolean;
+}) {
   const copy = deliveryWorkflowMessages(locale);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -41,11 +49,14 @@ export function ReceivingOtpPanel({ locale = "en" }: { locale?: DeliveryWorkflow
       setIssued(await response.json() as Issued);
     } catch { setError(copy.workspaceUnavailable); }
   };
+  const visibleJobs = jobs.filter((job) => (
+    !deliveryJobId || deliveryJobId.startsWith("demo-") || job.id === deliveryJobId
+  ));
   return <section className={styles.shell} aria-label={copy.receiverTitle}>
     <div className={styles.toolbar}><div><span className={styles.eyebrow}>{copy.receiverTitle}</span><strong>{copy.receiverTitle}</strong><p>{copy.receiverIntro}</p></div></div>
-    <DeliveryTrackingBoard locale={locale} />
+    {!compact ? <DeliveryTrackingBoard locale={locale} /> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
     {issued ? <div className={styles.otpReveal} role="status"><div><strong>{issued.recipientIdentity}</strong><p>{copy.oneTimeWarning}</p><small>{issued.challengeId} · {issued.expiresAt}</small></div><code>{issued.code}</code></div> : null}
-    {!loaded ? <p className={styles.notice}>{copy.loading}</p> : jobs.every((job) => !job.proofPolicy.includes("OTP")) ? <p className={styles.notice}>{copy.noOtpJobs}</p> : <div className={styles.jobList}>{jobs.filter((job) => job.proofPolicy.includes("OTP")).map((job) => <article className={styles.job} key={job.id}><header className={styles.jobHeader}><div><p>{job.requestNumber} · {job.branchName}</p><h2>{job.code}</h2></div><span className={styles.state}>{deliveryWorkflowStatusLabel(job.status, locale)}</span></header><div className={styles.jobBody}><p>{job.scheduledLocalStart?.replace("T", " ")} · {job.destinationTimezone}</p><button className={styles.actionButton} data-primary="true" type="button" onClick={() => void issue(job.id)}>{copy.generateCode}</button></div></article>)}</div>}
+    {!loaded ? <p className={styles.notice}>{copy.loading}</p> : visibleJobs.every((job) => !job.proofPolicy.includes("OTP")) ? <p className={styles.notice}>{copy.noOtpJobs}</p> : <div className={styles.jobList}>{visibleJobs.filter((job) => job.proofPolicy.includes("OTP")).map((job) => <article className={styles.job} key={job.id}><header className={styles.jobHeader}><div><p>{job.requestNumber} · {job.branchName}</p><h2>{job.code}</h2></div><span className={styles.state}>{deliveryWorkflowStatusLabel(job.status, locale)}</span></header><div className={styles.jobBody}><p>{job.scheduledLocalStart?.replace("T", " ")} · {job.destinationTimezone}</p><button className={styles.actionButton} data-primary="true" type="button" onClick={() => void issue(job.id)}>{copy.generateCode}</button></div></article>)}</div>}
   </section>;
 }

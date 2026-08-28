@@ -9,6 +9,11 @@ import { redirect } from "next/navigation";
 export async function confirmReceiptAction(formData: FormData) {
   const actor = await requirePermission("confirm_receipts");
   await confirmReceipt(actor, parseReceiptConfirmationForm(formData));
-  revalidatePath("/receiving");
-  redirect("/receiving?notice=receipt-confirmed");
+  const requestId = String(formData.get("requestId") ?? "");
+  revalidatePath("/requests");
+  if (/^[0-9a-f-]{36}$/i.test(requestId)) {
+    revalidatePath(`/requests/${requestId}`);
+    redirect(`/requests/${requestId}?notice=receipt-confirmed`);
+  }
+  redirect("/requests?notice=receipt-confirmed");
 }

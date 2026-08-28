@@ -122,18 +122,10 @@ describe("localized role portals", () => {
     expect(html).not.toContain("Loading delivery workspace");
   });
 
-  it("renders independent receiving controls and explanations in Malay", async () => {
+  it("retires the standalone receiving page to the canonical Requests workspace", async () => {
     mocks.actor.preferredLocale = "ms";
-    const html = renderToStaticMarkup(await ReceivingPage({
+    expect(() => ReceivingPage({
       searchParams: Promise.resolve({ notice: "receipt-confirmed" }),
-    }));
-
-    expect(html).toContain("Penerimaan pelanggan");
-    expect(html).toContain("Penerimaan disahkan dan direkodkan secara berasingan daripada bukti Ejen Penghantaran");
-    expect(html).toContain("Periksa semua 1 baris");
-    expect(html).toContain("Klasifikasi pemeriksaan");
-    expect(html).toContain("Sahkan penerimaan pelanggan");
-    expect(html).not.toContain("Driver photos and delivery notes");
-    expect(html).not.toContain("Confirm customer receipt");
+    })).toThrow(/NEXT_REDIRECT/);
   });
 });

@@ -359,6 +359,7 @@ export async function uploadDriverEvidence(actor: SessionUser, input: {
 
 export interface ReceivingJobWorkspaceItem {
   id: string;
+  requestId: string;
   companyId: string;
   branchId: string;
   jobCode: string;
@@ -382,7 +383,10 @@ export interface ReceivingJobWorkspaceItem {
   }>;
 }
 
-export async function getReceivingWorkspace(actor: SessionUser): Promise<ReceivingJobWorkspaceItem[]> {
+export async function getReceivingWorkspace(
+  actor: SessionUser,
+  requestId?: string,
+): Promise<ReceivingJobWorkspaceItem[]> {
   assertPermission(actor, "view_receiving");
   if (isDemoMode()) return [];
   return withAuditTransaction({ actor, reason: "Viewed assigned receiving work" }, async (client) => {
@@ -393,7 +397,8 @@ export async function getReceivingWorkspace(actor: SessionUser): Promise<Receivi
       lines: ReceivingJobWorkspaceItem["lines"];
       driverMetadata?: unknown;
     }>(`
-      SELECT job.id::text,job.company_id::text AS "companyId",job.branch_id::text AS "branchId",
+      SELECT job.id::text,job.request_id::text AS "requestId",
+        job.company_id::text AS "companyId",job.branch_id::text AS "branchId",
         job.job_code AS "jobCode",branch.name AS "branchName",
         latest.client_recorded_at::text AS "deliveredAt",latest.event_type AS "driverEventType",
         latest.metadata AS "driverMetadata",receipt.id::text AS "receiptId",
@@ -430,9 +435,14 @@ export async function getReceivingWorkspace(actor: SessionUser): Promise<Receivi
       WHERE latest.received_at IS NOT NULL
         AND ($1::uuid IS NULL OR job.company_id=$1)
         AND ($2::uuid IS NULL OR job.branch_id=$2)
+        AND ($3::uuid IS NULL OR job.request_id=$3)
+        AND public.axora_request_resource_access(
+          $4,$5,'receiving.view',job.request_id,statement_timestamp()
+        ) IS NOT NULL
       GROUP BY job.id,branch.name,latest.client_recorded_at,latest.received_at,latest.event_type,latest.metadata,receipt.id,assigned.driver_user_id,assigned.driver_name
       ORDER BY (receipt.id IS NULL) DESC,latest.received_at DESC
-    `, [companyId ?? null, branchId ?? null]);
+    `, [companyId ?? null, branchId ?? null, requestId ?? null,
+      actor.id,actor.roleAssignmentId ?? null]);
     return result.rows.map((job) => {
       let details;
       try {
@@ -464,6 +474,10 @@ export async function getReceivingWorkspace(actor: SessionUser): Promise<Receivi
   });
 }
 
+export async function getReceivingJobForRequest(actor: SessionUser, requestId: string) {
+  return (await getReceivingWorkspace(actor, requestId))[0];
+}
+
 export async function confirmReceipt(actor: SessionUser, input: {
   deliveryJobId: string;
   notes?: string;
@@ -482,6 +496,7 @@ export async function confirmReceipt(actor: SessionUser, input: {
   if (isDemoMode()) return;
   await withAuditTransaction({ actor, reason: "Customer receipt independently confirmed" }, async (client) => {
     if (actor.accountKind !== "COMPANY" || !actor.companyId) throw new Error("An active company receiving account is required.");
+    if (!actor.roleAssignmentId) throw new Error("An active company receiving assignment is required.");
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`receipt:${input.deliveryJobId}`]);
     const job = await client.query<{ companyId: string; branchId: string; requestId: string; jobCode: string }>(`
       SELECT company_id::text AS "companyId",branch_id::text AS "branchId",
@@ -489,6 +504,9 @@ export async function confirmReceipt(actor: SessionUser, input: {
       FROM delivery_jobs job
       WHERE job.id=$1 AND job.company_id=$2
         AND ($3::uuid IS NULL OR job.branch_id=$3)
+        AND public.axora_request_resource_access(
+          $4,$5,'receiving.confirm',job.request_id,statement_timestamp()
+        ) IS NOT NULL
         AND EXISTS (
           SELECT 1 FROM delivery_job_events event
           JOIN delivery_job_assignments evidence_assignment
@@ -500,7 +518,8 @@ export async function confirmReceipt(actor: SessionUser, input: {
         AND NOT EXISTS (
           SELECT 1 FROM receipts receipt WHERE receipt.delivery_job_id=job.id
         )
-    `, [input.deliveryJobId,actor.companyId,actor.branchId ?? null]);
+    `, [input.deliveryJobId,actor.companyId,actor.branchId ?? null,
+      actor.id,actor.roleAssignmentId]);
     if (!job.rows[0]) throw new Error("Receiving job is unavailable or already confirmed.");
     const planned = await client.query<{ id: string; requestLineId: string; plannedQuantity: number }>(`
       SELECT id::text,request_line_id::text AS "requestLineId",quantity_to_deliver::float8 AS "plannedQuantity"

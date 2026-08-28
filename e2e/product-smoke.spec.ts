@@ -6,7 +6,6 @@ const authenticatedRoutes = [
   { path: "/products", heading: "Products" },
   { path: "/requests", heading: "Purchase requests" },
   { path: "/deliveries", heading: "Manage Delivery Agents" },
-  { path: "/receiving", heading: "Confirm delivered quantities" },
   { path: "/finance", heading: "Invoices and payments" },
   { path: "/companies", heading: "Companies" },
   { path: "/branches", heading: "Branches" },
@@ -35,6 +34,8 @@ test("redirects retired MVP routes without rendering their old products", async 
   }
   await page.goto("/settings");
   await expect(page).toHaveURL(/\/profile$/);
+  await page.goto("/receiving");
+  await expect(page).toHaveURL(/\/requests$/);
   for (const path of ["/companies/leads", "/companies/leads/new", "/companies/leads/00000000-0000-4000-8000-000000000001"]) {
     await page.goto(path);
     await expect(page).toHaveURL(/\/companies$/);

@@ -191,7 +191,7 @@ describe("normalized least-privilege permissions", () => {
         companyId,
         branchId,
       },
-      allowed: ["view_receiving", "confirm_receipts"],
+      allowed: ["view_requests", "view_receiving", "confirm_receipts"],
     },
   ];
 

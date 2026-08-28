@@ -233,7 +233,7 @@ const rolePermissions: Readonly<Record<string, readonly Permission[]>> = {
   DELIVERY_AGENT: ["view_delivery_portal", "update_assigned_deliveries"],
   DELIVERY_DRIVER: ["view_delivery_portal", "update_assigned_deliveries"],
   DELIVERY_GUY: ["view_delivery_portal", "update_assigned_deliveries"],
-  RECEIVING_USER: ["view_receiving", "confirm_receipts"],
+  RECEIVING_USER: ["view_requests", "view_receiving", "confirm_receipts"],
 };
 
 // A Client Account Manager works with customer-facing commercial records, but

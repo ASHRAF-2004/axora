@@ -242,8 +242,27 @@ const requestSelect = `SELECT
   CASE WHEN access.can_view_commercial
     THEN line.delivery_charge::float8 ELSE 0::float8 END AS "deliveryCharge",
   delivery.expected_date::text AS "expectedDeliveryDate",
-  delivery.actual_date::text AS "actualDeliveryDate",
+  COALESCE(modern_delivery.actual_date,delivery.actual_date)::text AS "actualDeliveryDate",
   CASE
+    WHEN modern_delivery.status IS NOT NULL THEN CASE modern_delivery.status
+      WHEN 'AWAITING_ASSIGNMENT' THEN 'Awaiting Assignment'
+      WHEN 'ASSIGNED' THEN 'Assigned'
+      WHEN 'ACCEPTED' THEN 'Accepted'
+      WHEN 'SHOPPING' THEN 'Preparing'
+      WHEN 'AWAITING_SUBSTITUTE_APPROVAL' THEN 'Preparing'
+      WHEN 'AWAITING_ADDITIONAL_APPROVAL' THEN 'Preparing'
+      WHEN 'ITEMS_ACQUIRED' THEN 'Items Acquired'
+      WHEN 'OUT_FOR_DELIVERY' THEN 'Out for Delivery'
+      WHEN 'ARRIVED' THEN 'Arrived'
+      WHEN 'PARTIALLY_DELIVERED' THEN 'Partially Delivered'
+      WHEN 'DELIVERED' THEN 'Delivered'
+      WHEN 'COMPLETED' THEN 'Completed'
+      WHEN 'FAILED' THEN 'Failed'
+      WHEN 'CANCELLED' THEN 'Cancelled'
+      WHEN 'RETURNED' THEN 'Failed'
+      WHEN 'RESCHEDULED' THEN 'Scheduled'
+      ELSE 'Scheduled'
+    END
     WHEN received.quantity>=line.quantity THEN 'Delivered'
     WHEN received.quantity>0 THEN 'Partially Delivered'
     WHEN delivery.actual_date IS NULL
@@ -286,6 +305,16 @@ LEFT JOIN LATERAL (
   ORDER BY delivery_row.created_at DESC
   LIMIT 1
 ) delivery ON true
+LEFT JOIN LATERAL (
+  SELECT job.status,
+    CASE WHEN job.status IN ('DELIVERED','COMPLETED')
+      THEN job.status_changed_at::date END AS actual_date
+  FROM public.delivery_job_lines job_line
+  JOIN public.delivery_jobs job ON job.id=job_line.delivery_job_id
+  WHERE job_line.request_line_id=line.id
+  ORDER BY job.status_changed_at DESC,job.id DESC
+  LIMIT 1
+) modern_delivery ON true
 LEFT JOIN LATERAL (
   SELECT axora_received_quantity(line.id) AS quantity
   WHERE line.id IS NOT NULL
