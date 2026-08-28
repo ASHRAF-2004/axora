@@ -48,7 +48,7 @@ export const EMAIL_TEMPLATE_CATALOGUE = Object.freeze({
   "company-lead-acknowledgement": t("company-lead-acknowledgement", "axora-platform", "We received your Axora company enquiry", "استلمنا استفسار شركتك لدى Axora", "Kami menerima pertanyaan syarikat Axora anda", ["recipientName", "companyName"]),
   "contact-acknowledgement": t("contact-acknowledgement", "axora-platform", "We received your Axora company enquiry", "استلمنا استفسار شركتك لدى Axora", "Kami menerima pertanyaan syarikat Axora anda", ["recipientName", "companyName"]),
   "new-lead-internal-alert": t("new-lead-internal-alert", "axora-platform", "New Axora website enquiry", "استفسار جديد عبر موقع Axora", "Pertanyaan laman web Axora baharu", ["recipientName", "companyName"]),
-  "contact-notification": t("contact-notification", "axora-platform", "New Axora website enquiry", "استفسار جديد عبر موقع Axora", "Pertanyaan laman web Axora baharu", ["recipientName", "companyName"]),
+  "contact-notification": t("contact-notification", "axora-platform", "New Axora website enquiry", "استفسار جديد عبر موقع Axora", "Pertanyaan laman web Axora baharu", ["recipientName"]),
   "lead-assigned": t("lead-assigned", "axora-platform", "A company lead was assigned", "تم تعيين عميل محتمل", "Prospek syarikat telah ditugaskan"),
   "lead-reassigned": t("lead-reassigned", "axora-platform", "A company lead was reassigned", "تمت إعادة تعيين عميل محتمل", "Prospek syarikat telah ditugaskan semula"),
   "company-information-requested": t("company-information-requested", "axora-platform", "More company information is required", "معلومات إضافية عن الشركة مطلوبة", "Maklumat syarikat tambahan diperlukan"),

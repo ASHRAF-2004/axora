@@ -14,7 +14,7 @@ const COPY = {
   en: {
     dir: "ltr", align: "left", locale: "en", supportLabel: "Axora support",
     contact: {
-      eyebrow: "New website enquiry", title: "A company contacted Axora",
+      eyebrow: "New website enquiry", title: "A visitor contacted Axora",
       intro: "A validated enquiry was recorded through the Axora website.",
       subject: "New Axora website enquiry",
       labels: { name: "Name", email: "Email", company: "Company", phone: "Phone", submitted: "Submitted", subject: "Subject" },
@@ -65,7 +65,7 @@ const COPY = {
   ar: {
     dir: "rtl", align: "right", locale: "ar", supportLabel: "دعم Axora",
     contact: {
-      eyebrow: "استفسار جديد من الموقع", title: "تواصلت شركة مع Axora",
+      eyebrow: "استفسار جديد من الموقع", title: "تواصل زائر مع Axora",
       intro: "تم تسجيل استفسار موثّق عبر موقع Axora.",
       subject: "استفسار جديد عبر موقع Axora",
       labels: { name: "الاسم", email: "البريد", company: "الشركة", phone: "الهاتف", submitted: "وقت الإرسال", subject: "الموضوع" },
@@ -116,7 +116,7 @@ const COPY = {
   ms: {
     dir: "ltr", align: "left", locale: "ms-MY", supportLabel: "Sokongan Axora",
     contact: {
-      eyebrow: "Pertanyaan laman web baharu", title: "Sebuah syarikat menghubungi Axora",
+      eyebrow: "Pertanyaan laman web baharu", title: "Seorang pelawat menghubungi Axora",
       intro: "Pertanyaan yang disahkan telah direkodkan melalui laman web Axora.",
       subject: "Pertanyaan laman web Axora baharu",
       labels: { name: "Nama", email: "E-mel", company: "Syarikat", phone: "Telefon", submitted: "Dihantar", subject: "Subjek" },
@@ -351,9 +351,13 @@ export async function renderTransactionalEmail(input, options = {}) {
     const contact = input.contact ?? {};
     const name = boundedText(contact.name, "Contact name");
     const email = contact.email ? emailAddress(contact.email, "Contact email") : undefined;
-    const company = boundedText(contact.company, "Company name");
+    const company = contact.company
+      ? boundedText(contact.company, "Company name")
+      : undefined;
     const phone = contact.phone ? boundedText(contact.phone, "Phone", 40) : undefined;
-    const enquirySubject = boundedText(contact.subject, "Contact subject");
+    const enquirySubject = contact.subject
+      ? boundedText(contact.subject, "Contact subject")
+      : undefined;
     const message = boundedMultilineText(contact.message, "Contact message", 5_000, 10);
     const submitted = formatDate(contact.submittedAt, copy.locale);
     kindCopy = copy.contact;
@@ -362,9 +366,10 @@ export async function renderTransactionalEmail(input, options = {}) {
     details = detailRows([
       [kindCopy.labels.name, name],
       ...(email ? [[kindCopy.labels.email, email]] : []),
-      [kindCopy.labels.company, company],
+      ...(company ? [[kindCopy.labels.company, company]] : []),
       ...(phone ? [[kindCopy.labels.phone, phone]] : []),
-      [kindCopy.labels.subject, enquirySubject], [kindCopy.labels.submitted, submitted],
+      ...(enquirySubject ? [[kindCopy.labels.subject, enquirySubject]] : []),
+      [kindCopy.labels.submitted, submitted],
     ], copy.align);
     messageBlock = `<div style="margin-top:20px;padding:18px 20px;background:#f3f8fc;font-family:Arial,Helvetica,sans-serif;color:#304b65;text-align:${copy.align}"><strong style="display:block;margin-bottom:8px;color:#0f3156">${escapeTransactionalEmailHtml(kindCopy.message)}</strong><p style="margin:0;font-size:14px;line-height:23px;white-space:normal">${escapeTransactionalEmailHtml(message).replaceAll(/\r?\n/g, "<br>")}</p></div>`;
     if (email) {
@@ -372,7 +377,7 @@ export async function renderTransactionalEmail(input, options = {}) {
       replyToName = name;
     }
     helpText = `${kindCopy.help} ${copy.supportLabel}: ${supportEmail}`;
-    text = `${kindCopy.title}\n\n${kindCopy.labels.name}: ${name}${email ? `\n${kindCopy.labels.email}: ${email}` : ""}\n${kindCopy.labels.company}: ${company}${phone ? `\n${kindCopy.labels.phone}: ${phone}` : ""}\n${kindCopy.labels.subject}: ${enquirySubject}\n${kindCopy.labels.submitted}: ${submitted}\n\n${kindCopy.message}:\n${message}\n\n${kindCopy.security}\n${helpText}`;
+    text = `${kindCopy.title}\n\n${kindCopy.labels.name}: ${name}${email ? `\n${kindCopy.labels.email}: ${email}` : ""}${company ? `\n${kindCopy.labels.company}: ${company}` : ""}${phone ? `\n${kindCopy.labels.phone}: ${phone}` : ""}${enquirySubject ? `\n${kindCopy.labels.subject}: ${enquirySubject}` : ""}\n${kindCopy.labels.submitted}: ${submitted}\n\n${kindCopy.message}:\n${message}\n\n${kindCopy.security}\n${helpText}`;
   } else if (input.messageKind === "INVOICE_FINALIZED") {
     const invoice = input.invoice ?? {};
     const invoiceNumber = boundedText(invoice.invoiceNumber, "Invoice number", 100);

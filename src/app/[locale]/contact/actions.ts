@@ -1,10 +1,30 @@
 "use server";
 
 import { isSupportedLocale } from "@/lib/i18n";
-import { submitPublicContact } from "@/lib/public-contact";
-import { verifyTurnstileContact } from "@/lib/turnstile";
+import {
+  ContactVerificationError,
+  submitPublicContact,
+} from "@/lib/public-contact";
+import { PublicRequestRateLimitError } from "@/lib/transactional-email";
+import {
+  TurnstileVerificationError,
+  verifyTurnstileContact,
+} from "@/lib/turnstile";
+import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { ZodError } from "zod";
+
+class ContactFormValidationError extends Error {}
+
+function contactFailureCategory(error: unknown) {
+  if (error instanceof TurnstileVerificationError
+    || error instanceof ContactVerificationError) return "turnstile";
+  if (error instanceof PublicRequestRateLimitError) return "rate_limit";
+  if (error instanceof ContactFormValidationError
+    || error instanceof ZodError) return "validation";
+  return "persistence";
+}
 
 export async function submitContactAction(locale: string, formData: FormData) {
   if (!isSupportedLocale(locale)) redirect("/en/contact?status=failure");
@@ -13,9 +33,12 @@ export async function submitContactAction(locale: string, formData: FormData) {
   const requestHeaders = await headers();
   const remoteIp = requestHeaders.get("cf-connecting-ip")?.trim()
     || "network-unavailable";
+  const diagnosticId = randomUUID();
   let accepted = false;
   try {
-    if (formData.get("privacyAccepted") !== "on") throw new Error("Privacy confirmation is required.");
+    if (formData.get("privacyAccepted") !== "on") {
+      throw new ContactFormValidationError("Privacy confirmation is required.");
+    }
     const verified = await verifyTurnstileContact({
       token: String(formData.get("cf-turnstile-response") ?? ""),
       remoteIp: remoteIp === "network-unavailable" ? undefined : remoteIp,
@@ -23,17 +46,9 @@ export async function submitContactAction(locale: string, formData: FormData) {
     await submitPublicContact({
       locale,
       idempotencyToken: String(formData.get("idempotencyToken") ?? ""),
-      contactName: String(formData.get("contactName") ?? ""),
-      companyName: String(formData.get("companyName") ?? ""),
-      companyLegalName: String(formData.get("companyName") ?? ""),
-      city: "Not provided",
-      industry: "Not provided",
-      employeeRange: "1_10",
-      branchRange: "1",
-      spendRange: "UNDISCLOSED",
-      contactMethod: "EMAIL",
-      contactTimezone: "Asia/Kuala_Lumpur",
-      subject: String(formData.get("subject") ?? ""),
+      fullName: String(formData.get("fullName") ?? ""),
+      email: String(formData.get("email") ?? ""),
+      phone: String(formData.get("phone") ?? ""),
       message: String(formData.get("message") ?? ""),
       campaign: {
         source: String(formData.get("utmSource") ?? ""),
@@ -45,7 +60,19 @@ export async function submitContactAction(locale: string, formData: FormData) {
       privacyAccepted: true,
     }, verified, remoteIp);
     accepted = true;
-  } catch {
+  } catch (error) {
+    const sqlState = typeof error === "object" && error
+      && "code" in error && typeof error.code === "string"
+      && /^[0-9A-Z]{5}$/.test(error.code)
+      ? error.code
+      : undefined;
+    console.error(JSON.stringify({
+      event: "public_contact_submission_failed",
+      diagnosticId,
+      category: contactFailureCategory(error),
+      locale,
+      ...(sqlState ? { sqlState } : {}),
+    }));
     accepted = false;
   }
   redirect(`/${locale}/contact?status=${accepted ? "success" : "failure"}`);

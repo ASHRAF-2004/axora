@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { isSupportedLocale, PUBLIC_PAGE_SLUGS, publicMessages, type PublicPageSlug, type SupportedLocale } from "@/lib/i18n";
 
 function isPublicSlug(value: string): value is PublicPageSlug {
@@ -27,6 +27,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function PublicContentPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale: rawLocale, slug } = await params;
   if (!isSupportedLocale(rawLocale) || !isPublicSlug(slug)) notFound();
+  if (slug === "privacy") permanentRedirect(`/${rawLocale}/privacy-policy`);
+  if (slug === "terms") permanentRedirect(`/${rawLocale}/terms-and-conditions`);
   const locale = rawLocale as SupportedLocale;
   const messages = publicMessages(locale);
   const page = messages.pages[slug];

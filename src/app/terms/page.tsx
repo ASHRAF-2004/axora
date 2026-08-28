@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function PrivacyPage() {
+export default async function TermsPage() {
   const { locale } = await requestLocaleDecision();
-  redirect(`/${locale}/privacy-policy`);
+  redirect(`/${locale}/terms-and-conditions`);
 }

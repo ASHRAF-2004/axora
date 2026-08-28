@@ -83,8 +83,8 @@ export function PublicShell({ locale, detectedLocale, showLanguagePrompt, childr
           </div>
           <div>
             <strong>{messages.footer.legal}</strong>
-            <Link href={`${prefix}/privacy`}>{messages.footer.privacy}</Link>
-            <Link href={`${prefix}/terms`}>{messages.footer.terms}</Link>
+            <Link href={`${prefix}/terms-and-conditions`}>{messages.footer.terms}</Link>
+            <Link href={`${prefix}/privacy-policy`}>{messages.footer.privacy}</Link>
             <Link href={`${prefix}/security-and-privacy`}>{messages.nav.security}</Link>
           </div>
         </div>

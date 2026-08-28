@@ -1,238 +1,74 @@
-import { randomUUID } from "node:crypto";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { requirePagePermission } from "@/lib/auth";
 import { getCompanyWalletWorkspace } from "@/lib/company-wallet";
-import { formatMoneyDecimal } from "@/lib/money-decimal";
-import { topUpStatusLabel, walletMessages } from "@/lib/wallet-i18n";
+import { loadCompanyLifecycleWorkspace } from "@/lib/company-lifecycle";
+import { walletMessages } from "@/lib/wallet-i18n";
 
-import {
-  recordWalletTopUpAction,
-  requestWalletTopUpAction,
-} from "./actions";
+import { WalletDetail } from "./WalletDetail";
 import styles from "./Wallet.module.css";
 
-function dateTime(value: Date, locale: string, timeZone: string) {
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone,
-  }).format(value);
+const indexCopy = {
+  en: { title: "Company Wallets", intro: "Choose a company to open its canonical Wallet record.", search: "Search companies", searchAction: "Search", company: "Company name", code: "Company code", status: "Status", active: "Active", inactive: "Inactive", empty: "No companies match this search." },
+  ar: { title: "محافظ الشركات", intro: "اختر شركة لفتح سجل محفظتها المعتمد.", search: "البحث في الشركات", searchAction: "بحث", company: "اسم الشركة", code: "رمز الشركة", status: "الحالة", active: "نشطة", inactive: "غير نشطة", empty: "لا توجد شركات مطابقة للبحث." },
+  ms: { title: "Dompet Syarikat", intro: "Pilih syarikat untuk membuka rekod Dompet kanoniknya.", search: "Cari syarikat", searchAction: "Cari", company: "Nama syarikat", code: "Kod syarikat", status: "Status", active: "Aktif", inactive: "Tidak aktif", empty: "Tiada syarikat sepadan dengan carian ini." },
+} as const;
+
+function resultMessages(locale: "en" | "ar" | "ms", outcome?: string, error?: string) {
+  const messages = walletMessages(locale);
+  return {
+    outcome: outcome === "requested" ? messages.topUpRequested
+      : outcome === "recorded" ? messages.topUpRecorded
+        : outcome === "already-recorded" ? messages.topUpAlreadyRecorded : undefined,
+    error: error === "invalid" ? messages.invalidSubmission
+      : error ? messages.unavailable : undefined,
+  };
 }
 
 export default async function CompanyWalletPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    company?: string;
-    outcome?: string;
-    error?: string;
-  }>;
+  searchParams: Promise<{ q?: string; outcome?: string; error?: string }>;
 }) {
   const actor = await requirePagePermission("view_wallet");
-  if (!actor.roleAssignmentId && process.env.DEMO_MODE === "false") {
-    redirect("/access-denied");
-  }
+  if (!actor.roleAssignmentId && process.env.DEMO_MODE === "false") redirect("/access-denied");
   const parameters = await searchParams;
   const locale = actor.preferredLocale ?? "en";
   const timeZone = actor.timezone ?? "Asia/Kuala_Lumpur";
   const messages = walletMessages(locale);
-  const workspace = await getCompanyWalletWorkspace(
-    actor,
-    actor.isOwner ? undefined : actor.companyId,
-  );
-  const selectedWallet = workspace.wallets.find((wallet) => (
-    wallet.companyId === parameters.company
-  )) ?? workspace.wallets[0];
-  const today = new Date().toISOString().slice(0, 10);
-  const outcome = parameters.outcome === "requested"
-    ? messages.topUpRequested
-    : parameters.outcome === "recorded"
-      ? messages.topUpRecorded
-      : parameters.outcome === "already-recorded"
-        ? messages.topUpAlreadyRecorded
-        : undefined;
-  const error = parameters.error === "invalid"
-    ? messages.invalidSubmission
-    : parameters.error
-      ? messages.unavailable
-      : undefined;
 
-  return (
-    <div className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
-      <header className={styles.hero}>
-        <p className={styles.eyebrow}>{messages.companyWallet}</p>
-        <h1>{messages.companyWallet}</h1>
-        <p>{messages.walletIntro}</p>
-        <p className={styles.fundsNote}>{messages.walletFundsNote}</p>
-      </header>
+  if (actor.isOwner) {
+    const copy = indexCopy[locale];
+    const query = parameters.q?.trim().slice(0, 160) ?? "";
+    const normalized = query.toLocaleLowerCase(locale);
+    const companies = (await loadCompanyLifecycleWorkspace(actor)).companies.filter((company) => (
+      !normalized
+      || company.name.toLocaleLowerCase(locale).includes(normalized)
+      || company.code.toLocaleLowerCase(locale).includes(normalized)
+    ));
+    return <div className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
+      <header className={styles.hero}><p className={styles.eyebrow}>{messages.companyWallet}</p><h1>{copy.title}</h1><p>{copy.intro}</p></header>
+      <form className={styles.companySearch} method="get" role="search">
+        <label htmlFor="wallet-company-search">{copy.search}</label>
+        <div><input id="wallet-company-search" name="q" type="search" defaultValue={query} maxLength={160} /><button type="submit">{copy.searchAction}</button></div>
+      </form>
+      <section className={styles.companyIndex} aria-labelledby="company-wallet-index-title">
+        <h2 className="sr-only" id="company-wallet-index-title">{copy.title}</h2>
+        {companies.length === 0 ? <p className={styles.empty}>{copy.empty}</p> : <div className={styles.companyTableWrap}><table>
+          <thead><tr><th>{copy.company}</th><th>{copy.code}</th><th>{copy.status}</th><th><span className="sr-only">{messages.openCompanyWallet}</span></th></tr></thead>
+          <tbody>{companies.map((company) => <tr key={company.id}>
+            <td data-label={copy.company}><strong>{company.name}</strong></td><td data-label={copy.code}><bdi dir="ltr">{company.code}</bdi></td><td data-label={copy.status}>{company.active ? copy.active : copy.inactive}</td>
+            <td data-label=""><Link href={`/companies/${encodeURIComponent(company.id)}/wallet`}>{messages.openCompanyWallet}</Link></td>
+          </tr>)}</tbody>
+        </table></div>}
+      </section>
+    </div>;
+  }
 
-      {outcome ? <p className={styles.successNotice} role="status">{outcome}</p> : null}
-      {error ? <p className={styles.errorNotice} role="alert">{error}</p> : null}
-
-      {actor.isOwner && workspace.wallets.length > 1 ? (
-        <form method="get" className={styles.companySelector}>
-          <label htmlFor="wallet-company">{messages.selectCompany}</label>
-          <select id="wallet-company" name="company" defaultValue={selectedWallet?.companyId}>
-            {workspace.wallets.map((wallet) => (
-              <option key={wallet.companyId} value={wallet.companyId}>{wallet.companyName}</option>
-            ))}
-          </select>
-          <button type="submit">{messages.openCompanyWallet}</button>
-        </form>
-      ) : null}
-
-      {!selectedWallet ? (
-        <section className={styles.panel}><p>{messages.noWallets}</p></section>
-      ) : (
-        <>
-          <section className={styles.balanceCard} aria-labelledby="wallet-balance-title">
-            <div>
-              <p>{selectedWallet.companyName}</p>
-              <h2 id="wallet-balance-title">{messages.availableBalance}</h2>
-            </div>
-            <strong>{formatMoneyDecimal(
-              selectedWallet.availableBalance,
-              selectedWallet.currency,
-              locale,
-            )}</strong>
-          </section>
-
-          <section className={styles.panel} aria-labelledby="wallet-top-ups-title">
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 id="wallet-top-ups-title">{messages.topUps}</h2>
-                <p>{selectedWallet.canRequestTopUp
-                  ? messages.requestTopUpIntro
-                  : messages.recordTopUpIntro}</p>
-              </div>
-            </div>
-
-            <div className={styles.formGrid}>
-              {selectedWallet.canRequestTopUp ? (
-                <form action={requestWalletTopUpAction} className={styles.financeForm}>
-                  <h3>{messages.requestTopUp}</h3>
-                  <input type="hidden" name="companyId" value={selectedWallet.companyId} />
-                  <input type="hidden" name="commandId" value={randomUUID()} />
-                  <label>
-                    <span>{messages.amount} ({selectedWallet.currency})</span>
-                    <input name="amount" inputMode="decimal" autoComplete="off" min="0.01" step="0.01" required />
-                  </label>
-                  <label>
-                    <span>{messages.reference}</span>
-                    <input name="reference" maxLength={200} autoComplete="off" />
-                  </label>
-                  <label>
-                    <span>{messages.optionalNote}</span>
-                    <textarea name="note" maxLength={1000} />
-                  </label>
-                  <button type="submit">{messages.submitTopUpRequest}</button>
-                </form>
-              ) : null}
-
-              {selectedWallet.canRecordTopUp ? (
-                <form action={recordWalletTopUpAction} className={styles.financeForm}>
-                  <h3>{messages.directTopUp}</h3>
-                  <p>{messages.recordTopUpIntro}</p>
-                  <input type="hidden" name="companyId" value={selectedWallet.companyId} />
-                  <input type="hidden" name="commandId" value={randomUUID()} />
-                  <label>
-                    <span>{messages.amount} ({selectedWallet.currency})</span>
-                    <input name="amount" inputMode="decimal" autoComplete="off" min="0.01" step="0.01" required />
-                  </label>
-                  <label>
-                    <span>{messages.receivedDate}</span>
-                    <input name="effectiveDate" type="date" defaultValue={today} max={today} required />
-                  </label>
-                  <label>
-                    <span>{messages.reference}</span>
-                    <input name="reference" minLength={3} maxLength={200} autoComplete="off" required />
-                  </label>
-                  <button type="submit">{messages.recordReceivedTopUp}</button>
-                </form>
-              ) : null}
-            </div>
-
-            {selectedWallet.topUpRequests.length === 0 ? (
-              <p className={styles.empty}>{messages.noTopUpRequests}</p>
-            ) : (
-              <ul className={styles.topUpList}>
-                {selectedWallet.topUpRequests.map((request) => (
-                  <li key={request.id}>
-                    <div className={styles.topUpSummary}>
-                      <div>
-                        <strong>{formatMoneyDecimal(request.amount, request.currency, locale)}</strong>
-                        <span>{topUpStatusLabel(locale, request.status)}</span>
-                      </div>
-                      <p>{messages.requestedOn}: {dateTime(request.requestedAt, locale, timeZone)}</p>
-                      {request.reference ? <p>{messages.reference}: {request.reference}</p> : null}
-                    </div>
-                    {selectedWallet.canRecordTopUp && request.status !== "RECEIVED" ? (
-                      <form action={recordWalletTopUpAction} className={styles.inlineRecordForm}>
-                        <input type="hidden" name="companyId" value={selectedWallet.companyId} />
-                        <input type="hidden" name="topUpRequestId" value={request.id} />
-                        <input type="hidden" name="commandId" value={randomUUID()} />
-                        <label>
-                          <span>{messages.amount} ({request.currency})</span>
-                          <input name="amount" inputMode="decimal" defaultValue={request.amount} min="0.01" step="0.01" required />
-                        </label>
-                        <label>
-                          <span>{messages.receivedDate}</span>
-                          <input name="effectiveDate" type="date" defaultValue={today} max={today} required />
-                        </label>
-                        <label>
-                          <span>{messages.reference}</span>
-                          <input name="reference" minLength={3} maxLength={200} defaultValue={request.reference ?? ""} required />
-                        </label>
-                        <button type="submit">{messages.recordReceivedTopUp}</button>
-                      </form>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className={styles.panel} aria-labelledby="wallet-ledger-title">
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2 id="wallet-ledger-title">{messages.ledger}</h2>
-                <p>{messages.walletFundsNote}</p>
-              </div>
-            </div>
-            {selectedWallet.ledger.length === 0 ? (
-              <p className={styles.empty}>{messages.noLedgerEntries}</p>
-            ) : (
-              <div className={styles.tableWrap}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{messages.transactionType}</th>
-                      <th>{messages.reference}</th>
-                      <th>{messages.reason}</th>
-                      <th>{messages.postedOn}</th>
-                      <th>{messages.amount}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedWallet.ledger.map((entry) => (
-                      <tr key={entry.id}>
-                        <td>{messages.ledgerTypes[entry.type]}</td>
-                        <td>{entry.reference}</td>
-                        <td>{entry.reason}</td>
-                        <td>{dateTime(entry.postedAt, locale, timeZone)}</td>
-                        <td className={entry.amountDelta.startsWith("-") ? styles.debit : styles.credit}>
-                          {formatMoneyDecimal(entry.amountDelta, entry.currency, locale)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </>
-      )}
-    </div>
-  );
+  const workspace = await getCompanyWalletWorkspace(actor, actor.companyId);
+  const wallet = workspace.wallets.find((item) => item.companyId === actor.companyId);
+  if (!wallet) return <div className={styles.page}><section className={styles.panel}><p className={styles.empty}>{messages.noWallets}</p></section></div>;
+  const result = resultMessages(locale, parameters.outcome, parameters.error);
+  return <WalletDetail wallet={wallet} locale={locale} timeZone={timeZone} messages={messages} outcome={result.outcome} error={result.error} />;
 }
