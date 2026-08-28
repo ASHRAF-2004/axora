@@ -876,6 +876,7 @@ export const ROLE_DEFAULT_PERMISSIONS = {
   "CLIENT_ACCOUNT_MANAGER": [
     "dashboard.view",
     "company.view.assigned",
+    "company.create",
     "company.lead.view",
     "company.lead.create",
     "company.lead.assign",

@@ -9,6 +9,7 @@ import {
 } from "./notifications";
 import { canAccess } from "./permissions";
 import { enqueueWorkflowEmail } from "./workflow-email";
+import { workflowEventAllowsEmail } from "./workflow-email-policy";
 import { sanitizeCustomerWorkflowEvent } from "./customer-workflow-privacy";
 import { customerNotificationPresentation } from "./customer-notification-privacy";
 import { isSupportedLocale } from "./i18n";
@@ -319,7 +320,7 @@ export async function notifyWorkflowUsers(
       draft.eventKey,draft.dedupeKey,draft.title,draft.body,draft.priority,
       draft.routePath ?? null,draft.createdAt]);
     inserted += result.rows[0]?.created ? 1 : 0;
-    if (effective.emailEnabled) {
+    if (effective.emailEnabled && workflowEventAllowsEmail(event.eventKey)) {
       await enqueueWorkflowEmail(client, {
         companyId: draft.companyId,
         recipientUserId: draft.recipientUserId,

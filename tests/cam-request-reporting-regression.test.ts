@@ -567,6 +567,13 @@ describe("CAM request and dashboard receipt authorization regression", () => {
         label: "commercial-ceiling",
         scopeType: "PLATFORM",
       });
+      await db.query(`
+        INSERT INTO company_assignments(
+          company_id,manager_user_id,assignment_type,status,coverage_starts_at,
+          assigned_by,assigned_at,assignment_reason,assignment_source
+        ) VALUES ($1,$2,'PRIMARY','ACTIVE',now(),$3,now(),
+          'Explicit CAM commercial-ceiling fixture ownership','OWNER_ASSIGNED')
+      `, [direct.companyId,cam.userId,owner.userId]);
       const forbidden = [
         "commercial.cost.view",
         "commercial.markup.view",

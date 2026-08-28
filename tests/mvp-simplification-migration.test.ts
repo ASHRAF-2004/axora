@@ -55,7 +55,7 @@ async function createCompany(db: PGlite, commandId: string, name: string) {
 }
 
 describe("migration 107 MVP authorization", () => {
-  it("allows a permitted CAM to create and view every company without assignment, while DENY remains final", async () => {
+  it("atomically assigns a permitted CAM to each created company while DENY remains final", async () => {
     const db = await fixture();
     try {
       const first = await createCompany(db, ids.createOne, "Prompt Twelve One");
@@ -65,11 +65,14 @@ describe("migration 107 MVP authorization", () => {
       expect(replay).toMatchObject({ companyId: first.companyId, created: false });
       expect(second.created).toBe(true);
 
-      const historicalAssignments = await db.query<{ count: number }>(`
+      const creatorAssignments = await db.query<{ count: number }>(`
         SELECT count(*)::int count FROM company_assignments
         WHERE company_id IN ($1,$2)
-      `, [first.companyId, second.companyId]);
-      expect(historicalAssignments.rows[0]?.count).toBe(0);
+          AND manager_user_id=$3
+          AND assignment_source='CREATED_BY_CAM'
+          AND status='ACTIVE'
+      `, [first.companyId, second.companyId, ids.cam]);
+      expect(creatorAssignments.rows[0]?.count).toBe(2);
 
       const canView = async () => (await db.query<{ allowed: boolean }>(`
         WITH snapshot AS (

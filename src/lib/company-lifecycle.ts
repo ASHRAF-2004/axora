@@ -355,6 +355,13 @@ const DEMO_CLIENT_ACCOUNT_MANAGER = Object.freeze({
   availableForBackup: true,
 });
 
+const DEMO_CAM_A_ALIASES = new Set([
+  DEMO_CLIENT_ACCOUNT_MANAGER.id,
+  "55555555-5555-4555-8555-555555555555",
+  "91000000-0000-4000-8000-000000000002",
+]);
+const DEMO_CAM_B_ID = "20222222-2222-4222-8222-222222222223";
+
 type DemoCompanyManagerAssignment = {
   managerUserId: string;
   assignedByName: string;
@@ -368,8 +375,34 @@ declare global {
 }
 
 function demoCompanyManagerAssignments() {
+  const assignedAt = new Date("2026-08-28T00:00:00.000Z");
+  const fixtureAssignments: Array<[string, DemoCompanyManagerAssignment]> = [
+    ["co-youruni", {
+      managerUserId: DEMO_CLIENT_ACCOUNT_MANAGER.id,
+      assignedByName: "Demo ownership fixture",
+      assignedAt,
+      reason: "Created by CAM A",
+    }],
+    ["11111111-1111-4111-8111-111111111111", {
+      managerUserId: DEMO_CLIENT_ACCOUNT_MANAGER.id,
+      assignedByName: "Demo ownership fixture",
+      assignedAt,
+      reason: "Created by CAM A",
+    }],
+    ["co-excel", {
+      managerUserId: DEMO_CAM_B_ID,
+      assignedByName: "Demo ownership fixture",
+      assignedAt,
+      reason: "Created by CAM B",
+    }],
+  ];
   if (!global.__axoraDemoCompanyManagerAssignments) {
     global.__axoraDemoCompanyManagerAssignments = new Map();
+  }
+  for (const [companyId, assignment] of fixtureAssignments) {
+    if (!global.__axoraDemoCompanyManagerAssignments.has(companyId)) {
+      global.__axoraDemoCompanyManagerAssignments.set(companyId, assignment);
+    }
   }
   return global.__axoraDemoCompanyManagerAssignments;
 }
@@ -380,14 +413,18 @@ export function demoCompanyVisibleToActor(
 ) {
   if (actor.isOwner && actor.accountKind === "PLATFORM") return true;
   if (actor.accountKind === "COMPANY") return actor.companyId === companyId;
-  return actor.accountKind === "PLATFORM"
-    && actor.role === "CLIENT_ACCOUNT_MANAGER"
-    && canAccess(actor, "manage_companies");
+  if (actor.accountKind !== "PLATFORM"
+    || actor.role !== "CLIENT_ACCOUNT_MANAGER") return false;
+  const assignment = demoCompanyManagerAssignments().get(companyId);
+  return assignment?.managerUserId === actor.id
+    || (assignment?.managerUserId === DEMO_CLIENT_ACCOUNT_MANAGER.id
+      && DEMO_CAM_A_ALIASES.has(actor.id));
 }
 
 export function registerDemoCompanyDirect(
   companyId: string,
   input: NewCompanyDirectInput,
+  actor?: Pick<SessionUser, "id" | "role" | "accountKind" | "isOwner">,
 ) {
   const store = getDemoStore();
   if (store.companies.some((company) => company.id === companyId)) return;
@@ -414,6 +451,16 @@ export function registerDemoCompanyDirect(
     ...(input.notes ? { notes: input.notes } : {}),
     status: "Inactive",
   });
+  if (actor?.accountKind === "PLATFORM"
+    && actor.role === "CLIENT_ACCOUNT_MANAGER"
+    && !actor.isOwner) {
+    demoCompanyManagerAssignments().set(companyId, {
+      managerUserId: actor.id,
+      assignedByName: actor.id,
+      assignedAt: new Date(),
+      reason: "Created by CAM",
+    });
+  }
 }
 
 export function registerDemoCompanyManagerCoverage(
@@ -522,7 +569,7 @@ function demoWorkspace(actor: AuthenticatedSessionUser): CompanyLifecycleWorkspa
   return {
     capturedAt,
     canCreate: actor.isOwner || canAccess(actor, "create_companies"),
-    canViewAll: actor.isOwner || (actor.role === "CLIENT_ACCOUNT_MANAGER" && canAccess(actor, "manage_companies")),
+    canViewAll: actor.isOwner,
     managers: [],
     companies,
   };
@@ -662,7 +709,7 @@ export async function createCompanyWithoutBrand(
   if (isDemoMode()) {
     const bytes = createHash("sha256").update(`company:${parsedCommandId}`).digest("hex");
     const companyId = `${bytes.slice(0, 8)}-${bytes.slice(8, 12)}-4${bytes.slice(13, 16)}-8${bytes.slice(17, 20)}-${bytes.slice(20, 32)}`;
-    registerDemoCompanyDirect(companyId, input);
+    registerDemoCompanyDirect(companyId, input, actor);
     return { companyId, created: true };
   }
   return withAuditTransaction({ actor, reason: "COMPANY_CREATED" }, async (client) => {

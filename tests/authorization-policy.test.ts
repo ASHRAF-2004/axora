@@ -99,7 +99,7 @@ describe("canonical authorization policy", () => {
       "COMPANY",
     );
     expect(camDefaults).toContain("company.view.assigned");
-    expect(camDefaults).not.toContain("company.create");
+    expect(camDefaults).toContain("company.create");
   });
 
   it("keeps permission customization inside the target account kind", () => {
