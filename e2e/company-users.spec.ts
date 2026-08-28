@@ -147,7 +147,7 @@ test("Arabic Company Administrator creation remains RTL and controlled", async (
   expect(browserFailures).toEqual([]);
 });
 
-test("authorized CAM browses company users without a company assignment", async ({ page }) => {
+test("authorized assigned CAM browses company users", async ({ page }) => {
   await signInAsDemoRole(page, unassignedCam);
   await page.goto("/companies/co-youruni/users");
   await expect(page.getByRole("heading", { name: "Company Users: YourUni" })).toBeVisible();
