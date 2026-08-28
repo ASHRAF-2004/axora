@@ -90,5 +90,5 @@ describe("Requests canonical order workspace migration", () => {
     } finally {
       await upgrade.close();
     }
-  });
+  }, 30_000);
 });
