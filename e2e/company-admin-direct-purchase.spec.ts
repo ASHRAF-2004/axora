@@ -315,7 +315,11 @@ test("subordinate purchase requests retain separation of duties", async ({ page 
   await expect(page.getByText("Request approved and paid", { exact: true })).toBeVisible();
   await page.goto(`/requests/${requestId}`);
   await expect(page.getByText("Approved", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText(/Issued · Paid/).first()).toBeVisible();
+  const invoice = page.getByRole("article").filter({
+    has: page.getByRole("heading", { level: 2, name: "Invoice" }),
+  });
+  await expect(invoice.getByText("Paid", { exact: true })).toBeVisible();
+  await expect(invoice.getByText("Outstanding", { exact: true })).toBeVisible();
 });
 
 test("direct checkout dialog stays accessible across locales, themes, and narrow widths", async ({ page }, testInfo) => {
