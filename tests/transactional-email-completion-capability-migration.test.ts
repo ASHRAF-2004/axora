@@ -11,7 +11,9 @@ describe("transactional email completion capability migration", () => {
   beforeAll(async () => {
     db = new PGlite();
     await db.exec("CREATE ROLE axora_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT");
-    const applied = await applyMigrations(db);
+    const applied = await applyMigrations(db, {
+      through: "126_transactional_email_completion_capability.sql",
+    });
     expect(applied.at(-1)).toBe("126_transactional_email_completion_capability.sql");
     await db.exec(`CREATE TABLE schema_migrations(
       filename text PRIMARY KEY,sha256 text NOT NULL,

@@ -139,6 +139,17 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Email completion capability is exposed to PUBLIC';
   END IF;
+  IF has_function_privilege(
+    'axora_app',
+    'public.axora_reconcile_transactional_email_delivery(uuid,text,text,timestamptz,text)',
+    'EXECUTE'
+  ) OR has_function_privilege(
+    'public',
+    'public.axora_reconcile_transactional_email_delivery(uuid,text,text,timestamptz,text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Owner-only email reconciliation capability is exposed';
+  END IF;
 END
 $email_completion_capability$;
 
