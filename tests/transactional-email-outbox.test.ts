@@ -239,7 +239,7 @@ describe("generic transactional email outbox", () => {
     )).resolves.toBe(true);
     expect(mocks.client.query).toHaveBeenCalledTimes(2);
     expect(String(mocks.client.query.mock.calls[1]?.[0])).toContain(
-      "INSERT INTO email_delivery_attempts",
+      "axora_record_transactional_email_attempt",
     );
 
     vi.clearAllMocks();

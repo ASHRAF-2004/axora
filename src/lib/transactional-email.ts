@@ -859,17 +859,11 @@ export async function completeTransactionalEmailOutbox(
       const row = updated.rows[0];
       if (!row) return false;
       await client.query(
-        `INSERT INTO email_delivery_attempts(
-           delivery_kind,delivery_id,event_type,template_key,template_version,
-           provider_name,provider_agent,attempt_number,outcome,
-           provider_message_fingerprint,error_code,http_status,correlation_id
-         ) VALUES (
-           'TRANSACTIONAL',$1,$2,$3,$4,$5,$6,$7,
+        `SELECT axora_record_transactional_email_attempt(
+           $1,$2,$3,$4,$5,$6,$7,
            CASE WHEN $8='retry' AND $7 >= $9 THEN 'failed' ELSE $8 END,
-           CASE WHEN $10::text IS NULL THEN NULL
-             ELSE encode(sha256(convert_to($10,'UTF8')),'hex') END,
-           $11,$12,$13
-         ) ON CONFLICT(delivery_kind,delivery_id,attempt_number) DO NOTHING`,
+           $10,$11,$12,$13
+         )`,
         [deliveryId,row.messageKind,row.templateKey,row.templateVersion,
           providerName,row.providerAgent,row.attemptCount,outcome,OUTBOX_MAX_ATTEMPTS,
           providerMessageId,errorCode,httpStatus,row.correlationId],
