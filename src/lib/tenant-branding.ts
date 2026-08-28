@@ -452,7 +452,7 @@ export async function createCompanyWithBrand(
       if (existing.payloadHash !== payloadHash) {
         throw new CompanyCreationCommandConflictError();
       }
-      registerDemoCompanyDirect(existing.companyId, input);
+      registerDemoCompanyDirect(existing.companyId, input, actor);
       return { ...existing, logo, created: false };
     }
     const created = {
@@ -462,7 +462,7 @@ export async function createCompanyWithBrand(
       themeId: deterministicUuid(`company-theme:${parsedCommandId}`),
     };
     commands.set(parsedCommandId, created);
-    registerDemoCompanyDirect(created.companyId, input);
+    registerDemoCompanyDirect(created.companyId, input, actor);
     return {
       companyId: created.companyId,
       logoId: created.logoId,

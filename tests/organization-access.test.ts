@@ -15,7 +15,6 @@ import {
   loadOrganizationResourceAccess,
   OrganizationAccessUnavailableError,
 } from "@/lib/organization-access";
-import { getDemoStore } from "@/lib/demo-data";
 
 const ids = {
   actor: "10000000-0000-4000-8000-000000000044",
@@ -241,7 +240,7 @@ describe("organization isolation service", () => {
       .rejects.toThrow("The requested organization resource is unavailable.");
   });
 
-  it("gives a permitted demo CAM the full company directory without assignment", async () => {
+  it("gives a permitted demo CAM only its assigned company directory", async () => {
     mocks.isDemoMode.mockReturnValue(true);
     global.__axoraDemoCompanyManagerAssignments = undefined;
     const cam: AuthenticatedSessionUser = {
@@ -252,9 +251,14 @@ describe("organization isolation service", () => {
       companyId: undefined,
     };
     const directory = await loadOrganizationDirectory(cam, capturedAt);
-    expect(directory.companies.map((company) => company.id).sort()).toEqual(
-      getDemoStore().companies.map((company) => company.id).sort(),
-    );
+    expect(directory.companies.map((company) => company.id).sort()).toEqual([
+      "11111111-1111-4111-8111-111111111111",
+      "co-youruni",
+    ]);
+    expect(directory.companies.map((company) => company.id))
+      .not.toContain("co-excel");
+    expect(directory.companies.map((company) => company.id))
+      .not.toContain("co-unibax");
     expect(directory.branches.length).toBeGreaterThan(0);
   });
 });

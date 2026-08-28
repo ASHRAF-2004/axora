@@ -369,7 +369,7 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     await admin?.end();
   });
 
-  it("keeps Owner and authorized CAM visibility independent of historical handover records", async () => {
+  it("keeps Owner global and serializes CAM handover into one visible portfolio", async () => {
     if (!app || !admin) throw new Error("Native PostgreSQL fixture is unavailable.");
     const created = await app.query<{
       snapshot: { companyId: string };
@@ -382,8 +382,8 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     `, [owner.userId,owner.assignmentId]);
     const companyId = created.rows[0]!.snapshot.companyId;
     expect(await visibleCompanyIds(owner)).toContain(companyId);
-    expect(await visibleCompanyIds(managerA)).toContain(companyId);
-    expect(await visibleCompanyIds(managerB)).toContain(companyId);
+    expect(await visibleCompanyIds(managerA)).not.toContain(companyId);
+    expect(await visibleCompanyIds(managerB)).not.toContain(companyId);
 
     await app.query(`
       SELECT public.axora_assign_company_manager(
@@ -391,7 +391,7 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
       )
     `, [owner.userId,owner.assignmentId,companyId,managerA.userId]);
     expect(await visibleCompanyIds(managerA)).toContain(companyId);
-    expect(await visibleCompanyIds(managerB)).toContain(companyId);
+    expect(await visibleCompanyIds(managerB)).not.toContain(companyId);
 
     const handovers = await Promise.allSettled([
       withAppClient((client) => client.query(`
@@ -413,9 +413,73 @@ nativeDescribe("Prompt 7 native PostgreSQL concurrency", () => {
     `, [companyId]);
     expect(active.rows[0]!.count).toBe(1);
     expect([managerA.userId,managerB.userId]).toContain(active.rows[0]!.managerId);
-    expect(await visibleCompanyIds(managerA)).toContain(companyId);
-    expect(await visibleCompanyIds(managerB)).toContain(companyId);
+    const managerAVisible = (await visibleCompanyIds(managerA)).includes(companyId);
+    const managerBVisible = (await visibleCompanyIds(managerB)).includes(companyId);
+    expect(managerAVisible).toBe(active.rows[0]!.managerId === managerA.userId);
+    expect(managerBVisible).toBe(active.rows[0]!.managerId === managerB.userId);
     expect(await visibleCompanyIds(owner)).toContain(companyId);
+  }, 60_000);
+
+  it("atomically owns CAM-created companies across replay and concurrent commands", async () => {
+    if (!admin) throw new Error("Native PostgreSQL fixture is unavailable.");
+    const createAsManagerA = (client: Client, commandId: string, name: string) => (
+      client.query<{ snapshot: { companyId: string; created: boolean } }>(`
+        SELECT public.axora_create_company_direct(
+          $1,$2,$3,$4,$4,'Operations','Native CAM ownership concurrency',
+          '','CAM A contact','Monthly',NULL,now()
+        ) AS snapshot
+      `, [managerA.userId,managerA.assignmentId,commandId,name])
+    );
+
+    const replayCommand = randomUUID();
+    const replayResults = await Promise.all([
+      withAppClient((client) => createAsManagerA(
+        client,replayCommand,"Native replay CAM company",
+      )),
+      withAppClient((client) => createAsManagerA(
+        client,replayCommand,"Native replay CAM company",
+      )),
+    ]);
+    const replayCompanyIds = replayResults.map(
+      (result) => result.rows[0]!.snapshot.companyId,
+    );
+    expect(new Set(replayCompanyIds).size).toBe(1);
+    expect(replayResults.map((result) => result.rows[0]!.snapshot.created).sort())
+      .toEqual([false,true]);
+
+    const concurrentCommands = [randomUUID(),randomUUID()];
+    const concurrentResults = await Promise.all(concurrentCommands.map(
+      (commandId,index) => withAppClient((client) => createAsManagerA(
+        client,commandId,`Native concurrent CAM company ${index + 1}`,
+      )),
+    ));
+    const concurrentCompanyIds = concurrentResults.map(
+      (result) => result.rows[0]!.snapshot.companyId,
+    );
+    expect(new Set(concurrentCompanyIds).size).toBe(2);
+
+    const ownership = await admin.query<{
+      companyId: string; managerId: string; activePrimary: number; source: string;
+    }>(`
+      SELECT company.id::text AS "companyId",
+        min(assignment.manager_user_id::text) AS "managerId",
+        count(assignment.id)::int AS "activePrimary",
+        min(assignment.assignment_source) AS source
+      FROM public.companies company
+      LEFT JOIN public.company_assignments assignment
+        ON assignment.company_id=company.id
+       AND assignment.assignment_type='PRIMARY'
+       AND assignment.status='ACTIVE'
+      WHERE company.id=ANY($1::uuid[])
+      GROUP BY company.id
+      ORDER BY company.id
+    `, [[...replayCompanyIds,...concurrentCompanyIds]]);
+    expect(ownership.rows).toHaveLength(3);
+    for (const row of ownership.rows) {
+      expect(row.managerId).toBe(managerA.userId);
+      expect(row.activePrimary).toBe(1);
+      expect(row.source).toBe("CREATED_BY_CAM");
+    }
   }, 60_000);
 
   it("creates one request from ten retried canonical-cart submissions", async () => {

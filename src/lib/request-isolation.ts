@@ -9,6 +9,7 @@ import {
 } from "./authorization-policy";
 import { loadEffectiveAccess } from "./effective-access";
 import type { ProcurementRequest } from "./types";
+import { demoCompanyVisibleToActor } from "./company-lifecycle";
 
 const uuidSchema = z.string().uuid();
 const permissionSchema = z.string()
@@ -244,6 +245,8 @@ export async function filterVisibleDemoRequests(
   }
   const effective = await loadEffectiveAccess(actor, capturedAt);
   return requests
+    .filter((request) => actor.role !== "CLIENT_ACCOUNT_MANAGER"
+      || demoCompanyVisibleToActor(actor, request.companyId))
     .filter((request) => permissionAllowed(
       effective.subject,
       "request.view",

@@ -10,6 +10,7 @@ import type { Branch, Company, DashboardData, ProcurementRequest, Product, Reque
 import { validateStatusTransition } from "./workflow";
 import { appendWorkflowEvent, notifyWorkflowAudience } from "./workflow-repository";
 import { calculateCommercialSellingPrice, withDemoCommercialDefaults } from "./procurement-rules";
+import { demoCompanyVisibleToActor } from "./company-lifecycle";
 
 function nextCode(prefix: string, count: number, digits = 3) {
   return `${prefix}-${String(count + 1).padStart(digits, "0")}`;
@@ -107,6 +108,11 @@ function requireCompany(actor: SessionUser, requestedCompanyId?: string) {
 
 export async function listCompanies(providedActor?: SessionUser): Promise<Company[]> {
   const actor = await actorOrSession(providedActor);
+  if (isDemoMode() && actor.role === "CLIENT_ACCOUNT_MANAGER") {
+    return getDemoStore().companies.filter((company) => (
+      demoCompanyVisibleToActor(actor, company.id)
+    ));
+  }
   if (isDemoMode()) return hasPlatformWideCompanyVisibility(actor)
     ? getDemoStore().companies
     : getDemoStore().companies.filter((item) => item.id === actor.companyId);
@@ -125,6 +131,11 @@ export async function listBranches(providedActor?: SessionUser): Promise<Branch[
   const actor = await actorOrSession(providedActor);
   if (!canAccess(actor, "view_branches")) throw new Error("Your account cannot view branch information.");
   if (isDemoMode()) {
+    if (actor.role === "CLIENT_ACCOUNT_MANAGER") {
+      return getDemoStore().branches.filter((branch) => (
+        demoCompanyVisibleToActor(actor, branch.companyId)
+      ));
+    }
     return hasPlatformWideCompanyVisibility(actor)
       ? getDemoStore().branches
       : getDemoStore().branches.filter((item) =>

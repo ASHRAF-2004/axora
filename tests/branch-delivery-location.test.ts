@@ -195,7 +195,7 @@ describe("branch delivery location mutation validation", () => {
     })).rejects.toBeInstanceOf(BranchDeliveryLocationUnavailableError);
   });
 
-  it("allows a platform CAM to view any company location without assignment", async () => {
+  it("denies an unassigned platform CAM access to company locations", async () => {
     const unassignedCam: AuthenticatedSessionUser = {
       ...demoOwner,
       id: "70000000-0000-4000-8000-000000000005",
@@ -209,6 +209,6 @@ describe("branch delivery location mutation validation", () => {
     await expect(loadBranchDeliveryLocationWorkspace(
       unassignedCam,
       "br-youruni-main",
-    )).resolves.toMatchObject({ branchId: "br-youruni-main", canManage: false });
+    )).resolves.toBeNull();
   });
 });

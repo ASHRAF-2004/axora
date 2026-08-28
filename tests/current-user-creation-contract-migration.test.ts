@@ -218,6 +218,13 @@ describe("current canonical user-creation database contract", () => {
           'PLATFORM',true,$3,now()
         )
       `, [ids.supportCamAssignment, ids.support, ids.owner]);
+      await db.query(`
+        INSERT INTO company_assignments(
+          company_id,manager_user_id,assignment_type,status,coverage_starts_at,
+          assigned_by,assigned_at,assignment_reason,assignment_source
+        ) VALUES ($1,$2,'PRIMARY','ACTIVE',now(),$3,now(),
+          'Explicit first-administrator CAM fixture ownership','OWNER_ASSIGNED')
+      `, [ids.company,ids.support,ids.owner]);
       await db.exec("SET ROLE axora_app");
       let camFirstAdmin: Awaited<ReturnType<typeof db.query<{ snapshot: unknown }>>>;
       try {
