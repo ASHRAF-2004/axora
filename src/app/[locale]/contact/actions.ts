@@ -71,6 +71,9 @@ export async function submitContactAction(locale: string, formData: FormData) {
       diagnosticId,
       category: contactFailureCategory(error),
       locale,
+      ...(error instanceof TurnstileVerificationError
+        ? { turnstileReason: error.reason }
+        : {}),
       ...(sqlState ? { sqlState } : {}),
     }));
     accepted = false;

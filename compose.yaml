@@ -117,6 +117,7 @@ services:
       - frontend
       - backend
       - mail
+      - turnstile-egress
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -383,6 +384,10 @@ networks:
   mail:
     internal: true
   email-egress:
+  # The application needs narrowly identified outbound network access for
+  # server-side Cloudflare Turnstile verification. Keep this separate from
+  # the email provider egress boundary.
+  turnstile-egress:
 
 volumes:
   postgres_data:

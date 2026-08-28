@@ -70,6 +70,12 @@ services:
         target: /app/data/uploads
         bind:
           create_host_path: false
+    networks:
+      frontend: {}
+      backend: {}
+      mail: {}
+      turnstile-egress:
+        gw_priority: 1
 
   caddy:
     restart: unless-stopped

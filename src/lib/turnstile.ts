@@ -13,10 +13,24 @@ const responseSchema = z.object({
   "error-codes": z.array(z.string().max(100)).optional(),
 }).passthrough();
 
+export type TurnstileFailureReason =
+  | "invalid_token"
+  | "invalid_secret_configuration"
+  | "invalid_hostname_configuration"
+  | "provider_unavailable"
+  | "provider_http_error"
+  | "provider_rejected"
+  | "action_mismatch"
+  | "hostname_mismatch"
+  | "missing_challenge_timestamp";
+
 export class TurnstileVerificationError extends Error {
-  constructor() {
+  readonly reason: TurnstileFailureReason;
+
+  constructor(reason: TurnstileFailureReason = "provider_rejected") {
     super("Request verification failed.");
     this.name = "TurnstileVerificationError";
+    this.reason = reason;
   }
 }
 
@@ -28,7 +42,7 @@ function readTurnstileSecret() {
       ? process.env.TURNSTILE_SECRET?.trim()
       : undefined;
   if (!secret || secret.length > 2_048 || /[\s\u0000-\u001f\u007f]/.test(secret)) {
-    throw new TurnstileVerificationError();
+    throw new TurnstileVerificationError("invalid_secret_configuration");
   }
   return secret;
 }
@@ -39,7 +53,7 @@ function allowedHostnames() {
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
   if (!hosts.length || hosts.some((host) => host.length > 253 || host.includes(":") || host.includes("/"))) {
-    throw new TurnstileVerificationError();
+    throw new TurnstileVerificationError("invalid_hostname_configuration");
   }
   return new Set(hosts);
 }
@@ -53,7 +67,7 @@ async function verifyTurnstileAction(input: {
   fetcher?: typeof fetch;
 }) {
   if (!input.token || input.token.length > 2_048 || /[\u0000-\u001f\u007f]/.test(input.token)) {
-    throw new TurnstileVerificationError();
+    throw new TurnstileVerificationError("invalid_token");
   }
   const body = new URLSearchParams({
     secret: readTurnstileSecret(),
@@ -71,16 +85,15 @@ async function verifyTurnstileAction(input: {
       signal: AbortSignal.timeout(10_000),
       cache: "no-store",
     });
-    if (!response.ok) throw new TurnstileVerificationError();
+    if (!response.ok) throw new TurnstileVerificationError("provider_http_error");
     const result = responseSchema.parse(await response.json());
     const hostname = result.hostname?.toLowerCase();
-    if (!result.success
-      || result.action !== input.action
-      || !hostname
-      || !allowedHostnames().has(hostname)
-      || !result.challenge_ts) {
-      throw new TurnstileVerificationError();
+    if (!result.success) throw new TurnstileVerificationError("provider_rejected");
+    if (result.action !== input.action) throw new TurnstileVerificationError("action_mismatch");
+    if (!hostname || !allowedHostnames().has(hostname)) {
+      throw new TurnstileVerificationError("hostname_mismatch");
     }
+    if (!result.challenge_ts) throw new TurnstileVerificationError("missing_challenge_timestamp");
     const ephemeralId = result.metadata?.ephemeral_id;
     return {
       success: true as const,
@@ -91,7 +104,7 @@ async function verifyTurnstileAction(input: {
     };
   } catch (error) {
     if (error instanceof TurnstileVerificationError) throw error;
-    throw new TurnstileVerificationError();
+    throw new TurnstileVerificationError("provider_unavailable");
   }
 }
 
