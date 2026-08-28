@@ -29,9 +29,10 @@ describe("authenticated production route stabilization", () => {
       "../src/lib/transactional-email.ts",
       import.meta.url,
     ), "utf8");
+    const completionStart = source.indexOf("completeTransactionalEmailOutbox");
     const update = source.slice(
-      source.indexOf("UPDATE transactional_email_outbox", source.indexOf("async function finalize")),
-      source.indexOf("INSERT INTO email_delivery_attempts", source.indexOf("async function finalize")),
+      source.indexOf("UPDATE transactional_email_outbox", completionStart),
+      source.indexOf("SELECT axora_record_transactional_email_attempt", completionStart),
     );
     expect(update).toContain("provider_agent=$7");
     expect(update).not.toContain("$8");

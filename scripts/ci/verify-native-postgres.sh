@@ -114,6 +114,55 @@ docker exec \
     --username "$ADMIN_USER" --dbname "$DATABASE_NAME" \
     --file /database/admin/apply-app-grants.sql >/dev/null
 
+docker exec --interactive \
+  --env "PGPASSWORD=$ADMIN_PASSWORD" \
+  "$CONTAINER_NAME" psql --quiet --set=ON_ERROR_STOP=1 \
+    --username "$ADMIN_USER" --dbname "$DATABASE_NAME" <<'SQL'
+DO $email_completion_capability$
+BEGIN
+  IF has_table_privilege(
+    'axora_app','public.email_delivery_attempts','INSERT'
+  ) THEN
+    RAISE EXCEPTION 'Application role has direct email attempt INSERT';
+  END IF;
+  IF NOT has_function_privilege(
+    'axora_app',
+    'public.axora_record_transactional_email_attempt(uuid,text,text,integer,text,text,integer,text,text,text,integer,uuid)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Application email completion capability is unavailable';
+  END IF;
+  IF has_function_privilege(
+    'public',
+    'public.axora_record_transactional_email_attempt(uuid,text,text,integer,text,text,integer,text,text,text,integer,uuid)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Email completion capability is exposed to PUBLIC';
+  END IF;
+END
+$email_completion_capability$;
+
+SET ROLE axora_app;
+DO $metadata_binding$
+BEGIN
+  BEGIN
+    PERFORM public.axora_record_transactional_email_attempt(
+      '10000000-0000-4000-8000-000000000001',
+      'CONTACT_NOTIFICATION','new-lead-internal-alert',1,
+      'resend','axora-platform',1,'sent',NULL,NULL,NULL,
+      '10000000-0000-4000-8000-000000000002'
+    );
+    RAISE EXCEPTION 'Unbound email attempt was accepted';
+  EXCEPTION WHEN check_violation THEN
+    IF SQLERRM <> 'Transactional email attempt does not match its delivery' THEN
+      RAISE;
+    END IF;
+  END;
+END
+$metadata_binding$;
+RESET ROLE;
+SQL
+
 host_port="$(docker port "$CONTAINER_NAME" 5432/tcp \
   | sed -n 's/^127\.0\.0\.1:\([0-9][0-9]*\)$/\1/p' \
   | head -n 1)"
