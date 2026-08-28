@@ -30,10 +30,10 @@ describe("role-specific portal navigation boundaries", () => {
     };
 
     expect(hrefs(PRIMARY_NAVIGATION, companyAdmin)).toEqual([
-      "/dashboard", "/receiving", "/products", "/requests", "/approvals", "/branches", "/budgets", "/wallet", "/deliveries", "/finance",
+      "/dashboard", "/products", "/requests", "/approvals", "/branches", "/budgets", "/wallet", "/deliveries",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).toEqual([
-      "/receiving", "/branches", "/budgets", "/wallet",
+      "/branches", "/budgets", "/wallet",
       "/users",
     ]);
     expect(canAccess(companyAdmin, "manage_catalog")).toBe(false);
@@ -87,13 +87,13 @@ describe("role-specific portal navigation boundaries", () => {
     expect(hrefs(PRIMARY_NAVIGATION, support)).toEqual([]);
     expect(hrefs(DRAWER_NAVIGATION, support)).toEqual([]);
     expect(hrefs(PRIMARY_NAVIGATION, auditor)).toEqual([
-      "/dashboard", "/products", "/requests", "/branches", "/budgets", "/deliveries", "/finance",
+      "/dashboard", "/products", "/requests", "/branches", "/budgets", "/deliveries",
     ]);
     expect(hrefs(DRAWER_NAVIGATION, auditor)).toEqual([
       "/branches", "/budgets",
     ]);
-    expect(hrefs(PRIMARY_NAVIGATION, receiver)).toEqual(["/receiving"]);
-    expect(hrefs(DRAWER_NAVIGATION, receiver)).toEqual(["/receiving"]);
+    expect(hrefs(PRIMARY_NAVIGATION, receiver)).toEqual(["/requests"]);
+    expect(hrefs(DRAWER_NAVIGATION, receiver)).toEqual([]);
 
     for (const subject of [support, auditor]) {
       expect(canAccess(subject, "manage_catalog")).toBe(false);

@@ -10,6 +10,6 @@ export function isDeliveryAgentSession(user: LandingSubject) {
 
 export function landingPathForSession(user: LandingSubject) {
   if (isDeliveryAgentSession(user)) return "/driver";
-  if (user.accountKind === "COMPANY" && user.role === "RECEIVING_USER") return "/receiving";
+  if (user.accountKind === "COMPANY" && user.role === "RECEIVING_USER") return "/requests";
   return "/dashboard";
 }

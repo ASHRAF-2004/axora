@@ -10,9 +10,11 @@ import {
   operationalStatus,
   type OperationalMessageKey,
 } from "@/lib/operational-i18n";
+import { redirect } from "next/navigation";
 
 export default async function FinancePage() {
   const actor = await requirePagePermission("view_invoices");
+  if (!actor.isOwner) redirect("/requests");
   const locale = actor.preferredLocale ?? "en";
   const m = (key: OperationalMessageKey, values?: Record<string, string | number>) =>
     operationalMessage(locale, key, values);

@@ -632,8 +632,10 @@ export function DriverTrackingPanel({
 
 export function DeliveryTrackingBoard({
   locale = "en",
+  deliveryJobId,
 }: {
   locale?: DeliveryTrackingLocale;
+  deliveryJobId?: string;
 }) {
   const copy = deliveryTrackingMessages(locale);
   const endpoint = "/api/receiving/delivery-tracking";
@@ -692,15 +694,18 @@ export function DeliveryTrackingBoard({
     };
   }, [copy.unavailable, refresh]);
 
+  const visibleSessions = workspace?.sessions.filter((session) => (
+    !deliveryJobId || deliveryJobId.startsWith("demo-") || session.jobId === deliveryJobId
+  ));
   return <section className={styles.board} aria-label={copy.companyTitle}>
     <header className={styles.panelHeader}>
       <div><span>{copy.status}</span><h2>{copy.companyTitle}</h2></div>
       <button type="button" onClick={() => void refresh()}>{copy.lastUpdated}</button>
     </header>
     {error ? <p className={styles.warning} role="alert">{error}</p> : null}
-    {!workspace ? <p>{copy.loading}</p> : workspace.sessions.length === 0
+    {!workspace ? <p>{copy.loading}</p> : visibleSessions?.length === 0
       ? <p className={styles.empty}>{copy.noActiveDeliveries}</p>
-      : <div className={styles.sessionList}>{workspace.sessions.map((session) =>
+      : <div className={styles.sessionList}>{visibleSessions?.map((session) =>
         <article className={styles.trackingCard} key={session.sessionId}>
           <div className={styles.sessionHeading}>
             <div>

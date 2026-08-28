@@ -28,6 +28,15 @@ import {
 } from "@/lib/finance-business-results";
 import { approveAndPayResultCopy, walletMessages } from "@/lib/wallet-i18n";
 import { cartMessages } from "@/lib/cart-i18n";
+import { customerDeliveryStatus, getRequestOrderWorkspace } from "@/lib/request-order-workspace";
+import { getReceivingJobForRequest } from "@/lib/role-portals-repository";
+import { rolePortalMessages, formatRolePortalNumber } from "@/lib/role-portals-i18n";
+import { confirmReceiptAction } from "../../receiving/actions";
+import { ReceivingOtpPanel } from "@/components/role-portals/ReceivingOtpPanel";
+import roleStyles from "@/components/role-portals/RolePortals.module.css";
+import Image from "next/image";
+import { UserAvatar } from "@/components/UserAvatar";
+import { DeliveryTrackingBoard } from "@/components/role-portals/DeliveryTrackingPanels";
 
 export default async function RequestDetailPage({
   params,
@@ -50,6 +59,7 @@ export default async function RequestDetailPage({
   const requestCopy = corePortalMessages(locale).requests;
   const detail = requestDetailMessages(locale);
   const receiptCopy = cartMessages(locale);
+  const receivingCopy = rolePortalMessages(locale).receiving;
   const walletCopy = walletMessages(locale);
   const feedback = await searchParams;
   const financeResult = isApproveAndPayResultStatus(feedback.financeResult)
@@ -68,11 +78,8 @@ export default async function RequestDetailPage({
   const showPlacedReceipt = feedback.placed === "1"
     && isDirectOrder
     && request.paymentStatus === "Paid";
-  const canViewInvoices = request.invoiceStatus !== undefined
-    || request.paymentStatus !== undefined
-    || request.invoiceNumber !== undefined;
 
-  const [branchBudget, workflowTimeline, approvalTimeline, finalInvoice] = await Promise.all([
+  const [branchBudget, workflowTimeline, approvalTimeline, finalInvoice, orderWorkspace] = await Promise.all([
     actor.accountKind === "PLATFORM"
       ? Promise.resolve(undefined)
       : loadOrganizationDirectory(actor).then(({ branches }) => (
@@ -80,8 +87,14 @@ export default async function RequestDetailPage({
         )),
     listAuthorizedRequestWorkflowEvents(actor, request.id),
     getRequestApprovalTimeline(actor, request.id),
-    platformView ? Promise.resolve(null) : getFinalInvoiceSummary(actor, request.id),
+    getFinalInvoiceSummary(actor, request.id),
+    getRequestOrderWorkspace(actor, request),
   ]);
+  const receivingJob = actor.accountKind === "COMPANY"
+    && canAccess(actor, "confirm_receipts")
+    && orderWorkspace.delivery?.canConfirmReceipt
+    ? await getReceivingJobForRequest(actor, request.id)
+    : undefined;
   const totals = request.lines.reduce((sum, line) => {
     const current = calculateLineAmounts(line);
     return {
@@ -143,7 +156,7 @@ export default async function RequestDetailPage({
       <section className="request-summary">
         <div className="summary-box"><span>{isDirectOrder ? detail.payment : requestCopy.approval}</span><strong><StatusBadge status={isDirectOrder ? "Paid" : request.approvalStatus}>{localizedStatus(isDirectOrder ? "Paid" : request.approvalStatus, locale)}</StatusBadge></strong></div>
         <div className="summary-box"><span>{requestCopy.fulfilment}</span><strong><StatusBadge status={request.status}>{localizedStatus(request.status, locale)}</StatusBadge></strong></div>
-        <div className="summary-box"><span>{requestCopy.neededBy}</span><strong>{formatDate(request.neededByDate, locale, timeZone)}</strong></div>
+        <div className="summary-box"><span>{detail.delivery}</span><strong><StatusBadge status={customerDeliveryStatus(orderWorkspace.delivery?.status)}>{localizedStatus(customerDeliveryStatus(orderWorkspace.delivery?.status), locale)}</StatusBadge></strong></div>
         {!platformView || canViewRevenue ? <div className="summary-box"><span>{platformView ? requestCopy.customerTotal : isDirectOrder ? detail.orderTotal : requestCopy.estimatedTotal}</span><strong>{formatCurrency(request.estimatedTotal, locale)}</strong></div> : null}
         {platformView ? <>
           {canViewCost ? <div className="summary-box"><span>{detail.buyTotal}</span><strong>{formatCurrency(totals.buyingCost, locale)}</strong></div> : null}
@@ -201,13 +214,100 @@ export default async function RequestDetailPage({
             </div>
           </article>
 
+          {orderWorkspace.invoice ? <article className="panel" id="invoice">
+            <div className="panel-header"><div><h2>{detail.customerInvoice}</h2><p>{detail.invoiceBody}</p></div></div>
+            <div className="panel-body">
+              <dl className="request-summary">
+                <div className="summary-box"><dt>{detail.invoiceNumber}</dt><dd><strong translate="no">{orderWorkspace.invoice.number}</strong></dd></div>
+                <div className="summary-box"><dt>{detail.invoiceStatus}</dt><dd><StatusBadge status={orderWorkspace.invoice.paymentStatus}>{localizedStatus(orderWorkspace.invoice.paymentStatus === "PAID" ? "Paid" : orderWorkspace.invoice.paymentStatus === "PARTIAL" ? "Partial" : "Unpaid", locale)}</StatusBadge></dd></div>
+                <div className="summary-box"><dt>{detail.amount}</dt><dd><strong>{formatCurrency(orderWorkspace.invoice.amount, locale)}</strong></dd></div>
+                <div className="summary-box"><dt>{detail.paidAmount}</dt><dd><strong>{formatCurrency(orderWorkspace.invoice.paidAmount, locale)}</strong></dd></div>
+                <div className="summary-box"><dt>{detail.outstanding}</dt><dd><strong>{formatCurrency(orderWorkspace.invoice.outstandingAmount, locale)}</strong></dd></div>
+                <div className="summary-box"><dt>{detail.issueDate}</dt><dd><strong>{formatDate(orderWorkspace.invoice.finalizedAt ?? orderWorkspace.invoice.invoiceDate, locale, timeZone)}</strong></dd></div>
+              </dl>
+              {finalInvoice?.downloadUrl ? <div className="form-actions"><Link className="button button-secondary" href={finalInvoice.downloadUrl}>{detail.downloadInvoice}</Link></div> : null}
+            </div>
+          </article> : null}
+
+          {orderWorkspace.delivery ? <article className="panel" id="delivery">
+            <div className="panel-header"><div><h2>{detail.deliveryAndTracking}</h2><p>{detail.deliveryWorkspaceBody}</p></div></div>
+            <div className="panel-body">
+              <dl className="request-summary">
+                <div className="summary-box"><dt>{detail.deliveryCode}</dt><dd><strong translate="no">{orderWorkspace.delivery.code}</strong></dd></div>
+                <div className="summary-box"><dt>{detail.delivery}</dt><dd><StatusBadge status={customerDeliveryStatus(orderWorkspace.delivery.status)}>{localizedStatus(customerDeliveryStatus(orderWorkspace.delivery.status), locale)}</StatusBadge></dd></div>
+                {orderWorkspace.delivery.deliveredAt ? <div className="summary-box"><dt>{detail.reportedAt}</dt><dd><strong>{formatDateTime(orderWorkspace.delivery.deliveredAt, locale, timeZone)}</strong></dd></div> : null}
+                {orderWorkspace.delivery.driverName ? <div className="summary-box"><dt>{detail.deliveryAgent}</dt><dd><strong>{orderWorkspace.delivery.driverName}</strong></dd></div> : null}
+                {orderWorkspace.delivery.receiverName ? <div className="summary-box"><dt>{detail.receiver}</dt><dd><strong>{orderWorkspace.delivery.receiverName}</strong></dd></div> : null}
+                {orderWorkspace.delivery.receiptId ? <div className="summary-box"><dt>{detail.customerReceipt}</dt><dd><strong>{detail.receiptConfirmed}</strong><br /><span className="subtle" translate="no">{orderWorkspace.delivery.receiptReference}</span></dd></div> : null}
+              </dl>
+              {orderWorkspace.delivery.driverUserId && orderWorkspace.delivery.driverName ? <div className="readiness-item">
+                <UserAvatar deliveryJobId={orderWorkspace.delivery.id} name={orderWorkspace.delivery.driverName} size={48} userId={orderWorkspace.delivery.driverUserId} />
+                <div><span>{detail.deliveryAgent}</span><strong>{orderWorkspace.delivery.driverName}</strong></div>
+              </div> : null}
+              {orderWorkspace.delivery.lines.length ? <div className="data-table-wrap">
+                <table className="data-table">
+                  <thead><tr><th>{detail.item}</th><th>{receivingCopy.planned}</th><th>{receivingCopy.delivered}</th></tr></thead>
+                  <tbody>{orderWorkspace.delivery.lines.map((line) => <tr key={line.id}>
+                    <td><strong>{line.productName}</strong></td>
+                    <td>{formatRolePortalNumber(line.plannedQuantity, locale)} {line.unit}</td>
+                    <td>{line.deliveredQuantity === undefined ? "—" : `${formatRolePortalNumber(line.deliveredQuantity, locale)} ${line.unit}`}</td>
+                  </tr>)}</tbody>
+                </table>
+              </div> : null}
+              <div className="form-actions"><Link className="button button-secondary" href="/deliveries">{detail.viewDelivery}</Link></div>
+            </div>
+
+            {canAccess(actor, "view_deliveries")
+              ? <DeliveryTrackingBoard locale={locale} deliveryJobId={orderWorkspace.delivery.id} />
+              : null}
+
+            <div className="panel-header"><div><h3>{detail.proofOfDelivery}</h3><p>{detail.proofBody}</p></div></div>
+            <div className="panel-body">
+              {orderWorkspace.delivery.evidence.length ? <div className="card-grid">
+                {orderWorkspace.delivery.evidence.map((proof) => <article className="readiness-item" key={proof.id}>
+                  {proof.contentType.startsWith("image/") ? <Image unoptimized src={`${proof.accessUrl}&preview=1`} alt={detail.proofOfDelivery} width={176} height={110} style={{ objectFit: "cover", borderRadius: 10 }} /> : <PackageCheck size={32} aria-hidden="true" />}
+                  <div><strong>{localizedStatus(proof.type.replaceAll("_", " "), locale)}</strong><p>{formatDateTime(proof.capturedAt, locale, timeZone)}{proof.recipientIdentity ? ` · ${proof.recipientIdentity}` : ""}</p><Link className="button button-secondary" href={proof.accessUrl}>{detail.viewProof}</Link></div>
+                </article>)}
+              </div> : <p className="subtle">{detail.noProof}</p>}
+            </div>
+
+            {receivingJob ? <div className="panel-body">
+              <h3>{receivingCopy.confirmReceipt}</h3>
+              <form action={confirmReceiptAction} className={roleStyles.receiptForm}>
+                <input type="hidden" name="requestId" value={request.id} />
+                <input type="hidden" name="deliveryJobId" value={receivingJob.id} />
+                <input type="hidden" name="clientEventId" value={randomUUID()} />
+                <div className={roleStyles.receiptIntro}><strong>{receivingCopy.inspectLines(receivingJob.lines.length)}</strong><span>{receivingCopy.quantityRule}</span><span>{receivingCopy.confirmingAs(actor.name)}</span></div>
+                <div className={roleStyles.receiptLines}>{receivingJob.lines.map((line) => <fieldset key={line.id}>
+                  <legend>{line.productName}</legend>
+                  <input type="hidden" name="deliveryJobLineId" value={line.id} />
+                  <input type="hidden" name="requestLineId" value={line.requestLineId} />
+                  <p>{receivingCopy.planned}: <strong>{formatRolePortalNumber(line.plannedQuantity, locale)} {line.unit}</strong>{line.driverReportedDeliveredQuantity !== undefined ? <> · {receivingCopy.driverReportedQuantity}: <strong>{formatRolePortalNumber(line.driverReportedDeliveredQuantity, locale)} {line.unit}</strong></> : null}</p>
+                  <div className={roleStyles.lineQuantities}>
+                    <label>{receivingCopy.delivered}<input name="deliveredQuantity" type="number" min="0" step="0.001" required defaultValue={line.driverReportedDeliveredQuantity ?? line.plannedQuantity} /></label>
+                    <label>{receivingCopy.accepted}<input name="acceptedQuantity" type="number" min="0" step="0.001" required defaultValue={Math.max((line.driverReportedDeliveredQuantity ?? line.plannedQuantity) - (line.driverReportedDamagedQuantity ?? 0), 0)} /></label>
+                    <label>{receivingCopy.damaged}<input name="damagedQuantity" type="number" min="0" step="0.001" required defaultValue={line.driverReportedDamagedQuantity ?? 0} /></label>
+                  </div>
+                  <div className={roleStyles.lineClassification}>
+                    <label>{receivingCopy.inspectionClassification}<select name="discrepancyCode" defaultValue="NONE"><option value="NONE">{receivingCopy.noManualException}</option><option value="WRONG_ITEM">{receivingCopy.wrongItem}</option><option value="QUALITY">{receivingCopy.qualityIssue}</option><option value="OTHER">{receivingCopy.otherException}</option></select></label>
+                    <label>{receivingCopy.lineNote}<input name="discrepancyNote" maxLength={2000} placeholder={receivingCopy.discrepancyPlaceholder} /></label>
+                  </div>
+                </fieldset>)}</div>
+                <label>{receivingCopy.receiptNotes}<textarea name="notes" maxLength={2000} placeholder={receivingCopy.receiptNotesPlaceholder} /></label>
+                <div className={roleStyles.receiptSubmit}><p>{receivingCopy.confirmationExplanation}</p><button className="button button-primary" type="submit">{receivingCopy.confirmReceipt}</button></div>
+              </form>
+            </div> : null}
+
+            {actor.accountKind === "COMPANY" && canAccess(actor, "view_receiving") && orderWorkspace.delivery.proofPolicy.includes("OTP")
+              ? <ReceivingOtpPanel locale={locale} deliveryJobId={orderWorkspace.delivery.id} compact /> : null}
+          </article> : null}
+
           <article className="panel">
             <div className="panel-header"><div><h2>{platformView ? detail.operationsInfo : isDirectOrder ? detail.orderInfo : detail.requestInfo}</h2><p>{platformView ? detail.operationsBody : isDirectOrder ? detail.orderInfoBody : detail.requestBody}</p></div></div>
             <div className="panel-body">
               <div className="form-grid">
                 <div className="readiness-item"><UserRound size={19} /><div><strong>{request.requestedBy}</strong><p>{request.requesterContact}</p></div></div>
                 <div className="readiness-item"><Route size={19} /><div><strong>{request.branchName}</strong><p>{isDirectOrder ? detail.directOrder : `${request.requestType} · ${localizedStatus(request.urgency, locale)}`}</p></div></div>
-                {canViewInvoices ? <div id={finalInvoice ? undefined : "invoice"} className="readiness-item"><PackageCheck size={19} /><div><strong>{request.invoiceNumber || detail.noInvoice}</strong><p>{localizedStatus(request.invoiceStatus ?? detail.notAssigned, locale)} · {localizedStatus(request.paymentStatus ?? "Unpaid", locale)}</p></div></div> : null}
                 {platformView
                   ? canViewRevenue ? <div className="readiness-item"><CircleDollarSign size={19} /><div><strong>{formatCurrency(totals.delivery, locale)} {detail.deliveryFees}</strong><p>{detail.deliveryFeesBody}</p></div></div> : null
                   : <div className="readiness-item"><WalletCards size={19} /><div>
@@ -278,12 +378,6 @@ export default async function RequestDetailPage({
                 <div className="form-actions"><button className="button button-primary" type="submit">{walletCopy.approveAndPay}</button></div>
               </form> : null}
             </>}
-            {finalInvoice ? <div id="invoice" className="callout" style={{ marginBlockStart: 20 }}>
-              <strong>{detail.paid}</strong>
-              <p>{finalInvoice.invoiceNumber} · {formatMoneyDecimal(finalInvoice.amount, finalInvoice.currency, locale)} · {formatDateTime(finalInvoice.paidAt, locale, timeZone)}</p>
-              <p>{detail.invoiceEmailStatus(finalInvoice.emailStatus ?? "PENDING")}</p>
-              {finalInvoice.downloadUrl ? <div className="form-actions"><Link className="button button-secondary" href={finalInvoice.downloadUrl}>{detail.downloadInvoice}</Link></div> : <p>{detail.invoicePreparing}</p>}
-            </div> : null}
           </>}
 
           <h3 className="section-title">{detail.timeline}</h3>

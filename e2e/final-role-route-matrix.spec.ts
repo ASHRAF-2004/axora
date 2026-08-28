@@ -205,8 +205,8 @@ const routes: Array<{
   {
     route: "/finance",
     expected: {
-      owner: allow("/finance"), cam: allow("/finance"),
-      companyAdmin: allow("/finance"), branchAdmin: allow("/finance"),
+      owner: allow("/finance"), cam: allow("/requests"),
+      companyAdmin: allow("/requests"), branchAdmin: allow("/requests"),
       requester: denied, delivery: denied,
     },
   },
@@ -221,8 +221,8 @@ const routes: Array<{
   {
     route: "/receiving",
     expected: {
-      owner: allow("/receiving"), cam: denied, companyAdmin: allow("/receiving"),
-      branchAdmin: allow("/receiving"), requester: denied, delivery: denied,
+      owner: allow("/requests"), cam: allow("/requests"), companyAdmin: allow("/requests"),
+      branchAdmin: allow("/requests"), requester: allow("/requests"), delivery: denied,
     },
   },
   {

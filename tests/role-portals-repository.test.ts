@@ -38,6 +38,7 @@ import {
 
 const ids = {
   receiver: "20000000-0000-4000-8000-000000000001",
+  receiverAssignment: "20000000-0000-4000-8000-000000000002",
   driver: "30000000-0000-4000-8000-000000000001",
   company: "40000000-0000-4000-8000-000000000001",
   forgedCompany: "40000000-0000-4000-8000-000000000002",
@@ -62,6 +63,7 @@ const receiverActor: SessionUser = {
   companyId: ids.company,
   branchId: ids.branch,
   isOwner: false,
+  roleAssignmentId: ids.receiverAssignment,
 };
 
 const driverActor: SessionUser = {
@@ -100,7 +102,9 @@ describe("role portal repository boundaries", () => {
     expect(String(workspaceQuery[0])).toContain("job.branch_id=$2");
     expect(String(workspaceQuery[0])).toContain("evidence_assignment.status IN ('ASSIGNED','ACCEPTED','COMPLETED')");
     expect(String(workspaceQuery[0])).toContain("ORDER BY event.received_at DESC,event.id DESC");
-    expect(workspaceQuery[1]).toEqual([ids.company, ids.branch]);
+    expect(workspaceQuery[1]).toEqual([
+      ids.company, ids.branch, null, ids.receiver, ids.receiverAssignment,
+    ]);
   });
 
   it("presents driver handover details as non-authoritative receiving context", async () => {
@@ -317,7 +321,9 @@ describe("role portal repository boundaries", () => {
       }],
     });
     const jobLookup = mocks.client.query.mock.calls.find(([sql]) => String(sql).includes("FROM delivery_jobs job"));
-    expect(jobLookup?.[1]).toEqual([ids.job, ids.company, ids.branch]);
+    expect(jobLookup?.[1]).toEqual([
+      ids.job, ids.company, ids.branch, ids.receiver, ids.receiverAssignment,
+    ]);
     expect(String(jobLookup?.[0])).toContain("event.event_type IN ('PARTIALLY_DELIVERED','DELIVERED')");
     const workflowInput = mocks.appendWorkflowEvent.mock.calls[0]?.[1];
     expect(workflowInput).toMatchObject({

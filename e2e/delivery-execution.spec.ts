@@ -18,7 +18,7 @@ const receiver: DemoRoleSession = {
   role: "COMPANY_ADMIN",
   accountKind: "COMPANY",
   scopeType: "COMPANY",
-  companyId: "66666666-6666-4666-8666-666666666666",
+  companyId: "11111111-1111-4111-8111-111111111111",
 };
 
 const jobId = "10000000-0000-4000-8000-000000000001";
@@ -783,7 +783,7 @@ test("customer recipient sees a one-time OTP without purchasing internals", asyn
     }] } });
   });
   await signInAsDemoRole(page, receiver);
-  await page.goto("/receiving");
+  await page.goto("/requests/order-16");
 
   await expect(page.getByRole("region", { name: "Secure delivery confirmation" })).toBeVisible();
   await expect(page.getByText(/buying cost/i)).toHaveCount(0);
