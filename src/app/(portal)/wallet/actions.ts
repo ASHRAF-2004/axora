@@ -14,9 +14,15 @@ function field(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
 }
 
-function walletPath(companyId: string, parameters: Record<string, string>) {
+function walletPath(
+  companyId: string,
+  parameters: Record<string, string>,
+  owner = false,
+) {
   const query = new URLSearchParams(parameters);
-  if (companyId) query.set("company", companyId);
+  if (owner && companyId) {
+    return `/companies/${encodeURIComponent(companyId)}/wallet?${query.toString()}`;
+  }
   return `/wallet?${query.toString()}`;
 }
 
@@ -34,10 +40,10 @@ export async function requestWalletTopUpAction(formData: FormData) {
   } catch (error) {
     redirect(walletPath(companyId, {
       error: error instanceof CompanyWalletValidationError ? "invalid" : "unavailable",
-    }));
+    }, actor.isOwner));
   }
   revalidatePath("/wallet");
-  redirect(walletPath(companyId, { outcome: "requested" }));
+  redirect(walletPath(companyId, { outcome: "requested" }, actor.isOwner));
 }
 
 export async function recordWalletTopUpAction(formData: FormData) {
@@ -58,11 +64,12 @@ export async function recordWalletTopUpAction(formData: FormData) {
   } catch (error) {
     redirect(walletPath(companyId, {
       error: error instanceof CompanyWalletValidationError ? "invalid" : "unavailable",
-    }));
+    }, actor.isOwner));
   }
   revalidatePath("/wallet");
+  revalidatePath(`/companies/${encodeURIComponent(companyId)}/wallet`);
   revalidatePath("/dashboard");
   redirect(walletPath(companyId, {
     outcome: created ? "recorded" : "already-recorded",
-  }));
+  }, actor.isOwner));
 }

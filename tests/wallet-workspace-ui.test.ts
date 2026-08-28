@@ -3,14 +3,17 @@ import { describe, expect, it } from "vitest";
 
 describe("Company Wallet and Approve & Pay application boundaries", () => {
   it("has a purpose-specific, URL-addressable wallet workspace", async () => {
-    const [page, actions, navigation] = await Promise.all([
+    const [page, detail, actions, navigation] = await Promise.all([
       readFile(new URL("../src/app/(portal)/wallet/page.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/app/(portal)/wallet/WalletDetail.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/app/(portal)/wallet/actions.ts", import.meta.url), "utf8"),
       readFile(new URL("../src/lib/portal-navigation.ts", import.meta.url), "utf8"),
     ]);
     expect(page).toContain('requirePagePermission("view_wallet")');
-    expect(page).toContain('name="company"');
-    expect(page).toContain('name="commandId"');
+    expect(page).toContain("loadCompanyLifecycleWorkspace(actor)");
+    expect(page).toContain("/companies/${encodeURIComponent(company.id)}/wallet");
+    expect(page).not.toContain("workspace.wallets[0]");
+    expect(detail).toContain('name="commandId"');
     expect(actions).toContain('requirePermission("request_wallet_top_up")');
     expect(actions).toContain('requirePermission("record_wallet_top_up")');
     expect(navigation).toContain('href: "/wallet"');

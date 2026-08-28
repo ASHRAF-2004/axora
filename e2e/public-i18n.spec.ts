@@ -153,7 +153,7 @@ test("mobile navigation closes after a localized client-side route change", asyn
   await expect(
     page.getByRole("heading", {
       level: 1,
-      name: "Beritahu kami tentang aliran perolehan anda.",
+      name: "Tidak pasti hendak bermula dari mana?",
     }),
   ).toBeVisible();
 });
@@ -219,7 +219,7 @@ test("small-phone keyboard flow exposes language, login, and menu controls", asy
   ).toBeVisible();
 });
 
-test("localized contact form labels retained fields and omits retired company fields", async ({
+test("localized Contact form uses the enquiry-only contract and remains RTL-safe", async ({
   context,
   page,
 }) => {
@@ -229,13 +229,14 @@ test("localized contact form labels retained fields and omits retired company fi
 
   await expect(
     page.getByRole("form", {
-      name: "أخبرنا عن مسار المشتريات في شركتك.",
+      name: "لست متأكدًا من أين تبدأ؟",
     }),
   ).toBeVisible();
-  await expect(page.locator('input[name="companyName"]')).toBeVisible();
-  await expect(page.locator('input[name="contactName"]')).toBeVisible();
+  await expect(page.locator('input[name="fullName"]')).toBeVisible();
+  await expect(page.locator('input[name="email"]')).toBeVisible();
+  await expect(page.locator('input[name="phone"]')).toBeAttached();
   for (const retiredField of [
-    "registrationNumber", "contactEmail", "phoneCountryCode", "phone",
+    "companyName", "subject", "registrationNumber", "phoneCountryCode",
     "country", "region", "contactTime", "city",
   ]) {
     await expect(page.locator(`[name="${retiredField}"]`)).toHaveCount(0);
@@ -244,7 +245,7 @@ test("localized contact form labels retained fields and omits retired company fi
     page.locator('textarea[name="message"]'),
   ).toBeVisible();
   await expect(
-    page.getByRole("checkbox", { name: /أفهم أن أكسورا/ }),
+    page.getByRole("checkbox", { name: /أوافق على مشاركة هذه المعلومات/ }),
   ).toBeVisible();
   await expect(page.locator('input[name="website"]')).toHaveAttribute(
     "tabindex",
@@ -261,6 +262,79 @@ test("localized contact form labels retained fields and omits retired company fi
       document.documentElement.clientWidth,
   );
   expect(horizontalOverflow).toBeLessThanOrEqual(2);
+});
+
+test("Contact verification gates submission and public contact details stay practical", async ({
+  context,
+  page,
+}, testInfo) => {
+  await rememberLocale(context, "en");
+  await page.setViewportSize(testInfo.project.name === "mobile-chrome"
+    ? { width: 390, height: 844 }
+    : { width: 1440, height: 900 });
+  await page.route("**/turnstile/v0/api.js?render=explicit", async (route) => {
+    await route.fulfill({
+      contentType: "application/javascript",
+      body: `window.turnstile={render:function(container,options){window.__axoraTurnstileOptions=options;var input=document.createElement('input');input.type='hidden';input.name='cf-turnstile-response';container.appendChild(input);return 'contact-test-widget';},remove:function(){}};`,
+    });
+  });
+  await page.goto("/en/contact");
+
+  const form = page.getByRole("form", { name: "Not sure where to start?" });
+  const submit = form.getByRole("button", { name: "Send enquiry" });
+  await expect(submit).toBeDisabled();
+  await expect.poll(() => page.evaluate(() => Boolean(
+    (window as Window & { __axoraTurnstileOptions?: object }).__axoraTurnstileOptions,
+  ))).toBe(true);
+  await page.evaluate(() => {
+    const options = (window as Window & {
+      __axoraTurnstileOptions?: { callback?: (token: string) => void };
+    }).__axoraTurnstileOptions;
+    const response = document.querySelector<HTMLInputElement>('[name="cf-turnstile-response"]');
+    if (response) response.value = "controlled-test-token";
+    options?.callback?.("controlled-test-token");
+  });
+  await expect(submit).toBeEnabled();
+
+  await expect(page.getByRole("link", { name: "support@axora.management" }))
+    .toHaveAttribute("href", "mailto:support@axora.management");
+  await expect(page.getByRole("link", { name: "+60183816023" }))
+    .toHaveAttribute("href", "tel:+60183816023");
+  await expect(page.getByRole("link", { name: "WhatsApp" }))
+    .toHaveAttribute("href", "https://wa.me/60183816023");
+  await expect(page.locator(".public-contact-card address"))
+    .toContainText("06-A02, Kenwingston Business Centre,");
+
+  const formBox = await form.boundingBox();
+  const cardBox = await page.locator(".public-contact-card").boundingBox();
+  expect(formBox).not.toBeNull();
+  expect(cardBox).not.toBeNull();
+  if (testInfo.project.name === "mobile-chrome") {
+    expect(cardBox?.y ?? 0).toBeGreaterThan((formBox?.y ?? 0) + (formBox?.height ?? 0) - 2);
+  } else {
+    expect(cardBox?.x ?? 0).toBeGreaterThan(formBox?.x ?? 0);
+  }
+});
+
+test("localized legal pages are complete and linked from the public footer", async ({
+  context,
+  page,
+}) => {
+  await rememberLocale(context, "ar");
+  await page.goto("/ar/privacy-policy");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(page.getByRole("heading", { level: 1, name: "سياسة الخصوصية" }))
+    .toBeVisible();
+  await expect(page.locator(".public-legal-sections > article:not(.public-legal-contact)"))
+    .toHaveCount(10);
+  await expect(page.getByRole("link", { name: "الشروط والأحكام" }))
+    .toHaveAttribute("href", "/ar/terms-and-conditions");
+  await page.getByRole("link", { name: "الشروط والأحكام" }).click();
+  await expect(page).toHaveURL(/\/ar\/terms-and-conditions$/);
+  await expect(page.getByRole("heading", { level: 1, name: "الشروط والأحكام" }))
+    .toBeVisible();
+  await expect(page.locator(".public-legal-sections > article:not(.public-legal-contact)"))
+    .toHaveCount(10);
 });
 
 test("reduced-motion preference removes meaningful public transition motion", async ({

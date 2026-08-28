@@ -22,7 +22,8 @@ const publicRoutes = [
   { path: "/account/setup", heading: "Your Axora access starts here." },
   {
     path: "/privacy",
-    heading: "How Axora handles account and procurement information.",
+    destination: /\/en\/privacy-policy$/,
+    heading: "Privacy Policy",
   },
 ] as const;
 
@@ -34,6 +35,9 @@ test("public account routes expose a main landmark and page heading", async ({
   for (const route of publicRoutes) {
     await test.step(route.path, async () => {
       await page.goto(route.path);
+      if ("destination" in route) {
+        await expect(page).toHaveURL(route.destination);
+      }
       await expect(page.locator("main")).toHaveCount(1);
       const heading = page.getByRole("heading", {
         level: 1,

@@ -56,6 +56,35 @@
 }
 .companySelector label { grid-column: 1 / -1; font-weight: 700; }
 
+.companySearch,
+.companyIndex {
+  padding: 1rem;
+  border: 1px solid var(--wallet-border);
+  border-radius: 1rem;
+  background: var(--wallet-surface);
+}
+.companySearch { display: grid; gap: .5rem; }
+.companySearch label { font-weight: 750; }
+.companySearch > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .65rem; }
+.companySearch input,
+.companySearch button {
+  min-height: 44px;
+  border: 1px solid var(--wallet-border);
+  border-radius: .7rem;
+}
+.companySearch input { min-width: 0; padding: .65rem .75rem; color: var(--wallet-text); background: var(--wallet-surface); }
+.companySearch button { padding: .65rem 1rem; color: var(--axora-brand-foreground); background: var(--wallet-primary); font-weight: 800; }
+.companySearch :focus-visible,
+.companyIndex a:focus-visible { outline: 3px solid var(--axora-focus); outline-offset: 2px; }
+.companyTableWrap { overflow-x: auto; }
+.companyTableWrap table { width: 100%; border-collapse: collapse; }
+.companyTableWrap th,
+.companyTableWrap td { padding: .9rem 1rem; border-block-end: 1px solid var(--wallet-border); text-align: start; }
+.companyTableWrap th { color: var(--wallet-muted); background: var(--wallet-muted-surface); font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; }
+.companyTableWrap td { font-size: .9rem; }
+.companyTableWrap td:last-child { text-align: end; }
+.companyTableWrap a { min-height: 44px; padding: .55rem .8rem; display: inline-flex; align-items: center; justify-content: center; color: var(--axora-brand-foreground); background: var(--wallet-primary); border-radius: .65rem; font-weight: 800; }
+
 .companySelector select,
 .companySelector button,
 .financeForm input,
@@ -154,6 +183,16 @@
   .inlineRecordForm { grid-template-columns: 1fr; }
   .companySelector label { grid-column: auto; }
   .balanceCard > strong { width: 100%; overflow-wrap: anywhere; }
+  .companySearch > div { grid-template-columns: 1fr; }
+  .companyTableWrap { overflow: visible; }
+  .companyTableWrap thead { display: none; }
+  .companyTableWrap tbody { display: grid; gap: .8rem; }
+  .companyTableWrap tr { padding: .8rem; display: grid; gap: .65rem; border: 1px solid var(--wallet-border); border-radius: .8rem; }
+  .companyTableWrap td { padding: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border: 0; text-align: end; }
+  .companyTableWrap td::before { content: attr(data-label); color: var(--wallet-muted); font-size: .75rem; font-weight: 800; text-align: start; }
+  .companyTableWrap td:last-child { justify-content: stretch; }
+  .companyTableWrap td:last-child::before { display: none; }
+  .companyTableWrap a { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

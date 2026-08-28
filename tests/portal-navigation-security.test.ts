@@ -113,6 +113,7 @@ describe("role-specific portal navigation boundaries", () => {
     ]);
     expect(shell).toContain('href="/profile"');
     expect(shell).toContain('href="/account"');
+    expect(shell).not.toContain('href="/settings"');
     expect(profilePage).toContain("await requireAccountLifecycleSession()");
     expect(accountPage).toContain("await requireAccountLifecycleSession()");
     expect(profileActions).toContain("landingPathForSession(actor)");

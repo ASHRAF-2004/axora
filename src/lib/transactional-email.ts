@@ -65,9 +65,9 @@ export interface TransactionalEmailOutboxJob {
   contact?: {
     name: string;
     email?: string;
-    company: string;
+    company?: string;
     phone?: string;
-    subject: string;
+    subject?: string;
     message: string;
     submittedAt: string;
   };
@@ -645,9 +645,13 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
           contact: {
             name: String(row.contactName),
             ...(contactEmail ? { email: contactEmail } : {}),
-            company: String(row.companyName),
+            ...(typeof row.companyName === "string" && row.companyName.trim()
+              ? { company: row.companyName }
+              : {}),
             ...(row.phone ? { phone: row.phone } : {}),
-            subject: String(row.subject),
+            ...(typeof row.subject === "string" && row.subject.trim()
+              ? { subject: row.subject }
+              : {}),
             message: String(row.message),
             submittedAt: String(row.submittedAt),
           },

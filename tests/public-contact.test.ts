@@ -41,17 +41,9 @@ function validInput(overrides: Partial<PublicContactSubmissionInput> = {}): Publ
   return {
     locale: "en",
     idempotencyToken: "52000000-0000-4000-8000-000000000003",
-    contactName: "Aisha Rahman",
-    companyName: "Example Industries",
-    companyLegalName: "Example Industries Sdn Bhd",
-    city: "Shah Alam",
-    industry: "Manufacturing",
-    employeeRange: "51_200",
-    branchRange: "2_5",
-    spendRange: "50K_250K",
-    contactMethod: "EMAIL",
-    contactTimezone: "Asia/Kuala_Lumpur",
-    subject: "Procurement workflow",
+    fullName: "Aisha Rahman",
+    email: "aisha@example.test",
+    phone: "+60123456789",
     message: "We would like to discuss a controlled purchasing rollout.",
     campaign: { source: "meeting", campaign: "august-2026" },
     privacyAccepted: true,
@@ -80,16 +72,17 @@ describe("validated public contact intake", () => {
   it("normalizes the complete form and stores only keyed abuse fingerprints", async () => {
     const rawNetwork = "203.0.113.41";
     const result = await submitPublicContact(validInput({
-      contactName: "  Aisha   Rahman  ",
-      companyName: "  Example   Industries ",
+      fullName: "  Aisha   Rahman  ",
+      email: "  AISHA@example.test ",
     }), turnstile, rawNetwork);
 
     expect(result).toEqual({ submissionId: ids.submission });
     const payload = mocks.recordPublicContactSubmission.mock.calls[0]?.[1];
     expect(payload).toMatchObject({
-      contactName: "Aisha Rahman",
-      companyName: "Example Industries",
-      privacyPolicyVersion: "public-enquiry-2026-08-08",
+      fullName: "Aisha Rahman",
+      email: "aisha@example.test",
+      phone: "+60123456789",
+      privacyPolicyVersion: "privacy-policy-2026-08-28",
       sourcePage: "/en/contact",
       sourceMetadata: { source: "meeting", campaign: "august-2026" },
     });
@@ -97,8 +90,9 @@ describe("validated public contact intake", () => {
     expect(payload.senderRateKey).toMatch(/^[0-9a-f]{64}$/);
     expect(payload.idempotencyKey).toMatch(/^[0-9a-f]{64}$/);
     for (const removedField of [
-      "registrationNumber", "contactEmail", "phoneCountryCode", "phone",
-      "country", "region", "contactTime",
+      "companyName", "companyLegalName", "city", "industry",
+      "employeeRange", "branchRange", "spendRange", "contactMethod",
+      "contactTimezone", "subject",
     ]) {
       expect(payload).not.toHaveProperty(removedField);
     }
@@ -136,12 +130,15 @@ describe("validated public contact intake", () => {
     expect(mocks.withAuditTransaction).not.toHaveBeenCalled();
   });
 
-  it("rejects invalid timezone, control characters, and overlong fields", async () => {
+  it("rejects invalid email, phone, control characters, and overlong fields", async () => {
     await expect(submitPublicContact(validInput({
-      contactTimezone: "Not/A_Timezone",
+      email: "invalid-email",
     }), turnstile, "203.0.113.41")).rejects.toThrow();
     await expect(submitPublicContact(validInput({
-      subject: "Procurement\nBcc: attacker@example.test",
+      phone: "+60 +60 123456789",
+    }), turnstile, "203.0.113.41")).rejects.toThrow();
+    await expect(submitPublicContact(validInput({
+      fullName: "Aisha\nBcc: attacker@example.test",
     }), turnstile, "203.0.113.41")).rejects.toThrow();
     await expect(submitPublicContact(validInput({
       message: "x".repeat(5_001),
@@ -152,10 +149,10 @@ describe("validated public contact intake", () => {
   it("rejects legacy contact fields instead of silently persisting them", async () => {
     await expect(submitPublicContact({
       ...validInput(),
-      contactEmail: "legacy@example.test",
+      companyName: "Legacy Company",
+      companyLegalName: "Legacy Company Sdn Bhd",
       registrationNumber: "MY-LEGACY",
       phoneCountryCode: "+60",
-      phone: "123456789",
       country: "Malaysia",
       region: "Selangor",
       contactTime: "Weekday mornings",
@@ -191,11 +188,15 @@ describe("public contact surfaces", () => {
       source("src/app/(portal)/companies/[companyId]/onboarding/actions.ts"),
     ]);
     for (const field of [
-      "registrationNumber", "contactEmail", "phoneCountryCode", "phone",
-      "country", "region", "contactTime",
+      "companyName", "subject", "registrationNumber", "phoneCountryCode",
+      "country", "region", "contactTime", "city",
     ]) {
       expect(page).not.toContain(`name=\"${field}\"`);
       expect(action).not.toContain(`formData.get(\"${field}\")`);
+    }
+    for (const field of ["fullName", "email", "phone", "message"]) {
+      expect(page).toContain(`name=\"${field}\"`);
+      expect(action).toContain(`formData.get(\"${field}\")`);
     }
     expect(leads).toContain('permanentRedirect("/companies")');
     expect(onboardingPage).not.toContain('name="billingContactPhone"');

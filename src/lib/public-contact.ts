@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isDemoMode, withAuditTransaction } from "./db";
+import { requiredPhoneNumberSchema } from "./phone-number";
 import {
   consumePublicRequestRateLimit,
   publicRequestRateKey,
@@ -21,15 +22,6 @@ const optionalSingleLine = (maximum: number) => z.string()
   .refine((value) => !SINGLE_LINE_CONTROL_PATTERN.test(value))
   .transform((value) => value.replace(/\s+/g, " "));
 
-function validIanaTimezone(value: string) {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: value }).format();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const campaignSchema = z.object({
   source: optionalSingleLine(160).optional(),
   medium: optionalSingleLine(160).optional(),
@@ -41,17 +33,9 @@ const campaignSchema = z.object({
 const contactSubmissionSchema = z.object({
   locale: z.enum(["en", "ar", "ms"]),
   idempotencyToken: z.string().uuid(),
-  contactName: singleLine(2, 200),
-  companyName: singleLine(2, 200),
-  companyLegalName: singleLine(2, 300),
-  city: singleLine(2, 160),
-  industry: singleLine(2, 200),
-  employeeRange: z.enum(["1_10", "11_50", "51_200", "201_500", "501_1000", "1001_PLUS"]),
-  branchRange: z.enum(["1", "2_5", "6_20", "21_50", "51_PLUS"]),
-  spendRange: z.enum(["UNDER_10K", "10K_50K", "50K_250K", "250K_1M", "OVER_1M", "UNDISCLOSED"]),
-  contactMethod: z.enum(["EMAIL", "PHONE", "WHATSAPP", "VIDEO_CALL"]),
-  contactTimezone: singleLine(1, 80).refine(validIanaTimezone),
-  subject: singleLine(3, 200),
+  fullName: singleLine(2, 200),
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+  phone: requiredPhoneNumberSchema,
   message: z.string().trim().min(10).max(5_000)
     .refine((value) => !MULTILINE_CONTROL_PATTERN.test(value)),
   campaign: campaignSchema,
@@ -123,7 +107,7 @@ export async function submitPublicContact(
   const networkRateKey = publicRequestRateKey("network", networkIdentifier);
   const senderRateKey = publicRequestRateKey(
     "identifier",
-    `${parsed.contactName}:${parsed.companyName}`.toLowerCase(),
+    parsed.email,
   );
   const idempotencyKey = publicRequestRateKey(
     "identifier",
@@ -134,7 +118,7 @@ export async function submitPublicContact(
   );
 
   return withAuditTransaction(
-    { reason: "Public company enquiry received" },
+    { reason: "Public contact enquiry received" },
     async (client) => {
       await consumePublicRequestRateLimit(client, "CONTACT", [
         { kind: "NETWORK", hash: networkRateKey, hourlyLimit: 6 },
@@ -143,19 +127,11 @@ export async function submitPublicContact(
       const mutation = await recordPublicContactSubmission(client, {
         idempotencyKey,
         locale: parsed.locale,
-        contactName: parsed.contactName,
-        companyName: parsed.companyName,
-        companyLegalName: parsed.companyLegalName,
-        city: parsed.city,
-        industry: parsed.industry,
-        employeeRange: parsed.employeeRange,
-        branchRange: parsed.branchRange,
-        spendRange: parsed.spendRange,
-        contactMethod: parsed.contactMethod,
-        contactTimezone: parsed.contactTimezone,
-        subject: parsed.subject,
+        fullName: parsed.fullName,
+        email: parsed.email,
+        phone: parsed.phone,
         message: parsed.message,
-        privacyPolicyVersion: "public-enquiry-2026-08-08",
+        privacyPolicyVersion: "privacy-policy-2026-08-28",
         sourcePage: `/${parsed.locale}/contact`,
         sourceMetadata,
         networkRateKey,
@@ -172,5 +148,4 @@ export const publicContactInternals = {
   contactSubmissionSchema,
   expectedTurnstileHostname,
   validateTurnstileResult,
-  validIanaTimezone,
 };
