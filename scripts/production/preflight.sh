@@ -268,6 +268,22 @@ node -e '
 ' "$integration_key_path" \
   || die "The dedicated integration encryption key is malformed."
 
+integration_worker_password_path="$AXORA_SECRETS_DIR/axora_integration_worker_password"
+[[ -f "$integration_worker_password_path" && ! -L "$integration_worker_password_path" \
+  && -s "$integration_worker_password_path" ]] \
+  || die "The integration-worker database password is missing or unsafe."
+integration_worker_password_mode="$(stat -c '%a' "$integration_worker_password_path")"
+[[ "$(stat -c '%u:%g' "$integration_worker_password_path")" == "0:1000" ]] \
+  || die "The integration-worker database password must be owned by root:GID-1000."
+(( (8#$integration_worker_password_mode & 8#027) == 0 )) \
+  || die "The integration-worker database password permissions are too broad."
+node -e '
+  const fs=require("node:fs");
+  const value=fs.readFileSync(process.argv[1],"utf8").trim();
+  if(!/^[A-Za-z0-9_-]{43,512}$/.test(value)) process.exit(1);
+' "$integration_worker_password_path" \
+  || die "The integration-worker database password is malformed."
+
 [[ -f "$AXORA_REGISTRY_TOKEN_FILE" && ! -L "$AXORA_REGISTRY_TOKEN_FILE" \
   && -s "$AXORA_REGISTRY_TOKEN_FILE" ]] \
   || die "GHCR token must be a non-empty regular non-symlink file: $AXORA_REGISTRY_TOKEN_FILE"

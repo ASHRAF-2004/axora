@@ -446,7 +446,13 @@ describe.sequential("migration 128 external integration security boundary", () =
           WHERE dag.table_name=rule.table_name
         ) AS "inDag"
       FROM company_deletion_ownership_rules rule
-      WHERE rule.table_name LIKE 'integration_%'
+      WHERE rule.table_name IN (
+        'integration_api_audit','integration_api_idempotency',
+        'integration_connections','integration_oauth_access_tokens',
+        'integration_oauth_authorization_codes',
+        'integration_oauth_authorization_requests','integration_oauth_grants',
+        'integration_oauth_refresh_families','integration_request_drafts'
+      )
         AND EXISTS (
           SELECT 1 FROM information_schema.columns column_record
           WHERE column_record.table_schema='public'

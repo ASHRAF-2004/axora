@@ -1371,6 +1371,36 @@
       "authentication": "authenticated",
       "scope": "tenant-filtered",
       "mode": "stream"
+    },
+    {
+      "route": "/api/v1/webhook-deliveries/[id]/retry",
+      "authentication": "oauth-bearer",
+      "scope": "connection-company-webhooks",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/v1/webhook-deliveries",
+      "authentication": "oauth-bearer",
+      "scope": "connection-company-webhooks",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/webhook-subscriptions/[id]/rotate-secret",
+      "authentication": "oauth-bearer",
+      "scope": "connection-company-webhooks",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/v1/webhook-subscriptions/[id]",
+      "authentication": "oauth-bearer",
+      "scope": "connection-company-webhooks",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/v1/webhook-subscriptions",
+      "authentication": "oauth-bearer",
+      "scope": "connection-company-webhooks",
+      "mode": "mixed"
     }
   ]
 }

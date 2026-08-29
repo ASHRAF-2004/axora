@@ -35,7 +35,11 @@ import {
   parseExternalPagination,
   paginationInternals,
 } from "../src/lib/integrations/pagination";
-import { parseFormUrlEncoded, requestOriginIsSame } from "../src/lib/integrations/request";
+import {
+  parseFormUrlEncoded,
+  readLimitedTextBody,
+  requestOriginIsSame,
+} from "../src/lib/integrations/request";
 import { ExternalApiProblem } from "../src/lib/integrations/api-handler";
 import { parseExternalDraft } from "../src/lib/integrations/resources";
 import {
@@ -121,6 +125,10 @@ describe("external integration security primitives", () => {
       ...encrypted,
       ciphertext: `${encrypted.ciphertext.slice(0, -1)}A`,
     })).toThrow();
+    expect(() => decryptIntegrationValue("slack-token", {
+      ...encrypted,
+      tag: encrypted.tag.slice(0, -1),
+    })).toThrow(/ciphertext/i);
   });
 
   it("binds pagination cursors to route and company and rejects query manipulation", () => {
@@ -331,6 +339,10 @@ describe("external integration security primitives", () => {
       }
     };
     visit(document.components.schemas);
+    const references = [...contractTextReferences(document)];
+    for (const reference of references) {
+      expect(document.components.schemas[reference], reference).toBeDefined();
+    }
     for (const forbidden of [
       "supplier_cost",
       "buying_cost",
@@ -349,6 +361,19 @@ describe("external integration security primitives", () => {
       "users:write",
       '"admin"',
     ]) expect(contractText).not.toContain(forbiddenScope);
+  });
+
+  it("stops reading integration request bodies at the declared bound",async()=>{
+    const body=new ReadableStream<Uint8Array>({
+      start(controller){
+        controller.enqueue(new Uint8Array(65));
+        controller.close();
+      },
+    });
+    const request=new Request("https://axora.management/oauth/token",{
+      method:"POST",body,duplex:"half",
+    } as RequestInit&{duplex:"half"});
+    await expect(readLimitedTextBody(request,64)).resolves.toBeNull();
   });
 
   it("uses safe correlation IDs, error envelopes, and keyed network identifiers", async () => {
@@ -384,3 +409,18 @@ describe("external integration security primitives", () => {
     )));
   });
 });
+
+function contractTextReferences(document:unknown){
+  const references=new Set<string>();
+  const visit=(value:unknown)=>{
+    if(!value||typeof value!=="object")return;
+    for(const [name,child] of Object.entries(value)){
+      if(name==="$ref"&&typeof child==="string"
+        &&child.startsWith("#/components/schemas/")){
+        references.add(child.slice("#/components/schemas/".length));
+      }else visit(child);
+    }
+  };
+  visit(document);
+  return references;
+}

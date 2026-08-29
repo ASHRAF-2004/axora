@@ -219,6 +219,28 @@ else
   chmod 0640 "$cleanup_worker_password_file"
 fi
 
+# The integration worker receives a database principal that can execute only
+# the projector/delivery capabilities. It never receives the application,
+# cleanup-worker, email, session, Turnstile, or deployment credentials.
+integration_worker_password_file="$SECRETS_DIR/axora_integration_worker_password"
+[[ ! -L "$integration_worker_password_file" ]] \
+  || fail "Integration-worker database password must not be a symlink."
+if [[ ! -e "$integration_worker_password_file" ]]; then
+  integration_worker_password_temporary="$(mktemp "$CONFIG_DIR/.integration-worker-password.XXXXXX")"
+  trap 'rm -f -- "$integration_worker_password_temporary"' EXIT
+  node -e 'process.stdout.write(require("node:crypto").randomBytes(48).toString("base64url"))' \
+    > "$integration_worker_password_temporary"
+  install -o root -g "$RUNTIME_GID" -m 0640 \
+    "$integration_worker_password_temporary" "$integration_worker_password_file"
+  rm -f -- "$integration_worker_password_temporary"
+  trap - EXIT
+else
+  [[ -f "$integration_worker_password_file" && -s "$integration_worker_password_file" ]] \
+    || fail "Integration-worker database password must be a non-empty regular file."
+  chown root:"$RUNTIME_GID" "$integration_worker_password_file"
+  chmod 0640 "$integration_worker_password_file"
+fi
+
 render_environment_record="$LEGACY_SECRETS_DIR/render_env_before_hybrid.json"
 [[ -f "$render_environment_record" && ! -L "$render_environment_record" ]] \
   || fail "Protected Render environment record is missing or is a symlink."

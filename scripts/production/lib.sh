@@ -93,7 +93,7 @@ load_config() {
   : "${AXORA_MIN_FREE_GB:=15}"
   : "${AXORA_MIN_TABLE_COUNT:=15}"
   : "${AXORA_DEPLOY_TIMEOUT_SECONDS:=180}"
-  : "${AXORA_REQUIRED_SECRETS:=postgres_admin_password axora_app_password axora_cleanup_worker_password session_secret tailscale_db_auth_key}"
+  : "${AXORA_REQUIRED_SECRETS:=postgres_admin_password axora_app_password axora_cleanup_worker_password axora_integration_worker_password session_secret tailscale_db_auth_key}"
   : "${AXORA_BACKUP_RETENTION_DAYS:=30}"
   : "${AXORA_RELEASE_RETENTION_COUNT:=5}"
   : "${AXORA_LOG_RETENTION_DAYS:=30}"
@@ -488,6 +488,24 @@ release_has_company_deletion_cleanup_worker() {
   return 1
 }
 
+release_has_integration_worker() {
+  local release="$1"
+  local compose_file
+  local -a files
+
+  [[ -d "$release" && ! -L "$release" ]] || die "Release directory is missing: $release"
+  IFS=':' read -r -a files <<< "$AXORA_COMPOSE_FILES"
+  for compose_file in "${files[@]}"; do
+    [[ "$compose_file" =~ ^[A-Za-z0-9._/-]+$ ]] || die "Unsafe Compose filename: $compose_file"
+    [[ -f "$release/$compose_file" && ! -L "$release/$compose_file" ]] \
+      || die "Compose file is missing or unsafe: $compose_file"
+    if grep -Eq '^  integration-worker:[[:space:]]*(#.*)?$' "$release/$compose_file"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 find_service_container() {
   local service="$1"
   local -a matches
@@ -604,6 +622,30 @@ remove_company_deletion_cleanup_worker_if_release_lacks_it() {
   local release="$1"
   if ! release_has_company_deletion_cleanup_worker "$release"; then
     remove_ephemeral_company_deletion_cleanup_worker
+  fi
+}
+
+remove_ephemeral_integration_worker() {
+  local -a matches
+
+  mapfile -t matches < <(
+    docker ps --all \
+      --filter "label=com.docker.compose.project=$AXORA_COMPOSE_PROJECT" \
+      --filter "label=com.docker.compose.service=integration-worker" \
+      --format '{{.ID}}'
+  )
+  (( "${#matches[@]}" <= 1 )) \
+    || die "Expected at most one Axora integration-worker container."
+  if (( "${#matches[@]}" == 1 )); then
+    log "Removing the obsolete ephemeral integration worker; no volumes are removed."
+    docker rm --force "${matches[0]}" >/dev/null
+  fi
+}
+
+remove_integration_worker_if_release_lacks_it() {
+  local release="$1"
+  if ! release_has_integration_worker "$release"; then
+    remove_ephemeral_integration_worker
   fi
 }
 

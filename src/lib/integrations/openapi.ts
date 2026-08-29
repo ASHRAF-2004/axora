@@ -12,6 +12,12 @@ export const EXTERNAL_API_ROUTE_CONTRACT = [
   { method:"get",path:"/api/v1/invoices",scope:"invoices:read",operationId:"listInvoices" },
   { method:"get",path:"/api/v1/invoices/{id}",scope:"invoices:read",operationId:"getInvoice" },
   { method:"post",path:"/api/v1/request-drafts",scope:"requests:draft",operationId:"createRequestDraft" },
+  { method:"get",path:"/api/v1/webhook-subscriptions",scope:"webhooks:manage",operationId:"listWebhookSubscriptions" },
+  { method:"post",path:"/api/v1/webhook-subscriptions",scope:"webhooks:manage",operationId:"createWebhookSubscription" },
+  { method:"delete",path:"/api/v1/webhook-subscriptions/{id}",scope:"webhooks:manage",operationId:"revokeWebhookSubscription" },
+  { method:"post",path:"/api/v1/webhook-subscriptions/{id}/rotate-secret",scope:"webhooks:manage",operationId:"rotateWebhookSecret" },
+  { method:"get",path:"/api/v1/webhook-deliveries",scope:"webhooks:manage",operationId:"listWebhookDeliveries" },
+  { method:"post",path:"/api/v1/webhook-deliveries/{id}/retry",scope:"webhooks:manage",operationId:"retryWebhookDelivery" },
 ] as const;
 
 const errorResponse = {
@@ -40,6 +46,12 @@ const idParameter = [{
   name:"id",in:"path",required:true,schema:{type:"string",format:"uuid"},
   description:"Resource UUID. Missing and unauthorized resources use the same not-found response.",
 }];
+
+const idempotencyParameter = {
+  name:"Idempotency-Key",in:"header",required:true,
+  schema:{type:"string",minLength:8,maxLength:128,pattern:"^[A-Za-z0-9._~:-]+$"},
+  description:"Retry key scoped to the authenticated company connection and command, including across grant rotation. Reuse with a different payload or resource returns conflict.",
+};
 
 function success(schema: Record<string,unknown>,description="Successful response.") {
   return {
@@ -108,9 +120,41 @@ export function buildAxoraOpenApiDocument() {
         tags:["Requests"],operationId:"createRequestDraft",summary:"Create a review-required request draft",
         description:"Creates isolated staging data only. It does not submit or approve a request, reserve/spend budget, debit a Wallet, create a payment/invoice, or create a delivery. An authorized Axora requester must import into an empty cart, review current pricing and budget, and submit through Axora. Company Administrator direct purchase is never used for this action.",
         security:[{oauth2:["requests:draft"]}],
-        parameters:[{name:"Idempotency-Key",in:"header",required:true,schema:{type:"string",minLength:8,maxLength:128,pattern:"^[A-Za-z0-9._~:-]+$"},description:"Retry key scoped to the authenticated company connection and command, including across grant rotation. Reuse with a different payload returns conflict."}],
+        parameters:[idempotencyParameter],
         requestBody:{required:true,content:{"application/json":{schema:{$ref:"#/components/schemas/RequestDraftInput"}}}},
         responses:{"201":success({$ref:"#/components/schemas/RequestDraft"},"Draft created or safely replayed."),"409":errorResponse,...commonResponses},
+      }},
+      "/api/v1/webhook-subscriptions":{
+        get:{tags:["Webhooks"],...listOperation({operationId:"listWebhookSubscriptions",summary:"List this connection's webhook subscriptions",scope:"webhooks:manage",schema:"WebhookSubscription"})},
+        post:{
+          tags:["Webhooks"],operationId:"createWebhookSubscription",
+          summary:"Create a signed webhook subscription",
+          description:"Available only when the independently deployed webhook capability is enabled. Destinations require HTTPS on port 443, are resolved and checked against private/reserved address space, are encrypted at rest, and are revalidated before every delivery. The signing secret is returned only for the idempotent creation transaction and is never logged. Each company connection is limited to 25 non-revoked subscriptions.",
+          security:[{oauth2:["webhooks:manage"]}],parameters:[idempotencyParameter],
+          requestBody:{required:true,content:{"application/json":{schema:{$ref:"#/components/schemas/WebhookSubscriptionInput"}}}},
+          responses:{"201":success({$ref:"#/components/schemas/WebhookSubscriptionCredential"},"Subscription created or safely replayed."),"409":errorResponse,...commonResponses},
+        },
+      },
+      "/api/v1/webhook-subscriptions/{id}":{delete:{
+        tags:["Webhooks"],operationId:"revokeWebhookSubscription",
+        summary:"Revoke a webhook subscription",security:[{oauth2:["webhooks:manage"]}],
+        parameters:[...idParameter,idempotencyParameter],
+        responses:{"200":success({$ref:"#/components/schemas/WebhookSubscriptionMutation"}),"409":errorResponse,...commonResponses},
+      }},
+      "/api/v1/webhook-subscriptions/{id}/rotate-secret":{post:{
+        tags:["Webhooks"],operationId:"rotateWebhookSecret",
+        summary:"Rotate and reauthorize a webhook signing secret",
+        description:"Re-evaluates the current user and company authorization and activates a permission-paused subscription. An encrypted previous credential is retained for bounded in-flight transition cleanup and is never returned by a later unrelated request.",
+        security:[{oauth2:["webhooks:manage"]}],parameters:[...idParameter,idempotencyParameter],
+        responses:{"200":success({$ref:"#/components/schemas/WebhookSecretRotation"}),"409":errorResponse,...commonResponses},
+      }},
+      "/api/v1/webhook-deliveries":{get:{tags:["Webhooks"],...listOperation({operationId:"listWebhookDeliveries",summary:"List safe webhook delivery status",scope:"webhooks:manage",schema:"WebhookDelivery"})}},
+      "/api/v1/webhook-deliveries/{id}/retry":{post:{
+        tags:["Webhooks"],operationId:"retryWebhookDelivery",
+        summary:"Manually retry a dead webhook delivery",
+        description:"Reuses the same stable event ID and delivery record. At most three manual retry cycles are allowed.",
+        security:[{oauth2:["webhooks:manage"]}],parameters:[...idParameter,idempotencyParameter],
+        responses:{"200":success({$ref:"#/components/schemas/WebhookRetryResult"}),"409":errorResponse,...commonResponses},
       }},
     },
     components:{
@@ -129,6 +173,15 @@ export function buildAxoraOpenApiDocument() {
         Invoice:{type:"object",description:"Customer-direction invoice only; supplier cost and margin are excluded.",required:["id","company_id","invoice_number","resource_url"],properties:{id:{type:"string",format:"uuid"},company_id:{type:"string",format:"uuid"},invoice_number:{type:"string"},resource_url:{type:"string"}},additionalProperties:true},
         RequestDraftInput:{type:"object",additionalProperties:false,required:["branch_id","needed_by_date","urgency","items"],properties:{branch_id:{type:"string",format:"uuid"},request_type:{type:"string",const:"Standard",default:"Standard"},department:{type:"string",minLength:2,maxLength:160,description:"Non-authoritative external reference shown during review. Axora resolves the real department from the reviewing user's live scope."},needed_by_date:{type:"string",format:"date"},urgency:{type:"string",enum:["Low","Normal","High","Urgent"]},notes:{type:"string",maxLength:2000},items:{type:"array",minItems:1,maxItems:100,items:{type:"object",additionalProperties:false,required:["product_reference","quantity"],properties:{product_reference:{type:"string",pattern:"^item-[a-f0-9]{20}$"},quantity:{type:"integer",minimum:1,maximum:1000000},specification:{type:"string",maxLength:1000}}}}}},
         RequestDraft:{type:"object",required:["id","draft_code","status","review_url"],properties:{id:{type:"string",format:"uuid"},draft_code:{type:"string"},status:{type:"string",const:"pending_review"},review_url:{type:"string"}},additionalProperties:true},
+        WebhookEventType:{type:"string",enum:["company.created","request.created","request.submitted","request.approved","request.rejected","invoice.finalized","delivery.out_for_delivery","delivery.arrived","delivery.delivered","delivery.completed"]},
+        WebhookSubscriptionInput:{type:"object",additionalProperties:false,required:["endpoint_url","event_types"],properties:{endpoint_url:{type:"string",format:"uri",maxLength:2048,description:"HTTPS port 443 only. Credentials, fragments, localhost, internal names, and non-public addresses are rejected."},event_types:{type:"array",minItems:1,maxItems:10,uniqueItems:true,items:{$ref:"#/components/schemas/WebhookEventType"}}}},
+        WebhookSubscription:{type:"object",required:["id","connection_id","company_id","endpoint_origin","event_types","status"],properties:{id:{type:"string",format:"uuid"},connection_id:{type:"string",format:"uuid"},company_id:{type:"string",format:"uuid"},endpoint_origin:{type:"string",format:"uri",description:"Safe origin only; encrypted path and query are never returned."},event_types:{type:"array",items:{$ref:"#/components/schemas/WebhookEventType"}},status:{type:"string",enum:["active","paused","revoked"]},credential_version:{type:"integer"}},additionalProperties:true},
+        WebhookSubscriptionCredential:{allOf:[{$ref:"#/components/schemas/WebhookSubscription"},{type:"object",required:["credential_version","credential_available"],properties:{credential_version:{type:"integer"},credential_available:{type:"boolean"},signing_secret:{type:"string",readOnly:true,description:"Shown only for the same idempotent create transaction while its active credential version still matches; never log or persist it outside a secret store."}}}]},
+        WebhookSubscriptionMutation:{type:"object",additionalProperties:false,required:["id","status"],properties:{id:{type:"string",format:"uuid"},status:{type:"string",const:"revoked"}}},
+        WebhookSecretRotation:{type:"object",additionalProperties:false,required:["id","status","credential_version","credential_available"],properties:{id:{type:"string",format:"uuid"},status:{type:"string",const:"active"},credential_version:{type:"integer"},credential_available:{type:"boolean"},signing_secret:{type:"string",readOnly:true,description:"Shown only for the same idempotent rotation transaction while the active credential version still matches."}}},
+        WebhookDelivery:{type:"object",required:["id","event_id","subscription_id","company_id","event_type","status","attempt_count"],properties:{id:{type:"string",format:"uuid"},event_id:{type:"string",format:"uuid"},subscription_id:{type:"string",format:"uuid"},company_id:{type:"string",format:"uuid"},event_type:{$ref:"#/components/schemas/WebhookEventType"},status:{type:"string",enum:["pending","delivering","succeeded","retry","failed","dead"]},attempt_count:{type:"integer"},error_category:{type:["string","null"],description:"Safe category only; response bodies are never stored."}},additionalProperties:true},
+        WebhookRetryResult:{type:"object",additionalProperties:false,required:["id","event_id","status"],properties:{id:{type:"string",format:"uuid"},event_id:{type:"string",format:"uuid"},status:{type:"string",const:"retry"}}},
+        WebhookEnvelope:{type:"object",additionalProperties:false,required:["event_id","event_type","schema_version","occurred_at","company_id","resource_id","resource_type","resource_url","data"],properties:{event_id:{type:"string",format:"uuid"},event_type:{$ref:"#/components/schemas/WebhookEventType"},schema_version:{type:"integer",const:1},occurred_at:{type:"string",format:"date-time"},company_id:{type:"string",format:"uuid"},resource_id:{type:"string",format:"uuid"},resource_type:{type:"string",enum:["company","request","invoice","delivery"]},resource_url:{type:"string"},data:{type:"object",description:"Small customer-safe summary. Fetch current authorized detail from the API."}}},
       },
     },
     externalDocs:{description:"Axora integration security and operational documentation",url:`${origin}/api/v1/openapi.json`},

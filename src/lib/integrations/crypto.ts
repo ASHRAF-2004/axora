@@ -18,7 +18,8 @@ export type IntegrationSecretDomain =
   | "idempotency-key"
   | "rate-limit"
   | "network"
-  | "cursor";
+  | "cursor"
+  | "webhook-endpoint";
 
 export function opaqueIntegrationSecret(prefix: string, bytes = 32) {
   if (!/^[a-z][a-z0-9_]{1,20}_$/.test(prefix)) {
@@ -109,7 +110,12 @@ export function decryptIntegrationValue(
   purpose: string,
   value: EncryptedIntegrationValue,
 ) {
-  if (value.version !== 1) throw new Error("Unsupported integration ciphertext.");
+  if (!value || value.version !== 1
+    || !/^[A-Za-z0-9_-]{16}$/.test(value.nonce)
+    || !/^[A-Za-z0-9_-]{1,4096}$/.test(value.ciphertext)
+    || !/^[A-Za-z0-9_-]{22}$/.test(value.tag)) {
+    throw new Error("Unsupported integration ciphertext.");
+  }
   const decipher = createDecipheriv(
     "aes-256-gcm",
     encryptionKey(purpose),

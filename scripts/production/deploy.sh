@@ -155,6 +155,72 @@ ensure_company_deletion_cleanup_worker_for_release() {
     || die "Production company deletion cleanup worker is not healthy (status: $health)."
 }
 
+reconcile_integration_worker_database_boundary() {
+  local release="$1" db_container migration_state migration_secret migration_secret_path
+  db_container="$(find_service_container db)" \
+    || die "PostgreSQL is unavailable for integration-worker reconciliation."
+  migration_state="$(
+    "$SCRIPT_DIR/migration-status.sh" "$release" "$db_container" "$AXORA_DATABASE_NAME"
+  )"
+  [[ "$migration_state" == "none" ]] \
+    || die "Integration-worker reconciliation refuses a release with pending migrations."
+  for migration_secret in \
+    postgres_admin_password \
+    axora_cleanup_worker_password \
+    axora_integration_worker_password; do
+    migration_secret_path="$AXORA_SECRETS_DIR/$migration_secret"
+    [[ -f "$migration_secret_path" && ! -L "$migration_secret_path" \
+      && -s "$migration_secret_path" ]] \
+      || die "Required integration reconciliation secret is missing or unsafe: $migration_secret"
+  done
+  log "Reconciling the integration worker's exact-release database boundary."
+  docker run \
+    --rm \
+    --label "axora.deployment.integration-reconciliation=true" \
+    --network "$AXORA_BACKEND_NETWORK" \
+    --group-add 1000 \
+    --cpus 1 \
+    --memory 512m \
+    --pids-limit 64 \
+    --env POSTGRES_USER=postgres \
+    --env "POSTGRES_DB=$AXORA_DATABASE_NAME" \
+    --env PGHOST=db \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_cleanup_worker_password,target=/run/secrets/axora_cleanup_worker_password,readonly" \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_integration_worker_password,target=/run/secrets/axora_integration_worker_password,readonly" \
+    --mount "type=bind,source=$release/database/init,target=/database/init,readonly" \
+    --mount "type=bind,source=$release/database/admin,target=/database/admin,readonly" \
+    --mount "type=bind,source=$release/database/migrations,target=/migrations,readonly" \
+    --entrypoint /bin/sh \
+    "$AXORA_POSTGRES_IMAGE" \
+    /database/init/01-run-migration.sh
+}
+
+ensure_integration_worker_for_release() {
+  local release="$1" expected_image="$2" expected_image_id="$3"
+  local container health
+  if ! release_has_integration_worker "$release"; then
+    remove_integration_worker_if_release_lacks_it "$release"
+    return
+  fi
+  if ! container="$(find_service_container integration-worker)"; then
+    [[ "$(docker image inspect --format '{{.Id}}' "$expected_image")" == "$expected_image_id" ]] \
+      || die "Recorded application image no longer resolves to its recorded content digest."
+    reconcile_integration_worker_database_boundary "$release"
+    log "Production integration worker is missing; reconciling only that ephemeral service."
+    export AXORA_IMAGE="$expected_image"
+    compose_release "$release" up -d --no-deps --no-build --wait \
+      --wait-timeout "$AXORA_DEPLOY_TIMEOUT_SECONDS" integration-worker
+    container="$(find_service_container integration-worker)" \
+      || die "Expected one running integration worker after reconciliation."
+  fi
+  [[ "$(docker inspect --format '{{.Image}}' "$container")" == "$expected_image_id" ]] \
+    || die "Running integration worker image differs from the recorded content digest."
+  health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container")"
+  [[ "$health" == "healthy" ]] \
+    || die "Production integration worker is not healthy (status: $health)."
+}
+
 automatic_revert() {
   if ! "$swapped" || ! valid_image_reference "$old_image" || [[ ! -d "$old_release" ]]; then
     return
@@ -178,6 +244,11 @@ automatic_revert() {
   else
     remove_ephemeral_company_deletion_cleanup_worker
   fi
+  if release_has_integration_worker "$old_release"; then
+    services+=(integration-worker)
+  else
+    remove_ephemeral_integration_worker
+  fi
   if release_has_email_sender "$old_release"; then
     services+=(email-sender)
   fi
@@ -192,6 +263,7 @@ automatic_revert() {
       remove_budget_worker_if_release_lacks_it "$old_release"
       remove_document_worker_if_release_lacks_it "$old_release"
       remove_company_deletion_cleanup_worker_if_release_lacks_it "$old_release"
+      remove_integration_worker_if_release_lacks_it "$old_release"
     else
       warn "The automatic app-only rollback also failed its local health gate."
     fi
@@ -242,6 +314,7 @@ if [[ "$current_sha" == "$target_sha" ]]; then
   ensure_budget_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
   ensure_document_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
   ensure_company_deletion_cleanup_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
+  ensure_integration_worker_for_release "$release" "$recorded_image" "$recorded_image_id"
   log "Commit $target_sha is already deployed; running health gates only."
   "$SCRIPT_DIR/health-check.sh" --local
   if bool_is_true "$AXORA_REQUIRE_EXTERNAL"; then
@@ -333,7 +406,7 @@ if [[ "$pending_migrations" == "required" ]]; then
   "$SCRIPT_DIR/backup.sh" --commit "$target_sha"
 
   log "Applying pending transactional migrations from the exact release."
-  for migration_secret in postgres_admin_password axora_cleanup_worker_password; do
+  for migration_secret in postgres_admin_password axora_cleanup_worker_password axora_integration_worker_password; do
     migration_secret_path="$AXORA_SECRETS_DIR/$migration_secret"
     [[ -f "$migration_secret_path" && ! -L "$migration_secret_path" && -s "$migration_secret_path" ]] \
       || die "Required migration secret is missing or unsafe: $migration_secret"
@@ -351,7 +424,9 @@ if [[ "$pending_migrations" == "required" ]]; then
     --env PGHOST=db \
     --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
     --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_cleanup_worker_password,target=/run/secrets/axora_cleanup_worker_password,readonly" \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_integration_worker_password,target=/run/secrets/axora_integration_worker_password,readonly" \
     --mount "type=bind,source=$release/database/init,target=/database/init,readonly" \
+    --mount "type=bind,source=$release/database/admin,target=/database/admin,readonly" \
     --mount "type=bind,source=$release/database/migrations,target=/migrations,readonly" \
     --entrypoint /bin/sh \
     "$AXORA_POSTGRES_IMAGE" \
@@ -400,7 +475,7 @@ if [[ "$deployment_mode" == "bootstrap" ]]; then
   fi
 fi
 
-services=(app budget-worker document-worker company-deletion-cleanup-worker email-sender caddy)
+services=(app budget-worker document-worker company-deletion-cleanup-worker integration-worker email-sender caddy)
 if bool_is_true "$AXORA_ENABLE_TUNNEL"; then
   services+=(cloudflared)
 fi

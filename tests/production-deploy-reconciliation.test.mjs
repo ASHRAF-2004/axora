@@ -29,6 +29,7 @@ describe("production deployment reconciliation", () => {
 
     expect(requiredSecrets).toEqual([
       "/run/secrets/axora_cleanup_worker_password",
+      "/run/secrets/axora_integration_worker_password",
       "/run/secrets/postgres_admin_password",
     ]);
     expect(mounts.map(({ target }) => target).sort()).toEqual(requiredSecrets);
@@ -111,6 +112,32 @@ describe("production deployment reconciliation", () => {
     expect(documentReconciliation).not.toMatch(/\bdown\b|--remove-orphans|docker volume|\s-v(?:\s|$)/);
     expect(sameRevision).toContain(
       'ensure_document_worker_for_release "$release" "$recorded_image" "$recorded_image_id"',
+    );
+    const integrationFunctionStart = deploy.indexOf(
+      "ensure_integration_worker_for_release() {",
+    );
+    const integrationFunctionEnd = deploy.indexOf(
+      "\n}\n\nautomatic_revert()",
+      integrationFunctionStart,
+    );
+    expect(integrationFunctionStart).toBeGreaterThan(documentFunctionStart);
+    expect(integrationFunctionEnd).toBeGreaterThan(integrationFunctionStart);
+    const integrationReconciliation=deploy.slice(
+      integrationFunctionStart,integrationFunctionEnd,
+    );
+    expect(integrationReconciliation).toContain(
+      'reconcile_integration_worker_database_boundary "$release"',
+    );
+    expect(integrationReconciliation.indexOf(
+      'reconcile_integration_worker_database_boundary "$release"',
+    )).toBeLessThan(integrationReconciliation.indexOf(
+      'compose_release "$release" up -d --no-deps --no-build --wait',
+    ));
+    expect(integrationReconciliation).not.toMatch(
+      /\bdown\b|--remove-orphans|docker volume|\s-v(?:\s|$)/,
+    );
+    expect(sameRevision).toContain(
+      'ensure_integration_worker_for_release "$release" "$recorded_image" "$recorded_image_id"',
     );
   });
 });

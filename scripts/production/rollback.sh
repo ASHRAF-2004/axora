@@ -76,6 +76,11 @@ if release_has_company_deletion_cleanup_worker "$target_release"; then
 else
   remove_ephemeral_company_deletion_cleanup_worker
 fi
+if release_has_integration_worker "$target_release"; then
+  services+=(integration-worker)
+else
+  remove_ephemeral_integration_worker
+fi
 if release_has_email_sender "$target_release"; then
   services+=(email-sender)
 fi
@@ -99,6 +104,9 @@ if ! compose_release "$target_release" up -d --no-deps --no-build --wait \
   if release_has_company_deletion_cleanup_worker "$current_release"; then
     restore_services+=(company-deletion-cleanup-worker)
   fi
+  if release_has_integration_worker "$current_release"; then
+    restore_services+=(integration-worker)
+  fi
   if release_has_email_sender "$current_release"; then
     restore_services+=(email-sender)
   fi
@@ -112,6 +120,7 @@ if ! compose_release "$target_release" up -d --no-deps --no-build --wait \
     remove_budget_worker_if_release_lacks_it "$current_release"
     remove_document_worker_if_release_lacks_it "$current_release"
     remove_company_deletion_cleanup_worker_if_release_lacks_it "$current_release"
+    remove_integration_worker_if_release_lacks_it "$current_release"
   fi
   "$SCRIPT_DIR/health-check.sh" --local || true
   die "Rollback did not pass its health gates; the original app image was requested again."
@@ -121,6 +130,7 @@ remove_email_sender_if_release_lacks_it "$target_release"
 remove_budget_worker_if_release_lacks_it "$target_release"
 remove_document_worker_if_release_lacks_it "$target_release"
 remove_company_deletion_cleanup_worker_if_release_lacks_it "$target_release"
+remove_integration_worker_if_release_lacks_it "$target_release"
 
 atomic_write "$AXORA_PREVIOUS_SHA_FILE" "${current_sha:-legacy}"
 atomic_write "$AXORA_PREVIOUS_IMAGE_FILE" "$current_image"
