@@ -113,6 +113,14 @@ const routes: Array<{
     },
   },
   {
+    route: "/integrations",
+    expected: {
+      owner: allow("/integrations"), cam: denied,
+      companyAdmin: allow("/integrations"), branchAdmin: denied,
+      requester: denied, delivery: denied,
+    },
+  },
+  {
     route: "/branches",
     expected: {
       owner: allow("/branches"), cam: allow("/branches"),

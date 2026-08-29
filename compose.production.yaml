@@ -231,6 +231,8 @@ secrets:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_cleanup_worker_password"
   session_secret:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/session_secret"
+  axora_integration_encryption_key:
+    file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/axora_integration_encryption_key"
   tailscale_db_auth_key:
     file: "${AXORA_SECRETS_DIR:?Set AXORA_SECRETS_DIR to the production secrets directory}/tailscale_db_auth_key"
   cloudflare_tunnel_token:

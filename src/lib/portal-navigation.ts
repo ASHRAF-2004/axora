@@ -35,6 +35,7 @@ export const DRAWER_NAVIGATION: readonly NavigationDefinition[] = [
   { href: "/budgets", label: "Budgets", description: "Budgets and available balances", permission: "view_budgets", companyOnly: true, group: "administration" },
   { href: "/wallet", label: "Company Wallet", description: "Actual funds, top-ups and immutable wallet evidence", permission: "view_wallet", group: "administration" },
   { href: "/users", label: "Users", description: "People, roles and access", permission: "manage_users", group: "administration" },
+  { href: "/integrations", label: "Integrations", description: "Connected apps and external access", permission: "manage_company_integrations", group: "administration" },
   { href: "/email-operations", label: "Email Status", description: "Service status, usage and failed email retries", ownerOnly: true, group: "administration" },
 ];
 

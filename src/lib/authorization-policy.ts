@@ -636,6 +636,27 @@ export const ADDITIVE_PERMISSION_CATALOG = [
     "label": "Manage email operations",
     "description": "Retry, cancel, suppress, reconcile, and control transactional email delivery.",
     "highRisk": true
+  },
+  {
+    "code": "integration.application.manage",
+    "group": "Integrations",
+    "label": "Manage integration applications",
+    "description": "Register, rotate, deactivate, and inspect platform integration applications.",
+    "highRisk": true
+  },
+  {
+    "code": "integration.connection.manage",
+    "group": "Integrations",
+    "label": "Manage company integrations",
+    "description": "Connect, inspect, and revoke supported integrations for an authorized company.",
+    "highRisk": true
+  },
+  {
+    "code": "integration.operations.view",
+    "group": "Integrations",
+    "label": "View integration operations",
+    "description": "View platform-wide integration security and operational health without exposing credentials.",
+    "highRisk": true
   }
 ] as const;
 
@@ -659,6 +680,7 @@ const GRANULAR_ROLE_DEFAULT_PERMISSIONS: Readonly<Partial<Record<KnownUserRole, 
     "company_user.edit", "company_user.deactivate", "company_user.permission.manage",
     "finance.wallet.view", "finance.wallet.top_up.request",
     "procurement.category_policy.manage", "procurement.direct_purchase",
+    "integration.connection.manage",
   ],
   BRANCH_ADMIN: [
     "company_user.view", "company_user.create", "company_user.invite",
@@ -853,7 +875,10 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "email.operations.manage",
     "audit.view",
     "settings.manage",
-    "system.diagnostics.view"
+    "system.diagnostics.view",
+    "integration.application.manage",
+    "integration.connection.manage",
+    "integration.operations.view"
   ],
   "PLATFORM_OPERATIONS": [
     "dashboard.view",
@@ -946,7 +971,8 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     "report.view",
     "analytics.company.view",
     "audit.view",
-    "settings.manage"
+    "settings.manage",
+    "integration.connection.manage"
   ],
   "BRANCH_ADMIN": [
     "dashboard.view",
@@ -1190,6 +1216,8 @@ const COMPANY_ACCOUNT_FORBIDDEN_EXACT = new Set<PermissionCode>([
   "delivery.manage",
   "finance.manage",
   "finance.wallet.top_up.record",
+  "integration.application.manage",
+  "integration.operations.view",
 ]);
 
 const DELIVERY_ACCOUNT_PERMISSIONS = new Set<PermissionCode>([

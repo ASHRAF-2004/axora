@@ -12,11 +12,20 @@ import { redirect } from "next/navigation";
 import { requestSubmitMessage } from "@/lib/request-submit-i18n";
 import { loadShoppingBranchContexts, resolveShoppingBranch } from "@/lib/shopping-context";
 import { usesCompanyAdministratorDirectPurchase } from "@/lib/company-admin-direct-purchase";
+import {
+  integrationRequestDraftInitialValues,
+  IntegrationDraftReviewError,
+} from "@/lib/integrations/request-drafts";
 
 export default async function NewRequestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ product?: string; branch?: string; notice?: string }>;
+  searchParams: Promise<{
+    product?: string;
+    branch?: string;
+    notice?: string;
+    integrationDraft?: string;
+  }>;
 }) {
   const actor = await requirePagePermission("create_requests");
   const locale = actor.preferredLocale ?? "en";
@@ -26,6 +35,18 @@ export default async function NewRequestPage({
     redirect(params.branch
       ? `/cart?branch=${encodeURIComponent(params.branch)}`
       : "/products?notice=shopping-branch-required");
+  }
+  let integrationDraft;
+  if (params.integrationDraft) {
+    try {
+      integrationDraft = await integrationRequestDraftInitialValues(
+        actor,
+        params.integrationDraft,
+      );
+    } catch (error) {
+      if (!(error instanceof IntegrationDraftReviewError)) throw error;
+      redirect("/integrations?notice=draft-unavailable");
+    }
   }
   const budgetChoices = await getRequestBudgetChoices(actor);
   const notice = requestSubmitMessage(locale, params.notice);
@@ -46,7 +67,11 @@ export default async function NewRequestPage({
     committedAmount: branch.committedAmount ?? 0,
   }));
   const companyId = actor.companyId ?? companies[0]?.id;
-  const shoppingBranch = resolveShoppingBranch(actor, shoppingBranches, params.branch);
+  const shoppingBranch = resolveShoppingBranch(
+    actor,
+    shoppingBranches,
+    integrationDraft?.branchId ?? params.branch,
+  );
   const branchId = shoppingBranch?.ready ? shoppingBranch.id : undefined;
   if (!branchId) redirect("/products?notice=shopping-branch-required");
   let initialCart;
@@ -82,7 +107,7 @@ export default async function NewRequestPage({
       />
       {notice ? <div className="request-section-error" role="alert" aria-live="assertive">{notice}</div> : null}
 
-      <RequestDraftBoundary scope={draftScope}>
+      <RequestDraftBoundary scope={draftScope} initialDraft={integrationDraft}>
       <RequestForm
         actor={actor}
         budgetAccounts={budgetChoices?.accounts ?? []}
@@ -90,6 +115,8 @@ export default async function NewRequestPage({
           branches={branches}
           initialProduct={initialProduct}
           initialCart={initialCart}
+          initialRequestDraft={integrationDraft}
+          integrationDraftId={integrationDraft?.draftId}
           locale={locale}
         />
       </RequestDraftBoundary>

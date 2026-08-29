@@ -598,7 +598,10 @@ describe("immersive world V2 repair migrations", () => {
               AND NOT EXISTS (SELECT 1 FROM company_deletion_ownership_rules rule
                 WHERE rule.table_name=column_row.table_name)) AS unclassified,
           (SELECT count(*)::int FROM company_deletion_ownership_rules rule
-            WHERE rule.table_name NOT IN ('companies','company_deletion_tombstones','audit_logs')
+            WHERE rule.table_name NOT IN (
+              'companies','company_deletion_tombstones','audit_logs',
+              'integration_api_audit'
+            )
               AND NOT EXISTS (SELECT 1 FROM company_deletion_ownership_dag dag
                 WHERE dag.table_name=rule.table_name)) AS missing_dag
       `);

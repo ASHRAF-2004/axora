@@ -80,6 +80,11 @@ services:
       DB_PASSWORD_FILE: /run/secrets/axora_app_password
       SESSION_SECRET_FILE: /run/secrets/session_secret
       APP_BASE_URL: "https://${AXORA_HOST:?Set AXORA_HOST in .env}"
+      AXORA_EXTERNAL_API_ENABLED: "${AXORA_EXTERNAL_API_ENABLED:-false}"
+      AXORA_INTEGRATION_WEBHOOKS_ENABLED: "${AXORA_INTEGRATION_WEBHOOKS_ENABLED:-false}"
+      AXORA_ZAPIER_ENABLED: "${AXORA_ZAPIER_ENABLED:-false}"
+      AXORA_SLACK_ENABLED: "${AXORA_SLACK_ENABLED:-false}"
+      AXORA_INTEGRATION_ENCRYPTION_KEY_FILE: /run/secrets/axora_integration_encryption_key
       AXORA_EMAIL_DELIVERY_ENABLED: "${AXORA_EMAIL_DELIVERY_ENABLED:-false}"
       AXORA_EMAIL_EVENTS_ENABLED: "${AXORA_EMAIL_EVENTS_ENABLED:-false}"
       AXORA_EMAIL_PROVIDER: "${AXORA_EMAIL_PROVIDER:-resend}"
@@ -103,6 +108,7 @@ services:
     secrets:
       - axora_app_password
       - session_secret
+      - axora_integration_encryption_key
       - axora_email_service_auth_key
       - resend_webhook_secret
       - turnstile_secret
@@ -403,6 +409,8 @@ secrets:
     file: ./secrets/axora_cleanup_worker_password
   session_secret:
     file: ./secrets/session_secret
+  axora_integration_encryption_key:
+    file: ./secrets/axora_integration_encryption_key
   resend_api_key:
     file: ./secrets/resend_api_key
   axora_email_service_auth_key:

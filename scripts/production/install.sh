@@ -116,6 +116,28 @@ else
   chmod 0640 "$email_service_key_file"
 fi
 
+# Dedicated integration root material is isolated from session, email,
+# Turnstile, database, and deployment credentials. Existing material is never
+# rotated automatically during an installer upgrade.
+integration_key_file="$SECRETS_DIR/axora_integration_encryption_key"
+[[ ! -L "$integration_key_file" ]] \
+  || fail "Integration encryption key must not be a symlink."
+if [[ ! -e "$integration_key_file" ]]; then
+  integration_key_temporary="$(mktemp "$CONFIG_DIR/.integration-key.XXXXXX")"
+  trap 'rm -f -- "$integration_key_temporary"' EXIT
+  node -e 'process.stdout.write(require("node:crypto").randomBytes(48).toString("base64url"))' \
+    > "$integration_key_temporary"
+  install -o root -g "$RUNTIME_GID" -m 0640 \
+    "$integration_key_temporary" "$integration_key_file"
+  rm -f -- "$integration_key_temporary"
+  trap - EXIT
+else
+  [[ -f "$integration_key_file" && -s "$integration_key_file" ]] \
+    || fail "Integration encryption key must be a non-empty regular file."
+  chown root:"$RUNTIME_GID" "$integration_key_file"
+  chmod 0640 "$integration_key_file"
+fi
+
 # This passphrase encrypts reset recovery points only. It is never mounted into
 # an application container or written to deployment/runtime environment files.
 reset_backup_passphrase_file="$SECRETS_DIR/reset_backup_passphrase"
@@ -377,6 +399,10 @@ ensure_runtime_default() {
 }
 ensure_runtime_default AXORA_EMAIL_DELIVERY_ENABLED false
 ensure_runtime_default AXORA_EMAIL_EVENTS_ENABLED false
+ensure_runtime_default AXORA_EXTERNAL_API_ENABLED false
+ensure_runtime_default AXORA_INTEGRATION_WEBHOOKS_ENABLED false
+ensure_runtime_default AXORA_ZAPIER_ENABLED false
+ensure_runtime_default AXORA_SLACK_ENABLED false
 ensure_runtime_default RESEND_DOMAIN_VERIFIED false
 ensure_runtime_default RESEND_WEBHOOK_VERIFIED false
 ensure_runtime_default AXORA_EMAIL_FROM_ADDRESS noreply@axora.management

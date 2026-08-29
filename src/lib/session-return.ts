@@ -15,6 +15,7 @@ export type SessionReturnReason =
 interface ReturnRule {
   pattern: RegExp;
   permission?: Permission;
+  anyPermissions?: readonly Permission[];
 }
 
 // Keep the most specific routes before their parent routes. Exact resource
@@ -38,6 +39,12 @@ const RETURN_RULES: readonly ReturnRule[] = [
   { pattern: /^\/finance(?:\/|$)/, permission: "view_invoices" },
   { pattern: /^\/branches(?:\/|$)/, permission: "view_branches" },
   { pattern: /^\/users(?:\/|$)/, permission: "manage_users" },
+  {
+    pattern: /^\/integrations\/drafts\/[^/]+(?:\/|$)/,
+    anyPermissions: ["create_requests", "manage_company_integrations"],
+  },
+  { pattern: /^\/integrations(?:\/|$)/, permission: "manage_company_integrations" },
+  { pattern: /^\/oauth\/authorize(?:\/|$)/, permission: "manage_company_integrations" },
   { pattern: /^\/settings\/procurement(?:\/|$)/, permission: "manage_category_policy" },
   { pattern: /^\/(?:account|profile|notifications|settings)(?:\/|$)/ },
 ];
@@ -105,7 +112,10 @@ export function authorizedSessionReturnPath(
   const rule = RETURN_RULES.find((candidate) => (
     candidate.pattern.test(parsed.pathname)
   ));
-  if (!rule || (rule.permission && !canAccess(actor, rule.permission))) {
+  if (!rule
+    || (rule.permission && !canAccess(actor, rule.permission))
+    || (rule.anyPermissions
+      && !rule.anyPermissions.some((permission) => canAccess(actor, permission)))) {
     return safeInternalReturnPath(fallback, "/dashboard");
   }
   return safe;

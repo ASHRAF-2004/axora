@@ -92,6 +92,35 @@ async function canView(
   return result.rows[0]?.allowed;
 }
 
+async function canManageIntegrations(
+  db: PGlite,
+  actorId: string,
+  roleAssignmentId: string,
+  companyId: string,
+) {
+  const result = await db.query<{ allowed: boolean }>(`
+    SELECT public.axora_snapshot_has_permission(
+      public.axora_live_authorization_snapshot($1,$2,now()),
+      'integration.connection.manage','COMPANY',$3,NULL,NULL,NULL
+    ) allowed
+  `, [actorId,roleAssignmentId,companyId]);
+  return result.rows[0]?.allowed;
+}
+
+async function canManageIntegrationApplications(
+  db: PGlite,
+  actorId: string,
+  roleAssignmentId: string,
+) {
+  const result = await db.query<{ allowed: boolean }>(`
+    SELECT public.axora_snapshot_has_permission(
+      public.axora_live_authorization_snapshot($1,$2,now()),
+      'integration.application.manage','PLATFORM',NULL,NULL,NULL,NULL
+    ) allowed
+  `, [actorId,roleAssignmentId]);
+  return result.rows[0]?.allowed;
+}
+
 describe("migration 125 canonical CAM company ownership", () => {
   it("upgrades the protected-main 124 head without rewriting company history", async () => {
     const db = new PGlite();
@@ -186,6 +215,25 @@ describe("migration 125 canonical CAM company ownership", () => {
         .resolves.toBe(false);
       await expect(canView(
         db,ids.camA,ids.camARole,"c1250000-0000-4000-8000-000000009999",
+      )).resolves.toBe(false);
+
+      // Canonical company ownership is intentionally not integration-management
+      // authority. The two-CAM fixture must remain isolated and neither CAM may
+      // install an app even for its assigned portfolio company.
+      await expect(canManageIntegrationApplications(
+        db,ids.owner,ids.ownerRole,
+      )).resolves.toBe(true);
+      await expect(canManageIntegrations(
+        db,ids.camA,ids.camARole,companyA.companyId,
+      )).resolves.toBe(false);
+      await expect(canManageIntegrations(
+        db,ids.camA,ids.camARole,companyB.companyId,
+      )).resolves.toBe(false);
+      await expect(canManageIntegrations(
+        db,ids.camB,ids.camBRole,companyB.companyId,
+      )).resolves.toBe(false);
+      await expect(canManageIntegrations(
+        db,ids.camB,ids.camBRole,companyA.companyId,
       )).resolves.toBe(false);
 
       const workspaces = await Promise.all([

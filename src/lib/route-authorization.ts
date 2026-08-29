@@ -55,6 +55,9 @@ const ROUTE_PERMISSION_CODES: Readonly<Record<Permission, readonly PermissionCod
   create_platform_users: ["platform_user.create"],
   create_company_users: ["company_user.create"],
   create_delivery_users: ["delivery_user.create"],
+  manage_company_integrations: ["integration.connection.manage"],
+  manage_integration_applications: ["integration.application.manage"],
+  view_integration_operations: ["integration.operations.view"],
   view_all_companies: ["company.view.all"],
 };
 

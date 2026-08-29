@@ -608,6 +608,19 @@ async function loadActiveIdentity(userId: string, liveTokenHash?: string): Promi
   };
 }
 
+/**
+ * Resolve current database-backed identity for non-cookie delegated access.
+ * This deliberately reuses the same active account, assignment, membership,
+ * onboarding, and auth_version checks as interactive sessions.
+ */
+export async function loadCurrentAuthorizationIdentity(
+  userId: string,
+): Promise<AuthenticatedSessionUser | null> {
+  if (isDemoMode()) return null;
+  const identity = await loadActiveIdentity(userId);
+  return identity?.onboardingComplete ? identity.user : null;
+}
+
 async function createToken(user: SessionUser) {
   return new SignJWT({
     email: user.email,

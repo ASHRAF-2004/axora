@@ -53,6 +53,10 @@ done
 for runtime_key in \
   AXORA_EMAIL_DELIVERY_ENABLED \
   AXORA_EMAIL_EVENTS_ENABLED \
+  AXORA_EXTERNAL_API_ENABLED \
+  AXORA_INTEGRATION_WEBHOOKS_ENABLED \
+  AXORA_ZAPIER_ENABLED \
+  AXORA_SLACK_ENABLED \
   RESEND_DOMAIN_VERIFIED \
   RESEND_WEBHOOK_VERIFIED \
   AXORA_EMAIL_FROM_ADDRESS \
@@ -202,6 +206,7 @@ for secret in \
   resend_api_key \
   resend_webhook_secret \
   axora_email_service_auth_key \
+  axora_integration_encryption_key \
   turnstile_secret; do
   touch "$secrets_dir/$secret"
 done
@@ -216,6 +221,10 @@ export AXORA_UPLOADS_DIR="$uploads_dir"
 export AXORA_IMAGE=axora-app:0123456789012345678901234567890123456789
 export AXORA_EMAIL_DELIVERY_ENABLED=false
 export AXORA_EMAIL_EVENTS_ENABLED=false
+export AXORA_EXTERNAL_API_ENABLED=false
+export AXORA_INTEGRATION_WEBHOOKS_ENABLED=false
+export AXORA_ZAPIER_ENABLED=false
+export AXORA_SLACK_ENABLED=false
 export RESEND_DOMAIN_VERIFIED=false
 export RESEND_WEBHOOK_VERIFIED=false
 export AXORA_EMAIL_FROM_ADDRESS=noreply@axora.management
@@ -248,6 +257,11 @@ jq --exit-status \
     and .services.app.environment.DEMO_MODE == "false"
     and .services.app.environment.DB_NAME == "axora_hybrid"
     and .services.app.environment.APP_BASE_URL == "https://axora.management"
+    and .services.app.environment.AXORA_EXTERNAL_API_ENABLED == "false"
+    and .services.app.environment.AXORA_INTEGRATION_WEBHOOKS_ENABLED == "false"
+    and .services.app.environment.AXORA_ZAPIER_ENABLED == "false"
+    and .services.app.environment.AXORA_SLACK_ENABLED == "false"
+    and .services.app.environment.AXORA_INTEGRATION_ENCRYPTION_KEY_FILE == "/run/secrets/axora_integration_encryption_key"
     and .services.app.environment.AXORA_EMAIL_DELIVERY_ENABLED == "false"
     and .services.app.environment.AXORA_EMAIL_EVENTS_ENABLED == "false"
     and .services.app.environment.AXORA_EMAIL_PROVIDER == "resend"
@@ -288,6 +302,7 @@ jq --exit-status \
     and (.services["document-worker"].ports // []) == []
     and (.services["company-deletion-cleanup-worker"].ports // []) == []
     and ([.services.app.secrets[].source] | index("axora_email_service_auth_key")) != null
+    and ([.services.app.secrets[].source] | index("axora_integration_encryption_key")) != null
     and ([.services.app.secrets[].source] | index("resend_webhook_secret")) != null
     and ([.services.app.secrets[].source] | index("turnstile_secret")) != null
     and ([.services["email-sender"].secrets[].source] | sort) ==

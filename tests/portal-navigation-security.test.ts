@@ -34,7 +34,7 @@ describe("role-specific portal navigation boundaries", () => {
     ]);
     expect(hrefs(DRAWER_NAVIGATION, companyAdmin)).toEqual([
       "/branches", "/budgets", "/wallet",
-      "/users",
+      "/users", "/integrations",
     ]);
     expect(canAccess(companyAdmin, "manage_catalog")).toBe(false);
     expect(canAccess(companyAdmin, "manage_commercial_pricing")).toBe(false);
