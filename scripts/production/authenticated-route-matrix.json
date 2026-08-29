@@ -1265,6 +1265,24 @@
       "mode": "mutating"
     },
     {
+      "route": "/api/integrations/slack/events",
+      "authentication": "signed-slack-provider-event",
+      "scope": "matching-workspace-revocation-only",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/integrations/slack/oauth/callback",
+      "authentication": "session-single-use-state-and-provider-code",
+      "scope": "current-company-integration-manager",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/integrations/slack/oauth/start",
+      "authentication": "session-and-same-origin-navigation",
+      "scope": "current-company-integration-manager",
+      "mode": "mutating"
+    },
+    {
       "route": "/api/public/visitor-choice",
       "authentication": "public-bounded",
       "scope": "anonymous",

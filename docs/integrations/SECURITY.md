@@ -93,11 +93,47 @@ explicit DENY. Lost authorization pauses the subscription and terminalizes
 queued work before an HTTP attempt. Application, connection, and subscription
 revocation likewise stop future claims.
 
-The worker has no direct table or sequence privilege and receives only five
-security-definer capabilities. It has dedicated outbound networking and only
-the integration encryption key plus its own database password. It cannot read
-or mutate email, session, Wallet, budget, payment, invoice, delivery, proof, or
-account data directly.
+The worker has no direct table or sequence privilege and receives only named,
+bounded security-definer capabilities. It has dedicated outbound networking
+and only the integration encryption key, its own database password, and the
+provider client secret required when Slack is enabled. It cannot read or mutate
+email, session, Wallet, budget, payment, invoice, delivery, proof, or account
+data directly.
+
+## Slack provider boundary
+
+Slack is a provider-owned OAuth installation, not an Axora API principal. Its
+reserved application row cannot create Axora OAuth grants, codes, access
+tokens, or refresh tokens. A hashed, single-use, ten-minute state binds the
+Slack callback to the initiating user, company, role assignment, and
+`auth_version`. The callback redirects only to the configured canonical Axora
+origin and never reflects its authorization code or state.
+
+The manifest requests exactly `chat:write` and `channels:read`. It does not
+request private-channel, user-write, file-write, admin, command, or interactive
+approval capabilities. Company Administrators can select only a recently
+synced, non-shared public channel in which the bot is already a member. CAM
+assignment does not confer installation authority.
+
+Access and rotating refresh tokens are AES-256-GCM ciphertext under
+installation- and version-specific derived keys. Slack API hosts and paths are
+fixed, redirects are disabled, requests and responses are time/size bounded,
+and response bodies are not persisted. Every claimed message rechecks current
+Axora authorization before decrypting a token and again immediately before the
+provider call. A stable `client_msg_id` equals the integration event ID.
+
+Inbound uninstall and token-revocation events require Slack HMAC-SHA256 over
+the exact raw body, a timestamp within five minutes, the configured Slack app
+ID, a known workspace, and event-ID deduplication. Disconnect and provider
+revocation stop local access first, fail queued work closed, then attempt
+bounded asynchronous provider token revocation. No provider callback deletes
+procurement history.
+
+Messages contain only an allowlisted title, order/invoice/delivery code,
+branch, customer-facing currency/total, and an Axora HTTPS link. They disable
+top-level Markdown and link/media unfurling. There are no Slack approval,
+rejection, payment, Wallet, delivery-completion, or other financial controls;
+opening the link still requires normal Axora authentication and authorization.
 
 ## Audit and privacy
 
@@ -119,6 +155,12 @@ Reserved provider application slugs bind provider-specific flags to consent,
 token exchange, token refresh, every bearer-token lookup, and outbound worker
 delivery. Revocation remains usable while a provider is disabled. Disabling
 `axora-zapier` does not disable generic customer webhooks.
+
+Slack rollback is: set `AXORA_SLACK_ENABLED=false`, recreate only the
+application and integration worker, confirm all Slack routes and delivery
+claims are dormant, and if needed restore the prior immutable OCI. Migration
+132 is additive and remains dormant. Slack and generic webhook queues, secrets,
+and workers do not use either email outbox or the Resend worker.
 
 Webhook rollback is: set `AXORA_INTEGRATION_WEBHOOKS_ENABLED=false`, recreate
 only the application and integration worker, confirm readiness in dormant

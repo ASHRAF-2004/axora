@@ -370,7 +370,7 @@ describe.sequential("migration 128 external integration security boundary", () =
     const visible = await db.query<{ count: number }>(
       "SELECT count(*)::int count FROM integration_applications",
     );
-    expect(visible.rows[0]?.count).toBe(1);
+    expect(visible.rows[0]?.count).toBe(2);
     await db.query(`
       INSERT INTO integration_api_audit(
         request_id,application_id,route,action,result,http_status,details

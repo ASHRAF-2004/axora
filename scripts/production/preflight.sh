@@ -130,6 +130,8 @@ external_api_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EXTERN
 integration_webhooks_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_INTEGRATION_WEBHOOKS_ENABLED)"
 zapier_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_ZAPIER_ENABLED)"
 slack_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_SLACK_ENABLED)"
+slack_app_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_SLACK_APP_ID)"
+slack_client_id="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_SLACK_CLIENT_ID)"
 
 for integration_flag in \
   "$external_api_enabled" "$integration_webhooks_enabled" \
@@ -283,6 +285,38 @@ node -e '
   if(!/^[A-Za-z0-9_-]{43,512}$/.test(value)) process.exit(1);
 ' "$integration_worker_password_path" \
   || die "The integration-worker database password is malformed."
+
+for slack_secret_name in axora_slack_client_secret axora_slack_signing_secret; do
+  slack_secret_path="$AXORA_SECRETS_DIR/$slack_secret_name"
+  [[ -f "$slack_secret_path" && ! -L "$slack_secret_path" ]] \
+    || die "Slack secret placeholder is missing or unsafe: $slack_secret_name"
+  slack_secret_mode="$(stat -c '%a' "$slack_secret_path")"
+  [[ "$(stat -c '%u:%g' "$slack_secret_path")" == "0:1000" ]] \
+    || die "Slack secret must be owned by root:GID-1000: $slack_secret_name"
+  (( (8#$slack_secret_mode & 8#027) == 0 )) \
+    || die "Slack secret permissions are too broad: $slack_secret_name"
+done
+if [[ "$slack_enabled" == "true" ]]; then
+  [[ "$slack_app_id" =~ ^A[A-Z0-9]{8,32}$ ]] \
+    || die "AXORA_SLACK_APP_ID is malformed."
+  [[ "$slack_client_id" =~ ^[0-9]{6,20}\.[0-9]{6,20}$ ]] \
+    || die "AXORA_SLACK_CLIENT_ID is malformed."
+  [[ -s "$AXORA_SECRETS_DIR/axora_slack_client_secret" \
+    && -s "$AXORA_SECRETS_DIR/axora_slack_signing_secret" ]] \
+    || die "Slack is enabled but its dedicated provider secrets are empty."
+  node -e '
+    const fs=require("node:fs");
+    const client=fs.readFileSync(process.argv[1],"utf8").trim();
+    const signing=fs.readFileSync(process.argv[2],"utf8").trim();
+    if(client.length<24 || client.length>512 || /[\s\x00-\x1f\x7f]/.test(client)) process.exit(1);
+    if(!/^[0-9a-fA-F]{32,128}$/.test(signing)) process.exit(1);
+  ' "$AXORA_SECRETS_DIR/axora_slack_client_secret" \
+    "$AXORA_SECRETS_DIR/axora_slack_signing_secret" \
+    || die "Dedicated Slack provider secrets are malformed."
+else
+  [[ -z "$slack_app_id" && -z "$slack_client_id" ]] \
+    || die "Slack identifiers must remain empty while AXORA_SLACK_ENABLED=false."
+fi
 
 [[ -f "$AXORA_REGISTRY_TOKEN_FILE" && ! -L "$AXORA_REGISTRY_TOKEN_FILE" \
   && -s "$AXORA_REGISTRY_TOKEN_FILE" ]] \

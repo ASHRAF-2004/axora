@@ -20,6 +20,16 @@ import {
   INTEGRATION_EVENT_TYPE_SET,
   type IntegrationEventType,
 } from "@/lib/integrations/events";
+import {
+  configureSlackNotifications,
+  retrySlackDelivery,
+  SlackIntegrationError,
+  syncSlackChannels,
+} from "@/lib/integrations/slack";
+import {
+  SLACK_NOTIFICATION_EVENTS,
+  type SlackNotificationEvent,
+} from "@/lib/integrations/slack-provider";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 
@@ -33,6 +43,11 @@ export type WebhookActionState = {
   status: "idle" | "success" | "error";
   operation?: "create" | "rotate" | "revoke" | "retry";
   credential?: { secret: string; version: number };
+};
+
+export type SlackActionState = {
+  status:"idle"|"success"|"error";
+  operation?:"sync"|"configure"|"retry";
 };
 
 function failed(operation: IntegrationActionState["operation"]): IntegrationActionState {
@@ -234,6 +249,68 @@ export async function retryWebhookDeliveryAction(
     return {status:"success",operation:"retry"};
   }catch(error){
     if(error instanceof WebhookManagementError)return webhookFailed("retry");
+    throw error;
+  }
+}
+
+function slackFailed(operation:SlackActionState["operation"]):SlackActionState {
+  return {status:"error",operation};
+}
+
+export async function syncSlackChannelsAction(
+  _previous:SlackActionState,
+  formData:FormData,
+):Promise<SlackActionState> {
+  const actor=await requirePermission("manage_company_integrations");
+  try {
+    await syncSlackChannels({
+      actor,installationId:readFormText(formData,"installationId"),
+    });
+    revalidatePath("/integrations");
+    return {status:"success",operation:"sync"};
+  } catch(error) {
+    if(error instanceof SlackIntegrationError)return slackFailed("sync");
+    throw error;
+  }
+}
+
+export async function configureSlackNotificationsAction(
+  _previous:SlackActionState,
+  formData:FormData,
+):Promise<SlackActionState> {
+  const actor=await requirePermission("manage_company_integrations");
+  const allowed=new Set<string>(SLACK_NOTIFICATION_EVENTS);
+  const eventTypes=formData.getAll("eventTypes").flatMap((value)=>
+    typeof value==="string"&&allowed.has(value)
+      ? [value as SlackNotificationEvent]:[]);
+  try {
+    await configureSlackNotifications({
+      actor,installationId:readFormText(formData,"installationId"),
+      channelId:readFormText(formData,"channelId"),eventTypes,
+    });
+    revalidatePath("/integrations");
+    return {status:"success",operation:"configure"};
+  } catch(error) {
+    if(error instanceof SlackIntegrationError)return slackFailed("configure");
+    throw error;
+  }
+}
+
+export async function retrySlackDeliveryAction(
+  _previous:SlackActionState,
+  formData:FormData,
+):Promise<SlackActionState> {
+  const actor=await requirePermission("manage_company_integrations");
+  if(readFormText(formData,"confirmation")!=="yes")return slackFailed("retry");
+  try {
+    await retrySlackDelivery({
+      actor,deliveryId:readFormText(formData,"deliveryId"),
+      companyId:readFormText(formData,"companyId"),
+    });
+    revalidatePath("/integrations");
+    return {status:"success",operation:"retry"};
+  } catch(error) {
+    if(error instanceof SlackIntegrationError)return slackFailed("retry");
     throw error;
   }
 }

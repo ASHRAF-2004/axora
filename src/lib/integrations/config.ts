@@ -27,6 +27,69 @@ export function integrationWebhooksEnabled(env: NodeJS.ProcessEnv = process.env)
   return integrationFlagEnabled(INTEGRATION_FLAGS.webhooks, env);
 }
 
+export function slackIntegrationEnabled(env: NodeJS.ProcessEnv = process.env) {
+  return integrationFlagEnabled(INTEGRATION_FLAGS.slack, env);
+}
+
+function readDedicatedSecret(
+  fileVariable: string,
+  inlineVariable: string,
+  env: NodeJS.ProcessEnv,
+) {
+  const filename = env[fileVariable]?.trim();
+  const inline = env[inlineVariable]?.trim();
+  if (env.NODE_ENV === "production" && inline) {
+    throw new Error("Production Slack credentials must be file-mounted.");
+  }
+  return filename
+    ? fs.existsSync(filename) ? fs.readFileSync(filename, "utf8").trim() : ""
+    : inline ?? "";
+}
+
+export interface SlackProviderConfiguration {
+  appId: string;
+  clientId: string;
+  clientSecret: string;
+  signingSecret: string;
+  redirectUri: string;
+  eventsUri: string;
+}
+
+export function slackProviderConfiguration(
+  env: NodeJS.ProcessEnv = process.env,
+): SlackProviderConfiguration {
+  const appId = env.AXORA_SLACK_APP_ID?.trim() ?? "";
+  const clientId = env.AXORA_SLACK_CLIENT_ID?.trim() ?? "";
+  const clientSecret = readDedicatedSecret(
+    "AXORA_SLACK_CLIENT_SECRET_FILE","AXORA_SLACK_CLIENT_SECRET",env,
+  );
+  const signingSecret = readDedicatedSecret(
+    "AXORA_SLACK_SIGNING_SECRET_FILE","AXORA_SLACK_SIGNING_SECRET",env,
+  );
+  if (!/^A[A-Z0-9]{8,32}$/.test(appId)
+    || !/^\d{6,20}\.\d{6,20}$/.test(clientId)
+    || clientSecret.length < 24 || clientSecret.length > 512
+    || /[\s\x00-\x1f\x7f]/.test(clientSecret)
+    || !/^[0-9a-fA-F]{32,128}$/.test(signingSecret)) {
+    throw new Error("Slack provider configuration is unavailable.");
+  }
+  const origin = integrationOrigin(env);
+  return {
+    appId,clientId,clientSecret,signingSecret,
+    redirectUri: `${origin}/api/integrations/slack/oauth/callback`,
+    eventsUri: `${origin}/api/integrations/slack/events`,
+  };
+}
+
+export function slackProviderConfigured(env: NodeJS.ProcessEnv = process.env) {
+  try {
+    slackProviderConfiguration(env);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function integrationApplicationEnabled(
   applicationSlug: string,
   env: NodeJS.ProcessEnv = process.env,

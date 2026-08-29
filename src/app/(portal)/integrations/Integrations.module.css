@@ -27,7 +27,7 @@
 .badge { min-height: 28px; padding: 4px 9px; display: inline-flex; align-items: center; border: 1px solid; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .badge[data-status="active"] { color: var(--axora-success); background: var(--axora-success-bg); border-color: var(--axora-success-border); }
 .badge[data-status="succeeded"] { color: var(--axora-success); background: var(--axora-success-bg); border-color: var(--axora-success-border); }
-.badge[data-status="pending"], .badge[data-status="delivering"], .badge[data-status="retry"], .badge[data-status="paused"] { color: var(--axora-warning); background: var(--axora-warning-bg); border-color: var(--axora-warning-border); }
+.badge[data-status="pending"], .badge[data-status="delivering"], .badge[data-status="retry"], .badge[data-status="paused"], .badge[data-status="revoking"] { color: var(--axora-warning); background: var(--axora-warning-bg); border-color: var(--axora-warning-border); }
 .badge[data-status="failed"], .badge[data-status="dead"] { color: var(--axora-danger); background: var(--axora-danger-bg); border-color: var(--axora-danger-border); }
 .badge[data-status="inactive"], .badge[data-status="revoked"] { color: var(--axora-text-secondary); background: var(--axora-surface); border-color: var(--axora-border); }
 .detailGrid { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -38,6 +38,9 @@
 .scopeList { display: flex; flex-wrap: wrap; gap: 7px; }
 .scopeList span { min-height: 29px; padding: 5px 9px; display: inline-flex; align-items: center; color: var(--axora-text-secondary); background: var(--axora-surface); border: 1px solid var(--axora-border); border-radius: 999px; font-size: 12px; font-weight: 700; }
 .connectHelp { margin: 0; color: var(--axora-text-secondary); font-size: 13px; line-height: 1.5; }
+.slackConnect { min-height: 150px; padding: 24px; display: grid; place-items: center; align-content: center; gap: 14px; text-align: center; }
+.slackConnect p { max-width: 680px; margin: 0; color: var(--axora-text-secondary); line-height: 1.55; }
+.slackDisconnect { padding-block-start: 14px; display: grid; gap: 12px; border-block-start: 1px solid var(--axora-border-subtle); }
 .manageDetails, .metadataDetails { border-block-start: 1px solid var(--axora-border-subtle); }
 .manageDetails > summary, .metadataDetails > summary { min-height: 44px; display: flex; align-items: center; color: var(--axora-link); font-size: 13px; font-weight: 800; cursor: pointer; }
 .metadataDetails ul { margin: 0; padding: 0 0 8px; display: grid; gap: 6px; list-style: none; }

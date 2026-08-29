@@ -190,6 +190,7 @@ async function applicationByClientId(
       allowed_scopes AS "allowedScopes"
     FROM public.integration_applications
     WHERE client_id=$1 AND status='ACTIVE'
+      AND authorization_mode='AXORA_OAUTH'
     ${lock ? "FOR KEY SHARE" : ""}
   `, [clientId]);
   const application = result.rows[0];
@@ -339,6 +340,7 @@ export async function decideAuthorization(input: {
       FROM public.integration_oauth_authorization_requests request
       JOIN public.integration_applications application
         ON application.id=request.application_id
+       AND application.authorization_mode='AXORA_OAUTH'
       WHERE request.request_handle_hash=$1
       FOR UPDATE OF request
     `, [hashIntegrationSecret("authorization-request", input.handle)]);

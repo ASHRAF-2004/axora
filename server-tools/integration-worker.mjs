@@ -1,6 +1,13 @@
 import http from "node:http";
 import https from "node:https";
-import { createDecipheriv, createHmac, hkdfSync, randomUUID } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHmac,
+  hkdfSync,
+  randomBytes,
+  randomUUID,
+} from "node:crypto";
 import { lookup as dnsLookup } from "node:dns/promises";
 import { readFileSync } from "node:fs";
 import { BlockList, isIP } from "node:net";
@@ -102,6 +109,18 @@ export function decryptWorkerIntegrationValue(rootKey, purpose, value) {
     decipher.update(Buffer.from(value.ciphertext, "base64url")),
     decipher.final(),
   ]).toString("utf8");
+}
+
+export function encryptWorkerIntegrationValue(rootKey, purpose, plaintext) {
+  const nonce=randomBytes(12);
+  const cipher=createCipheriv("aes-256-gcm",encryptionKey(rootKey,purpose),nonce);
+  cipher.setAAD(Buffer.from(`axora:${purpose}:v1`,"utf8"));
+  const ciphertext=Buffer.concat([cipher.update(plaintext,"utf8"),cipher.final()]);
+  return {
+    version:1,nonce:nonce.toString("base64url"),
+    ciphertext:ciphertext.toString("base64url"),
+    tag:cipher.getAuthTag().toString("base64url"),
+  };
 }
 
 function canonicalize(value) {
@@ -454,34 +473,448 @@ async function processWebhookJob(
   await completeDelivery(db,workerId,job,result);
 }
 
+export function slackWorkerConfiguration(env=process.env) {
+  const inline=env.AXORA_SLACK_CLIENT_SECRET?.trim();
+  if (env.NODE_ENV==="production" && inline) {
+    throw new Error("Production Slack credentials must be file-mounted.");
+  }
+  const clientId=env.AXORA_SLACK_CLIENT_ID?.trim()??"";
+  const clientSecret=env.AXORA_SLACK_CLIENT_SECRET_FILE
+    ? readSecret(env.AXORA_SLACK_CLIENT_SECRET_FILE):inline;
+  let origin;
+  try { origin=new URL(env.APP_BASE_URL??"https://axora.management"); }
+  catch { throw new Error("Slack worker configuration is unavailable."); }
+  if (!/^\d{6,20}\.\d{6,20}$/.test(clientId)
+    || !clientSecret || clientSecret.length<24 || clientSecret.length>512
+    || /[\s\x00-\x1f\x7f]/.test(clientSecret)
+    || origin.protocol!=="https:" || origin.pathname!=="/"
+    || origin.search || origin.hash || origin.username || origin.password) {
+    throw new Error("Slack worker configuration is unavailable.");
+  }
+  return {clientId,clientSecret,origin:origin.origin};
+}
+
+function slackAccessPurpose(installationId,tokenVersion) {
+  return `slack-access-token:${installationId}:v${tokenVersion}`;
+}
+
+function slackRefreshPurpose(installationId,tokenVersion) {
+  return `slack-refresh-token:${installationId}:v${tokenVersion}`;
+}
+
+function safeSlackText(value,maximum=120) {
+  if (typeof value!=="string") return undefined;
+  const normalized=value.replace(/[\x00-\x1f\x7f]/g," ").trim();
+  if (!normalized) return undefined;
+  return normalized.slice(0,maximum);
+}
+
+function safeAmount(value) {
+  const text=safeSlackText(value,40);
+  return text&&/^-?\d{1,20}(?:\.\d{1,4})?$/.test(text)?text:undefined;
+}
+
+function safeCurrency(value) {
+  const text=safeSlackText(value,3);
+  return text&&/^[A-Z]{3}$/.test(text)?text:undefined;
+}
+
+export function slackMessageForJob(job,origin) {
+  const titles={
+    "request.submitted":"Purchase request submitted",
+    "request.approved":"Purchase request approved",
+    "invoice.finalized":"Customer invoice finalized",
+    "delivery.out_for_delivery":"Delivery is out for delivery",
+    "delivery.completed":"Delivery completed",
+  };
+  const title=titles[job.event_type];
+  if (!title || !/^[0-9a-f-]{36}$/.test(job.resource_id)
+    || !["request","invoice","delivery"].includes(job.resource_type)) {
+    throw new Error("Slack event payload is unavailable.");
+  }
+  const summary=job.summary&&typeof job.summary==="object"?job.summary:{};
+  const order=safeSlackText(summary.order_code,80);
+  const invoice=safeSlackText(summary.invoice_number,80);
+  const delivery=safeSlackText(summary.job_code,80);
+  const branch=safeSlackText(summary.branch_name,120);
+  const currency=safeCurrency(summary.currency);
+  const total=safeAmount(summary.total);
+  const path=job.resource_type==="request"
+    ? `/requests/${encodeURIComponent(job.resource_id)}`
+    :job.resource_type==="delivery"?"/deliveries":"/finance";
+  const link=new URL(path,origin).toString();
+  const facts=[];
+  if (order) facts.push({type:"plain_text",text:`Order: ${order}`});
+  if (invoice) facts.push({type:"plain_text",text:`Invoice: ${invoice}`});
+  if (delivery) facts.push({type:"plain_text",text:`Delivery: ${delivery}`});
+  if (branch) facts.push({type:"plain_text",text:`Branch: ${branch}`});
+  if (currency&&total) facts.push({type:"plain_text",text:`Total: ${currency} ${total}`});
+  const fallback=[title,...facts.map((fact)=>fact.text),`Open in Axora: ${link}`].join(". ");
+  return {
+    channel:job.channel_id,
+    client_msg_id:job.event_id,
+    text:fallback.slice(0,4000),
+    blocks:[
+      {type:"header",text:{type:"plain_text",text:title}},
+      ...(facts.length?[{type:"section",fields:facts}]:[]),
+      {type:"actions",elements:[{
+        type:"button",text:{type:"plain_text",text:"Open in Axora"},url:link,
+        action_id:"open_in_axora",
+      }]},
+    ],
+    mrkdwn:false,unfurl_links:false,unfurl_media:false,
+  };
+}
+
+async function boundedFetchText(response,maximum=MAX_RESPONSE_BYTES) {
+  const declared=Number(response.headers.get("content-length")??0);
+  if (Number.isFinite(declared)&&declared>maximum) {
+    throw Object.assign(new Error(),{category:"INVALID_RESPONSE"});
+  }
+  if (!response.body) return "";
+  const reader=response.body.getReader();
+  const chunks=[];
+  let received=0;
+  while(true) {
+    const {value,done}=await reader.read();
+    if(done)break;
+    received+=value.byteLength;
+    if(received>maximum) {
+      await reader.cancel();
+      throw Object.assign(new Error(),{category:"INVALID_RESPONSE"});
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks.map((chunk)=>Buffer.from(chunk)),received).toString("utf8");
+}
+
+function slackRetryAfter(response) {
+  const value=response.headers.get("retry-after")?.trim()??"";
+  if(!/^\d{1,5}$/.test(value))return undefined;
+  const seconds=Number(value);
+  return seconds>=1&&seconds<=86400?seconds:undefined;
+}
+
+function slackApiFailure(error,status=200,retryAfterSeconds) {
+  if (["invalid_auth","token_revoked","token_expired","account_inactive"]
+    .includes(error)) return {outcome:"FAILED",errorCategory:"TOKEN_REVOKED",responseStatus:status};
+  if (error==="missing_scope") {
+    return {outcome:"FAILED",errorCategory:"MISSING_SCOPE",responseStatus:status};
+  }
+  if (["channel_not_found","not_in_channel","is_archived","no_permission",
+    "restricted_action_read_only_channel","team_access_not_granted"].includes(error)) {
+    return {outcome:"FAILED",errorCategory:"CHANNEL_UNAVAILABLE",responseStatus:status};
+  }
+  if (["ratelimited","rate_limited"].includes(error)) {
+    return {outcome:"RETRY",errorCategory:"RATE_LIMITED",responseStatus:status,retryAfterSeconds};
+  }
+  if (["internal_error","fatal_error","service_unavailable","request_timeout"]
+    .includes(error)) {
+    return {outcome:"RETRY",errorCategory:"PROVIDER_UNAVAILABLE",responseStatus:status};
+  }
+  return {outcome:"FAILED",errorCategory:"PROVIDER_REJECTED",responseStatus:status};
+}
+
+export async function deliverSlackAttempt(input,options={}) {
+  const started=Date.now();
+  try {
+    const response=await (options.fetchImpl??fetch)("https://slack.com/api/chat.postMessage",{
+      method:"POST",headers:{
+        Accept:"application/json","Content-Type":"application/json;charset=UTF-8",
+        Authorization:`Bearer ${input.accessToken}`,
+        "User-Agent":"Axora-Slack/1.0",
+      },body:JSON.stringify(input.message),redirect:"error",
+      signal:AbortSignal.timeout(options.timeoutMs??REQUEST_TIMEOUT_MS),
+    });
+    const text=await boundedFetchText(response,options.maxResponseBytes);
+    let result;
+    if(response.status===429) {
+      result={outcome:"RETRY",errorCategory:"RATE_LIMITED",responseStatus:429,
+        retryAfterSeconds:slackRetryAfter(response)};
+    } else if(response.status>=500) {
+      result={outcome:"RETRY",errorCategory:"PROVIDER_UNAVAILABLE",responseStatus:response.status};
+    } else if(response.status!==200) {
+      result={outcome:"FAILED",errorCategory:"PROVIDER_REJECTED",responseStatus:response.status};
+    } else {
+      let payload;
+      try {payload=JSON.parse(text);} catch {payload=undefined;}
+      if(payload?.ok===true&&typeof payload.ts==="string") {
+        result={outcome:"SUCCEEDED",responseStatus:200};
+      } else if(payload?.ok===false&&typeof payload.error==="string") {
+        result=slackApiFailure(payload.error,200,slackRetryAfter(response));
+      } else {
+        result={outcome:"FAILED",errorCategory:"INVALID_RESPONSE",responseStatus:200};
+      }
+    }
+    return {...result,durationMs:Math.min(120000,Date.now()-started)};
+  } catch(error) {
+    const timedOut=error?.name==="TimeoutError"||error?.name==="AbortError";
+    const invalid=error?.category==="INVALID_RESPONSE";
+    return {outcome:invalid?"FAILED":"RETRY",
+      errorCategory:invalid?"INVALID_RESPONSE":timedOut?"TIMEOUT":"NETWORK_ERROR",
+      durationMs:Math.min(120000,Date.now()-started)};
+  }
+}
+
+async function refreshSlackWorkerToken(configuration,refreshToken,options={}) {
+  const started=Date.now();
+  try {
+    const form=new URLSearchParams({
+      client_id:configuration.clientId,client_secret:configuration.clientSecret,
+      grant_type:"refresh_token",refresh_token:refreshToken,
+    });
+    const response=await (options.fetchImpl??fetch)("https://slack.com/api/oauth.v2.access",{
+      method:"POST",headers:{
+        Accept:"application/json",
+        "Content-Type":"application/x-www-form-urlencoded;charset=UTF-8",
+        "User-Agent":"Axora-Slack/1.0",
+      },body:form.toString(),redirect:"error",
+      signal:AbortSignal.timeout(options.timeoutMs??REQUEST_TIMEOUT_MS),
+    });
+    const text=await boundedFetchText(response);
+    if(response.status===429)return {failure:{
+      outcome:"RETRY",errorCategory:"RATE_LIMITED",responseStatus:429,
+      retryAfterSeconds:slackRetryAfter(response),durationMs:Date.now()-started,
+    }};
+    if(response.status>=500)return {failure:{
+      outcome:"RETRY",errorCategory:"PROVIDER_UNAVAILABLE",
+      responseStatus:response.status,durationMs:Date.now()-started,
+    }};
+    let payload;
+    try {payload=JSON.parse(text);}catch{return {failure:{
+      outcome:"FAILED",errorCategory:"INVALID_RESPONSE",
+      responseStatus:response.status,durationMs:Date.now()-started,
+    }}};
+    if(payload?.ok===false&&typeof payload.error==="string")return {failure:{
+      ...slackApiFailure(payload.error,response.status,slackRetryAfter(response)),
+      durationMs:Date.now()-started,
+    }};
+    const scopes=typeof payload?.scope==="string"
+      ?[...new Set(payload.scope.split(/[ ,]+/).filter(Boolean))].sort():[];
+    if(payload?.ok!==true
+      || !/^(?:xoxb-|xoxe\.xoxb-)[A-Za-z0-9._-]{12,512}$/.test(payload.access_token??"")
+      || !/^xoxe-[A-Za-z0-9._-]{12,512}$/.test(payload.refresh_token??"")
+      || !Number.isInteger(payload.expires_in)||payload.expires_in<300
+      || payload.expires_in>43200
+      || scopes.join(",")!=="channels:read,chat:write")return {failure:{
+        outcome:"FAILED",errorCategory:"MISSING_SCOPE",
+        responseStatus:response.status,durationMs:Date.now()-started,
+      }};
+    return {accessToken:payload.access_token,refreshToken:payload.refresh_token,
+      expiresIn:payload.expires_in};
+  } catch(error) {
+    const timedOut=error?.name==="TimeoutError"||error?.name==="AbortError";
+    const invalid=error?.category==="INVALID_RESPONSE";
+    return {failure:{outcome:invalid?"FAILED":"RETRY",
+      errorCategory:invalid?"INVALID_RESPONSE":timedOut?"TIMEOUT":"NETWORK_ERROR",
+      durationMs:Math.min(120000,Date.now()-started)}};
+  }
+}
+
+async function completeSlackDelivery(db,workerId,job,result,tokenVersion) {
+  const retryAfter=result.outcome==="RETRY"
+    ?webhookRetryDelaySeconds(Number(job.cycle_attempt_number),result.retryAfterSeconds):null;
+  await db.query(
+    "SELECT public.axora_complete_integration_slack_delivery($1,$2,$3,$4,$5,$6,$7,$8,$9,now()) AS status",
+    [workerId,job.delivery_id,job.lease_token,result.outcome,
+      result.responseStatus??null,result.errorCategory??null,
+      Math.min(120000,Math.max(0,Number(result.durationMs??0))),retryAfter,tokenVersion],
+  );
+}
+
+async function processSlackJob(
+  db,workerId,rootKey,configuration,deliver,job,
+) {
+  let tokenVersion=Number(job.token_version);
+  const authorized=await db.query(
+    "SELECT public.axora_claimed_slack_delivery_is_authorized($1,$2,$3,now()) AS allowed",
+    [workerId,job.delivery_id,job.lease_token],
+  );
+  if(authorized.rows[0]?.allowed!==true) {
+    await completeSlackDelivery(db,workerId,job,{
+      outcome:"FAILED",errorCategory:"AUTHORIZATION_REVOKED",durationMs:0,
+    },tokenVersion);
+    return;
+  }
+  let accessToken;
+  try {
+    accessToken=decryptWorkerIntegrationValue(
+      rootKey,slackAccessPurpose(job.installation_id,tokenVersion),
+      job.access_token_ciphertext,
+    );
+  } catch {
+    await completeSlackDelivery(db,workerId,job,{
+      outcome:"FAILED",errorCategory:"INVALID_RESPONSE",durationMs:0,
+    },tokenVersion);
+    return;
+  }
+  if(new Date(job.access_token_expires_at).getTime()<=Date.now()+5*60_000) {
+    let refreshToken;
+    try {
+      refreshToken=decryptWorkerIntegrationValue(
+        rootKey,slackRefreshPurpose(job.installation_id,tokenVersion),
+        job.refresh_token_ciphertext,
+      );
+    } catch {
+      await completeSlackDelivery(db,workerId,job,{
+        outcome:"FAILED",errorCategory:"TOKEN_REVOKED",durationMs:0,
+      },tokenVersion);
+      return;
+    }
+    const rotated=await refreshSlackWorkerToken(configuration,refreshToken);
+    if(rotated.failure) {
+      await completeSlackDelivery(db,workerId,job,rotated.failure,tokenVersion);
+      return;
+    }
+    const nextVersion=tokenVersion+1;
+    const expiresAt=new Date(Date.now()+rotated.expiresIn*1000);
+    const updated=await db.query(
+      "SELECT public.axora_rotate_claimed_slack_token($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,now()) AS version",
+      [workerId,job.delivery_id,job.lease_token,tokenVersion,
+        JSON.stringify(encryptWorkerIntegrationValue(
+          rootKey,slackAccessPurpose(job.installation_id,nextVersion),rotated.accessToken,
+        )),
+        JSON.stringify(encryptWorkerIntegrationValue(
+          rootKey,slackRefreshPurpose(job.installation_id,nextVersion),rotated.refreshToken,
+        )),expiresAt],
+    );
+    tokenVersion=Number(updated.rows[0]?.version);
+    accessToken=rotated.accessToken;
+  }
+  const reauthorized=await db.query(
+    "SELECT public.axora_claimed_slack_delivery_is_authorized($1,$2,$3,now()) AS allowed",
+    [workerId,job.delivery_id,job.lease_token],
+  );
+  if(reauthorized.rows[0]?.allowed!==true) {
+    await completeSlackDelivery(db,workerId,job,{
+      outcome:"FAILED",errorCategory:"AUTHORIZATION_REVOKED",durationMs:0,
+    },tokenVersion);
+    return;
+  }
+  let message;
+  try {message=slackMessageForJob(job,configuration.origin);}
+  catch {
+    await completeSlackDelivery(db,workerId,job,{
+      outcome:"FAILED",errorCategory:"INVALID_RESPONSE",durationMs:0,
+    },tokenVersion);
+    return;
+  }
+  const result=await deliver({accessToken,message});
+  await completeSlackDelivery(db,workerId,job,result,tokenVersion);
+}
+
+async function revokeSlackWorkerToken(token,options={}) {
+  try {
+    const response=await (options.fetchImpl??fetch)("https://slack.com/api/auth.revoke",{
+      method:"POST",headers:{
+        Accept:"application/json",Authorization:`Bearer ${token}`,
+        "Content-Type":"application/json;charset=UTF-8",
+        "User-Agent":"Axora-Slack/1.0",
+      },body:"{}",redirect:"error",signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    const text=await boundedFetchText(response);
+    if(response.status===429)return {succeeded:false,errorCategory:"RATE_LIMITED",
+      retryAfterSeconds:slackRetryAfter(response)};
+    if(response.status>=500)return {succeeded:false,errorCategory:"PROVIDER_UNAVAILABLE"};
+    let payload;
+    try {payload=JSON.parse(text);}catch{return {succeeded:false,errorCategory:"INVALID_RESPONSE"};}
+    if(payload?.ok===true)return {succeeded:true};
+    if(payload?.ok===false&&["invalid_auth","token_revoked","token_expired"]
+      .includes(payload.error))return {succeeded:true};
+    return {succeeded:false,errorCategory:"INVALID_RESPONSE"};
+  } catch {
+    return {succeeded:false,errorCategory:"NETWORK_ERROR"};
+  }
+}
+
+async function processSlackRevocation(db,workerId,rootKey,job,revoke) {
+  const version=Number(job.token_version);
+  let accessToken;
+  let refreshToken;
+  try {
+    accessToken=decryptWorkerIntegrationValue(rootKey,
+      slackAccessPurpose(job.installation_id,version),job.access_token_ciphertext);
+    refreshToken=decryptWorkerIntegrationValue(rootKey,
+      slackRefreshPurpose(job.installation_id,version),job.refresh_token_ciphertext);
+  } catch {
+    await db.query(
+      "SELECT public.axora_complete_slack_revocation($1,$2,$3,false,'INVALID_RESPONSE',null,now()) AS status",
+      [workerId,job.installation_id,job.lease_token],
+    );
+    return;
+  }
+  const results=await Promise.all([
+    revoke(accessToken),revoke(refreshToken),
+  ]);
+  const failed=results.find((result)=>!result.succeeded);
+  await db.query(
+    "SELECT public.axora_complete_slack_revocation($1,$2,$3,$4,$5,$6,now()) AS status",
+    [workerId,job.installation_id,job.lease_token,!failed,
+      failed?.errorCategory??null,failed?.retryAfterSeconds??null],
+  );
+}
+
 export async function pollIntegrationWorkerOnce({
   db,
   workerId,
   enabled = true,
+  webhooksEnabled = enabled,
   zapierEnabled = false,
+  slackEnabled = false,
+  slackConfiguration,
   rootKey,
   deliver = deliverWebhookAttempt,
+  deliverSlack = deliverSlackAttempt,
+  revokeSlack = revokeSlackWorkerToken,
   runCleanup = false,
 }) {
   if (!enabled) return { projected: false, claimed: 0, disabled: true };
-  await db.query("SELECT public.axora_project_integration_events(100,now()) AS result");
-  const claimed = await db.query(`
-    SELECT
-      delivery_id::text,event_id::text,subscription_id::text,company_id::text,
-      attempt_number,cycle_attempt_number,credential_version,
-      endpoint_ciphertext,credential_ciphertext,event_type,schema_version,
-      occurred_at::text,resource_type,resource_id::text,resource_url,summary,
-      lease_token::text
-    FROM public.axora_claim_integration_webhook_deliveries($1,10,45,now())
-  `, [workerId]);
-  const deliveries = await Promise.allSettled(claimed.rows.map((job) =>
+  await db.query(
+    "SELECT public.axora_project_integration_events_with_capabilities(100,now(),$1,$2) AS result",
+    [webhooksEnabled,slackEnabled],
+  );
+  const claimed = webhooksEnabled ? await db.query(`
+      SELECT
+        delivery_id::text,event_id::text,subscription_id::text,company_id::text,
+        attempt_number,cycle_attempt_number,credential_version,
+        endpoint_ciphertext,credential_ciphertext,event_type,schema_version,
+        occurred_at::text,resource_type,resource_id::text,resource_url,summary,
+        lease_token::text
+      FROM public.axora_claim_integration_webhook_deliveries($1,10,45,now())
+    `,[workerId]) : { rows:[] };
+  const webhookDeliveries=await Promise.allSettled(claimed.rows.map((job)=>
     processWebhookJob(db,workerId,rootKey,deliver,zapierEnabled,job)));
-  const failedJobs=deliveries.filter((result)=>result.status==="rejected").length;
+  const slackClaimed=slackEnabled ? await db.query(`
+      SELECT delivery_id::text,event_id::text,installation_id::text,
+        connection_id::text,company_id::text,attempt_number,
+        cycle_attempt_number,token_version,access_token_ciphertext,
+        refresh_token_ciphertext,access_token_expires_at::text,
+        workspace_id,channel_id,event_type,schema_version,occurred_at::text,
+        resource_type,resource_id::text,resource_url,summary,lease_token::text
+      FROM public.axora_claim_integration_slack_deliveries($1,10,45,now())
+    `,[workerId]) : { rows:[] };
+  const slackDeliveries=await Promise.allSettled(slackClaimed.rows.map((job)=>
+    processSlackJob(
+      db,workerId,rootKey,slackConfiguration,deliverSlack,job,
+    )));
+  const revocations=slackEnabled ? await db.query(`
+      SELECT installation_id::text,token_version,access_token_ciphertext,
+        refresh_token_ciphertext,attempt_number,lease_token::text
+      FROM public.axora_claim_slack_revocations($1,5,45,now())
+    `,[workerId]) : { rows:[] };
+  const revoked=await Promise.allSettled(revocations.rows.map((job)=>
+    processSlackRevocation(db,workerId,rootKey,job,revokeSlack)));
+  const failedJobs=[...webhookDeliveries,...slackDeliveries,...revoked]
+    .filter((result)=>result.status==="rejected").length;
   if (runCleanup) {
     await db.query("SELECT public.axora_cleanup_integration_runtime(now()) AS result");
+    await db.query("SELECT public.axora_cleanup_slack_runtime(now()) AS result");
   }
   return {
-    projected: true,claimed: claimed.rows.length,failedJobs,disabled: false,
+    projected:true,
+    claimed:claimed.rows.length+slackClaimed.rows.length+revocations.rows.length,
+    webhookClaimed:claimed.rows.length,slackClaimed:slackClaimed.rows.length,
+    revocationsClaimed:revocations.rows.length,failedJobs,disabled:false,
   };
 }
 
@@ -500,7 +933,7 @@ export function createIntegrationWorkerServer(state) {
       status: ready ? "ok" : "not_ready",
       enabled: state.enabled,
       active: state.active,
-      providers: { zapier: state.zapierEnabled },
+      providers: { zapier: state.zapierEnabled,slack:state.slackEnabled },
     }));
   });
 }
@@ -514,10 +947,13 @@ export function startIntegrationWorker({ env = process.env } = {}) {
     || !Number.isSafeInteger(port) || port < 1 || port > 65_535) {
     throw new Error("Integration worker runtime configuration is invalid.");
   }
-  const enabled = env.AXORA_INTEGRATION_WEBHOOKS_ENABLED === "true";
+  const webhooksEnabled=env.AXORA_INTEGRATION_WEBHOOKS_ENABLED==="true";
   const zapierEnabled = env.AXORA_ZAPIER_ENABLED === "true";
+  const slackEnabled=env.AXORA_SLACK_ENABLED==="true";
+  const enabled=webhooksEnabled||slackEnabled;
+  const slackConfiguration=slackEnabled?slackWorkerConfiguration(env):undefined;
   const state = {
-    workerId,enabled,zapierEnabled,active:false,
+    workerId,enabled,webhooksEnabled,zapierEnabled,slackEnabled,active:false,
     lastSuccessfulPollAt:enabled ? 0 : Date.now(),
     lastCleanupAt:0,maxReadyAgeMs:Math.max(intervalMs*6,60_000),
   };
@@ -534,7 +970,8 @@ export function startIntegrationWorker({ env = process.env } = {}) {
     try {
       const runCleanup = Date.now()-state.lastCleanupAt>=60*60_000;
       const result=await pollIntegrationWorkerOnce({
-        db,workerId,enabled,zapierEnabled,rootKey,runCleanup,
+        db,workerId,enabled,webhooksEnabled,zapierEnabled,slackEnabled,
+        slackConfiguration,rootKey,runCleanup,
       });
       if (result.failedJobs) {
         console.error(JSON.stringify({
@@ -559,7 +996,8 @@ export function startIntegrationWorker({ env = process.env } = {}) {
   process.once("SIGINT",shutdown);
   server.listen(port,"0.0.0.0",()=>{
     console.log(JSON.stringify({
-      event:"integration_worker_started",port,enabled,zapierEnabled,
+      event:"integration_worker_started",port,enabled,
+      webhooksEnabled,zapierEnabled,slackEnabled,
     }));
   });
   server.on("close",()=>{
