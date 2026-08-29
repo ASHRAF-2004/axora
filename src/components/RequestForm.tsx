@@ -15,6 +15,7 @@ import type { Branch, Company } from "@/lib/types";
 import type { CustomerCatalogProduct } from "@/lib/catalog-contracts";
 import type { ProcurementCartSnapshot } from "@/lib/procurement-cart";
 import { readRequestDraft } from "@/lib/request-draft";
+import type { RequestDraftState } from "@/lib/request-draft";
 import {
   AlertCircle,
   CalendarDays,
@@ -61,6 +62,8 @@ export function RequestForm({
   budgetAccounts = [],
   initialProduct,
   initialCart,
+  initialRequestDraft,
+  integrationDraftId,
   locale = "en",
 }: {
   actor: SessionUser;
@@ -69,6 +72,8 @@ export function RequestForm({
   budgetAccounts?: RequestBudgetChoice[];
   initialProduct?: CustomerCatalogProduct;
   initialCart: ProcurementCartSnapshot;
+  initialRequestDraft?: Omit<RequestDraftState,"updatedAt">;
+  integrationDraftId?: string;
   locale?: SupportedLocale;
 }) {
   const company =
@@ -86,9 +91,10 @@ export function RequestForm({
       : { userId: actor.id }
   ), [actor.id, draftCompanyId]);
   const draftState = useMemo(() => {
+    if (initialRequestDraft) return initialRequestDraft;
     if (typeof window === "undefined") return null;
     return readRequestDraft(draftScope);
-  }, [draftScope]);
+  }, [draftScope,initialRequestDraft]);
 
   const availableBranches = branches.filter(
     (item) =>
@@ -417,6 +423,7 @@ export function RequestForm({
       <input name="branchId" type="hidden" value={branchId} />
       <input name="cartId" type="hidden" value={initialCart.id} />
       <input ref={cartVersionInputRef} name="cartVersion" type="hidden" value={cartVersion} />
+      {integrationDraftId ? <input name="integrationDraftId" type="hidden" value={integrationDraftId} /> : null}
 
       <div
         className="request-summary"
@@ -607,7 +614,7 @@ export function RequestForm({
 
         <label>
           {copy.priority}
-          <select name="urgency" defaultValue="Normal">
+          <select name="urgency" defaultValue={draftState?.urgency ?? "Normal"}>
             <option value="Low">{localizedStatus("Low", locale)}</option>
             <option value="Normal">{localizedStatus("Normal", locale)}</option>
             <option value="High">{localizedStatus("High", locale)}</option>
@@ -620,6 +627,7 @@ export function RequestForm({
           <textarea
             name="notes"
             placeholder={copy.notesPlaceholder}
+            defaultValue={draftState?.notes ?? ""}
           />
         </label>
       </div>

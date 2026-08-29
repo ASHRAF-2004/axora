@@ -16,6 +16,7 @@ import { isApproveAndPayLocalNotReadyState } from "@/lib/finance-business-result
 import { decideRequestApproval } from "@/lib/request-approval";
 import { canAccess } from "@/lib/permissions";
 import { usesCompanyAdministratorDirectPurchase } from "@/lib/company-admin-direct-purchase";
+import { markIntegrationRequestDraftSubmitted } from "@/lib/integrations/request-drafts";
 
 const requestSubmissionKeySchema = z.string().uuid();
 const cartSubmissionSchema = z.object({
@@ -53,6 +54,9 @@ export async function createRequestAction(formData: FormData) {
   if (!submissionKey.success || !cart.success) {
     redirect("/cart?notice=request-invalid");
   }
+  const integrationDraftId = z.string().uuid().safeParse(
+    readFormText(formData,"integrationDraftId"),
+  );
   let id: string;
   try {
     id = await createAuthorizedRequest(
@@ -71,6 +75,13 @@ export async function createRequestAction(formData: FormData) {
             : code === "P8207" ? "budget-insufficient"
               : code === "P8203" ? "cart-stale" : "request-unavailable";
     redirect(`/cart?notice=${notice}`);
+  }
+  if (integrationDraftId.success) {
+    await markIntegrationRequestDraftSubmitted(user,{
+      draftId:integrationDraftId.data,
+      submissionKey:submissionKey.data,
+      requestId:id,
+    });
   }
   revalidatePath("/dashboard");
   revalidatePath("/requests");

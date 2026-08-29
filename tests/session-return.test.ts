@@ -75,6 +75,16 @@ describe("session return paths", () => {
       "/users",
       "/dashboard",
     )).toBe("/dashboard");
+    expect(authorizedSessionReturnPath(
+      requester,
+      "/integrations/drafts/50000000-0000-4000-8000-000000000001",
+      "/dashboard",
+    )).toBe("/integrations/drafts/50000000-0000-4000-8000-000000000001");
+    expect(authorizedSessionReturnPath(
+      requester,
+      "/integrations",
+      "/dashboard",
+    )).toBe("/dashboard");
     expect(isRecognizedProtectedPath("/supplier")).toBe(false);
   });
 

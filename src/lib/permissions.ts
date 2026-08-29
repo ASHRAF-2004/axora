@@ -50,6 +50,9 @@ export type Permission =
   | "create_platform_users"
   | "create_company_users"
   | "create_delivery_users"
+  | "manage_company_integrations"
+  | "manage_integration_applications"
+  | "view_integration_operations"
   | "view_all_companies";
 
 export interface AccessSubject {
@@ -103,6 +106,9 @@ const platformOwnerPermissions: readonly Permission[] = [
   "create_platform_users",
   "create_company_users",
   "create_delivery_users",
+  "manage_company_integrations",
+  "manage_integration_applications",
+  "view_integration_operations",
   "view_all_companies",
 ];
 
@@ -155,6 +161,7 @@ const companyAdminPermissions: readonly Permission[] = [
   "manage_settings",
   "manage_category_policy",
   "direct_purchase",
+  "manage_company_integrations",
 ];
 
 // Legacy capabilities remain byte-for-byte compatible while active canonical

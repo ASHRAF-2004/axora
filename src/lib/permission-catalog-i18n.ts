@@ -18,7 +18,7 @@ const groups = {
     Finance: "المالية", Documents: "المستندات", Reporting: "التقارير",
     Analytics: "التحليلات", Email: "البريد الإلكتروني", Audit: "التدقيق",
     Settings: "الإعدادات", Support: "الدعم", Supplier: "الموردون",
-    Procurement: "المشتريات",
+    Procurement: "المشتريات", Integrations: "التكاملات",
     "Platform people": "مستخدمو أكسورا", "Company people": "مستخدمو الشركة",
     "Delivery people": "مستخدمو التسليم", "Financial visibility": "الرؤية المالية",
   },
@@ -30,7 +30,7 @@ const groups = {
     Finance: "Kewangan", Documents: "Dokumen", Reporting: "Pelaporan",
     Analytics: "Analitik", Email: "E-mel", Audit: "Audit",
     Settings: "Tetapan", Support: "Sokongan", Supplier: "Pembekal",
-    Procurement: "Perolehan",
+    Procurement: "Perolehan", Integrations: "Integrasi",
     "Platform people": "Pengguna Axora", "Company people": "Pengguna syarikat",
     "Delivery people": "Pengguna penghantaran", "Financial visibility": "Keterlihatan kewangan",
   },
@@ -86,6 +86,9 @@ const resources = {
   category: { ar: "فئات المنتجات", ms: "kategori produk" },
   procurement: { ar: "مشتريات الشركة", ms: "perolehan syarikat" },
   "procurement.category_policy": { ar: "سياسة فئات الشراء", ms: "polisi kategori pembelian" },
+  "integration.application": { ar: "تطبيقات التكامل", ms: "aplikasi integrasi" },
+  "integration.connection": { ar: "اتصالات التكامل", ms: "sambungan integrasi" },
+  "integration.operations": { ar: "عمليات التكامل", ms: "operasi integrasi" },
 } as const;
 
 const actions = {

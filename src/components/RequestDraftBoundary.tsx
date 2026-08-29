@@ -9,6 +9,7 @@ import {
   newRequestSubmissionKey,
   readRequestDraft,
   writeRequestDraft,
+  type RequestDraftState,
 } from "@/lib/request-draft";
 
 const REQUEST_TYPES = new Set(["Standard", "Ad-hoc", "Recurring"]);
@@ -68,9 +69,11 @@ function selectedOptionExists(control: HTMLSelectElement, value: string) {
 
 export function RequestDraftBoundary({
   scope,
+  initialDraft,
   children,
 }: {
   scope: BrowserSessionScope;
+  initialDraft?: Omit<RequestDraftState,"updatedAt">;
   children: ReactNode;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -79,7 +82,7 @@ export function RequestDraftBoundary({
     const form = rootRef.current?.querySelector<HTMLFormElement>("form");
     if (!form) return;
 
-    const stored = readRequestDraft(scope);
+    const stored = initialDraft ?? readRequestDraft(scope);
     const submissionKey = stored?.submissionKey ?? newRequestSubmissionKey();
     ensureSubmissionInput(form, submissionKey);
 
@@ -136,7 +139,7 @@ export function RequestDraftBoundary({
       form.removeEventListener("input", schedulePersist);
       form.removeEventListener("change", schedulePersist);
     };
-  }, [scope]);
+  }, [initialDraft,scope]);
 
   return <div ref={rootRef} data-request-draft-boundary="true">{children}</div>;
 }

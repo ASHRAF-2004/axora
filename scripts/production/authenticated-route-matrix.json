@@ -155,6 +155,48 @@
       "landmark": "main h1"
     },
     {
+      "route": "/integrations",
+      "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
+      "companyScope": "platform-registry-or-exact-authorized-company",
+      "expectedAccess": [
+        "OWNER_1",
+        "OWNER_2",
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "foreign-company-resource",
+        "cam-without-integration-authority"
+      ],
+      "mode": "mutating",
+      "apis": [],
+      "expectedFinalUrl": "/integrations",
+      "landmark": "main h1"
+    },
+    {
+      "route": "/integrations/drafts/[id]",
+      "accountRole": "COMPANY_REQUESTER|COMPANY_ADMIN",
+      "companyScope": "exact-company-and-current-branch-permission",
+      "expectedAccess": [
+        "C100_ADMIN",
+        "C101_ADMIN",
+        "C102_ADMIN"
+      ],
+      "expectedDenial": [
+        "OWNER_1",
+        "OWNER_2",
+        "foreign-company-resource",
+        "random-draft-resource"
+      ],
+      "mode": "mutating",
+      "apis": [
+        "/api/catalog/cart"
+      ],
+      "expectedFinalUrl": "/integrations/drafts/[id]",
+      "landmark": "main h1"
+    },
+    {
       "route": "/products",
       "accountRole": "PLATFORM_OWNER|COMPANY_ADMIN",
       "companyScope": "catalog-with-private-cost-filtering",
@@ -952,6 +994,96 @@
     }
   ],
   "apiRoutes": [
+    {
+      "route": "/.well-known/oauth-authorization-server",
+      "authentication": "public-feature-gated-metadata",
+      "scope": "none",
+      "mode": "read-only"
+    },
+    {
+      "route": "/oauth/authorize/decision",
+      "authentication": "session-and-same-origin-consent-handle",
+      "scope": "current-user-current-company-current-permissions",
+      "mode": "mutating"
+    },
+    {
+      "route": "/oauth/token",
+      "authentication": "oauth-client-and-pkce-or-rotating-refresh-token",
+      "scope": "grant-intersection",
+      "mode": "mutating"
+    },
+    {
+      "route": "/oauth/revoke",
+      "authentication": "oauth-client",
+      "scope": "client-owned-token",
+      "mode": "mutating"
+    },
+    {
+      "route": "/api/v1/openapi.json",
+      "authentication": "public-feature-gated-contract",
+      "scope": "none",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/me",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "live-grant-and-company-connection",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/companies",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "companies:read-and-exact-company",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/companies/[id]",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "companies:read-and-exact-company",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/requests",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "requests:read-and-current-resource-authorization",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/requests/[id]",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "requests:read-and-current-resource-authorization",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/deliveries",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "deliveries:read-and-current-resource-authorization",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/deliveries/[id]",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "deliveries:read-and-current-resource-authorization",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/invoices",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "invoices:read-customer-safe-and-current-resource-authorization",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/invoices/[id]",
+      "authentication": "opaque-oauth-access-token",
+      "scope": "invoices:read-customer-safe-and-current-resource-authorization",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/v1/request-drafts",
+      "authentication": "opaque-oauth-access-token-and-idempotency-key",
+      "scope": "requests:draft-and-current-branch-authorization",
+      "mode": "mutating"
+    },
     {
       "route": "/api/geocoding/autocomplete",
       "authentication": "authenticated",

@@ -126,6 +126,17 @@ account_setup_ttl="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" ACCOUNT_SETUP_T
 turnstile_site_key="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" TURNSTILE_SITE_KEY)"
 turnstile_hostnames="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" TURNSTILE_HOSTNAMES)"
 turnstile_expected_hostname="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_TURNSTILE_EXPECTED_HOSTNAME)"
+external_api_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_EXTERNAL_API_ENABLED)"
+integration_webhooks_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_INTEGRATION_WEBHOOKS_ENABLED)"
+zapier_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_ZAPIER_ENABLED)"
+slack_enabled="$(runtime_env_value "$AXORA_RUNTIME_ENV_FILE" AXORA_SLACK_ENABLED)"
+
+for integration_flag in \
+  "$external_api_enabled" "$integration_webhooks_enabled" \
+  "$zapier_enabled" "$slack_enabled"; do
+  [[ "$integration_flag" == "true" || "$integration_flag" == "false" ]] \
+    || die "Integration feature flags must be exactly true or false."
+done
 
 [[ "$email_delivery_enabled" == "true" || "$email_delivery_enabled" == "false" ]] \
   || die "AXORA_EMAIL_DELIVERY_ENABLED must be exactly true or false."
@@ -239,6 +250,23 @@ node -e '
   if(value.length<32 || value.length>4096 || /[\s\x00-\x1f\x7f]/.test(value)) process.exit(1);
 ' "$email_service_key_path" \
   || die "The private account email service key is malformed."
+
+integration_key_path="$AXORA_SECRETS_DIR/axora_integration_encryption_key"
+[[ -f "$integration_key_path" && ! -L "$integration_key_path" && -s "$integration_key_path" ]] \
+  || die "The dedicated integration encryption key is missing or unsafe."
+integration_key_mode="$(stat -c '%a' "$integration_key_path")"
+[[ "$(stat -c '%u:%g' "$integration_key_path")" == "0:1000" ]] \
+  || die "The integration encryption key must be owned by root:GID-1000."
+(( (8#$integration_key_mode & 8#027) == 0 )) \
+  || die "The integration encryption key permissions are too broad."
+node -e '
+  const fs=require("node:fs");
+  const value=fs.readFileSync(process.argv[1],"utf8").trim();
+  if(!/^[A-Za-z0-9_-]{43,512}$/.test(value)) process.exit(1);
+  const decoded=Buffer.from(value,"base64url");
+  if(decoded.length<32) process.exit(1);
+' "$integration_key_path" \
+  || die "The dedicated integration encryption key is malformed."
 
 [[ -f "$AXORA_REGISTRY_TOKEN_FILE" && ! -L "$AXORA_REGISTRY_TOKEN_FILE" \
   && -s "$AXORA_REGISTRY_TOKEN_FILE" ]] \
