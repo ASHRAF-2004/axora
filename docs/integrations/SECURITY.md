@@ -81,7 +81,9 @@ response bodies are discarded and capped at 64 KiB.
 
 Each subscription has an independently generated credential encrypted with a
 per-subscription derived key. The credential is shown only for the idempotent
-create or rotation result. Deliveries use HMAC-SHA256 over
+create or rotation result. A provider subscription may suppress even that
+one-time response when its platform cannot safely redact the secret; Axora
+still generates, encrypts, and uses the credential. Deliveries use HMAC-SHA256 over
 `timestamp + "." + exact raw JSON`; receivers compare in constant time and
 reject timestamps more than five minutes from their clock.
 
@@ -112,6 +114,11 @@ surface without changing core Axora. Additive tables may remain dormant while
 the application image is restored to the previous immutable OCI. Integration
 failures must not block login, request workflow, Wallet, budget, payment,
 invoice, delivery, proof of delivery, Contact, or transactional email.
+
+Reserved provider application slugs bind provider-specific flags to consent,
+token exchange, token refresh, every bearer-token lookup, and outbound worker
+delivery. Revocation remains usable while a provider is disabled. Disabling
+`axora-zapier` does not disable generic customer webhooks.
 
 Webhook rollback is: set `AXORA_INTEGRATION_WEBHOOKS_ENABLED=false`, recreate
 only the application and integration worker, confirm readiness in dormant

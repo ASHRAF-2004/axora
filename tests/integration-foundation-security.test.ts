@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   externalApiEnabled,
   INTEGRATION_FLAGS,
+  INTEGRATION_PROVIDER_APPLICATION_SLUGS,
+  integrationApplicationEnabled,
   integrationConfigInternals,
   integrationFlagEnabled,
   integrationOrigin,
@@ -81,6 +83,17 @@ describe("external integration security primitives", () => {
       expect(integrationFlagEnabled(flag, { NODE_ENV: "test", [flag]: "true" })).toBe(true);
     }
     expect(new Set(Object.values(INTEGRATION_FLAGS)).size).toBe(4);
+    expect(integrationApplicationEnabled("customer-webhook-app")).toBe(true);
+    expect(integrationApplicationEnabled(
+      INTEGRATION_PROVIDER_APPLICATION_SLUGS.zapier,
+    )).toBe(false);
+    expect(integrationApplicationEnabled(
+      INTEGRATION_PROVIDER_APPLICATION_SLUGS.zapier,
+      { NODE_ENV: "test", AXORA_ZAPIER_ENABLED: "true" },
+    )).toBe(true);
+    expect(integrationApplicationEnabled(
+      INTEGRATION_PROVIDER_APPLICATION_SLUGS.slack,
+    )).toBe(false);
   });
 
   it("requires dedicated production file-mounted key material", () => {

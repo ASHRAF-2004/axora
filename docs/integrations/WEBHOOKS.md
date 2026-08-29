@@ -69,6 +69,11 @@ reject a timestamp outside a five-minute window. Deduplicate on `event_id`.
 Do not parse and reserialize JSON before signature verification. Store the
 secret in the receiver's secret manager, never in source or logs.
 
+Provider-managed receivers that cannot safely consume or redact a credential
+may create the subscription with `credential_delivery: "none"`. Axora still
+generates and encrypts an isolated credential and signs every delivery, but it
+never returns that subscription's secret during creation, replay, or rotation.
+
 ## Destination policy
 
 Subscriptions require HTTPS port 443. Axora rejects credential-bearing URLs,

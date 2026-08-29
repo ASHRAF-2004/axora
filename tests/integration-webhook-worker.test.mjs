@@ -30,6 +30,23 @@ const payload = {
   data: { order_code: "ORD-FICTIONAL" },
 };
 
+function encryptedWorkerValue(rootKey,purpose,plaintext) {
+  const nonce=Buffer.alloc(12,purpose.includes("endpoint") ? 0x30 : 0x31);
+  const key=Buffer.from(hkdfSync(
+    "sha256",rootKey,Buffer.from("axora-integration-encryption-v1"),
+    Buffer.from(purpose),32,
+  ));
+  const cipher=createCipheriv("aes-256-gcm",key,nonce);
+  cipher.setAAD(Buffer.from(`axora:${purpose}:v1`));
+  const encrypted=Buffer.concat([cipher.update(plaintext,"utf8"),cipher.final()]);
+  return {
+    version:1,
+    nonce:nonce.toString("base64url"),
+    ciphertext:encrypted.toString("base64url"),
+    tag:cipher.getAuthTag().toString("base64url"),
+  };
+}
+
 function requestFixture({
   status = 204,
   headers = {},
@@ -98,19 +115,7 @@ describe("isolated webhook worker security", () => {
   it("decrypts only the app's authenticated integration envelope", () => {
     const rootKey=Buffer.alloc(32,0x51);
     const purpose="webhook-credential:fictional-subscription";
-    const nonce=Buffer.alloc(12,0x31);
-    const key=Buffer.from(hkdfSync(
-      "sha256",rootKey,Buffer.from("axora-integration-encryption-v1"),
-      Buffer.from(purpose),32,
-    ));
-    const cipher=createCipheriv("aes-256-gcm",key,nonce);
-    cipher.setAAD(Buffer.from(`axora:${purpose}:v1`));
-    const encrypted=Buffer.concat([
-      cipher.update(credential,"utf8"),cipher.final(),
-    ]);
-    const envelope={version:1,nonce:nonce.toString("base64url"),
-      ciphertext:encrypted.toString("base64url"),
-      tag:cipher.getAuthTag().toString("base64url")};
+    const envelope=encryptedWorkerValue(rootKey,purpose,credential);
     expect(decryptWorkerIntegrationValue(rootKey,purpose,envelope)).toBe(credential);
     expect(()=>decryptWorkerIntegrationValue(rootKey,purpose,{
       ...envelope,tag:envelope.tag.slice(1),
@@ -173,6 +178,78 @@ describe("isolated webhook worker security", () => {
       projected:true,claimed:2,failedJobs:1,disabled:false,
     });
     expect(completionCalls).toBe(1);
+  });
+
+  it("disables Zapier delivery without coupling ordinary customer webhooks", async () => {
+    const rootKey=Buffer.alloc(32,0x52);
+    const jobs=[
+      {
+        delivery_id:"10000000-0000-4000-8000-000000000011",
+        event_id:payload.event_id,
+        subscription_id:"10000000-0000-4000-8000-000000000012",
+        company_id:payload.company_id,
+        attempt_number:1,cycle_attempt_number:1,credential_version:1,
+        event_type:payload.event_type,schema_version:payload.schema_version,
+        occurred_at:payload.occurred_at,resource_type:payload.resource_type,
+        resource_id:payload.resource_id,resource_url:payload.resource_url,
+        summary:payload.data,
+        lease_token:"20000000-0000-4000-8000-000000000011",
+        endpoint:"https://hooks.zapier.com/hooks/catch/123/fictional/",
+      },
+      {
+        delivery_id:"10000000-0000-4000-8000-000000000021",
+        event_id:payload.event_id,
+        subscription_id:"10000000-0000-4000-8000-000000000022",
+        company_id:payload.company_id,
+        attempt_number:1,cycle_attempt_number:1,credential_version:1,
+        event_type:payload.event_type,schema_version:payload.schema_version,
+        occurred_at:payload.occurred_at,resource_type:payload.resource_type,
+        resource_id:payload.resource_id,resource_url:payload.resource_url,
+        summary:payload.data,
+        lease_token:"20000000-0000-4000-8000-000000000021",
+        endpoint,
+      },
+    ].map((job)=>({
+      ...job,
+      endpoint_ciphertext:encryptedWorkerValue(
+        rootKey,`webhook-endpoint:${job.subscription_id}`,job.endpoint,
+      ),
+      credential_ciphertext:encryptedWorkerValue(
+        rootKey,`webhook-credential:${job.subscription_id}`,credential,
+      ),
+    }));
+    const completions=[];
+    const db={query:vi.fn(async(statement,values)=>{
+      const sql=String(statement);
+      if(sql.includes("axora_project_integration_events"))return {rows:[{result:{}}]};
+      if(sql.includes("axora_claim_integration_webhook_deliveries"))return {rows:jobs};
+      if(sql.includes("axora_claimed_webhook_delivery_is_authorized")){
+        return {rows:[{allowed:true}]};
+      }
+      if(sql.includes("axora_complete_integration_webhook_delivery")){
+        completions.push(values);
+        return {rows:[{status:values[3]}]};
+      }
+      throw new Error("Unexpected fixture query");
+    })};
+    const outbound=vi.fn(async()=>({
+      outcome:"SUCCEEDED",responseStatus:204,durationMs:1,
+    }));
+    await expect(pollIntegrationWorkerOnce({
+      db,workerId:"integration-fixture01",enabled:true,zapierEnabled:false,
+      rootKey,deliver:outbound,
+    })).resolves.toEqual({
+      projected:true,claimed:2,failedJobs:0,disabled:false,
+    });
+    expect(outbound).toHaveBeenCalledTimes(1);
+    expect(outbound.mock.calls[0]?.[0].endpoint).toBe(endpoint);
+    expect(completions).toHaveLength(2);
+    expect(completions).toContainEqual(expect.arrayContaining([
+      "FAILED",null,"CONFIGURATION_ERROR",0,
+    ]));
+    expect(completions).toContainEqual(expect.arrayContaining([
+      "SUCCEEDED",204,null,1,
+    ]));
   });
 
   it.each([

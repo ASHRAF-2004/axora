@@ -1,0 +1,34 @@
+{
+  "name": "axora-zapier-private-beta",
+  "version": "1.0.0",
+  "description": "Private-beta Zapier integration for Axora's scoped external API and webhook platform.",
+  "private": true,
+  "type": "module",
+  "exports": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "clean": "rimraf ./dist ./build",
+    "build": "npm run clean && tsc",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "test": "npm run typecheck && vitest run",
+    "validate": "npm run build && node ./scripts/validate.mjs",
+    "_zapier-build": "npm run build"
+  },
+  "dependencies": {
+    "zapier-platform-core": "19.1.0"
+  },
+  "devDependencies": {
+    "nock": "14.0.10",
+    "rimraf": "6.0.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  },
+  "overrides": {
+    "form-data": "4.0.6"
+  }
+}

@@ -339,6 +339,7 @@ services:
       DB_USER: axora_integration_worker
       DB_PASSWORD_FILE: /run/secrets/axora_integration_worker_password
       AXORA_INTEGRATION_WEBHOOKS_ENABLED: "${AXORA_INTEGRATION_WEBHOOKS_ENABLED:-false}"
+      AXORA_ZAPIER_ENABLED: "${AXORA_ZAPIER_ENABLED:-false}"
       AXORA_INTEGRATION_ENCRYPTION_KEY_FILE: /run/secrets/axora_integration_encryption_key
       INTEGRATION_WORKER_PORT: "3104"
       INTEGRATION_WORKER_INTERVAL_MS: "5000"

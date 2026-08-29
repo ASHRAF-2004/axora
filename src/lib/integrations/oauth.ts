@@ -9,7 +9,7 @@ import {
   opaqueIntegrationSecret,
 } from "./crypto";
 import { withIntegrationTransaction } from "./database";
-import { integrationOrigin } from "./config";
+import { integrationApplicationEnabled, integrationOrigin } from "./config";
 import {
   parseIntegrationScopes,
   scopesAreSubset,
@@ -60,6 +60,7 @@ interface AuthorizationRequestRow extends QueryResultRow {
   status: "PENDING" | "APPROVED" | "DENIED" | "EXPIRED";
   clientId: string;
   applicationName: string;
+  applicationSlug: string;
   applicationStatus: string;
   allowedScopes: IntegrationScope[];
 }
@@ -179,6 +180,7 @@ async function applicationByClientId(
   client: PoolClient,
   clientId: string,
   lock = false,
+  allowDisabledProvider = false,
 ) {
   const result = await client.query<ApplicationRow>(`
     SELECT id::text,client_id AS "clientId",
@@ -190,7 +192,11 @@ async function applicationByClientId(
     WHERE client_id=$1 AND status='ACTIVE'
     ${lock ? "FOR KEY SHARE" : ""}
   `, [clientId]);
-  return result.rows[0];
+  const application = result.rows[0];
+  return application && (allowDisabledProvider
+    || integrationApplicationEnabled(application.slug))
+    ? application
+    : undefined;
 }
 
 export async function prepareAuthorization(input: {
@@ -327,6 +333,7 @@ export async function decideAuthorization(input: {
         request.expires_at::text AS "expiresAt",request.status,
         application.client_id AS "clientId",
         application.name AS "applicationName",
+        application.slug AS "applicationSlug",
         application.status AS "applicationStatus",
         application.allowed_scopes AS "allowedScopes"
       FROM public.integration_oauth_authorization_requests request
@@ -371,6 +378,10 @@ export async function decideAuthorization(input: {
           { error: "access_denied" },
         ),
       } as const;
+    }
+
+    if (!integrationApplicationEnabled(request.applicationSlug)) {
+      return { ok: false, error: "unauthorized_client" } as const;
     }
 
     // Re-evaluate the canonical permission inside the transaction immediately
@@ -524,9 +535,15 @@ export function parseOAuthClientCredentials(
 async function authenticatedApplication(
   client: PoolClient,
   credentials: OAuthClientCredentials,
+  allowDisabledProvider = false,
 ) {
   if (!clientIdSchema.safeParse(credentials.clientId).success) return null;
-  const application = await applicationByClientId(client, credentials.clientId, true);
+  const application = await applicationByClientId(
+    client,
+    credentials.clientId,
+    true,
+    allowDisabledProvider,
+  );
   if (!application || application.tokenEndpointAuthMethod !== credentials.method) return null;
   if (application.clientType === "PUBLIC") {
     return credentials.method === "none" && !credentials.clientSecret
@@ -948,7 +965,11 @@ export async function revokeOAuthToken(input: {
     reason: "Revoked OAuth token",
     correlationId: input.requestId,
   }, async (client) => {
-    const application = await authenticatedApplication(client, input.credentials);
+    const application = await authenticatedApplication(
+      client,
+      input.credentials,
+      true,
+    );
     if (!application) return { authenticated: false as const };
     if (/^axora_at_[A-Za-z0-9_-]{43}$/.test(input.token)) {
       const access = await client.query<{ familyId?: string }>(`

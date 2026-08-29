@@ -15,5 +15,6 @@ export default defineConfig([
     "workers/**/.wrangler/**",
     "workers/**/dist/**",
     "workers/**/worker-configuration.d.ts",
+    "integrations/**/dist/**",
   ]),
 ]);

@@ -127,6 +127,12 @@ rotation or revocation makes the earlier operation's secret unavailable.
 
 Webhook destinations and signing credentials are encrypted at rest. List
 responses expose only the destination origin, never its path, query, or secret.
+Subscription creation accepts optional `credential_delivery: "none"` for a
+provider-managed receiver that cannot safely consume or redact the one-time
+HMAC secret. Axora still generates, encrypts, and uses an isolated signing
+credential for every delivery; it is simply omitted from all API responses.
+The preference is retained for later rotation and idempotent replay. The
+default remains `"one_time"` for ordinary webhook receivers.
 See [WEBHOOKS.md](./WEBHOOKS.md) for the receiver contract.
 
 Example body:

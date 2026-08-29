@@ -13,6 +13,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  zapier-private-beta:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.23.2"
+          cache: npm
+          cache-dependency-path: integrations/zapier/package-lock.json
+      - name: Verify private-beta package, schema, and dependency audit
+        run: |
+          npm ci --prefix integrations/zapier
+          npm test --prefix integrations/zapier
+          npm run validate --prefix integrations/zapier
+          npm audit --prefix integrations/zapier --audit-level=low
+
   quality:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
