@@ -2,6 +2,8 @@ import { requirePagePermission } from "@/lib/auth";
 import { externalApiEnabled, integrationWebhooksEnabled } from "@/lib/integrations/config";
 import { getIntegrationWorkspace } from "@/lib/integrations/management";
 import { integrationManagementMessages } from "@/lib/integrations/management-i18n";
+import { getSlackWorkspace } from "@/lib/integrations/slack";
+import { slackIntegrationMessages } from "@/lib/integrations/slack-i18n";
 import { getWebhookWorkspace } from "@/lib/integrations/webhooks";
 import {
   Activity,
@@ -10,6 +12,7 @@ import {
   CircleOff,
   KeyRound,
   Link2,
+  MessageSquare,
   ShieldCheck,
   Webhook,
 } from "lucide-react";
@@ -20,6 +23,11 @@ import {
   DisconnectControl,
 } from "./IntegrationForms";
 import styles from "./Integrations.module.css";
+import {
+  ConnectSlackControl,
+  SlackInstallationControls,
+  SlackRetryControl,
+} from "./SlackForms";
 import {
   WebhookRetryControl,
   WebhookSubscriptionControls,
@@ -33,11 +41,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, noarchive: true },
 };
 
-export default async function IntegrationsPage() {
+export default async function IntegrationsPage({searchParams}:{
+  searchParams:Promise<{slack?:string}>;
+}) {
   const actor = await requirePagePermission("manage_company_integrations");
   const locale = actor.preferredLocale ?? "en";
   const copy = integrationManagementMessages(locale);
+  const slackCopy=slackIntegrationMessages(locale);
+  const query=await searchParams;
   const workspace = await getIntegrationWorkspace(actor);
+  const slackWorkspace=await getSlackWorkspace(actor);
   const apiActive = externalApiEnabled();
   const webhooksActive = integrationWebhooksEnabled();
   const webhookWorkspace = webhooksActive
@@ -64,6 +77,28 @@ export default async function IntegrationsPage() {
     [copy.webhookDead,webhookWorkspace.operations.deadDeliveries],
     [copy.webhookSucceeded24h,webhookWorkspace.operations.succeeded24h],
   ] as const:[];
+  const slackMetricEntries=slackWorkspace.operations?[
+    [slackCopy.activeInstallations,slackWorkspace.operations.activeInstallations],
+    [slackCopy.pendingDeliveries,slackWorkspace.operations.pendingDeliveries],
+    [slackCopy.retryDeliveries,slackWorkspace.operations.retryDeliveries],
+    [slackCopy.deadDeliveries,slackWorkspace.operations.deadDeliveries],
+    [slackCopy.succeeded24h,slackWorkspace.operations.succeeded24h],
+  ] as const:[];
+  const oauthApplications=workspace.applications.filter(
+    (application)=>application.authorizationMode==="AXORA_OAUTH",
+  );
+  const oauthApplicationIds=new Set(oauthApplications.map((application)=>application.id));
+  const oauthConnections=workspace.connections.filter(
+    (connection)=>oauthApplicationIds.has(connection.applicationId),
+  );
+  const currentSlackInstallation=slackWorkspace.installations.find(
+    (installation)=>installation.status!=="REVOKED",
+  );
+  const slackNotice=query.slack==="connected"?slackCopy.connected
+    :query.slack==="cancelled"?slackCopy.cancelled
+      :query.slack==="session_required"?slackCopy.sessionRequired
+        :query.slack==="error"?slackCopy.oauthError:undefined;
+  const slackNoticeError=query.slack==="error"||query.slack==="session_required";
 
   return <div className={styles.workspace}>
     <header className={styles.pageHeader}>
@@ -85,6 +120,15 @@ export default async function IntegrationsPage() {
             : <CircleOff size={18} aria-hidden="true" />}
           <span>{webhooksActive?copy.webhooksActive:copy.webhooksInactive}</span>
         </div>
+        <div className={styles.featureStatus}
+          data-active={String(slackWorkspace.enabled&&slackWorkspace.configured)}>
+          {slackWorkspace.enabled&&slackWorkspace.configured
+            ? <CheckCircle2 size={18} aria-hidden="true" />
+            : <CircleOff size={18} aria-hidden="true" />}
+          <span>{!slackWorkspace.enabled?slackCopy.featureInactive
+            :slackWorkspace.configured?slackCopy.featureActive
+              :slackCopy.featureUnavailable}</span>
+        </div>
       </div>
     </header>
 
@@ -96,6 +140,15 @@ export default async function IntegrationsPage() {
       <Webhook size={18} aria-hidden="true"/>
       <span>{copy.webhooksInactiveHelp}</span>
     </div>:null}
+    {!slackWorkspace.enabled?<div className={styles.darkLaunchNotice} role="status">
+      <MessageSquare size={18} aria-hidden="true"/>
+      <span>{slackCopy.inactiveHelp}</span>
+    </div>:slackWorkspace.configured?null:<div className={styles.darkLaunchNotice} role="status">
+      <MessageSquare size={18} aria-hidden="true"/>
+      <span>{slackCopy.unconfiguredHelp}</span>
+    </div>}
+    {slackNotice?<div className={slackNoticeError?styles.feedbackError:styles.feedbackSuccess}
+      role={slackNoticeError?"alert":"status"}><strong>{slackNotice}</strong></div>:null}
 
     {workspace.operations ? <section aria-labelledby="integration-health-title">
       <div className={styles.sectionHeading}>
@@ -121,13 +174,26 @@ export default async function IntegrationsPage() {
       </div>
     </section>:null}
 
+    {slackMetricEntries.length?<section aria-labelledby="slack-health-title">
+      <div className={styles.sectionHeading}>
+        <MessageSquare size={20} aria-hidden="true"/>
+        <h2 id="slack-health-title">{slackCopy.health}</h2>
+      </div>
+      <div className={styles.metricGrid}>
+        {slackMetricEntries.map(([label,value])=><article
+          className={styles.metricCard} key={label}>
+          <span>{label}</span><strong><bdi dir="ltr">{number.format(value)}</bdi></strong>
+        </article>)}
+      </div>
+    </section>:null}
+
     <section className={styles.panel} aria-labelledby="connections-title">
       <header className={styles.panelHeader}>
         <div><h2 id="connections-title">{copy.connectedApps}</h2><p>{copy.connectedDescription}</p></div>
         <Link2 size={21} aria-hidden="true" />
       </header>
-      {workspace.connections.length ? <div className={styles.cardList}>
-        {workspace.connections.map((connection) => <article className={styles.connectionCard} key={connection.id}>
+      {oauthConnections.length ? <div className={styles.cardList}>
+        {oauthConnections.map((connection) => <article className={styles.connectionCard} key={connection.id}>
           <div className={styles.cardIdentity}>
             <span className={styles.iconBox}><AppWindow size={20} aria-hidden="true" /></span>
             <div><h3>{connection.applicationName}</h3><p>{connection.companyName}</p></div>
@@ -156,8 +222,8 @@ export default async function IntegrationsPage() {
         <div><h2 id="available-title">{copy.availableApps}</h2><p>{copy.availableDescription}</p></div>
         <AppWindow size={21} aria-hidden="true" />
       </header>
-      {workspace.applications.length ? <div className={styles.cardList}>
-        {workspace.applications.map((application) => <article className={styles.applicationCard} key={application.id}>
+      {oauthApplications.length ? <div className={styles.cardList}>
+        {oauthApplications.map((application) => <article className={styles.applicationCard} key={application.id}>
           <div className={styles.cardIdentity}>
             <span className={styles.iconBox}><AppWindow size={20} aria-hidden="true" /></span>
             <div><h3>{application.name}</h3><p>{application.description}</p></div>
@@ -169,6 +235,99 @@ export default async function IntegrationsPage() {
         </article>)}
       </div> : <div className={styles.emptyState}><CircleOff size={25} aria-hidden="true" /><strong>{copy.noApplications}</strong></div>}
     </section> : null}
+
+    <section className={styles.panel} aria-labelledby="slack-title">
+      <header className={styles.panelHeader}>
+        <div><h2 id="slack-title">{slackCopy.title}</h2><p>{slackCopy.description}</p></div>
+        <MessageSquare size={21} aria-hidden="true"/>
+      </header>
+      {slackWorkspace.installations.length?<div className={styles.cardList}>
+        {slackWorkspace.installations.map((installation)=><article
+          className={styles.connectionCard} key={installation.id}>
+          <div className={styles.cardIdentity}>
+            <span className={styles.iconBox}><MessageSquare size={20} aria-hidden="true"/></span>
+            <div><h3>{installation.workspaceName}</h3><p>{installation.companyName}</p></div>
+            <span className={styles.badge} data-status={installation.status.toLowerCase()}>
+              {slackCopy.statusText[
+                installation.status.toLowerCase() as keyof typeof slackCopy.statusText
+              ]}
+            </span>
+          </div>
+          <dl className={styles.detailGrid}>
+            <div><dt>{slackCopy.workspace}</dt><dd>{installation.workspaceName}</dd></div>
+            <div><dt>{slackCopy.channel}</dt><dd>{installation.channelName
+              ? <bdi dir="ltr">#{installation.channelName}</bdi>:slackCopy.noChannel}</dd></div>
+            <div><dt>{slackCopy.connectedBy}</dt><dd>{installation.installedBy??"—"}</dd></div>
+            <div><dt>{slackCopy.connectedAt}</dt><dd><time dateTime={installation.installedAt}>
+              {date.format(new Date(installation.installedAt))}
+            </time></dd></div>
+            {workspace.mode==="OWNER"?<div><dt>{slackCopy.company}</dt><dd>{installation.companyName}</dd></div>:null}
+            <div><dt>{slackCopy.lastSync}</dt><dd>{installation.lastChannelSyncAt
+              ? <time dateTime={installation.lastChannelSyncAt}>{date.format(new Date(installation.lastChannelSyncAt))}</time>
+              :"—"}</dd></div>
+          </dl>
+          <div className={styles.scopeList} aria-label={slackCopy.enabledEvents}>
+            {installation.enabledEventTypes.map((eventType)=><span key={eventType}>
+              {slackCopy.eventText[eventType]}
+            </span>)}
+          </div>
+          {installation.status!=="REVOKED"?<details className={styles.manageDetails}>
+            <summary>{slackCopy.manage}</summary>
+            {workspace.mode==="COMPANY"&&installation.status==="ACTIVE"
+              &&slackWorkspace.enabled&&slackWorkspace.configured
+              ? <SlackInstallationControls locale={locale}
+                installationId={installation.id} connectionId={installation.connectionId}
+                channels={slackWorkspace.channels}
+                enabledEventTypes={installation.enabledEventTypes}/>
+              : <DisconnectControl connectionId={installation.connectionId} locale={locale}/>}
+          </details>:null}
+        </article>)}
+      </div>:workspace.mode==="COMPANY"&&slackWorkspace.enabled&&slackWorkspace.configured
+        ? <ConnectSlackControl locale={locale}/>
+        : <div className={styles.emptyState}><CircleOff size={25} aria-hidden="true"/>
+          <strong>{slackCopy.noInstallations}</strong></div>}
+      {workspace.mode==="COMPANY"&&!currentSlackInstallation
+        &&slackWorkspace.installations.length>0&&slackWorkspace.enabled&&slackWorkspace.configured
+        ? <ConnectSlackControl locale={locale}/>:null}
+    </section>
+
+    {slackWorkspace.deliveries.length?<section className={styles.panel}
+      aria-labelledby="slack-deliveries-title">
+      <header className={styles.panelHeader}>
+        <div><h2 id="slack-deliveries-title">{slackCopy.deliveries}</h2>
+          <p>{slackCopy.deliveriesDescription}</p></div>
+        <Activity size={21} aria-hidden="true"/>
+      </header>
+      <div className={styles.cardList}>
+        {slackWorkspace.deliveries.map((delivery)=><article
+          className={styles.connectionCard} key={delivery.id}>
+          <div className={styles.cardIdentity}>
+            <span className={styles.iconBox}><Activity size={20} aria-hidden="true"/></span>
+            <div><h3>{slackCopy.eventText[delivery.eventType]}</h3>
+              <p><code dir="ltr">{delivery.id}</code></p></div>
+            <span className={styles.badge} data-status={delivery.status.toLowerCase()}>
+              {slackCopy.statusText[
+                delivery.status.toLowerCase() as keyof typeof slackCopy.statusText
+              ]}
+            </span>
+          </div>
+          <dl className={styles.detailGrid}>
+            <div><dt>{slackCopy.attempts}</dt><dd><bdi dir="ltr">
+              {number.format(delivery.attemptCount)}</bdi></dd></div>
+            <div><dt>{slackCopy.lastAttempt}</dt><dd>{delivery.lastAttemptAt
+              ? <time dateTime={delivery.lastAttemptAt}>{date.format(new Date(delivery.lastAttemptAt))}</time>
+              :"—"}</dd></div>
+            <div><dt>{slackCopy.errorCategory}</dt><dd>{delivery.errorCategory
+              ? <code dir="ltr">{delivery.errorCategory}</code>:"—"}</dd></div>
+          </dl>
+          {delivery.status==="DEAD"?<details className={styles.manageDetails}>
+            <summary>{slackCopy.manage}</summary>
+            <SlackRetryControl locale={locale} deliveryId={delivery.id}
+              companyId={delivery.companyId}/>
+          </details>:null}
+        </article>)}
+      </div>
+    </section>:null}
 
     {webhookWorkspace&&workspace.mode==="COMPANY"?<section className={styles.panel} aria-labelledby="webhook-create-title">
       <header className={styles.panelHeader}>

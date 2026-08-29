@@ -429,6 +429,44 @@ BEGIN
       public.axora_integration_ciphertext_is_valid(jsonb) TO axora_app;
   END IF;
 
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.integration_slack_installations') IS NOT NULL
+  THEN
+    REVOKE ALL ON TABLE
+      public.integration_slack_oauth_states,
+      public.integration_slack_installations,
+      public.integration_slack_channels,
+      public.integration_slack_deliveries,
+      public.integration_slack_attempts,
+      public.integration_slack_inbound_events
+    FROM axora_app;
+    GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE
+      public.integration_slack_oauth_states,
+      public.integration_slack_installations,
+      public.integration_slack_channels,
+      public.integration_slack_inbound_events
+    TO axora_app;
+    GRANT SELECT,UPDATE ON TABLE public.integration_slack_deliveries TO axora_app;
+    GRANT SELECT ON TABLE public.integration_slack_attempts TO axora_app;
+    REVOKE ALL ON FUNCTION
+      public.axora_slack_installation_is_authorized(uuid,timestamptz),
+      public.axora_require_axora_oauth_application(),
+      public.axora_enqueue_slack_delivery(),
+      public.axora_project_integration_events_with_capabilities(integer,timestamptz,boolean,boolean),
+      public.axora_claim_integration_slack_deliveries(text,integer,integer,timestamptz),
+      public.axora_claimed_slack_delivery_is_authorized(text,uuid,uuid,timestamptz),
+      public.axora_rotate_claimed_slack_token(text,uuid,uuid,integer,jsonb,jsonb,timestamptz,timestamptz),
+      public.axora_complete_integration_slack_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamptz),
+      public.axora_claim_slack_revocations(text,integer,integer,timestamptz),
+      public.axora_complete_slack_revocation(text,uuid,uuid,boolean,text,integer,timestamptz),
+      public.axora_revoke_connection_slack(),
+      public.axora_cleanup_slack_runtime(timestamptz)
+    FROM axora_app;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_slack_installation_is_authorized(uuid,timestamptz)
+    TO axora_app;
+  END IF;
+
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_integration_worker')
     AND to_regprocedure(
       'public.axora_project_integration_events(integer,timestamp with time zone)'
@@ -441,13 +479,32 @@ BEGIN
     REVOKE ALL ON ALL TABLES IN SCHEMA public FROM axora_integration_worker;
     REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM axora_integration_worker;
     REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM axora_integration_worker;
-    GRANT EXECUTE ON FUNCTION
-      public.axora_project_integration_events(integer,timestamptz),
-      public.axora_claim_integration_webhook_deliveries(text,integer,integer,timestamptz),
-      public.axora_claimed_webhook_delivery_is_authorized(text,uuid,uuid,timestamptz),
-      public.axora_complete_integration_webhook_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamptz),
-      public.axora_cleanup_integration_runtime(timestamptz)
-    TO axora_integration_worker;
+    IF to_regprocedure(
+      'public.axora_project_integration_events_with_capabilities(integer,timestamp with time zone,boolean,boolean)'
+    ) IS NOT NULL THEN
+      GRANT EXECUTE ON FUNCTION
+        public.axora_project_integration_events_with_capabilities(integer,timestamptz,boolean,boolean),
+        public.axora_claim_integration_webhook_deliveries(text,integer,integer,timestamptz),
+        public.axora_claimed_webhook_delivery_is_authorized(text,uuid,uuid,timestamptz),
+        public.axora_complete_integration_webhook_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamptz),
+        public.axora_claim_integration_slack_deliveries(text,integer,integer,timestamptz),
+        public.axora_claimed_slack_delivery_is_authorized(text,uuid,uuid,timestamptz),
+        public.axora_rotate_claimed_slack_token(text,uuid,uuid,integer,jsonb,jsonb,timestamptz,timestamptz),
+        public.axora_complete_integration_slack_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamptz),
+        public.axora_claim_slack_revocations(text,integer,integer,timestamptz),
+        public.axora_complete_slack_revocation(text,uuid,uuid,boolean,text,integer,timestamptz),
+        public.axora_cleanup_integration_runtime(timestamptz),
+        public.axora_cleanup_slack_runtime(timestamptz)
+      TO axora_integration_worker;
+    ELSE
+      GRANT EXECUTE ON FUNCTION
+        public.axora_project_integration_events(integer,timestamptz),
+        public.axora_claim_integration_webhook_deliveries(text,integer,integer,timestamptz),
+        public.axora_claimed_webhook_delivery_is_authorized(text,uuid,uuid,timestamptz),
+        public.axora_complete_integration_webhook_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamptz),
+        public.axora_cleanup_integration_runtime(timestamptz)
+      TO axora_integration_worker;
+    END IF;
   END IF;
 END
 $integration_boundary$;

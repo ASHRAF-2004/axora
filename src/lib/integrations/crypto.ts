@@ -19,7 +19,8 @@ export type IntegrationSecretDomain =
   | "rate-limit"
   | "network"
   | "cursor"
-  | "webhook-endpoint";
+  | "webhook-endpoint"
+  | "slack-oauth-state";
 
 export function opaqueIntegrationSecret(prefix: string, bytes = 32) {
   if (!/^[a-z][a-z0-9_]{1,20}_$/.test(prefix)) {

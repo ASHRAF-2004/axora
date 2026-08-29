@@ -9,6 +9,7 @@ import {
 } from "./authorization";
 import { hashIntegrationSecret, opaqueIntegrationSecret } from "./crypto";
 import { withIntegrationTransaction } from "./database";
+import { INTEGRATION_PROVIDER_APPLICATION_SLUGS } from "./config";
 import { oauthInternals } from "./oauth";
 import { integrationScopeSchema, type IntegrationScope } from "./scopes";
 
@@ -28,6 +29,7 @@ export interface IntegrationApplicationSummary {
   status: "ACTIVE" | "INACTIVE";
   clientType: "CONFIDENTIAL" | "PUBLIC";
   tokenEndpointAuthMethod: string;
+  authorizationMode: "AXORA_OAUTH" | "PROVIDER_OAUTH";
   redirectUris: string[];
   allowedScopes: IntegrationScope[];
   createdAt: string;
@@ -99,6 +101,7 @@ export async function getIntegrationWorkspace(
         application.slug,application.name,application.description,
         application.status,application.client_type AS "clientType",
         application.token_endpoint_auth_method AS "tokenEndpointAuthMethod",
+        application.authorization_mode AS "authorizationMode",
         application.redirect_uris AS "redirectUris",
         application.allowed_scopes AS "allowedScopes",
         application.created_at::text AS "createdAt",
@@ -181,6 +184,11 @@ const applicationInputSchema = z.object({
 }).strict().superRefine((value, context) => {
   if ((value.clientType === "PUBLIC") !== (value.tokenEndpointAuthMethod === "none")) {
     context.addIssue({ code: "custom", message: "Client authentication does not match the client type." });
+  }
+  if (Object.values(INTEGRATION_PROVIDER_APPLICATION_SLUGS).includes(
+    value.slug as (typeof INTEGRATION_PROVIDER_APPLICATION_SLUGS)[keyof typeof INTEGRATION_PROVIDER_APPLICATION_SLUGS],
+  )) {
+    context.addIssue({ code: "custom", message: "Provider application slugs are reserved." });
   }
 });
 

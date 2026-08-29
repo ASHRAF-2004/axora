@@ -311,6 +311,24 @@ else
   chmod 0640 "$turnstile_secret_file"
 fi
 
+# Slack remains fail-closed until the reviewed provider credentials are
+# installed. The app and worker always receive hardened file paths; empty
+# placeholders are safe while AXORA_SLACK_ENABLED=false and are never replaced
+# or truncated during an installer upgrade.
+for slack_secret_name in axora_slack_client_secret axora_slack_signing_secret; do
+  slack_secret_file="$SECRETS_DIR/$slack_secret_name"
+  [[ ! -L "$slack_secret_file" ]] \
+    || fail "Slack secret must not be a symlink: $slack_secret_name"
+  if [[ ! -e "$slack_secret_file" ]]; then
+    install -o root -g "$RUNTIME_GID" -m 0640 /dev/null "$slack_secret_file"
+  else
+    [[ -f "$slack_secret_file" ]] \
+      || fail "Slack secret path must be a regular file: $slack_secret_name"
+    chown root:"$RUNTIME_GID" "$slack_secret_file"
+    chmod 0640 "$slack_secret_file"
+  fi
+done
+
 uploads_marker="$STATE_DIR/uploads-migrated-from-srv-axora"
 if [[ -d "$LEGACY_UPLOADS_DIR" && ! -f "$uploads_marker" ]]; then
   if ! find "$UPLOADS_DIR" -mindepth 1 -print -quit | grep -q .; then
@@ -425,6 +443,8 @@ ensure_runtime_default AXORA_EXTERNAL_API_ENABLED false
 ensure_runtime_default AXORA_INTEGRATION_WEBHOOKS_ENABLED false
 ensure_runtime_default AXORA_ZAPIER_ENABLED false
 ensure_runtime_default AXORA_SLACK_ENABLED false
+ensure_runtime_default AXORA_SLACK_APP_ID ""
+ensure_runtime_default AXORA_SLACK_CLIENT_ID ""
 ensure_runtime_default RESEND_DOMAIN_VERIFIED false
 ensure_runtime_default RESEND_WEBHOOK_VERIFIED false
 ensure_runtime_default AXORA_EMAIL_FROM_ADDRESS noreply@axora.management

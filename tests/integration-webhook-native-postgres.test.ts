@@ -12,7 +12,7 @@ function requiredEnvironment(name: string) {
   return value;
 }
 
-nativeDescribe.sequential("integration webhook native concurrency and grants", () => {
+nativeDescribe.sequential("integration delivery native concurrency and grants", () => {
   let admin: Client;
   let app: Client;
   let workerOne: Client;
@@ -95,7 +95,7 @@ nativeDescribe.sequential("integration webhook native concurrency and grants", (
       .rejects.toMatchObject({ code: "42501" });
   });
 
-  it("exposes only the five bounded worker capabilities by direct role grant", async () => {
+  it("exposes only the bounded webhook and Slack worker capabilities", async () => {
     const grants = await admin.query<{ capability: string }>(`
       SELECT routine.oid::regprocedure::text AS capability
       FROM pg_proc routine
@@ -110,11 +110,18 @@ nativeDescribe.sequential("integration webhook native concurrency and grants", (
     `);
     const allowedCapabilities=[
       "axora_claim_integration_webhook_deliveries(text,integer,integer,timestamp with time zone)",
+      "axora_claim_integration_slack_deliveries(text,integer,integer,timestamp with time zone)",
       "axora_claimed_webhook_delivery_is_authorized(text,uuid,uuid,timestamp with time zone)",
+      "axora_claimed_slack_delivery_is_authorized(text,uuid,uuid,timestamp with time zone)",
       "axora_cleanup_integration_runtime(timestamp with time zone)",
+      "axora_cleanup_slack_runtime(timestamp with time zone)",
       "axora_complete_integration_webhook_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamp with time zone)",
-      "axora_project_integration_events(integer,timestamp with time zone)",
-    ];
+      "axora_complete_integration_slack_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamp with time zone)",
+      "axora_claim_slack_revocations(text,integer,integer,timestamp with time zone)",
+      "axora_complete_slack_revocation(text,uuid,uuid,boolean,text,integer,timestamp with time zone)",
+      "axora_project_integration_events_with_capabilities(integer,timestamp with time zone,boolean,boolean)",
+      "axora_rotate_claimed_slack_token(text,uuid,uuid,integer,jsonb,jsonb,timestamp with time zone,timestamp with time zone)",
+    ].sort();
     expect(grants.rows.map((row) => row.capability)).toEqual(allowedCapabilities);
     const effective=await admin.query<{ capability:string }>(`
       SELECT routine.oid::regprocedure::text AS capability
@@ -133,7 +140,7 @@ nativeDescribe.sequential("integration webhook native concurrency and grants", (
       "SELECT public.axora_cleanup_integration_runtime(now()+interval '1 day')",
     )).rejects.toMatchObject({ code: "22023" });
     await expect(workerOne.query(
-      "SELECT public.axora_project_integration_events(1,now()-interval '1 day')",
+      "SELECT public.axora_project_integration_events_with_capabilities(1,now()-interval '1 day',true,false)",
     )).rejects.toMatchObject({ code: "22023" });
   });
 
@@ -164,10 +171,10 @@ nativeDescribe.sequential("integration webhook native concurrency and grants", (
 
     const results = await Promise.all([
       workerOne.query<{ result: { scanned: number; projected: number } }>(
-        "SELECT public.axora_project_integration_events(100,now()) AS result",
+        "SELECT public.axora_project_integration_events_with_capabilities(100,now(),true,false) AS result",
       ),
       workerTwo.query<{ result: { scanned: number; projected: number } }>(
-        "SELECT public.axora_project_integration_events(100,now()) AS result",
+        "SELECT public.axora_project_integration_events_with_capabilities(100,now(),true,false) AS result",
       ),
     ]);
     expect(results.reduce(

@@ -1,0 +1,24 @@
+display_information:
+  name: Axora
+  description: Procurement notifications with authorization-preserving Axora links
+  background_color: "#111827"
+features:
+  bot_user:
+    display_name: Axora
+    always_online: false
+oauth_config:
+  redirect_urls:
+    - https://axora.management/api/integrations/slack/oauth/callback
+  scopes:
+    bot:
+      - channels:read
+      - chat:write
+settings:
+  event_subscriptions:
+    request_url: https://axora.management/api/integrations/slack/events
+    bot_events:
+      - app_uninstalled
+      - tokens_revoked
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: true

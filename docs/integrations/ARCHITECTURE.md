@@ -1,9 +1,9 @@
 # Axora integration platform architecture
 
-Status: Phase III private-beta Zapier adapter. The public API, OAuth capability,
-webhook projector, generic webhook delivery worker, and Zapier provider access
-remain independently flag-controlled. Slack runtime behavior is introduced in
-Phase IV.
+Status: Phase IV native Slack integration. The public API, Axora OAuth,
+webhooks, Zapier provider access, and Slack provider access remain independently
+flag-controlled. Zapier and Slack stay disabled until their separately
+authorized provider credentials and private acceptance environments exist.
 
 ## Boundaries
 
@@ -34,6 +34,8 @@ request even when the opaque token's nominal expiry has not elapsed.
 - `/api/v1` is the stable external API. It does not reuse internal App Router
   actions as a public contract.
 - `/oauth/*` is the authorization-code, token, and revocation plane.
+- `/api/integrations/slack/*` is the provider-owned OAuth callback and signed
+  revocation-event plane. It cannot issue Axora API tokens.
 - `/integrations` is the authenticated management workspace. The Platform
   Owner controls application registration and operational visibility. A
   Company Administrator controls connections only for their own company. CAM,
@@ -46,10 +48,15 @@ request even when the opaque token's nominal expiry has not elapsed.
 - A dedicated `integration-worker` container projects already-committed
   canonical state into `integration_events`, fans out company-bound delivery
   records, and performs bounded outbound HTTPS attempts. Its PostgreSQL role
-  has no table or sequence privileges and only five bounded worker functions.
+  has no table or sequence privileges and only explicitly granted worker
+  functions.
 - `integrations/zapier` is a separately built Node.js 22 provider package. It
   uses the external OAuth/API/webhook contracts and has no import or execution
   path into Axora's business mutations.
+- `integrations/slack/manifest.yaml` defines the native provider application.
+  Slack installation credentials, channel metadata, messages, attempts, and
+  inbound revocation deduplication remain in Slack-specific tables and worker
+  paths.
 
 No integration table is an email table. `transactional_email_outbox`, the
 existing email worker, its provider network, and Resend are unchanged. The
@@ -77,6 +84,13 @@ Existing rows default to the Phase II one-time-secret behavior; provider rows
 can persist `NONE` so creation replay and later rotation never disclose their
 encrypted HMAC credential. It does not alter canonical business, account,
 financial, or email data.
+
+Migration 132 adds provider-owned application mode and isolated Slack OAuth,
+installation, public-channel cache, delivery, attempt, and inbound-event
+tables. The projector enables webhook and Slack fanout with separate
+transaction-local capabilities. One deterministic event row can feed either
+provider without making either delivery path a prerequisite of the other or
+of the originating business transaction.
 
 ## Safe write model
 
@@ -106,6 +120,13 @@ refresh, every access-token request, and isolated worker delivery. Revocation
 remains available while disabled. The worker blocks only Zapier-owned
 destinations, so disabling Zapier does not disable generic webhooks.
 
+The reserved `axora-slack` application uses `PROVIDER_OAUTH`, so database
+constraints prevent it from creating Axora OAuth grants or authorization
+codes. `AXORA_SLACK_ENABLED` independently hides its routes, blocks OAuth and
+management, disables Slack projection and delivery, and leaves webhook and
+Zapier behavior untouched. Provider revocation is queued locally before any
+outbound revocation attempt.
+
 The deployment sequence is additive migration, disabled application support,
 health and security verification, then enablement of one capability. The
 normal rollback is to disable the affected flag, restore the prior immutable
@@ -126,6 +147,13 @@ The worker additionally uses a file-mounted password for the
 `axora_integration_worker` database principal. It never receives the
 application, PostgreSQL administrator, cleanup-worker, session, email-service,
 Resend, Turnstile, or deployment credentials.
+
+Slack's client secret and signing secret use their own read-only files. The
+application receives both because it performs OAuth exchange and verifies
+signed callbacks; the worker receives only the client secret needed for token
+rotation and revocation. Slack access and refresh tokens are encrypted under
+per-installation, per-version keys derived from the dedicated integration root
+key. Neither token is displayed or logged.
 
 ## Compatibility contract
 

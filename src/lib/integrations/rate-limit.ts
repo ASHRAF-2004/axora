@@ -5,7 +5,10 @@ export type IntegrationRouteClass =
   | "OAUTH_AUTHORIZE"
   | "OAUTH_TOKEN"
   | "API_READ"
-  | "API_WRITE";
+  | "API_WRITE"
+  | "SLACK_OAUTH"
+  | "SLACK_EVENTS"
+  | "SLACK_API";
 
 interface RateScope {
   kind: "CLIENT" | "CONNECTION" | "TOKEN" | "NETWORK";

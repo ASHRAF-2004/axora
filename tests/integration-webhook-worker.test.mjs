@@ -175,7 +175,8 @@ describe("isolated webhook worker security", () => {
     await expect(pollIntegrationWorkerOnce({
       db,workerId:"integration-fixture01",enabled:true,
     })).resolves.toEqual({
-      projected:true,claimed:2,failedJobs:1,disabled:false,
+      projected:true,claimed:2,webhookClaimed:2,slackClaimed:0,
+      revocationsClaimed:0,failedJobs:1,disabled:false,
     });
     expect(completionCalls).toBe(1);
   });
@@ -239,7 +240,8 @@ describe("isolated webhook worker security", () => {
       db,workerId:"integration-fixture01",enabled:true,zapierEnabled:false,
       rootKey,deliver:outbound,
     })).resolves.toEqual({
-      projected:true,claimed:2,failedJobs:0,disabled:false,
+      projected:true,claimed:2,webhookClaimed:2,slackClaimed:0,
+      revocationsClaimed:0,failedJobs:0,disabled:false,
     });
     expect(outbound).toHaveBeenCalledTimes(1);
     expect(outbound.mock.calls[0]?.[0].endpoint).toBe(endpoint);

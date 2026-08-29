@@ -70,7 +70,14 @@ test("integration foundation stays dark while its management UI remains role-sco
   await expect(page.getByRole("heading", { level: 1, name: "Integrations" }))
     .toBeVisible();
   await expect(page.getByText("External API disabled", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Operational status" })).toBeVisible();
+  await expect(page.getByText("Slack disabled", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Slack notifications" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Slack operational status" }))
+    .toBeVisible();
+  await expect(page.getByRole("link", { name: "Connect Slack" })).toHaveCount(0);
+  await expect(page.getByRole("heading", {
+    name: "Operational status",exact: true,
+  })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Application registry" })).toBeVisible();
 
   await page.context().clearCookies();
@@ -80,6 +87,10 @@ test("integration foundation stays dark while its management UI remains role-sco
     .toBeVisible();
   await expect(page.getByRole("heading", { name: "Connected apps" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Available apps" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Slack notifications" })).toBeVisible();
+  await expect(page.getByText("No Slack workspace is connected.", { exact: true }))
+    .toBeVisible();
+  await expect(page.getByText(/xox[bep]-/)).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Application registry" })).toHaveCount(0);
 
   for (const actor of deniedRoles) {
@@ -102,6 +113,7 @@ test("integration management preserves RTL and cannot be recovered with browser 
   await expect(page.locator(".app-shell")).toHaveAttribute("dir", "rtl");
   await expect(page.getByRole("heading", { level: 1, name: "التكاملات" }))
     .toBeVisible();
+  await expect(page.getByRole("heading", { name: "إشعارات Slack" })).toBeVisible();
 
   await page.getByRole("button", { name: /Integration Administrator/ }).click();
   await page.getByRole("menuitem", { name: "تسجيل الخروج" }).click();

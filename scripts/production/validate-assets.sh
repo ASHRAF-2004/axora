@@ -58,6 +58,8 @@ for runtime_key in \
   AXORA_INTEGRATION_WEBHOOKS_ENABLED \
   AXORA_ZAPIER_ENABLED \
   AXORA_SLACK_ENABLED \
+  AXORA_SLACK_APP_ID \
+  AXORA_SLACK_CLIENT_ID \
   RESEND_DOMAIN_VERIFIED \
   RESEND_WEBHOOK_VERIFIED \
   AXORA_EMAIL_FROM_ADDRESS \
@@ -246,6 +248,8 @@ for secret in \
   resend_webhook_secret \
   axora_email_service_auth_key \
   axora_integration_encryption_key \
+  axora_slack_client_secret \
+  axora_slack_signing_secret \
   turnstile_secret; do
   touch "$secrets_dir/$secret"
 done
@@ -264,6 +268,8 @@ export AXORA_EXTERNAL_API_ENABLED=false
 export AXORA_INTEGRATION_WEBHOOKS_ENABLED=false
 export AXORA_ZAPIER_ENABLED=false
 export AXORA_SLACK_ENABLED=false
+export AXORA_SLACK_APP_ID=
+export AXORA_SLACK_CLIENT_ID=
 export RESEND_DOMAIN_VERIFIED=false
 export RESEND_WEBHOOK_VERIFIED=false
 export AXORA_EMAIL_FROM_ADDRESS=noreply@axora.management
@@ -301,6 +307,10 @@ jq --exit-status \
     and .services.app.environment.AXORA_ZAPIER_ENABLED == "false"
     and .services.app.environment.AXORA_SLACK_ENABLED == "false"
     and .services.app.environment.AXORA_INTEGRATION_ENCRYPTION_KEY_FILE == "/run/secrets/axora_integration_encryption_key"
+    and .services.app.environment.AXORA_SLACK_APP_ID == ""
+    and .services.app.environment.AXORA_SLACK_CLIENT_ID == ""
+    and .services.app.environment.AXORA_SLACK_CLIENT_SECRET_FILE == "/run/secrets/axora_slack_client_secret"
+    and .services.app.environment.AXORA_SLACK_SIGNING_SECRET_FILE == "/run/secrets/axora_slack_signing_secret"
     and .services.app.environment.AXORA_EMAIL_DELIVERY_ENABLED == "false"
     and .services.app.environment.AXORA_EMAIL_EVENTS_ENABLED == "false"
     and .services.app.environment.AXORA_EMAIL_PROVIDER == "resend"
@@ -334,7 +344,11 @@ jq --exit-status \
     and .services["integration-worker"].environment.DB_PASSWORD_FILE == "/run/secrets/axora_integration_worker_password"
     and .services["integration-worker"].environment.AXORA_INTEGRATION_WEBHOOKS_ENABLED == "false"
     and .services["integration-worker"].environment.AXORA_ZAPIER_ENABLED == "false"
+    and .services["integration-worker"].environment.AXORA_SLACK_ENABLED == "false"
     and .services["integration-worker"].environment.AXORA_INTEGRATION_ENCRYPTION_KEY_FILE == "/run/secrets/axora_integration_encryption_key"
+    and .services["integration-worker"].environment.APP_BASE_URL == "https://axora.management"
+    and .services["integration-worker"].environment.AXORA_SLACK_CLIENT_ID == ""
+    and .services["integration-worker"].environment.AXORA_SLACK_CLIENT_SECRET_FILE == "/run/secrets/axora_slack_client_secret"
     and .services["integration-worker"].environment.INTEGRATION_WORKER_PORT == "3104"
     and .services["integration-worker"].command == ["node","server-tools/integration-worker.mjs"]
     and .services.db.environment.POSTGRES_DB == "axora_hybrid"
@@ -353,6 +367,8 @@ jq --exit-status \
     and (.services["integration-worker"].ports // []) == []
     and ([.services.app.secrets[].source] | index("axora_email_service_auth_key")) != null
     and ([.services.app.secrets[].source] | index("axora_integration_encryption_key")) != null
+    and ([.services.app.secrets[].source] | index("axora_slack_client_secret")) != null
+    and ([.services.app.secrets[].source] | index("axora_slack_signing_secret")) != null
     and ([.services.app.secrets[].source] | index("resend_webhook_secret")) != null
     and ([.services.app.secrets[].source] | index("turnstile_secret")) != null
     and ([.services["email-sender"].secrets[].source] | sort) ==
@@ -364,7 +380,7 @@ jq --exit-status \
     and ([.services["company-deletion-cleanup-worker"].secrets[].source] | sort) ==
       ["axora_cleanup_worker_password"]
     and ([.services["integration-worker"].secrets[].source] | sort) ==
-      ["axora_integration_encryption_key","axora_integration_worker_password"]
+      ["axora_integration_encryption_key","axora_integration_worker_password","axora_slack_client_secret"]
     and (
       [
         .services
@@ -422,6 +438,8 @@ jq --exit-status \
     and (.secrets.axora_cleanup_worker_password.file == ($secrets + "/axora_cleanup_worker_password"))
     and (.secrets.axora_integration_worker_password.file == ($secrets + "/axora_integration_worker_password"))
     and (.secrets.axora_integration_encryption_key.file == ($secrets + "/axora_integration_encryption_key"))
+    and (.secrets.axora_slack_client_secret.file == ($secrets + "/axora_slack_client_secret"))
+    and (.secrets.axora_slack_signing_secret.file == ($secrets + "/axora_slack_signing_secret"))
     and (.secrets.session_secret.file == ($secrets + "/session_secret"))
     and (.secrets.tailscale_db_auth_key.file == ($secrets + "/tailscale_db_auth_key"))
     and (.secrets.cloudflare_tunnel_token.file == ($secrets + "/cloudflare_tunnel_token"))
