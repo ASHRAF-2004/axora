@@ -7,6 +7,11 @@ export const INTEGRATION_FLAGS = {
   slack: "AXORA_SLACK_ENABLED",
 } as const;
 
+export const INTEGRATION_PROVIDER_APPLICATION_SLUGS = {
+  zapier: "axora-zapier",
+  slack: "axora-slack",
+} as const;
+
 export function integrationFlagEnabled(
   flag: (typeof INTEGRATION_FLAGS)[keyof typeof INTEGRATION_FLAGS],
   env: NodeJS.ProcessEnv = process.env,
@@ -20,6 +25,19 @@ export function externalApiEnabled(env: NodeJS.ProcessEnv = process.env) {
 
 export function integrationWebhooksEnabled(env: NodeJS.ProcessEnv = process.env) {
   return integrationFlagEnabled(INTEGRATION_FLAGS.webhooks, env);
+}
+
+export function integrationApplicationEnabled(
+  applicationSlug: string,
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  if (applicationSlug === INTEGRATION_PROVIDER_APPLICATION_SLUGS.zapier) {
+    return integrationFlagEnabled(INTEGRATION_FLAGS.zapier, env);
+  }
+  if (applicationSlug === INTEGRATION_PROVIDER_APPLICATION_SLUGS.slack) {
+    return integrationFlagEnabled(INTEGRATION_FLAGS.slack, env);
+  }
+  return true;
 }
 
 export function integrationOrigin(env: NodeJS.ProcessEnv = process.env) {

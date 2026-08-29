@@ -41,6 +41,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Configure the Zapier runtime version
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.23.2"
+          cache: npm
+          cache-dependency-path: integrations/zapier/package-lock.json
+
+      - name: Verify the private-beta Zapier package
+        run: |
+          npm ci --prefix integrations/zapier
+          npm test --prefix integrations/zapier
+          npm run validate --prefix integrations/zapier
+          npm audit --prefix integrations/zapier --audit-level=low
+
       - name: Authenticate to GHCR
         if: github.event_name == 'push'
         env:

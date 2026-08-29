@@ -1,8 +1,9 @@
 # Axora integration platform architecture
 
-Status: Phase II webhook platform. The public API, OAuth capability, webhook
-projector, and webhook delivery worker remain independently flag-controlled.
-Zapier and Slack runtime behavior is introduced in later phases.
+Status: Phase III private-beta Zapier adapter. The public API, OAuth capability,
+webhook projector, generic webhook delivery worker, and Zapier provider access
+remain independently flag-controlled. Slack runtime behavior is introduced in
+Phase IV.
 
 ## Boundaries
 
@@ -46,6 +47,9 @@ request even when the opaque token's nominal expiry has not elapsed.
   canonical state into `integration_events`, fans out company-bound delivery
   records, and performs bounded outbound HTTPS attempts. Its PostgreSQL role
   has no table or sequence privileges and only five bounded worker functions.
+- `integrations/zapier` is a separately built Node.js 22 provider package. It
+  uses the external OAuth/API/webhook contracts and has no import or execution
+  path into Axora's business mutations.
 
 No integration table is an email table. `transactional_email_outbox`, the
 existing email worker, its provider network, and Resend are unchanged. The
@@ -68,6 +72,12 @@ Deployment does not replay historical business activity or send it to a newly
 created subscription. A stopped projector leaves core Axora transactions
 untouched and catches up from durable state after restart.
 
+Migration 131 adds only a disclosure-policy column to webhook subscriptions.
+Existing rows default to the Phase II one-time-secret behavior; provider rows
+can persist `NONE` so creation replay and later rotation never disclose their
+encrypted HMAC credential. It does not alter canonical business, account,
+financial, or email data.
+
 ## Safe write model
 
 Phase I exposes one external mutation: create a request draft. It writes only
@@ -89,6 +99,12 @@ The flags are independent and accept only the exact value `true`:
 - `AXORA_INTEGRATION_WEBHOOKS_ENABLED`
 - `AXORA_ZAPIER_ENABLED`
 - `AXORA_SLACK_ENABLED`
+
+Provider application definitions use reserved slugs. The `axora-zapier` slug
+is checked against `AXORA_ZAPIER_ENABLED` at OAuth consent, code exchange,
+refresh, every access-token request, and isolated worker delivery. Revocation
+remains available while disabled. The worker blocks only Zapier-owned
+destinations, so disabling Zapier does not disable generic webhooks.
 
 The deployment sequence is additive migration, disabled application support,
 health and security verification, then enablement of one capability. The

@@ -36,9 +36,10 @@ const MAX_ACTIVE_SUBSCRIPTIONS_PER_CONNECTION=25;
 const subscriptionInputSchema = z.object({
   endpoint_url: z.string().trim().min(9).max(2048),
   event_types: z.array(eventTypeSchema).min(1).max(INTEGRATION_EVENT_TYPES.length),
+  credential_delivery: z.enum(["one_time","none"]).default("one_time"),
 }).strict();
 
-export type WebhookSubscriptionInput = z.infer<typeof subscriptionInputSchema>;
+export type WebhookSubscriptionInput = z.input<typeof subscriptionInputSchema>;
 
 export class WebhookManagementError extends Error {
   constructor(public readonly reason: "DENIED" | "INVALID" | "NOT_FOUND" | "CONFLICT" | "UNAVAILABLE") {
@@ -63,6 +64,7 @@ export interface WebhookSubscriptionSummary {
   endpointOrigin: string;
   eventTypes: IntegrationEventType[];
   status: "ACTIVE" | "PAUSED" | "REVOKED";
+  credentialDelivery: "ONE_TIME" | "NONE";
   credentialVersion: number;
   authorizedBy?: string;
   createdAt: string;
@@ -127,6 +129,7 @@ export function parseWebhookSubscriptionInput(value: unknown) {
   return {
     endpoint_url: parsed.data.endpoint_url,
     event_types: orderedEventTypes(parsed.data.event_types),
+    credential_delivery: parsed.data.credential_delivery,
   };
 }
 
@@ -155,6 +158,7 @@ async function prepareDestination(
       normalizedUrl: destination.url.href,
       endpointOrigin: destination.endpointOrigin,
       eventTypes: orderedEventTypes(input.event_types),
+      credentialDelivery: input.credential_delivery ?? "one_time",
     };
   } catch (error) {
     if (error instanceof WebhookDestinationError) {
@@ -290,6 +294,7 @@ async function insertSubscription(
     id: string; applicationId: string; connectionId: string; companyId: string;
     actor: AuthenticatedSessionUser; normalizedUrl: string; endpointOrigin: string;
     eventTypes: readonly IntegrationEventType[]; credential: string;
+    credentialDelivery: "one_time" | "none";
   },
 ) {
   const endpointCiphertext=encryptIntegrationValue(
@@ -305,15 +310,19 @@ async function insertSubscription(
     const result=await client.query<{createdAt:string;updatedAt:string}>(`
       INSERT INTO public.integration_webhook_subscriptions(
         id,application_id,connection_id,company_id,endpoint_ciphertext,
-        endpoint_hash,endpoint_origin,event_types,current_credential_ciphertext,
+        endpoint_hash,endpoint_origin,event_types,credential_delivery,
+        current_credential_ciphertext,
         authorized_user_id,authorized_role_assignment_id,
         auth_version_at_authorization,created_by
-      ) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9::jsonb,$10,$11,$12,$10)
+      ) VALUES (
+        $1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10::jsonb,$11,$12,$13,$11
+      )
       RETURNING created_at::text AS "createdAt",updated_at::text AS "updatedAt"
     `,[
       input.id,input.applicationId,input.connectionId,input.companyId,
       JSON.stringify(endpointCiphertext),endpointHash,input.endpointOrigin,
-      input.eventTypes,JSON.stringify(credentialCiphertext),input.actor.id,
+      input.eventTypes,input.credentialDelivery.toUpperCase(),
+      JSON.stringify(credentialCiphertext),input.actor.id,
       input.actor.roleAssignmentId,input.actor.authVersion,
     ]);
     return result.rows[0]!;
@@ -339,6 +348,7 @@ export async function createExternalWebhookSubscription(input: {
   const prepared=await prepareDestination(input.payload,input.resolver);
   const payloadHash=integrationPayloadHash({
     endpoint_url:prepared.normalizedUrl,event_types:prepared.eventTypes,
+    ...(prepared.credentialDelivery==="none"?{credential_delivery:"none"}:{}),
   });
   const keyHash=idempotencyKeyHash(input.principal.connectionId,input.idempotencyKey);
   return withIntegrationTransaction({
@@ -352,6 +362,7 @@ export async function createExternalWebhookSubscription(input: {
     if (replay.status==="COMPLETED" && replay.responseBody) {
       const id=String(replay.responseBody.id??"");
       const version=Number(replay.responseBody.signing_version??0);
+      const revealCredential=replay.responseBody.credential_delivery!=="none";
       const current=await client.query<{
         credentialVersion:number; credentialCiphertext:EncryptedIntegrationValue;
       }>(`
@@ -371,8 +382,10 @@ export async function createExternalWebhookSubscription(input: {
           credential_version:version,
           created_at:replay.responseBody.created_at,
           updated_at:replay.responseBody.updated_at,
-          credential_available:Boolean(row && row.credentialVersion===version),
-          ...(row && row.credentialVersion===version ? {
+          credential_available:Boolean(
+            revealCredential && row && row.credentialVersion===version,
+          ),
+          ...(revealCredential && row && row.credentialVersion===version ? {
             signing_secret:decryptIntegrationValue(
               `webhook-credential:${id}`,row.credentialCiphertext,
             ),
@@ -396,6 +409,7 @@ export async function createExternalWebhookSubscription(input: {
       connectionId:input.principal.connectionId,companyId:input.principal.companyId,
       actor:input.principal.actor,normalizedUrl:prepared.normalizedUrl,
       endpointOrigin:prepared.endpointOrigin,eventTypes:prepared.eventTypes,credential,
+      credentialDelivery:prepared.credentialDelivery,
     });
     const response={
       id,application_id:connection.applicationId,
@@ -403,6 +417,7 @@ export async function createExternalWebhookSubscription(input: {
       company_id:input.principal.companyId,
       status:"active",endpoint_origin:prepared.endpointOrigin,
       event_types:prepared.eventTypes,
+      credential_delivery:prepared.credentialDelivery,
       created_at:created.createdAt,updated_at:created.updatedAt,
     };
     const storedResponse={...response,signing_version:1};
@@ -415,8 +430,10 @@ export async function createExternalWebhookSubscription(input: {
       action:"WEBHOOK_SUBSCRIPTION_CREATE",resourceType:"webhook_subscription",
       resourceId:id,status:201,
     });
+    const revealCredential=prepared.credentialDelivery==="one_time";
     return {data:{...response,credential_version:1,
-      credential_available:true,signing_secret:credential},replayed:false};
+      credential_available:revealCredential,
+      ...(revealCredential?{signing_secret:credential}:{})},replayed:false};
   });
 }
 
@@ -428,6 +445,7 @@ function subscriptionSelect() {
     subscription.company_id::text AS "companyId",company.name AS "companyName",
     subscription.endpoint_origin AS "endpointOrigin",
     subscription.event_types AS "eventTypes",subscription.status,
+    subscription.credential_delivery AS "credentialDelivery",
     subscription.credential_version AS "credentialVersion",
     COALESCE(profile.display_name,account.display_name) AS "authorizedBy",
     subscription.created_at::text AS "createdAt",
@@ -500,6 +518,7 @@ function subscriptionDto(row: WebhookSubscriptionSummary) {
     id:row.id,application_id:row.applicationId,connection_id:row.connectionId,
     company_id:row.companyId,endpoint_origin:row.endpointOrigin,
     event_types:row.eventTypes,status:row.status.toLowerCase(),
+    credential_delivery:row.credentialDelivery.toLowerCase(),
     credential_version:Number(row.credentialVersion),created_at:row.createdAt,
     updated_at:row.updatedAt,paused_at:row.pausedAt,revoked_at:row.revokedAt,
   };
@@ -573,6 +592,11 @@ export async function mutateExternalWebhook(input: {
     if(replay.status==="COMPLETED"&&replay.responseBody){
       if(input.kind!=="rotate") return {data:replay.responseBody,replayed:true};
       const version=Number(replay.responseBody.signing_version??0);
+      const revealCredential=replay.responseBody.credential_delivery!=="none";
+      if(!revealCredential)return {data:{
+        id:replay.responseBody.id,status:replay.responseBody.status,
+        credential_version:version,credential_available:false,
+      },replayed:true};
       const current=await client.query<{
         credentialVersion:number;credentialCiphertext:EncryptedIntegrationValue;
       }>(`SELECT credential_version AS "credentialVersion",
@@ -614,7 +638,8 @@ export async function mutateExternalWebhook(input: {
         "not_found",404,"NOT_FOUND",undefined,"webhook_subscription",input.resourceId,
       );
       response={id:input.resourceId,status:"active",
-        signing_version:rotated.credentialVersion};
+        signing_version:rotated.credentialVersion,
+        credential_delivery:rotated.credentialDelivery.toLowerCase()};
       resourceType="webhook_subscription";
       await completeIdempotency(client,replay.id,response,resourceType,input.resourceId);
       await recordMutationAudit(client,{
@@ -622,9 +647,11 @@ export async function mutateExternalWebhook(input: {
         route:`/api/v1/webhook-subscriptions/${input.resourceId}/rotate-secret`,
         action:"WEBHOOK_SECRET_ROTATE",resourceType,resourceId:input.resourceId,status:200,
       });
+      const revealCredential=rotated.credentialDelivery==="ONE_TIME";
       return {data:{id:input.resourceId,status:"active",
         credential_version:rotated.credentialVersion,
-        credential_available:true,signing_secret:credential},replayed:false};
+        credential_available:revealCredential,
+        ...(revealCredential?{signing_secret:credential}:{})},replayed:false};
     }else{
       const retried=await retryDelivery(client,{
         id:input.resourceId,connectionId:input.principal.connectionId,
@@ -686,7 +713,9 @@ async function rotateSubscription(client:PoolClient,input:{
     input.actor.id,input.actor.roleAssignmentId,input.actor.authVersion];
   let connectionPredicate="";
   if(input.connectionId){values.push(input.connectionId);connectionPredicate="AND subscription.connection_id=$7";}
-  const result=await client.query<{credentialVersion:number}>(`
+  const result=await client.query<{
+    credentialVersion:number;credentialDelivery:"ONE_TIME"|"NONE";
+  }>(`
     UPDATE public.integration_webhook_subscriptions subscription
     SET previous_credential_ciphertext=subscription.current_credential_ciphertext,
       previous_credential_valid_until=now()+interval '24 hours',
@@ -699,7 +728,8 @@ async function rotateSubscription(client:PoolClient,input:{
     WHERE subscription.id=$1 AND subscription.company_id=$2
       AND subscription.status<>'REVOKED' ${connectionPredicate}
       AND connection.id=subscription.connection_id AND connection.status='ACTIVE'
-    RETURNING subscription.credential_version AS "credentialVersion"
+    RETURNING subscription.credential_version AS "credentialVersion",
+      subscription.credential_delivery AS "credentialDelivery"
   `,values);
   return result.rows[0];
 }
@@ -826,8 +856,11 @@ export async function createManagedWebhookSubscription(input:{
         companyId:input.actor.companyId!,actor:input.actor,
         normalizedUrl:prepared.normalizedUrl,endpointOrigin:prepared.endpointOrigin,
         eventTypes:prepared.eventTypes,credential,
+        credentialDelivery:prepared.credentialDelivery,
       });
-      return {id,credential,createdAt:created.createdAt};
+      return {id,createdAt:created.createdAt,
+        ...(prepared.credentialDelivery==="one_time"?{credential}:{}),
+      };
     }catch(error){
       if(error instanceof ExternalApiProblem&&error.code==="conflict"){
         throw new WebhookManagementError("CONFLICT");
@@ -880,7 +913,9 @@ export async function rotateManagedWebhookCredential(
     systemIdentity:"integration-management",reason:"Rotated webhook credential",actor,
   },(client)=>rotateSubscription(client,{id,companyId,actor,credential}));
   if(!result)throw new WebhookManagementError("NOT_FOUND");
-  return {credential,credentialVersion:result.credentialVersion};
+  return {credentialVersion:result.credentialVersion,
+    ...(result.credentialDelivery==="ONE_TIME"?{credential}:{}),
+  };
 }
 
 export async function retryManagedWebhookDelivery(

@@ -333,6 +333,7 @@ jq --exit-status \
     and .services["integration-worker"].environment.DB_USER == "axora_integration_worker"
     and .services["integration-worker"].environment.DB_PASSWORD_FILE == "/run/secrets/axora_integration_worker_password"
     and .services["integration-worker"].environment.AXORA_INTEGRATION_WEBHOOKS_ENABLED == "false"
+    and .services["integration-worker"].environment.AXORA_ZAPIER_ENABLED == "false"
     and .services["integration-worker"].environment.AXORA_INTEGRATION_ENCRYPTION_KEY_FILE == "/run/secrets/axora_integration_encryption_key"
     and .services["integration-worker"].environment.INTEGRATION_WORKER_PORT == "3104"
     and .services["integration-worker"].command == ["node","server-tools/integration-worker.mjs"]

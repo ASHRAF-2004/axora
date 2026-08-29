@@ -3,6 +3,7 @@ import { loadCurrentAuthorizationIdentity, type AuthenticatedSessionUser } from 
 import type { EffectiveAccessSnapshot } from "../effective-access";
 import { loadEffectiveAccess } from "../effective-access";
 import { hashIntegrationSecret } from "./crypto";
+import { integrationApplicationEnabled } from "./config";
 import { withIntegrationTransaction } from "./database";
 import { INTEGRATION_SCOPES, type IntegrationScope } from "./scopes";
 
@@ -11,6 +12,7 @@ const accessTokenPattern = /^axora_at_[A-Za-z0-9_-]{43}$/;
 interface PrincipalRow extends QueryResultRow {
   accessTokenId: string;
   applicationId: string;
+  applicationSlug: string;
   clientId: string;
   connectionId: string;
   companyId: string;
@@ -68,20 +70,24 @@ export async function authenticateIntegrationRequest(
   }, async (client) => {
     const result = await client.query<PrincipalRow>(`
       SELECT
-        access_token_id::text AS "accessTokenId",
-        application_id::text AS "applicationId",
-        client_id AS "clientId",
-        connection_id::text AS "connectionId",
-        company_id::text AS "companyId",
-        grant_id::text AS "grantId",
-        user_id::text AS "userId",
-        role_assignment_id::text AS "roleAssignmentId",
-        auth_version::int AS "authVersion",
-        scopes,
-        expires_at::text AS "expiresAt"
-      FROM public.axora_integration_principal_by_token_hash($1,now())
+        principal.access_token_id::text AS "accessTokenId",
+        principal.application_id::text AS "applicationId",
+        application.slug AS "applicationSlug",
+        principal.client_id AS "clientId",
+        principal.connection_id::text AS "connectionId",
+        principal.company_id::text AS "companyId",
+        principal.grant_id::text AS "grantId",
+        principal.user_id::text AS "userId",
+        principal.role_assignment_id::text AS "roleAssignmentId",
+        principal.auth_version::int AS "authVersion",
+        principal.scopes,
+        principal.expires_at::text AS "expiresAt"
+      FROM public.axora_integration_principal_by_token_hash($1,now()) principal
+      JOIN public.integration_applications application
+        ON application.id=principal.application_id
     `, [tokenHash]);
-    if (result.rowCount === 1) {
+    if (result.rowCount === 1
+      && integrationApplicationEnabled(result.rows[0]!.applicationSlug)) {
       await client.query(`
         UPDATE public.integration_oauth_access_tokens
         SET last_used_at=now()
@@ -89,7 +95,10 @@ export async function authenticateIntegrationRequest(
           AND (last_used_at IS NULL OR last_used_at<now()-interval '5 minutes')
       `, [result.rows[0]!.accessTokenId]);
     }
-    return result.rows[0];
+    const principal = result.rows[0];
+    return principal && integrationApplicationEnabled(principal.applicationSlug)
+      ? principal
+      : undefined;
   });
   if (!principalRow) return { ok: false, reason: "INVALID" };
   const scopes = validatedScopes(principalRow.scopes);

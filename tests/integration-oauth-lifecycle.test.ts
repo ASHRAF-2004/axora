@@ -23,7 +23,10 @@ vi.mock("@/lib/integrations/authorization", () => ({
 }));
 
 import type { AuthenticatedSessionUser } from "@/lib/auth";
-import { integrationConfigInternals } from "@/lib/integrations/config";
+import {
+  INTEGRATION_PROVIDER_APPLICATION_SLUGS,
+  integrationConfigInternals,
+} from "@/lib/integrations/config";
 import { hashIntegrationSecret } from "@/lib/integrations/crypto";
 import {
   decideAuthorization,
@@ -144,11 +147,82 @@ describe("OAuth authorization and token lifecycle", () => {
       Buffer.alloc(32, 0x72).toString("base64url"),
     );
     delete process.env.AXORA_INTEGRATION_ENCRYPTION_KEY_FILE;
+    delete process.env.AXORA_ZAPIER_ENABLED;
     integrationConfigInternals.clearKeyCache();
     applicationRow.clientSecretHash = hashIntegrationSecret(
       "client-secret",
       clientSecret,
     );
+  });
+
+  it("fails closed for disabled provider authorization and tokens while preserving revocation", async () => {
+    const zapierApplication = {
+      ...applicationRow,
+      slug: INTEGRATION_PROVIDER_APPLICATION_SLUGS.zapier,
+    };
+    const parameters = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: "requests:read",
+      state: "state-that-is-at-least-sixteen-characters",
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+    });
+    mocks.client.query.mockResolvedValueOnce(queryResult([zapierApplication]));
+    await expect(prepareAuthorization({ actor, parameters, requestId }))
+      .resolves.toEqual({ ok: false, error: "invalid_request" });
+
+    vi.clearAllMocks();
+    mocks.client.query.mockResolvedValueOnce(queryResult([zapierApplication]));
+    await expect(exchangeAuthorizationCode({
+      credentials,
+      code: authorizationCode,
+      redirectUri,
+      codeVerifier: verifier,
+      requestId,
+    })).resolves.toEqual({ ok: false, error: "invalid_client" });
+    expect(mocks.client.query).toHaveBeenCalledTimes(1);
+
+    vi.clearAllMocks();
+    mocks.client.query.mockResolvedValueOnce(queryResult([{
+      id: ids.authorizationRequest,
+      applicationId: ids.application,
+      applicationSlug: INTEGRATION_PROVIDER_APPLICATION_SLUGS.zapier,
+      userId: ids.user,
+      roleAssignmentId: ids.assignment,
+      companyId: ids.company,
+      redirectUri,
+      clientState: "state-that-is-at-least-sixteen-characters",
+      requestedScopes: ["requests:read"],
+      codeChallenge: challenge,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      status: "PENDING",
+      clientId,
+      applicationName: "Axora for Zapier",
+      applicationStatus: "ACTIVE",
+      allowedScopes: ["requests:read"],
+    }]));
+    await expect(decideAuthorization({
+      actor,
+      handle: `axora_ar_${"z".repeat(43)}`,
+      decision: "approve",
+      requestId,
+    })).resolves.toEqual({ ok: false, error: "unauthorized_client" });
+    expect(mocks.client.query).toHaveBeenCalledTimes(1);
+
+    vi.clearAllMocks();
+    mocks.client.query
+      .mockResolvedValueOnce(queryResult([zapierApplication]))
+      .mockResolvedValueOnce(queryResult());
+    await expect(revokeOAuthToken({
+      credentials,
+      token: "unrecognized-opaque-token",
+      requestId,
+    })).resolves.toEqual({ authenticated: true });
+    expect(sqlCalls()).toEqual(expect.arrayContaining([
+      expect.stringContaining("integration_api_audit"),
+    ]));
   });
 
   afterEach(() => {

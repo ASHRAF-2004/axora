@@ -397,7 +397,18 @@ async function completeDelivery(db, workerId, job, result) {
   );
 }
 
-async function processWebhookJob(db,workerId,rootKey,deliver,job) {
+function isZapierWebhookEndpoint(endpoint) {
+  try {
+    const parsed=new URL(endpoint);
+    return parsed.protocol==="https:" && parsed.hostname==="hooks.zapier.com";
+  } catch {
+    return false;
+  }
+}
+
+async function processWebhookJob(
+  db,workerId,rootKey,deliver,zapierEnabled,job,
+) {
   const authorization = await db.query(
     "SELECT public.axora_claimed_webhook_delivery_is_authorized($1,$2,$3,now()) AS allowed",
     [workerId,job.delivery_id,job.lease_token],
@@ -409,11 +420,24 @@ async function processWebhookJob(db,workerId,rootKey,deliver,job) {
     return;
   }
   let endpoint;
-  let credential;
   try {
     endpoint = decryptWorkerIntegrationValue(
       rootKey,`webhook-endpoint:${job.subscription_id}`,job.endpoint_ciphertext,
     );
+  } catch {
+    await completeDelivery(db,workerId,job,{
+      outcome:"FAILED",errorCategory:"CONFIGURATION_ERROR",durationMs:0,
+    });
+    return;
+  }
+  if (!zapierEnabled && isZapierWebhookEndpoint(endpoint)) {
+    await completeDelivery(db,workerId,job,{
+      outcome:"FAILED",errorCategory:"CONFIGURATION_ERROR",durationMs:0,
+    });
+    return;
+  }
+  let credential;
+  try {
     credential = decryptWorkerIntegrationValue(
       rootKey,`webhook-credential:${job.subscription_id}`,job.credential_ciphertext,
     );
@@ -434,6 +458,7 @@ export async function pollIntegrationWorkerOnce({
   db,
   workerId,
   enabled = true,
+  zapierEnabled = false,
   rootKey,
   deliver = deliverWebhookAttempt,
   runCleanup = false,
@@ -450,7 +475,7 @@ export async function pollIntegrationWorkerOnce({
     FROM public.axora_claim_integration_webhook_deliveries($1,10,45,now())
   `, [workerId]);
   const deliveries = await Promise.allSettled(claimed.rows.map((job) =>
-    processWebhookJob(db,workerId,rootKey,deliver,job)));
+    processWebhookJob(db,workerId,rootKey,deliver,zapierEnabled,job)));
   const failedJobs=deliveries.filter((result)=>result.status==="rejected").length;
   if (runCleanup) {
     await db.query("SELECT public.axora_cleanup_integration_runtime(now()) AS result");
@@ -475,6 +500,7 @@ export function createIntegrationWorkerServer(state) {
       status: ready ? "ok" : "not_ready",
       enabled: state.enabled,
       active: state.active,
+      providers: { zapier: state.zapierEnabled },
     }));
   });
 }
@@ -489,8 +515,10 @@ export function startIntegrationWorker({ env = process.env } = {}) {
     throw new Error("Integration worker runtime configuration is invalid.");
   }
   const enabled = env.AXORA_INTEGRATION_WEBHOOKS_ENABLED === "true";
+  const zapierEnabled = env.AXORA_ZAPIER_ENABLED === "true";
   const state = {
-    workerId,enabled,active:false,lastSuccessfulPollAt:enabled ? 0 : Date.now(),
+    workerId,enabled,zapierEnabled,active:false,
+    lastSuccessfulPollAt:enabled ? 0 : Date.now(),
     lastCleanupAt:0,maxReadyAgeMs:Math.max(intervalMs*6,60_000),
   };
   const db = new pg.Pool({
@@ -506,7 +534,7 @@ export function startIntegrationWorker({ env = process.env } = {}) {
     try {
       const runCleanup = Date.now()-state.lastCleanupAt>=60*60_000;
       const result=await pollIntegrationWorkerOnce({
-        db,workerId,enabled,rootKey,runCleanup,
+        db,workerId,enabled,zapierEnabled,rootKey,runCleanup,
       });
       if (result.failedJobs) {
         console.error(JSON.stringify({
@@ -530,7 +558,9 @@ export function startIntegrationWorker({ env = process.env } = {}) {
   process.once("SIGTERM",shutdown);
   process.once("SIGINT",shutdown);
   server.listen(port,"0.0.0.0",()=>{
-    console.log(JSON.stringify({ event:"integration_worker_started",port,enabled }));
+    console.log(JSON.stringify({
+      event:"integration_worker_started",port,enabled,zapierEnabled,
+    }));
   });
   server.on("close",()=>{
     process.off("SIGTERM",shutdown);process.off("SIGINT",shutdown);

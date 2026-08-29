@@ -31,6 +31,8 @@ import type { IntegrationPrincipal } from "@/lib/integrations/api-auth";
 import {
   createExternalWebhookSubscription,
   createManagedWebhookSubscription,
+  mutateExternalWebhook,
+  parseWebhookSubscriptionInput,
   retryManagedWebhookDelivery,
   revokeManagedWebhookSubscription,
   rotateManagedWebhookCredential,
@@ -211,6 +213,105 @@ describe("webhook management authorization",()=>{
     const serialized=JSON.stringify(calls);
     expect(serialized).not.toContain("sensitive-marker");
     expect(serialized).not.toContain(result.data.signing_secret!);
+  });
+
+  it("keeps a provider-managed signing secret out of every API response",async()=>{
+    mocks.canManageCompanyIntegrations.mockResolvedValueOnce(true);
+    const normalizedUrl="https://hooks.zapier.com/hooks/catch/fictional";
+    const payloadHash=integrationPayloadHash({
+      endpoint_url:normalizedUrl,event_types:["request.approved"],
+      credential_delivery:"none",
+    });
+    mocks.client.query
+      .mockResolvedValueOnce(queryResult())
+      .mockResolvedValueOnce(queryResult([{
+        id:"f1294000-0000-4000-8000-000000000024",
+        payloadHash,status:"PENDING",
+      }]))
+      .mockResolvedValueOnce(queryResult([{
+        applicationId:ids.application,applicationName:"Axora for Zapier",
+      }]))
+      .mockResolvedValueOnce(queryResult([{count:0}]))
+      .mockResolvedValueOnce(queryResult([{
+        createdAt:"2026-08-29T00:00:00.000Z",
+        updatedAt:"2026-08-29T00:00:00.000Z",
+      }]))
+      .mockResolvedValueOnce(queryResult())
+      .mockResolvedValueOnce(queryResult());
+    const result=await createExternalWebhookSubscription({
+      principal,
+      payload:{
+        endpoint_url:normalizedUrl,event_types:["request.approved"],
+        credential_delivery:"none",
+      },
+      idempotencyKey:"zapier-create-fixture",requestId:randomRequestId(),
+      networkHash:"a".repeat(64),
+      resolver:async()=>[{address:"93.184.216.34",family:4}],
+    });
+    expect(result.data).toMatchObject({
+      credential_version:1,credential_available:false,
+    });
+    expect(result.data).not.toHaveProperty("signing_secret");
+    expect(JSON.stringify(mocks.client.query.mock.calls))
+      .not.toContain("axora_whsec_");
+    expect(JSON.stringify(mocks.client.query.mock.calls)).toContain("NONE");
+  });
+
+  it("persists provider credential suppression across rotation and replay",async()=>{
+    mocks.canManageCompanyIntegrations.mockResolvedValue(true);
+    const payloadHash=integrationPayloadHash({id:ids.subscription});
+    mocks.client.query
+      .mockResolvedValueOnce(queryResult())
+      .mockResolvedValueOnce(queryResult([{
+        id:"f1294000-0000-4000-8000-000000000025",
+        payloadHash,status:"PENDING",
+      }]))
+      .mockResolvedValueOnce(queryResult([{
+        credentialVersion:2,credentialDelivery:"NONE",
+      }]))
+      .mockResolvedValueOnce(queryResult())
+      .mockResolvedValueOnce(queryResult());
+    const first=await mutateExternalWebhook({
+      principal,kind:"rotate",resourceId:ids.subscription,
+      idempotencyKey:"zapier-rotate-fixture",requestId:randomRequestId(),
+      networkHash:"a".repeat(64),
+    });
+    expect(first).toEqual({
+      data:{id:ids.subscription,status:"active",credential_version:2,
+        credential_available:false},
+      replayed:false,
+    });
+    expect(JSON.stringify(first)).not.toContain("signing_secret");
+    const stored=String(mocks.client.query.mock.calls.find(([statement])=>
+      String(statement).includes("response_body=$3::jsonb"))?.[1]?.[2]);
+    expect(stored).toContain('"credential_delivery":"none"');
+    expect(stored).not.toContain("axora_whsec_");
+
+    vi.clearAllMocks();
+    mocks.canManageCompanyIntegrations.mockResolvedValue(true);
+    mocks.client.query
+      .mockResolvedValueOnce(queryResult())
+      .mockResolvedValueOnce(queryResult([{
+        id:"f1294000-0000-4000-8000-000000000025",
+        payloadHash,status:"COMPLETED",responseBody:{
+          id:ids.subscription,status:"active",signing_version:2,
+          credential_delivery:"none",
+        },
+      }]));
+    const replay=await mutateExternalWebhook({
+      principal,kind:"rotate",resourceId:ids.subscription,
+      idempotencyKey:"zapier-rotate-fixture",requestId:randomRequestId(),
+      networkHash:"a".repeat(64),
+    });
+    expect(replay).toEqual({...first,replayed:true});
+    expect(mocks.client.query).toHaveBeenCalledTimes(2);
+  });
+
+  it("defaults ordinary webhook callers to one-time credential delivery",()=>{
+    expect(parseWebhookSubscriptionInput({
+      endpoint_url:"https://hooks.receiver.dev/default",
+      event_types:["request.approved"],
+    })).toMatchObject({credential_delivery:"one_time"});
   });
 
   it("rejects an idempotency key reused with a different webhook payload",async()=>{

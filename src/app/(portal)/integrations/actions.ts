@@ -167,7 +167,10 @@ export async function createWebhookSubscriptionAction(
     });
     revalidatePath("/integrations");
     return {status:"success",operation:"create",
-      credential:{secret:result.credential,version:1}};
+      ...(result.credential?{
+        credential:{secret:result.credential,version:1},
+      }:{}),
+    };
   }catch(error){
     if(error instanceof WebhookManagementError)return webhookFailed("create");
     throw error;
@@ -186,9 +189,11 @@ export async function rotateWebhookCredentialAction(
       readFormText(formData,"companyId"),
     );
     revalidatePath("/integrations");
-    return {status:"success",operation:"rotate",credential:{
-      secret:result.credential,version:result.credentialVersion,
-    }};
+    return {status:"success",operation:"rotate",
+      ...(result.credential?{credential:{
+        secret:result.credential,version:result.credentialVersion,
+      }}:{}),
+    };
   }catch(error){
     if(error instanceof WebhookManagementError)return webhookFailed("rotate");
     throw error;
