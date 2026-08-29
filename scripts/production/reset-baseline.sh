@@ -441,7 +441,7 @@ service_was_stopped() {
 
 freeze_writers() {
   local service container
-  local -a ordered_services=(cloudflared caddy email-sender company-deletion-cleanup-worker document-worker budget-worker app tailscale-db)
+  local -a ordered_services=(cloudflared caddy email-sender integration-worker company-deletion-cleanup-worker document-worker budget-worker app tailscale-db)
 
   stopped_service_ids=()
   stopped_services=()
@@ -469,7 +469,7 @@ restart_original_services() {
   local service
 
   export AXORA_IMAGE="$current_image"
-  for service in app budget-worker document-worker company-deletion-cleanup-worker email-sender tailscale-db; do
+  for service in app budget-worker document-worker company-deletion-cleanup-worker integration-worker email-sender tailscale-db; do
     service_was_stopped "$service" && first_wave+=("$service")
   done
   for service in caddy cloudflared; do
@@ -517,7 +517,7 @@ rollback_uncommitted_reset() {
   # changing database names back. PostgreSQL itself remains running.
   local service container
   local -a active_ids=()
-  for service in cloudflared caddy email-sender company-deletion-cleanup-worker document-worker budget-worker app tailscale-db; do
+  for service in cloudflared caddy email-sender integration-worker company-deletion-cleanup-worker document-worker budget-worker app tailscale-db; do
     if container="$(find_service_container "$service")"; then active_ids+=("$container"); fi
   done
   if (( "${#active_ids[@]}" > 0 )); then
@@ -813,7 +813,10 @@ else
     --env "POSTGRES_DB=$candidate_database" \
     --env PGHOST=db \
     --mount "type=bind,source=$AXORA_SECRETS_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_cleanup_worker_password,target=/run/secrets/axora_cleanup_worker_password,readonly" \
+    --mount "type=bind,source=$AXORA_SECRETS_DIR/axora_integration_worker_password,target=/run/secrets/axora_integration_worker_password,readonly" \
     --mount "type=bind,source=$release/database/init,target=/database/init,readonly" \
+    --mount "type=bind,source=$release/database/admin,target=/database/admin,readonly" \
     --mount "type=bind,source=$release/database/migrations,target=/migrations,readonly" \
     --entrypoint /bin/sh \
     "$AXORA_POSTGRES_IMAGE" \

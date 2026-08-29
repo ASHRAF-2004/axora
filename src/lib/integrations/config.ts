@@ -18,6 +18,10 @@ export function externalApiEnabled(env: NodeJS.ProcessEnv = process.env) {
   return integrationFlagEnabled(INTEGRATION_FLAGS.externalApi, env);
 }
 
+export function integrationWebhooksEnabled(env: NodeJS.ProcessEnv = process.env) {
+  return integrationFlagEnabled(INTEGRATION_FLAGS.webhooks, env);
+}
+
 export function integrationOrigin(env: NodeJS.ProcessEnv = process.env) {
   const configured = (env.APP_BASE_URL ?? "https://axora.management").trim();
   let origin: URL;

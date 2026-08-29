@@ -1,7 +1,8 @@
 import { requirePagePermission } from "@/lib/auth";
-import { externalApiEnabled } from "@/lib/integrations/config";
+import { externalApiEnabled, integrationWebhooksEnabled } from "@/lib/integrations/config";
 import { getIntegrationWorkspace } from "@/lib/integrations/management";
 import { integrationManagementMessages } from "@/lib/integrations/management-i18n";
+import { getWebhookWorkspace } from "@/lib/integrations/webhooks";
 import {
   Activity,
   AppWindow,
@@ -10,6 +11,7 @@ import {
   KeyRound,
   Link2,
   ShieldCheck,
+  Webhook,
 } from "lucide-react";
 import type { Metadata } from "next";
 import {
@@ -18,6 +20,11 @@ import {
   DisconnectControl,
 } from "./IntegrationForms";
 import styles from "./Integrations.module.css";
+import {
+  WebhookRetryControl,
+  WebhookSubscriptionControls,
+  WebhookSubscriptionForm,
+} from "./WebhookForms";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +39,10 @@ export default async function IntegrationsPage() {
   const copy = integrationManagementMessages(locale);
   const workspace = await getIntegrationWorkspace(actor);
   const apiActive = externalApiEnabled();
+  const webhooksActive = integrationWebhooksEnabled();
+  const webhookWorkspace = webhooksActive
+    ? await getWebhookWorkspace(actor)
+    : undefined;
   const number = new Intl.NumberFormat(locale);
   const date = new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
@@ -46,6 +57,13 @@ export default async function IntegrationsPage() {
     [copy.requests24h, workspace.operations.apiRequests24h],
     [copy.errors24h, workspace.operations.apiErrors24h],
   ] as const : [];
+  const webhookMetricEntries = webhookWorkspace?.operations ? [
+    [copy.webhookEvents24h,webhookWorkspace.operations.eventCount24h],
+    [copy.webhookPending,webhookWorkspace.operations.pendingDeliveries],
+    [copy.webhookRetrying,webhookWorkspace.operations.retryDeliveries],
+    [copy.webhookDead,webhookWorkspace.operations.deadDeliveries],
+    [copy.webhookSucceeded24h,webhookWorkspace.operations.succeeded24h],
+  ] as const:[];
 
   return <div className={styles.workspace}>
     <header className={styles.pageHeader}>
@@ -54,11 +72,19 @@ export default async function IntegrationsPage() {
         <h1>{copy.title}</h1>
         <p className={styles.description}>{copy.description}</p>
       </div>
-      <div className={styles.featureStatus} data-active={String(apiActive)}>
-        {apiActive
-          ? <CheckCircle2 size={18} aria-hidden="true" />
-          : <CircleOff size={18} aria-hidden="true" />}
-        <span>{apiActive ? copy.apiActive : copy.apiInactive}</span>
+      <div className={styles.featureStatuses}>
+        <div className={styles.featureStatus} data-active={String(apiActive)}>
+          {apiActive
+            ? <CheckCircle2 size={18} aria-hidden="true" />
+            : <CircleOff size={18} aria-hidden="true" />}
+          <span>{apiActive ? copy.apiActive : copy.apiInactive}</span>
+        </div>
+        <div className={styles.featureStatus} data-active={String(webhooksActive)}>
+          {webhooksActive
+            ? <CheckCircle2 size={18} aria-hidden="true" />
+            : <CircleOff size={18} aria-hidden="true" />}
+          <span>{webhooksActive?copy.webhooksActive:copy.webhooksInactive}</span>
+        </div>
       </div>
     </header>
 
@@ -66,6 +92,10 @@ export default async function IntegrationsPage() {
       <ShieldCheck size={18} aria-hidden="true" />
       <span>{copy.apiInactiveHelp}</span>
     </div> : null}
+    {!webhooksActive?<div className={styles.darkLaunchNotice} role="status">
+      <Webhook size={18} aria-hidden="true"/>
+      <span>{copy.webhooksInactiveHelp}</span>
+    </div>:null}
 
     {workspace.operations ? <section aria-labelledby="integration-health-title">
       <div className={styles.sectionHeading}>
@@ -78,6 +108,18 @@ export default async function IntegrationsPage() {
         </article>)}
       </div>
     </section> : null}
+
+    {webhookMetricEntries.length?<section aria-labelledby="webhook-health-title">
+      <div className={styles.sectionHeading}>
+        <Webhook size={20} aria-hidden="true"/>
+        <h2 id="webhook-health-title">{copy.webhookHealth}</h2>
+      </div>
+      <div className={styles.metricGrid}>
+        {webhookMetricEntries.map(([label,value])=><article className={styles.metricCard} key={label}>
+          <span>{label}</span><strong><bdi dir="ltr">{number.format(value)}</bdi></strong>
+        </article>)}
+      </div>
+    </section>:null}
 
     <section className={styles.panel} aria-labelledby="connections-title">
       <header className={styles.panelHeader}>
@@ -127,6 +169,75 @@ export default async function IntegrationsPage() {
         </article>)}
       </div> : <div className={styles.emptyState}><CircleOff size={25} aria-hidden="true" /><strong>{copy.noApplications}</strong></div>}
     </section> : null}
+
+    {webhookWorkspace&&workspace.mode==="COMPANY"?<section className={styles.panel} aria-labelledby="webhook-create-title">
+      <header className={styles.panelHeader}>
+        <div><h2 id="webhook-create-title">{copy.webhookCreateTitle}</h2><p>{copy.webhookCreateDescription}</p></div>
+        <Webhook size={21} aria-hidden="true"/>
+      </header>
+      {webhookWorkspace.availableConnections.length?<div className={styles.registrationDetails}>
+        <WebhookSubscriptionForm locale={locale} connections={webhookWorkspace.availableConnections}/>
+      </div>:<div className={styles.emptyState}><CircleOff size={25} aria-hidden="true"/><strong>{copy.webhookNoConnections}</strong></div>}
+    </section>:null}
+
+    {webhookWorkspace?<section className={styles.panel} aria-labelledby="webhook-subscriptions-title">
+      <header className={styles.panelHeader}>
+        <div><h2 id="webhook-subscriptions-title">{copy.webhookSubscriptions}</h2><p>{copy.webhookSubscriptionsDescription}</p></div>
+        <Webhook size={21} aria-hidden="true"/>
+      </header>
+      {webhookWorkspace.subscriptions.length?<div className={styles.cardList}>
+        {webhookWorkspace.subscriptions.map((subscription)=><article className={styles.connectionCard} key={subscription.id}>
+          <div className={styles.cardIdentity}>
+            <span className={styles.iconBox}><Webhook size={20} aria-hidden="true"/></span>
+            <div><h3>{subscription.applicationName}</h3><p>{subscription.companyName}</p></div>
+            <span className={styles.badge} data-status={subscription.status.toLowerCase()}>
+              {copy.webhookStatusText[subscription.status.toLowerCase() as keyof typeof copy.webhookStatusText]}
+            </span>
+          </div>
+          <dl className={styles.detailGrid}>
+            <div><dt>{copy.webhookEndpointOrigin}</dt><dd><code dir="ltr">{subscription.endpointOrigin}</code></dd></div>
+            <div><dt>{copy.webhookAuthorizedBy}</dt><dd>{subscription.authorizedBy??"—"}</dd></div>
+            <div><dt>{copy.webhookCreatedAt}</dt><dd><time dateTime={subscription.createdAt}>{date.format(new Date(subscription.createdAt))}</time></dd></div>
+            <div><dt>{copy.webhookCredentialVersion}</dt><dd><bdi dir="ltr">{number.format(subscription.credentialVersion)}</bdi></dd></div>
+          </dl>
+          <div className={styles.scopeList} aria-label={copy.webhookEvents}>
+            {subscription.eventTypes.map((eventType)=><span key={eventType}>{copy.webhookEventsText[eventType]}</span>)}
+          </div>
+          {subscription.status!=="REVOKED"?<details className={styles.manageDetails}>
+            <summary>{copy.manage}</summary>
+            <WebhookSubscriptionControls locale={locale} subscriptionId={subscription.id}
+              companyId={subscription.companyId} canRotate={workspace.mode==="COMPANY"}/>
+          </details>:null}
+        </article>)}
+      </div>:<div className={styles.emptyState}><CircleOff size={25} aria-hidden="true"/><strong>{copy.webhookNoSubscriptions}</strong></div>}
+    </section>:null}
+
+    {webhookWorkspace?<section className={styles.panel} aria-labelledby="webhook-deliveries-title">
+      <header className={styles.panelHeader}>
+        <div><h2 id="webhook-deliveries-title">{copy.webhookDeliveries}</h2><p>{copy.webhookDeliveriesDescription}</p></div>
+        <Activity size={21} aria-hidden="true"/>
+      </header>
+      {webhookWorkspace.deliveries.length?<div className={styles.cardList}>
+        {webhookWorkspace.deliveries.map((delivery)=><article className={styles.connectionCard} key={delivery.id}>
+          <div className={styles.cardIdentity}>
+            <span className={styles.iconBox}><Activity size={20} aria-hidden="true"/></span>
+            <div><h3>{copy.webhookEventsText[delivery.eventType]}</h3><p><code dir="ltr">{delivery.resourceUrl}</code></p></div>
+            <span className={styles.badge} data-status={delivery.status.toLowerCase()}>
+              {copy.webhookStatusText[delivery.status.toLowerCase() as keyof typeof copy.webhookStatusText]}
+            </span>
+          </div>
+          <dl className={styles.detailGrid}>
+            <div><dt>{copy.webhookAttempts}</dt><dd><bdi dir="ltr">{number.format(delivery.attemptCount)}</bdi></dd></div>
+            <div><dt>{copy.webhookLastAttempt}</dt><dd>{delivery.lastAttemptAt?<time dateTime={delivery.lastAttemptAt}>{date.format(new Date(delivery.lastAttemptAt))}</time>:"—"}</dd></div>
+            <div><dt>{copy.webhookErrorCategory}</dt><dd>{delivery.errorCategory?<code dir="ltr">{delivery.errorCategory}</code>:"—"}</dd></div>
+          </dl>
+          {delivery.status==="DEAD"?<details className={styles.manageDetails}>
+            <summary>{copy.manage}</summary>
+            <WebhookRetryControl locale={locale} deliveryId={delivery.id} companyId={delivery.companyId}/>
+          </details>:null}
+        </article>)}
+      </div>:<div className={styles.emptyState}><CircleOff size={25} aria-hidden="true"/><strong>{copy.webhookNoDeliveries}</strong></div>}
+    </section>:null}
 
     {workspace.mode === "OWNER" ? <section className={styles.panel} aria-labelledby="registry-title">
       <header className={styles.panelHeader}>

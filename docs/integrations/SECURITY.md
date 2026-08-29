@@ -68,9 +68,34 @@ only their hashes are stored.
   comparison in the same transaction as the staged effect and success audit.
 - Management mutations require live permission checks and tenant-bound SQL.
 
-Phase II extends this document with webhook destination validation, DNS
-revalidation, redirect refusal, bounded HTTP behavior, signing, retry, and
-dead-letter controls.
+## Webhook boundary
+
+Webhook configuration accepts exact HTTPS destinations on port 443 only.
+Credentials, fragments, local or single-label names, reserved suffixes,
+loopback, RFC 1918, carrier-grade NAT, link-local, metadata, documentation,
+multicast, reserved, IPv4-mapped, and non-global IPv6 ranges are rejected.
+Every address in a bounded DNS answer must be public. Delivery resolves again,
+pins one checked address into the TLS connection, checks the connected peer,
+and never follows redirects. DNS, connection, and response time are bounded;
+response bodies are discarded and capped at 64 KiB.
+
+Each subscription has an independently generated credential encrypted with a
+per-subscription derived key. The credential is shown only for the idempotent
+create or rotation result. Deliveries use HMAC-SHA256 over
+`timestamp + "." + exact raw JSON`; receivers compare in constant time and
+reject timestamps more than five minutes from their clock.
+
+The projector and delivery worker re-evaluate the authorizing user's active
+account, exact role assignment, `auth_version`, live company permission, and
+explicit DENY. Lost authorization pauses the subscription and terminalizes
+queued work before an HTTP attempt. Application, connection, and subscription
+revocation likewise stop future claims.
+
+The worker has no direct table or sequence privilege and receives only five
+security-definer capabilities. It has dedicated outbound networking and only
+the integration encryption key plus its own database password. It cannot read
+or mutate email, session, Wallet, budget, payment, invoice, delivery, proof, or
+account data directly.
 
 ## Audit and privacy
 
@@ -87,3 +112,8 @@ surface without changing core Axora. Additive tables may remain dormant while
 the application image is restored to the previous immutable OCI. Integration
 failures must not block login, request workflow, Wallet, budget, payment,
 invoice, delivery, proof of delivery, Contact, or transactional email.
+
+Webhook rollback is: set `AXORA_INTEGRATION_WEBHOOKS_ENABLED=false`, recreate
+only the application and integration worker, confirm readiness in dormant
+mode, and if needed restore the prior immutable OCI. Migration 129 is additive
+and remains dormant; no down-migration touches canonical records.

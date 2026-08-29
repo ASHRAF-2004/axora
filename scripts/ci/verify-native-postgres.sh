@@ -9,6 +9,7 @@ ADMIN_USER="postgres"
 ADMIN_PASSWORD="axora-native-admin-fixture"
 APP_PASSWORD="axora-native-app-fixture"
 CLEANUP_PASSWORD="axora-native-cleanup-fixture"
+INTEGRATION_WORKER_PASSWORD="axora-native-integration-worker-fixture"
 EXPECTED_MIGRATIONS="$(find "$ROOT_DIR/database/migrations" -maxdepth 1 -type f -name '[0-9][0-9][0-9]_*.sql' | wc -l | tr -d '[:space:]')"
 TEMP_DIR="$(mktemp -d)"
 
@@ -26,9 +27,11 @@ esac
 install -m 0600 /dev/null "$TEMP_DIR/postgres_admin_password"
 install -m 0600 /dev/null "$TEMP_DIR/axora_app_password"
 install -m 0600 /dev/null "$TEMP_DIR/axora_cleanup_worker_password"
+install -m 0600 /dev/null "$TEMP_DIR/axora_integration_worker_password"
 printf '%s' "$ADMIN_PASSWORD" > "$TEMP_DIR/postgres_admin_password"
 printf '%s' "$APP_PASSWORD" > "$TEMP_DIR/axora_app_password"
 printf '%s' "$CLEANUP_PASSWORD" > "$TEMP_DIR/axora_cleanup_worker_password"
+printf '%s' "$INTEGRATION_WORKER_PASSWORD" > "$TEMP_DIR/axora_integration_worker_password"
 chmod 0444 "$TEMP_DIR"/*
 
 docker run --detach --name "$CONTAINER_NAME" \
@@ -42,6 +45,7 @@ docker run --detach --name "$CONTAINER_NAME" \
   --mount "type=bind,source=$TEMP_DIR/postgres_admin_password,target=/run/secrets/postgres_admin_password,readonly" \
   --mount "type=bind,source=$TEMP_DIR/axora_app_password,target=/run/secrets/axora_app_password,readonly" \
   --mount "type=bind,source=$TEMP_DIR/axora_cleanup_worker_password,target=/run/secrets/axora_cleanup_worker_password,readonly" \
+  --mount "type=bind,source=$TEMP_DIR/axora_integration_worker_password,target=/run/secrets/axora_integration_worker_password,readonly" \
   "$POSTGRES_IMAGE" >/dev/null
 
 ready=false
@@ -195,6 +199,7 @@ run_native_test() {
       AXORA_NATIVE_POSTGRES_DATABASE="$DATABASE_NAME" \
       AXORA_NATIVE_POSTGRES_ADMIN_USER="$ADMIN_USER" \
       AXORA_NATIVE_POSTGRES_ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+      AXORA_NATIVE_POSTGRES_INTEGRATION_WORKER_PASSWORD="$INTEGRATION_WORKER_PASSWORD" \
       DEMO_MODE=false \
       DATABASE_SSL=false \
       DB_HOST=127.0.0.1 \
@@ -214,6 +219,7 @@ run_native_test tests/delivery-guy-invitation-native-postgres.test.ts
 run_native_test tests/operating-model-concurrency-native-postgres.test.ts
 run_native_test tests/company-admin-direct-purchase-native-postgres.test.ts
 run_native_test tests/existing-user-management-native-postgres.test.ts
+run_native_test tests/integration-webhook-native-postgres.test.ts
 
 docker exec --interactive \
   --env "PGPASSWORD=$ADMIN_PASSWORD" \

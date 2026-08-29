@@ -48,6 +48,12 @@ PKCE challenge. Axora never shares the user's password with a client.
 | GET | `/invoices` | `invoices:read` | Customer-facing invoices |
 | GET | `/invoices/{id}` | `invoices:read` | Customer-facing invoice by ID |
 | POST | `/request-drafts` | `requests:draft` | Create a review-required staging draft |
+| GET | `/webhook-subscriptions` | `webhooks:manage` | List this connection's subscriptions |
+| POST | `/webhook-subscriptions` | `webhooks:manage` | Create a signed subscription |
+| DELETE | `/webhook-subscriptions/{id}` | `webhooks:manage` | Revoke a subscription |
+| POST | `/webhook-subscriptions/{id}/rotate-secret` | `webhooks:manage` | Rotate its signing secret |
+| GET | `/webhook-deliveries` | `webhooks:manage` | List safe delivery status |
+| POST | `/webhook-deliveries/{id}/retry` | `webhooks:manage` | Retry a dead delivery with its event ID |
 
 The invoice and delivery representations omit Axora buying cost, supplier
 cost, margin, raw GPS history, private proof paths, internal telemetry, and
@@ -112,6 +118,16 @@ rotation. The originating grant is retained as security evidence.
 - Same key and a different payload: `409 conflict` and no new draft.
 - The key itself is never stored or logged; only a dedicated keyed hash is
   persisted.
+
+Webhook create, revoke, secret rotation, and dead-letter retry use the same
+idempotency contract. A replay never creates a second subscription, event, or
+delivery. Creation and rotation can replay their one-time credential only
+while that exact credential version is still current and active; a later
+rotation or revocation makes the earlier operation's secret unavailable.
+
+Webhook destinations and signing credentials are encrypted at rest. List
+responses expose only the destination origin, never its path, query, or secret.
+See [WEBHOOKS.md](./WEBHOOKS.md) for the receiver contract.
 
 Example body:
 

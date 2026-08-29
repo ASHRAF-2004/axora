@@ -12,7 +12,7 @@ describe("database-owner transactional email reconciliation", () => {
     db = new PGlite();
     await db.exec("CREATE ROLE axora_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT");
     const applied = await applyMigrations(db);
-    expect(applied.at(-1)).toBe("128_external_integration_foundation.sql");
+    expect(applied.at(-1)).toBe("129_integration_webhook_platform.sql");
     await db.exec(`CREATE TABLE schema_migrations(
       filename text PRIMARY KEY,sha256 text NOT NULL,
       applied_at timestamptz NOT NULL DEFAULT now()

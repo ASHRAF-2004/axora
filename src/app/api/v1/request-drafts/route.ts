@@ -1,18 +1,17 @@
 import { ExternalApiProblem, handleExternalApiRequest } from "@/lib/integrations/api-handler";
 import { integrationNetworkHash } from "@/lib/integrations/network";
+import { readLimitedTextBody } from "@/lib/integrations/request";
 import { createExternalRequestDraft, parseExternalDraft } from "@/lib/integrations/resources";
 
 export const dynamic = "force-dynamic";
 
 async function parseJsonBody(request: Request) {
   const contentType = request.headers.get("content-type")?.split(";",1)[0]?.trim().toLowerCase();
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (contentType !== "application/json"
-    || (Number.isFinite(declared) && declared > 65_536)) {
+  if (contentType !== "application/json") {
     throw new ExternalApiProblem("invalid_request",400,"INVALID","body","request_draft");
   }
-  const raw = await request.text();
-  if (Buffer.byteLength(raw,"utf8") > 65_536) {
+  const raw = await readLimitedTextBody(request,65_536);
+  if (raw === null) {
     throw new ExternalApiProblem("invalid_request",400,"INVALID","body","request_draft");
   }
   try {

@@ -1,8 +1,8 @@
 # Axora integration platform architecture
 
-Status: Phase I foundation. The public API and OAuth capability are dark by
-default. Webhook, Zapier, and Slack runtime behavior is introduced in later
-phases behind independent flags.
+Status: Phase II webhook platform. The public API, OAuth capability, webhook
+projector, and webhook delivery worker remain independently flag-controlled.
+Zapier and Slack runtime behavior is introduced in later phases.
 
 ## Boundaries
 
@@ -42,11 +42,31 @@ request even when the opaque token's nominal expiry has not elapsed.
   grants, opaque-token hashes, idempotency records, safe API audit evidence,
   and review-required request drafts. Forced RLS permits access only from named
   integration transaction contexts.
+- A dedicated `integration-worker` container projects already-committed
+  canonical state into `integration_events`, fans out company-bound delivery
+  records, and performs bounded outbound HTTPS attempts. Its PostgreSQL role
+  has no table or sequence privileges and only five bounded worker functions.
 
 No integration table is an email table. `transactional_email_outbox`, the
-existing email worker, and Resend are unchanged. Phase II adds a separate
-event and delivery worker; provider calls never run inside an Axora business
-transaction.
+existing email worker, its provider network, and Resend are unchanged. The
+integration worker has a separate database principal, queue, secrets, health
+endpoint, logs, and Internet-egress network. Provider calls never run inside an
+Axora business transaction.
+
+## Event projection
+
+The worker reads durable canonical sources only after the source transaction
+has committed: companies, requests, immutable request approval decisions,
+customer invoice finalization, and delivery workflow events. A checkpoint per
+source uses `(timestamp, UUID)` ordering and row leases. Event uniqueness is
+deterministic by source, source ID, event type, and schema version. Racing
+projectors therefore produce one logical event, and retries retain the same
+global event ID.
+
+Migration 129 initializes every checkpoint at the existing production head.
+Deployment does not replay historical business activity or send it to a newly
+created subscription. A stopped projector leaves core Axora transactions
+untouched and catches up from durable state after restart.
 
 ## Safe write model
 
@@ -85,6 +105,11 @@ Resend, deployment, and future provider credentials. Opaque access tokens,
 refresh tokens, authorization codes, consent handles, client secrets,
 idempotency keys, network identifiers, and cursors are stored or keyed only as
 domain-separated hashes where recovery is unnecessary.
+
+The worker additionally uses a file-mounted password for the
+`axora_integration_worker` database principal. It never receives the
+application, PostgreSQL administrator, cleanup-worker, session, email-service,
+Resend, Turnstile, or deployment credentials.
 
 ## Compatibility contract
 

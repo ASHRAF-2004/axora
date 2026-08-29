@@ -16,6 +16,7 @@ services:
       - postgres_admin_password
       - axora_app_password
       - axora_cleanup_worker_password
+      - axora_integration_worker_password
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./database/init:/docker-entrypoint-initdb.d:ro
@@ -48,8 +49,10 @@ services:
     secrets:
       - postgres_admin_password
       - axora_cleanup_worker_password
+      - axora_integration_worker_password
     volumes:
       - ./database/init:/database/init:ro
+      - ./database/admin:/database/admin:ro
       - ./database/migrations:/migrations:ro
     depends_on:
       db:
@@ -320,6 +323,53 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  integration-worker:
+    image: axora-app:1.0.0
+    restart: unless-stopped
+    init: true
+    read_only: true
+    group_add:
+      - "1000"
+    command: ["node", "server-tools/integration-worker.mjs"]
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: axora
+      DB_USER: axora_integration_worker
+      DB_PASSWORD_FILE: /run/secrets/axora_integration_worker_password
+      AXORA_INTEGRATION_WEBHOOKS_ENABLED: "${AXORA_INTEGRATION_WEBHOOKS_ENABLED:-false}"
+      AXORA_INTEGRATION_ENCRYPTION_KEY_FILE: /run/secrets/axora_integration_encryption_key
+      INTEGRATION_WORKER_PORT: "3104"
+      INTEGRATION_WORKER_INTERVAL_MS: "5000"
+    secrets:
+      - axora_integration_worker_password
+      - axora_integration_encryption_key
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "3104"
+    networks:
+      backend: {}
+      integration-egress:
+        gw_priority: 1
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3104/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
   # Developer-only captured email viewer. It is excluded unless the explicit
   # email-preview profile is selected and is never part of production ingress.
   mailpit:
@@ -394,6 +444,9 @@ networks:
   # server-side Cloudflare Turnstile verification. Keep this separate from
   # the email provider egress boundary.
   turnstile-egress:
+  # Webhook delivery has dedicated Internet egress and no access to the email
+  # worker's provider network or secrets.
+  integration-egress:
 
 volumes:
   postgres_data:
@@ -407,6 +460,8 @@ secrets:
     file: ./secrets/axora_app_password
   axora_cleanup_worker_password:
     file: ./secrets/axora_cleanup_worker_password
+  axora_integration_worker_password:
+    file: ./secrets/axora_integration_worker_password
   session_secret:
     file: ./secrets/session_secret
   axora_integration_encryption_key:

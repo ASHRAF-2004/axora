@@ -9,6 +9,17 @@ import {
   setIntegrationApplicationActive,
 } from "@/lib/integrations/management";
 import { integrationScopeSchema } from "@/lib/integrations/scopes";
+import {
+  createManagedWebhookSubscription,
+  retryManagedWebhookDelivery,
+  revokeManagedWebhookSubscription,
+  rotateManagedWebhookCredential,
+  WebhookManagementError,
+} from "@/lib/integrations/webhooks";
+import {
+  INTEGRATION_EVENT_TYPE_SET,
+  type IntegrationEventType,
+} from "@/lib/integrations/events";
 import { readFormText } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 
@@ -16,6 +27,12 @@ export type IntegrationActionState = {
   status: "idle" | "success" | "error";
   operation?: "create" | "rotate" | "disconnect" | "status";
   credential?: { clientId?: string; clientSecret?: string };
+};
+
+export type WebhookActionState = {
+  status: "idle" | "success" | "error";
+  operation?: "create" | "rotate" | "revoke" | "retry";
+  credential?: { secret: string; version: number };
 };
 
 function failed(operation: IntegrationActionState["operation"]): IntegrationActionState {
@@ -122,6 +139,96 @@ export async function disconnectIntegrationAction(
     return { status: "success", operation: "disconnect" };
   } catch (error) {
     if (error instanceof IntegrationManagementError) return failed("disconnect");
+    throw error;
+  }
+}
+
+function webhookFailed(
+  operation: WebhookActionState["operation"],
+): WebhookActionState {
+  return { status: "error",operation };
+}
+
+export async function createWebhookSubscriptionAction(
+  _previous: WebhookActionState,
+  formData: FormData,
+): Promise<WebhookActionState> {
+  const actor=await requirePermission("manage_company_integrations");
+  const eventTypes=formData.getAll("eventTypes").flatMap((value)=>
+    typeof value==="string"&&INTEGRATION_EVENT_TYPE_SET.has(value)
+      ? [value as IntegrationEventType]:[]);
+  try{
+    const result=await createManagedWebhookSubscription({
+      actor,connectionId:readFormText(formData,"connectionId"),
+      payload:{
+        endpoint_url:readFormText(formData,"endpointUrl"),
+        event_types:eventTypes,
+      },
+    });
+    revalidatePath("/integrations");
+    return {status:"success",operation:"create",
+      credential:{secret:result.credential,version:1}};
+  }catch(error){
+    if(error instanceof WebhookManagementError)return webhookFailed("create");
+    throw error;
+  }
+}
+
+export async function rotateWebhookCredentialAction(
+  _previous: WebhookActionState,
+  formData: FormData,
+): Promise<WebhookActionState> {
+  const actor=await requirePermission("manage_company_integrations");
+  if(readFormText(formData,"confirmation")!=="yes")return webhookFailed("rotate");
+  try{
+    const result=await rotateManagedWebhookCredential(
+      actor,readFormText(formData,"subscriptionId"),
+      readFormText(formData,"companyId"),
+    );
+    revalidatePath("/integrations");
+    return {status:"success",operation:"rotate",credential:{
+      secret:result.credential,version:result.credentialVersion,
+    }};
+  }catch(error){
+    if(error instanceof WebhookManagementError)return webhookFailed("rotate");
+    throw error;
+  }
+}
+
+export async function revokeWebhookSubscriptionAction(
+  _previous: WebhookActionState,
+  formData: FormData,
+): Promise<WebhookActionState> {
+  const actor=await requirePermission("manage_company_integrations");
+  if(readFormText(formData,"confirmation")!=="yes")return webhookFailed("revoke");
+  try{
+    await revokeManagedWebhookSubscription(
+      actor,readFormText(formData,"subscriptionId"),
+      readFormText(formData,"companyId"),
+    );
+    revalidatePath("/integrations");
+    return {status:"success",operation:"revoke"};
+  }catch(error){
+    if(error instanceof WebhookManagementError)return webhookFailed("revoke");
+    throw error;
+  }
+}
+
+export async function retryWebhookDeliveryAction(
+  _previous: WebhookActionState,
+  formData: FormData,
+): Promise<WebhookActionState> {
+  const actor=await requirePermission("manage_company_integrations");
+  if(readFormText(formData,"confirmation")!=="yes")return webhookFailed("retry");
+  try{
+    await retryManagedWebhookDelivery(
+      actor,readFormText(formData,"deliveryId"),
+      readFormText(formData,"companyId"),
+    );
+    revalidatePath("/integrations");
+    return {status:"success",operation:"retry"};
+  }catch(error){
+    if(error instanceof WebhookManagementError)return webhookFailed("retry");
     throw error;
   }
 }

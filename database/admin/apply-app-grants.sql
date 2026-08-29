@@ -17,6 +17,7 @@ REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM axora_app;
 GRANT DELETE ON TABLE public.products, public.product_suppliers, public.product_images TO axora_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO axora_app;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO axora_app;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 
 REVOKE INSERT, UPDATE, DELETE ON TABLE public.audit_logs FROM axora_app;
 GRANT SELECT ON TABLE public.audit_logs TO axora_app;
@@ -30,6 +31,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO axora_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT EXECUTE ON FUNCTIONS TO axora_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 -- Broad grants keep ordinary application tables and routines deployable, but
 -- migrations 026 onward deliberately expose sensitive state only through
@@ -349,6 +352,105 @@ BEGIN
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_record_public_company_lead(jsonb,timestamptz),public.axora_company_lead_workspace(uuid,uuid,jsonb,timestamptz),public.axora_export_company_lead(uuid,uuid,uuid,timestamptz),public.axora_assign_company_lead(uuid,uuid,uuid,uuid,text,timestamptz),public.axora_transition_company_lead(uuid,uuid,uuid,text,text,timestamptz),public.axora_resolve_company_lead_duplicate(uuid,uuid,uuid,uuid,text,text,timestamptz),public.axora_add_company_lead_note(uuid,uuid,uuid,text,text,timestamptz),public.axora_add_company_lead_task(uuid,uuid,uuid,text,timestamptz,uuid,timestamptz),public.axora_complete_company_lead_task(uuid,uuid,uuid,uuid,text,timestamptz),public.axora_convert_company_lead(uuid,uuid,uuid,text,timestamptz),public.axora_anonymize_company_lead(uuid,uuid,uuid,text,timestamptz),public.axora_claim_overdue_company_lead_events(uuid,uuid,timestamptz) TO axora_app';
   END IF;
 END $$;
+
+-- External integrations are a separate least-privilege boundary. Re-apply it
+-- after the compatibility-wide grants above so neither the web application nor
+-- the dedicated projector/delivery worker inherits broad schema privileges.
+DO $integration_boundary$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.integration_applications') IS NOT NULL
+  THEN
+    REVOKE ALL ON TABLE
+      public.integration_applications,public.integration_connections,
+      public.integration_oauth_grants,
+      public.integration_oauth_authorization_requests,
+      public.integration_oauth_authorization_codes,
+      public.integration_oauth_refresh_families,
+      public.integration_oauth_refresh_tokens,
+      public.integration_oauth_access_tokens,
+      public.integration_api_rate_buckets,
+      public.integration_api_idempotency,
+      public.integration_request_drafts,
+      public.integration_request_draft_items,
+      public.integration_api_audit
+    FROM axora_app;
+    GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE
+      public.integration_applications,public.integration_connections,
+      public.integration_oauth_grants,
+      public.integration_oauth_authorization_requests,
+      public.integration_oauth_authorization_codes,
+      public.integration_oauth_refresh_families,
+      public.integration_oauth_refresh_tokens,
+      public.integration_oauth_access_tokens,
+      public.integration_api_rate_buckets,
+      public.integration_api_idempotency,
+      public.integration_request_drafts,
+      public.integration_request_draft_items
+    TO axora_app;
+    GRANT SELECT,INSERT ON TABLE public.integration_api_audit TO axora_app;
+    REVOKE ALL ON FUNCTION
+      public.axora_integration_context_allowed(),
+      public.axora_integration_principal_by_token_hash(text,timestamptz)
+    FROM axora_app;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_integration_context_allowed(),
+      public.axora_integration_principal_by_token_hash(text,timestamptz)
+    TO axora_app;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_app')
+    AND to_regclass('public.integration_webhook_subscriptions') IS NOT NULL
+  THEN
+    REVOKE ALL ON TABLE
+      public.integration_projection_checkpoints,public.integration_events,
+      public.integration_webhook_subscriptions,
+      public.integration_webhook_deliveries,public.integration_webhook_attempts
+    FROM axora_app;
+    GRANT SELECT ON TABLE public.integration_events,
+      public.integration_webhook_attempts TO axora_app;
+    GRANT SELECT,INSERT,UPDATE ON TABLE
+      public.integration_webhook_subscriptions TO axora_app;
+    GRANT SELECT,UPDATE ON TABLE public.integration_webhook_deliveries TO axora_app;
+    REVOKE ALL ON FUNCTION
+      public.axora_integration_ciphertext_is_valid(jsonb),
+      public.axora_protect_integration_event(),
+      public.axora_integration_worker_allowed(),
+      public.axora_integration_subscription_is_authorized(uuid,timestamptz),
+      public.axora_insert_projected_integration_event(text,uuid,text,uuid,text,text,uuid,integer,timestamptz,jsonb),
+      public.axora_project_integration_events(integer,timestamptz),
+      public.axora_claim_integration_webhook_deliveries(text,integer,integer,timestamptz),
+      public.axora_claimed_webhook_delivery_is_authorized(text,uuid,uuid,timestamptz),
+      public.axora_complete_integration_webhook_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamptz),
+      public.axora_cleanup_integration_runtime(timestamptz),
+      public.axora_revoke_connection_webhooks()
+    FROM axora_app;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_integration_ciphertext_is_valid(jsonb) TO axora_app;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='axora_integration_worker')
+    AND to_regprocedure(
+      'public.axora_project_integration_events(integer,timestamp with time zone)'
+    ) IS NOT NULL
+  THEN
+    EXECUTE format(
+      'GRANT CONNECT ON DATABASE %I TO axora_integration_worker',current_database()
+    );
+    GRANT USAGE ON SCHEMA public TO axora_integration_worker;
+    REVOKE ALL ON ALL TABLES IN SCHEMA public FROM axora_integration_worker;
+    REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM axora_integration_worker;
+    REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM axora_integration_worker;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_project_integration_events(integer,timestamptz),
+      public.axora_claim_integration_webhook_deliveries(text,integer,integer,timestamptz),
+      public.axora_claimed_webhook_delivery_is_authorized(text,uuid,uuid,timestamptz),
+      public.axora_complete_integration_webhook_delivery(text,uuid,uuid,text,integer,text,integer,integer,integer,timestamptz),
+      public.axora_cleanup_integration_runtime(timestamptz)
+    TO axora_integration_worker;
+  END IF;
+END
+$integration_boundary$;
 
 -- Company Administrator direct purchase keeps replay and financial command
 -- evidence private. The application role receives only the three audited
