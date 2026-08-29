@@ -325,6 +325,69 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Cleanup worker cannot lease cleanup tasks';
   END IF;
+  IF NOT has_function_privilege(
+    'axora_cleanup_worker',
+    'public.axora_claim_user_deletion_cleanup_task(text,integer,timestamptz)',
+    'EXECUTE'
+  ) OR NOT has_function_privilege(
+    'axora_cleanup_worker',
+    'public.axora_complete_user_deletion_cleanup_task(uuid,uuid,text,jsonb,timestamptz)',
+    'EXECUTE'
+  ) OR NOT has_function_privilege(
+    'axora_cleanup_worker',
+    'public.axora_fail_user_deletion_cleanup_task(uuid,uuid,text,text,boolean,timestamptz)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Cleanup worker cannot process user deletion cleanup tasks';
+  END IF;
+  IF has_function_privilege(
+    'axora_cleanup_worker',
+    'public.axora_reconcile_user_deletion_cleanup_tasks(timestamptz)',
+    'EXECUTE'
+  ) OR has_table_privilege(
+    'axora_cleanup_worker',
+    'public.user_deletion_cleanup_tasks',
+    'SELECT,INSERT,UPDATE,DELETE'
+  ) THEN
+    RAISE EXCEPTION 'Cleanup worker user-deletion boundary is too broad';
+  END IF;
+  IF has_table_privilege(
+    'axora_app',
+    'public.user_deletion_commands',
+    'SELECT,INSERT,UPDATE,DELETE'
+  ) OR has_table_privilege(
+    'axora_app',
+    'public.user_deletion_cleanup_tasks',
+    'SELECT,INSERT,UPDATE,DELETE'
+  ) OR has_table_privilege(
+    'axora_app',
+    'public.user_deletion_execution_authorizations',
+    'SELECT,INSERT,UPDATE,DELETE'
+  ) OR EXISTS (
+    SELECT 1
+    FROM pg_proc
+    WHERE pronamespace='public'::regnamespace
+      AND proname IN (
+        'axora_user_deletion_trigger_is_authorized',
+        'axora_user_privacy_scrub_json',
+        'axora_rebuild_audit_integrity_after_privacy_purge',
+        'axora_refresh_user_deletion_command',
+        'axora_reconcile_user_deletion_cleanup_tasks',
+        'axora_claim_user_deletion_cleanup_task',
+        'axora_complete_user_deletion_cleanup_task',
+        'axora_fail_user_deletion_cleanup_task'
+      )
+      AND has_function_privilege('axora_app', oid, 'EXECUTE')
+  ) THEN
+    RAISE EXCEPTION 'Application role can bypass the user deletion command boundary';
+  END IF;
+  IF NOT has_function_privilege(
+    'axora_app',
+    'public.axora_remove_user_account(uuid,uuid,uuid,text,timestamptz)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Application user deletion command capability is unavailable';
+  END IF;
 
   SELECT array_agg(relname ORDER BY relname)
   INTO missing_rls
