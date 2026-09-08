@@ -1,4 +1,5 @@
 import { DashboardPeriodControls } from "@/components/DashboardPeriodControls";
+import { DashboardReportingPreferenceSync } from "@/components/DashboardReportingPreferenceSync";
 import { MetricCard } from "@/components/MetricCard";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -6,6 +7,11 @@ import { requireSession } from "@/lib/auth";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { normalizeDashboardPeriod, type DashboardPeriodInput } from "@/lib/dashboard-period";
 import { dashboardPeriodMessages } from "@/lib/dashboard-period-i18n";
+import {
+  dashboardReportingPreferenceForUser,
+  dashboardReportingPreferenceInput,
+  hasExplicitDashboardReportingFilters,
+} from "@/lib/dashboard-reporting-preference";
 import {
   getAuthorizedDashboardPeriodReport,
   resolveDashboardReportingScope,
@@ -28,6 +34,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 type DashboardSearchParams = Record<string, string | string[] | undefined>;
@@ -97,19 +104,33 @@ export default async function DashboardPage({
   const actor = await requireSession();
   if (isDeliveryAgentSession(actor)) redirect("/driver");
   if (!canAccess(actor, "view_dashboard")) redirect("/access-denied");
-  const raw = await searchParams;
+  const [raw, cookieStore] = await Promise.all([searchParams, cookies()]);
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).dashboard;
   const canViewRevenue = canAccess(actor, "view_platform_revenue");
   const canViewCost = canAccess(actor, "view_internal_cost");
   const canViewProfit = canAccess(actor, "view_platform_profit");
   const periodCopy = dashboardPeriodMessages(locale);
-  const input: DashboardPeriodInput = {
+  const explicitFilters = hasExplicitDashboardReportingFilters(raw);
+  const savedPreference = dashboardReportingPreferenceForUser(
+    cookieStore.get("axora_dashboard_reporting")?.value,
+    actor.id,
+  );
+  const explicitInput: DashboardPeriodInput = {
     preset: first(raw.preset),
     start: first(raw.start),
     end: first(raw.end),
   };
-  const scope = await resolveDashboardReportingScope(actor, first(raw.branch));
+  const input = explicitFilters
+    ? explicitInput
+    : dashboardReportingPreferenceInput(savedPreference);
+  let scope = await resolveDashboardReportingScope(
+    actor,
+    explicitFilters ? first(raw.branch) : savedPreference?.branchId,
+  );
+  if (!explicitFilters && scope.branchUnavailable) {
+    scope = await resolveDashboardReportingScope(actor);
+  }
   const period = normalizeDashboardPeriod(input, scope.timeZone);
   const report = await getAuthorizedDashboardPeriodReport(actor, period, scope);
   const data = report.current;
@@ -178,6 +199,11 @@ export default async function DashboardPage({
         scope={scope}
         locale={locale}
       />
+      {explicitFilters ? <DashboardReportingPreferenceSync preference={{
+        preset: period.preset,
+        ...(period.preset === "custom" ? { start: period.startDate, end: period.endDate } : {}),
+        ...(scope.branchId ? { branchId: scope.branchId } : {}),
+      }} /> : null}
 
       <section className="metric-grid dashboard-period-metrics" aria-label={copy.indicators}>
         {report.scope === "platform" ? (

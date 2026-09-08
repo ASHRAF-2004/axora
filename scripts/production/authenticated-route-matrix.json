@@ -1419,6 +1419,12 @@
       "authentication": "oauth-bearer",
       "scope": "connection-company-webhooks",
       "mode": "mixed"
+    },
+    {
+      "route": "/dashboard/reporting-preference",
+      "authentication": "view_dashboard",
+      "scope": "self-and-authorized-reporting-scope",
+      "mode": "mutating"
     }
   ]
 }

@@ -2,13 +2,14 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("P1-15 dashboard period UI", () => {
-  it("uses a bookmarkable current-period GET form with export and accessible status", async () => {
+  it("uses an authenticated persisted period form with export and accessible status", async () => {
     const source = await readFile(
       new URL("../src/components/DashboardPeriodControls.tsx", import.meta.url),
       "utf8",
     );
     expect(source).toContain('method="get"');
     expect(source).toContain('action="/dashboard"');
+    expect(source).toContain("onSubmit={savePreference}");
     expect(source).toContain('name="preset"');
     expect(source).toContain('name="start"');
     expect(source).toContain('name="end"');
@@ -17,6 +18,8 @@ describe("P1-15 dashboard period UI", () => {
     expect(source).toContain('aria-live="polite"');
     expect(source).toContain('role="alert"');
     expect(source).toContain("/api/export/dashboard?");
+    expect(source).toContain("/dashboard/reporting-preference?reset=1");
+    expect(source).toContain("prefetch={false}");
   });
 
   it("uses logical responsive styling without adding motion", async () => {
