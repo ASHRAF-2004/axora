@@ -6,6 +6,7 @@ import { getBudgetWorkspace } from "@/lib/budget-ledger";
 import { isDemoMode, query, withAuditTransaction } from "@/lib/db";
 import { getDemoStore } from "@/lib/demo-data";
 import { canAccess } from "@/lib/permissions";
+import { parsePositiveMoneyDecimal } from "@/lib/money-decimal";
 
 const commandSchema = z.strictObject({
   branchId: z.union([z.string().uuid(), z.string().regex(/^br-[a-z0-9-]{3,80}$/)]), amount: z.number().positive().max(100_000_000),
@@ -73,6 +74,43 @@ export async function configureFirstBranchBudget(actor: AuthenticatedSessionUser
       if (!status || !["CREATED", "ALREADY_CREATED", "ACTIVE_IMMUTABLE", "FUNDING_REQUIRED"].includes(status)) throw new BranchBudgetError("UNAVAILABLE");
       return status;
     });
+  } catch (error) {
+    if (error instanceof BranchBudgetError) throw error;
+    throw new BranchBudgetError("UNAVAILABLE");
+  }
+}
+
+export async function addBranchBudget(
+  actor: AuthenticatedSessionUser,
+  input: { branchId: string; amount: string; commandId: string },
+) {
+  const branchId = z.uuid().safeParse(input.branchId);
+  const commandId = z.uuid().safeParse(input.commandId);
+  if (!branchId.success || !commandId.success || actor.accountKind !== "COMPANY"
+    || !actor.companyId || !actor.roleAssignmentId || !canAccess(actor, "manage_branch_budget")) {
+    throw new BranchBudgetError("INVALID");
+  }
+  let amount: string;
+  try { amount = parsePositiveMoneyDecimal(input.amount); } catch { throw new BranchBudgetError("INVALID"); }
+  if (isDemoMode()) {
+    const branch = getDemoStore().branches.find((candidate) => candidate.id === branchId.data
+      && candidate.companyId === actor.companyId && candidate.status === "Active");
+    if (!branch) throw new BranchBudgetError("FORBIDDEN");
+    const next = Number(amount);
+    branch.monthlyBudget = (branch.monthlyBudget ?? 0) + next;
+    branch.remainingAmount = (branch.remainingAmount ?? 0) + next;
+    return { changed: true };
+  }
+  try {
+    const result = await withAuditTransaction(
+      { actor, reason: "COMPANY_ADMIN_BRANCH_BUDGET_ADD", commandId: commandId.data },
+      (client) => client.query<{ result: { changed?: boolean } | null }>(
+        "SELECT public.axora_add_branch_budget($1,$2,$3,$4,$5,now()) AS result",
+        [actor.id, actor.roleAssignmentId, branchId.data, amount, commandId.data],
+      ),
+    );
+    if (!result.rows[0]?.result) throw new BranchBudgetError("UNAVAILABLE");
+    return result.rows[0].result;
   } catch (error) {
     if (error instanceof BranchBudgetError) throw error;
     throw new BranchBudgetError("UNAVAILABLE");

@@ -615,7 +615,7 @@ export async function createBranch(input: Omit<Branch, "id" | "code" | "companyN
 export async function createProduct(
   input: Pick<Product,
     "name" | "category" | "subcategory" | "brand" | "size" | "unit"
-    | "packaging" | "description" | "defaultBuyPrice" | "defaultSellPrice"
+    | "packaging" | "description" | "defaultBuyPrice" | "defaultSellPrice" | "customerMarkupPercentage"
     | "deliverySlaDays"
   >,
   actor: SessionUser,
@@ -629,7 +629,7 @@ export async function createProduct(
     const id = randomUUID();
     store.products.push(withDemoCommercialDefaults({
       ...input,
-      defaultSellPrice: calculateCommercialSellingPrice(input.defaultBuyPrice),
+      defaultSellPrice: calculateCommercialSellingPrice(input.defaultBuyPrice, input.customerMarkupPercentage),
       id,
       code: nextCode("AX-NEW", store.products.length),
       hasImage: false,
@@ -649,11 +649,12 @@ export async function createProduct(
     }
     const product = await client.query<{ id: string }>(`INSERT INTO products
       (product_code,name,category,subcategory,brand,product_size,unit_of_measure,packaging,description,
-       default_buy_price,default_sell_price,minimum_order_quantity,delivery_sla_days,needs_review,company_id)
-      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,NULL) RETURNING id::text`,
+       default_buy_price,default_sell_price,customer_markup_percentage,minimum_order_quantity,delivery_sla_days,needs_review,company_id)
+      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,false,NULL) RETURNING id::text`,
     [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit,
       input.packaging ?? null, input.description ?? null, input.defaultBuyPrice,
-      calculateCommercialSellingPrice(input.defaultBuyPrice), 1, input.deliverySlaDays]);
+      calculateCommercialSellingPrice(input.defaultBuyPrice, input.customerMarkupPercentage), input.customerMarkupPercentage,
+      1, input.deliverySlaDays]);
     return product.rows[0].id;
   });
 }
@@ -696,7 +697,10 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
       );
 
       return total + roundMoney(
-        item.quantity * (product ? calculateCommercialSellingPrice(product.defaultBuyPrice) : 0),
+        item.quantity * (product ? calculateCommercialSellingPrice(
+          product.defaultBuyPrice,
+          product.customerMarkupPercentage,
+        ) : 0),
       );
     }, 0);
 
@@ -731,7 +735,9 @@ export async function createRequest(input: NewRequestInput, actor: SessionUser) 
         return { id: randomUUID(), code: `REQ-2026-${String(requestNumber * 10 + index).padStart(5, "0")}`, productId: product.id, productCode: product.code, productName: product.name,
           category: product.category, subcategory: product.subcategory, specification: item.specification, quantity: item.quantity, unit: product.unit,
           supplierConfirmationStatus: "Pending",
-          unitBuyPrice: product.defaultBuyPrice, unitSellPrice: calculateCommercialSellingPrice(product.defaultBuyPrice), deliveryCharge: 0, deliveryStatus: "Not Scheduled", quantityReceived: 0 };
+          unitBuyPrice: product.defaultBuyPrice, unitSellPrice: calculateCommercialSellingPrice(
+            product.defaultBuyPrice, product.customerMarkupPercentage,
+          ), deliveryCharge: 0, deliveryStatus: "Not Scheduled", quantityReceived: 0 };
       }),
     };
     store.requests.unshift(request);
@@ -1028,6 +1034,30 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
 
 export type MasterEntity = "companies" | "branches" | "products";
 
+export async function deleteEmptyBranch(id: string, actor: SessionUser) {
+  if (!canAccess(actor, "manage_branches")) throw new Error("Your account cannot change this record.");
+  if (isDemoMode()) {
+    const store = getDemoStore();
+    const branchIndex = store.branches.findIndex((branch) => branch.id === id && branch.companyId === actor.companyId);
+    if (branchIndex < 0) throw new Error("The branch is unavailable.");
+    if (store.requests.some((request) => request.branchId === id)) {
+      throw new Error("Used branches can only be deactivated.");
+    }
+    store.branches.splice(branchIndex, 1);
+    return;
+  }
+  if (!actor.roleAssignmentId) throw new Error("The branch is unavailable.");
+  await withAuditTransaction({ actor, reason: "BRANCH_DELETED" }, async (client) => {
+    const result = await client.query<{ result: { branchId?: string; deleted?: boolean } | null }>(
+      "SELECT public.axora_delete_empty_branch($1,$2,$3,now()) AS result",
+      [actor.id, actor.roleAssignmentId, id],
+    );
+    if (result.rows[0]?.result?.branchId !== id || result.rows[0]?.result?.deleted !== true) {
+      throw new Error("The branch is unavailable.");
+    }
+  });
+}
+
 export async function setMasterActive(entity: MasterEntity, id: string, active: boolean, actor: SessionUser) {
   if (entity === "companies") {
     throw new Error("Company activation is controlled by the onboarding lifecycle.");
@@ -1051,6 +1081,22 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
     const record = store[entity].find((item) => item.id === id);
     if (!record) throw new Error("Master record not found.");
     record.status = active ? "Active" : "Inactive";
+    return;
+  }
+  if (entity === "branches" && !isDemoMode()) {
+    if (!actor.roleAssignmentId) throw new Error("The branch is unavailable.");
+    await withAuditTransaction({
+      actor,
+      reason: active ? "BRANCH_REACTIVATED" : "BRANCH_DEACTIVATED",
+    }, async (client) => {
+      const result = await client.query<{ result: { branchId?: string } | null }>(
+        "SELECT public.axora_set_branch_active($1,$2,$3,$4,now()) AS result",
+        [actor.id, actor.roleAssignmentId, id, active],
+      );
+      if (result.rows[0]?.result?.branchId !== id) {
+        throw new Error("The branch is unavailable.");
+      }
+    });
     return;
   }
   const allowedTables: Record<MasterEntity, string> = { companies: "companies", branches: "branches", products: "products" };

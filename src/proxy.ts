@@ -7,7 +7,12 @@ export function buildContentSecurityPolicy(nonce: string, development = false) {
   const directives = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${development ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com`,
-    `style-src-elem 'self' 'nonce-${nonce}' ${NEXT_NOT_FOUND_STYLE_HASH}`,
+    // Turbopack injects development-only styles without a nonce. A nonce or
+    // hash makes browsers ignore 'unsafe-inline', so development needs its
+    // own directive. Production remains nonce/hash-only.
+    development
+      ? "style-src-elem 'self' 'unsafe-inline'"
+      : `style-src-elem 'self' 'nonce-${nonce}' ${NEXT_NOT_FOUND_STYLE_HASH}`,
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",

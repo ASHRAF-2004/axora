@@ -297,7 +297,13 @@ describe.sequential("Company Administrator atomic direct purchase migration", ()
   beforeAll(async () => {
     db = new PGlite();
     await db.exec("CREATE ROLE axora_app NOLOGIN");
-    await applyMigrations(db);
+    // This suite is the executable contract for the direct-purchase migration
+    // itself.  Keep its runtime fixture at that historical head: later catalog
+    // pricing migrations deliberately change how a current product offer is
+    // calculated and belong to their own coverage.
+    await applyMigrations(db, {
+      through: "115_company_admin_direct_purchase.sql",
+    });
     await db.query(`
       INSERT INTO users(
         id,email,display_name,password_hash,role_id,is_owner,

@@ -12,7 +12,7 @@ describe("single-purpose portal routes", () => {
     expect(list).toContain("/branches/${branch.id}");
     expect(detail).not.toContain("setBranchBudgetAction");
     expect(detail).toContain("/budgets/${branch.id}");
-    expect(detail).toContain("setMasterActiveAction");
+    expect(detail).toContain("BranchActiveButton");
   });
 
   it("separates product list, creation, detail and editing", async () => {

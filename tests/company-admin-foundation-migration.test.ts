@@ -13,8 +13,17 @@ const ids = {
   otherAssignment: "b3000000-0000-4000-8000-000000000006",
 } as const;
 
-const SAME_UTC_AND_LOCAL_DATE_AT = "2026-08-24T10:00:00.000Z";
-const DIFFERENT_UTC_AND_LOCAL_DATE_AT = "2026-08-24T19:59:00.000Z";
+// Keep the configured schedule ahead of the migration-time bootstrap
+// schedule. Fixed calendar dates here eventually become historical and make
+// the test select that bootstrap row rather than the first-budget row.
+const testDay = new Date();
+testDay.setUTCDate(testDay.getUTCDate() + 3);
+const TEST_UTC_DATE = testDay.toISOString().slice(0, 10);
+const SAME_UTC_AND_LOCAL_DATE_AT = `${TEST_UTC_DATE}T10:00:00.000Z`;
+const DIFFERENT_UTC_AND_LOCAL_DATE_AT = `${TEST_UTC_DATE}T19:59:00.000Z`;
+const DIFFERENT_LOCAL_DATE = new Date(
+  Date.parse(DIFFERENT_UTC_AND_LOCAL_DATE_AT) + 8 * 60 * 60 * 1000,
+).toISOString().slice(0, 10);
 const ACCOUNT_TIMEZONE = "Asia/Kuala_Lumpur";
 
 type BudgetCommandResult = { status: string };
@@ -297,8 +306,8 @@ describe.sequential("Company Administrator branch, location and budget foundatio
       const sameDate = await sameDateFixture.dateContext(SAME_UTC_AND_LOCAL_DATE_AT);
       expect(sameDate).toMatchObject({
         accountTimezone: ACCOUNT_TIMEZONE,
-        accountLocalDate: "2026-08-24",
-        utcDate: "2026-08-24",
+        accountLocalDate: TEST_UTC_DATE,
+        utcDate: TEST_UTC_DATE,
       });
       const sameDateCreated = await sameDateFixture.configureBudget({
         commandAt: SAME_UTC_AND_LOCAL_DATE_AT,
@@ -309,8 +318,8 @@ describe.sequential("Company Administrator branch, location and budget foundatio
       const boundary = await boundaryFixture.dateContext(DIFFERENT_UTC_AND_LOCAL_DATE_AT);
       expect(boundary).toMatchObject({
         accountTimezone: ACCOUNT_TIMEZONE,
-        accountLocalDate: "2026-08-25",
-        utcDate: "2026-08-24",
+        accountLocalDate: DIFFERENT_LOCAL_DATE,
+        utcDate: TEST_UTC_DATE,
       });
       await expect(boundaryFixture.configureBudget({
         commandAt: DIFFERENT_UTC_AND_LOCAL_DATE_AT,

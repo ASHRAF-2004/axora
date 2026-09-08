@@ -80,6 +80,7 @@ export const supplierSchema = z.object({
 export const productSchema = z.object({
   name: required("Product name"), category: required("Category"), subcategory: required("Subcategory"), brand: optional(100), size: optional(100),
   unit: required("Unit", 50), packaging: optional(100), description: optional(1000), defaultBuyPrice: money, defaultSellPrice: positive,
+  customerMarkupPercentage: z.coerce.number().finite().min(0, "Profit cannot be negative.").max(100, "Profit cannot exceed 100%.").default(10),
   deliverySlaDays: wholeDays,
 }).strict();
 

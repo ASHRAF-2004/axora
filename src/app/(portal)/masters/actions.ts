@@ -43,6 +43,13 @@ import { UserCreationError } from "@/lib/users";
 const number = (data: FormData, key: string, fallback = 0) => data.get(key) === null || data.get(key) === "" ? fallback : data.get(key);
 function productInput(formData: FormData) {
   const defaultBuyPrice = Number(number(formData, "defaultBuyPrice"));
+  const rawMarkup = readFormText(formData, "customerMarkupPercentage") || "10";
+  // Do not let browser-specific number syntax (exponents, signs, duplicate
+  // leading zeroes) become a persisted commercial rule.
+  if (!/^(?:0|[1-9]\d{0,2})(?:\.\d{1,4})?$/.test(rawMarkup)) {
+    throw new Error("Enter a profit percentage from 0 to 100.");
+  }
+  const customerMarkupPercentage = Number(rawMarkup);
   return productSchema.parse({
     name: readFormText(formData, "name"),
     category: readFormText(formData, "category"),
@@ -53,7 +60,8 @@ function productInput(formData: FormData) {
     packaging: "",
     description: readFormText(formData, "description"),
     defaultBuyPrice,
-    defaultSellPrice: calculateCommercialSellingPrice(defaultBuyPrice),
+    defaultSellPrice: calculateCommercialSellingPrice(defaultBuyPrice, Number(customerMarkupPercentage)),
+    customerMarkupPercentage,
     deliverySlaDays: number(formData, "deliverySlaDays", 1),
   });
 }
