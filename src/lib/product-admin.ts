@@ -56,7 +56,7 @@ export async function updateProduct(productId: string, input: ProductInput, acto
       throw new Error("A product with this name already exists. Use the existing catalog record.");
     }
     Object.assign(product, input, {
-      defaultSellPrice: calculateCommercialSellingPrice(input.defaultBuyPrice),
+      defaultSellPrice: calculateCommercialSellingPrice(input.defaultBuyPrice, input.customerMarkupPercentage),
       priceRuleVersion: (product.priceRuleVersion ?? 0) + 1,
     });
     return;
@@ -79,13 +79,14 @@ export async function updateProduct(productId: string, input: ProductInput, acto
       `UPDATE products SET
          name=$2, category=$3, subcategory=$4, brand=$5, product_size=$6,
          unit_of_measure=$7, packaging=$8, description=$9,
-         default_buy_price=$10, default_sell_price=$11,
+         default_buy_price=$10, default_sell_price=$11, customer_markup_percentage=$12,
          minimum_order_quantity=1,
-         delivery_sla_days=$12, updated_at=now()
+         delivery_sla_days=$13, updated_at=now()
        WHERE id=$1`,
       [productId, input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null,
         input.unit, input.packaging ?? null, input.description ?? null, input.defaultBuyPrice,
-        calculateCommercialSellingPrice(input.defaultBuyPrice), input.deliverySlaDays],
+        calculateCommercialSellingPrice(input.defaultBuyPrice, input.customerMarkupPercentage), input.customerMarkupPercentage,
+        input.deliverySlaDays],
     );
 
   });

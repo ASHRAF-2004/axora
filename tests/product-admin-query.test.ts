@@ -51,6 +51,7 @@ describe("product administration query contract", () => {
       description: "Product update regression fixture",
       defaultBuyPrice: 12.5,
       defaultSellPrice: 13.75,
+      customerMarkupPercentage: 10,
       deliverySlaDays: 2,
     }, actor);
 
@@ -60,6 +61,6 @@ describe("product administration query contract", () => {
     const sql = String(update?.[0]);
     expect(sql).toContain("minimum_order_quantity=1");
     expect(sql).not.toMatch(/maximum_order_quantity|order_increment|pack_size|pack_unit/);
-    expect(update?.[1]).toHaveLength(12);
+    expect(update?.[1]).toHaveLength(13);
   });
 });

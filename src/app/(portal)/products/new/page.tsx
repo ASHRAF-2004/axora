@@ -26,7 +26,8 @@ export default async function NewProductPage() {
         <label>{copy.brand}<input name="brand" /></label><label>{copy.size}<input name="size" /></label>
         <label>{copy.unit}<select name="unit">{PRODUCT_UNITS.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
         <label>{copy.buyCost}<input name="defaultBuyPrice" type="number" min="0" step="0.01" required /></label>
-        <label>{rules.calculatedSellingPrice}<output>{rules.automaticMarkup}</output><small>{rules.calculatedSellingHelp}</small></label>
+        <label>{rules.markup}<input name="customerMarkupPercentage" type="number" inputMode="decimal" min="0" max="100" step="0.01" defaultValue="10" required /><small>{rules.markupHelp}</small></label>
+        <label>{rules.calculatedSellingPrice}<output>{rules.calculatedAfterSave}</output><small>{rules.calculatedSellingHelp}</small></label>
         <label>{copy.deliverySla}<input name="deliverySlaDays" type="number" min="0" defaultValue="1" /></label>
         <label className="field-full">{copy.description}<textarea name="description" /></label>
         <label className="field-full">{copy.images}<input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /><small>{copy.imagesHelp}</small></label>

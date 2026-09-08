@@ -169,6 +169,8 @@ export interface Product {
   description?: string;
   defaultBuyPrice: number;
   defaultSellPrice: number;
+  /** Platform-only current customer markup; request-line snapshots remain immutable. */
+  customerMarkupPercentage?: number;
   priceRuleVersion?: number;
   priceEffectiveFrom?: string;
   priceChangedAt?: string;

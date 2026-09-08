@@ -2,6 +2,8 @@ import type { SupportedLocale } from "./i18n";
 
 interface ProcurementRulesMessages {
   automaticMarkup: string;
+  calculatedAfterSave: string;
+  markupHelp: string;
   calculatedSellingPrice: string;
   calculatedSellingHelp: string;
   priceChangedTitle: string;
@@ -19,6 +21,8 @@ interface ProcurementRulesMessages {
 
 const en: ProcurementRulesMessages = {
   automaticMarkup: "Automatic 10% commercial markup",
+  calculatedAfterSave: "Calculated after save",
+  markupHelp: "Profit percentage from 0% to 100%. Customer price is base cost plus this percentage once.",
   calculatedSellingPrice: "Calculated customer selling price",
   calculatedSellingHelp: "Axora calculates this from the confidential base cost and the active pricing rule. Tax and delivery remain separate.",
   priceChangedTitle: "Catalog prices changed",
@@ -36,6 +40,8 @@ const en: ProcurementRulesMessages = {
 
 const ar: ProcurementRulesMessages = {
   automaticMarkup: "هامش تجاري تلقائي بنسبة 10٪",
+  calculatedAfterSave: "يُحسب بعد الحفظ",
+  markupHelp: "نسبة الربح من 0٪ إلى 100٪. يُضاف إلى التكلفة الأساسية مرة واحدة.",
   calculatedSellingPrice: "سعر البيع المحسوب للعميل",
   calculatedSellingHelp: "تحسب أكسورا هذا السعر من التكلفة الأساسية السرية وقاعدة التسعير النشطة. تبقى الضريبة والتسليم منفصلين.",
   priceChangedTitle: "تغيرت أسعار الكتالوج",
@@ -53,6 +59,8 @@ const ar: ProcurementRulesMessages = {
 
 const ms: ProcurementRulesMessages = {
   automaticMarkup: "Tokokan komersial automatik 10%",
+  calculatedAfterSave: "Dikira selepas simpan",
+  markupHelp: "Peratus untung dari 0% hingga 100%. Ditambah pada kos asas sekali sahaja.",
   calculatedSellingPrice: "Harga jualan pelanggan yang dikira",
   calculatedSellingHelp: "Axora mengira harga ini daripada kos asas sulit dan peraturan harga aktif. Cukai dan penghantaran kekal berasingan.",
   priceChangedTitle: "Harga katalog berubah",

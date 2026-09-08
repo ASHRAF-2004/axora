@@ -29,11 +29,8 @@ import {
 import { approveAndPayResultCopy, walletMessages } from "@/lib/wallet-i18n";
 import { cartMessages } from "@/lib/cart-i18n";
 import { customerDeliveryStatus, getRequestOrderWorkspace } from "@/lib/request-order-workspace";
-import { getReceivingJobForRequest } from "@/lib/role-portals-repository";
 import { rolePortalMessages, formatRolePortalNumber } from "@/lib/role-portals-i18n";
-import { confirmReceiptAction } from "../../receiving/actions";
 import { ReceivingOtpPanel } from "@/components/role-portals/ReceivingOtpPanel";
-import roleStyles from "@/components/role-portals/RolePortals.module.css";
 import Image from "next/image";
 import { UserAvatar } from "@/components/UserAvatar";
 import { DeliveryTrackingBoard } from "@/components/role-portals/DeliveryTrackingPanels";
@@ -90,11 +87,6 @@ export default async function RequestDetailPage({
     getFinalInvoiceSummary(actor, request.id),
     getRequestOrderWorkspace(actor, request),
   ]);
-  const receivingJob = actor.accountKind === "COMPANY"
-    && canAccess(actor, "confirm_receipts")
-    && orderWorkspace.delivery?.canConfirmReceipt
-    ? await getReceivingJobForRequest(actor, request.id)
-    : undefined;
   const totals = request.lines.reduce((sum, line) => {
     const current = calculateLineAmounts(line);
     return {
@@ -270,33 +262,6 @@ export default async function RequestDetailPage({
                 </article>)}
               </div> : <p className="subtle">{detail.noProof}</p>}
             </div>
-
-            {receivingJob ? <div className="panel-body">
-              <h3>{receivingCopy.confirmReceipt}</h3>
-              <form action={confirmReceiptAction} className={roleStyles.receiptForm}>
-                <input type="hidden" name="requestId" value={request.id} />
-                <input type="hidden" name="deliveryJobId" value={receivingJob.id} />
-                <input type="hidden" name="clientEventId" value={randomUUID()} />
-                <div className={roleStyles.receiptIntro}><strong>{receivingCopy.inspectLines(receivingJob.lines.length)}</strong><span>{receivingCopy.quantityRule}</span><span>{receivingCopy.confirmingAs(actor.name)}</span></div>
-                <div className={roleStyles.receiptLines}>{receivingJob.lines.map((line) => <fieldset key={line.id}>
-                  <legend>{line.productName}</legend>
-                  <input type="hidden" name="deliveryJobLineId" value={line.id} />
-                  <input type="hidden" name="requestLineId" value={line.requestLineId} />
-                  <p>{receivingCopy.planned}: <strong>{formatRolePortalNumber(line.plannedQuantity, locale)} {line.unit}</strong>{line.driverReportedDeliveredQuantity !== undefined ? <> · {receivingCopy.driverReportedQuantity}: <strong>{formatRolePortalNumber(line.driverReportedDeliveredQuantity, locale)} {line.unit}</strong></> : null}</p>
-                  <div className={roleStyles.lineQuantities}>
-                    <label>{receivingCopy.delivered}<input name="deliveredQuantity" type="number" min="0" step="0.001" required defaultValue={line.driverReportedDeliveredQuantity ?? line.plannedQuantity} /></label>
-                    <label>{receivingCopy.accepted}<input name="acceptedQuantity" type="number" min="0" step="0.001" required defaultValue={Math.max((line.driverReportedDeliveredQuantity ?? line.plannedQuantity) - (line.driverReportedDamagedQuantity ?? 0), 0)} /></label>
-                    <label>{receivingCopy.damaged}<input name="damagedQuantity" type="number" min="0" step="0.001" required defaultValue={line.driverReportedDamagedQuantity ?? 0} /></label>
-                  </div>
-                  <div className={roleStyles.lineClassification}>
-                    <label>{receivingCopy.inspectionClassification}<select name="discrepancyCode" defaultValue="NONE"><option value="NONE">{receivingCopy.noManualException}</option><option value="WRONG_ITEM">{receivingCopy.wrongItem}</option><option value="QUALITY">{receivingCopy.qualityIssue}</option><option value="OTHER">{receivingCopy.otherException}</option></select></label>
-                    <label>{receivingCopy.lineNote}<input name="discrepancyNote" maxLength={2000} placeholder={receivingCopy.discrepancyPlaceholder} /></label>
-                  </div>
-                </fieldset>)}</div>
-                <label>{receivingCopy.receiptNotes}<textarea name="notes" maxLength={2000} placeholder={receivingCopy.receiptNotesPlaceholder} /></label>
-                <div className={roleStyles.receiptSubmit}><p>{receivingCopy.confirmationExplanation}</p><button className="button button-primary" type="submit">{receivingCopy.confirmReceipt}</button></div>
-              </form>
-            </div> : null}
 
             {actor.accountKind === "COMPANY" && canAccess(actor, "view_receiving") && orderWorkspace.delivery.proofPolicy.includes("OTP")
               ? <ReceivingOtpPanel locale={locale} deliveryJobId={orderWorkspace.delivery.id} compact /> : null}

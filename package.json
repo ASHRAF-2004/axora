@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:postgres-native": "scripts/ci/verify-native-postgres.sh",
     "test:watch": "vitest",
-    "test:e2e": "playwright test && playwright test --config=playwright.visitor-recovery.config.ts",
+    "test:e2e": "AXORA_PLAYWRIGHT_STANDALONE=true playwright test && AXORA_PLAYWRIGHT_STANDALONE=true playwright test --config=playwright.visitor-recovery.config.ts",
     "test:e2e:headed": "playwright test --headed",
     "standalone:stage": "node scripts/prepare-standalone.mjs",
     "standalone:validate": "node scripts/run-standalone-validation.mjs",

@@ -36,9 +36,15 @@ describe("content security policy", () => {
   });
 
   it("allows development evaluation without broadening production evaluation", () => {
-    expect(buildContentSecurityPolicy("dev", true)).toContain("'unsafe-eval'");
-    expect(buildContentSecurityPolicy("prod", false)).not.toContain("'unsafe-eval'");
-    expect(buildContentSecurityPolicy("prod", false)).not.toContain("'wasm-unsafe-eval'");
+    const developmentPolicy = buildContentSecurityPolicy("dev", true);
+    const productionPolicy = buildContentSecurityPolicy("prod", false);
+
+    expect(developmentPolicy).toContain("'unsafe-eval'");
+    expect(developmentPolicy).toContain("style-src-elem 'self' 'unsafe-inline'");
+    expect(directiveSources(developmentPolicy, "style-src-elem")).not.toContain("'nonce-dev'");
+    expect(productionPolicy).not.toContain("'unsafe-eval'");
+    expect(productionPolicy).not.toContain("'wasm-unsafe-eval'");
+    expect(productionPolicy).not.toMatch(/style-src-elem[^;]*'unsafe-inline'/);
   });
 
   it("allows only the official Turnstile origin for third-party challenge content", () => {
