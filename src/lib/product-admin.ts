@@ -11,6 +11,10 @@ export interface ProductCommercialHistoryEntry {
   source: string; reason: string; effectiveFrom: string; recordedAt: string;
 }
 
+type ProductCatalogUpdateInput = ProductCatalogInput & {
+  customerMarkupPercentage?: number;
+};
+
 export async function listProductCommercialHistory(productId: string, actor: SessionUser) {
   if (!canAccess(actor, "manage_commercial_pricing") || !actor.roleAssignmentId) {
     return [];
@@ -92,10 +96,10 @@ export async function updateProduct(productId: string, input: ProductInput, acto
   });
 }
 
-/** Update non-commercial catalog fields without reading or altering price data. */
+/** Update catalog metadata and an optional customer markup without exposing base cost. */
 export async function updateProductCatalogMetadata(
   productId: string,
-  input: ProductCatalogInput,
+  input: ProductCatalogUpdateInput,
   actor: SessionUser,
 ) {
   if (!canAccess(actor, "manage_catalog")) {
@@ -108,9 +112,20 @@ export async function updateProductCatalogMetadata(
       throw new Error("A product with this name already exists. Use the existing catalog record.");
     }
     Object.assign(product, input);
+    if (input.customerMarkupPercentage !== undefined) {
+      product.defaultSellPrice = calculateCommercialSellingPrice(
+        product.defaultBuyPrice,
+        input.customerMarkupPercentage,
+      );
+    }
     return;
   }
-  await withAuditTransaction({ actor, reason: "PRODUCT_CATALOG_METADATA_UPDATED" }, async (client) => {
+  await withAuditTransaction({
+    actor,
+    reason: input.customerMarkupPercentage === undefined
+      ? "PRODUCT_CATALOG_METADATA_UPDATED"
+      : "PRODUCT_CATALOG_MARKUP_UPDATED",
+  }, async (client) => {
     const existing = await client.query("SELECT 1 FROM products WHERE id=$1 FOR UPDATE", [productId]);
     if (!existing.rowCount) throw new Error("Product not found.");
     await client.query("SELECT pg_advisory_xact_lock(hashtext(lower(btrim($1))))", [input.name]);
@@ -124,10 +139,13 @@ export async function updateProductCatalogMetadata(
     await client.query(`UPDATE products SET
       name=$2, category=$3, subcategory=$4, brand=$5, product_size=$6,
       unit_of_measure=$7, packaging=$8, description=$9, delivery_sla_days=$10,
+      customer_markup_percentage=coalesce($11::numeric,customer_markup_percentage),
+      default_sell_price=CASE WHEN $11::numeric IS NULL THEN default_sell_price
+        ELSE round(default_buy_price*(1+$11::numeric/100),2) END,
       updated_at=now()
       WHERE id=$1`,
     [productId, input.name, input.category, input.subcategory, input.brand ?? null,
       input.size ?? null, input.unit, input.packaging ?? null, input.description ?? null,
-      input.deliverySlaDays]);
+      input.deliverySlaDays, input.customerMarkupPercentage ?? null]);
   });
 }

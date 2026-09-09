@@ -668,7 +668,7 @@ export async function createProduct(
 export async function createCatalogDraftProduct(
   input: Pick<Product,
     "name" | "category" | "subcategory" | "brand" | "size" | "unit"
-    | "packaging" | "description" | "deliverySlaDays"
+    | "packaging" | "description" | "deliverySlaDays" | "customerMarkupPercentage"
   >,
   actor: SessionUser,
 ) {
@@ -685,7 +685,7 @@ export async function createCatalogDraftProduct(
       ...input,
       defaultBuyPrice: 0,
       defaultSellPrice: 0,
-      customerMarkupPercentage: 10,
+      customerMarkupPercentage: input.customerMarkupPercentage ?? 10,
       id,
       code: nextCode("AX-NEW", store.products.length),
       hasImage: false,
@@ -706,10 +706,10 @@ export async function createCatalogDraftProduct(
     const product = await client.query<{ id: string }>(`INSERT INTO products
       (product_code,name,category,subcategory,brand,product_size,unit_of_measure,packaging,description,
        default_buy_price,default_sell_price,customer_markup_percentage,minimum_order_quantity,delivery_sla_days,active,needs_review,company_id)
-      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,0,0,10,1,$9,false,false,NULL)
+      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,0,0,$9,1,$10,false,false,NULL)
       RETURNING id::text`,
     [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit,
-      input.packaging ?? null, input.description ?? null, input.deliverySlaDays]);
+      input.packaging ?? null, input.description ?? null, input.customerMarkupPercentage ?? 10, input.deliverySlaDays]);
     return product.rows[0].id;
   });
 }
