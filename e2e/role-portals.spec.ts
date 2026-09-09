@@ -47,7 +47,20 @@ test("Agent sees assigned company operations without platform financial fields",
   await page.goto("/companies");
   await expect(page.locator("main h1")).toBeVisible();
   await page.goto("/products");
+  await expect(page.getByRole("heading", { level: 1, name: "Catalog management" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Choose a branch" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "View product" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Add to cart/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /cart/i })).toHaveCount(0);
+  await expect(page.getByText(/branch budget available|company wallet available|choose a branch before shopping/i)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Create global product" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Edit product" })).toHaveCount(0);
+  await expect(page.getByText(/Axora internal cost|supplier cost|gross margin/i)).toHaveCount(0);
+  const firstProductHref = await page.getByRole("link", { name: "View product" }).first().getAttribute("href");
+  expect(firstProductHref).toMatch(/^\/products\/[^/]+$/);
+  await page.goto(firstProductHref!);
+  await expect(page.locator("main h1")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Edit product" })).toHaveCount(0);
   await expect(page.getByText(/Axora internal cost|supplier cost|gross margin/i)).toHaveCount(0);
   await page.goto("/requests/order-1");
   await expect(page.locator("main h1")).toBeVisible();
@@ -171,6 +184,10 @@ test("Malay Delivery Agent workspace is dark-mode and phone-landscape safe", asy
 
 test("Platform Owner retains company authority and the Owner-only Email Status", async ({ page }) => {
   await signInAsDemoOwner(page);
+  await page.goto("/products");
+  await expect(page.getByRole("heading", { level: 1, name: "Products" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create product" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Edit product" }).first()).toBeVisible();
   await page.goto("/companies");
   await expect(page.locator("main h1")).toBeVisible();
   await page.goto("/reports");

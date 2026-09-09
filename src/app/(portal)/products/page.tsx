@@ -26,8 +26,13 @@ export default async function ProductsPage({
   const copy = corePortalMessages(locale).products;
   const common = corePortalMessages(locale).common;
   const canManageCatalog = canManageCommercialCatalog(actor);
+  // Client Account Managers have catalogue visibility but are intentionally
+  // excluded from confidential commercial pricing. Keep their Catalog entry
+  // in the management workspace (read-only unless a separate capability is
+  // granted) instead of treating it as a branch-shopping entry point.
+  const isCamCatalogViewer = actor.role === "CLIENT_ACCOUNT_MANAGER";
 
-  if (!canManageCatalog) {
+  if (!canManageCatalog && !isCamCatalogViewer) {
     const params = await searchParams;
     if (actor.branchId && params.branch !== actor.branchId) {
       const canonical = new URLSearchParams();
@@ -81,15 +86,15 @@ export default async function ProductsPage({
 
   const products = await listProducts(actor);
   const canViewCost = canAccess(actor, "view_internal_cost");
-  return <><PageHeader eyebrow={copy.operationsEyebrow} title={copy.title}
+  return <><PageHeader eyebrow={copy.operationsEyebrow} title={isCamCatalogViewer ? copy.management : copy.title}
     description={copy.operationsDescription} />
-    <div className="page-actions"><Link className="button button-primary" href="/products/new">{copy.create}</Link></div>
+    {canManageCatalog ? <div className="page-actions"><Link className="button button-primary" href="/products/new">{copy.create}</Link></div> : null}
 
     <section>
       <article className="panel">
         <div className="panel-header"><div><h2>{copy.management}</h2><p>{copy.count(products.length, products.filter((item) => item.duplicateWarning).length)}</p></div></div>
         <div className="data-table-wrap"><table className="data-table"><thead><tr>
-          <th>{copy.image}</th><th>{copy.product}</th><th>{copy.category}</th><th>{copy.unitMoq}</th><th>{copy.prices}</th><th>{common.status}</th><th>{common.actions}</th>
+          <th>{copy.image}</th><th>{copy.product}</th><th>{copy.category}</th><th>{copy.unitMoq}</th><th>{canViewCost ? copy.prices : copy.sellPrice}</th><th>{common.status}</th><th>{common.actions}</th>
         </tr></thead><tbody>{products.map((product) => <tr key={product.id}>
           <td style={{ minWidth: 145 }}><ProductImage product={product} showControls={false} locale={locale} style={{ border: "1px solid var(--slate-200)", borderRadius: 10, width: 135 }} /></td>
           <td><strong>{product.name}</strong><br /><span className="subtle">{product.code}</span></td>
@@ -99,11 +104,13 @@ export default async function ProductsPage({
           <td><StatusBadge status={product.status}>{localizedStatus(product.status, locale)}</StatusBadge></td>
           <td style={{ minWidth: 165 }}>
             <Link className="button button-secondary" href={`/products/${product.id}`}>{copy.view}</Link>
-            <Link className="button button-secondary" href={`/products/${product.id}/edit`}>{copy.edit}</Link>
-            <form action={setMasterActiveAction.bind(null, "products", product.id, product.status === "Inactive")} style={{ marginBlockStart: 8 }}>
-              <button className="button button-secondary" type="submit">{product.status === "Active" ? common.deactivate : product.status === "Needs Review" ? copy.rejectDuplicate : common.activate}</button>
-            </form>
-            {actor.isOwner ? <DeleteProductButton productId={product.id} productName={product.name} /> : null}
+            {canManageCatalog ? <>
+              <Link className="button button-secondary" href={`/products/${product.id}/edit`}>{copy.edit}</Link>
+              <form action={setMasterActiveAction.bind(null, "products", product.id, product.status === "Inactive")} style={{ marginBlockStart: 8 }}>
+                <button className="button button-secondary" type="submit">{product.status === "Active" ? common.deactivate : product.status === "Needs Review" ? copy.rejectDuplicate : common.activate}</button>
+              </form>
+              {actor.isOwner ? <DeleteProductButton productId={product.id} productName={product.name} /> : null}
+            </> : null}
           </td>
         </tr>)}</tbody></table></div>
       </article>
