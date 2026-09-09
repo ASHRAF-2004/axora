@@ -86,7 +86,7 @@ describe("CAM product-management permission", () => {
     expect(product.defaultSellPrice).toBe(baseCost * 1.25);
   });
 
-  it("creates an inactive draft which is visible to the catalog manager but unavailable to Shopping", async () => {
+  it("creates a price-pending inactive draft which is visible to the catalog manager but unavailable to Shopping", async () => {
     const id = await createCatalogDraftProduct({
       name: "CAM draft product",
       category: "Office Basics",
