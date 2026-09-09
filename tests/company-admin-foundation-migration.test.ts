@@ -451,3 +451,147 @@ describe.sequential("Company Administrator branch, location and budget foundatio
     }
   }, 45_000);
 });
+
+describe.sequential("budget refresh success-event regression", () => {
+  it("commits the successor period and records its period id exactly once", async () => {
+    const fixture = await createFundedBranchBudgetFixture();
+    try {
+      const at = await fixture.dateContext(DIFFERENT_UTC_AND_LOCAL_DATE_AT);
+      const configured = await fixture.configureBudget({
+        commandAt: DIFFERENT_UTC_AND_LOCAL_DATE_AT,
+        startDate: at.accountLocalDate,
+      });
+      expect(configured.rows[0]!.result.status).toBe("CREATED");
+
+      await fixture.db.exec(await readFile(
+        new URL("../database/migrations/133_supervisor_demo_hardening.sql", import.meta.url),
+        "utf8",
+      ));
+      await fixture.db.exec(await readFile(
+        new URL("../database/migrations/134_budget_refresh_and_dashboard_consistency.sql", import.meta.url),
+        "utf8",
+      ));
+      await fixture.db.exec(await readFile(
+        new URL("../database/migrations/135_budget_refresh_result_reference_fix.sql", import.meta.url),
+        "utf8",
+      ));
+      const definition = await fixture.db.query<{ source: string }>(`
+        SELECT pg_get_functiondef(
+          'public.axora_process_budget_refresh_job(text,uuid,uuid,timestamptz)'::regprocedure
+        ) AS source
+      `);
+      expect(definition.rows[0]!.source).toContain("refresh_result");
+      expect(definition.rows[0]!.source).not.toContain(
+        "jsonb_build_object('periodId',result->>'periodId')",
+      );
+
+      await fixture.db.query("UPDATE companies SET contractual_ceiling=5000 WHERE id=$1", [ids.company]);
+      const walletBeforeAdd = await fixture.db.query<{ available: string }>(`
+        SELECT available_balance::text AS available FROM v_company_wallet_balances
+        WHERE company_id=$1 AND currency='MYR'
+      `, [ids.company]);
+      const addCommandId = randomUUID();
+      const added = await fixture.asApp(() => fixture.db.query<{ result: { changed: boolean; amount: string } }>(`
+        SELECT axora_add_branch_budget($1,$2,$3,1200,$4,$5::timestamptz) AS result
+      `, [ids.admin, ids.adminAssignment, fixture.branchId, addCommandId, DIFFERENT_UTC_AND_LOCAL_DATE_AT]));
+      expect(added.rows[0]!.result).toMatchObject({ changed: true, amount: "1200" });
+      const replayAdd = await fixture.asApp(() => fixture.db.query<{ result: { changed: boolean } }>(`
+        SELECT axora_add_branch_budget($1,$2,$3,1200,$4,$5::timestamptz) AS result
+      `, [ids.admin, ids.adminAssignment, fixture.branchId, addCommandId, DIFFERENT_UTC_AND_LOCAL_DATE_AT]));
+      expect(replayAdd.rows[0]!.result.changed).toBe(false);
+      const walletAfterAdd = await fixture.db.query<{ available: string }>(`
+        SELECT available_balance::text AS available FROM v_company_wallet_balances
+        WHERE company_id=$1 AND currency='MYR'
+      `, [ids.company]);
+      expect(walletAfterAdd.rows[0]).toEqual(walletBeforeAdd.rows[0]);
+
+      const target = await fixture.db.query<{
+        accountId: string;
+        periodId: string;
+        refreshAt: string;
+        wallet: string;
+        ledger: string;
+      }>(`
+        SELECT account.id AS "accountId",period.id AS "periodId",
+          (period.ends_at+interval '1 second')::text AS "refreshAt",
+          (SELECT available_balance::text FROM v_company_wallet_balances
+            WHERE company_id=account.company_id AND currency=account.currency) AS wallet,
+          (SELECT COALESCE(sum(amount_delta),0)::text FROM company_wallet_ledger_entries
+            WHERE company_id=account.company_id AND currency=account.currency) AS ledger
+        FROM budget_accounts account
+        JOIN budget_periods period ON period.budget_account_id=account.id
+        WHERE account.branch_id=$1 AND period.status='ACTIVE'
+      `, [fixture.branchId]);
+      const targetRow = target.rows[0]!;
+
+      await fixture.asApp(() => fixture.db.query(
+        "SELECT axora_reconcile_budget_refresh_jobs($1)",
+        [targetRow.refreshAt],
+      ));
+      await fixture.asApp(() => fixture.db.query(
+        "SELECT * FROM axora_claim_budget_refresh_jobs('success-event-worker',50,90,$1)",
+        [targetRow.refreshAt],
+      ));
+      const lease = await fixture.db.query<{
+        jobId: string;
+        leaseToken: string;
+      }>(`
+        SELECT job.id AS "jobId",job.lease_token::text AS "leaseToken"
+        FROM budget_refresh_jobs job
+        WHERE job.budget_account_id=$1 AND job.state='LEASED'
+      `, [targetRow.accountId]);
+      expect(lease.rows).toHaveLength(1);
+
+      const processed = await fixture.asApp(() => fixture.db.query<{
+        result: { jobId: string; state: string; result: { periodId: string; changed: boolean } };
+      }>(`
+        SELECT axora_process_budget_refresh_job('success-event-worker',$1,$2,$3) AS result
+      `, [lease.rows[0]!.jobId, lease.rows[0]!.leaseToken, targetRow.refreshAt]));
+      expect(processed.rows[0]!.result.state).toBe("SUCCEEDED");
+      const successorId = processed.rows[0]!.result.result.periodId;
+      expect(processed.rows[0]!.result.result.changed).toBe(true);
+
+      const evidence = await fixture.db.query<{
+        state: string;
+        periodId: string;
+        successEvents: number;
+        successors: number;
+        wallet: string;
+        ledger: string;
+      }>(`
+        SELECT job.state,job.result->>'periodId' AS "periodId",
+          (SELECT count(*)::int FROM budget_refresh_job_events event
+            WHERE event.job_id=job.id AND event.event_type='SUCCEEDED') AS "successEvents",
+          (SELECT count(*)::int FROM budget_periods period
+            WHERE period.previous_period_id=$2) AS successors,
+          (SELECT available_balance::text FROM v_company_wallet_balances
+            WHERE company_id=job.company_id AND currency='MYR') AS wallet,
+          (SELECT COALESCE(sum(amount_delta),0)::text FROM company_wallet_ledger_entries
+            WHERE company_id=job.company_id AND currency='MYR') AS ledger
+        FROM budget_refresh_jobs job WHERE job.id=$1
+      `, [lease.rows[0]!.jobId, targetRow.periodId]);
+      expect(evidence.rows[0]).toMatchObject({
+        state: "SUCCEEDED",
+        periodId: successorId,
+        successEvents: 1,
+        successors: 1,
+        wallet: targetRow.wallet,
+        ledger: targetRow.ledger,
+      });
+
+      const replay = await fixture.db.query<{ changed: boolean; periodId: string }>(`
+        SELECT (public.axora_refresh_budget_period_internal(
+          $1,NULL,NULL,'BUDGET_REFRESH_WORKER','Scheduled budget cycle refresh',
+          $2,$3::timestamptz
+        )->>'changed')::boolean AS changed,
+          public.axora_refresh_budget_period_internal(
+            $1,NULL,NULL,'BUDGET_REFRESH_WORKER','Scheduled budget cycle refresh',
+            $2,$3::timestamptz
+          )->>'periodId' AS "periodId"
+      `, [targetRow.accountId, `budget-job-${lease.rows[0]!.jobId}`, targetRow.refreshAt]);
+      expect(replay.rows[0]).toEqual({ changed: false, periodId: successorId });
+    } finally {
+      await fixture.db.close();
+    }
+  }, 45_000);
+});
