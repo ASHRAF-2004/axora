@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
 import { formatCurrency } from "@/lib/domain";
-import { canAccess, canManageCommercialCatalog } from "@/lib/permissions";
+import { canAccess } from "@/lib/permissions";
 import { listProducts } from "@/lib/repository";
 
 const detailCopy = {
@@ -17,7 +17,7 @@ const detailCopy = {
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requirePagePermission("view_catalog");
-  const canManage = canManageCommercialCatalog(actor);
+  const canManage = canAccess(actor, "manage_catalog");
   if (!canManage && actor.role !== "CLIENT_ACCOUNT_MANAGER") notFound();
   const { id } = await params;
   const product = (await listProducts(actor)).find((item) => item.id === id);

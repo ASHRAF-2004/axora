@@ -171,8 +171,8 @@ export async function listProducts(providedActor?: SessionUser): Promise<Product
       duplicateWarning: false,
     }));
   }
-  const platformActor = canManageCommercialCatalog(actor);
-  if (platformActor) {
+  const catalogManager = canAccess(actor, "manage_catalog");
+  if (catalogManager) {
     if (!actor.roleAssignmentId) throw new Error("Product catalog is unavailable.");
     const privileged = await query<{ products: Product[] }>(
       "SELECT public.axora_product_administration_catalog($1,$2,now()) AS products",
@@ -659,6 +659,61 @@ export async function createProduct(
   });
 }
 
+/**
+ * Creates a non-purchasable catalog draft for a manager who has product
+ * authority but not confidential commercial-pricing authority.  The record
+ * remains inactive until an authorized commercial manager supplies pricing
+ * and explicitly activates it.
+ */
+export async function createCatalogDraftProduct(
+  input: Pick<Product,
+    "name" | "category" | "subcategory" | "brand" | "size" | "unit"
+    | "packaging" | "description" | "deliverySlaDays"
+  >,
+  actor: SessionUser,
+) {
+  if (!canAccess(actor, "manage_catalog")) {
+    throw new Error("Your account cannot create product catalog records.");
+  }
+  if (isDemoMode()) {
+    const store = getDemoStore();
+    if (store.products.some((product) => product.name.trim().toLowerCase() === input.name.trim().toLowerCase())) {
+      throw new Error("A product with this name already exists. Use the existing catalog record.");
+    }
+    const id = randomUUID();
+    store.products.push({
+      ...input,
+      defaultBuyPrice: 0,
+      defaultSellPrice: 0,
+      customerMarkupPercentage: 10,
+      id,
+      code: nextCode("AX-NEW", store.products.length),
+      hasImage: false,
+      status: "Inactive",
+      duplicateWarning: false,
+    });
+    return id;
+  }
+  return withAuditTransaction({ actor, reason: "PRODUCT_CATALOG_DRAFT_CREATED" }, async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtext(lower(btrim($1))))", [input.name]);
+    const duplicate = await client.query(
+      "SELECT 1 FROM products WHERE lower(btrim(name))=lower(btrim($1)) LIMIT 1",
+      [input.name],
+    );
+    if (duplicate.rowCount) {
+      throw new Error("A product with this name already exists. Use the existing catalog record.");
+    }
+    const product = await client.query<{ id: string }>(`INSERT INTO products
+      (product_code,name,category,subcategory,brand,product_size,unit_of_measure,packaging,description,
+       default_buy_price,default_sell_price,customer_markup_percentage,minimum_order_quantity,delivery_sla_days,active,needs_review,company_id)
+      VALUES (next_product_code($2),$1,$2,$3,$4,$5,$6,$7,$8,0,0,10,1,$9,false,false,NULL)
+      RETURNING id::text`,
+    [input.name, input.category, input.subcategory, input.brand ?? null, input.size ?? null, input.unit,
+      input.packaging ?? null, input.description ?? null, input.deliverySlaDays]);
+    return product.rows[0].id;
+  });
+}
+
 export interface NewRequestInput {
   companyId: string;
   branchId: string;
@@ -1066,6 +1121,9 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
     ? "manage_branches"
     : "manage_catalog";
   if (!canAccess(actor, requiredPermission)) throw new Error("Your account cannot change this record.");
+  if (entity === "products" && !canManageCommercialCatalog(actor)) {
+    throw new Error("Only an authorized commercial manager can change product availability.");
+  }
   if (isDemoMode()) {
     const store = getDemoStore();
     if (entity === "products") {

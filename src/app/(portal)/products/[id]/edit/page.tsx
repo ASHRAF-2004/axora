@@ -18,7 +18,7 @@ import {
   updateProductImageAltTextAction,
 } from "../../../masters/actions";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
-import { productEditorMessages } from "@/lib/product-editor-i18n";
+import { catalogManagementAccessMessages, productEditorMessages } from "@/lib/product-editor-i18n";
 import { procurementRulesMessages } from "@/lib/procurement-rules-i18n";
 import { listProductCommercialHistory } from "@/lib/product-admin";
 import { formatCurrency } from "@/lib/domain";
@@ -30,12 +30,13 @@ function optionsWithCurrent(options: readonly string[], current: string) {
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requirePagePermission("manage_catalog");
-  if (!canManageCommercialCatalog(actor)) notFound();
   const locale = actor.preferredLocale ?? "en";
   const productCopy = corePortalMessages(locale).products;
   const copy = productEditorMessages(locale);
+  const accessCopy = catalogManagementAccessMessages(locale);
   const rules = procurementRulesMessages(locale);
   const { id } = await params;
+  const canManageCommercialPricing = canManageCommercialCatalog(actor);
   const canViewCommercialHistory = canAccess(actor, "manage_commercial_pricing");
   const [products, images, commercialHistory] = await Promise.all([
     listProducts(actor),
@@ -70,9 +71,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           <label>{productCopy.brand}<input name="brand" defaultValue={product.brand} /></label>
           <label>{productCopy.size}<input name="size" defaultValue={product.size} /></label>
           <label>{productCopy.unit}<select name="unit" defaultValue={product.unit}>{units.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
-          <label>{productCopy.buyCost}<input name="defaultBuyPrice" type="number" min="0" step="0.01" defaultValue={product.defaultBuyPrice} required /></label>
-          <label>{rules.markup}<input name="customerMarkupPercentage" type="number" inputMode="decimal" min="0" max="100" step="0.01" defaultValue={product.customerMarkupPercentage ?? 10} required /><small>{rules.markupHelp}</small></label>
-          <label>{rules.calculatedSellingPrice}<output>{formatCurrency(product.defaultSellPrice, locale)}</output><small>{rules.calculatedSellingHelp}</small></label>
+          {canManageCommercialPricing ? <>
+            <label>{productCopy.buyCost}<input name="defaultBuyPrice" type="number" min="0" step="0.01" defaultValue={product.defaultBuyPrice} required /></label>
+            <label>{rules.markup}<input name="customerMarkupPercentage" type="number" inputMode="decimal" min="0" max="100" step="0.01" defaultValue={product.customerMarkupPercentage ?? 10} required /><small>{rules.markupHelp}</small></label>
+            <label>{rules.calculatedSellingPrice}<output>{formatCurrency(product.defaultSellPrice, locale)}</output><small>{rules.calculatedSellingHelp}</small></label>
+          </> : <p className="callout callout-info field-full">{accessCopy.commercialRestricted}</p>}
           <label>{productCopy.deliverySla}<input name="deliverySlaDays" type="number" min="0" step="1" defaultValue={product.deliverySlaDays} required /></label>
           <label className="field-full">{productCopy.description}<textarea name="description" defaultValue={product.description} /></label>
         </div>

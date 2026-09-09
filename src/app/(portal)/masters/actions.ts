@@ -20,7 +20,7 @@ import {
 } from "@/lib/company-lifecycle";
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
 import { createCompanyWithBrand, regenerateCompanyBrand } from "@/lib/tenant-branding";
-import { updateProduct } from "@/lib/product-admin";
+import { updateProduct, updateProductCatalogMetadata } from "@/lib/product-admin";
 import { deleteProduct } from "@/lib/product-delete";
 import {
   deactivateProductImage,
@@ -30,8 +30,8 @@ import {
   setPrimaryProductImage,
   updateProductImageAltText,
 } from "@/lib/product-images";
-import { createBranch, createProduct, setMasterActive, type MasterEntity } from "@/lib/repository";
-import { branchSchema, directCompanyCreateSchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
+import { createBranch, createCatalogDraftProduct, createProduct, setMasterActive, type MasterEntity } from "@/lib/repository";
+import { branchSchema, directCompanyCreateSchema, productCatalogSchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -62,6 +62,20 @@ function productInput(formData: FormData) {
     defaultBuyPrice,
     defaultSellPrice: calculateCommercialSellingPrice(defaultBuyPrice, Number(customerMarkupPercentage)),
     customerMarkupPercentage,
+    deliverySlaDays: number(formData, "deliverySlaDays", 1),
+  });
+}
+
+function productCatalogInput(formData: FormData) {
+  return productCatalogSchema.parse({
+    name: readFormText(formData, "name"),
+    category: readFormText(formData, "category"),
+    subcategory: readFormText(formData, "subcategory"),
+    brand: readFormText(formData, "brand"),
+    size: readFormText(formData, "size"),
+    unit: readFormText(formData, "unit"),
+    packaging: "",
+    description: readFormText(formData, "description"),
     deliverySlaDays: number(formData, "deliverySlaDays", 1),
   });
 }
@@ -312,11 +326,11 @@ export async function createProductAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   const user = await requirePermission("manage_catalog");
-  if (!canManageCommercialCatalog(user)) redirect("/access-denied");
-  let input: ReturnType<typeof productInput>;
+  const canManageCommercialPricing = canManageCommercialCatalog(user);
+  let input: ReturnType<typeof productInput> | ReturnType<typeof productCatalogInput>;
   let preparedImages: Awaited<ReturnType<typeof prepareProductImages>>;
   try {
-    input = productInput(formData);
+    input = canManageCommercialPricing ? productInput(formData) : productCatalogInput(formData);
     preparedImages = await prepareProductImages([
       ...files(formData, "images"), ...files(formData, "image"),
     ]);
@@ -325,7 +339,9 @@ export async function createProductAction(
   }
   let productId: string;
   try {
-    productId = await createProduct(input, user);
+    productId = canManageCommercialPricing
+      ? await createProduct(input as ReturnType<typeof productInput>, user)
+      : await createCatalogDraftProduct(input as ReturnType<typeof productCatalogInput>, user);
   } catch (error) {
     return { status: "error", message: validationMessage(error) };
   }
@@ -347,7 +363,7 @@ export async function createProductAction(
   revalidateProduct(productId);
   return {
     status: "success",
-    redirectTo: `/products/${productId}/edit?notice=product-created`,
+    redirectTo: `/products/${productId}/edit?notice=${canManageCommercialPricing ? "product-created" : "product-draft-created"}`,
   };
 }
 
@@ -357,9 +373,12 @@ export async function updateProductAction(
   formData: FormData,
 ): Promise<ProductActionState> {
   const user = await requirePermission("manage_catalog");
-  if (!canManageCommercialCatalog(user)) redirect("/access-denied");
   try {
-    await updateProduct(productId, productInput(formData), user);
+    if (canManageCommercialCatalog(user)) {
+      await updateProduct(productId, productInput(formData), user);
+    } else {
+      await updateProductCatalogMetadata(productId, productCatalogInput(formData), user);
+    }
   } catch (error) {
     return { status: "error", message: validationMessage(error) };
   }

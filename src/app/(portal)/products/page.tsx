@@ -25,7 +25,8 @@ export default async function ProductsPage({
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).products;
   const common = corePortalMessages(locale).common;
-  const canManageCatalog = canManageCommercialCatalog(actor);
+  const canManageCatalog = canAccess(actor, "manage_catalog");
+  const canManageCommercialPricing = canManageCommercialCatalog(actor);
   // Client Account Managers have catalogue visibility but are intentionally
   // excluded from confidential commercial pricing. Keep their Catalog entry
   // in the management workspace (read-only unless a separate capability is
@@ -106,6 +107,8 @@ export default async function ProductsPage({
             <Link className="button button-secondary" href={`/products/${product.id}`}>{copy.view}</Link>
             {canManageCatalog ? <>
               <Link className="button button-secondary" href={`/products/${product.id}/edit`}>{copy.edit}</Link>
+            </> : null}
+            {canManageCommercialPricing ? <>
               <form action={setMasterActiveAction.bind(null, "products", product.id, product.status === "Inactive")} style={{ marginBlockStart: 8 }}>
                 <button className="button button-secondary" type="submit">{product.status === "Active" ? common.deactivate : product.status === "Needs Review" ? copy.rejectDuplicate : common.activate}</button>
               </form>
