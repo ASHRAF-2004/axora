@@ -86,6 +86,16 @@ export const productSchema = z.object({
 
 export type ProductInput = z.infer<typeof productSchema>;
 
+// Product record management is deliberately separate from confidential
+// commercial pricing.  A catalog manager may maintain the descriptive record
+// and imagery without being able to set acquisition cost or customer markup.
+export const productCatalogSchema = z.object({
+  name: required("Product name"), category: required("Category"), subcategory: required("Subcategory"), brand: optional(100), size: optional(100),
+  unit: required("Unit", 50), packaging: optional(100), description: optional(1000), deliverySlaDays: wholeDays,
+}).strict();
+
+export type ProductCatalogInput = z.infer<typeof productCatalogSchema>;
+
 export const requestSchema = z.object({
   companyId: required("Company"), branchId: required("Branch"), requestType: z.enum(["Standard", "Ad-hoc", "Recurring"]),
   department: z.string().trim().max(200).default(""),

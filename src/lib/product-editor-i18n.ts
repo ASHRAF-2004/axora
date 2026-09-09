@@ -14,3 +14,27 @@ const ms: ProductEditorMessages = { eyebrow: "Pemilik platform · Editor produk"
 
 export const PRODUCT_EDITOR_MESSAGES: Record<SupportedLocale, ProductEditorMessages> = { en, ar, ms };
 export function productEditorMessages(locale: SupportedLocale = "en") { return PRODUCT_EDITOR_MESSAGES[locale]; }
+
+const catalogManagementAccessCopy: Record<SupportedLocale, {
+  commercialRestricted: string; draftDescription: string; createDraft: string;
+}> = {
+  en: {
+    commercialRestricted: "Commercial pricing is managed separately by an authorized commercial manager. Your changes do not alter cost, markup, or customer price.",
+    draftDescription: "This catalog record stays inactive until an authorized commercial manager adds pricing and activates it.",
+    createDraft: "Create product draft",
+  },
+  ar: {
+    commercialRestricted: "تُدار الأسعار التجارية بشكل منفصل بواسطة مدير تجاري مخول. لا تغير تعديلاتك التكلفة أو الهامش أو سعر العميل.",
+    draftDescription: "يبقى سجل الكتالوج هذا غير نشط حتى يضيف مدير تجاري مخول السعر ويفعّله.",
+    createDraft: "إنشاء مسودة منتج",
+  },
+  ms: {
+    commercialRestricted: "Harga komersial diurus secara berasingan oleh pengurus komersial yang dibenarkan. Perubahan anda tidak mengubah kos, margin atau harga pelanggan.",
+    draftDescription: "Rekod katalog ini kekal tidak aktif sehingga pengurus komersial yang dibenarkan menambah harga dan mengaktifkannya.",
+    createDraft: "Cipta draf produk",
+  },
+};
+
+export function catalogManagementAccessMessages(locale: SupportedLocale = "en") {
+  return catalogManagementAccessCopy[locale];
+}
