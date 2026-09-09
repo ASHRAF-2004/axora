@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
 import type { SessionUser } from "@/lib/auth";
 import { getDemoStore } from "@/lib/demo-data";
 import { updateProductCatalogMetadata } from "@/lib/product-admin";
@@ -84,6 +85,12 @@ describe("CAM product-management permission", () => {
     expect(product.defaultBuyPrice).toBe(baseCost);
     expect(product.customerMarkupPercentage).toBe(25);
     expect(product.defaultSellPrice).toBe(baseCost * 1.25);
+  });
+
+  it("does not require the application role to read confidential base cost when saving CAM markup", async () => {
+    const source = await readFile(new URL("../src/lib/product-admin.ts", import.meta.url), "utf8");
+    expect(source).toContain("default_sell_price*((100+$11::numeric)/(100+customer_markup_percentage))");
+    expect(source).not.toContain("ELSE round(default_buy_price*(1+$11::numeric/100),2)");
   });
 
   it("creates a price-pending inactive draft which is visible to the catalog manager but unavailable to Shopping", async () => {

@@ -141,7 +141,10 @@ export async function updateProductCatalogMetadata(
       unit_of_measure=$7, packaging=$8, description=$9, delivery_sla_days=$10,
       customer_markup_percentage=coalesce($11::numeric,customer_markup_percentage),
       default_sell_price=CASE WHEN $11::numeric IS NULL THEN default_sell_price
-        ELSE round(default_buy_price*(1+$11::numeric/100),2) END,
+        -- The application role is deliberately denied SELECT on the
+        -- confidential base-cost column.  Re-scale the stored customer price
+        -- from the prior canonical markup instead of reading that cost.
+        ELSE round(default_sell_price*((100+$11::numeric)/(100+customer_markup_percentage)),2) END,
       updated_at=now()
       WHERE id=$1`,
     [productId, input.name, input.category, input.subcategory, input.brand ?? null,
