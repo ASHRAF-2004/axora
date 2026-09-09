@@ -13,7 +13,7 @@ describe("database-owner transactional email reconciliation", () => {
     await db.exec("CREATE ROLE axora_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT");
     const applied = await applyMigrations(db);
     expect(applied.at(-1)).toBe(
-      "135_budget_refresh_result_reference_fix.sql",
+        "136_catalog_draft_zero_price_guard.sql",
     );
     await db.exec(`CREATE TABLE schema_migrations(
       filename text PRIMARY KEY,sha256 text NOT NULL,
