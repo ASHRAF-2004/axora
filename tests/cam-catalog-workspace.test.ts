@@ -15,7 +15,7 @@ describe("Client Account Manager catalog workspace", () => {
     expect(page).toContain("{canManageCatalog ? <>");
   });
 
-  it("allows a CAM with product.manage to edit catalog metadata without commercial access", async () => {
+  it("allows a CAM with product.manage to edit catalog metadata and markup without commercial cost access", async () => {
     const detail = await source("src/app/(portal)/products/[id]/page.tsx");
     const editor = await source("src/app/(portal)/products/[id]/edit/page.tsx");
     const actions = await source("src/app/(portal)/masters/actions.ts");
@@ -24,7 +24,12 @@ describe("Client Account Manager catalog workspace", () => {
     expect(detail).toContain('actor.role !== "CLIENT_ACCOUNT_MANAGER"');
     expect(detail).toContain('const canManage = canAccess(actor, "manage_catalog")');
     expect(editor).toContain('const canManageCommercialPricing = canManageCommercialCatalog(actor)');
+    expect(editor).toContain('name="customerMarkupPercentage"');
+    expect(editor).toContain("copy.catalogManagerEyebrow");
     expect(editor).toContain("accessCopy.commercialRestricted");
+    expect(editor).toContain("productCopy.buyCost");
+    expect(editor).toContain("canManageCommercialPricing ? <label>{productCopy.buyCost}");
     expect(actions).toContain("updateProductCatalogMetadata(productId, productCatalogInput(formData), user)");
+    expect(actions).toContain("productCatalogMarkupSchema.parse");
   });
 });

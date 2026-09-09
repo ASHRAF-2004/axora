@@ -96,6 +96,15 @@ export const productCatalogSchema = z.object({
 
 export type ProductCatalogInput = z.infer<typeof productCatalogSchema>;
 
+// Catalog managers may set the customer-facing profit rule without receiving
+// the confidential acquisition-cost field. Keeping this input separate means
+// a metadata-only update can still preserve the existing rule exactly.
+export const productCatalogMarkupSchema = productCatalogSchema.extend({
+  customerMarkupPercentage: z.coerce.number().finite().min(0, "Profit cannot be negative.").max(100, "Profit cannot exceed 100%.") ,
+}).strict();
+
+export type ProductCatalogMarkupInput = z.infer<typeof productCatalogMarkupSchema>;
+
 export const requestSchema = z.object({
   companyId: required("Company"), branchId: required("Branch"), requestType: z.enum(["Standard", "Ad-hoc", "Recurring"]),
   department: z.string().trim().max(200).default(""),

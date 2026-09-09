@@ -31,7 +31,7 @@ import {
   updateProductImageAltText,
 } from "@/lib/product-images";
 import { createBranch, createCatalogDraftProduct, createProduct, setMasterActive, type MasterEntity } from "@/lib/repository";
-import { branchSchema, directCompanyCreateSchema, productCatalogSchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
+import { branchSchema, directCompanyCreateSchema, productCatalogMarkupSchema, productSchema, readFormText, validationMessage } from "@/lib/validation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -67,7 +67,11 @@ function productInput(formData: FormData) {
 }
 
 function productCatalogInput(formData: FormData) {
-  return productCatalogSchema.parse({
+  const rawMarkup = readFormText(formData, "customerMarkupPercentage") || "10";
+  if (!/^(?:0|[1-9]\d{0,2})(?:\.\d{1,4})?$/.test(rawMarkup)) {
+    throw new Error("Enter a profit percentage from 0 to 100.");
+  }
+  return productCatalogMarkupSchema.parse({
     name: readFormText(formData, "name"),
     category: readFormText(formData, "category"),
     subcategory: readFormText(formData, "subcategory"),
@@ -76,6 +80,7 @@ function productCatalogInput(formData: FormData) {
     unit: readFormText(formData, "unit"),
     packaging: "",
     description: readFormText(formData, "description"),
+    customerMarkupPercentage: Number(rawMarkup),
     deliverySlaDays: number(formData, "deliverySlaDays", 1),
   });
 }
