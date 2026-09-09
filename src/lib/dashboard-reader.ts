@@ -12,6 +12,7 @@ import {
   loadOrganizationDirectory,
   type OrganizationDirectory,
 } from "./organization-access";
+import { getApprovalWorkspace } from "./request-approval";
 import { listAuthorizedRequests } from "./request-reader";
 import type { ProcurementRequest } from "./types";
 import type { PoolClient, QueryResultRow } from "pg";
@@ -193,6 +194,7 @@ export async function resolveDashboardReportingScope(
 const COHORT_CTE = `WITH authorized_requests AS (
   SELECT request.id,request.company_id,request.branch_id,request.needed_by_date,
     request.estimated_delivery_fee,request.tax_amount,
+    request.purchase_mode,request.approval_state,
     COALESCE(request.approval_submitted_at,request.created_at) AS cohort_at,
     status.label AS status_label,urgency.label AS urgency_label,
     company.name AS company_name,branch.name AS branch_name,
@@ -238,7 +240,13 @@ async function loadSummary(
   parameters: unknown[],
 ) {
   const result = await client.query<SummaryRow>(
-    COHORT_CTE + `
+    COHORT_CTE + `, actionable_approvals AS (
+      SELECT DISTINCT (item->>'id')::uuid AS request_id
+      FROM jsonb_array_elements(COALESCE(
+        public.axora_request_approval_workspace_v2($1,$2,$3)->'requests',
+        '[]'::jsonb
+      )) item
+    )
     SELECT
       count(*)::int AS "requestCount",
       (count(*) FILTER (WHERE request_row.status_label NOT IN ('Completed','Cancelled')))::int
@@ -251,14 +259,16 @@ async function loadSummary(
           ELSE 0 END
       ),0)::float8 AS "requestedValue",
       COALESCE(sum(
-        CASE WHEN request_row.status_label<>'Cancelled' AND approval.status='Approved'
+        CASE WHEN request_row.status_label<>'Cancelled'
+          AND (approval.status='Approved' OR (
+            request_row.purchase_mode='COMPANY_ADMIN_DIRECT'
+            AND request_row.approval_state='AWAITING_FULFILMENT'
+          ))
           THEN line_totals.sales+request_row.estimated_delivery_fee+request_row.tax_amount
           ELSE 0 END
       ),0)::float8 AS "approvedSpend",
-      (count(*) FILTER (
-        WHERE request_row.status_label<>'Cancelled'
-          AND COALESCE(approval.status,'Pending')='Pending'
-      ))::int AS "pendingApprovalCount",
+      (count(*) FILTER (WHERE actionable_approvals.request_id IS NOT NULL))::int
+        AS "pendingApprovalCount",
       COALESCE(sum(
         CASE WHEN request_row.status_label<>'Cancelled' THEN line_totals.sales ELSE 0 END
       ),0)::float8 AS sales,
@@ -279,6 +289,8 @@ async function loadSummary(
           AND invoice.payment_status<>'Paid'
       ))::int AS "outstandingInvoiceCount"
     FROM cohort request_row
+    LEFT JOIN actionable_approvals
+      ON actionable_approvals.request_id=request_row.id
     LEFT JOIN LATERAL (
       SELECT
         COALESCE(sum(round(line.quantity*line.unit_sell_price,2)),0) AS sales,
@@ -546,13 +558,15 @@ function inWindow(request: ProcurementRequest, window: DashboardPeriodWindow) {
     && request.requestDate < window.endExclusiveDate;
 }
 
-function demoSnapshot(
+async function demoSnapshot(
   actor: AuthenticatedSessionUser,
   requests: ProcurementRequest[],
   window: DashboardPeriodWindow,
   scope: DashboardReportingScope,
   capturedAt: Date,
 ) {
+  const actionableApprovals = new Set((await getApprovalWorkspace(actor))?.requests
+    .map((request) => request.id) ?? []);
   const cohort = requests.filter((request) => (
     inWindow(request, window)
     && (!scope.branchId || request.branchId === scope.branchId)
@@ -623,9 +637,7 @@ function demoSnapshot(
       ...common,
       requestedValue,
       approvedSpend,
-      pendingApprovalCount: cohort.filter((request) => (
-        request.status !== "Cancelled" && request.approvalStatus === "Pending"
-      )).length,
+      pendingApprovalCount: cohort.filter((request) => actionableApprovals.has(request.id)).length,
     } satisfies CompanyDashboardSnapshot;
   }
   const totals = calculateTotals(cohort);
@@ -658,7 +670,7 @@ export async function getAuthorizedDashboardPeriodReport(
   const capturedAt = new Date(period.generatedAt);
   if (isDemoMode()) {
     const requests = await listAuthorizedRequests(actor);
-    const current = demoSnapshot(actor, requests, period, scope, capturedAt);
+    const current = await demoSnapshot(actor, requests, period, scope, capturedAt);
     return scope.platformAnalytics
       ? {
         scope: "platform",

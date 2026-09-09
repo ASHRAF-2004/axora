@@ -133,4 +133,17 @@ describe("dashboard database query binding contract", () => {
       .toEqual([9, 7, 8, 7, 8]);
     expectExactQueryBindings();
   });
+
+  it("derives Company pending approvals from the same actionable workspace as Approvals", async () => {
+    mockReportQueries();
+
+    await expect(getAuthorizedDashboardPeriodReport(actor(), period, scope()))
+      .resolves.toMatchObject({ scope: "company" });
+
+    const summaryQuery = String(mocks.query.mock.calls[0]?.[0]);
+    expect(summaryQuery).toContain("axora_request_approval_workspace_v2");
+    expect(summaryQuery).toContain("actionable_approvals.request_id IS NOT NULL");
+    expect(summaryQuery).not.toContain("COALESCE(approval.status,'Pending')='Pending'");
+    expect(summaryQuery).toContain("purchase_mode='COMPANY_ADMIN_DIRECT'");
+  });
 });

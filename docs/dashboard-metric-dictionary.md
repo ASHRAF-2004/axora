@@ -30,8 +30,8 @@ documented keys and implementation keys to remain aligned.
 | openRequestCount | Cohort requests still open | requests, status lookup | Excludes Completed and Cancelled | Both | Live |
 | urgentRequestCount | Cohort requests currently urgent | requests, urgency lookup | All statuses | Both | Live |
 | requestedValue | Customer sell value plus request delivery estimate and tax | requests, request_lines | Cohort date; excludes Cancelled | Company | Live |
-| approvedSpend | Requested value currently approved by the company | requests, request_lines, approvals | Latest company approval Approved; excludes Cancelled | Company | Live |
-| pendingApprovalCount | Requests awaiting company approval | requests, approvals | Latest company approval Pending; excludes Cancelled | Company | Live |
+| approvedSpend | Requested value with a company approval or recorded Company Admin direct-purchase lifecycle | requests, request_lines, approvals, direct-purchase lifecycle | Approved or direct-purchased; excludes Cancelled | Company | Live |
+| pendingApprovalCount | Cohort requests currently awaiting a decision from this authorized actor | canonical approval workspace | Current actionable approval state and actor scope | Company | Live |
 | sales | Customer line sell value | request_lines | Cohort date; excludes Cancelled | Platform owner | Live |
 | buyingCost | Private Axora line buying cost | request_lines | Cohort date; excludes Cancelled | Platform owner only | Live |
 | grossProfit | Sales less buying cost | request_lines | Same cohort as sales | Platform owner | Live |

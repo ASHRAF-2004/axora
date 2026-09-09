@@ -1,3 +1,5 @@
+"use client";
+
 import {
   DASHBOARD_PERIOD_PRESETS,
   dashboardPeriodSearchParams,
@@ -9,6 +11,7 @@ import type { DashboardReportingScope } from "@/lib/dashboard-reader";
 import type { SupportedLocale } from "@/lib/i18n";
 import { CalendarRange, Download } from "lucide-react";
 import Link from "next/link";
+import { useState, type FormEvent } from "react";
 
 function displayDate(value: string, locale: SupportedLocale) {
   return new Intl.DateTimeFormat(locale, {
@@ -28,6 +31,7 @@ export function DashboardPeriodControls({
   scope: DashboardReportingScope;
   locale: SupportedLocale;
 }) {
+  const [isSaving, setIsSaving] = useState(false);
   const copy = dashboardPeriodMessages(locale);
   const exportQuery = dashboardPeriodSearchParams(period, scope.branchId);
   const generated = new Intl.DateTimeFormat(locale, {
@@ -37,6 +41,36 @@ export function DashboardPeriodControls({
   }).format(new Date(period.generatedAt));
   const start = displayDate(period.startDate, locale);
   const end = displayDate(period.endDate, locale);
+
+  async function savePreference(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const input = {
+      preset: String(formData.get("preset") ?? ""),
+      start: String(formData.get("start") ?? ""),
+      end: String(formData.get("end") ?? ""),
+      branch: String(formData.get("branch") ?? ""),
+    };
+    const target = `/dashboard?${new URLSearchParams(input).toString()}`;
+    setIsSaving(true);
+    try {
+      const response = await fetch("/dashboard/reporting-preference", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) throw new Error("Could not save reporting preference");
+      window.location.assign(target);
+    } catch {
+      // The URL remains the canonical representation even if saving a
+      // preference is temporarily unavailable.
+      form.submit();
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <section className="panel dashboard-period-panel" aria-labelledby="dashboard-period-title">
@@ -57,7 +91,7 @@ export function DashboardPeriodControls({
       {scope.branchUnavailable ? (
         <p className="dashboard-period-alert" role="alert">{copy.invalidBranch}</p>
       ) : null}
-      <form method="get" action="/dashboard" className="dashboard-period-form">
+      <form method="get" action="/dashboard" onSubmit={savePreference} className="dashboard-period-form">
         <label>
           {copy.preset}
           <select name="preset" defaultValue={period.preset} aria-label={copy.preset}>
@@ -98,8 +132,8 @@ export function DashboardPeriodControls({
           </label>
         ) : null}
         <div className="dashboard-period-actions">
-          <button type="submit" className="button button-primary">{copy.apply}</button>
-          <Link className="button button-secondary" href="/dashboard">{copy.reset}</Link>
+          <button type="submit" className="button button-primary" disabled={isSaving}>{copy.apply}</button>
+          <Link className="button button-secondary" href="/dashboard/reporting-preference?reset=1" prefetch={false}>{copy.reset}</Link>
           <Link
             className="button button-secondary"
             href={"/api/export/dashboard?" + exportQuery.toString()}

@@ -134,9 +134,10 @@ describe("external integration security primitives", () => {
     const encrypted = encryptIntegrationValue("slack-token", "provider-secret");
     expect(decryptIntegrationValue("slack-token", encrypted)).toBe("provider-secret");
     expect(() => decryptIntegrationValue("webhook-secret", encrypted)).toThrow();
+    const alteredCiphertext = `${encrypted.ciphertext[0] === "A" ? "B" : "A"}${encrypted.ciphertext.slice(1)}`;
     expect(() => decryptIntegrationValue("slack-token", {
       ...encrypted,
-      ciphertext: `${encrypted.ciphertext.slice(0, -1)}A`,
+      ciphertext: alteredCiphertext,
     })).toThrow();
     expect(() => decryptIntegrationValue("slack-token", {
       ...encrypted,
