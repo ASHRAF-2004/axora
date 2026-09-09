@@ -48,6 +48,16 @@ describe("server-authorized shopping branch contexts", () => {
     ]);
   });
 
+  it("passes the authorized canonical branch budget to Shopping", async () => {
+    loadOrganizationDirectory.mockResolvedValue({ companies: [], branches: [
+      branch(readyId, { canViewBudget: true, remainingAmount: 812.34 }),
+    ] });
+    const { loadShoppingBranchContexts } = await import("@/lib/shopping-context");
+    await expect(loadShoppingBranchContexts(actor)).resolves.toEqual([
+      expect.objectContaining({ id: readyId, budgetAvailable: 812.34 }),
+    ]);
+  });
+
   it("returns a useful empty input set without manufacturing a first branch", async () => {
     loadOrganizationDirectory.mockResolvedValue({ companies: [], branches: [] });
     const { loadShoppingBranchContexts } = await import("@/lib/shopping-context");

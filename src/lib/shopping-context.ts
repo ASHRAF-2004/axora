@@ -17,6 +17,7 @@ export interface ShoppingBranchContext {
   address: string;
   canManageLocation: boolean;
   ready: boolean;
+  budgetAvailable: number | null;
 }
 
 export async function loadShoppingBranchContexts(
@@ -47,6 +48,7 @@ export async function loadShoppingBranchContexts(
       address: location?.addressLabel ?? branch.deliveryAddress,
       canManageLocation: Boolean(locationWorkspace?.canManage),
       ready: Boolean(location),
+      budgetAvailable: branch.canViewBudget ? branch.remainingAmount ?? null : null,
     } satisfies ShoppingBranchContext;
   }));
 

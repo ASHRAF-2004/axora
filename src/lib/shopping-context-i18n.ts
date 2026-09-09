@@ -18,6 +18,7 @@ const messages = {
     branchRequired: "Choose a branch before shopping.",
     deliverTo: "Deliver to",
     changeBranch: "Change branch",
+    budgetAvailable: "Branch budget available",
     branchContext: (name: string) => `Shopping branch: ${name}`,
   },
   ar: {
@@ -37,6 +38,7 @@ const messages = {
     branchRequired: "اختر فرعاً قبل التسوق.",
     deliverTo: "التسليم إلى",
     changeBranch: "تغيير الفرع",
+    budgetAvailable: "ميزانية الفرع المتاحة",
     branchContext: (name: string) => `فرع التسوق: ${name}`,
   },
   ms: {
@@ -56,6 +58,7 @@ const messages = {
     branchRequired: "Pilih cawangan sebelum membeli-belah.",
     deliverTo: "Hantar ke",
     changeBranch: "Tukar cawangan",
+    budgetAvailable: "Bajet cawangan tersedia",
     branchContext: (name: string) => `Cawangan membeli-belah: ${name}`,
   },
 } as const;

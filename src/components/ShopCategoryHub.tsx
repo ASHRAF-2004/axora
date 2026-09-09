@@ -221,7 +221,7 @@ export function ShopCategoryHub({
         </div>
       </div>
       <aside className="shop-branch-context" aria-label={contextCopy.branchContext(selectedBranch.name)}>
-        <div><span>{contextCopy.deliverTo}</span><strong>{selectedBranch.code} · {selectedBranch.name}</strong><small>{[selectedBranch.city,selectedBranch.address].filter(Boolean).join(" · ")}</small></div>
+        <div><span>{contextCopy.deliverTo}</span><strong>{selectedBranch.code} · {selectedBranch.name}</strong><small>{[selectedBranch.city,selectedBranch.address].filter(Boolean).join(" · ")}</small>{selectedBranch.budgetAvailable != null ? <small>{contextCopy.budgetAvailable}: <strong>{formatCurrency(selectedBranch.budgetAvailable,locale)}</strong></small> : null}</div>
         {canSwitchBranch ? <Link className="button button-secondary" href="/products">{contextCopy.changeBranch}</Link> : null}
       </aside>
       {canRequest ? <aside className={cartItems.length ? "shop-cart-bar has-items" : "shop-cart-bar"} aria-label={cartAria}>
