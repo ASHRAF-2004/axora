@@ -28,6 +28,12 @@ describe("core portal internationalization", () => {
       expect(copy.products.shopTitle).toBeTruthy();
       expect(copy.users.resend).toBeTruthy();
     }
+
+    expect(CORE_PORTAL_MESSAGES.en.dashboard.role.agent.actions).toEqual([
+      "Add company", "Companies", "Company requests", "Company deliveries",
+    ]);
+    expect(CORE_PORTAL_MESSAGES.ar.dashboard.role.agent.actions.at(-1)).toBe("تسليمات الشركات");
+    expect(CORE_PORTAL_MESSAGES.ms.dashboard.role.agent.actions.at(-1)).toBe("Penghantaran syarikat");
   });
 
   it("localizes presentation values without changing canonical workflow values", () => {
