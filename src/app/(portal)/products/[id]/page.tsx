@@ -16,8 +16,9 @@ const detailCopy = {
 } as const;
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const actor = await requirePagePermission("manage_catalog");
-  if (!canManageCommercialCatalog(actor)) notFound();
+  const actor = await requirePagePermission("view_catalog");
+  const canManage = canManageCommercialCatalog(actor);
+  if (!canManage && actor.role !== "CLIENT_ACCOUNT_MANAGER") notFound();
   const { id } = await params;
   const product = (await listProducts(actor)).find((item) => item.id === id);
   if (!product) notFound();
@@ -26,7 +27,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const copy = corePortalMessages(locale).products;
   const local = detailCopy[locale];
   const canViewCost = canAccess(actor, "view_internal_cost");
-  const canEdit = canManageCommercialCatalog(actor);
+  const canEdit = canManage;
 
   return <>
     <PageHeader eyebrow={local.eyebrow} title={product.name} description={product.description || copy.operationsDescription} />
