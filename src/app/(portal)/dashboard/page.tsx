@@ -52,7 +52,7 @@ function roleDashboard(
   const paths: Record<keyof typeof role, string[]> = {
     owner: ["/companies", "/users", "/products", "/email-operations"],
     hr: ["/companies", "/users", "/branches"],
-    agent: ["/companies", "/products", "/requests", "/deliveries"],
+    agent: ["/companies/new", "/companies", "/requests", "/deliveries"],
     operations: ["/deliveries", "/products", "/requests"],
     deliveryGuy: ["/deliveries", "/dashboard"],
     companyAdmin: ["/users", "/branches", "/requests", "/wallet"],
@@ -186,7 +186,7 @@ export default async function DashboardPage({
             href !== "/requests/new" || canAccess(actor, "create_requests")
           ))
           .map(([label, href]) => (
-            <Link href={href} key={href}>
+            <Link href={href} key={`${label}-${href}`}>
               <span>{label}</span>
               <ArrowRight size={17} aria-hidden="true" />
             </Link>

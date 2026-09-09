@@ -39,6 +39,10 @@ test("Agent sees assigned company operations without platform financial fields",
   await signInAsDemoRole(page, principals.agent);
   await page.goto("/dashboard");
   await expect(page.getByText("Client Account Manager workspace", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Add company" })).toHaveAttribute("href", "/companies/new");
+  await expect(page.getByRole("link", { name: "Companies" })).toHaveAttribute("href", "/companies");
+  await expect(page.getByRole("link", { name: "Company requests" })).toHaveAttribute("href", "/requests");
+  await expect(page.getByRole("link", { name: "Company deliveries" })).toHaveAttribute("href", "/deliveries");
   await expectShell(page);
   await page.goto("/companies");
   await expect(page.locator("main h1")).toBeVisible();

@@ -74,7 +74,7 @@ const en: CorePortalMessages = {
     role: {
       owner: { eyebrow: "Platform owner command center", description: "Onboard companies, protect tenant boundaries, and monitor Axora procurement health.", actions: ["Onboard a company", "People & access", "Global catalog", "Email status"] },
       hr: { eyebrow: "Human Resources Management", description: "Create internal accounts and support direct company onboarding.", actions: ["Manage Axora users", "Support company setup", "People & access"] },
-      agent: { eyebrow: "Client Account Manager workspace", description: "Create and manage customer companies, then monitor their requests, invoices, and deliveries.", actions: ["Add company", "Companies", "Company requests", "Company invoices"] },
+      agent: { eyebrow: "Client Account Manager workspace", description: "Create and manage customer companies, then monitor their requests, invoices, and deliveries.", actions: ["Add company", "Companies", "Company requests", "Company deliveries"] },
       operations: { eyebrow: "Axora operations workspace", description: "Manage the global catalogue, paid requests, and delivery coordination.", actions: ["Review paid requests", "Coordinate deliveries", "Manage catalog", "Company operations"] },
       deliveryGuy: { eyebrow: "Delivery Agent workspace", description: "Review assigned paid requests, acquire the required items, deliver them, and capture proof.", actions: ["Assigned deliveries", "Delivery overview"] },
       companyAdmin: { eyebrow: "Company administrator workspace", description: "Manage branches, budgets, people, approvals, and company request progress.", actions: ["Company Users", "Branches", "Budgets", "Review requests"] },
@@ -176,14 +176,14 @@ const ms: CorePortalMessages = {
 
 Object.assign(ar.dashboard.role, {
   hr: { eyebrow: "إدارة الموارد البشرية", description: "إنشاء الحسابات الداخلية ودعم تهيئة الشركات مباشرة.", actions: ["إدارة مستخدمي أكسورا", "دعم إعداد الشركات", "الأشخاص والصلاحيات"] },
-  agent: { eyebrow: "مساحة مدير حساب العميل", description: "أنشئ شركات العملاء وأدرها ثم تابع طلباتها وفواتيرها وتسليماتها.", actions: ["إضافة شركة", "الشركات", "طلبات الشركات", "فواتير الشركات"] },
+  agent: { eyebrow: "مساحة مدير حساب العميل", description: "أنشئ شركات العملاء وأدرها ثم تابع طلباتها وفواتيرها وتسليماتها.", actions: ["إضافة شركة", "الشركات", "طلبات الشركات", "تسليمات الشركات"] },
   operations: { eyebrow: "مساحة عمليات أكسورا", description: "إدارة الكتالوج العام والطلبات المدفوعة وتنسيق التسليم.", actions: ["مراجعة الطلبات المدفوعة", "تنسيق التسليم", "إدارة الكتالوج", "عمليات الشركات"] },
   deliveryGuy: { eyebrow: "مساحة مسؤول التوصيل", description: "راجع الطلبات المدفوعة المسندة، واشترِ البنود المطلوبة، ثم سلّمها وسجّل إثبات الاستلام.", actions: ["التسليمات المسندة", "نظرة عامة على التسليم"] },
 });
 Object.assign(ms.dashboard.role, {
   companyAdmin: { eyebrow: "Ruang kerja pentadbir syarikat", description: "Urus cawangan, bajet, pengguna, kelulusan dan kemajuan permintaan syarikat.", actions: ["Pengguna Syarikat", "Cawangan", "Bajet", "Semak permintaan"] },
   hr: { eyebrow: "Pengurusan Sumber Manusia", description: "Cipta akaun dalaman dan sokong persediaan syarikat secara langsung.", actions: ["Urus pengguna Axora", "Sokong persediaan syarikat", "Orang & akses"] },
-  agent: { eyebrow: "Ruang kerja Pengurus Akaun Pelanggan", description: "Cipta dan urus syarikat pelanggan, kemudian pantau permintaan, invois serta penghantaran.", actions: ["Tambah syarikat", "Syarikat", "Permintaan syarikat", "Invois syarikat"] },
+  agent: { eyebrow: "Ruang kerja Pengurus Akaun Pelanggan", description: "Cipta dan urus syarikat pelanggan, kemudian pantau permintaan, invois serta penghantaran.", actions: ["Tambah syarikat", "Syarikat", "Permintaan syarikat", "Penghantaran syarikat"] },
   operations: { eyebrow: "Ruang kerja operasi Axora", description: "Urus katalog global, permintaan berbayar dan penyelarasan penghantaran.", actions: ["Semak permintaan berbayar", "Selaras penghantaran", "Urus katalog", "Operasi syarikat"] },
   deliveryGuy: { eyebrow: "Ruang kerja Ejen Penghantaran", description: "Semak permintaan berbayar yang ditugaskan, beli item diperlukan, hantar dan rekod bukti penerimaan.", actions: ["Penghantaran ditugaskan", "Gambaran penghantaran"] },
 });
