@@ -15,8 +15,8 @@ const companyActor: AuthenticatedSessionUser = {
   isOwner: false, authVersion: 1,
 };
 const branches: ShoppingBranchContext[] = [
-  { id: "40000000-0000-4000-8000-000000000001", code: "TEST1", name: "Test one", city: "Cyberjaya", address: "Test address", canManageLocation: true, ready: true },
-  { id: "40000000-0000-4000-8000-000000000002", code: "TEST2", name: "Test two", city: "Kuala Lumpur", address: "Other address", canManageLocation: true, ready: true },
+  { id: "40000000-0000-4000-8000-000000000001", code: "TEST1", name: "Test one", city: "Cyberjaya", address: "Test address", canManageLocation: true, ready: true, budgetAvailable: 1000 },
+  { id: "40000000-0000-4000-8000-000000000002", code: "TEST2", name: "Test two", city: "Kuala Lumpur", address: "Other address", canManageLocation: true, ready: true, budgetAvailable: 957.76 },
 ];
 
 describe("shopping and cart product contract", () => {
