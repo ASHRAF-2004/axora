@@ -39,7 +39,9 @@ export default defineConfig({
       ? "node output/standalone/server.js"
       : `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
     url: `${baseURL}/api/health/live`,
-    reuseExistingServer: !process.env.CI,
+    // The release command runs a mutable in-memory demo backend. Reusing a
+    // locally retained server would make its state part of the next test run.
+    reuseExistingServer: !useStandalone && !process.env.CI,
     timeout: 120_000,
     env: {
       APP_BASE_URL: baseURL,

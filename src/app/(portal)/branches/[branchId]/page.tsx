@@ -20,12 +20,19 @@ const localCopy = {
   ms: { back: "Kembali ke cawangan",details: "Maklumat cawangan",budget: "Bajet",editLocation: "Edit alamat penghantaran",locationRequired: "Lokasi penghantaran diperlukan",locationReady: "Lokasi penghantaran disahkan",people: "Orang",assigned: (count: number) => `${count} ditugaskan`,viewPeople: "Lihat orang",viewBudget: "Lihat bajet",addBudget: "Tambah bajet",amount: "Amaun",budgetHelp: "Ini meningkatkan kebenaran bajet cawangan; Wallet Syarikat disemak semasa pesanan dibuat.",adding: "Menambah…",budgetAdded: "Bajet dikemas kini.",budgetInvalid: "Masukkan amaun MYR positif yang sah dengan sehingga dua tempat perpuluhan.",budgetUnavailable: "Bajet tidak dapat ditambah. Semak kebenaran cawangan dan cuba lagi.",activeUnavailable: "Cawangan ini tidak dapat dikemas kini.",activeDelivery: "Selesaikan atau batalkan penghantaran aktif sebelum menyahaktifkan cawangan ini.",activeCart: "Selesaikan atau kosongkan troli aktif sebelum menyahaktifkan cawangan ini.",activeRequest: "Selesaikan atau batalkan permintaan aktif sebelum menyahaktifkan cawangan ini.",delete: "Padam cawangan",deleteTitle: "Padam cawangan ini secara kekal?",deleteBody: "Hanya cawangan kosong tanpa sejarah boleh dipadam. Cawangan yang digunakan hanya boleh dinyahaktifkan.",deleteConfirm: "Padam cawangan",deleteUsed: "Cawangan yang digunakan hanya boleh dinyahaktifkan.",deleteUnavailable: "Cawangan ini tidak boleh dipadam." },
 } as const;
 
+const sectionHeadings = {
+  en: { general: "General", deliveryAddress: "Delivery address", contactInformation: "Contact information", delivery: "Delivery" },
+  ar: { general: "عام", deliveryAddress: "عنوان التسليم", contactInformation: "معلومات الاتصال", delivery: "التسليم" },
+  ms: { general: "Umum", deliveryAddress: "Alamat penghantaran", contactInformation: "Maklumat hubungan", delivery: "Penghantaran" },
+} as const;
+
 export default async function BranchDetailPage({ params }: { params: Promise<{ branchId: string }> }) {
   const actor = await requirePagePermission("view_branches");
   const locale = actor.preferredLocale ?? "en";
   const copy = corePortalMessages(locale).branches;
   const common = corePortalMessages(locale).common;
   const local = localCopy[locale];
+  const headings = sectionHeadings[locale];
   const detailsCopy = branchDetailsMessages(locale);
   const { branchId } = await params;
   const { branches } = await loadOrganizationDirectory(actor);
@@ -48,29 +55,30 @@ export default async function BranchDetailPage({ params }: { params: Promise<{ b
     <PageHeader eyebrow={copy.eyebrow} title={branch.name} description={`${branch.companyName} · ${branch.city}`} />
     <div className="page-actions"><Link className="button button-secondary" href="/branches">{local.back}</Link>
       {canManageBranches ? <Link className="button button-secondary" href={`/branches/${branch.id}/edit`}>{detailsCopy.edit}</Link> : null}
-      {canOpenDeliveryLocation ? <Link className="button button-primary" href={`/branches/${branch.id}/delivery-location`}>{local.editLocation}</Link> : null}
     </div>
-    <section className="detail-grid">
-      <article className="panel"><h2>{local.details}</h2><dl className="summary-list">
-        {actor.accountKind === "PLATFORM" ? <div><dt>{common.company}</dt><dd>{branch.companyName}</dd></div> : null}
-        <div><dt>{copy.shortCode}</dt><dd>{branch.branchCode}</dd></div>
-        <div><dt>{copy.delivery}</dt><dd>{branch.deliveryAddress}</dd></div>
-        <div><dt>{local.editLocation}</dt><dd><StatusBadge status={locationReady ? "Active" : "Pending"}>{locationReady ? local.locationReady : local.locationRequired}</StatusBadge></dd></div>
-        <div><dt>{copy.contactName}</dt><dd>{branch.contactName || detailsCopy.notProvided}</dd></div>
-        <div><dt>{copy.contactPhone}</dt><dd><bdi>{branch.contactPhone || detailsCopy.notProvided}</bdi></dd></div>
-        <div><dt>{copy.contactEmail}</dt><dd><bdi>{branch.contactEmail || detailsCopy.notProvided}</bdi></dd></div>
-        <div><dt>{detailsCopy.deliveryInstructions}</dt><dd>{branch.deliveryInstructions || detailsCopy.notProvided}</dd></div>
-        <div><dt>{detailsCopy.notes}</dt><dd>{branch.notes || detailsCopy.notProvided}</dd></div>
-        <div><dt>{common.status}</dt><dd><StatusBadge status={branch.status}>{localizedStatus(branch.status,locale)}</StatusBadge></dd></div>
-      </dl></article>
-      {branch.canViewBudget ? <article className="panel"><h2>{local.budget}</h2><dl className="summary-list">
-        <div><dt>{copy.monthlyBudget}</dt><dd>{branch.monthlyBudget == null ? common.notSet : formatCurrency(branch.monthlyBudget,locale)}</dd></div>
-        <div><dt>{copy.committed}</dt><dd>{formatCurrency(branch.committedAmount ?? 0,locale)}</dd></div>
-        <div><dt>{copy.available}</dt><dd>{branch.remainingAmount == null ? common.notSet : formatCurrency(branch.remainingAmount,locale)}</dd></div>
-      </dl><div className="form-actions"><Link className="button button-secondary" href={`/budgets/${branch.id}`}>{local.viewBudget}</Link>{canAccess(actor, "manage_branch_budget") && branch.status === "Active" ? <AddBranchBudgetForm branchId={branch.id} copy={{ add: local.addBudget, amount: local.amount, help: local.budgetHelp, cancel: common.back, adding: local.adding, success: local.budgetAdded, invalid: local.budgetInvalid, unavailable: local.budgetUnavailable }} /> : null}</div></article> : null}
-      <article className="panel"><h2>{local.people}</h2><p>{local.assigned(assignedPeople.length)}</p>
-        {canAccess(actor, "manage_users") ? <Link className="button button-secondary" href={`/branches/${branch.id}/people`}>{local.viewPeople}</Link> : null}
-      </article>
+    <section className="branch-detail-layout">
+      <article className="panel information-panel branch-information-panel"><div className="panel-header"><h2>{local.details}</h2></div><div className="information-groups">
+        <section className="information-group"><h3>{headings.general}</h3><dl className="information-list">
+          {actor.accountKind === "PLATFORM" ? <div><dt>{common.company}</dt><dd>{branch.companyName}</dd></div> : null}
+          <div><dt>{copy.shortCode}</dt><dd><bdi>{branch.branchCode}</bdi></dd></div><div><dt>{common.status}</dt><dd><StatusBadge status={branch.status}>{localizedStatus(branch.status,locale)}</StatusBadge></dd></div>
+        </dl></section>
+        <section className="information-group"><h3>{headings.deliveryAddress}</h3><dl className="information-list">
+          <div className="information-item-wide"><dt>{copy.delivery}</dt><dd>{branch.deliveryAddress}</dd></div><div><dt>{local.editLocation}</dt><dd><StatusBadge status={locationReady ? "Active" : "Pending"}>{locationReady ? local.locationReady : local.locationRequired}</StatusBadge></dd></div>
+          {canOpenDeliveryLocation ? <div><dt>{local.editLocation}</dt><dd><Link href={`/branches/${branch.id}/delivery-location`}>{local.editLocation}</Link></dd></div> : null}
+        </dl></section>
+        <section className="information-group"><h3>{headings.contactInformation}</h3><dl className="information-list">
+          <div><dt>{copy.contactName}</dt><dd>{branch.contactName || detailsCopy.notProvided}</dd></div><div><dt>{copy.contactPhone}</dt><dd><bdi>{branch.contactPhone || detailsCopy.notProvided}</bdi></dd></div><div className="information-item-wide"><dt>{copy.contactEmail}</dt><dd><bdi>{branch.contactEmail || detailsCopy.notProvided}</bdi></dd></div>
+        </dl></section>
+        <section className="information-group"><h3>{headings.delivery}</h3><dl className="information-list">
+          <div><dt>{detailsCopy.deliveryInstructions}</dt><dd>{branch.deliveryInstructions || detailsCopy.notProvided}</dd></div><div><dt>{detailsCopy.notes}</dt><dd>{branch.notes || detailsCopy.notProvided}</dd></div>
+        </dl></section>
+      </div></article>
+      <aside className="branch-detail-aside">
+        {branch.canViewBudget ? <article className="panel information-panel"><div className="panel-header"><h2>{local.budget}</h2></div><dl className="information-list metric-information-list">
+          <div><dt>{copy.monthlyBudget}</dt><dd>{branch.monthlyBudget == null ? common.notSet : formatCurrency(branch.monthlyBudget,locale)}</dd></div><div><dt>{copy.committed}</dt><dd>{formatCurrency(branch.committedAmount ?? 0,locale)}</dd></div><div><dt>{copy.available}</dt><dd>{branch.remainingAmount == null ? common.notSet : formatCurrency(branch.remainingAmount,locale)}</dd></div>
+        </dl><div className="information-actions"><Link className="button button-secondary" href={`/budgets/${branch.id}`}>{local.viewBudget}</Link>{canAccess(actor, "manage_branch_budget") && branch.status === "Active" ? <AddBranchBudgetForm branchId={branch.id} copy={{ add: local.addBudget, amount: local.amount, help: local.budgetHelp, cancel: common.back, adding: local.adding, success: local.budgetAdded, invalid: local.budgetInvalid, unavailable: local.budgetUnavailable }} /> : null}</div></article> : null}
+        <article className="panel information-panel"><div className="panel-header"><h2>{local.people}</h2></div><div className="information-actions"><p>{local.assigned(assignedPeople.length)}</p>{canAccess(actor, "manage_users") ? <Link className="button button-secondary" href={`/branches/${branch.id}/people`}>{local.viewPeople}</Link> : null}</div></article>
+      </aside>
     </section>
     {canManageBranches ? <section className="panel"><h2>{common.actions}</h2><div className="detail-grid">
       <BranchActiveButton branchId={branch.id} active={branch.status === "Active"} copy={{ deactivate: common.deactivate, activate: common.activate, unavailable: local.activeUnavailable, activeDelivery: local.activeDelivery, activeCart: local.activeCart, activeRequest: local.activeRequest }} />

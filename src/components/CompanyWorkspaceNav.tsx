@@ -24,7 +24,7 @@ export function CompanyWorkspaceNav({ companyId, locale, active }: {
   return <nav className="page-actions company-workspace-nav" aria-label={labels[locale][0]}>
     {links.map(([href, key], index) => <Link
       aria-current={active === key ? "page" : undefined}
-      className={active === key ? "button button-primary" : "button button-secondary"}
+      className={`company-workspace-tab button ${active === key ? "button-primary is-active" : "button-secondary"}`}
       href={href}
       key={key}
     >{labels[locale][index]}</Link>)}

@@ -156,6 +156,31 @@ textarea { min-height: 82px; resize: vertical; }
 .summary-box span { color: var(--slate-500); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; font-weight: 750; }
 .summary-box strong { display: block; margin-top: 6px; color: var(--navy-900); font-size: 14px; }
 .detail-grid { margin-top: 17px; display: grid; grid-template-columns: 1fr 320px; gap: 17px; }
+.branch-detail-layout { margin-top: 17px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); gap: 17px; align-items: start; }
+.branch-detail-aside { display: grid; gap: 17px; }
+.company-overview-grid { margin-top: 17px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px; }
+.company-identity-panel { grid-column: 1 / -1; }
+.company-identity-body { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 20px; padding: 20px; }
+.company-logo-frame { width: 112px; height: 112px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--axora-border); border-radius: 18px; background: var(--axora-surface-muted); color: var(--axora-text-muted); font-size: 36px; font-weight: 800; }
+.company-logo-frame img { width: 100%; height: 100%; object-fit: contain; background: var(--axora-surface); }
+.information-panel-body { padding: 20px; }
+.information-panel { overflow: hidden; }
+.information-groups { padding: 0 20px; }
+.information-group { padding: 20px 0; border-block-start: 1px solid var(--axora-border-subtle); }
+.information-group:first-child { border-block-start: 0; }
+.information-group h3 { margin: 0 0 12px; color: var(--axora-text); font-size: 13px; letter-spacing: .01em; }
+.information-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 0; }
+.information-list > div { min-width: 0; }
+.information-list dt { color: var(--axora-text-muted); font-size: 12px; font-weight: 750; }
+.information-list dd { margin: 5px 0 0; overflow-wrap: anywhere; color: var(--axora-text); font-size: 14px; font-weight: 700; line-height: 1.5; }
+.information-item-wide { grid-column: 1 / -1; }
+.metric-information-list { padding: 20px; grid-template-columns: 1fr; gap: 0; }
+.metric-information-list > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 11px 0; border-block-start: 1px solid var(--axora-border-subtle); }
+.metric-information-list > div:first-child { padding-top: 0; border-block-start: 0; }
+.metric-information-list > div:last-child { padding-bottom: 0; }
+.metric-information-list dd { margin: 0; text-align: end; font-variant-numeric: tabular-nums; }
+.information-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 20px; border-block-start: 1px solid var(--axora-border-subtle); }
+.information-actions > p { margin: 0; color: var(--axora-text-muted); }
 .organization-back-row { margin-block-end: 16px; }
 .organization-hierarchy-panel { margin-block-start: 16px; }
 .organization-history-panel { margin-block-start: 17px; }
@@ -544,7 +569,7 @@ textarea { min-height: 82px; resize: vertical; }
 
 @media (max-width: 1120px) {
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
-  .dashboard-grid, .split-layout, .detail-grid { grid-template-columns: 1fr; }
+  .dashboard-grid, .split-layout, .detail-grid, .branch-detail-layout, .company-overview-grid { grid-template-columns: 1fr; }
   .form-panel { position: static; }
   .login-shell { grid-template-columns: 1fr; }
   .login-story { min-height: 520px; }
@@ -553,6 +578,10 @@ textarea { min-height: 82px; resize: vertical; }
 @media (max-width: 760px) {
   .content-shell { padding: 24px 18px; }
   .metric-grid, .request-summary, .form-grid { grid-template-columns: 1fr; }
+  .information-list { grid-template-columns: 1fr; }
+  .information-item-wide { grid-column: auto; }
+  .company-identity-panel { grid-column: auto; }
+  .company-identity-body { grid-template-columns: 1fr; }
   .support-session-action { grid-template-columns: 1fr; align-items: stretch; }
   .page-heading { align-items: flex-start; flex-direction: column; }
   .line-card { grid-template-columns: 1fr 1fr; }

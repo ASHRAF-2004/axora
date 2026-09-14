@@ -623,6 +623,14 @@ html[data-appearance="dark"] .brand-appearance-light { display: none; }
 .app-shell a:not(.button):not(.app-quick-action):visited { color: var(--axora-link-visited); }
 .app-shell nav a:visited,
 .app-shell .app-profile-menu a:visited { color: inherit; }
+.app-shell .company-workspace-nav .button-primary:visited,
+.app-shell .company-workspace-nav .button-primary:hover,
+.app-shell .company-workspace-nav .button-primary:active { color: var(--axora-brand-foreground); }
+.app-shell .company-workspace-nav .button-primary:focus-visible {
+  color: var(--axora-brand-foreground);
+  outline: 3px solid var(--axora-focus);
+  outline-offset: 2px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .app-shell *,
