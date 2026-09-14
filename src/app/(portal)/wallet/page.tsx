@@ -59,7 +59,7 @@ export default async function CompanyWalletPage({
           <thead><tr><th>{copy.company}</th><th>{copy.code}</th><th>{copy.status}</th><th><span className="sr-only">{messages.openCompanyWallet}</span></th></tr></thead>
           <tbody>{companies.map((company) => <tr key={company.id}>
             <td data-label={copy.company}><strong>{company.name}</strong></td><td data-label={copy.code}><bdi dir="ltr">{company.code}</bdi></td><td data-label={copy.status}>{company.active ? copy.active : copy.inactive}</td>
-            <td data-label=""><Link href={`/companies/${encodeURIComponent(company.id)}/wallet`}>{messages.openCompanyWallet}</Link></td>
+            <td data-label=""><Link className={`button button-primary ${styles.openWallet}`} href={`/companies/${encodeURIComponent(company.id)}/wallet`}>{messages.openCompanyWallet}</Link></td>
           </tr>)}</tbody>
         </table></div>}
       </section>

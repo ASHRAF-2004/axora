@@ -10,9 +10,9 @@ import { canAccess } from "@/lib/permissions";
 import { listProducts } from "@/lib/repository";
 
 const detailCopy = {
-  en: { eyebrow: "Catalog record", back: "Back to products", information: "Product information", pricing: "Authorized pricing", edit: "Edit product", sla: "Delivery SLA", days: "days" },
-  ar: { eyebrow: "سجل الكتالوج", back: "العودة إلى المنتجات", information: "معلومات المنتج", pricing: "الأسعار المخولة", edit: "تعديل المنتج", sla: "مهلة التسليم", days: "أيام" },
-  ms: { eyebrow: "Rekod katalog", back: "Kembali ke produk", information: "Maklumat produk", pricing: "Harga dibenarkan", edit: "Edit produk", sla: "SLA penghantaran", days: "hari" },
+  en: { eyebrow: "Catalog record", back: "Back to products", information: "Product information", details: "Product details", delivery: "Delivery", pricing: "Authorized pricing", edit: "Edit product", sla: "Delivery SLA", days: "days" },
+  ar: { eyebrow: "سجل الكتالوج", back: "العودة إلى المنتجات", information: "معلومات المنتج", details: "تفاصيل المنتج", delivery: "التسليم", pricing: "الأسعار المخولة", edit: "تعديل المنتج", sla: "مهلة التسليم", days: "أيام" },
+  ms: { eyebrow: "Rekod katalog", back: "Kembali ke produk", information: "Maklumat produk", details: "Butiran produk", delivery: "Penghantaran", pricing: "Harga dibenarkan", edit: "Edit produk", sla: "SLA penghantaran", days: "hari" },
 } as const;
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -39,17 +39,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       <article className="panel">
         <ProductImage product={product} locale={locale} showControls />
       </article>
-      <article className="panel">
+      <article className="panel information-panel product-information-panel">
         <div className="panel-header"><div><h2>{local.information}</h2><StatusBadge status={product.status}>{localizedStatus(product.status, locale)}</StatusBadge></div></div>
-        <dl className="summary-list">
-          <div><dt>{copy.category}</dt><dd>{product.category} · {product.subcategory}</dd></div>
-          <div><dt>{copy.brand}</dt><dd>{product.brand || "—"}</dd></div>
-          <div><dt>{copy.size}</dt><dd>{product.size || "—"}</dd></div>
-          <div><dt>{copy.unit}</dt><dd>{product.unit}</dd></div>
-          <div><dt>{local.sla}</dt><dd>{product.deliverySlaDays} {local.days}</dd></div>
-          <div><dt>{copy.sellPrice}</dt><dd>{formatCurrency(product.defaultSellPrice, locale)}</dd></div>
-          {canViewCost ? <div><dt>{copy.buyCost}</dt><dd>{formatCurrency(product.defaultBuyPrice, locale)}</dd></div> : null}
-        </dl>
+        <div className="information-groups">
+          <section className="information-group"><h3>{local.details}</h3><dl className="information-list">
+            <div className="information-item-wide"><dt>{copy.category}</dt><dd>{product.category} · {product.subcategory}</dd></div><div><dt>{copy.brand}</dt><dd>{product.brand || "—"}</dd></div><div><dt>{copy.size}</dt><dd>{product.size || "—"}</dd></div><div><dt>{copy.unit}</dt><dd>{product.unit}</dd></div><div><dt>{corePortalMessages(locale).common.status}</dt><dd><StatusBadge status={product.status}>{localizedStatus(product.status, locale)}</StatusBadge></dd></div>
+          </dl></section>
+          <section className="information-group"><h3>{local.delivery}</h3><dl className="information-list"><div><dt>{local.sla}</dt><dd>{product.deliverySlaDays} {local.days}</dd></div></dl></section>
+          <section className="information-group"><h3>{local.pricing}</h3><dl className="information-list metric-information-list">
+            <div><dt>{copy.sellPrice}</dt><dd>{formatCurrency(product.defaultSellPrice, locale)}</dd></div>{canViewCost ? <div><dt>{copy.buyCost}</dt><dd>{formatCurrency(product.defaultBuyPrice, locale)}</dd></div> : null}
+          </dl></section>
+        </div>
       </article>
     </section>
   </>;

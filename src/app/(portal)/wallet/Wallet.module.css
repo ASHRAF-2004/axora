@@ -83,7 +83,10 @@
 .companyTableWrap th { color: var(--wallet-muted); background: var(--wallet-muted-surface); font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; }
 .companyTableWrap td { font-size: .9rem; }
 .companyTableWrap td:last-child { text-align: end; }
-.companyTableWrap a { min-height: 44px; padding: .55rem .8rem; display: inline-flex; align-items: center; justify-content: center; color: var(--axora-brand-foreground); background: var(--wallet-primary); border-radius: .65rem; font-weight: 800; }
+.companyTableWrap .openWallet { min-height: 44px; padding: .55rem .8rem; border-radius: .65rem; }
+:global(.app-shell) .companyTableWrap a.openWallet:visited,
+:global(.app-shell) .companyTableWrap a.openWallet:hover,
+:global(.app-shell) .companyTableWrap a.openWallet:active { color: var(--axora-brand-foreground); }
 
 .companySelector select,
 .companySelector button,
