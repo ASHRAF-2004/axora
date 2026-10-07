@@ -21,7 +21,7 @@ import {
 import { SUPPORTED_LOCALES } from "@/lib/i18n";
 import { createCompanyWithBrand, regenerateCompanyBrand } from "@/lib/tenant-branding";
 import { updateProduct, updateProductCatalogMetadata } from "@/lib/product-admin";
-import { deleteProduct } from "@/lib/product-delete";
+import { deleteProduct, ProductDeletionError } from "@/lib/product-delete";
 import {
   deactivateProductImage,
   prepareProductImages,
@@ -394,10 +394,22 @@ export async function updateProductAction(
   return { status: "success", redirectTo: "/products?notice=product-updated" };
 }
 
-export async function deleteProductAction(productId: string) {
+export type DeleteProductActionState = { status: "idle" | "success" | "error"; message: string };
+
+export async function deleteProductAction(
+  productId: string,
+  _previous: DeleteProductActionState,
+): Promise<DeleteProductActionState> {
+  void _previous;
   const user = await requirePermission("manage_catalog");
-  await deleteProduct(productId, user);
-  revalidateProduct();
+  try {
+    await deleteProduct(productId, user);
+    revalidateProduct(productId);
+    return { status: "success", message: "PRODUCT_DELETED" };
+  } catch (error) {
+    return { status: "error", message: error instanceof ProductDeletionError
+      ? error.code : "UNAVAILABLE" };
+  }
 }
 
 export async function addProductImagesAction(productId: string, formData: FormData) {

@@ -14,7 +14,18 @@ SELECT format('GRANT CONNECT ON DATABASE %I TO axora_app', current_database())
 GRANT USAGE ON SCHEMA public TO axora_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO axora_app;
 REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM axora_app;
-GRANT DELETE ON TABLE public.products, public.product_suppliers, public.product_images TO axora_app;
+-- Retain the old partial-schema import contract only until the Owner lifecycle
+-- capability exists. Current releases must never regain raw catalog DELETE
+-- when this canonical policy is replayed after migrations.
+DO $product_deletion_boundary$
+BEGIN
+  IF to_regprocedure('public.axora_delete_product(uuid,uuid,integer,uuid)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.axora_delete_product(uuid,uuid,integer,uuid) TO axora_app;
+  ELSE
+    GRANT DELETE ON TABLE public.products,public.product_suppliers,public.product_images TO axora_app;
+  END IF;
+END
+$product_deletion_boundary$;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO axora_app;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO axora_app;
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;

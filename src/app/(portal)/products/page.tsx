@@ -112,7 +112,7 @@ export default async function ProductsPage({
               <form action={setMasterActiveAction.bind(null, "products", product.id, product.status === "Inactive")} style={{ marginBlockStart: 8 }}>
                 <button className="button button-secondary" type="submit">{product.status === "Active" ? common.deactivate : product.status === "Needs Review" ? copy.rejectDuplicate : common.activate}</button>
               </form>
-              {actor.isOwner ? <DeleteProductButton productId={product.id} productName={product.name} /> : null}
+              {actor.isOwner ? <DeleteProductButton productId={product.id} productName={product.name} locale={locale} /> : null}
             </> : null}
           </td>
         </tr>)}</tbody></table></div>
