@@ -246,13 +246,13 @@ test("skip navigation and profile menu are keyboard operable", async ({ page }, 
 
 test("representative role and Malay workspaces render only inside the authorized shell", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "The mobile role sample is covered by dashboard and RTL projects.");
-  const scenarios: Array<{ actor: DemoRoleSession | "owner"; route: string }> = [
+  const scenarios: Array<{ actor: DemoRoleSession | "owner"; route: string; expectedUrl?: string }> = [
     { actor: "owner", route: "/users" },
     { actor: "owner", route: "/notifications" },
     { actor: { ...companyAdmin, preferredLocale: "ms" }, route: "/wallet" },
     { actor: { ...companyAdmin, preferredLocale: "ms", id: "30333333-3333-4333-8333-333333333334" }, route: "/budgets" },
     { actor: { id: "55555555-5555-4555-8555-555555555555", email: "cam@axora.invalid", name: "CAM fixture", role: "CLIENT_ACCOUNT_MANAGER", accountKind: "PLATFORM", scopeType: "PLATFORM" }, route: "/companies" },
-    { actor: { ...arabicRequester, preferredLocale: "ms", id: "86000000-0000-4000-8000-000000000004" }, route: "/products" },
+    { actor: { ...arabicRequester, preferredLocale: "ms", id: "86000000-0000-4000-8000-000000000004" }, route: "/products", expectedUrl: "/products?branch=88888888-8888-4888-8888-888888888888" },
     { actor: { ...arabicRequester, preferredLocale: "ms", id: "86000000-0000-4000-8000-000000000005" }, route: "/profile" },
     { actor: { id: "44444444-4444-4444-8444-444444444444", email: "delivery@axora.invalid", name: "Delivery fixture", role: "DELIVERY_GUY", accountKind: "DELIVERY", scopeType: "DELIVERY" }, route: "/driver" },
   ];
@@ -261,7 +261,7 @@ test("representative role and Malay workspaces render only inside the authorized
     if (scenario.actor === "owner") await signInAsDemoOwner(page);
     else await signInAsDemoRole(page, scenario.actor);
     await page.goto(scenario.route);
-    await expect(page).toHaveURL(new RegExp(`${scenario.route.replace("/", "\\/")}$`));
+    await expect(page).toHaveURL(scenario.expectedUrl ?? new RegExp(`${scenario.route.replace("/", "\\/")}$`));
     const shell = page.locator(".app-shell");
     const expectedLocale = scenario.actor === "owner" ? "en" : scenario.actor.preferredLocale ?? "en";
     await expect(shell).toHaveAttribute("lang", expectedLocale);
