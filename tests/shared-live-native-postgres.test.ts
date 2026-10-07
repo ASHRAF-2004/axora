@@ -118,11 +118,16 @@ native.sequential("Shared live authorized native snapshot resync", () => {
     expect(JSON.stringify(after)).not.toMatch(/supplier|cost|price|description|count/);
     const aggregate = await customerCatalogLiveVersion(cam);
     expect(authoritativeSnapshotVersion(aggregate)).toBe(after.topics.catalog?.version);
-    const deny = randomUUID();
-    await admin.query(`INSERT INTO user_permission_overrides(id,user_id,permission_id,effect,scope_type,starts_at,active,reason,changed_by)
-      SELECT $1,$2,id,'DENY','PLATFORM',now(),true,'Isolated live CAM DENY',$2 FROM permissions WHERE permission_code='product.manage'`, [deny, cam.id]);
-    await expect(reader.load()).rejects.toThrow();
-    await admin.query("DELETE FROM user_permission_overrides WHERE id=$1", [deny]);
+    // The canonical model permits one active override per permission/scope.
+    // Replace the fixture GRANT with a committed DENY rather than bypassing it.
+    const denied = await admin.query<{ id: string }>(`UPDATE user_permission_overrides
+      SET effect='DENY',reason='Isolated live CAM DENY'
+      WHERE user_id=$1 AND active AND scope_type='PLATFORM'
+        AND permission_id=(SELECT id FROM permissions WHERE permission_code='product.manage')
+      RETURNING id::text`, [cam.id]);
+    expect(denied.rowCount).toBe(1);
+    try { await expect(reader.load()).rejects.toThrow(); }
+    finally { await admin.query("UPDATE user_permission_overrides SET effect='GRANT' WHERE id=$1", [denied.rows[0].id]); }
   });
   it("rechecks committed DENY, revoked branch membership and inactive role before subsequent delivery", async () => {
     const reader = await open(requester);
@@ -137,7 +142,9 @@ native.sequential("Shared live authorized native snapshot resync", () => {
     await expect(membershipReader.load()).rejects.toThrow();
     await admin.query("UPDATE branch_assignments SET status='ACTIVE' WHERE user_id=$1 AND branch_id=$2", [requester.id, branchA]);
     const roleReader = await open(requester);
-    await admin.query("UPDATE role_assignments SET active=false WHERE id=$1", [requester.roleAssignmentId]);
+    await admin.query(`UPDATE role_assignments
+      SET active=false,revoked_at=now(),revoked_by=$2,revoke_reason='Isolated live revocation'
+      WHERE id=$1`, [requester.roleAssignmentId, cam.id]);
     await expect(roleReader.load()).rejects.toThrow();
   });
 });
