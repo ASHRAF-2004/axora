@@ -85,7 +85,7 @@ native.sequential("Shared live authorized native snapshot resync", () => {
     cam = await actor("CLIENT_ACCOUNT_MANAGER");
     // Explicit independent catalog grant; never grants confidential pricing.
     await admin.query(`INSERT INTO user_permission_overrides(user_id,permission_id,effect,scope_type,starts_at,active,reason,changed_by)
-      SELECT $1,id,'ALLOW','PLATFORM',now(),true,'Isolated live catalog fixture',$1 FROM permissions WHERE permission_code='product.manage'`, [cam.id]);
+      SELECT $1,id,'GRANT','PLATFORM',now(),true,'Isolated live catalog fixture',$1 FROM permissions WHERE permission_code='product.manage'`, [cam.id]);
     cam = { ...cam, effectivePermissions: await resolveEffectiveRoutePermissions(cam) };
   }, 30_000);
   afterAll(async () => { state.actor = null; await global.__axoraPool?.end(); delete global.__axoraPool; await admin?.end(); });
