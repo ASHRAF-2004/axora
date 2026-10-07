@@ -26,8 +26,11 @@ test("one shared EventSource fans out current authorized view hints", async ({ p
     if (event.eventName === "snapshot") frames.push(JSON.parse(event.data));
   });
   await owner(page);
-  const requestLink = page.getByRole("link", { name: "Requests", exact: true }).filter({ visible: true }).first();
-  if (!await requestLink.isVisible()) await page.getByRole("button", { name: "Open application menu", exact: true }).click();
+  const requestLink = page.getByRole("article").filter({
+    has: page.getByRole("heading", { name: "Requests needing attention", exact: true }),
+  })
+    .getByRole("link", { name: "View all", exact: true });
+  await expect(requestLink).toHaveAttribute("href", "/requests");
   await requestLink.click();
   await expect(page).toHaveURL(/\/requests$/);
   await expect(page.locator('[data-live-status="current"]')).toBeVisible();
