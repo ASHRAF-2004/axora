@@ -128,8 +128,17 @@ mailbox receipt remain pending for the lead.
 Read-only sibling-worker inspection found budget, document, cleanup and
 integration readiness HTTP 200 with no active work at the inspected instant.
 Cleanup/integration retained logs contain database administrator termination
-`57P01`; further pool-recovery diagnosis is owned by the lead. No broad worker
-refactor is included in this email patch.
+`57P01`, followed by `Unhandled 'error' event` on `BoundPool`, both at
+2026-10-07T05:46:11.363Z. Their next startup log is
+2026-10-07T05:50:03.259Z, about 232 seconds later. The shared app pool and four
+worker pool constructors have no idle error listener in the inspected release.
+`pg-pool` purges an errored idle client before emitting the pool error. A bounded
+isolated actual `pg.Pool` test with synthetic clients exited 1 without a listener;
+with a listener it exited 0, captured `57P01`, created a fresh client and completed
+the next query. This corroborates the retained idle error failure, without
+terminating a live PostgreSQL connection. The lead owns any common pool repair.
+Budget/document lack an observed retained fatal event, so their exposure is an
+inference from their constructors. No broad worker refactor is included here.
 
 ## Backlog/restart safety
 
