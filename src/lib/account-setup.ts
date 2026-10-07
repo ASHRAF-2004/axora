@@ -852,7 +852,13 @@ export async function recordAccountSetupDelivery(
     async (client) => {
       const result = await client.query(
         `UPDATE account_setup_invitations
-         SET delivery_status=$2,
+         SET delivery_status=CASE
+               -- A refused/unavailable send claim has no provider attempt.
+               -- Its raw token is no longer recoverable, so retire the link
+               -- through the existing PENDING -> CANCELLED transition rather
+               -- than leave an unusable invitation blocking a replacement.
+               WHEN delivery_status='PENDING' AND $2='FAILED' THEN 'CANCELLED'
+               ELSE $2 END,
              delivery_attempted_at=now(),
              delivery_attempt_count=1,
              sent_at=CASE WHEN $3::boolean THEN now() ELSE NULL END,
@@ -878,16 +884,23 @@ export async function recordAccountSetupDelivery(
         }
         return true;
       }
-      const existing = await client.query<{ deliveryStatus: string; providerMessageId?: string }>(
+      const existing = await client.query<{
+        deliveryStatus: string;
+        providerMessageId?: string;
+        lastDeliveryError?: string;
+      }>(
         `SELECT delivery_status AS "deliveryStatus",
-           provider_message_id AS "providerMessageId"
+           provider_message_id AS "providerMessageId",
+           last_delivery_error AS "lastDeliveryError"
          FROM account_setup_invitations WHERE id=$1`,
         [invitationId],
       );
       const row = existing.rows[0];
-      return row?.deliveryStatus === deliveryStatus
+      return (row?.deliveryStatus === deliveryStatus
+          || (deliveryStatus === "FAILED" && row?.deliveryStatus === "CANCELLED"
+            && row.lastDeliveryError === "delivery_failed"))
         && (!delivery.succeeded || !providerMessageId
-          || row.providerMessageId === providerMessageId);
+          || row?.providerMessageId === providerMessageId);
     },
   );
 }

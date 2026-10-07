@@ -90,7 +90,8 @@ describe("one-shot account setup email delivery", () => {
     })).resolves.toBe(true);
 
     const [sql, values] = mocks.client.query.mock.calls[0];
-    expect(String(sql)).toContain("delivery_status=$2");
+    expect(String(sql)).toContain("SET delivery_status=CASE");
+    expect(String(sql)).toContain("WHEN delivery_status='PENDING' AND $2='FAILED' THEN 'CANCELLED'");
     expect(String(sql)).not.toContain("'PENDING',delivery");
     expect(values).toContain("FAILED");
   });
