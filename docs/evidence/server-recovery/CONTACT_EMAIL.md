@@ -136,9 +136,31 @@ worker pool constructors have no idle error listener in the inspected release.
 isolated actual `pg.Pool` test with synthetic clients exited 1 without a listener;
 with a listener it exited 0, captured `57P01`, created a fresh client and completed
 the next query. This corroborates the retained idle error failure, without
-terminating a live PostgreSQL connection. The lead owns any common pool repair.
+terminating a live PostgreSQL connection.
 Budget/document lack an observed retained fatal event, so their exposure is an
 inference from their constructors. No broad worker refactor is included here.
+
+The recovery candidate now attaches one shared idle-client error listener at the
+app and four worker pool creation sites. `pg-pool` remains responsible for
+removing the failed client; neither the pool nor a transaction is reset or
+replayed. Logs contain a fixed event/component plus a validated five-character
+SQLSTATE only. Worker readiness progress is invalidated until a subsequent
+successful existing poll, while process liveness remains available.
+
+The two new focused files passed eight tests in 4.25 seconds. An actual `pg.Pool`
+subprocess with an isolated Client transport proves the old process exits 1,
+whereas the candidate exits 0, creates a second client and completes a fresh
+query. An active operation error rejects once and is not replayed. The app
+singleton retains its original pool and exactly one listener. Actual worker
+entry points with fake databases verify HTTP 200 ready, then HTTP 503 ready and
+HTTP 200 live after the idle error, followed by recovery through the next
+existing one-second test poll. Exception details do not enter logs. Adjacent
+query-contract/budget/document/cleanup tests and integration-worker tests also
+pass (seven focused files, 55 tests total); changed-file lint and diff checks
+pass. Independent review reproduced the eight new tests with no blocking
+finding. These are isolated transport/worker trials, not native PostgreSQL or
+production restart evidence; final integrated gates and live acceptance belong
+to the release lead.
 
 ## Backlog/restart safety
 

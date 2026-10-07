@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
+import { attachPostgresPoolErrorHandler } from "./postgres-pool-errors.mjs";
 
 const accessAsync = promisify(access);
 const lstatAsync = promisify(lstat);
@@ -271,6 +272,10 @@ export function startCompanyDeletionCleanupWorker({ env = process.env } = {}) {
     searchIndexRoot: env.AXORA_COMPANY_SEARCH_INDEX_ROOT,
   });
   const state = { active: false, stopping: false, lastSuccessfulPollAt: 0 };
+  attachPostgresPoolErrorHandler(pool, {
+    component: "company-deletion-cleanup-worker",
+    onError: () => { state.lastSuccessfulPollAt = 0; },
+  });
   const poll = async () => {
     if (state.active || state.stopping) return;
     state.active = true;
