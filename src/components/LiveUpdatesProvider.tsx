@@ -55,6 +55,8 @@ export function useLiveRead<T>(topic: LiveTopic, url: string, apply: (value: T) 
   useEffect(() => {
     const reader = new LiveDetailReader<T>(url, (value) => current.current.apply(value), () => current.current.failed?.());
     transport.current = reader;
+    // The existing authorized workspace read must not depend on SSE readiness.
+    reader.refresh();
     return () => { reader.stop(); if (transport.current === reader) transport.current = null; };
   }, [url]);
   useLiveTopic(topic, () => transport.current?.refresh(), context);
