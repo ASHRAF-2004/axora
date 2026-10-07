@@ -379,7 +379,7 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
   if (isDemoMode()) return null;
   const privateContactRecipient = contactNotificationRecipient();
   return withAuditTransaction(
-    { reason: "Transactional email claimed" },
+    { reason: "Transactional email claimed", systemIdentity: "transactional-email-worker" },
     async (client) => {
       // Provider hard-bounce and complaint events suppress only email. Contact
       // records remain durable and in-app workflow notifications are unrelated.
@@ -415,7 +415,7 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                    AND axora_email_recipient_is_suppressed(verification.email)
                ))
                OR (outbox.message_kind='INVOICE_FINALIZED'
-                 AND public.axora_invoice_email_recipient_suppressed(outbox.id))
+                 AND (public.axora_transactional_invoice_email_state(outbox.id)->>'suppressed')::boolean)
              )
            RETURNING contact_submission_id,message_kind
          )
@@ -561,7 +561,7 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
                AND verification_user.account_status='ACTIVE'
                AND NOT axora_email_recipient_is_suppressed(verification.email))
              OR (outbox.message_kind='INVOICE_FINALIZED'
-               AND public.axora_invoice_email_ready(outbox.id))
+               AND (public.axora_transactional_invoice_email_state(outbox.id)->>'ready')::boolean)
            )
          ORDER BY CASE outbox.priority
              WHEN 'URGENT' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'NORMAL' THEN 3 ELSE 4 END,
@@ -660,8 +660,8 @@ export async function claimTransactionalEmailOutbox(): Promise<TransactionalEmai
 
       if (row.messageKind === "INVOICE_FINALIZED") {
         const payloadResult = await client.query<{ value: Record<string, unknown> | null }>(
-          "SELECT public.axora_invoice_email_payload($1) AS value",
-          [row.deliveryId],
+          "SELECT public.axora_claimed_invoice_email_payload($1,$2) AS value",
+          [row.deliveryId, leaseId],
         );
         const payload = payloadResult.rows[0]?.value;
         if (!payload || typeof payload.attachment !== "object" || !payload.attachment) {
@@ -860,8 +860,8 @@ export async function completeTransactionalEmailOutbox(
       if (!row) return false;
       await client.query(
         `SELECT axora_record_transactional_email_attempt(
-           $1,$2,$3,$4,$5,$6,$7,
-           CASE WHEN $8='retry' AND $7 >= $9 THEN 'failed' ELSE $8 END,
+           $1,$2,$3,$4,$5,$6,$7::integer,
+           CASE WHEN $8='retry' AND $7::integer >= $9::integer THEN 'failed' ELSE $8 END,
            $10,$11,$12,$13
          )`,
         [deliveryId,row.messageKind,row.templateKey,row.templateVersion,

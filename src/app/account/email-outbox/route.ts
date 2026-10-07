@@ -150,8 +150,17 @@ export async function POST(request: Request) {
     }
 
     return noStoreJson({ error: "invalid_request" }, 400);
-  } catch {
+  } catch (error) {
     // Never echo or log a queue body; security jobs contain bearer links.
+    const sqlState = error && typeof error === "object" && "code" in error
+      && typeof error.code === "string" && /^[A-Z0-9]{5}$/.test(error.code)
+      ? error.code : undefined;
+    console.error(JSON.stringify({
+      event: "email_outbox_operation_failed",
+      action: parsed.action,
+      queue: parsed.queue,
+      ...(sqlState ? { sqlState } : {}),
+    }));
     return noStoreJson({ error: "service_unavailable" }, 503);
   }
 }

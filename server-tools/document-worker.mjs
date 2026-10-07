@@ -5,6 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { Pool } from "pg";
 import { renderVersionedDocument } from "./document-renderer.mjs";
+import { attachPostgresPoolErrorHandler } from "./postgres-pool-errors.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -175,6 +176,10 @@ export async function startDocumentWorker() {
   let stopping = false;
   let polling = false;
   let lastPollAt = new Date(0);
+  attachPostgresPoolErrorHandler(pool, {
+    component: "document-worker",
+    onError: () => { lastPollAt = new Date(0); },
+  });
 
   async function poll() {
     if (stopping || polling) return;

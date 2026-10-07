@@ -14,7 +14,18 @@ SELECT format('GRANT CONNECT ON DATABASE %I TO axora_app', current_database())
 GRANT USAGE ON SCHEMA public TO axora_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO axora_app;
 REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM axora_app;
-GRANT DELETE ON TABLE public.products, public.product_suppliers, public.product_images TO axora_app;
+-- Retain the old partial-schema import contract only until the Owner lifecycle
+-- capability exists. Current releases must never regain raw catalog DELETE
+-- when this canonical policy is replayed after migrations.
+DO $product_deletion_boundary$
+BEGIN
+  IF to_regprocedure('public.axora_delete_product(uuid,uuid,integer,uuid)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.axora_delete_product(uuid,uuid,integer,uuid) TO axora_app;
+  ELSE
+    GRANT DELETE ON TABLE public.products,public.product_suppliers,public.product_images TO axora_app;
+  END IF;
+END
+$product_deletion_boundary$;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO axora_app;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO axora_app;
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
@@ -887,6 +898,26 @@ BEGIN
     EXECUTE 'REVOKE ALL ON TABLE public.payment_accountability_events FROM axora_app';
     EXECUTE 'REVOKE ALL ON FUNCTION public.axora_invoice_email_payload(uuid),public.axora_invoice_email_ready(uuid),public.axora_invoice_email_recipient_suppressed(uuid),public.axora_queue_final_invoice_email(),public.axora_protect_invoice_email_identity(),public.validate_new_invoice_workflow(),public.prevent_invoice_overpayment() FROM axora_app';
     EXECUTE 'GRANT EXECUTE ON FUNCTION public.axora_complete_payment(uuid,uuid,uuid,text,text,timestamptz),public.axora_final_invoice_summary(uuid,uuid,uuid,timestamptz),public.axora_complete_final_invoice_document_job(uuid,uuid,text,text,text,integer,bigint,timestamptz) TO axora_app';
+  END IF;
+END $$;
+
+-- Worker-only invoice email capabilities added by migration 137. The original
+-- unrestricted invoice helpers above remain denied to the application role.
+DO $$
+BEGIN
+  IF to_regprocedure('public.axora_transactional_invoice_email_state(uuid)') IS NOT NULL
+    AND to_regprocedure('public.axora_claimed_invoice_email_payload(uuid,uuid)') IS NOT NULL
+  THEN
+    REVOKE ALL ON FUNCTION
+      public.axora_transactional_invoice_email_state(uuid),
+      public.axora_claimed_invoice_email_payload(uuid,uuid),
+      public.axora_email_retry_delay(integer)
+    FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_transactional_invoice_email_state(uuid),
+      public.axora_claimed_invoice_email_payload(uuid,uuid),
+      public.axora_email_retry_delay(integer)
+    TO axora_app;
   END IF;
 END $$;
 

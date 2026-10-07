@@ -14,6 +14,7 @@ import { BlockList, isIP } from "node:net";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
+import { attachPostgresPoolErrorHandler } from "./postgres-pool-errors.mjs";
 
 const DEFAULT_INTERVAL_MS = 5_000;
 const MAX_RESPONSE_BYTES = 65_536;
@@ -962,6 +963,10 @@ export function startIntegrationWorker({ env = process.env } = {}) {
     connectionTimeoutMillis:10_000,idleTimeoutMillis:30_000,
     statement_timeout:15_000,query_timeout:20_000,
     application_name:"axora-integration-worker",
+  });
+  attachPostgresPoolErrorHandler(db, {
+    component: "integration-worker",
+    onError: () => { state.lastSuccessfulPollAt = 0; },
   });
   const rootKey = enabled ? integrationRootKey(env) : undefined;
   const poll = async () => {

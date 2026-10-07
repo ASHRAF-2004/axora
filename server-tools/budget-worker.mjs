@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import pg from "pg";
+import { attachPostgresPoolErrorHandler } from "./postgres-pool-errors.mjs";
 
 const DEFAULT_INTERVAL_MS = 15_000;
 
@@ -92,6 +93,10 @@ export function startBudgetWorker({ env = process.env } = {}) {
     max: 2,
     connectionTimeoutMillis: 10_000,
     idleTimeoutMillis: 30_000,
+  });
+  attachPostgresPoolErrorHandler(db, {
+    component: "budget-worker",
+    onError: () => { state.lastSuccessfulPollAt = 0; },
   });
   const poll = async () => {
     if (state.active) return;

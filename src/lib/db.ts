@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
+import { attachPostgresPoolErrorHandler } from "../../server-tools/postgres-pool-errors.mjs";
 
 declare global {
   var __axoraPool: Pool | undefined;
@@ -162,6 +163,7 @@ export function getPool() {
       max: 10,
       ssl: buildSslConfig(),
     });
+    attachPostgresPoolErrorHandler(pool, { component: "app" });
     pool.on("connect", guardClientQueries);
     global.__axoraPool = pool;
   }
