@@ -97,6 +97,40 @@ context rejection, unknown-lease isolation and actual completion SQL parsing.
 The full native gate, final release gates and live acceptance must be appended
 by the lead using the integrated candidate.
 
+Independent review also found that an HTTP 200 completion response was accepted
+without checking `recorded: true`. Both queues now reject false, missing or
+malformed acknowledgement. Six isolated regressions verify degraded health,
+no duplicate provider send and no private material in logs; the two sender
+focused files passed 26 tests after that correction.
+
+## Actual process recovery through isolated transports
+
+`tests/email-sender-process-recovery.test.mjs` starts the real sender in separate
+Node processes, with its pinned app/Resend URLs mapped exclusively to loopback
+fixture servers. All secrets and recipient/message inputs are synthetic. The
+fixture queue persists between child processes; the real PostgreSQL state
+transitions are verified separately by the lifecycle test above. No production
+service, queue or provider is used by these subprocess trials.
+
+All three process scenarios passed in 10.63 seconds in the evidence run:
+
+| Scenario | Measured recovery | Result |
+| --- | --- | --- |
+| App queue unavailable at worker startup, then restored | 9,972 ms until readiness; 55 ms after graceful restart | Health degraded while claims failed; existing ten-second poll recovered without queue repair; no sends |
+| SIGTERM after provider acceptance, while completion response was held | 123 ms graceful drain, including a controlled 100 ms hold | Process waited for recorded completion; one provider acceptance and one local completion; restart sent no duplicate |
+| SIGKILL at the same accepted-before-acknowledgement boundary | 56 ms restart readiness after simulated lease expiry | Queue moved from SENDING to UNCERTAIN; one provider acceptance, zero local completions; no replay |
+
+These are local fixture timings and service/process trials, not production
+recovery times or host reboot evidence. The actual database regression proves
+expired leases and late acknowledgement semantics; production acceptance and
+mailbox receipt remain pending for the lead.
+
+Read-only sibling-worker inspection found budget, document, cleanup and
+integration readiness HTTP 200 with no active work at the inspected instant.
+Cleanup/integration retained logs contain database administrator termination
+`57P01`; further pool-recovery diagnosis is owned by the lead. No broad worker
+refactor is included in this email patch.
+
 ## Backlog/restart safety
 
 Repairing claim authorization can automatically activate historical jobs.
