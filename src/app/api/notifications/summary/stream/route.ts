@@ -1,6 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { notificationSummary } from "@/lib/notification-repository";
-import { snapshotEventStream } from "@/lib/server-event-stream";
+import { authorizedLiveSnapshotStream } from "@/lib/live-update-reader";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +13,5 @@ export async function GET(request: Request) {
     });
   }
 
-  return snapshotEventStream(
-    request,
-    () => notificationSummary(actor),
-    10_000,
-  );
+  return authorizedLiveSnapshotStream(request, actor, "notifications", notificationSummary, 10_000);
 }

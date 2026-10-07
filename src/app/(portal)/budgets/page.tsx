@@ -1,3 +1,4 @@
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -19,6 +20,7 @@ export default async function BudgetsPage() {
   if (!workspace) redirect("/access-denied");
   const branches = workspace.accounts.filter((account) => account.levelType === "BRANCH" && account.branchId && account.companyId === actor.companyId);
   return <>
+    <LiveWorkspaceSync topics={["budgets"]} locale={locale} />
     <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
     <section className={`panel table-panel ${styles.workspace}`}>
       <div className={styles.tableWrap} role="region" aria-label={copy.title} tabIndex={0}><table className={styles.table}><thead><tr><th scope="col">{copy.branch}</th><th scope="col" className={styles.money}>{copy.current}</th><th scope="col" className={styles.money}>{copy.remaining}</th><th scope="col">{copy.cycle}</th><th scope="col">{copy.status}</th><th scope="col">{copy.action}</th></tr></thead>

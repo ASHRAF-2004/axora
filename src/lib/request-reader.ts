@@ -86,6 +86,30 @@ function requireAssignment(actor: AuthenticatedSessionUser) {
   return actor.roleAssignmentId;
 }
 
+/** Fixed-size metadata using the same live visibility capability as this page. */
+export async function requestLiveVersion(actor: AuthenticatedSessionUser) {
+  if (!canAccess(actor, "view_requests")) throw new RequestAccessUnavailableError();
+  if (isDemoMode()) {
+    const visible = await filterVisibleDemoRequests(actor, getDemoStore().requests, new Date());
+    return visible.map((request) => ({ id: request.id, status: request.status, approvalStatus: request.approvalStatus,
+      lines: request.lines.map((line) => ({ id: line.id, deliveryStatus: line.deliveryStatus, quantity: line.quantity })) }));
+  }
+  return withAuditTransaction({ actor, reason: "Read authorized purchase request live version" }, async (client) => {
+    const result = await client.query(`
+      SELECT count(*)::text AS count, max(r.updated_at)::text AS latest,
+        coalesce(sum(extract(epoch FROM r.updated_at)),0)::text AS changed,
+        coalesce(sum(r.request_version),0)::text AS versions,
+        coalesce(sum(line_version.changed),0)::text AS lines_changed
+      FROM public.requests r
+      JOIN public.axora_request_access_rows($1,$2,$3) access ON access.request_id=r.id
+      LEFT JOIN LATERAL (
+        SELECT coalesce(sum(extract(epoch FROM line.updated_at)),0) AS changed
+        FROM public.request_lines line WHERE line.request_id=r.id
+      ) line_version ON true`, [actor.id, requireAssignment(actor), new Date()]);
+    return result.rows[0];
+  });
+}
+
 function groupRequestRows(rows: RequestRow[]): ProcurementRequest[] {
   const requests = new Map<string, ProcurementRequest>();
   for (const row of rows) {

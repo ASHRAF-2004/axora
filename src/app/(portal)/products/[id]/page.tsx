@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { ProductImage } from "@/components/ProductImage";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
@@ -30,6 +31,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const canEdit = canManage;
 
   return <>
+    <LiveWorkspaceSync topics={["catalog"]} locale={locale} viewKey={product.id} />
     <PageHeader eyebrow={local.eyebrow} title={product.name} description={product.description || copy.operationsDescription} />
     <div className="page-actions">
       <Link className="button button-secondary" href="/products">{local.back}</Link>

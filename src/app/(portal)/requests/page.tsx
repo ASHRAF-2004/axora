@@ -1,3 +1,4 @@
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { PageHeader } from "@/components/PageHeader";
 import { RequestFiltersPanel } from "@/components/RequestFilters";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -67,6 +68,7 @@ export default async function RequestsPage({
 
   return (
     <>
+      <LiveWorkspaceSync topics={["requests"]} locale={locale} viewKey={currentParams.toString()} />
       <PageHeader
         eyebrow={platformView ? copy.platformEyebrow : copy.companyEyebrow}
         title={copy.title}

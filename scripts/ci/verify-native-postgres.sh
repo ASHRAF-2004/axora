@@ -293,6 +293,7 @@ run_native_test tests/company-admin-direct-purchase-native-postgres.test.ts
 run_native_test tests/product-delete-native-postgres.test.ts
 run_native_test tests/branch-budget-lifecycle-native-postgres.test.ts
 run_native_test tests/postgres-idle-pool-native-postgres.test.ts
+run_native_test tests/shared-live-native-postgres.test.ts
 run_native_test tests/existing-user-management-native-postgres.test.ts
 run_native_test tests/integration-webhook-native-postgres.test.ts
 

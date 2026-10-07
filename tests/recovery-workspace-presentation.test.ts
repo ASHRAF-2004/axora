@@ -7,6 +7,9 @@ vi.mock("@/lib/auth", () => ({ requirePagePermission: mocks.requirePermission })
 vi.mock("@/lib/budget-ledger", () => ({ getBudgetWorkspace: mocks.workspace }));
 vi.mock("@/lib/locale-server", () => ({ requestLocaleDecision: mocks.locale }));
 vi.mock("@/components/Brand", () => ({ Brand: () => createElement("span", null, "Axora") }));
+// Router-backed refresh behavior has dedicated client and browser coverage.
+// This static-render fixture exercises the localized budget markup and values.
+vi.mock("@/components/LiveWorkspaceSync", () => ({ LiveWorkspaceSync: () => null }));
 vi.mock("@/components/AccountSetupClient", () => ({ AccountSetupClient: () => createElement("article", { className: "login-card" }, "Invitation state") }));
 
 import BudgetsPage from "@/app/(portal)/budgets/page";

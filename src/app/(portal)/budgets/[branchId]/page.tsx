@@ -1,3 +1,4 @@
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -29,6 +30,7 @@ export default async function BranchBudgetPage({ params }: { params: Promise<{ b
   const configured = Number(account.recurringAllocation) > 0 || Boolean(period && Number(period.allocated) > 0);
   const today = isoDateInTimeZone(new Date().toISOString(), account.timezone || "Asia/Kuala_Lumpur");
   return <>
+    <LiveWorkspaceSync topics={["budgets"]} locale={locale} viewKey={branchId} />
     <PageHeader eyebrow={`${copy.title} · ${account.code}`} title={account.name.replace(/ budget$/i, "")} description={copy.description} />
     <div className="page-actions"><Link className="button button-secondary" href="/budgets">{copy.back}</Link><Link className="button button-secondary" href={`/branches/${branchId}`}>{copy.viewBranch}</Link></div>
     {fundingState?.state === "FUNDING_REQUIRED" ? <section className="panel"><p className="form-alert" role="alert">{copy.funding} <Link href="/wallet">{copy.openWallet}</Link></p></section> : null}

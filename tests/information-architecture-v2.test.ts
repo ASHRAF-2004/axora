@@ -42,13 +42,18 @@ describe("single-purpose portal routes", () => {
   });
 
   it("uses authenticated SSE for notification summaries with polling only as fallback", async () => {
-    const [route,shell] = await Promise.all([
+    const [route,shell,provider,client] = await Promise.all([
       readFile("src/app/api/notifications/summary/stream/route.ts","utf8"),
       readFile("src/components/app-shell/AppShell.tsx","utf8"),
+      readFile("src/components/LiveUpdatesProvider.tsx","utf8"),
+      readFile("src/lib/shared-live-client.ts","utf8"),
     ]);
     expect(route).toContain("getSession()");
-    expect(route).toContain("snapshotEventStream");
-    expect(shell).toContain('new EventSource("/api/notifications/summary/stream"');
-    expect(shell).toContain('!("EventSource" in window)');
+    expect(route).toContain("authorizedLiveSnapshotStream");
+    expect(shell).toContain('<LiveUpdatesProvider');
+    expect(shell).toContain('useLiveTopic("notifications"');
+    expect(shell).not.toContain('new EventSource(');
+    expect(provider).toContain('new EventSource(url, { withCredentials: true })');
+    expect(client).toContain('&transport=poll');
   });
 });
