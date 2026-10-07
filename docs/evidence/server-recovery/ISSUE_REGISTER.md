@@ -11,29 +11,30 @@ is retained as historical provenance, not current identity.
 
 | Priority | Issue | Evidence / current boundary | Status |
 | --- | --- | --- | --- |
-| A/B | DEPLOYMENT_RUNTIME | Live email polling fails while readiness remains green. Historical cleanup/integration idle pool errors (`57P01`) terminated their processes. Current Docker startup policies are enabled; no competing supervisor is justified | Root cause established; fixed locally / review in progress. No host restart allowed |
-| A/B | REGISTRATION | Original live journey/error is unavailable. Isolated real invitation workflow reproduces invalid `PENDING → FAILED` transition (`P0001`) after a refused claim; terminal cancellation permits safe replacement | Fixed locally; original live case not reproduced with evidence gap |
-| A/B | PRODUCT_DELETE | One live cart-only reference is omitted by the existing request-history guard. Matching isolated state raises restrictive FK `23001`/`23503`; transaction rolls back. Narrow live Owner/DENY-aware capability and typed reference feedback are under review | Root cause established in isolated matching dependency state; live irreversible trial unverified |
+| A/B | DEPLOYMENT_RUNTIME | Previous polling/readiness and idle-pool57P01 defects repaired in PR217/218; useful readiness and one idle sender stop/start proved | Deployed a40; real queued Contact journey remains pending. No host restart allowed |
+| A/B | REGISTRATION | Original historical route/time/error unavailable; isolated PENDING-to-FAILED defect repaired through existing terminal cancellation | Deployed; fenced restored-data normal-auth lifecycle acceptance preparing, not historical exception proof |
+| A/B | PRODUCT_DELETE | Cart-only restrictive-FK defect repaired by audited Owner/DENY capability138; raw catalog DELETE remains denied | Deployed; disposable success/protected-reference/denial acceptance preparing in isolated copy only |
 | C | 1 — Company setup tab contrast | Existing PR #216 fix is deployed; preserve selected/visited/hover/focus readability in both themes | Deployed previously; current acceptance pending |
 | C | 2 — Branch information layout | Existing grouped layout and single delivery-address action must remain; preserve budget metrics | Deployed previously; current acceptance pending |
 | C | 3 — Open wallet contrast | Existing semantic button treatment must remain readable in both themes | Deployed previously; current acceptance pending |
 | C | 4 — Company overview/logo | Reuse reviewed company branding and honest absent-logo placeholder | Deployed previously; current acceptance pending |
 | C | 5 — Product information layout | Preserve general/delivery/pricing groups and confidential commercial permissions | Deployed previously; current acceptance pending |
 | C | 6 — Setup Wallet 404 | Existing Owner-only pending state must load the correct company without fabricating a Wallet | Deployed previously; current acceptance pending; no incomplete live fixture designated |
-| A/B | 7 — Contact recorded, email missing | Live claim denial `42501` at private invoice helper blocks both queues; completion `42P08` and retry-delay denial also proven. Historical jobs require targeted hold before repaired claims activate | Fixed locally; live delivery and service-trial acceptance pending |
+| A/B | 7 — Contact recorded, email missing |42501/42P08/retry-delay repaired; eight audited zero-attempt holds preserved. A/B durable counts zero; manual A reserved conservatively, user reports Brave verifies/Chrome fails600010 | Deployed core; live submission/outbox/provider/delivery/receipt evidence still pending, no historical resend |
 | D | 8 — Shared live data through SSE | Approved bounded durable-snapshot resync/shared connection; no new ledger, proxy or queue coupling | Implementation and focused security/recovery checks in progress |
 | E | 9 — Migration guide | Illustrated PDF and secret-free runbooks required; no host migration/cutover/decommission authorized | Independent guide work active; future destination/boot remains untested |
 | C | 10 — Password/invitation page UI | Compact existing account design and friendly localized roles, token/consent contract preserved | Local render/link-transport tests pass; valid invitation rendered acceptance pending |
-| D | 11 — Integrations/Slack | Existing API/webhook/Zapier/Slack inventory/checklist; no controlled Slack workspace supplied | Independent read-only verification active; real Slack activation requires authorized workspace |
-| C | 12 — Add Budget | Existing contractual ceiling legitimately refuses RM500; typed precise refusal/authority recheck, no accounting or period change | Focused specialist implementation; no live budget mutation |
-| C | 13 — Budgets list | Full-width aligned six-column table, semantic theme tokens, local horizontal scroll/keyboard focus; metrics unchanged | Local EN/AR/MS render checks pass; actual rendered acceptance pending |
-| C | 14 — Branch Administrator lifecycle | Isolated custom-GRANT/raw lifecycle gap proven; additive139 hard ceiling/current actor/evidence, metadata editing preserved | Implementation/review/native proof in progress; no real destructive mutation |
+| D | 11 — Integrations/Slack | Actual Owner workspace/API-webhook flags enabled; Slack/Zapier flags false; zero connections/subscriptions/installations. Accurate provider/Zapier UI plus setup checklist | Local37focused and6desktop/mobile localized checks pass; activation needs controlled Slack workspace and dedicated credentials only |
+| C | 12 — Add Budget | Existing contractual ceiling legitimately refuses oversize allocation; typed precise refusal/authority-before-replay, no accounting or period change | Integrated candidate139; focused passes, native final gate pending; no live budget mutation |
+| C | 13 — Budgets list | Full-width aligned six-column table, semantic tokens, local scroll/keyboard focus; metrics unchanged | EN/AR/MS render and actual desktop/mobile/RTL checks pass; production new-candidate check pending |
+| C | 14 — Branch Administrator lifecycle | Isolated custom-GRANT/raw lifecycle gap proven; additive139 hard ceiling/current actor/evidence, metadata editing retained | Integrated candidate139; focused passes, four native cases await final gate; no real destructive mutation |
 
 Contact600010/Ray a46fe7b8df8fd974 is client challenge failure, not a proven tunnel
 version cause. Local manual verification recovery and Dark hover/address-label
 fixes have focused tests; final candidate gates/rendered/production acceptance
 pending. Gmail mailbox access is now available; receipt is not yet proven.
-Latest labelled A/B count zero, max two total; historical holds never replayed.
+Latest labelled A/B count zero at21:30:10Z. A conservatively reserved for manual
+submission (unconfirmed); no automated A retry, max two total; holds never replayed.
 
 ## Historical initial baseline and safety proof
 

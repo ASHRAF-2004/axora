@@ -12,7 +12,8 @@ The lead alone owns production writes, release and capped maintenance.
 Never restart/shut down the host, replay historical mail, fabricate sessions,
 delete real products/accounts/history, or change financial semantics.
 Passwords stay in the unchanged private input file and browser memory only.
-Two Contact submissions maximum across the entire pass: A/B, currently zero.
+Two Contact submissions maximum across the entire pass: A/B, zero confirmed.
+A is conservatively reserved for one manual user attempt; no automatic A retry.
 One of the two allowed service-recovery trials has already been used.
 
 ## Ordered slices
