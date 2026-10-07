@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
+import { emitSharedLiveFixture, expectSharedLiveFixture, installSharedLiveFixture } from "./helpers/shared-live-fixture";
 
 const driver: DemoRoleSession = {
   id: "44444444-4444-4444-8444-444444444444",
@@ -341,35 +342,7 @@ test("company recipient sees active ETA, route, approved vehicle and no historic
 });
 
 test("Company Administrator observes preparing through completed without reloading", async ({ page }) => {
-  await page.addInitScript(() => {
-    type Listener = (event: MessageEvent<string>) => void;
-    const runtime = window as unknown as {
-      __axoraTrackingListeners?: Map<string, Listener[]>;
-      __emitAxoraTracking?: (snapshot: unknown, sequence: number) => void;
-    };
-    runtime.__axoraTrackingListeners = new Map();
-    class ControlledEventSource {
-      constructor() {}
-      addEventListener(type: string, listener: EventListener) {
-        const current = runtime.__axoraTrackingListeners?.get(type) ?? [];
-        current.push(listener as unknown as Listener);
-        runtime.__axoraTrackingListeners?.set(type, current);
-      }
-      close() {}
-    }
-    Object.defineProperty(window, "EventSource", {
-      configurable: true,
-      value: ControlledEventSource,
-    });
-    runtime.__emitAxoraTracking = (snapshot, sequence) => {
-      const event = new MessageEvent("snapshot", {
-        data: JSON.stringify({ sequence, snapshot }),
-      });
-      for (const listener of runtime.__axoraTrackingListeners?.get("snapshot") ?? []) {
-        listener(event);
-      }
-    };
-  });
+  await installSharedLiveFixture(page);
   const base = {
     sessionId,
     jobId,
@@ -382,60 +355,58 @@ test("Company Administrator observes preparing through completed without reloadi
   await page.route("**/api/receiving/delivery-otp", (route) => route.fulfill({
     json: { capturedAt: "2026-08-09T04:00:00Z", jobs: [] },
   }));
-  await page.route("**/api/receiving/delivery-tracking", (route) => route.fulfill({ json: {
+  let trackingReads = 0;
+  let trackingSnapshot: { capturedAt: string; sessions: Array<Record<string, unknown>> } = {
     capturedAt: "2026-08-09T04:00:00Z",
     sessions: [{ ...base, jobStatus: "PREPARING", status: "NOT_STARTED" }],
-  } }));
+  };
+  await page.route("**/api/receiving/delivery-tracking", (route) => {
+    trackingReads += 1;
+    expect(route.request().method()).toBe("GET");
+    return route.fulfill({ json: trackingSnapshot });
+  });
   await signInAsDemoRole(page, receiver);
   await page.goto("/requests/order-16");
   const board = page.getByRole("region", { name: "Your delivery" });
   await expect(board.getByText("Preparing", { exact: true })).toBeVisible();
+  await expectSharedLiveFixture(page, "receiving");
+  const initialReads = trackingReads;
 
-  await page.evaluate(({ session, job, baseSession }) => {
-    const runtime = window as unknown as {
-      __emitAxoraTracking?: (snapshot: unknown, sequence: number) => void;
-    };
-    runtime.__emitAxoraTracking?.({
-      capturedAt: "2026-08-09T04:01:00Z",
-      sessions: [{
-        ...baseSession,
-        sessionId: session,
-        jobId: job,
-        jobStatus: "OUT_FOR_DELIVERY",
-        status: "ACTIVE",
-        latitude: 3.139,
-        longitude: 101.687,
-        destinationLatitude: 3.141,
-        destinationLongitude: 101.69,
-        locationAvailable: true,
-        remainingMeters: 420,
-        etaSeconds: 180,
-      }],
-    }, 1);
-  }, { session: sessionId, job: jobId, baseSession: base });
+  trackingSnapshot = {
+    capturedAt: "2026-08-09T04:01:00Z",
+    sessions: [{
+      ...base,
+      jobStatus: "OUT_FOR_DELIVERY",
+      status: "ACTIVE",
+      latitude: 3.139,
+      longitude: 101.687,
+      destinationLatitude: 3.141,
+      destinationLongitude: 101.69,
+      locationAvailable: true,
+      remainingMeters: 420,
+      etaSeconds: 180,
+    }],
+  };
+  await emitSharedLiveFixture(page, "receiving", 1);
   await expect(board.getByText("Out for delivery", { exact: true })).toBeVisible();
+  expect(trackingReads).toBe(initialReads + 1);
 
-  await page.evaluate((baseSession) => {
-    const runtime = window as unknown as {
-      __emitAxoraTracking?: (snapshot: unknown, sequence: number) => void;
-    };
-    runtime.__emitAxoraTracking?.({
-      capturedAt: "2026-08-09T04:02:00Z",
-      sessions: [{ ...baseSession, jobStatus: "ARRIVED", status: "ACTIVE" }],
-    }, 2);
-  }, base);
+  trackingSnapshot = {
+    capturedAt: "2026-08-09T04:02:00Z",
+    sessions: [{ ...base, jobStatus: "ARRIVED", status: "ACTIVE" }],
+  };
+  await emitSharedLiveFixture(page, "receiving", 2);
   await expect(board.getByText("Arrived", { exact: true })).toBeVisible();
+  expect(trackingReads).toBe(initialReads + 2);
 
-  await page.evaluate((baseSession) => {
-    const runtime = window as unknown as {
-      __emitAxoraTracking?: (snapshot: unknown, sequence: number) => void;
-    };
-    runtime.__emitAxoraTracking?.({
-      capturedAt: "2026-08-09T04:03:00Z",
-      sessions: [{ ...baseSession, jobStatus: "COMPLETED", status: "ENDED" }],
-    }, 3);
-  }, base);
+  trackingSnapshot = {
+    capturedAt: "2026-08-09T04:03:00Z",
+    sessions: [{ ...base, jobStatus: "COMPLETED", status: "ENDED" }],
+  };
+  await emitSharedLiveFixture(page, "receiving", 3);
   await expect(board.getByText("Completed", { exact: true })).toBeVisible();
+  expect(trackingReads).toBe(initialReads + 3);
+  await expect(page).toHaveURL(/\/requests\/order-16$/);
   await expect(board.locator(".maplibregl-marker")).toHaveCount(0);
 });
 

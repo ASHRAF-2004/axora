@@ -13,9 +13,20 @@ const arabicCompanyAdmin:DemoRoleSession={
 };
 
 test("notification centre exposes grouped controls and refreshes the shell count",async ({page})=>{
-  const summaryRequests:string[]=[];
+  const liveRequests:string[]=[];
+  const receivedCounts:number[]=[];
+  const session=await page.context().newCDPSession(page);
+  await session.send("Network.enable");
   page.on("request",request=>{
-    if(request.url().includes("/api/notifications/summary")) summaryRequests.push(request.url());
+    const url=new URL(request.url());
+    if(url.pathname==="/api/live" && url.searchParams.get("topics")?.split(",").includes("notifications")
+      && url.searchParams.get("transport")!=="poll") liveRequests.push(request.url());
+  });
+  session.on("Network.eventSourceMessageReceived",event=>{
+    if(event.eventName!=="snapshot") return;
+    const frame=JSON.parse(event.data) as {snapshot?:{topics?:{notifications?:{unreadCount?:number}}}};
+    const count=frame.snapshot?.topics?.notifications?.unreadCount;
+    if(Number.isSafeInteger(count)) receivedCounts.push(count!);
   });
 
   await signInAsDemoOwner(page);
@@ -26,7 +37,11 @@ test("notification centre exposes grouped controls and refreshes the shell count
   await expect(page.locator(".notification-filter-bar select")).toHaveCount(1);
   await expect(page.locator(".notification-preferences input[type=checkbox]:disabled").first()).toBeChecked();
   await expect(page.locator('a[href="/notifications"]').first()).toBeVisible();
-  await expect.poll(()=>summaryRequests.length).toBeGreaterThan(0);
+  await expect.poll(()=>liveRequests.length).toBeGreaterThan(0);
+  await expect.poll(()=>receivedCounts.length).toBeGreaterThan(0);
+  await expect(page.locator('[data-live-status="current"]')).toBeVisible();
+  await expect(page.locator(".app-notification-count")).toHaveText(String(receivedCounts.at(-1)));
+  await session.detach();
 });
 
 test("notification filters survive refresh and browser Back and Forward",async ({page})=>{

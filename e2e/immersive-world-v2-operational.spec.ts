@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signInAsDemoOwner, signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
+import { emitSharedLiveFixture, expectSharedLiveFixture, installSharedLiveFixture } from "./helpers/shared-live-fixture";
 
 const companyAdmin: DemoRoleSession = {
   id: "30333333-3333-4333-8333-333333333333",
@@ -75,37 +76,37 @@ test("owner sees Delivery Agents, a live agent detail map, and no normal assignm
   page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
   page.on("pageerror", (error) => browserErrors.push(error.message));
   page.on("response", (response) => { if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`); });
-  await page.addInitScript(() => {
-    class FixtureEventSource {
-      private listeners = new Map<string, Array<(event: MessageEvent<string>) => void>>();
-      constructor() {
-        window.setTimeout(() => {
-          const snapshot = { locations: [
-            { latitude: 3.139, longitude: 101.6869, accuracy: 8, capturedAt: new Date().toISOString() },
-            { latitude: 3.1412, longitude: 101.69, accuracy: 6, capturedAt: new Date().toISOString() },
-          ] };
-          const event = new MessageEvent("snapshot", { data: JSON.stringify({ sequence: 2, version: "a".repeat(64), snapshot }) });
-          this.listeners.get("snapshot")?.forEach((listener) => listener(event));
-        }, 200);
-      }
-      addEventListener(type: string, listener: (event: MessageEvent<string>) => void) {
-        this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
-      }
-      close() { this.listeners.clear(); }
-    }
-    Object.defineProperty(window, "EventSource", { configurable: true, value: FixtureEventSource });
+  await installSharedLiveFixture(page);
+  const driverId = "44444444-4444-4444-8444-444444444444";
+  let driverReads = 0;
+  let locations = [
+    { latitude: 3.139, longitude: 101.6869, accuracy: 8, capturedAt: "2026-08-09T04:00:00Z" },
+  ];
+  await page.route(`**/api/drivers/${driverId}`, (route) => {
+    driverReads += 1;
+    expect(route.request().method()).toBe("GET");
+    return route.fulfill({ json: { locations } });
   });
   const sourceResponses: string[] = [];
   page.on("response", (response) => {
     if (/\/maps\/(?:mvp-klang-valley-(?:roads|places)\.geojson|fonts\/)/.test(response.url()) && response.ok()) sourceResponses.push(response.url());
   });
-  await page.goto("/deliveries/drivers/44444444-4444-4444-8444-444444444444");
+  await page.goto(`/deliveries/drivers/${driverId}`);
   await expect(page.getByRole("heading", { level: 1, name: "Demo Delivery Agent" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Live Delivery Agent map" })).toBeVisible();
   const map = page.locator('[data-map-provider="axora-mvp-klang-valley"]');
   await expect(map).toHaveAttribute("data-map-state", "ready", { timeout: 15_000 });
+  await expect(map).toHaveAttribute("data-route-point-count", "1");
+  await expect(map).toHaveAttribute("data-latest-coordinate", "3.139000,101.686900");
+  await expectSharedLiveFixture(page, "driver", { key: "driverId", value: driverId });
+  const initialReads = driverReads;
+  locations = [...locations,
+    { latitude: 3.1412, longitude: 101.69, accuracy: 6, capturedAt: "2026-08-09T04:01:00Z" },
+  ];
+  await emitSharedLiveFixture(page, "driver", 1);
   await expect(map).toHaveAttribute("data-route-point-count", "2");
   await expect(map).toHaveAttribute("data-latest-coordinate", "3.141200,101.690000");
+  expect(driverReads).toBe(initialReads + 1);
   await expect(page.locator(".maplibregl-marker")).toHaveCount(1);
   await expect(page.getByRole("link", { name: "© OpenStreetMap contributors" }).first()).toBeVisible();
   expect(sourceResponses.some((url) => url.includes("mvp-klang-valley-roads.geojson"))).toBe(true);
