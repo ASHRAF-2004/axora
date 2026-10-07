@@ -108,6 +108,8 @@ describe("registration recovery at the account invitation database boundary", ()
     await expect(recordAccountSetupDelivery(invitation.invitationId, {
       succeeded: false, status: "failed",
     })).resolves.toBe(true);
+    await expect(inspectAccountSetupToken(invitation.rawToken))
+      .resolves.toEqual({ valid: false, reason: "invalid" });
     expect(providerCall).not.toHaveBeenCalled();
   }, 30_000);
 
