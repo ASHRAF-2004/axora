@@ -804,7 +804,7 @@ async function internalOutboxRequest(body, {
   } catch {
     payload = undefined;
   }
-  if (!response.ok) {
+  if (!response.ok || (body.action === "complete" && payload?.recorded !== true)) {
     const error = emailError("outbox_unavailable", response.status);
     error.stage = body.action === "complete" ? "complete" : "claim";
     throw error;

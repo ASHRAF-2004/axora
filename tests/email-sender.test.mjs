@@ -380,6 +380,39 @@ describe("durable outbox polling readiness and recovery", () => {
     expect(provider.send.mock.calls[0][0].deliveryId).toBe(job.deliveryId);
   });
 
+  it.each([{ recorded: false }, {}, "malformed"])("degrades an unrecorded completion %j without provider replay", async (acknowledgement) => {
+    const job = {
+      deliveryId: "00000000-0000-4000-8000-000000000051",
+      leaseId: "00000000-0000-4000-8000-000000000052",
+      messageKind: "CONTACT_NOTIFICATION", providerAgent: "axora-platform",
+      recipientName: "Axora team", recipientEmail: "monitored-inbox@example.test", locale: "en",
+      contact: { name: "Private synthetic visitor", message: "Private synthetic enquiry body.", submittedAt: new Date().toISOString() },
+    };
+    let claimed = false;
+    const provider = { name: "resend", send: vi.fn().mockResolvedValue({ status: "submitted", messageId: "isolated-provider-unrecorded" }) };
+    const fetchImpl = vi.fn(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      if (body.action === "complete") return acknowledgement === "malformed"
+        ? new Response("malformed", { status: 200 }) : Response.json(acknowledgement);
+      if (claimed) return Response.json({ job: null });
+      claimed = true;
+      return Response.json({ job });
+    });
+    const logError = vi.fn();
+    const poller = createEmailOutboxPoller({ env: enabledEnvironment, logError,
+      pollTransactionalImpl: () => pollTransactionalEmailOutboxOnce({ env: enabledEnvironment, provider, fetchImpl, readFileImpl: secretReader() }),
+      pollWorkflowImpl: async () => ({ claimed: false }),
+    });
+    try {
+      await poller.poll();
+      expect(poller.readiness().body.status).toBe("degraded");
+      expect(logError).toHaveBeenCalledWith({ event: "transactional_email_outbox_poll_failed", stage: "complete", httpStatus: 200 });
+      expect(JSON.stringify(logError.mock.calls)).not.toMatch(/private|monitored-inbox|unrecorded/i);
+      await poller.poll();
+      expect(provider.send).toHaveBeenCalledOnce();
+    } finally { await poller.stop(); }
+  });
+
   it("keeps an invalid delivery switch degraded without unhandled polling errors", async () => {
     const pollTransactionalImpl = vi.fn();
     const logError = vi.fn();

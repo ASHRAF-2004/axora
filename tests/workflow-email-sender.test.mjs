@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createEmailOutboxPoller,
   emailSenderInternals,
   pollWorkflowEmailOutboxOnce,
   sendTransactionalEmail,
@@ -151,5 +152,38 @@ describe("workflow email sender", () => {
       providerName: "resend",
       providerAgent: "axora-delivery",
     });
+  });
+
+  it.each([{ recorded: false }, {}, "malformed"])("degrades an unrecorded workflow completion %j without duplicate mail", async (acknowledgement) => {
+    const job = {
+      deliveryId: "00000000-0000-4000-8000-000000000047",
+      leaseId: "00000000-0000-4000-8000-000000000048",
+      messageKind: "WORKFLOW_UPDATE", providerAgent: "axora-procurement", locale: "en",
+      recipientEmail: "private@example.test", recipientName: "Private synthetic recipient",
+      workflow: { title: "Private synthetic title", body: "Private synthetic workflow body." },
+    };
+    let claimed = false;
+    const provider = { name: "resend", send: vi.fn().mockResolvedValue({ status: "submitted", messageId: "isolated-workflow-provider" }) };
+    const fetchImpl = vi.fn(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      if (body.action === "complete") return acknowledgement === "malformed"
+        ? new Response("malformed", { status: 200 }) : Response.json(acknowledgement);
+      if (claimed) return Response.json({ job: null });
+      claimed = true;
+      return Response.json({ job });
+    });
+    const logError = vi.fn();
+    const poller = createEmailOutboxPoller({ env: enabledEnvironment, logError,
+      pollTransactionalImpl: async () => ({ claimed: false }),
+      pollWorkflowImpl: () => pollWorkflowEmailOutboxOnce({ env: enabledEnvironment, fetchImpl, provider, readFileImpl }),
+    });
+    try {
+      await poller.poll();
+      expect(poller.readiness().statusCode).toBe(503);
+      expect(logError).toHaveBeenCalledWith({ event: "workflow_email_outbox_poll_failed", stage: "complete", httpStatus: 200 });
+      expect(JSON.stringify(logError.mock.calls)).not.toMatch(/private|workflow-provider/i);
+      await poller.poll();
+      expect(provider.send).toHaveBeenCalledOnce();
+    } finally { await poller.stop(); }
   });
 });
