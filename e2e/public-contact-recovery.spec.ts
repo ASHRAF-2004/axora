@@ -40,7 +40,29 @@ for (const copy of cases) {
     await invoke(page, "error-callback", "600010");
     await expect(form.getByRole("status")).toContainText(copy.failure);
     await expect(form.locator("bdi").filter({ hasText: "600010" })).toHaveCount(1);
-    await form.getByRole("button", { name: copy.retry, exact: true }).click();
+    const retry = form.getByRole("button", { name: copy.retry, exact: true });
+    const help = form.getByRole("link", { name: /Verification troubleshooting|استكشاف مشكلات التحقق|Penyelesaian masalah pengesahan/ });
+    await expect(retry).toBeVisible();
+    await expect(retry).toBeEnabled();
+    await expect(help).toBeVisible();
+    const recoveryLayout = await form.getByRole("status").evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return { documentOverflow: document.documentElement.scrollWidth - innerWidth,
+        feedbackOverflow: element.scrollWidth - element.clientWidth,
+        controls: [...element.querySelectorAll("button,a")].map((control) => {
+          const rect = control.getBoundingClientRect();
+          return { left: rect.left, right: rect.right, width: rect.width, height: rect.height,
+            contained: rect.left >= box.left - 1 && rect.right <= box.right + 1 };
+        }) };
+    });
+    expect(recoveryLayout.documentOverflow).toBeLessThanOrEqual(0);
+    expect(recoveryLayout.feedbackOverflow).toBeLessThanOrEqual(1);
+    for (const control of recoveryLayout.controls) {
+      expect(control.width).toBeGreaterThan(0);
+      expect(control.height).toBeGreaterThan(0);
+      expect(control.contained).toBe(true);
+    }
+    await retry.click();
     await expect(submit).toBeDisabled();
     expect(await page.evaluate(() => (window as Window & { __contactFixture?: ContactFixture }).__contactFixture?.resets)).toBe(1);
     await expect(form.locator('[name="fullName"]')).toHaveValue("Isolated recovery fixture");
