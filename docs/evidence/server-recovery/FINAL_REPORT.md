@@ -2,27 +2,57 @@
 
 Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
-## Resumed execution - current candidate (2026-10-07 21:47 UTC)
+## Resumed execution — current checkpoint (2026-10-07 22:26 UTC)
 
-Deployed baseline remains `a40a70bef3104d7e08959dfdc6e55a36ba6beb31`,
-OCI `sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2`,
-migration138. New candidate is in `codex/recovery-completion`; its SHA/gates,
-release and production acceptance are not yet available. Earlier deployed fixes
-and unrelated dirty worktrees remain intact. This section supersedes the earlier
-blanket deferrals below: independent remaining work is now actively executing.
+**STATUS: BLOCKED — changed candidate not fully gated, released or accepted.**
+
+Protected main/deployed baseline remains
+`a40a70bef3104d7e08959dfdc6e55a36ba6beb31`, OCI
+`sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2`,
+migration138. The clean candidate HEAD recorded at 22:25 UTC was
+`fdb29666c8e2aa6956f9a69104809df7783fac7c` on
+`codex/recovery-completion`. No new candidate image, merge, deployment or
+production lifecycle acceptance is claimed. Earlier deployed fixes, private
+supplied input and unrelated dirty worktrees remain intact.
+
+This section supersedes all earlier status/deferral wording below. Historical
+exact-a40 results remain valid only for that deployed baseline. They do not
+certify this changed candidate, and earlier statements that guides or local
+enhancements were deferred no longer describe the current work.
+
+### Current gates and regression evidence
+
+| Gate / source | Evidence and remaining boundary |
+| --- | --- |
+| `320e032` lint/typecheck | Passed. Latest full lint/typecheck also passed with the `efcc08c` bootstrap fix and exact `fdb2966` test source. |
+| `320e032` unit/PGlite | 1,845 passed; 46 intentional skips. Not rerun or represented as an exact final-head result after later application changes. |
+| `320e032` native PostgreSQL | All 139 migrations/replay/RLS/grants and 46 native tests passed, including BranchAdmin and shared-live authorization cases. Candidate migration139 is not deployed; production remains138. |
+| `320e032` build | Production build and required standalone files passed. This artifact predates the bootstrap fix and pending company-creation fix. |
+| Stage / standalone / assets | First stage failed `ENOTDIR` because the existing `/home/ashraf/.npm` cache is a dangling symlink; it was preserved. A task-owned private cache then staged 30,377 files/15 symlinks; owned runtime validation passed two routes/two assets; production asset validation passed 35 assets. No unrelated cache repair or runtime configuration change was made. |
+| `320e032` combined E2E | Interrupted with EXIT130: 35 passed, four delivery failures, one interrupted, 332 not run. Visitor recovery NOT RUN. Original failure artifacts are retained at `output/playwright-320e-interrupted`. This is not a green full-suite result. |
+| Delivery regression | Failure trace showed no initial `/api/driver/jobs` GET. Shared-live detail reads had lost the immediate authorized bootstrap and could depend on an initial hint. Exact reason that hint was absent is unproven; the bootstrap contract defect is proven. `efcc08c` restores the immediate existing authorized detail GET without widening routes or permissions. Independent source review approved; four dedicated cases and the 26-test focused set passed. New whole-candidate gates remain pending. |
+| Contact responsive regression | `fdb2966` strengthens the existing six EN/AR/MS desktop/mobile recovery tests at error `600010`: document/feedback overflow and help/retry bounds are checked before retry. Six passed in 4.8s on a fresh-owned standalone artifact with unchanged Contact source; zero POSTs. No Contact CSS/layout defect was observed, so no speculative CSS fix was added. |
+
+Existing retries, intentional skips, projects, assertions and test order were not
+weakened. The earlier exact-a40 Nightly retry explanation remains in the retained
+record; it cannot be used to dismiss the newly proven delivery regression.
+
+### Current workflows and acceptance boundaries
 
 | Item | Current evidence / exact remaining boundary |
 | --- | --- |
-| Contact verification | User supplied error `600010`, Ray `a46fe7b8df8fd974`; real Chrome also renders verification failure before Send. User reports verification works in Brave but not Chrome. Exact Chrome/environment cause and whether Send was pressed remain unproven; no labelled durable submission found. Cloudflare widget domain/public-key fingerprint match actual runtime; managed mode, Bot Fight Mode false. No injected token or bypass. |
-| Tunnel version | Actual healthy digest-pinned cloudflared2026.7.3 is older than official2026.10.0 but within the supported one-year window. No evidence attributes600010 to it; no Tunnel/configuration change made. |
-| Contact recovery UI | Local manual reset/retry preserves form, distinguishes verification from server availability, displays only sanitized six-digit codes, handles expiration/timeout/script/unsupported states, EN/AR/MS/RTL.41focused unit tests passed;6local desktop/mobile recovery tests passed7.6s, then16combined Contact/setup tests passed12.4s. These use demo-only mocks and do not prove real verification or delivery. |
-| Contact evidence chain | ZERO labelled A/B enquiries/outboxes in read-only metadata21:30:10Z; Gmail label-A ID search also empty. A is conservatively reserved in the private attempt journal for one manual user submission, NOT confirmed sent; no automatic A retry permitted, and only B remains available under the two-total cap. Eight historical holds and six controls unchanged. Gmail recipient access verified; Resend domain verified/sending enabled. No smoke acceptance/delivery/receipt claimed. |
-| Original lifecycle acceptance | Separately fenced, restored-data, exacta40 browser environment is being prepared with ordinary authorized sign-in and RAM-only email sink. Verified dump/uploads copied privately with matching checksums. Two scaffold startup failures occurred before restore/authentication: read-only PG mount, then non-traversable mount-root permissions. Partial files and failed-attempt evidence are retained; this is not an application-test retry or acceptance pass. Browser-driver source reviewed completely. No real product/business-history deletion, copied-password modification or fabricated session. Original historical exception still cannot be inferred from a separate journey. |
-| Dark hover / branch labels | Local shared Dark hover/pressed tokens meet4.5 text contrast; branch status uses location-confirmation label and one action. Actual desktop/mobile10browser checks passed24.3s: all6setup tabs and all Wallet actions normal/hover/focus/pressed in both themes; branch labels/budget table EN/AR/MS with RTL/no document overflow. Production acceptance remains pending. |
-| Invitation UI / budgets table | Compact existing account treatment and localized role label; full-width aligned six-column budget table with keyboard-scrollable mobile region. No token/consent/password or metric changes. Six render tests passed EN/AR/MS; missing/invalid-link browser checks passed as part of16tests; budgets actual browser checks passed. Valid invitation journey pending isolated normal-auth harness. |
-| Budget / BranchAdmin | Integrated specialist candidate068ac69 (18files) with typed legitimate ceiling refusal and UI/server/DB lifecycle boundary; additive139 justified by isolated custom-GRANT/raw lifecycle/evidence defects. Financial calculation/period selection/Wallet/recurring/RLS unchanged; initial expiry fixture claim retracted. Specialist61focused passes; integrated9files91focused passes. Four native cases added to final gate, not executed yet. |
-| Shared live updates | Integrated bounded authorized durable-snapshot resync, one shared connection, fresh authorization before topic loads/emission, reconnect resync/fallback, dirty-form deferral and bounded pending reads. No durable event replay, underlying-query cancellation, new grant, ledger or proxy change claimed. Specialist62focused passes/3native skips and4actual browser passes14.4s; final integrated10files75focused passes. Independent source review approves application boundaries; required native preconnection loopback/app-role guard fixed. Three native cases await final gate. |
-| Integrations / guides | Actual authenticated Owner Integrations200/readable/no overflow: API/webhooks enabled, Slack disabled, no company connections/subscriptions/Slack installations. Zapier runtime false; app/client IDs unconfigured. Local accurate adapter/provider/Zapier labels,37focused tests and6localized desktop/mobile browser checks pass; exact private setup checklist in INTEGRATION_ACCEPTANCE.md. Controlled Slack workspace/provider secret files absent, blocking activation only. SERVER_MIGRATION/REBOOT_RECOVERY and12-page illustrated PDF delivered locally; all pages visually reviewed, genuine public readiness capture21:33:44Z. PDF SHA25699e9210d98f911efc589997a4d4c66197b7ac86eb10851f6d931ed97de36e627. No destination supplied and no host boot/cutover authorized. |
+| Contact verification | User supplied error `600010`, Ray `a46fe7b8df8fd974`; real Chrome renders verification failure before Send. User reports Brave works while Chrome fails. This does not prove a Send occurred, identify the Chrome/environment cause or implicate the Tunnel version. Runtime domain/public-key fingerprint matches; managed mode and Bot Fight Mode false. No injected token, direct POST or bypass. |
+| Tunnel version | Healthy digest-pinned cloudflared2026.7.3 is older than official2026.10.0 but within the supported one-year window. No evidence attributes600010 to it; no Tunnel/configuration change made. |
+| Contact recovery UI | Manual reset/retry preserves form, separates verification from server availability, displays only sanitized six-digit codes and handles expiration/timeout/script/unsupported states in EN/AR/MS/RTL. Earlier 41 focused unit passes and local combined checks are retained; latest strengthened six recovery checks pass as above. Demo-only widget mocks prove UI behavior, not real verification or delivery. |
+| Contact evidence chain | Fresh read-only metadata at 22:24:53Z found ZERO labelled A/B enquiries/outboxes; eight historical Infinity holds unchanged and queues idle. Aggregate-only production query at 22:26:17Z also found zero TOTAL Contact submissions and corresponding notification outboxes since A was reserved at 21:23:08Z, not merely zero matching labels. Gmail exact label-A IDs search EMPTY. Runtime checks `secretFileConfigured`, `secretAvailable`, `canonicalHostnameAllowed`, `hostnamesSyntacticallyValid` and `siteKeyConfigured` are all true, with no secret values collected. Bounded sanitized app-log collection since 21:23:08Z succeeded with zero `public_contact_submission_failed` events; it does not prove older history. No successful Send/provider ID exists in this observed window. A remains conservatively reserved/counts toward the two-total cap for an unconfirmed manual Send; no resend, automatic retry or new Submit. Gmail access exists and Resend domain is verified/sending enabled, but acceptance, signed delivery and Inbox/spam receipt remain unproven. |
+| Isolated registration | One actual ordinary-auth POST against the fenced restored-data exact-a40 image returned 500 and created no fixtures. Literal/typed SQL with exact schemas passed, contradicting the earlier STABLE/null hypothesis. Actual image dependencies (`pg` 8.22, Zod 4.4.3) reproduce `P0001` for the uncast 12-parameter call; only `$12::timestamptz` succeeds with `created=true` and valid contracts. Both probes rolled back; counts and finance unchanged. PREPARE with last parameter typed text selects the defaulted-logo overload. A narrow source fix is being implemented independently, not yet accepted/gated/deployed. No registration UI retry. This separate defect does not reconstruct the original historical exception. |
+| Isolated product lifecycle | The one approved product-only ordinary-auth flow completed cleanly, EXIT0, on the fenced restored-data exact-a40 image: owned eligible product/images/supplier deletion, one audit row and refresh absence passed; copied protected-reference refusal, actual Company Administrator denial and explicit owned DENY refusal passed. Histories, persistent files and financial fingerprints remained unchanged except the explicitly owned fixture removal. This is ISOLATED exact-a40 evidence, not production or final139 candidate acceptance, and does not reconstruct the original historical exception. No production deletion/deactivation, copied-password modification or fabricated session. Earlier scaffold failures remain retained, not counted as application-test retries. |
+| Dark hover / branch labels | Local shared Dark hover/pressed tokens meet 4.5 text contrast; branch status uses location-confirmation label and one action. Ten actual desktop/mobile checks passed in 24.3s: all six setup tabs and Wallet actions normal/hover/focus/pressed in both themes; branch labels/budget table EN/AR/MS with RTL/no document overflow. New production acceptance pending. |
+| Invitation UI / budgets table | Compact existing account treatment/localized role label and aligned six-column budget table with keyboard-scrollable mobile region; token, consent, password and metrics unchanged. EN/AR/MS render and missing/invalid-link checks pass. Valid invitation acceptance remains pending the registration fix and isolated normal-auth journey. |
+| Budget / BranchAdmin | Integrated specialist candidate `068ac69` with typed legitimate ceiling refusal and additive139 UI/server/DB lifecycle ceiling justified by isolated custom-GRANT/raw lifecycle/evidence defects. Financial calculations, period selection, Wallet, recurring behavior and RLS unchanged; initial expiry fixture claim remains retracted. Specialist 61/integrated 91 focused passes; four native cases passed in the139/46-test gate. No live budget or destructive mutation. |
+| Shared live updates | Bounded authorized durable-snapshot resync, one shared connection, fresh authorization before loads/emission, reconnect/fallback, dirty-form deferral and bounded reads integrated. No durable event replay, underlying-query cancellation, new grant, ledger or proxy change. Earlier 62 focused/4 browser and integrated 75 focused passes retained; three native authorization cases passed in the139 gate. New delivery bootstrap fix passes focused review/tests; refreshed whole-candidate and ordinary-auth production acceptance still pending. |
+| Integrations / guides | Authenticated Owner Integrations returned 200/readable/no overflow; API/webhooks enabled, Slack disabled, zero connections/subscriptions/installations; Zapier runtime false/app-client IDs unconfigured. Accurate adapter/provider/Zapier labels pass 37 focused and six localized desktop/mobile checks. Controlled Slack workspace/dedicated credentials absent, blocking activation only. SERVER_MIGRATION/REBOOT_RECOVERY and 12-page illustrated PDF delivered locally; all pages reviewed, public readiness capture 21:33:44Z, PDF SHA256 `99e9210d98f911efc589997a4d4c66197b7ac86eb10851f6d931ed97de36e627`. No destination or host boot/cutover proof. These completed enhancements/guides are not core-workflow blockers. |
+| Acceptance helpers / role gaps | Private read-only release/live helpers are frozen and root-reviewed, NOT RUN. Actual CAM, second Driver, off-device backup, destination server and whole-host boot evidence remain absent. Existing role metadata is not replaced by assumed email labels, fabricated sessions or role changes. |
 
 Official diagnostics: [challenge solve issues](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/),
 [Turnstile error codes](https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/),
@@ -30,11 +60,19 @@ Official diagnostics: [challenge solve issues](https://developers.cloudflare.com
 [supported versions](https://developers.cloudflare.com/tunnel/downloads/#deprecated-releases).
 
 No host restart/shutdown, new production release, financial mutation, historical
-resend or agent smoke Send click has occurred in this resumed slice. Existing retry and
-intentional skips remain unchanged; earlier exacta40 gates below certify only
-that deployed baseline, not this changed candidate.
+resend or agent smoke Send click has occurred in this resumed slice. An
+unconfirmed user submission still consumes the conservative A reservation; zero
+durable rows must not be rewritten as unused submission authority. Current
+acceptance remains BLOCKED until the actual candidate regression/fix is reviewed
+and required exact-head gates and core workflow evidence are complete.
 
-## Earlier deployed-core status (retained evidence)
+## Historical deployed-core record (superseded status; evidence retained)
+
+The remainder preserves the earlier deployed-core checkpoint and its original
+evidence. Its current/remaining/deferred wording is historical, not the 22:26 UTC
+status above. In particular, mailbox access, local shared-live/UI work, native139
+coverage and delivered guides have advanced; no earlier gate certifies the new
+candidate. The historical retry/skips/failure explanations remain visible.
 
 **Core fixes deployed; overall recovery acceptance BLOCKED. Not demo-ready.**
 

@@ -25,7 +25,7 @@ Files: new live contract/reader, canonical API route, focused authorization/rout
 ## Checkpoint: contract and safety
 
 - [x] Transport and authorized reader tests pass.
-- [ ] Independent source review confirms no new financial/event ledger or external-queue consumer.
+- [x] Independent source review confirms no new financial/event ledger or external-queue consumer.
 
 ## 4. Shared client and notification vertical slice
 
@@ -48,7 +48,7 @@ Files: DriverLiveMap, DeliveryTrackingPanels, focused tests (maximum about 4 fil
 ## Checkpoint: working stream consumers
 
 - [x] All updated widgets share one appropriate tab connection.
-- [ ] Independent review confirms current read permissions and assignment checks remain intact.
+- [x] Independent review confirms current read permissions and assignment checks remain intact.
 
 ## 7. Other required view invalidations, small domain slices
 
@@ -58,10 +58,16 @@ Files: view coordinator plus appropriate consumer(s) and focused tests, split in
 
 ## 8. Review and release checkpoint
 
-- [ ] Focused tests and independent code review complete.
+- [x] Focused tests and independent code review complete; bootstrap regression repaired in efcc08c.
 - [x] Local browser one-connection, fallback, auth-loss cleanup and dirty-filter preservation measured with public demo fixtures.
 - [ ] Staged real-auth/native revocation and deployment recovery acceptance measured by lead.
 - [ ] Lead runs required exact-head gates serially and controls deployment/production browser acceptance.
 - [x] No unsupported instant/replay/zero-downtime claim, no secret-bearing evidence.
 
 No heavy build/native/full-E2E test, production change, provider send, restart, browser or migration is authorized to this agent by these checklist items.
+
+Native139 authorization/revocation cases passed at320e. Its combined browser gate
+then failed the initial delivery-read regression (35 passed/four failures before
+interruption). efcc08c restores the existing immediate authorized GET and adds
+four focused cases; the 26-test detail/client set passes. Refreshed frozen-head
+build/browser gates and ordinary-auth production observation remain unchecked.
