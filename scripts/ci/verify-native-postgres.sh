@@ -176,6 +176,78 @@ BEGIN
 END
 $metadata_binding$;
 RESET ROLE;
+
+DO $email_worker_capabilities$
+DECLARE
+  signature text;
+BEGIN
+  FOREACH signature IN ARRAY ARRAY[
+    'public.axora_transactional_invoice_email_state(uuid)',
+    'public.axora_claimed_invoice_email_payload(uuid,uuid)',
+    'public.axora_email_retry_delay(integer)'
+  ] LOOP
+    IF NOT has_function_privilege('axora_app',signature,'EXECUTE')
+      OR has_function_privilege('public',signature,'EXECUTE') THEN
+      RAISE EXCEPTION 'Worker capability grant is invalid: %',signature;
+    END IF;
+  END LOOP;
+  FOREACH signature IN ARRAY ARRAY[
+    'public.axora_invoice_email_payload(uuid)',
+    'public.axora_invoice_email_ready(uuid)',
+    'public.axora_invoice_email_recipient_suppressed(uuid)'
+  ] LOOP
+    IF has_function_privilege('axora_app',signature,'EXECUTE')
+      OR has_function_privilege('public',signature,'EXECUTE') THEN
+      RAISE EXCEPTION 'Unrestricted invoice email helper is exposed: %',signature;
+    END IF;
+  END LOOP;
+END
+$email_worker_capabilities$;
+
+SET ROLE axora_app;
+DO $email_worker_context$
+DECLARE
+  unknown_delivery uuid:='10000000-0000-4000-8000-000000000003';
+  unknown_lease uuid:='10000000-0000-4000-8000-000000000004';
+BEGIN
+  BEGIN
+    PERFORM public.axora_transactional_invoice_email_state(unknown_delivery);
+    RAISE EXCEPTION 'A user context could inspect the invoice email worker queue';
+  EXCEPTION WHEN insufficient_privilege THEN
+    IF SQLERRM<>'Transactional email worker context required' THEN RAISE; END IF;
+  END;
+  PERFORM set_config('axora.system_identity','transactional-email-worker',true);
+  PERFORM set_config('axora.user_id','',true);
+  PERFORM set_config('axora.role_assignment_id','',true);
+  IF public.axora_transactional_invoice_email_state(unknown_delivery)
+      <>jsonb_build_object('ready',false,'suppressed',false)
+    OR public.axora_claimed_invoice_email_payload(unknown_delivery,unknown_lease)
+      IS NOT NULL THEN
+    RAISE EXCEPTION 'Unknown invoice email identity exposed a payload';
+  END IF;
+  PERFORM set_config('axora.user_id',unknown_delivery::text,true);
+  BEGIN
+    PERFORM public.axora_claimed_invoice_email_payload(unknown_delivery,unknown_lease);
+    RAISE EXCEPTION 'A user context could inspect the invoice email payload';
+  EXCEPTION WHEN insufficient_privilege THEN
+    IF SQLERRM<>'Transactional email worker context required' THEN RAISE; END IF;
+  END;
+  IF public.axora_email_retry_delay(1)<>interval '1 minute' THEN
+    RAISE EXCEPTION 'Worker retry delay capability is invalid';
+  END IF;
+END
+$email_worker_context$;
+
+-- Parse the actual completion metadata shape; a missing attempt cast used to
+-- produce SQLSTATE 42P08 before any successful provider result could commit.
+PREPARE axora_completion_parameter_contract AS
+  SELECT public.axora_record_transactional_email_attempt(
+    $1,$2,$3,$4,$5,$6,$7::integer,
+    CASE WHEN $8='retry' AND $7::integer >= $9::integer THEN 'failed' ELSE $8 END,
+    $10,$11,$12,$13
+  );
+DEALLOCATE axora_completion_parameter_contract;
+RESET ROLE;
 SQL
 
 host_port="$(docker port "$CONTAINER_NAME" 5432/tcp \

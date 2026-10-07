@@ -36,6 +36,12 @@ After correcting that boundary, the regression exposed two further failures:
   (`42501`); the live application role likewise lacks this grant. It is a pure,
   immutable interval calculation with no table access.
 
+Native PostgreSQL read-only PREPARE reproduced the original completion error
+`42P08: inconsistent types deduced for parameter $7; text versus integer`.
+The corrected PREPARE parsed successfully in the same live application role
+transaction, then was deallocated and rolled back without executing delivery
+completion or changing data.
+
 The available live metadata had four Contact and four invoice jobs PENDING with
 zero attempts and no attempt timestamp/provider ID. Four older jobs were already
 UNCERTAIN with `lease_expired`. Provider lifecycle evidence shows historic
@@ -83,9 +89,13 @@ Six focused files passed 39 tests, including:
 - A provider send accepted before the completion response is interrupted occurs
   only once; a fresh poll does not replay the SENDING job.
 
-Changed-file ESLint and `git diff --check` passed. Native PostgreSQL, final release
-gates and live acceptance must be appended by the lead using the integrated
-candidate and canonical dependency installation.
+The six-file focused pass was repeated against the lead's canonical dependency
+installation after confirming identical package/lock hashes. Changed-file ESLint,
+native verification shell syntax and `git diff --check` passed. The native release
+script now verifies capability grants, private raw helper denial, worker/user
+context rejection, unknown-lease isolation and actual completion SQL parsing.
+The full native gate, final release gates and live acceptance must be appended
+by the lead using the integrated candidate.
 
 ## Backlog/restart safety
 
