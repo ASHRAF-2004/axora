@@ -1,4 +1,4 @@
-import type { SupportedLocale } from "./profile-preferences";
+import type { SupportedLocale } from "./i18n";
 
 const messages = {
   en: {

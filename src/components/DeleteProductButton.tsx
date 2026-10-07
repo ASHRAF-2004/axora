@@ -4,7 +4,7 @@ import { deleteProductAction } from "@/app/(portal)/masters/actions";
 import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import { useActionState, useRef } from "react";
 import { productDeletionMessages } from "@/lib/product-deletion-i18n";
-import type { SupportedLocale } from "@/lib/profile-preferences";
+import type { SupportedLocale } from "@/lib/i18n";
 
 const initialState = { status: "idle", message: "" } as const;
 
