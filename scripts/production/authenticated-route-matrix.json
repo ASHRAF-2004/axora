@@ -1367,6 +1367,12 @@
       "mode": "read-only"
     },
     {
+      "route": "/api/live",
+      "authentication": "authenticated-current-role",
+      "scope": "authorized-topic-company-branch-and-assignment",
+      "mode": "read-only-or-stream"
+    },
+    {
       "route": "/api/notifications/summary/stream",
       "authentication": "authenticated",
       "scope": "self",
