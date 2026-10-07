@@ -2,6 +2,13 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
+Current resumed baseline: protected main/deployed `a40a70bef3104d7e08959dfdc6e55a36ba6beb31`,
+OCI `sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2`,
+migration138. PR217/218 and exact-main Nightly passed; see FINAL_REPORT for the
+existing one successful retry and39unit/19browser intentional skips. Candidate
+`codex/recovery-completion` is NOT deployed/certified yet. Earlier baseline below
+is retained as historical provenance, not current identity.
+
 | Priority | Issue | Evidence / current boundary | Status |
 | --- | --- | --- | --- |
 | A/B | DEPLOYMENT_RUNTIME | Live email polling fails while readiness remains green. Historical cleanup/integration idle pool errors (`57P01`) terminated their processes. Current Docker startup policies are enabled; no competing supervisor is justified | Root cause established; fixed locally / review in progress. No host restart allowed |
@@ -14,15 +21,21 @@ This register contains no account secrets, invitation tokens, private enquiry bo
 | C | 5 — Product information layout | Preserve general/delivery/pricing groups and confidential commercial permissions | Deployed previously; current acceptance pending |
 | C | 6 — Setup Wallet 404 | Existing Owner-only pending state must load the correct company without fabricating a Wallet | Deployed previously; current acceptance pending; no incomplete live fixture designated |
 | A/B | 7 — Contact recorded, email missing | Live claim denial `42501` at private invoice helper blocks both queues; completion `42P08` and retry-delay denial also proven. Historical jobs require targeted hold before repaired claims activate | Fixed locally; live delivery and service-trial acceptance pending |
-| D | 8 — Shared live data through SSE | Reuse existing streams; durable/reconnect/revocation requirements need separate implementation and acceptance | Deferred until core acceptance |
-| E | 9 — Migration guide | Illustrated PDF and secret-free runbooks required; no migration/cutover/decommission authorized | Deferred until core acceptance; short core rollback runbook prepared locally |
-| C | 10 — Password/invitation page UI | Visual work must preserve token, consent and atomic setup contract; functional defect tracked separately as REGISTRATION | Deferred until core acceptance |
-| D | 11 — Integrations/Slack | Actual connection status and authorized setup checklist required; no controlled Slack workspace supplied | Deferred until core acceptance; activation lacks authorized workspace |
-| C | 12 — Add Budget | Reported company “mewo 1”, branch “openai”, RM500 attempt requires diagnosis without changing ceilings or Wallet cash | Pending core acceptance; no budget mutation performed |
-| C | 13 — Budgets list | Improve readable table/mobile layout without changing metrics | Deferred until core acceptance |
-| C | 14 — Branch Administrator lifecycle | Remove unauthorized delete/deactivate UI and deny direct commands while preserving Company Admin/Owner safeguards | Pending core acceptance; destructive live negative tests prohibited |
+| D | 8 — Shared live data through SSE | Approved bounded durable-snapshot resync/shared connection; no new ledger, proxy or queue coupling | Implementation and focused security/recovery checks in progress |
+| E | 9 — Migration guide | Illustrated PDF and secret-free runbooks required; no host migration/cutover/decommission authorized | Independent guide work active; future destination/boot remains untested |
+| C | 10 — Password/invitation page UI | Compact existing account design and friendly localized roles, token/consent contract preserved | Local render/link-transport tests pass; valid invitation rendered acceptance pending |
+| D | 11 — Integrations/Slack | Existing API/webhook/Zapier/Slack inventory/checklist; no controlled Slack workspace supplied | Independent read-only verification active; real Slack activation requires authorized workspace |
+| C | 12 — Add Budget | Existing contractual ceiling legitimately refuses RM500; typed precise refusal/authority recheck, no accounting or period change | Focused specialist implementation; no live budget mutation |
+| C | 13 — Budgets list | Full-width aligned six-column table, semantic theme tokens, local horizontal scroll/keyboard focus; metrics unchanged | Local EN/AR/MS render checks pass; actual rendered acceptance pending |
+| C | 14 — Branch Administrator lifecycle | Isolated custom-GRANT/raw lifecycle gap proven; additive139 hard ceiling/current actor/evidence, metadata editing preserved | Implementation/review/native proof in progress; no real destructive mutation |
 
-## Baseline and safety proof
+Contact600010/Ray a46fe7b8df8fd974 is client challenge failure, not a proven tunnel
+version cause. Local manual verification recovery and Dark hover/address-label
+fixes have focused tests; final candidate gates/rendered/production acceptance
+pending. Gmail mailbox access is now available; receipt is not yet proven.
+Latest labelled A/B count zero, max two total; historical holds never replayed.
+
+## Historical initial baseline and safety proof
 
 - Protected/deployed main: `cccd272be606cb2d05bd0f097cd725427506fb45`; OCI `sha256:c66d304fbfba7af37869790f3216df7867d0cd5bc9f55a626a291c23fef485ad`.
 - Live ledger is 136 migrations through `136_catalog_draft_zero_price_guard.sql`; sealed-release checksums match.

@@ -7,6 +7,7 @@ import { isDemoMode, query, withAuditTransaction } from "@/lib/db";
 import { getDemoStore } from "@/lib/demo-data";
 import { canAccess } from "@/lib/permissions";
 import { parsePositiveMoneyDecimal } from "@/lib/money-decimal";
+import { branchBudgetRefusal, type BranchBudgetLimits, type BranchBudgetRefusalCode } from "@/lib/branch-budget-refusal";
 
 const commandSchema = z.strictObject({
   branchId: z.union([z.string().uuid(), z.string().regex(/^br-[a-z0-9-]{3,80}$/)]), amount: z.number().positive().max(100_000_000),
@@ -30,7 +31,7 @@ export type BranchBudgetFundingState = {
 };
 
 export class BranchBudgetError extends Error {
-  constructor(public readonly code: "INVALID" | "FORBIDDEN" | "UNAVAILABLE") { super(code); this.name = "BranchBudgetError"; }
+  constructor(public readonly code: BranchBudgetRefusalCode,public readonly limits?: BranchBudgetLimits) { super(code); this.name = "BranchBudgetError"; }
 }
 
 export async function getBranchBudgetFundingState(
@@ -86,10 +87,11 @@ export async function addBranchBudget(
 ) {
   const branchId = z.uuid().safeParse(input.branchId);
   const commandId = z.uuid().safeParse(input.commandId);
-  if (!branchId.success || !commandId.success || actor.accountKind !== "COMPANY"
-    || !actor.companyId || !actor.roleAssignmentId || !canAccess(actor, "manage_branch_budget")) {
+  if (!branchId.success || !commandId.success) {
     throw new BranchBudgetError("INVALID");
   }
+  if (actor.accountKind !== "COMPANY" || !actor.companyId || !actor.roleAssignmentId
+    || !canAccess(actor, "manage_branch_budget")) throw new BranchBudgetError("FORBIDDEN");
   let amount: string;
   try { amount = parsePositiveMoneyDecimal(input.amount); } catch { throw new BranchBudgetError("INVALID"); }
   if (isDemoMode()) {
@@ -113,6 +115,7 @@ export async function addBranchBudget(
     return result.rows[0].result;
   } catch (error) {
     if (error instanceof BranchBudgetError) throw error;
-    throw new BranchBudgetError("UNAVAILABLE");
+    const refusal = branchBudgetRefusal(error);
+    throw new BranchBudgetError(refusal.code,refusal.limits);
   }
 }

@@ -2,6 +2,7 @@ import type { QueryResultRow } from "pg";
 import { z } from "zod";
 import type { AuthenticatedSessionUser, SessionUser } from "./auth";
 import { isDemoMode, query, withAuditTransaction } from "./db";
+import { canManageBranchLifecycle } from "./branch-lifecycle-policy";
 
 export const ORGANIZATION_NODE_TYPES = [
   "BRANCH",
@@ -243,6 +244,9 @@ export function setOrganizationNodeActive(
   active: boolean,
   reason: string,
 ) {
+  if (nodeType === "BRANCH" && !canManageBranchLifecycle(actor)) {
+    throw new OrganizationStructureUnavailableError();
+  }
   return mutate(
     actor,
     reason,

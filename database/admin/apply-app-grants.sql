@@ -30,6 +30,26 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO axora_app;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO axora_app;
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 
+-- Migration 139 makes branch lifecycle/evidence capability-only. Preserve
+-- ordinary metadata editing, including partial-schema compatibility, without
+-- letting this broad grant replay restore raw lifecycle UPDATE or helpers.
+DO $branch_lifecycle_boundary$
+DECLARE metadata_columns text;
+BEGIN
+  IF to_regprocedure('public.axora_branch_lifecycle_actor_snapshot(uuid,uuid)') IS NOT NULL THEN
+    REVOKE UPDATE ON TABLE public.branches FROM axora_app;
+    REVOKE UPDATE(active,deactivated_at,deactivated_by,deactivation_reason) ON public.branches FROM axora_app;
+    SELECT string_agg(format('%I',column_row.attname),',' ORDER BY column_row.attnum) INTO metadata_columns
+    FROM pg_attribute column_row WHERE column_row.attrelid='public.branches'::regclass
+      AND column_row.attnum>0 AND NOT column_row.attisdropped
+      AND column_row.attname NOT IN ('active','deactivated_at','deactivated_by','deactivation_reason');
+    EXECUTE format('GRANT UPDATE(%s) ON TABLE public.branches TO axora_app',metadata_columns);
+    REVOKE ALL ON FUNCTION public.axora_branch_command_actor_snapshot(uuid,uuid),
+      public.axora_branch_lifecycle_actor_snapshot(uuid,uuid) FROM axora_app;
+  END IF;
+END
+$branch_lifecycle_boundary$;
+
 REVOKE INSERT, UPDATE, DELETE ON TABLE public.audit_logs FROM axora_app;
 GRANT SELECT ON TABLE public.audit_logs TO axora_app;
 

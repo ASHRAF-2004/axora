@@ -82,6 +82,13 @@ describe("unified appearance contract", () => {
     expect(contrastRatio(token(tokens, "--axora-chart-1"), surface), `chart series 1 on ${appearance} surface`).toBeGreaterThanOrEqual(3);
     expect(contrastRatio(token(tokens, "--axora-chart-2"), surface), `chart series 2 on ${appearance} surface`).toBeGreaterThanOrEqual(3);
 
+    for (const background of ["--axora-brand", "--axora-brand-hover", "--axora-brand-active"]) {
+      expect(
+        contrastRatio(token(tokens, "--axora-brand-foreground"), token(tokens, background)),
+        `primary action ${background} in ${appearance}`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+
     for (const status of ["success", "warning", "danger", "info", "neutral"]) {
       expect(
         contrastRatio(token(tokens, `--axora-${status}`), token(tokens, `--axora-${status}-bg`)),

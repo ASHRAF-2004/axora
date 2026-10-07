@@ -6,6 +6,7 @@ import { getDemoOperations } from "./demo-operations";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { requireSession, type SessionUser } from "./auth";
 import { canAccess, canManageCommercialCatalog } from "./permissions";
+import { canManageBranchLifecycle } from "./branch-lifecycle-policy";
 import type { Branch, Company, DashboardData, ProcurementRequest, Product, RequestStatus } from "./types";
 import { validateStatusTransition } from "./workflow";
 import { appendWorkflowEvent, notifyWorkflowAudience } from "./workflow-repository";
@@ -1090,7 +1091,7 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
 export type MasterEntity = "companies" | "branches" | "products";
 
 export async function deleteEmptyBranch(id: string, actor: SessionUser) {
-  if (!canAccess(actor, "manage_branches")) throw new Error("Your account cannot change this record.");
+  if (!canManageBranchLifecycle(actor)) throw new Error("Your account cannot change this record.");
   if (isDemoMode()) {
     const store = getDemoStore();
     const branchIndex = store.branches.findIndex((branch) => branch.id === id && branch.companyId === actor.companyId);
@@ -1121,6 +1122,9 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
     ? "manage_branches"
     : "manage_catalog";
   if (!canAccess(actor, requiredPermission)) throw new Error("Your account cannot change this record.");
+  if (entity === "branches" && !canManageBranchLifecycle(actor)) {
+    throw new Error("Your account cannot change this record.");
+  }
   if (entity === "products" && !canManageCommercialCatalog(actor)) {
     throw new Error("Only an authorized commercial manager can change product availability.");
   }

@@ -9,6 +9,7 @@ import { corePortalMessages,localizedStatus } from "@/lib/core-portal-i18n";
 import { formatCurrency } from "@/lib/domain";
 import { loadOrganizationDirectory } from "@/lib/organization-access";
 import { canAccess } from "@/lib/permissions";
+import { canManageBranchLifecycle } from "@/lib/branch-lifecycle-policy";
 import { listAuthorizedUsers } from "@/lib/user-isolation";
 import { AddBranchBudgetForm } from "@/components/AddBranchBudgetForm";
 import { BranchActiveButton } from "@/components/BranchActiveButton";
@@ -21,9 +22,9 @@ const localCopy = {
 } as const;
 
 const sectionHeadings = {
-  en: { general: "General", deliveryAddress: "Delivery address", contactInformation: "Contact information", delivery: "Delivery" },
-  ar: { general: "عام", deliveryAddress: "عنوان التسليم", contactInformation: "معلومات الاتصال", delivery: "التسليم" },
-  ms: { general: "Umum", deliveryAddress: "Alamat penghantaran", contactInformation: "Maklumat hubungan", delivery: "Penghantaran" },
+  en: { general: "General", deliveryAddress: "Delivery address", locationConfirmation: "Location confirmation", contactInformation: "Contact information", delivery: "Delivery" },
+  ar: { general: "عام", deliveryAddress: "عنوان التسليم", locationConfirmation: "تأكيد الموقع", contactInformation: "معلومات الاتصال", delivery: "التسليم" },
+  ms: { general: "Umum", deliveryAddress: "Alamat penghantaran", locationConfirmation: "Pengesahan lokasi", contactInformation: "Maklumat hubungan", delivery: "Penghantaran" },
 } as const;
 
 export default async function BranchDetailPage({ params }: { params: Promise<{ branchId: string }> }) {
@@ -63,9 +64,8 @@ export default async function BranchDetailPage({ params }: { params: Promise<{ b
           <div><dt>{copy.shortCode}</dt><dd><bdi>{branch.branchCode}</bdi></dd></div><div><dt>{common.status}</dt><dd><StatusBadge status={branch.status}>{localizedStatus(branch.status,locale)}</StatusBadge></dd></div>
         </dl></section>
         <section className="information-group"><h3>{headings.deliveryAddress}</h3><dl className="information-list">
-          <div className="information-item-wide"><dt>{copy.delivery}</dt><dd>{branch.deliveryAddress}</dd></div><div><dt>{local.editLocation}</dt><dd><StatusBadge status={locationReady ? "Active" : "Pending"}>{locationReady ? local.locationReady : local.locationRequired}</StatusBadge></dd></div>
-          {canOpenDeliveryLocation ? <div><dt>{local.editLocation}</dt><dd><Link href={`/branches/${branch.id}/delivery-location`}>{local.editLocation}</Link></dd></div> : null}
-        </dl></section>
+          <div className="information-item-wide"><dt>{copy.delivery}</dt><dd>{branch.deliveryAddress}</dd></div><div><dt>{headings.locationConfirmation}</dt><dd><StatusBadge status={locationReady ? "Active" : "Pending"}>{locationReady ? local.locationReady : local.locationRequired}</StatusBadge></dd></div>
+        </dl>{canOpenDeliveryLocation ? <div className="information-actions"><Link className="button button-secondary button-small" href={`/branches/${branch.id}/delivery-location`}>{local.editLocation}</Link></div> : null}</section>
         <section className="information-group"><h3>{headings.contactInformation}</h3><dl className="information-list">
           <div><dt>{copy.contactName}</dt><dd>{branch.contactName || detailsCopy.notProvided}</dd></div><div><dt>{copy.contactPhone}</dt><dd><bdi>{branch.contactPhone || detailsCopy.notProvided}</bdi></dd></div><div className="information-item-wide"><dt>{copy.contactEmail}</dt><dd><bdi>{branch.contactEmail || detailsCopy.notProvided}</bdi></dd></div>
         </dl></section>
@@ -76,11 +76,11 @@ export default async function BranchDetailPage({ params }: { params: Promise<{ b
       <aside className="branch-detail-aside">
         {branch.canViewBudget ? <article className="panel information-panel"><div className="panel-header"><h2>{local.budget}</h2></div><dl className="information-list metric-information-list">
           <div><dt>{copy.monthlyBudget}</dt><dd>{branch.monthlyBudget == null ? common.notSet : formatCurrency(branch.monthlyBudget,locale)}</dd></div><div><dt>{copy.committed}</dt><dd>{formatCurrency(branch.committedAmount ?? 0,locale)}</dd></div><div><dt>{copy.available}</dt><dd>{branch.remainingAmount == null ? common.notSet : formatCurrency(branch.remainingAmount,locale)}</dd></div>
-        </dl><div className="information-actions"><Link className="button button-secondary" href={`/budgets/${branch.id}`}>{local.viewBudget}</Link>{canAccess(actor, "manage_branch_budget") && branch.status === "Active" ? <AddBranchBudgetForm branchId={branch.id} copy={{ add: local.addBudget, amount: local.amount, help: local.budgetHelp, cancel: common.back, adding: local.adding, success: local.budgetAdded, invalid: local.budgetInvalid, unavailable: local.budgetUnavailable }} /> : null}</div></article> : null}
+        </dl><div className="information-actions"><Link className="button button-secondary" href={`/budgets/${branch.id}`}>{local.viewBudget}</Link>{canAccess(actor, "manage_branch_budget") && branch.status === "Active" ? <AddBranchBudgetForm branchId={branch.id} locale={locale} copy={{ add: local.addBudget, amount: local.amount, help: local.budgetHelp, cancel: common.back, adding: local.adding, success: local.budgetAdded, invalid: local.budgetInvalid, unavailable: local.budgetUnavailable }} /> : null}</div></article> : null}
         <article className="panel information-panel"><div className="panel-header"><h2>{local.people}</h2></div><div className="information-actions"><p>{local.assigned(assignedPeople.length)}</p>{canAccess(actor, "manage_users") ? <Link className="button button-secondary" href={`/branches/${branch.id}/people`}>{local.viewPeople}</Link> : null}</div></article>
       </aside>
     </section>
-    {canManageBranches ? <section className="panel"><h2>{common.actions}</h2><div className="detail-grid">
+    {canManageBranchLifecycle(actor) ? <section className="panel"><h2>{common.actions}</h2><div className="detail-grid">
       <BranchActiveButton branchId={branch.id} active={branch.status === "Active"} copy={{ deactivate: common.deactivate, activate: common.activate, unavailable: local.activeUnavailable, activeDelivery: local.activeDelivery, activeCart: local.activeCart, activeRequest: local.activeRequest }} />
       <DeleteBranchButton branchId={branch.id} copy={{ label: local.delete, title: local.deleteTitle,
         body: local.deleteBody, confirm: local.deleteConfirm, cancel: common.back,
