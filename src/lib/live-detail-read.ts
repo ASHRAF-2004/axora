@@ -3,7 +3,7 @@ export class LiveDetailReader<T> {
   private controller: AbortController | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private generation = 0;
-  constructor(private url: string, private apply: (value: T) => void, private failed: () => void, private read: typeof fetch = fetch) {}
+  constructor(private url: string, private apply: (value: T) => void, private failed: () => void, private read: typeof fetch = (input, init) => fetch(input, init)) {}
 
   stop() {
     this.generation += 1;
