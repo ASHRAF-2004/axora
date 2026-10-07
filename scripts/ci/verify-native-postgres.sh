@@ -291,6 +291,7 @@ run_native_test tests/delivery-guy-invitation-native-postgres.test.ts
 run_native_test tests/operating-model-concurrency-native-postgres.test.ts
 run_native_test tests/company-admin-direct-purchase-native-postgres.test.ts
 run_native_test tests/product-delete-native-postgres.test.ts
+run_native_test tests/postgres-idle-pool-native-postgres.test.ts
 run_native_test tests/existing-user-management-native-postgres.test.ts
 run_native_test tests/integration-webhook-native-postgres.test.ts
 
