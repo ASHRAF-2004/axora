@@ -325,6 +325,41 @@ describe("paid checkout and finalized invoice", () => {
     expect(billingTerms.rows[0].definitions).not.toContain("Cash on delivery");
   });
 
+  it("releases invoice email metadata only for a non-user worker holding its live lease", async () => {
+    const outbox = await db.query<{ id: string }>(`SELECT outbox.id::text FROM transactional_email_outbox outbox
+      JOIN invoices invoice ON invoice.id=outbox.invoice_id
+      WHERE invoice.request_id=$1 AND outbox.message_kind='INVOICE_FINALIZED'`, [requestId]);
+    const deliveryId = outbox.rows[0].id;
+    const leaseId = "76000000-0000-4000-8000-000000000012";
+    await db.exec("SET ROLE axora_app");
+    try {
+      await expect(db.query("SELECT axora_transactional_invoice_email_state($1)", [deliveryId]))
+        .rejects.toMatchObject({ code: "42501" });
+      await db.exec("SET axora.system_identity='transactional-email-worker'");
+      const pending = await db.query<{ value: unknown }>("SELECT axora_transactional_invoice_email_state($1) AS value", [deliveryId]);
+      expect(pending.rows[0].value).toEqual({ ready: true, suppressed: false });
+      const unclaimed = await db.query<{ value: unknown }>("SELECT axora_claimed_invoice_email_payload($1,$2) AS value", [deliveryId, leaseId]);
+      expect(unclaimed.rows[0].value).toBeNull();
+      await db.query(`UPDATE transactional_email_outbox SET delivery_status='SENDING',delivery_attempt_count=1,
+        delivery_attempted_at=now(),delivery_lease_id=$2,delivery_lease_expires_at=now()+interval '90 seconds'
+        WHERE id=$1`, [deliveryId, leaseId]);
+      const wrongLease = await db.query<{ value: unknown }>("SELECT axora_claimed_invoice_email_payload($1,$2) AS value", [deliveryId, "76000000-0000-4000-8000-000000000013"]);
+      expect(wrongLease.rows[0].value).toBeNull();
+      const claimed = await db.query<{ value: Record<string, unknown> }>("SELECT axora_claimed_invoice_email_payload($1,$2) AS value", [deliveryId, leaseId]);
+      expect(claimed.rows[0].value).toMatchObject({ requestId, recipientEmail: "checkout-owner@example.test" });
+      await db.query("SELECT set_config('axora.user_id',$1,false)", [actorId]);
+      await expect(db.query("SELECT axora_claimed_invoice_email_payload($1,$2)", [deliveryId, leaseId]))
+        .rejects.toMatchObject({ code: "42501" });
+      await db.exec("RESET axora.user_id");
+      await db.query(`UPDATE transactional_email_outbox SET delivery_attempted_at=now()-interval '100 seconds',
+        delivery_lease_expires_at=now()-interval '1 second' WHERE id=$1`, [deliveryId]);
+      const expired = await db.query<{ value: unknown }>("SELECT axora_claimed_invoice_email_payload($1,$2) AS value", [deliveryId, leaseId]);
+      expect(expired.rows[0].value).toBeNull();
+    } finally {
+      await db.exec("RESET ROLE; RESET axora.system_identity; RESET axora.user_id");
+    }
+  });
+
   it("keeps delivery independent and denies another tenant", async () => {
     const state = await db.query<{ status: string }>(`
       SELECT lookup.label AS status FROM requests request

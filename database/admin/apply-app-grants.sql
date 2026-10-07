@@ -890,6 +890,26 @@ BEGIN
   END IF;
 END $$;
 
+-- Worker-only invoice email capabilities added by migration 137. The original
+-- unrestricted invoice helpers above remain denied to the application role.
+DO $$
+BEGIN
+  IF to_regprocedure('public.axora_transactional_invoice_email_state(uuid)') IS NOT NULL
+    AND to_regprocedure('public.axora_claimed_invoice_email_payload(uuid,uuid)') IS NOT NULL
+  THEN
+    REVOKE ALL ON FUNCTION
+      public.axora_transactional_invoice_email_state(uuid),
+      public.axora_claimed_invoice_email_payload(uuid,uuid),
+      public.axora_email_retry_delay(integer)
+    FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION
+      public.axora_transactional_invoice_email_state(uuid),
+      public.axora_claimed_invoice_email_payload(uuid,uuid),
+      public.axora_email_retry_delay(integer)
+    TO axora_app;
+  END IF;
+END $$;
+
 -- P0-10 immutable accountability closure. The application can use only the
 -- scope-enforcing read/access capabilities; audit evidence and chain heads are
 -- never directly readable or mutable by the runtime role.

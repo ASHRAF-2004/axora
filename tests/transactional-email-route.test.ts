@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   verify: vi.fn(),
@@ -36,6 +36,7 @@ function request(body: unknown) {
 }
 
 describe("private transactional outbox route", () => {
+  afterEach(() => vi.restoreAllMocks());
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.verify.mockReturnValue(true);
@@ -149,5 +150,19 @@ describe("private transactional outbox route", () => {
     expect(malformed.status).toBe(400);
     expect(mocks.claimTransactional).not.toHaveBeenCalled();
     expect(mocks.claimWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("logs only queue stage and SQLSTATE for a denied worker query", async () => {
+    const logger = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.claimTransactional.mockRejectedValueOnce(Object.assign(new Error("private recipient and bearer payload"), {
+      code: "42501", detail: "private body", query: "sensitive SQL values",
+    }));
+    const response = await POST(request({ action: "claim", queue: "transactional" }));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "service_unavailable" });
+    expect(logger).toHaveBeenCalledWith(JSON.stringify({
+      event: "email_outbox_operation_failed", action: "claim", queue: "transactional", sqlState: "42501",
+    }));
+    expect(JSON.stringify(logger.mock.calls)).not.toMatch(/private|bearer|sensitive/);
   });
 });

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_PROVIDER_ATTEMPTS,
   createEmailSenderServer,
+  createEmailOutboxPoller,
   emailSenderInternals,
   fetchWithRetry,
   pollTransactionalEmailOutboxOnce,
@@ -292,5 +293,102 @@ describe("email sender readiness and private endpoints", () => {
         error ? rejectClose(error) : resolveClose()
       )));
     }
+  });
+});
+
+describe("durable outbox polling readiness and recovery", () => {
+  it("reports a claim outage honestly and recovers both queues without restart", async () => {
+    const pollTransactionalImpl = vi.fn()
+      .mockRejectedValueOnce(Object.assign(new Error("private queue details"), { statusCode: 503, stage: "claim" }))
+      .mockResolvedValue({ claimed: false });
+    const pollWorkflowImpl = vi.fn().mockResolvedValue({ claimed: false });
+    const logError = vi.fn();
+    const poller = createEmailOutboxPoller({ env: enabledEnvironment, pollTransactionalImpl, pollWorkflowImpl, logError });
+    try {
+      expect(poller.readiness()).toEqual({ statusCode: 503, body: { status: "starting", subsystem: "outbox" } });
+      await poller.poll();
+      expect(poller.readiness()).toEqual({ statusCode: 503, body: { status: "degraded", subsystem: "outbox" } });
+      expect(logError).toHaveBeenCalledWith({ event: "transactional_email_outbox_poll_failed", stage: "claim", httpStatus: 503 });
+      expect(JSON.stringify(logError.mock.calls)).not.toContain("private queue details");
+      await poller.poll();
+      expect(poller.readiness()).toEqual({ statusCode: 200, body: { status: "ready" } });
+      expect(pollTransactionalImpl).toHaveBeenCalledTimes(2);
+      expect(pollWorkflowImpl).toHaveBeenCalledTimes(2);
+    } finally { await poller.stop(); }
+  });
+
+  it("bounds startup and marks stalled polling degraded", async () => {
+    let clock = 1_000;
+    const poller = createEmailOutboxPoller({ env: enabledEnvironment,
+      pollTransactionalImpl: async () => ({ claimed: false }),
+      pollWorkflowImpl: async () => ({ claimed: false }), now: () => clock,
+    });
+    try {
+      clock += 45_001;
+      expect(poller.readiness().body.status).toBe("degraded");
+      await poller.poll();
+      expect(poller.readiness().statusCode).toBe(200);
+      clock += 45_001;
+      expect(poller.readiness().body.status).toBe("degraded");
+    } finally { await poller.stop(); }
+  });
+
+  it("does not overlap leases and drains an active poll during graceful stop", async () => {
+    let finish;
+    const waiting = new Promise((resolve) => { finish = resolve; });
+    const pollTransactionalImpl = vi.fn(() => waiting);
+    const pollWorkflowImpl = vi.fn().mockResolvedValue({ claimed: false });
+    const poller = createEmailOutboxPoller({ env: enabledEnvironment, pollTransactionalImpl, pollWorkflowImpl });
+    const first = poller.poll();
+    const overlapping = poller.poll();
+    let stopped = false;
+    const stopping = poller.stop().then(() => { stopped = true; });
+    await Promise.resolve();
+    expect(stopped).toBe(false);
+    expect(pollTransactionalImpl).toHaveBeenCalledOnce();
+    finish({ claimed: false });
+    await Promise.all([first, overlapping, stopping]);
+    await poller.poll();
+    expect(pollTransactionalImpl).toHaveBeenCalledOnce();
+    expect(pollWorkflowImpl).not.toHaveBeenCalled();
+    expect(stopped).toBe(true);
+  });
+
+  it("records a lost completion response without replaying the provider send", async () => {
+    const job = {
+      deliveryId: "00000000-0000-4000-8000-000000000041",
+      leaseId: "00000000-0000-4000-8000-000000000042",
+      messageKind: "CONTACT_NOTIFICATION", providerAgent: "axora-platform",
+      recipientName: "Axora team", recipientEmail: "monitored-inbox@example.test", locale: "en",
+      contact: { name: "Fixture Visitor", message: "Synthetic controlled recovery enquiry.", submittedAt: new Date().toISOString() },
+    };
+    let claimed = false;
+    const provider = { name: "resend", send: vi.fn().mockResolvedValue({ status: "submitted", messageId: "isolated-provider-accepted" }) };
+    const fetchImpl = vi.fn(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      if (body.action === "complete") throw new TypeError("response connection interrupted");
+      if (claimed) return Response.json({ job: null });
+      claimed = true;
+      return Response.json({ job });
+    });
+    await expect(pollTransactionalEmailOutboxOnce({ env: enabledEnvironment, provider, fetchImpl, readFileImpl: secretReader() }))
+      .rejects.toMatchObject({ message: "outbox_unavailable", stage: "complete" });
+    // A fresh process sees the durable SENDING lease, rather than sending again.
+    await expect(pollTransactionalEmailOutboxOnce({ env: enabledEnvironment, provider, fetchImpl, readFileImpl: secretReader() }))
+      .resolves.toEqual({ claimed: false });
+    expect(provider.send).toHaveBeenCalledOnce();
+    expect(provider.send.mock.calls[0][0].deliveryId).toBe(job.deliveryId);
+  });
+
+  it("keeps an invalid delivery switch degraded without unhandled polling errors", async () => {
+    const pollTransactionalImpl = vi.fn();
+    const logError = vi.fn();
+    const poller = createEmailOutboxPoller({ env: { AXORA_EMAIL_DELIVERY_ENABLED: "invalid" }, pollTransactionalImpl, logError });
+    try {
+      await expect(poller.poll()).resolves.toBeUndefined();
+      expect(pollTransactionalImpl).not.toHaveBeenCalled();
+      expect(logError).toHaveBeenCalledWith({ event: "email_outbox_poll_failed", stage: "configuration" });
+      expect(poller.readiness().body.status).toBe("degraded");
+    } finally { await poller.stop(); }
   });
 });

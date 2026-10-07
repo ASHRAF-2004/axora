@@ -27,6 +27,8 @@ const SERVICE_REPLAY_WINDOW_SECONDS = 5 * 60;
 const DELIVERY_CACHE_TTL_SECONDS = 24 * 60 * 60;
 const DELIVERY_CACHE_MAX_ENTRIES = 1_000;
 const OUTBOX_POLL_INTERVAL_MS = 10_000;
+const OUTBOX_STARTUP_GRACE_MS = 45_000;
+const OUTBOX_PROGRESS_MAX_AGE_MS = 45_000;
 const PROVIDER_AGENTS = [
   "axora-auth", "axora-procurement", "axora-budget", "axora-delivery",
   "axora-documents", "axora-platform",
@@ -780,22 +782,33 @@ async function internalOutboxRequest(body, {
 } = {}) {
   const url = outboxConfiguration(env);
   const rawBody = JSON.stringify(body);
-  const response = await fetchImpl(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...await signServiceRequest("POST", url.pathname, rawBody, { env, readFileImpl }),
-    },
-    body: rawBody,
-    signal: AbortSignal.timeout(5_000),
-  });
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...await signServiceRequest("POST", url.pathname, rawBody, { env, readFileImpl }),
+      },
+      body: rawBody,
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch (cause) {
+    const error = emailError("outbox_unavailable", undefined, undefined, cause);
+    error.stage = body.action === "complete" ? "complete" : "claim";
+    throw error;
+  }
   let payload;
   try {
     payload = await response.json();
   } catch {
     payload = undefined;
   }
-  if (!response.ok) throw new Error("outbox_unavailable");
+  if (!response.ok) {
+    const error = emailError("outbox_unavailable", response.status);
+    error.stage = body.action === "complete" ? "complete" : "claim";
+    throw error;
+  }
   return payload;
 }
 
@@ -934,38 +947,109 @@ function senderPort(env) {
   return port;
 }
 
-function scheduleOutboxPoll(env = process.env) {
-  let active = false;
-  const timer = setInterval(async () => {
-    if (active || !emailDeliveryEnabled(env)) return;
-    active = true;
+export function createEmailOutboxPoller({
+  env = process.env,
+  pollTransactionalImpl = () => pollTransactionalEmailOutboxOnce({ env }),
+  pollWorkflowImpl = () => pollWorkflowEmailOutboxOnce({ env }),
+  now = Date.now,
+  logError = (entry) => console.error(JSON.stringify(entry)),
+} = {}) {
+  const startedAt = now();
+  const state = {
+    transactional: { succeededAt: null, failed: false },
+    workflow: { succeededAt: null, failed: false },
+  };
+  let active;
+  let stopped = false;
+  async function poll() {
+    if (active || stopped) return active;
     try {
-      try {
-        await pollTransactionalEmailOutboxOnce({ env });
-      } catch {
-        console.error(JSON.stringify({ event: "transactional_email_outbox_poll_failed" }));
-      }
-      try {
-        await pollWorkflowEmailOutboxOnce({ env });
-      } catch {
-        console.error(JSON.stringify({ event: "workflow_email_outbox_poll_failed" }));
-      }
-    } finally {
-      active = false;
+      if (!emailDeliveryEnabled(env)) return;
+    } catch {
+      state.transactional.failed = true;
+      state.workflow.failed = true;
+      logError({ event: "email_outbox_poll_failed", stage: "configuration" });
+      return;
     }
-  }, OUTBOX_POLL_INTERVAL_MS);
+    active = (async () => {
+      for (const [queue, operation] of [
+        ["transactional", pollTransactionalImpl], ["workflow", pollWorkflowImpl],
+      ]) {
+        if (stopped) break;
+        try {
+          await operation();
+          state[queue].succeededAt = now();
+          state[queue].failed = false;
+        } catch (error) {
+          state[queue].failed = true;
+          // Only fixed stages and numeric status escape this boundary. Provider
+          // or queue exception messages can include private recipient material.
+          logError({
+            event: `${queue}_email_outbox_poll_failed`,
+            stage: error?.stage === "complete" ? "complete" : "claim",
+            ...(Number.isInteger(error?.statusCode) ? { httpStatus: error.statusCode } : {}),
+          });
+        }
+      }
+    })();
+    try { await active; } finally { active = undefined; }
+  }
+  const timer = setInterval(() => { void poll(); }, OUTBOX_POLL_INTERVAL_MS);
   timer.unref();
-  return timer;
+  return {
+    poll,
+    async stop() {
+      stopped = true;
+      clearInterval(timer);
+      await active;
+    },
+    readiness() {
+      const currentTime = now();
+      const queues = Object.values(state);
+      if (queues.some((queue) => queue.failed)) {
+        return { statusCode: 503, body: { status: "degraded", subsystem: "outbox" } };
+      }
+      if (queues.some((queue) => queue.succeededAt === null)) {
+        return { statusCode: 503, body: {
+          status: currentTime - startedAt <= OUTBOX_STARTUP_GRACE_MS ? "starting" : "degraded",
+          subsystem: "outbox",
+        } };
+      }
+      if (queues.some((queue) => currentTime - queue.succeededAt > OUTBOX_PROGRESS_MAX_AGE_MS)) {
+        return { statusCode: 503, body: { status: "degraded", subsystem: "outbox" } };
+      }
+      return { statusCode: 200, body: { status: "ready" } };
+    },
+  };
 }
 
 export function startEmailSender({ env = process.env } = {}) {
   const port = senderPort(env);
-  const server = createEmailSenderServer();
+  const poller = createEmailOutboxPoller({ env });
+  const server = createEmailSenderServer({
+    readinessStatusImpl: async () => {
+      const configuration = await readinessStatus({ env });
+      return configuration.body.status === "ready" ? poller.readiness() : configuration;
+    },
+  });
   server.listen(port, "0.0.0.0", () => {
     console.log(JSON.stringify({ event: "email_sender_started", port, provider: "resend" }));
+    void poller.poll();
   });
-  const pollTimer = scheduleOutboxPoll(env);
-  server.on("close", () => clearInterval(pollTimer));
+  let shuttingDown = false;
+  const shutdown = () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    server.close();
+    void poller.stop();
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
+  server.on("close", () => {
+    void poller.stop();
+    process.removeListener("SIGTERM", shutdown);
+    process.removeListener("SIGINT", shutdown);
+  });
   return server;
 }
 
