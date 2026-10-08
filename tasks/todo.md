@@ -28,6 +28,41 @@
 Public chooser PR221 remains separate. Neither this candidate nor healthy
 workers can close original registration/deletion integrity/live-fixture gaps.
 Contact cap2 remains closed; private credentials/history/other trees preserved.
+
+### Latest native checkpoints — 2026-10-09 MY
+
+- [x] Preserve native02 actual4PASS/2wrong-copy failures and corrected negative
+  actual2FAIL empty-name artifacts before subsequent runs; financial validation
+  unchanged, new test copy now matches the actual calculator.
+- [x] Scope bounded RAM error recovery to the explicit create form; protect
+  newer own pending edits, sensitive/file exclusions and unrelated drafts;
+  idle/handled-error reset and successful completion lifetimes tested.
+- [x] Independent source review, child7files63PASS/logc711a677…, targeted lint
+  and diff-check; root distinct6files55PASS/log0c61d2be… (not8 requested files).
+- [x] Actual fresh standalone final-flow6PASS13.8s/retry0/logb93acc6e…:
+  unchanged original smoke2 plus new positive/error4, first/repeated UUID upload,
+  return-new clear, held demo response/pending edits, unroute before ordinary
+  second error, reload retention and explicit reset.
+- [x] Diagnose actual headed sticky upload overlap at scroll669; implement
+  upload-form-only static-position reflow and pass both-project non-overlap
+  regression; no global CSS/token/label change.
+- [x] Final headed native EN desktopLight/Dark and390mobileDark/Light reviewed:
+  normal DEMO Owner create, first/repeated upload,3 loaded images, static card/
+  no overlap/no overflow, console0/0; owned3152 browser/server closed. Invalid
+  guessed selector excluded; AR/MS native proof not claimed because demo locale
+  writes do not persist. Earlier separate locale evidence retained; not production.
+- [ ] Commit final local headb62 plus two-file flow delta; run all required
+  ordered exact-candidate gates. Development build/stage a6506fa…/41b9b16… are
+  focused-acceptance artifacts, not completed final release gates.
+- [ ] Original full E2E/recovery and protected CI green; explicit merge/deploy
+  approval plus production acceptance. Keep gallery OPEN until then.
+
+Public1990 quality remains FAILED350/19existing skips/one branch/retry0,
+visitor NOT RUN; isolated original branch2PASS17.1s proves no cause/fix.
+Public report-only3f15 image37815313972PASS/no deployment preserves app/test
+bytes1990. Current03 audit/setup/deletion/live-fixture gaps unchanged, Contact
+cap2 consumed/no send or historical release, no host/service/real-data action.
+
 ### Preserved public chooser checkpoints
 
 Candidate4fb94af follows source/E2Efd934d3. First unit gate failed1,920/49skip/

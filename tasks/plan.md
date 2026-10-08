@@ -51,6 +51,44 @@ persistence, image limits and all other mutation actions stay unchanged.
 This worktree is separate from public chooser PR221 and must not alter its
 already-tested candidate. Contact cap2 and the failed current03 audit guard
 are unaffected; no invitation replay, data deletion, service/host action.
+
+### Native progress and next verification boundary — 2026-10-09 MY
+
+Current local headb62bf60 plus the uncommitted upload-form-only static-position
+and paired overlap-regression delta is NOT deployed or a committed final head.
+Preserve native02's4PASS/2wrong-copy failures and the corrected negative2FAIL
+empty-name traces. The unchanged calculator copy was reconciled in the new
+test; own explicit create-form bounded RAM snapshot now restores errors and
+newer pending edits without new storage, generic restores or financial changes.
+Manual-reset claims are limited to idle/handled-error/no pending reset UI.
+
+Focused child7files63PASS and root6files55PASS are distinct; two nonexistent
+requested root paths are not executed coverage. Actual fresh standalone final
+flow6PASS13.8s/retry0 covers both original smoke cases, first/repeated unique-ID
+uploads, return-new clear, pending-edit error restore and ordinary second error
+after unroute, reload and explicit reset. Actual headed2→3 exposed sticky upload
+overlap; static upload-only reflow and both-project scroll regression passed,
+but final headed theme/mobile follow-up remains in progress.
+
+Next: finish actual rendered follow-up, freeze/commit the complete candidate,
+then ordered final lint/type/unit/native/build/stage/runtime/assets and original
+full E2E/recovery; protected exact-head CI, explicit approval and production
+acceptance. Development build/stage a6506fa…/41b9b16… and focused passes do not
+replace these gates. Gallery stays OPEN until that evidence supports closure.
+Public1990 required CI350PASS/19skip/one branch failure remains failed despite
+isolated branch2PASS17.1s; public report-only3f15 imagePASS is not a quality fix.
+Original current03 audit/lifecycle/live-fixture gaps remain independent, Contact
+cap2 stays closed, and no host/service/data/credential action is authorized here.
+
+Final headed EN follow-up now complete locally: normal DEMO Owner creation and
+first/repeated uploads,3 ready images, static/no overlap atscroll669 and zero
+overflow; root reviewed desktopLight/Dark and390mobileDark/Light. Invalid guessed
+selector was corrected before claims. New console0/0; owned3152 browser/server
+closed and no3100/3101/3152 listener. AR/MS native manual acceptance is not
+claimed because DEMO locale writes intentionally do not persist and actorEN
+wins; existing separate locale evidence remains. Proceed to final candidate
+freeze/commit and ordered gates, not production/demo-ready or gallery closure.
+
 ### Preserved public chooser baseline
 
 Scoped-removal baseline is the fresh protected main/deployed

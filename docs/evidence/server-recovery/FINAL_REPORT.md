@@ -2,6 +2,156 @@
 
 Report date: 2026-10-09, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
+## Native product-action candidate progress — 2026-10-09 MY
+
+**STATUS: NOT DEPLOYED / REQUIRED RELEASE AND OVERALL ACCEPTANCE OPEN.**
+The separate `codex/product-action-completion` worktree is at
+`b62bf600d39527b389cffcff3e686de0898d24c7`, plus the currently uncommitted
+two-file upload-flow/rendering delta described below. This is a local candidate,
+not an exact committed final release head. Production remains
+`d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`, OCI
+`bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8`,
+migration139. No application deployment, migration or production catalog command
+was performed in this continuation. All earlier failures and isolated/live
+acceptance boundaries below remain preserved.
+
+### Supported repair and newly observed error-reset defect
+
+Successful product creation now uses a native Server Action redirect to its
+same UUID editor and the three existing created/draft-created/image-retry
+destinations, outside the error-catching blocks. Successful image upload uses
+the same editor with a success notice and an actual newly saved image UUID, so
+two successive uploads have distinguishable completion references. Other
+product mutations, validation, permissions, commercial calculation, persistence
+and image limits remain unchanged. EN/AR/MS feedback now also honestly describes
+draft creation and the already-created-but-images-failed outcome. The precise
+internal framework scheduling cause of the earlier completed-response/render
+stalls remains unproven; native redirects are the supported completion repair,
+not proof of a particular React/Next race.
+
+The initial native focused02 run actually passed4 and failed2: both unchanged
+product-smoke cases and both positive new creation/upload cases passed, while
+the new negative cases expected the wrong error copy. The unchanged Owner
+calculator throws “Markup percentage must be between 0 and 100.” before the
+separate schema's profit message. Only the new test's exact expected copy was
+corrected; no financial validation was changed. Complete failed log SHA256
+`abdbd74de37106b610a6e8b1266ef336e6a54d9ef67a3175afa29c6031f4e196`
+and traces beginning `200b819` / `22422ca` were retained privately at
+`product-native-focused-failed-02-oaPFY4` before another browser run.
+
+The corrected negative-only run then actually failed both desktop and mobile
+retention assertions: the correct error and `/products/new` rendered, but the
+entered product name became empty. Failed log SHA256
+`f2fa1d53d6e286b2a0796e4ddd24347f603330952800eb02503128df0f5ae335`
+and traces beginning `b5e8aab` / `7edf884` are retained privately at
+`product-native-negative-failed-Jwtq2S`. React's fulfilled function-action reset
+and the draft manager's native reset listener explain this separate defect:
+uncontrolled fields reset and the stored submitted draft is cleared before the
+error effect can recover it. A bounded synthetic native-form diagnostic also
+confirmed that reset event/value/storage ordering; it used no auth session.
+
+The narrow repair reuses the existing safe collect/restore filters and bounded
+draft parser. Only the explicit `create-product` form captures a transient RAM
+snapshot, refreshes its own safe edits while pending, and restores its own
+fields after a local error. One bubbling input/change then uses the existing
+scoped autosave and cancellation rules; the error outcome includes its own
+form ID. Other forms and submitted drafts are not swept. No new storage,
+password/token/file-content capture, retry or persistence system was added.
+Idle/handled-error explicit reset clears the draft; manual reset during pending
+is not distinguished from the framework reset, and this UI has no pending reset
+control. Actual local success clears the transient reference; route unmount
+drops it, and each new submission captures the current values.
+
+### Current focused and actual-render evidence
+
+| Check | Actual result and scope |
+| --- | --- |
+| Child action/draft/source-focused tests |7 files /63 passed,847ms; log `c711a6775e5705624379bbff47e3cd731a434d40a36a9b814b44ec1b96d3954a`. Covers scoped completion, safe/oversized/file controls, repeated errors, newer pending edits, explicit reset and unrelated-draft retention. |
+| Root final-flow focused tests |6 files /55 passed,770ms; log `0c61d2be7391d2d029d57a8ec4f2add5e1c26ebe617a6a2cb51885eb8377dd93`. Two requested file paths did not exist; this is the actual6/55 executed result, not8 files or the child63 run. |
+| Latest focused real-browser suite |6 passed,13.8s,retry0, fresh owned standalone, Chromium and Pixel7; log `b93acc6e637863874f49f43930cb43098e56c2bcf385a032eac1c5bdd09148ad`. Two unchanged original product-smoke cases plus four new completion/error cases; not the required full suite. |
+| New positive journeys |Correct created UUID editor, first upload2 images then a second distinct upload3, distinct actual UUID references, visible success, upload-draft blank after reload and creation form blank after return/debounce boundary. |
+| New error journeys |Only an isolated demo action's already-fetched response is held while enabled fields are edited; correct error/route/latest values/reload pass. That route hook is removed before the ordinary second submission, whose error/retention and explicit-reset/reload checks also pass. No production interception or financial command. |
+| Development artifact |Build and standalone staging passed for focused/rendered acceptance; logs `a6506fa50cfa53f1603d609c21169b30bce2275143de5e7e6823cf97d770f61a` / `41b9b16a6d16412835b35158b268e865302cee9baf0eb086b04b2a74b03d2b20`. These are development checks, not the ordered final exact-head release gates. |
+| Review / safety |Independent source review approved the completion, draft/error and scoped upload-flow changes. Targeted lint/diff checks pass; lead reports142 changed files scanned with0 supplied-password matches. The private input remains intact and outside Git. |
+
+Actual headed native rendering showed the gallery count advance2→3, then exposed
+a separate upload-card overlap: at scroll669, the sticky upload card bottom484
+overlaid gallery top290.90625. The only application delta afterb62 is
+`position: static` on that upload form, following the existing RequestForm
+precedent. There is no global CSS/token/label or visual-language change. Its
+paired new browser regression asserts static positioning and non-overlap after
+scroll, on both projects, and passed in the6-case run above. Independent review
+approved the scoped reflow. The final headed theme/mobile follow-up is still in
+progress at this checkpoint; no finished manual or production acceptance is
+claimed.
+
+### Final headed native English follow-up — 2026-10-09 MY
+
+The preceding in-progress manual checkpoint is now superseded by actual headed
+localhost3152 acceptance, not production. Normal DEMO Owner sign-in created
+product `202df5be-da1c-423b-8e4f-8d914fd6f73a` at
+`2026-10-08T17:43:17Z` / `2026-10-09 01:43:17 MY`. The first two-image upload
+showed reference `cbf7be29-07d2-4531-a0cf-6fb8973e216c` at17:43:37Z;
+the repeat third-image upload showed `46f9d597-e947-41f4-804a-044da4bc95f6`
+at17:43:49Z. Actual own upload-form/next-sibling gallery checks found3 articles,
+all3 images ready, static positioning and no horizontal overflow. At scroll669,
+upload bottom290.90625 equalled gallery top290.90625: no overlap. An initial
+guessed `.product-image-manager` selector returned0/undefined; that was an
+invalid diagnostic probe, not an application failure or valid empty-gallery
+observation. The corrected known DOM was checked before the acceptance claim.
+
+Root visually reviewed English Light desktop17:44:04.390Z, Dark desktop
+17:44:25.185Z,390px Dark mobile17:45:13.551Z and390×844 Light mobile
+17:47:10.692Z captures. Controls/cards were clean; the final mobile check also
+confirmed static upload,3 loaded images, upload bottom no lower than gallery
+top and no document overflow. The new final browser console had0 errors and0
+warnings, distinct from the earlier browser's one login preload warning.
+Normal Arabic language selection cannot persist a DEMO profile preference:
+`updateMyPreferredLocale` intentionally does not write the DB in demo mode,
+and the actor's English profile wins the layout. A transient Arabic document
+followed by English is not native AR/MS acceptance. Earlier public homepage
+locale checks and deployed UI locale proofs remain separate; no language/auth
+behavior was changed to manufacture this proof.
+
+The owned `native-product-final` browser closed and its3152 standalone process
+was stopped afterward (expected interrupt exit130);3100/3101/3152 had no active
+listener. No production service/container or host restart occurred. These
+headed checks close the local English manual follow-up only, not full gates,
+AR/MS native acceptance, production acceptance or overall demo readiness.
+
+### Release barriers and preserved original acceptance gaps
+
+The public-removal candidate remains separately unmerged/undeployed in
+[PR221](https://github.com/ASHRAF-2004/axora/pull/221). Exact1990 required
+quality37810933862 still FAILED:350 passes/19 existing skips/one desktop
+branch-foundation failure with its unchanged file retry0; visitor recovery
+NOT RUN. One fresh isolated original branch journey later passed both projects
+in17.1s,retry0 (log beginning `ffbd3f42`), but did not reproduce the failure or
+prove a repair. The first anchored-filter CLI selected0 tests and remains a
+retained no-test attempt, not acceptance. Public report-only commit3f15bc7 has
+[image CI37815313972 PASS](https://github.com/ASHRAF-2004/axora/actions/runs/37815313972)
+with no deployment; its app/test bytes are unchanged from1990, so it cannot
+erase the failed quality gate or authorize release.
+
+For the native candidate, final commit identity and ordered lint/typecheck/full
+unit/native PostgreSQL/build/staging/runtime/assets, original full E2E including
+visitor recovery, exact-head protected CI, explicit merge/deploy approval and
+actual production acceptance remain pending. Existing CI retry1 and the
+financial journey's retry0,19 browser skips and49 native-only unit skips are
+unchanged; focused runs here add no retry/skip/order/assertion weakening.
+**Gallery remains OPEN until the final required gates and production acceptance
+support closure**, not merely because these focused cases pass.
+
+Current03's failed temporal audit guard, incomplete registration/setup and
+immediate product-deletion/whole-flow proof, absent explicitly designated live
+destructive fixture and missing live CAM/second-Driver evidence are unchanged.
+The native gallery candidate does not repair or certify them. Contact delivery
+and Inbox receipt remain confirmed and both smoke slots consumed: no new send,
+provider/mailbox retry or historical release occurred. No host/service action,
+real business-data deletion, role/auth/RLS or financial-model change was made
+by this continuation. **Overall acceptance remains BLOCKED; demo-ready is not
+certified.**
+
 ## Public team intro removal — current candidate, 2026-10-08
 
 Latest request is removal of the public Early Birds/Night Owls chooser, whose

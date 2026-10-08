@@ -2,6 +2,39 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
+## Native product-action candidate — 2026-10-09 MY
+
+**NOT DEPLOYED. Required release gates and overall acceptance remain OPEN.**
+Separate candidate `b62bf600d39527b389cffcff3e686de0898d24c7` plus an uncommitted
+two-file upload-flow/rendering delta; not a committed final tested release head.
+Production stays d82/OCIbc8/schema139. All older evidence below is retained.
+
+| Item | New actual evidence / remaining boundary | Status |
+| --- | --- | --- |
+| Creation/gallery completion |Supported native successful create/upload redirects preserve same UUID/context/permissions/validation/storage. Upload notices distinguish successive actual saved image UUIDs; EN/AR/MS draft/image-retry/success feedback. Original product-smoke assertions/timeouts unchanged. Precise framework scheduling cause unproven. |Implemented in local candidate; gallery OPEN until required full gates and production acceptance. |
+| Failed product draft retention |First native02:4PASS/2FAIL wrong new-test copy, archived `product-native-focused-failed-02-oaPFY4`, logabdbd74de…/traces200b819…/22422ca… . Corrected negatives:2FAIL/entered name emptied, archived `product-native-negative-failed-Jwtq2S`, logf2fa1d53…/tracesb5e8aab…/7edf884… . Fulfilled action/native reset clears uncontrolled fields and stored draft before error handling. Central calculator message was never changed. |Own explicit create-form bounded safe RAM snapshot/error restore implemented; no financial patch/new storage. |
+| Scoped draft safety |Same safe collection/restore/parser, own form ID outcome, newer own pending edits protected, other forms unchanged; idle/handled-error resets discard. Pending manual reset not distinguished/no pending reset control. No sensitive/file contents captured. |Child7files63PASS/logc711a677…; independent source review and targeted lint/diff pass. |
+| Current native browser proof |Fresh standalone/retry0/Chromium+Pixel7:6PASS13.8s/logb93acc6e…; unchanged original smoke2 plus new positive/error4. First/repeated upload2→3 and distinct UUIDs, return-new/upload draft clear, held isolated-demo response/pending edits, unroute then ordinary second error, reload retention and explicit reset pass. |Focused acceptance only; not original full suite or production. |
+| Upload card overlap |Actual headed scroll669 showed sticky card bottom484/gallery top290.90625. Scoped upload-form `position: static` only, existing RequestForm precedent; new both-project scroll/non-overlap regression passes in6-case run. |Local repair independently reviewed; final headed theme/mobile follow-up in progress, not claimed complete. |
+| Current gates |Root focused6files55PASS/log0c61d2be… (two requested paths absent; not8files), distinct from child63. Development build/stage logs a6506fa…/41b9b16… pass; lead142-file supplied-password scan0. |Final commit, ordered full local gates, original combined E2E/recovery, protected CI, explicit approval and production acceptance PENDING. |
+| Public release barrier |1990 PR221 quality37810933862 FAILED350/19existing skips/one branch-foundation/retry0; visitor NOT RUN. Isolated original branch2PASS17.1s/logffbd3f42… does not reproduce/fix cause; earlier filter0 attempt retained. Public report-only3f15bc7 image37815313972 PASS/no deployment/app-test unchanged1990. |Failed required CI remains a barrier; native focused results do not certify public-only release. |
+| Original workflow gaps / safety |Current03 audit guard FAIL; setup/immediate removal/whole-flow/live disposable fixture gaps and missing CAM/second Driver unchanged. Contact B delivery/Inbox confirmed, cap2 consumed/no new send or historical release. No real data deletion, host/service operation, auth/RLS/financial change. |Overall BLOCKED; not demo-ready. |
+
+Full log hashes, provenance and explicit limits are in the latest native section
+of FINAL_REPORT. No earlier failed run or live/isolated boundary is relabelled.
+
+Final headed follow-up supersedes the in-progress English manual row above:
+normal DEMO Owner localhost3152 created product202df5be… at17:43:17Z, first
+upload2/cbf7be29… at17:43:37Z, repeat third/46f9d597… at17:43:49Z. Correct own
+form/next-sibling gallery DOM had3 ready images/static/no overflow; atscroll669
+uploadBottom=galleryTop290.90625/no overlap. Initial guessed selector0/undefined
+was an invalid probe, not an app failure. Root reviewed EN desktopLight/Dark
+and390mobileDark/Light final captures; new console0errors/0warnings. AR/MS
+native manual proof is NOT claimed: demo locale preference intentionally does
+not persist and the English actor profile wins. Earlier locale proof stays
+separate. Owned browser3152 closed/server interrupt130;3100/3101/3152 closed,
+no production/container/host restart. Final gates/prod/gallery closure still OPEN.
+
 ## Public team intro removal — 2026-10-08
 
 Latest requested change: remove the public Early Birds/Night Owls chooser and

@@ -41,6 +41,12 @@ test("creation and image upload complete their native routes and do not restore 
   await expect(page.getByRole("status").filter({ hasText: "Product images uploaded successfully." })).toBeVisible();
   await expect(gallery.locator("article")).toHaveCount(3);
   await expect(page.getByText("3 of 8 images uploaded", { exact: true })).toBeVisible();
+  await expect(upload).toHaveCSS("position", "static");
+  await gallery.scrollIntoViewIfNeeded();
+  const [uploadBox, galleryBox] = await Promise.all([upload.boundingBox(), gallery.boundingBox()]);
+  expect(uploadBox).not.toBeNull();
+  expect(galleryBox).not.toBeNull();
+  expect(uploadBox!.y + uploadBox!.height).toBeLessThanOrEqual(galleryBox!.y + 1);
   await page.reload();
   await page.waitForTimeout(350);
   await expect(upload.getByLabel("Alternative text for this upload")).toHaveValue("");
