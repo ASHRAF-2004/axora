@@ -895,6 +895,12 @@ button[data-ux-pending="true"]::after {
 .public-contact-form { min-width: 0; padding: clamp(24px, 4vw, 38px); background: var(--axora-surface); border: 1px solid var(--axora-border); border-radius: 20px; box-shadow: var(--axora-shadow-md); }
 .public-contact-form .form-success,
 .public-contact-form .form-alert { margin-bottom: 20px; display: flex; align-items: flex-start; gap: 9px; }
+/* Localized verification feedback must reflow across system-font metrics. */
+.public-contact-form [data-contact-verification] + .form-alert { display: grid; grid-template-columns: minmax(0, 1fr); }
+.public-contact-form [data-contact-verification] + .form-alert > p { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.public-contact-form [data-contact-verification] + .form-alert > .information-actions { min-width: 0; padding: 0; border-block-start: 0; }
+.public-contact-form [data-contact-verification] + .form-alert > .information-actions > * { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.public-contact-form [data-contact-verification] + .form-alert .button { white-space: normal; }
 .public-contact-form label { color: var(--axora-text); font-size: 13px; font-weight: 800; }
 .public-contact-form textarea { resize: vertical; }
 .contact-honeypot { position: absolute !important; width: 1px !important; height: 1px !important; margin: -1px !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap !important; }
