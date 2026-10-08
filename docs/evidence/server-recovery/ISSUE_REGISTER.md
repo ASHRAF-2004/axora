@@ -2,7 +2,28 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
-## Current checkpoint — 2026-10-08 02:25 UTC
+## Current checkpoint — 2026-10-08 02:57 UTC
+
+**BLOCKED FOLLOW-UP RELEASE / CONTACT ACCEPTANCE. Not demo-ready.**
+PR220 exactd8 protected image CI37718133500 PASS; Nightly37718133148 FAILED.
+All non-browser stages green;350 browser passes/19 existing skips/1 existing-retry
+flaky Owner company creation/2 mobile failures; visitor NOT RUN. No merge/deploy.
+Production remains c3/24f/schema139; previous repairs and data preserved.
+
+| Item | Exact current evidence / next step |
+| --- | --- |
+| Stale Cart / Contact reflow | Both-project direct-purchase/Cart and all six strengthened Contact cases PASS in failed d8 CI; earlier f09 full-local353/19+18 remains preserved. Overall gate is not green. |
+| New mobile foundation gate | Create branch stays /branches/new after confirmed location; original15s URL assertion at123 fails, budget not reached. Source/focused fresh-server diagnosis in progress; no proven cause or permission/accounting change. |
+| New mobile product gate | Product creates/edit route loads; observed upload HTTP<400, then gallery0 rather than2 at150 on initial and existing retry. Need action/error/RSC/DOM evidence; no proven cause, no weakened assertion or real deletion. |
+| Owner company retry | Initial30s company redirect wait failed; existing retry PASS. Cause unproven, not clean-first-attempt acceptance. |
+| Missing CI diagnostics | Artifacts0, log2764… preserved; pending failure-only public-demo artifact retention + invariant3PASS, no full-command/exit/retry/skip change. Observability is not an application fix. |
+| Live Contact | Passive actual c3 Malay page200/mobile no overflow/Send disabled/no feedback; no reset/fill/Submit. A1/Bunused; prior Brave verification-vs-Send/result/time remains exact human dependency. Submission/provider/delivery/receipt unproven. |
+| Preserved acceptance | Linked one live duplicate refusal/four no-effects/later visible GET notice, actual six UI/roles and bounded SSE evidence below retained. Isolated account setup/product deletion clearly separate from live. |
+
+Continue independent diagnosis; neither a passing local run nor healthy workers
+overrides failed required CI or missing Contact acceptance.
+
+## Historical checkpoint — 2026-10-08 02:25 UTC (superseded)
 
 **DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
 Production c3/OCI24f/schema139 remains unchanged. Scoped follow-up source

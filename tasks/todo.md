@@ -1,6 +1,16 @@
 # Recovery execution checkpoints
 
-Latest02:25UTC: scoped f09 Contact wrapping fix + strengthened six localized
+Latest02:57UTC: PR220 exactd8 imageCI PASS, Nightly37718133148 FAILED350/19skip/
+1existing-retry Ownercompanyflake +2mobilefailures. Foundation fails branch-create
+URL at123 BEFORE budget; product uploadresponse<400 but gallery0instead2 at150
+bothattempts. Contact6 and directCart casesPASS. VisitorNOTRUN. No merge/deploy;
+productionc3/24f/139 preserved. Focused source/fresh-standalone diagnosis underway,
+no weakened test/retries/production writes. MissingCIartifacts0 addressed only by
+pending failure-only demo retention + focused invariant3PASS; not a cause fix.
+Passive c3MSContact200/390px/Senddisabled/no failurepanel/no Submit. ContactA
+priorBraveSend/result/time stillpending, A1/Bunused/no historyreplay.
+
+Historical02:25UTC: scoped f09 Contact wrapping fix + strengthened six localized
 render tests reproduces old20px failure then passes focused6 and all required
 local gates: lint/type/unit1914/native49/139/build/stage/runtime/assets/
 originalcombined353+19existing skips/visitor18/retry0. Exact protectedCI and

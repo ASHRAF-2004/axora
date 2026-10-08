@@ -2,7 +2,54 @@
 
 Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
-## Current execution checkpoint — 2026-10-08 02:25 UTC
+## Current execution checkpoint — 2026-10-08 02:57 UTC
+
+**STATUS: BLOCKED FOLLOW-UP RELEASE / CONTACT ACCEPTANCE. Not demo-ready.**
+
+Production remains c3/OCI24f/schema139. PR220 exact head
+`d8e7e080e7865f18efb395d0a965707384860dbe` protected image CI
+[37718133500](https://github.com/ASHRAF-2004/axora/actions/runs/37718133500)
+passed, but its exact-head Nightly
+[37718133148](https://github.com/ASHRAF-2004/axora/actions/runs/37718133148)
+**FAILED**. No merge or follow-up deployment occurred. Lint/typecheck,
+unit1,914+49 native-only skips, native49/all139 migrations, build/staging/runtime
+and Zapier package/schema/audit passed. Browser result350 passed/19 existing skips/
+one existing-retry flaky Owner-company creation/2 failed in12.9min; visitor
+configuration NOT RUN after the first configuration failed. All six Contact
+recovery cases and both-project direct-purchase/Cart cases passed in this CI run.
+This does not make the overall required browser gate green.
+
+The mobile foundation failure is branch creation, BEFORE any budget command:
+after confirmed location and Create branch it remained `/branches/new`; the
+original15s redirect assertion failed at123. Mobile product creation reached
+its edit route, then observed an upload next-action response HTTP<400 but gallery
+article count remained0 instead of2 at150, on both initial attempt and existing
+retry. Owner company creation's first30s navigation wait timed out and its
+existing retry passed. Root causes of these failures are not yet proven or
+labelled baseline flakiness. Full private CI log SHA256
+`2764ae55f8ad98e622ce70a151a91deff0f0bb208b193236d86effa8bf940b71`.
+Artifact API reports0; unavailable runner images/traces were not inspected.
+
+Independent focused diagnosis is proceeding against fresh standalone/demo state,
+without production writes, added retries, assertion weakening or blind full-run
+repetition. A31-line test/release-only pending change retains failed public-demo
+browser outputs for7 days with an official SHA-pinned
+[upload action](https://github.com/actions/upload-artifact/blob/v4.6.2/README.md).
+The original full command/exit behavior is unchanged, hidden files excluded and
+no host/production/private evidence uploaded. Focused isolation/retention tests:
+3 passed; lint/diff check pass;115-file supplied-password scan0 matches. This
+observability fix is NOT represented as a repair of either application failure.
+
+An ordinary headed Owner session passively viewed the c3 Malay Contact page at
+390px:200, widget container present, Send disabled, document overflow0, no
+natural feedback error rendered. No field values, challenge token, callback,
+reset or Submit used. Owner saved locale English/Light remained intact and
+owned context/browser closed. This is not actual recovery-panel acceptance or
+Contact submission proof. The earlier linked live duplicate and shared-live
+evidence below remains valid. Contact A still requires prior-Brave Send/result/
+time reconciliation; cap A1/Bunused, no new Send or historical replay.
+
+## Historical execution checkpoint — 2026-10-08 02:25 UTC (superseded)
 
 **STATUS: DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
 
