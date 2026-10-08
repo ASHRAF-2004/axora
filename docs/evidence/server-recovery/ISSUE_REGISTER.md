@@ -8,17 +8,83 @@ Latest requested change: remove the public Early Birds/Night Owls chooser and
 its counters from EN/AR/MS homepages; not authenticated assigned-team profile
 confirmation. Homepage unmount/snapshot dependency removal implemented;
 focused render/visitor-security/SEO/release-isolation29PASS, including old-page
-RED3 localized render cases. Actual new browser checks and final changed-candidate
-gates PENDING. Earlier d82 release results do not certify these new app/test bytes.
+RED3 localized render cases. Actual new browser checks/local changed-candidate
+gates complete below; protected CI/explicit release approval PENDING.
+Earlier d82 release results do not certify these new app/test bytes.
 Production remains d82/bc8/schema139; no deployment, visitor-history deletion,
 Contact Send or auth/profile/financial change. Explicit merge/deploy approval is
 required by the latest repository instruction. All prior recovery barriers,
 gallery instability and Contact cap2 remain as documented below.
 
+Historical correction checkpoint: feature commitfd934d3 independently reviewed;
+the then-current test candidate was4fb94af (later finalized browser candidate9a8 below).
+First full fd934d3 unit gate FAILED1,920PASS/49 existing skips/2 failures; retained
+log SHA1176694c… . Obsolete homepage allowlist entry removed (narrower access
+contract). Existing purge fixture's23514 strict override interval rejection was
+reproduced in RAM-only all139; normal positive interval passed and failed
+transaction rolled back. Fixture now uses a pre-existing grant; every purge/
+audit/email-release/Owner-refusal assertion and all production logic unchanged.
+Actual failing timestamps were not captured; actual equal-time/future-start
+deletion is not claimed fixed. Final focused13PASS/4.50s; at that checkpoint full
+changed-candidate gates were still pending, not cleared by isolated passes. Main retired UI contracts
+22→20/recovery18→7 replaced with meaningful direct-home regressions; no new
+retry/skip/config/project change. Contact remains navigation-only in that coverage.
+
+Actual production-mode headed Chrome EN/AR/MS/both themes/1440desktop/390mobile/
+Arabic RTL/keyboard skip-to-main and refresh passed; chooser/counters/retired
+requests/overflow0. Root reviewed12 ready-home views +1 distinct EN footer view.
+No Contact Send. Owned browser/test3150 closed; no production/recovery operation.
+Local full unit1,922PASS/49native-only skips, native49/all139/RLS/grants, lint,
+typecheck, build/pg-cloudflare, stage/runtime/deployment-assets PASS. Focused
+main20PASS24.2s/recovery7PASS8.9s/retry0. First required combinedCI=true suite
+finished EXIT1:349PASS/19 existing skips/one FAILED obsolete public-i18n
+counter expectation (initial+retry)/one FLAKY unchanged mobile gallery0/2
+(initial failed/existing retry passed),9.5min. Recovery NOT RUN after mainfailure.
+Complete failure log SHA9706de7d… and private archived results retained before
+the narrow keyboard contract correction. Actual first-failure gallery trace
+SHA95f3d963… and screenshot420b7d12… are now available and were inspected;
+uploaded0/8/selectedfiles2/galleryempty. Missing artifact gap closed; gallery
+cause/fix still OPEN, not cleared by retry. All actual keyboard/locale/menu/
+Contact assertions remain. Narrow correction independently approved; focused
+26PASS/2 unchanged mobile-duplicate skips14.5s/logSHA096881d5… . The later combined
+result follows; production unchanged/approval still required.
+
+Final browser candidate9a8cc53 includes bounded failure-only observation, no
+app/backend/config/unit/financial delta from successful4fb gates. Independent
+review's noninterference corrections verified; original product assertions/
+operations/timeouts exact, no added retry. Earlier2focusedPASS is distinct from
+finalfocused desktopPASS/mobileINITIALFAIL-then-existing-retryPASS1.3min.
+Actual creationPOST200/17,832CDP bytes/loadingFinished but `/products/new`
+stayed15seconds/Create disabled; upload never reached. New trace72f29195…,
+log485b75fe… and private archivepublic-team-action-failed-CVWhJg retained.
+Creation-transition failure and gallery cause remain OPEN, not cleared by retry.
+Required original combined suite completed on9a8cc53:349PASS/19existing skips/
+TWO FLAKY9.7min, followed by recovery7PASS9.3s/EXIT0. Desktop initial gallery0/2
+and mobile initial create-route timeout each passed only on the unchanged CI
+retry. No clean351-pass claim, no source changes during the run. Log SHA031a2d7b…;
+first-failure traces7813292a…/f909a0c3… and all main/recovery results archived
+privately at public-team-required-9a8-RXEBYD. Completed upload response26,673CDP
+bytes/loadingFinished plus successful image resources but zero committed gallery
+articles establishes a client completion failure in this occurrence; precise
+React/Next internal cause remains unproven. Supported server-redirect/draft-safe
+repair is being developed separately, NOT yet proven or deployed. Gallery and
+creation-transition instability remain OPEN. Contact cap2 unchanged.
+
+| Additional test-diagnosis finding | Evidence and limitation | Status |
+| --- | --- | --- |
+| Account purge override interval | RAM-only diagnostic02 reproduces equal removal/start time23514 with full rollback;036's strict interval and096's closure also imply a future-start edge. Existing general purge fixture now explicitly models a pre-existing grant, with every assertion retained. No live failure or application repair is claimed. | OPEN, separately tracked production timestamp edge; no schema/authorization changes authorized or made in this public-home slice. |
+
 ## Final closure audit — 2026-10-08 (in progress)
 
+Item9 dated guide refresh is now complete:13pages/48,566bytes, every final page
+visually reviewed, zero known private-secret/placeholder text hits. Published
+PDF SHA30cbd5a5c61ab7819f7c06a59d82dcd5b88c8b329bc61e31343690a9f0e7e24e;
+old12page artifact retained recoverably. This closes documentation delivery,
+not future migration/host boot/cutover or the failed workflow integrity guard.
+
 Contact is closed/cap2; no additional Send or historical-email release. Production
-remains d82/bc8/schema139 and unchanged exact-head gates remain valid. The prior
+remains d82/bc8/schema139; its historical exact-head gates do not certify the
+later public-intro candidate. The prior
 overall acceptance wording does not certify unobserved original live lifecycle
 cases or the live queued-Contact restart scenario.
 
@@ -40,8 +106,10 @@ neither can turn this failed whole-workflow guard into a pass.
 | Current03 product partial |ONE exact new product/image/price-history, supplier0/deletionAudit0, owned original phase marker retained. The old earlier deletion proof reloaded before absence and cannot certify current immediate removal. |OPEN; do not replay create/delete or claim a full current-image lifecycle pass. |
 | Current03 registration partial |ONE company/zero finance, one SENT invitation/one RAM sink delivery/fragment untaken; earlier isolated valid setup/native concurrency/expiry proofs remain distinct. |OPEN; no current03 setup, login, consumed-link or post-restart whole-flow result. |
 
-Gallery remains OPEN: one bounded unchanged-assertion mobile diagnostic passed
-2.3s/retry0, but did not reproduce or fix the original CI0/2 failure. Fresh role
+Gallery remains OPEN: the later required combined run above now reproduces the
+actual initial mobile0/2 failure and preserves its trace/rendered evidence.
+Its retry and the earlier bounded2.3second isolated pass do not establish a fix.
+Fresh role
 inventory still has no CAM/second Driver; all3 live companies have displayable
 logos and Wallets. Conditional Slack checklist is complete; activation requires
 its specifically missing controlled provider inputs.

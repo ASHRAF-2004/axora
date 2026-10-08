@@ -22,6 +22,19 @@ counters; the Arabic chooser title is “أيُّ فريق تختار؟”.
    merge/deploy approval is required by the latest repository instruction;
    no production mutation is part of this implementation slice.
 
+Scoped-removal baseline is the fresh protected main/deployed
+`d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`, OCIbc8/schema139; the older
+a40 baseline below belongs to the original recovery start. Required9a8 browser
+continuation preserves every original product/Cart assertion and uses bounded
+failure-only transport/render observation, not an unproved application patch.
+That original combined run completed349PASS/19existing skips/TWO FLAKY plus
+recovery7PASS/EXIT0; first failures and reports are privately archived. A
+supported action-completion/draft-safe gallery repair is scoped to a separate
+worktree; it does not alter the tested public-removal candidate or imply a fix.
+The prior mobile gallery failure and newly observed creation-transition
+failure remain open despite their existing retry passes. Earlier failure
+evidence is retained before subsequent runs; exact approval boundary unchanged.
+
 Baseline: protected main/deployed a40a70bef3104d7e08959dfdc6e55a36ba6beb31,
 OCI sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2,
 migration138. Earlier evidence and dirty worktrees remain intact.
