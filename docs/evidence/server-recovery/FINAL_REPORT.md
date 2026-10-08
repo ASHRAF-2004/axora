@@ -2,7 +2,271 @@
 
 Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
-## Resumed execution — current checkpoint (2026-10-07 22:26 UTC)
+## Current execution checkpoint — 2026-10-08 01:07 UTC
+
+**STATUS: IN PROGRESS — acceptance gaps remain; no new deployment.**
+
+Production remains protected main/deployed
+`a40a70bef3104d7e08959dfdc6e55a36ba6beb31`, OCI
+`sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2`,
+migration138. The application candidate now contains a five-file guarded Cart
+recovery patch, independently reviewed twice. The temporary failure diagnostic
+has been removed (recoverable in its2ae commit); the original direct-purchase
+E2E differs from6f only in its explanatory comment. Assertions, timeouts, retry0,
+project order and fresh standalone-server ownership are unchanged. No Cart SQL,
+domain result, accounting, price authority, authentication or role change.
+Fresh final-candidate release gates are now required; the earlier b7 build and
+two2ae full passes below do not certify the new application source.
+
+- Deterministic old-component render: exact6f CartReview loaded read-only from
+  Git into the new held-props test reproduced STALE/quantity2/missing financial
+  authority/disabled Place order. EXIT1 at the financial-authority assertion,
+  not a compilation or setup failure; log SHA256
+  `546b44e80592ae470d70ca5f05ce8554a0e2b3ecede441387120a381785d2979`.
+- Final focused new-component/action/selection plus existing purchase, pricing,
+  migration, shopping and scope tests: **100 passed / seven files, EXIT0**.
+  Log SHA256 `f8a3cf3fd7dcdcc5392879b7fba458296e92e0bcb47a38723514db20a945a1b2`.
+  Recovery requires exact authorized scope/version/customer projection; raw
+  SQL null and parsed undefined represent only the same absent department.
+  Fresh/newer/different route authority permanently retires recovery, including
+  a fresh3→regressed2 render negative. Existing keyboard drafts and every
+  purchase/unknown/recovery/error/busy lock remain. Failed reads retain known
+  STALE and never repeat a purchase. A112-file candidate/password scan found0
+  private-password matches; the original private input remains intact.
+
+- Exact original `npm run test:e2e` completed EXIT0: **353 passed / 19 existing
+  intentional skips in6.7min; visitor recovery18 passed in14.9s**. The previously
+  failing mobile stale-cart journey passed. Artifacts are preserved at
+  `output/playwright-2ae608c-combined-green-01`; log SHA256
+  `e2f32aeb86b85aa2c1e68dcf8bd713321c85a77b06d390b30a5ed5a4c1786226`.
+  This is a full combined result, not the earlier isolated probe. It does not
+  explain or retroactively repair the6f4 failure; root-cause investigation
+  continues before release. The failure-only attachment was not invoked on
+  this passing test.
+- Second bounded exact original combined reproduction also completed EXIT0:
+  **353 passed / 19 existing intentional skips in6.8min; visitor18 passed in14.9s**.
+  Artifacts `output/playwright-2ae608c-combined-green-02`; log SHA256
+  `ee9c740a8da0a7ef9e375d1c6814f2078dce506338c62f99f0a04935ff6b8617`.
+  Both new full runs passed without retry; neither reproduced the old stall.
+  No earlier failed run was hidden or changed into a pass.
+- Inspection of the preserved6f4 actual failure image/source confirms the
+  recovery boundary: typed STALE and updated quantity/total rendered; quantity
+  and removal controls remained enabled, but the financial workspace was absent
+  and Place order disabled. Existing component conditions require a matching
+  authoritative Cart/workspace pair. Correct v3 data arrived in the trace, but
+  that does not establish a committed matching RSC prop. The precise internal
+  React/Next scheduling cause is still unknown. A narrow independently reviewed
+  known-stale recovery design is now implemented: obtain the existing
+  authorized workspace through its canonical reader, preserve a known refusal
+  if the read fails, and accept only an exact guarded identity/version/projection
+  pair. No forced enablement, financial calculation, second purchase, framework
+  upgrade or permission change. The application recovery defect is demonstrated:
+  old typed STALE updated local Cart while review depended solely on a separately
+  committed RSC workspace. The new optional authorized pair bridges that exact
+  boundary. The internal scheduling trigger is not claimed as proven. Focused
+  regression passed; fresh final gates and actual production acceptance remain.
+- Changed-file lint/full typecheck at2ae and b7 unit/native/build/assets are
+  historical evidence, now invalidated for the application patch. Run the
+  required final-candidate gates in order; do not certify the new source with
+  unchanged-source reruns. Existing failures/retries/skips remain retained.
+- Contact read-only checkpoint00:30:05Z: exact A/B and ALL submissions/outboxes
+  since A reservation remain0; bounded fixed-category failure logs0; connected
+  recipient Gmail exact-A search including Spam/Trash returned no IDs. No
+  provider ID exists to look up. Eight held historical jobs/queues/controls
+  remain unchanged. A conservatively counts1, B unused; no new Send or replay.
+  The retained Chrome page is closed and no computer-use browser surface is
+  enabled. A precise reconciliation question is pending: did Brave only finish
+  verification, or was Send pressed; if pressed, what result/time? Do not submit
+  again until this is reconciled.
+- The Contact chain is source-traced separately: native required-field/phone
+  validation and client verification → server privacy/honeypot/Siteverify →
+  strict schema and durable rate limits → enquiry plus notification outbox in
+  one transaction → leased worker/attempt → provider acceptance → signed
+  delivery event → mailbox receipt. The earliest observed failure is Chrome
+  verification600010 with disabled Send, not a demonstrated worker/provider
+  failure. Zero durable enquiries means there is no A job for the worker.
+  Whether the later Brave interaction reached a POST remains unknown. Private
+  source/evidence note SHA256
+  `e3249d117b1f3fa9dc482cf6617fab33cc40f51335e72cb1d8c9aaa5928c8a70`.
+- The capped normal-auth duplicate check now passed EXIT0 on the exact retained
+  isolated b7/fdbd/139 fixture. ONE global Platform-CAM form submission targeting
+  its existing Company account returned POST303 and
+  `/users?notice=user-account-exists`. The actual visible English refusal
+  matched the canonical catalog: “This invitation cannot be created with the
+  submitted account details. No account was created. Review the workspace or
+  use a different authorized address.” All seven preservation guards passed:
+  target/global counts, account/credentials/auth-version/roles/assignments/
+  invitation/company, Owner authority/password, sink counts, selected finance,
+  new-company zero-money state and copied files. Browser/proxy/relay cleanup
+  passed. Proof SHA256
+  `7198ff685b08890534132edfbbd5815abe101d54e881e98cb072b4d2f1d297cd`.
+  No production account was created, deleted or reassigned, and no real provider
+  send occurred. This separately closes the isolated cross-scope duplicate
+  refusal, not live or same-tenant acceptance or the earlier unfinished guard.
+- The preceding duplicate helper01 stopped before any submit because its
+  private precondition incorrectly expected an inactive-company account in the
+  Company Users directory. Existing migration125 denies that scoped `user.view`
+  before the Owner exemption; the actual corrected02 read confirmed200/correct
+  company/recognized empty view. Global Users correctly shows PLATFORM accounts
+  only. Source and actual UI evidence justified the check correction; no company
+  activation or authorization widening. Original01 failure evidence SHA256
+  `a67e477d2c42a8537a8e5ecf5487a9b6714185532d99acdeb6ab87273cd8af34`
+  and its no-submit marker are preserved. Exactly one negative submission total.
+
+No merge, candidate image, deployment or demo-ready claim follows solely from
+the green run. Contact submission/provider/delivery/receipt, cart causation and
+final ordinary-auth production rendering remain distinct open acceptance steps.
+Private sign-in input and unrelated worktrees remain intact; no host action.
+
+## Historical checkpoint — 2026-10-07 23:55 UTC (superseded)
+
+**STATUS: BLOCKED — required combined E2E failed; no new release/deployment.**
+
+Protected main and production remain `a40a70bef3104d7e08959dfdc6e55a36ba6beb31`,
+OCI `sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2`,
+migration `138_owner_product_deletion_capability.sql`. The application candidate
+is `b7c1c8a00184d4fa047fc7d3322f7299ab378eae`; the current tested browser head is
+`6f4f0a1719991599b6ff2984e5dd643f6f68d039`. Only five E2E files differ between
+those heads. Application, migrations, unit/native tests, dependencies, build and
+release configuration are identical. Earlier deployed repairs, unrelated dirty
+worktrees and the owner's private sign-in input are preserved. No new merge,
+immutable candidate image or production deployment is claimed.
+
+This checkpoint supersedes the older status and deferral statements below.
+Earlier failures are retained as history, not quietly converted into passes.
+
+### Final candidate checks
+
+| Check | Result / exact evidence boundary |
+| --- | --- |
+| Lint / typecheck | Full b7 and a741 lint/typecheck passed; changed-file lint and full 6f4 typecheck passed. |
+| Unit / PGlite | Exact b7: 1,853 passed, 49 intentional native-only skips; 374 passed files/11 skipped. |
+| Native PostgreSQL | Exact b7: all 139 migrations/replay/RLS/grants/lifecycle and all 49 native tests in 11 files passed. Production remains138. |
+| Build | Exact b7 production build and both pg-cloudflare standalone files passed. |
+| Standalone / assets | Task-owned private npm cache: 30,377 files/15 symlinks staged; two routes/two resources validated; 35 assets and Compose/Caddy/secrets invariants passed. Existing dangling default-cache ENOTDIR failure preserved; no unrelated cache repair. |
+| Delivery reads | Native fetch receiver defect fixed by a bare-call wrapper; dedicated regression failed before/passed after. Eight actual delivery browser checks passed. Immediate authorized detail bootstrap, permissions, no-store/abort, denial handling and bounded retries preserved. |
+| E2E contract correction | a741 updates three legacy stream fixtures to shared hints plus authorized GETs. Six focused and 30 neighborhood checks passed without retry. No application or release-config change. |
+| First completed combined browser gate | Exact a741: 352 passed, 19 intentional skips, one mobile shared-live navigation failure; EXIT1, visitor recovery not run. Trace proves the menu click succeeded but Requests does not exist in the unchanged mobile drawer. All artifacts retained in `output/playwright-a741d801-failed`. |
+| Final navigation correction | 6f4 selects the existing dashboard View all link, additionally asserts `/requests`, and preserves all URL/live-status/one-connection/no-legacy/privacy assertions. Independent review approved; eight focused checks passed in15.7s. No retry, timeout, assertion, skip, project or order weakened. |
+| Final combined gate | Exact6f4, fresh-owned/retries0:352 passed/19 intentional skips/one mobile direct-purchase refresh failure, EXIT1 in6.9min. After typed STALE_CART, the server returns matching cart/workspace version3 but rendered Place order stays disabled. Trace/source diagnosis has not proved candidate causation; Cart/page/action/accounting source is unchanged from a40. No financial guard relaxed or speculative checkout change made. Artifacts retained in `output/playwright-6f4f0a1-failed`; log SHA256 `60520f36c02983897fcea0dd697a9b262f96320c5af4fa8e5e4c6aad9a5edbbc`. Earlier interrupted320e/b7 failures remain separately retained. |
+| Visitor recovery | Run separately once after the failed combined gate:18 passed/15.5s, EXIT0 at the same6f4 source; no repeat of an already-green gate. Log SHA256 `b271761187d09969f0fb40b9e9c63bd561a619524a09f69e9d7426d25da1c547`. This does not convert the combined failure into a pass. |
+| Bounded stale-only diagnostic | One fresh public-demo mobile probe passed in2.4s. Committed-tree membership was verified, reviewed confirmation stayed at2 while the concurrent cart advanced to3, typed STALE_CART was observed, then initial-cart/workspace/local versions all reached3 with matching identity, no draft/error lock and Place order enabled. It stopped before any successful-purchase attempt. Log SHA256 `c343d4d21c354d5353d2262fc22641f2f89ad7da141f3a0c9607b77fdf894e31`. This isolated instrumented result did not reproduce or resolve the failed combined gate and is not full release acceptance. |
+
+The diagnostic's first attempt stopped at its read-only preflight before opening
+a dialog or submitting a purchase command. A separate initial-only observation
+then proved the React root is at depth89, beyond that private diagnostic's80
+limit; all three captures resolved exactly one current owner through child/
+sibling membership. Only the private diagnostic's bounded root lookup was
+corrected. The original failed preflight, markers and logs remain intact. No
+application or repository test source, financial guard, timeout, assertion or retry changed.
+Instrumentation can affect scheduling; the passing isolated probe is not proof
+of a baseline flake, a fixed combined-run defect or safe deployment. No further
+full E2E run was made merely to obtain a green result.
+
+The 49 unit skips are native-only tests, all actually executed and passed in the
+native gate. The 19 browser skips are existing duplicate viewport/matrix flows
+or disabled opt-in integration/email scenarios; no new skip was introduced.
+Local retries remain0. The older exact-a40 CI run used its existing retry for
+one mobile company-create flake; its initial cause remains unproven. That result
+is not represented as a clean no-retry run or evidence for this new candidate.
+
+### Per-item acceptance and remaining work
+
+| Item | Current evidence and exact remaining boundary |
+| --- | --- |
+| 1 Setup tabs / 3 Open wallet | Shared Dark hover/pressed tokens corrected, preserving the existing palette and normal treatment; rendered normal/hover/focus/pressed desktop/mobile checks passed in both themes. Final production acceptance pending. |
+| 2 Branch information | Existing structured General/Address/Contact/Delivery and aligned Budget preserved. Confirmation labels replace repeated action labels; one authorized Edit delivery address action remains. EN/AR/MS/RTL rendered checks pass. Final production acceptance pending. |
+| 4 Company overview / logo | Existing reviewed-logo storage/rendering reused. Actual isolated b7 normal company creation succeeded; overview refreshed with four groups, one no-logo placeholder/no logo image. Existing real logos were previously observed on production. Final production acceptance pending. |
+| 5 Product information | Existing Details/Delivery/permission-aware Pricing and gallery preserved. Isolated actual Company Administrator management route denied; no confidential price exposure. Live CAM is unavailable, not impersonated. |
+| 6 Company-specific setup Wallet | Retained isolated company0c41: correct Wallet URL/context, no404, pending owner setup state, refresh/direct/back-forward passed. Its existing provisioning trigger created one zero-balance Wallet/account; no Wallet was fabricated or deleted to manufacture a missing-Wallet fixture. Final production acceptance pending. |
+| 7 Contact | 23:48:42Z read-only check: A/B enquiries, notification and acknowledgement outboxes0; TOTAL submissions/notification outboxes since A reservation21:23:08Z also0. Eight historical Infinity-held zero-attempt jobs, queues and six controls unchanged. Connected recipient Gmail exact-A search including Spam/Trash returned no IDs. No new provider ID exists for lookup, so no provider lookup was performed. A conservatively counts1 of the two-total cap; B unused. No resend, historical replay, verification bypass or additional Submit. Private checkpoint SHA256 `0ef70c1e5d877419095d29bec2a232d74a603f6ac8ebfb138e430ac9525040be`. |
+| Registration | b7 ordinary Owner/CA sign-in, normal unbranded company creation, overview/context and invitation send succeeded in fenced restored-data isolation. Existing invitation is SENT/hashed; normal recipient password setup, sign-in and used-link refusal passed. Synthetic email reached only a RAM sink, never the real provider. Duplicate-account final check failed its expected-notice assertion; actual notice was not captured. Read-only diagnostic02 EXIT0 verifies the unchanged deployed110+125 first-admin helper excludes ACTIVATED before duplicate classification, predicting a scope refusal; this is not an observed UI notice. Exactly one active setup-completed Company Administrator/assignment, one SENT/consumed hashed invitation/one attempt and one sink delivery/zero fragments remain. New company has one Wallet/account and no money/ledger/top-ups/requests/invoices/budget entries. Fresh diagnosis-only finance/files equality and independent original-backup preservation comparison passed (scope below). No duplicate/invitation/company submission repeated. Whole-continuation final financial/files guard was not reached and is not claimed. |
+| Product deletion | One actual isolated exact-a40 ordinary-auth journey passed: owned disposable product/images/supplier removal, audit1 and refresh absence; protected-reference, actual CA and owned explicit DENY refusals passed. Original business history, finance and files preserved outside the owned fixture. Capability source is unchanged in b7. No production product or historical record deleted or live destructive target assumed disposable. |
+| 8 Shared SSE | Bounded fresh-authorized durable-snapshot resync/shared tab connection, reconnect/fallback/dirty-form preservation implemented and native authorization cases pass. No durable event replay, underlying-query cancellation or financial ledger added. Final full gate and ordinary-auth production observation pending. |
+| 9 Guide | 12-page illustrated PDF delivered at `/home/ashraf/Downloads/Reports/Axora_Server_Migration_Guide.pdf`; all pages visually checked. SHA256 `99e9210d98f911efc589997a4d4c66197b7ac86eb10851f6d931ed97de36e627`. Full migration/recovery runbooks and reproducible generator delivered. No destination cutover or host restart performed. |
+| 10 Invitation UI | Compact existing account design, localized role and assurance treatment implemented; normal valid invitation/password-setup/sign-in/used-link journey now passed in isolation. Token, consent and password policy unchanged. Final production rendering pending. |
+| 11 Integrations | Truthful native/API/webhooks, disabled Slack/Zapier states and setup checklist implemented; 37 focused and six localized browser checks passed. Actual Owner workspace200/flags/zero installations observed. Slack activation requires controlled developer app/workspace/channel and dedicated private credentials, not a core UI blocker. |
+| 12 Add Budget | Typed actionable legitimate ceiling refusal and current-authority-before-replay implemented; financial math, Wallet and periods unchanged. Focused and native checks passed. No real allocation/financial transaction made. |
+| 13 Budgets list | Aligned six-column full-width semantic table, tabular/BDI values and keyboard-scrollable narrow layout implemented; EN/AR/MS/RTL component and rendered checks pass. Final production acceptance pending. |
+| 14 BranchAdmin | Additive139 hard lifecycle ceiling/current actor/assignment/authorization and evidence guard implemented after isolated custom-GRANT/raw-update gap proof. Metadata editing retained; no RLS weakening. Four native cases pass. Migration not yet deployed; final production readonly role check pending. |
+
+Contact verification error600010/Ray `a46fe7b8df8fd974` and Brave/Chrome difference
+do not establish a Tunnel-version cause or a successful Send. The healthy pinned
+2026.7.3 Tunnel is older than2026.10.0 but supported; no Tunnel/provider/DNS or
+authentication configuration was changed. Candidate Contact recovery UI handles
+manual retry/sanitized failures without submitting or clearing fields; six
+EN/AR/MS desktop/mobile checks passed with zero POSTs. Real submission, outbox
+processing, provider acceptance, signed delivery and mailbox receipt remain
+separate and unproven stages. Missing step is a successful persisted normal
+submission, not mailbox access. No further question or resend is being repeated.
+
+### Recovery and release boundary
+
+Independent original-backup comparison completed EXIT0 without further UI/auth
+or command replay. All2,735 original rows across29 selected finance/catalog/
+history tables remain present and SHA256-identical by primary key. Original
+financial fingerprint matches the retained copy, excluding only the exact
+bound new-company UUID; that company has one zero-money Wallet/period/account
+and no ledger/top-ups/requests/invoices/budget entries. Additional catalog rows
+belong only to the exact owned fixture. Added history is disclosed separately:
+two owned product-price rows, two bound-company workflow rows and60 audit rows
+(28 bound fixtures/32 unclassified); no blanket attribution of those32 is claimed.
+This proves selected original-row preservation, not all-history-addition
+acceptance, original-upload equality or recovery of the unfinished original
+whole-continuation guard. Fresh selected rows/copied files were stable during
+the comparison. Only one new capped network-none utility was created, restored
+with the real validator and canonical138 grants, then stopped and retained.
+Private evidence SHA256 `47051746e0a2165f91d4d8dc0089e787df8e99a49b0f1776130420284993e652`.
+
+Registration's newly reproduced unbranded creation defect is narrowly repaired
+by `$12::timestamptz`: the uncast parameter had selected the defaulted-logo
+overload. Dedicated old-failure/new-success/schema and authorization tests are
+included in the b7 unit/native results; no new storage, password or auth path.
+
+Fresh encrypted backup verified23:04:48Z:240 tables/138 migrations/uploads,
+`/var/lib/axora-production/reset-backups/axora-reset-20261007T230439Z-a40a70bef310.tar.gpg`,
+cipher SHA256 `a9cbf844040a896539df39498a775468d9320aabffa3b02d31d55ed3f92dfa15`.
+Installed/source backup controllers match. Production health passed23:49:58Z;
+fresh protected-main/deployed SHA and OCI match the baseline above. The sealed
+a40 migration-status check again returned `none`, with production head138.
+Application rollback preserves forward migrations; it does not replay broad
+old grants or restore business data. No off-device backup is implied.
+
+Remaining boundaries are separated explicitly:
+
+- Release blocker: required6f4 combined mobile test
+  `company-admin-direct-purchase.spec.ts:136` remains failed. A focused reproducer
+  of the combined-run stall and an evidence-backed safe resolution are missing;
+  isolated success alone cannot authorize merge/deployment. Keep financial guards
+  intact. Protected release and actual rendered production acceptance depend on
+  clearing this gate.
+- Core Contact acceptance: a successful persisted normal capped submission is
+  missing. Consequently no bound outbox, provider acceptance/message ID, signed
+  delivery event or mailbox receipt can be verified. Mailbox access is available;
+  it is not the blocker. A remains counted1/B unused; no repeat submission asked.
+- Registration evidence limitation: the final duplicate-UI notice was never
+  recorded and its closed browser context has no retained trace/HAR/state. A
+  read-only source/data check cannot retroactively recover that notice or the
+  unfinished original whole-continuation guard. Successful setup/login/used-link
+  journeys and independently proved selected-original-row preservation remain
+  valid separate evidence, not an overall failed-continuation PASS.
+- Role-evidence gaps: an authorized current-role CAM and second Delivery Agent
+  account/session are unavailable. No supplied email is treated as proof of role,
+  no session is fabricated and no role is reassigned for testing.
+- Future activation/resilience dependencies, not core-fix blockers: controlled
+  Slack developer app/workspace/designated channel plus dedicated private
+  credentials; off-device backup destination; future migration-host access.
+  Delivered guide and locally completed enhancements are not silently deferred.
+  Whole-host boot/restart testing is prohibited by the owner.
+
+Healthy workers and passing automated checks alone do not complete workflow
+acceptance. No new PR, immutable candidate image, merge or deployment occurred.
+Final documentation diff check passed. The supplied-password scan of all106
+changed files, complete candidate diff and commit messages found zero matches;
+the original private sign-in input remains available and unchanged. No private
+diagnostic helper, screenshot, credential or log was added to Git.
+
+## Historical resumed checkpoint — 2026-10-07 22:26 UTC (superseded)
 
 **STATUS: BLOCKED — changed candidate not fully gated, released or accepted.**
 

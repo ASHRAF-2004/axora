@@ -53,6 +53,33 @@ One of the two allowed service-recovery trials has already been used.
 
 ## Verification and exact blockers
 
+### Resumed Cart acceptance slice — 2026-10-08
+
+The preserved required6f4 mobile failure rendered typed STALE, quantity2 and
+enabled quantity/removal controls, but no current financial workspace and a
+disabled Place order button. This confirms the split local Cart/RSC workspace
+boundary; the precise internal React/Next scheduling cause is not proven.
+Two unchanged original combined2ae runs are now green, so those passes alone
+are not a root-cause fix. Do not upgrade framework dependencies speculatively.
+
+Implement a narrow known-stale recovery envelope using the existing authorized
+workspace reader; no domain-result, SQL, accounting, pricing permission or
+purchase-command change. A separately caught failed/denied/raced workspace read
+must preserve the known typed STALE result and existing locked fallback. The
+client may use only an exact same company/branch/Cart identity and version,
+self-consistent server pair with matching commercial projection, never computed
+balances. Fresh matching RSC authority wins; newer/different props invalidate
+fallback. Retain recovery/busy/draft/error locks, reviewed confirmation version,
+server purchase rechecks, ordinary refresh and lost-response reconciliation.
+
+Verification: deterministic held-v2-props/local-v3/pair-v3 render and selection
+regressions; mismatched/newer/cross-scope/projection/read-failure cases; action
+tests prove no extra workspace read on success/unknown/replay and no second
+purchase. Preserve every original financial E2E assertion, timeout and retry0.
+Then run affected tests plus all invalidated required candidate gates and the
+original combined suite. Independent security/correctness review before release.
+Temporary failure-only diagnostics must not become accidental release debug code.
+
 Each slice needs focused tests and actual rendered/browser proof where relevant.
 Final candidate uses repository lint/type/unit/native/build/standalone/assets/E2E
 gates, followed by exact-head protected CI and final Nightly. Preserve fresh

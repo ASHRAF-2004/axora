@@ -66,8 +66,27 @@ Files: view coordinator plus appropriate consumer(s) and focused tests, split in
 
 No heavy build/native/full-E2E test, production change, provider send, restart, browser or migration is authorized to this agent by these checklist items.
 
-Native139 authorization/revocation cases passed at320e. Its combined browser gate
-then failed the initial delivery-read regression (35 passed/four failures before
-interruption). efcc08c restores the existing immediate authorized GET and adds
-four focused cases; the 26-test detail/client set passes. Refreshed frozen-head
-build/browser gates and ordinary-auth production observation remain unchecked.
+Current00:54UTC: two exactoriginal2aecombined353PASS19skip+visitor18PASSeach,
+no retry; sharedSSE full assertions pass. Appb7 unchanged throughthoseruns.
+Guarded knownSTALE Cart/workspacepair recovery nowbeingimplemented independently;
+newchangedapp requiresnewcandidatefullgates/actualproductionrendering. Original
+6f4Cartfailure retained; noSSE/query/financialguard weakened toobtainpasses.
+
+Historical final b7 native139 authorization/revocation cases passed within49native tests;
+unit1853/build/stage/assets also PASS. efcc08c immediate authorized detail GET
+and b7 native-fetch receiver correction pass eight actual delivery checks.
+a741 shared-hint/authorized-GET fixture corrections pass30neighborhood checks;
+full352PASS/19skip/one mobile navigation failure preserved. 6f4 fixes only the
+test's nonexistent mobile-drawer Requests assumption using the actual dashboard
+action; all connection/privacy assertions retained, eight focused PASS. One
+corrected fresh-owned6f4 combined failed352PASS/19skip/one unchanged mobile
+direct-purchase rendered post-stale refresh stall; server matching versions returned.
+Separate visitor18PASS15.5s. Candidate causation pending; no weakened guard or
+speculative financial change and no full pass claimed.
+Ordinary-auth deployed snapshot/reconnect/offline observation remains pending.
+Bounded private stale-only fresh-demo diagnosis PASS2.4s after typedSTALE,
+matching committed cart/workspace/local3 and enabledcontrol; no successful
+purchase attempted. First instrumentation preflight stopped before dialog/submit;
+readonly shape observation proved rootdepth89 exceeds private80bound. Only that
+private diagnostic changed. Full6f4failure remains, no source/test/financial guard
+relaxed and no blind fullgate repeat. No additional deployment acceptance claim.
