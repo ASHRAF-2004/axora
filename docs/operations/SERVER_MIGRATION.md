@@ -7,6 +7,35 @@ reboot, decommission or secure erasure is authorized or performed by this guide.
 Commands below are for a later separately approved task. Read every stop condition
 before using them. The current machine must remain powered on in this recovery pass.
 
+## Current release checkpoint - 2026-10-08 14:48 UTC
+
+The installed application is `d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`,
+OCI `sha256:bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8`,
+with all 139 migrations through
+`139_branch_lifecycle_authority_and_budget_refusals.sql`. The earlier a40/schema
+138 backup and idle-sender proofs below remain historical evidence, not a
+current release, a new restore, or a completed migration.
+Fresh read-only public readiness/liveness, release identity and schema checks
+passed at 14:48:39 UTC; app/all five workers are healthy on the same exact image
+at 14:48:55 UTC. Host boot, private credential input and unrelated worktrees are
+unchanged. This is deployed-repair evidence, not full core acceptance.
+
+| Acceptance boundary | Current evidence and limits |
+| --- | --- |
+| Contact delivery | B persisted once; provider acceptance, delivery event and user-confirmed/mailbox-correlated receipt proven. A unproven. Both slots consumed: no more sends/replays/historical release. |
+| Service recovery | Historical a40 idle sender trial passed. Current-image read-only checks pass, not restart. One trial remains reserved for affected workflows. Live queued Contact restart untested/cap closed; no host restart. |
+| Registration and product lifecycle | Earlier isolated setup/login/used-link and owned deletion/refusals pass. Current03 company/invitation/product created; strict guard stopped before completion. Live duplicate refusal only; original exceptions/live lifecycle unverified. |
+| UI, permissions and live updates | Actual Owner/Company Admin/Branch Admin/Driver read checks and release gates pass. Live CAM/second Driver/no-logo/no-Wallet fixtures absent. Transport is not business-change/revocation proof. |
+| Residual release risk | Required CI passed with one existing gallery retry. First-failure cause/artifacts unavailable; gallery remains OPEN. |
+| Audit integrity boundary | Historical2,326 events/21 temporal warnings; current03 2,383/23. Original rows/warnings intact; two new read audits appended17microseconds opposite timestamp order. Hash/link/head/fork/cycle checks pass, canonical verifier does not. No history rewrite/guard weakening. Separately approved forward-only repair needed. |
+| Migration readiness | Guide/checklists delivered, not cutover or Slack activation. Destination/off-device/key custody and controlled Slack inputs absent; whole-host boot untested/prohibited here. |
+
+Read the current `docs/evidence/server-recovery/FINAL_REPORT.md` before any later
+operation. Recheck release, schema, activity and recovery access again; this
+checkpoint does not authorize writes, providers, migration or restart trials.
+
+<!-- pdf-page -->
+
 ## 1. Understand the safe route
 
 Move a verified copy privately, test it without external effects, freeze the old
@@ -25,12 +54,12 @@ that host is powered off. No business-approved RPO/RTO is established here.
 
 | Item | Actual status on 2026-10-08 |
 | --- | --- |
-| Current recorded production | SHA `a40a70bef3104d7e08959dfdc6e55a36ba6beb31`; schema 138 |
-| Encrypted database/files proof | Disposable 240-table / 138-migration restore and files comparison passed at 2026-10-07 19:46:15 UTC |
-| Service recovery | One idle email-sender graceful stop/start passed; not a host-boot or Contact-delivery proof |
+| Current recorded production | SHA `d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`; schema 139 |
+| Historical encrypted database/files proof | Disposable 240-table / 138-migration restore and files comparison passed at 2026-10-07 19:46:15 UTC; later pre139 proof is recorded in FINAL_REPORT |
+| Historical service recovery | One idle email-sender graceful stop/start passed on a40; not a host-boot or queued Contact-delivery proof |
 | Destination migration and boot | Not tested; no destination supplied |
 | Independent/off-device backup | Not configured; a local encrypted copy does not protect against loss of this host |
-| Full workflow acceptance | Contact mailbox, original registration/product cases and other live fixture gaps are tracked separately; health alone is insufficient |
+| Workflow acceptance boundaries | Contact B mailbox verified; original registration/product cases, live queued-restart and other fixture gaps remain separately tracked; health alone is insufficient |
 
 **STOP:** no independent backup, missing secrets, ambiguous target, incompatible
 image/schema, unfenced external effects, or unresolved financial/tenant evidence.
@@ -48,7 +77,7 @@ secret files, Docker environment arrays, queue bodies or bearer links.
 | OS / architecture | Ubuntu 26.04 LTS / x86_64 |
 | CPU | AMD Ryzen 5 9600X, 6 cores / 12 logical CPUs; recheck destination RAM/disk/headroom |
 | Docker / Compose | Engine 29.7.1 / Compose 5.4.0 |
-| Application | `ghcr.io/ashraf-2004/axora@sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2` |
+| Current application | `ghcr.io/ashraf-2004/axora@sha256:bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8` |
 | PostgreSQL | 18.4-alpine3.24; digest pinned in sealed Compose |
 | Caddy / cloudflared / Tailscale | 2.11.4 / 2026.7.3 / 1.98.8; exact digests in sealed Compose |
 | Database / persistent volume | `axora_hybrid` / `axora_postgres_data`; inspect exact current mounts privately |
@@ -264,11 +293,17 @@ capability execution and strict function behavior too.
 | Queues | Outbox/attempt/lease/hold state retained; no bulk replay; UNCERTAIN sends reconciled with provider evidence/idempotency window |
 | App / recovery | Exact compatible immutable image, local/readiness and authorized reads; bounded service stop/start in isolation; useful worker progress with isolated transport |
 
-For schema 138, the recorded a40/c944 image is the known application pair.
-Migration 139 is a local reviewed candidate until its protected release/deployment
-is recorded; do not label it live or invent an image digest. If adopted later,
-use its verified exact compatible image and grants. A prior image may show old
-controls but must not regain raw delete/lifecycle authority.
+The current recorded pair is d82/bc8 with schema 139; the dated a40/c944 pair
+and restore evidence used schema 138. A future restore must use the exact chosen
+compatible sealed image, ledger and grants, not assume the old backup already
+contains migration 139 or replay whole historical migrations. A prior image may
+show old controls but must not regain raw delete/lifecycle authority.
+
+Audit-link integrity and timestamp ordering are separate checks. The dated
+restored-data baseline has the timestamp warnings recorded above; compare the
+exact original rows and anchored links, and retain the canonical temporal result.
+Do not rewrite events or force a clean result. Any new mismatch, missing link or
+changed warning result is a stop requiring diagnosis, not an automatic repair.
 
 Retain restoration logs, exact commands, elapsed time, manifests and checklist in
 restricted evidence. Delete no real account/product/history as cleanup. Measure

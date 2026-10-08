@@ -5,6 +5,33 @@ reboot, shut down, power-cycle or schedule a host restart.** This runbook does
 not authorize one. Future whole-host boot validation requires a separately
 approved window. A container restart is not a host reboot.
 
+## Current checkpoint - 2026-10-08 14:48 UTC
+
+Production is d82 (`d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`), OCI
+`sha256:bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8`,
+schema139. Contact B's direct persistence/provider/delivery/mailbox chain is
+evidenced; the two-smoke cap is closed. No further Send or historical replay.
+The original live queued-across-restart Contact case remains unperformed;
+isolated interrupted-send/lease tests and the historical idle trial are distinct.
+
+Earlier fenced a40/b7 registration/product proofs are not live acceptance.
+Current03 created its company/invitation/product normally, then stopped before
+setup/deletion/restart on its strict audit guard. Corrected read-only preflight
+checks pass; no second controlled trial executed. One remaining trial is reserved
+for complete affected-workflow acceptance. Original exceptions, live disposable
+limits and the final CI's unexplained gallery retry remain disclosed. This update
+creates no current-image/host restart acceptance. See
+SERVER_MIGRATION's current checkpoint and FINAL_REPORT before any future action.
+
+Read-only restored-data audit checks verify complete anchored links and original
+rows. The original21 timestamp-order warnings remain, but two new concurrent
+read audits were appended17microseconds opposite timestamp order; current03's
+canonical verifier reports23. Hash/link errors remain zero. No audit data was
+rewritten and the strict guard remains failed. A restart is not a repair for this
+discrepancy; separately approve a forward-only audit-ordering/verification design.
+Keep its bounded, fenced resources and untaken RAM-only invitation intact until
+that workflow can safely continue. Do not replay or resend its consumed stages.
+
 ## 1. What was and was not proven
 
 One idle email-sender-only graceful stop/start passed on recorded a40/schema138:
@@ -13,10 +40,11 @@ Docker healthy in approximately 6.4 seconds, public readiness HTTP 200 and eight
 historical queue holds unchanged. See the precise restricted events and full
 limitations in `docs/evidence/server-recovery/FINAL_REPORT.md`.
 
-This does not prove an active send survived, recipient mailbox delivery,
-all-worker restart, host boot, disk unlock, off-device restore or loss of power.
-No host shutdown/reboot occurred as part of that authorized trial. Pending
-workflow and provider evidence must stay pending; a health response is insufficient.
+That trial does not prove an active send survived, queued-mail or all-worker
+restart, host boot, disk unlock, off-device restore or loss of power. Contact B's
+later mailbox evidence is independent of the trial. No host shutdown/reboot
+occurred as part of it. Other unverified scenarios must stay pending; a health
+response is insufficient.
 
 ### Recovery order (conceptual, not a new supervisor)
 
@@ -48,8 +76,6 @@ Read only bounded known event names/SQLSTATE and queue stages; never dump Docker
 environment/configuration, secret files, invitation links, message bodies or
 provider headers. Public app health must be checked separately from sender,
 budget/document, cleanup and integration readiness/useful progress.
-
-<!-- pdf-page -->
 
 ## 3. Bounded service recovery, not a computer restart
 

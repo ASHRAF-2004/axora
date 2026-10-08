@@ -1,5 +1,11 @@
 # Integration inventory and private Slack setup
 
+**Dated component snapshot.** Current release/rendered verification and later
+read-only inventory are in [FINAL_REPORT](FINAL_REPORT.md); this baseline's pending
+release wording is historical. Disabled Slack/Zapier are not connected providers.
+The conditional Slack activation checklist remains delivered but unexecuted without
+the controlled provider inputs; no provider or financial action is authorized here.
+
 Observed 2026-10-07 21:31 UTC (2026-10-08 Asia/Kuala_Lumpur). Production
 `a40a70bef3104d7e08959dfdc6e55a36ba6beb31`, image
 `sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2`.

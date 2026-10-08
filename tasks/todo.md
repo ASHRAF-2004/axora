@@ -1,5 +1,42 @@
 # Recovery execution checkpoints
 
+## Public team chooser removal — 2026-10-08
+
+- [x] Map the public Early Birds/Night Owls intro and inspect the live guest
+  homepage; distinguish it from assigned-team profile onboarding.
+- [ ] Remove only the public homepage intro/snapshot dependencies.
+- [ ] Localized render and purposeful replacement browser regressions pass;
+  preserve all backend security and unrelated acceptance assertions.
+- [ ] Actual EN/AR/MS, keyboard, desktop/mobile and both-theme checks pass.
+- [ ] All required final-candidate gates pass and independent review completes.
+- [ ] Record exact tested candidate; obtain explicit merge/deploy approval
+  before production release. Earlier required gates remain historical evidence.
+
+## Final closure audit — 2026-10-08
+
+- [x] Map all six original registration/setup criteria to exact isolated/native/
+  live evidence; diagnose and retain current03 temporal-guard failure.
+- [ ] Complete current-image setup/whole integrity and before-after workflow
+  acceptance; blocked by audit ordering guard and missing designated live fixture.
+- [x] Map all six product criteria; retain unchanged-assertion gallery diagnostic
+  PASS without declaring the unresolved CI failure fixed; identify the exact owned
+  already-created current03 product without replay/deletion.
+- [ ] Complete immediate product removal and before-after workflow acceptance;
+  strict integrity guard remains failed and no live deletion target is designated.
+- [ ] Finish independent checks for remaining items8–14 and identify precise
+  external/account/fixture dependencies, not generic deferrals.
+- [ ] Review final evidence, preserve Contact cap2, update both reports and
+  publish one passed/open/user-action checklist with a justified readiness verdict.
+
+Current14:29:55UTC: current03 strict guard reached complete original-row and
+append-graph checks but failed canonical_temporal_discrepancy_changed. Baseline
+21 warnings remain/original-new-invalid0; two new pure read audits appended17us
+opposite timestamp order produce23. No audit rewrite/guard weakening. Parent04
+not run; one existing owned product retained/noDELETE, invitationSENT/untaken.
+Idle probe02 stopped before any container action: sequence42809 and malformed
+private Docker JSON formats diagnosed separately; mechanical corrections only
+are being checked. No restart slot, Contact send or host action in that stop.
+
 Latest10:09UTC: Contact B closed end-to-end. Newexplicit ONEB authorization,
 fresh nativepreclickA/B0/idlequeues/8holds unchanged, existingBrave newpublictab
 normalverification(noCaptchaClick), oneactualcursorSend10:03:39.089UTC/MY18:03:39.
@@ -11,7 +48,9 @@ read ormailmutation. Acount1+B1 total2; nofurtherSend/retry/replay/historyreleas
 Separate failedsandbox/600010 preparation0POST; nosecuritybypass. Private test
 childclosedconfirmed, userBrave+success tab remains. Reportsupdated/source/runtime
 d82/OCIbc8/139 unchanged; noapp/testgate invalidation. Gallerydiagnostic and
-specificexternal/rolefixture/whole-flow boundaries retained, not core blockers.
+Mandatory whole-flow acceptance gaps remain open. Conditional external setup
+inputs and absent live role/fixture evidence are separately classified; none is
+silently treated as a passed core criterion.
 
 Historical03:50UTC: PR220 squashmergedd82a3bb/protectedmain+production same;
 OCIbc8c2933/schema139/checksums/health PASS. Exact0040 tree equals merge;

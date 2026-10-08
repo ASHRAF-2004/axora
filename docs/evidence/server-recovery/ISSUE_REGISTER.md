@@ -2,10 +2,61 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
-## Current acceptance checkpoint — 2026-10-08 10:09 UTC
+## Public team intro removal — 2026-10-08
 
-**DEPLOYED / CORE ACCEPTANCE PASSED. Contact receipt now independently evidenced
-and explicitly confirmed by the user.** Production d82/OCIbc8/schema139 and
+Latest requested change: remove the public Early Birds/Night Owls chooser and
+its counters from EN/AR/MS homepages; not authenticated assigned-team profile
+confirmation. Homepage unmount/snapshot dependency removal implemented;
+focused render/visitor-security/SEO/release-isolation29PASS, including old-page
+RED3 localized render cases. Actual new browser checks and final changed-candidate
+gates PENDING. Earlier d82 release results do not certify these new app/test bytes.
+Production remains d82/bc8/schema139; no deployment, visitor-history deletion,
+Contact Send or auth/profile/financial change. Explicit merge/deploy approval is
+required by the latest repository instruction. All prior recovery barriers,
+gallery instability and Contact cap2 remain as documented below.
+
+## Final closure audit — 2026-10-08 (in progress)
+
+Contact is closed/cap2; no additional Send or historical-email release. Production
+remains d82/bc8/schema139 and unchanged exact-head gates remain valid. The prior
+overall acceptance wording does not certify unobserved original live lifecycle
+cases or the live queued-Contact restart scenario.
+
+Current03 is paused at the actual strict integrity guard, not an unexplained
+tool failure: canonical timestamp-verifier invalid count21→23 from two newly
+added read audits appended17microseconds opposite timestamp order. All original
+events/21 warnings remain and no original event became newly invalid; all hash/
+link/head/fork/cycle checks are valid. No guard was weakened or history rewritten.
+ONE owned product already exists (`a23bed0b-656c-4d50-a9e7-f39bd63f300a`), created
+normally and never replayed/deleted. The current invitation remains SENT/untaken.
+Parent04 was not executed. Full registration integrity/setup and immediate
+product removal/current-image before-after workflow proof remain unverified.
+The one remaining idle service trial and dated guide refresh are independent;
+neither can turn this failed whole-workflow guard into a pass.
+
+| Newly identified item | Exact evidence / required boundary | Status |
+| --- | --- | --- |
+| AUDIT_TIMESTAMP_APPEND_ORDER |14:29:55UTC read-only baseline2,326/21 → current2,383/23; zero hash/link errors; new invalid original0/new invalid added2. Migration059 uses timestamp/id ordering but links under a partition-head lock after timestamp capture. Preflight SHAbe999e82…/diagnostic09a2d623… in FINAL_REPORT. No production audit mutation/repair. |OPEN; a forward-only audit-verifier/order repair requires separately approved design, native concurrent regression and release/migration authority, without rewriting history. Current03 workflow guard remains FAILED. |
+| Current03 product partial |ONE exact new product/image/price-history, supplier0/deletionAudit0, owned original phase marker retained. The old earlier deletion proof reloaded before absence and cannot certify current immediate removal. |OPEN; do not replay create/delete or claim a full current-image lifecycle pass. |
+| Current03 registration partial |ONE company/zero finance, one SENT invitation/one RAM sink delivery/fragment untaken; earlier isolated valid setup/native concurrency/expiry proofs remain distinct. |OPEN; no current03 setup, login, consumed-link or post-restart whole-flow result. |
+
+Gallery remains OPEN: one bounded unchanged-assertion mobile diagnostic passed
+2.3s/retry0, but did not reproduce or fix the original CI0/2 failure. Fresh role
+inventory still has no CAM/second Driver; all3 live companies have displayable
+logos and Wallets. Conditional Slack checklist is complete; activation requires
+its specifically missing controlled provider inputs.
+
+Item12 period characterization:ONE private PGlite run2PASS/retry0. CLOSED/no
+ACTIVE successor returns BUDGET_UNAVAILABLE with guarded finances unchanged;
+elapsed-but-still-ACTIVE follows the existing allocation contract without Wallet,
+recurring or period changes. It is not a new date-expiry refusal/policy fix or
+production proof. The earlier wrong-account expiry probe remains retracted.
+
+## Historical Contact closure checkpoint — 2026-10-08 10:09 UTC
+
+**DEPLOYED / CONTACT B LIVE-VERIFIED. Contact receipt independently evidenced
+and explicitly confirmed by the user; this is not blanket lifecycle or restart
+acceptance.** Production d82/OCIbc8/schema139 and
 required gates below remain unchanged; repository edits are report-only, while
 the authorized B created the documented Contact/email records.
 

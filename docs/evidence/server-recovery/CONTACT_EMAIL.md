@@ -1,5 +1,13 @@
 # Contact/email recovery evidence
 
+**Historical component investigation.** Current deployment and the actual
+Contact B persistence/outbox/provider/delivery/Inbox evidence are in
+[FINAL_REPORT](FINAL_REPORT.md). Its earlier pending delivery wording is
+superseded there. Both allowed live Contact smoke slots are consumed: no more
+test submissions, retries or historical-email release. The original live
+queued-across-restart scenario remains unperformed; isolated process/lease
+proofs below are separate from ordinary B delivery.
+
 Investigation: 2026-10-08 Malaysia time. Production release inspected:
 `cccd272be606cb2d05bd0f097cd725427506fb45`, migration 136. This document records
 the email specialist's read-only baseline and isolated regression evidence;

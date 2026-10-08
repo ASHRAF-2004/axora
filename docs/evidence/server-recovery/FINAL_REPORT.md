@@ -2,10 +2,204 @@
 
 Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
-## Current acceptance checkpoint — 2026-10-08 10:09 UTC
+## Public team intro removal — current candidate, 2026-10-08
 
-**STATUS: DEPLOYED. Core recovery acceptance passed, including actual Contact
-mailbox receipt.** The previous Contact pause below is superseded by the new
+Latest request is removal of the public Early Birds/Night Owls chooser, whose
+Arabic title is “أيُّ فريق تختار؟”. The scoped candidate unmounts the intro and
+its saved-choice counters from EN/AR/MS homepages and removes the homepage-only
+visitor snapshot/session dependencies. Existing public content, localization,
+profile assigned-team confirmation, authentication/authorization and Contact
+verification remain unchanged. Stored visitor history/API/security tests are
+retained; no business or visitor records are deleted.
+
+Before change, a separate real headed Chrome guest session rendered the live
+saved-choice counters10 (Early6/Night4), in EN and AR. No choice or Contact Send
+was pressed. Focused render regression first failed3 localized cases against the
+old page, then passed after removal; focused render/visitor-security/SEO/release
+isolation checks29PASS. Browser replacement coverage and final candidate gates
+are pending. This app/test change means earlier exact0040/d82 gates remain
+historical evidence, NOT certification of the new candidate. Production remains
+d82/bc8/schema139. Merge/deploy requires explicit approval under the latest
+repository instruction. Recovery barriers and the closed Contact cap below
+remain unchanged.
+
+## Final closure audit — 2026-10-08 14:48 UTC
+
+**STATUS: DEPLOYED REPAIRS / BLOCKED OVERALL ACCEPTANCE. Not demo-ready.**
+
+The user's final review requires every original acceptance criterion to be
+classified, not an unconditional completion claim from the earlier checkpoint.
+Contact B's delivery and actual Inbox receipt remain confirmed; both Contact
+slots are consumed. No additional submission, historical-email release or
+provider/mailbox retry is permitted or needed.
+
+Fresh protected-main/runtime inspection confirms d82/bc8/schema139; public
+readiness/liveness and all sealed migration checksums passed at14:48:39UTC;
+the app and all five exact-image workers were independently healthy/restart0/
+noOOM at14:48:55UTC. Production checkpoint SHA256
+`2bc663f41b63d03f0137a8794142e58ecb48bca71b6ee188e787d8fa13340e88`.
+Host boot ID remains
+`aaf793bb-7222-4663-8b5a-e84beab01c4b`; no host restart occurred. No app/test/
+migration/configuration change invalidates the exact0040/d82 release gates.
+
+The prior registration whole-continuation guard was not reached. The prior
+isolated product test reloaded BEFORE checking list absence, so it does not
+prove immediate removal without a manual refresh. New normal-auth scenarios
+using the exact deployed immutable image in a separate fenced database have
+started, not rewritten historical results. Current03 normal logins, ONE ordinary
+company creation/four-group no-logo overview/Owner pending-setup projection,
+ONE normal invitation sent to a RAM-only sink and whole-original-row guards
+passed. Its automatically provisioned zero-balance Wallet was not removed to
+manufacture a missing-Wallet fixture. Earlier catalog-observer stops performed
+no product command. With the corrected private proxy, both catalog observers
+passed; continuation03 then stopped on an unclassified edit-page audit read.
+The read-only projection confirms ONE already-created owned product
+`a23bed0b-656c-4d50-a9e7-f39bd63f300a`, one image/price-history row and no supplier
+link or deletion audit. It was not recreated. No fragment take/password setup
+or controlled restart has executed in that interrupted workflow.
+The SAME company/invitation is retained; no replay/resend/reset.
+
+Original03 stopped on a private checker's unclassified canonical catalog VIEW
+audit. A separately reviewed guard now classifies only the exact known-Owner
+canonical read; all original rows/hashes still apply. Continuation01 stopped
+pre-auth because JavaScript rounded a nanosecond file timestamp; continuation02
+pins exact original nanoseconds and stopped before product commands because
+the catalog observers had no initial snapshot. A bounded read-only diagnostic
+recorded visible/online pages, fallback200 and stream429, but also rejected its
+own dashboard-topic instrumentation. These are retained failed evidence runs,
+not passed application, lifecycle or restart tests. The new private proxy
+correctly forwards downstream cancellation; a bounded read-only diagnostic
+then passed with one HTTP200 catalog stream and no429. This is a test-ingress
+correction, not a production proxy/connection-limit fix.
+
+### Current-image integrity barrier — actual read-only result14:29:55UTC
+
+The new strict guard reached the complete original-row classification and
+anchored hash/link checks, then failed `canonical_temporal_discrepancy_changed`.
+The archived baseline has2,326 events/21 canonical verifier invalid entries;
+current03 has2,383 events/23. All original21 invalid entries remain; **zero
+original events became newly invalid**. The two new invalid entries are the
+owned-product commercial-history VIEW and concurrent catalog VIEW, timestamped
+`14:12:21.624590Z` and `14:12:21.624573Z`, appended in opposite timestamp order.
+The difference is17microseconds. Every hash, predecessor, fork, cycle, root and
+head check is valid; all2,383 events are reachable exactly once. No audit or
+financial data was rewritten.
+
+The existing migration059 verifier orders by `occurred_at,id`, while the
+prepare-event trigger serializes append links under the partition-head lock.
+The timestamp is captured before that lock. The observed ordering disagreement
+is established; it does not demonstrate hash-chain corruption or identify an
+original reported registration/product exception. The canonical verifier is
+**not passing**, and the private guard remains unchanged. Parent04 was NOT RUN;
+new deletion/setup and whole-flow acceptance stay paused at this actual barrier.
+A separately approved audit-ordering/verification repair would need a forward-only
+design, native concurrent regression, release gates and migration approval; it
+must not rewrite existing history or silently accept the changed count. No such
+out-of-scope database repair is deployed or represented as complete here.
+
+Private preflight/result projections SHA256:
+`be999e827f9eab5adca7127d3bb176e31ce115cf00fc5f4fbf5728b3510195db` /
+`09a2d6235c2bb5decd5e1216d7e8dbafa0239d54086c760869e8e4eaa75e5eb9`.
+These are secret-free derived projections of actual tool results, not invented
+raw logs. The one remaining idle service trial is assessed independently; a
+health/restart result will not clear this whole-workflow guard.
+
+The idle probe02 stopped during read-only preflight, before its start/restart
+markers or container action. Diagnostic01 found sequence whole-row conversion
+SQLSTATE42809 and malformed private Docker JSON templates (missing the outer
+closing brace). Rows227/6,938, all three financial views, files, boot and sink
+delivery1/untaken-fragment1 reads passed. Mechanical helper-only corrections
+retain every state field, limit and assertion; this is not an application fix,
+retry allowance or passed restart. Failed result SHA256
+`ab75bc541b1418d156af4d9d1ee1d1e7c9e1f0db6e74acfcd26c8511c826dcff`;
+diagnostic SHA256
+`65f3d454426972d25ea0c53eac0191bbc67532abec0f2f6fc527cd39a84b9868`.
+
+The mechanically corrected read-only diagnostic02 subsequently passed all
+eight components (EXIT0):227 current tables/6,938 rows, nine sequence definitions
+and all three sequence state fields, three financial views, copied files, host
+boot, exact DB/sink state and sinkdelivery1/untaken-fragment1. Result SHA256
+`2b31f492031f66b5223dda8a9a81f3c8cba9a94710af7a13c04c2d62b2fa6969`.
+No before-after restart comparison is implied. No container action ever occurred
+in these attempts; **one of two controlled restart trials remains unused** and
+is reserved for complete affected-workflow acceptance after the audit barrier
+is resolved. Corrected trial03/restart02 source is prepared, NOT RUN. Parent04
+also remains NOT RUN; no new setup/deletion/propagation result is claimed.
+
+Current03's four exact owned containers remain fenced and bounded, ingress
+ports3178–3180 closed, no outbox poller or external provider access. They are
+intentionally retained running to preserve the untaken RAM-only disposable
+invitation, not forgotten cleanup or production services. Earlier02 resources
+are stopped/data retained; unrelated a40 isolation and production are untouched.
+No token/session/credential data is exported. Do not stop its sink merely to
+clear this warning or recreate/resend fixtures to conceal failed acceptance.
+
+ONE expired-token probe now passes against current application source in fresh
+RAM-only PGlite/all139/two grant replays:1PASS/2.83s/retry0. A legitimately
+historical newly inserted invitation is rejected as expired by actual app-role
+inspection and consumption before hashing/activation;229 complete relation,
+sequence and Wallet-view fingerprints are unchanged/provider0/RAMclosed.
+The first probe failed before import/tests due Vitest mock-import resolution;
+the supported import-only correction preserves that failure and all assertions.
+This is isolated expiry evidence, not native/live setup or restart acceptance.
+Result SHA256 `8ef71a89f4e6c888e53d36276504a50b1ec28660123e58ab3c21f6fd0e25e935`.
+
+ONE fresh-owned mobile gallery diagnostic retained the original assertions and
+timeouts and passed2.3s/retry0; no failure metadata was generated. This does NOT
+resolve the CI gallery instability. Original first-failure cause/artifacts remain
+open. Exact diagnostic log SHA256
+`b037677afb4e7cf17ddf1d00de967075cfc5f35b2992190f8622775e6330afad`.
+
+The missing budget-period distinction now has ONE isolated RAM-only PGlite
+characterization:2PASS/2.57s/retry0, canonical139/grants replayed twice. CLOSED
+with no ACTIVE successor returns AX003/BUDGET_UNAVAILABLE; complete guarded
+Wallet/ledger/period/recurring/command/audit state is unchanged. Elapsed dates
+while status remains ACTIVE retain the inherited status-based allocation
+contract:one synthetic allocation/command, no Wallet/recurring/period/schedule
+or refresh change. This is not date-expiry rejection, native/live proof or a new
+financial-policy decision. The old wrong-account expiry claim remains retracted.
+Log SHA256 `bb91da1919ec343f40332aa00b027d0d133ebfb89af6e9ddf1c789b9c76c17ee`.
+
+Current guide/role/integration evidence and the per-criterion verdict below
+supersede the10:09 "core acceptance passed" wording, qualified
+by the isolated/live and restart boundaries, not unconditional demo readiness.
+
+### Original issue register: implementation versus acceptance
+
+| Original item | Passed evidence | Still open / exact boundary |
+| --- | --- | --- |
+| Deployment/startup/runtime |Deployed polling/grants/cast/readiness/idle57P01 recovery fixes, exact image/schema checks, native/process failure tests; historical a40 idle sender trial; corrected current-image read-only capture8/8. |Current-image trial NOT RUN; one allowance remains reserved for complete affected-workflow acceptance. A clean complete workflow after restart, active-send drain, whole-host boot and off-device recovery are not inferred from health. Host boot is prohibited here. |
+| REGISTRATION6A |Cancellation and `$12::timestamptz` defects fixed; native invitation/setup concurrency and company-command replay; RAM expiry1PASS/unchanged229 fingerprints; earlier isolated normal setup/login/used-link; live designated cross-scope duplicate notice/no extra account. |Original reported route/error/request unavailable. Current03 final guard FAIL before setup/restart workflow. No same-tenant duplicate/full HTTP response-loss journey certified. Live valid-input setup needs a named disposable company/new recipient/intended role and permitted setup-delivery action. See REGISTRATION.md's per-criterion matrix. |
+| PRODUCT_DELETE6B |Owner-only capability/raw-DENY/history/cart-FK protection; native reference/DENY races, PGlite replay/cleanup rollback; earlier isolated normal owned deletion and protected/CA/DENY refusals. |Original reported exception unavailable. Earlier UI absence was checked after reload. Current03 new product is retained; strict guard stopped before immediate deletion/list/detail and before-after restart workflow. Live destructive acceptance needs an exact eligible disposable UUID, per-action authority and verified recovery plan. See PRODUCT_DELETE.md. |
+| 1 Active setup tabs |All six actual Owner routes, Light/Dark/hover/keyboard focus/390px; shared semantic tokens. |No outstanding observed contrast defect. |
+| 2 Branch information |Actual Owner/BA grouped rows, aligned metrics, ONE address action, distinct labels; EN/AR RTL/MS desktop/mobile. |No outstanding observed layout/duplicate-label defect. |
+| 3 Open wallet |Both actual rows, both themes/hover/focus/mobile. |No outstanding observed contrast defect. |
+| 4 Overview/logo |Structured actual reviewed-brand logo plus isolated no-logo placeholder/four sections. |No actual live no-logo fixture exists; do not manufacture one in production. |
+| 5 Product details |Actual structured Details/Delivery/authorized Pricing/gallery; Company Admin management-route refusal; automated confidential-data guards. |Live CAM account absent. Gallery upload instability remains OPEN despite retry-pass and bounded diagnostic PASS. |
+| 6 Setup Wallet404 |Owner-only pending-state component/authorization tests, actual correct live company Wallet navigation/direct/refresh/history and isolated setup projection. |All live companies already have Wallets; no live absent-persisted-Wallet fixture tested. No Wallet was fabricated/removed or balances changed. |
+| 7 Contact/email |ONE B visible success, durable enquiry/outbox, one accepted attempt/provider ID, delivery event/provider GET and actual Inbox receipt confirmed; A reconciliation/cap2. |Original live queued-across-restart scenario not performed. Both slots are consumed; no more Contact sends, historical releases or provider/mailbox retries. A's original submission path/outcome remains unknown. |
+| 8 Shared live updates |Bounded authorized transport/reconnect/fallback/dirty-state/native authorization coverage; corrected private proxy's read-only catalog snapshot. |Observer initialization does not prove create/delete propagation. Production business-change fanout and open-stream role/DENY revocation not exercised; requires a controlled owned mutation/revocation fixture, not real business data. |
+| 9 Migration guide |Technical runbooks/reproducible illustrated PDF and genuine dated readiness screenshot; verified encrypted local backup/disposable restore. |Guide refresh/render proof below. Future host/off-device destination/key custody/cutover absent; documentation is not a performed move. No host action. |
+| 10 Invitation UI |Localized compact UI/token/consent contract; earlier isolated valid setup and native/expiry protections. |Current03 valid-token rendered setup/whole continuation did not execute. No real recipient invitation consumed. |
+| 11 Integrations/Slack |Truthful native/disabled-provider UI, enabled API/webhook inventory, disabled Slack/Zapier and exact activation checklist. |Conditional activation only: authorized app/workspace/public channel and protected client/signing secret mounts + app/client IDs absent. Not a core-repair blocker. |
+| 12 Add Budget |Typed legitimate ceiling/refusal/current-actor checks; native success/denial; CLOSED/no-ACTIVE period refusal and elapsed-ACTIVE characterization2PASS. |No live allocation authorized/performed; elapsed ACTIVE is not date-expiry rejection or a new financial policy. Controlled live test would need a named company/branch/period and authorized amount. |
+| 13 Budgets list |Actual CA six-column responsive keyboard-scroll/BDI/RTL metrics/layout, no document overflow. |No outstanding observed layout defect; no metrics changed. |
+| 14 BranchAdmin lifecycle |Migration139 hard ceiling/UI/direct/native custom-GRANT/raw denial; actual BA operational metadata retained/no lifecycle controls. |No destructive live branch action; native isolated authority proof is not live deletion/deactivation. |
+
+**Original-problem verdict:** ordinary Contact delivery and the observed UI/Cart
+defects are resolved with deployed evidence. Identified registration/product
+defects are repaired and have focused/native/earlier isolated coverage, but the
+original reported workflows cannot be declared fully resolved without the
+missing original-case and complete current/live lifecycle acceptance. All
+required gates are not closed; **overall demo-ready is NOT certified**. Optional
+Slack activation and future migration inputs are not presented as blockers to
+the independently deployed core fixes.
+
+## Historical Contact closure checkpoint — 2026-10-08 10:09 UTC
+
+**STATUS: DEPLOYED / CONTACT B LIVE-VERIFIED, including actual mailbox receipt.**
+This checkpoint does not certify the unobserved registration/deletion live
+scenarios or queued-across-restart Contact case. The previous Contact pause below is superseded by the new
 explicit authorization for one controlled B and the evidence here; A's earlier
 manual Send/result remains unproven, not retrospectively rewritten.
 
@@ -86,17 +280,21 @@ prepared/result images `02501b64ed1d8729581b51d78d86f0351829f9cebbe7c6820404e7ea
 post-send metadata `8b8a9d3a7de6a86360e324515c1ceaf3d43202a49bb63e8f4c3a733d4a29bd48`;
 provider response `b0b9f1779364fca34cec88b1216e88aa4f628172d635e560adf8c33cb8179731`;
 Gmail projection `f6f071a202ece114c62fcdc56184b1bed680cf6cb96c009e7ab844ec77d187dc`.
-Files remain private/outside Git; no credential or verification token was read,
-printed or included in exported evidence logs/reports/images. Private browser
+Files remain private/outside Git; authorized authentication/provider secrets were
+handled in memory, never printed or included in exported evidence logs/reports/images. Private browser
 profiles are retained browser data, not exported evidence. The existing user's
 Brave/new success tab remains
 available; only root-owned separate test processes were closed.
 
-No remaining core Contact input is needed. Actual CAM/second Driver/live
-negative-state fixtures, controlled Slack activation inputs, off-device/future-
-host access, original isolated whole-flow limitations and missing first-failure
-gallery artifacts remain the precise previously documented boundaries—not
-completed enhancements, core blockers or silently deferred authorized changes.
+No remaining input is needed for ordinary Contact delivery. The original live
+queued-across-restart Contact scenario was not performed and cannot be retried
+within the closed cap. The original isolated whole-flow integrity/current-image
+restart gaps are required acceptance gaps, being investigated independently;
+they are not optional enhancements. Actual CAM/second Driver/live negative-state
+fixtures and missing first-failure gallery evidence remain separate limitations.
+Controlled Slack activation inputs and off-device/future-host access block only
+those conditional provider or future operations, not deployment of independent
+core repairs. Nothing in this checkpoint certifies unobserved acceptance.
 
 ## Historical execution checkpoint — 2026-10-08 03:50 UTC (superseded)
 
@@ -198,7 +396,7 @@ loaded/visible states were inspected separately.
 | 6 Setup Wallet |Continue setup→Wallet and budgets reaches `/companies/4b5f72eb-303a-4df0-a8fa-f078a97ce0bd/wallet`, correct mewo1 company200/no404. Direct URL, refresh, Back to Wallet and Forward to Documents checked after visible navigation waits. All live companies already have Wallets; absent-Wallet owner-only pending state remains non-live coverage. No Wallet fabricated or balance command used. |
 | Company Administrator |Current malaysiaashrafo account is verified active/company-scoped with one canonical COMPANY_ADMIN assignment. Unselected Shopping chooser, selected CYBERJAYA-01 Shopping, existing Cart, company Wallet and Budgets200. Before/after bounded READ ONLY checks confirm exact owned active null-department Cart/authority and all its company carts/items/events unchanged; fingerprints kept only in RAM. Mobile budget region356px/table720px is keyboard-scrollable; document overflow0. No Add/Place/allocation/top-up. |
 | Branch Administrator / Delivery |Current shehab Branch Administrator sees retained Edit branch/four groups/single address action and no lifecycle/delete controls. Current alsaloulashraf Delivery Agent portal200/assigned-deliveries and available-jobs navigation fits390px. No claim, location, availability or delivery workflow action. |
-| Other original authorized items |Items8/9/10/11/12/13/14 remain implemented, tested and delivered; detailed evidence below. Bounded c3 SSE/RUM classification, compact invitation UI, truthful integrations/checklist, typed budget refusal, aligned budget table and139 BranchAdmin hard ceiling remain unchanged. No healthy-worker-only workflow acceptance claim. |
+| Other original authorized items |Delivered code/documents for8/9/10/11/12/13/14 remain unchanged. Transport/reconnect is not business-change propagation or open-stream revocation proof; native budget/branch denial is not a live allocation/deactivation trial; a delivered guide/disabled Slack checklist is not cutover/provider activation. Compact invitation UI and actual budget table checks are separately evidenced. See the final per-item matrix rather than infer completion from implementation or health. |
 
 Private browser05 log SHA256
 `50867a8b6024737716015a6be4cf657bba114eb2ee93d811a7e4d5bc4eaf5601`;
@@ -210,7 +408,12 @@ and `5832276f2403bcd5f280be2f63db31b315361c48c760500b8152bf56f82669e3`.
 The UI/UX approach preserved the existing visual language and used only scoped
 reflow; no global redesign was introduced.
 
-### Core acceptance: evidence and exact affected pause
+### Historical core acceptance / Contact pause — superseded at 10:09 UTC
+
+Do not follow the earlier Contact action instructions in this subsection.
+Contact B is now delivered and received; A1+B1 consumes the cap of two. No
+further Send, A/B replay, provider retry or historical-email release is allowed.
+The historical failure and missing-A evidence below remain preserved.
 
 **Contact A:** fresh03:35:40Z READ ONLY metadata finds A/B enquiries,
 notification/acknowledgement outboxes and ALL submissions/notifications since
@@ -957,11 +1160,12 @@ and required exact-head gates and core workflow evidence are complete.
 
 ## Historical deployed-core record (superseded status; evidence retained)
 
-The remainder preserves the earlier deployed-core checkpoint and its original
-evidence. Its current/remaining/deferred wording is historical, not the 22:26 UTC
-status above. In particular, mailbox access, local shared-live/UI work, native139
-coverage and delivered guides have advanced; no earlier gate certifies the new
-candidate. The historical retry/skips/failure explanations remain visible.
+The remainder, including every following sibling heading, preserves the earlier
+deployed-core checkpoint and its original evidence. Its current/remaining/
+deferred wording is historical, not the final closure status at the top.
+Mailbox receipt, shared-live/UI work, native139 coverage and delivered guides
+have advanced. Historical failure, retry and skip explanations remain visible;
+do not treat older pending wording as the present release identity or verdict.
 
 **Core fixes deployed; overall recovery acceptance BLOCKED. Not demo-ready.**
 
@@ -973,7 +1177,7 @@ The computer was not shut down, rebooted, restarted or power-cycled by this task
 
 No financial transaction, payment, purchase, Wallet credit, budget increase, real product/account deletion, delivery claim/completion or account-role/password change was performed for acceptance. Private supplied account input remains intact outside Git; no credentials are included here. Existing dirty root checkout, prior worktrees and unrelated PR215 were preserved.
 
-## Production identity and release
+## Historical core record — Production identity and release
 
 | Boundary | Verified identity/status |
 | --- | --- |
@@ -998,7 +1202,7 @@ No financial transaction, payment, purchase, Wallet credit, budget increase, rea
 
 PR218 changes only three lines in one E2E file. It does not modify application behavior, migrations, routing, financial semantics, dependencies, retries, timeouts, test order or infrastructure. Existing immutable-image automation owns its normal release; no parallel manual deployment is introduced.
 
-## Proven core failure boundaries
+## Historical core record — Proven failure boundaries
 
 ### Runtime and transactional email
 
@@ -1026,7 +1230,7 @@ Migration138 exposes one audited Owner/DENY-aware capability with current actor/
 
 Typed EN/AR/MS inline feedback and the existing Deactivate alternative replace generic failure. Native concurrency proof covers references arriving while deletion waits, committed references preserving assets and a DENY change during a lock wait. **No real product deletion/deactivation was executed; disposable live success acceptance remains unverified.**
 
-## Contact routing, backlog and receipt evidence
+## Historical core record — Contact routing, backlog and receipt evidence
 
 - Existing route preserved: public support address `support@axora.management`; Contact internal recipient `thalththanwyd@gmail.com`; existing Resend outbound sender/transport retained. No visitor acknowledgement or CAM broadcast was enabled. Mail routing/provider secrets were not replaced.
 - Exactly eight historical zero-attempt PENDING jobs were Infinity-held in one guarded audited transaction before repaired claims became active. Exactly eight corresponding audit UPDATE rows were verified. Original due timestamps are preserved in private operational SQL. Four historical UNCERTAIN jobs remain review-only.
@@ -1035,7 +1239,7 @@ Typed EN/AR/MS inline feedback and the existing Deactivate alternative replace g
 - Provider acceptance, signed delivery event and recipient Inbox/spam receipt are separate evidence stages. **None is claimed for these new live smokes.** No recipient mailbox access was supplied.
 - The queued-across-restart B scenario is not performed. Prepared private helper is not evidence of a trial. Never send a false durable-B handoff.
 
-## Service recovery trials and observers
+## Historical core record — Service recovery trials and observers
 
 Production controlled trial count: **one of at most two**. Trial1 is idle sender-only, expressly not queued-mail or complete core-workflow acceptance. No second trial was performed: queued-B has no verified submission, and random repeat restarts are not justified. No host/database/network/shared-Docker/proxy or unrelated workload was stopped for this trial.
 
@@ -1053,7 +1257,7 @@ The independent180-second trial observer completed exit0 with90 complete samples
 
 The task did not operate unrelated stethofuse services. Their current start times19:19:09–15Z were independently observed; do not claim all unrelated container identities remained unchanged or attribute their restart to this task.
 
-## Existing issue register:1–14
+## Historical core record — Existing issue register:1–14
 
 | Issue | Current status and acceptance boundary |
 | --- | --- |
@@ -1074,7 +1278,7 @@ The task did not operate unrelated stethofuse services. Their current start time
 
 Separate register entries: **deployment/startup/runtime** deployed/isolated-verified/idle sender trial passed, full affected workflow acceptance incomplete; **REGISTRATION** deployed for proven cancellation defect, original live report not reproduced/evidence gap; **PRODUCT_DELETE** deployed/isolated-verified, original live success/destructive scenario unverified.
 
-## Browser and role acceptance
+## Historical core record — Browser and role acceptance
 
 Real production headed Chrome was used through the task-authorized normal login UI after Computer Use surfaces and Chrome DevTools MCP were unavailable. Private account input is read in memory; no auth storage state, password screenshots, traces/HAR or bearer links retained. Captures are not made on login/account routes. Actual role/scope was verified from live metadata and UI, not email labels.
 
@@ -1087,7 +1291,7 @@ Real production headed Chrome was used through the task-authorized normal login 
 
 Screenshots remain private under `/home/ashraf/Documents/Axora Recovery Evidence/2026-10-08/output/playwright/`. Loading-state captures are not used as layout/no-logo acceptance. The UI/UX skill's state-contrast and responsive checks exposed the residual Dark-hover defect; no global redesign/new palette was applied.
 
-## Tests and required gates
+## Historical core record — Tests and required gates
 
 | Gate | Exact-source evidence/result |
 | --- | --- |
@@ -1113,7 +1317,7 @@ No retries/skips/projects/order/assertions were weakened. Fresh standalone owner
 
 App/server/migration/test sources matched between testedc7c48e6 and core candidate except the narrow verified Zapier dev-lock patch. PR218 changes only the stale URL expectation, so unchanged application evidence is reusable. The repository's required broad final Nightly completed once on exacta40, including its browser gate; no duplicate full suite was launched locally after PR218.
 
-## Backups, installed configuration and rollback
+## Historical core record — Backups, installed configuration and rollback
 
 - Pre-change encrypted artifact: `/var/lib/axora-production/reset-backups/axora-reset-20261007T175617Z-cccd272be606.tar.gpg`. AES256/decrypt/isolated240-table/136-migration/uploads restore verified17:56:26Z. Ciphertext SHA256 `4b812fed5e4f0a414db80b4dfc5a49dfd6993ba3b948fa56d2a365350a779bb7`.
 - Policy pre-migration backup: `/var/lib/axora-production/backups/axora-20261007T185834Z`.
@@ -1125,7 +1329,7 @@ App/server/migration/test sources matched between testedc7c48e6 and core candida
 - Previous core939 immutable image is locally available and compatible with schema138; its application source is identical to currenta40. Application rollback does not reverse migrations, audited holds, data or external effects. Rolling back farther to the pre-137/138 baseline image blocks its legacy permanent product deletion through revoked raw DELETE and restores its old email failure. Such baseline rollback is containment, not a weakening of grants. Inspect current `previous` before using the existing root rollback script.
 - Short operations and rollback instructions: `docs/operations/RUNTIME_RECOVERY.md`; original component evidence: `CONTACT_EMAIL.md`, `REGISTRATION.md`, `PRODUCT_DELETE.md`, `ISSUE_REGISTER.md` in this directory.
 
-## Deferred deliverables and exact blockers
+## Historical core record — Deferred deliverables and exact blockers
 
 1. Real Contact verification is not ready; no safe provider/recipient evidence can be inferred. Recipient Inbox/spam access unavailable. Historical UNCERTAIN/held backlog requires individual evidence reconciliation, not bulk replay.
 2. Original live registration journey/exception and explicitly disposable lifecycle targets are unavailable. No questions are being repeated; no unsafe target is assumed disposable.
