@@ -2,6 +2,60 @@
 
 Report date: 2026-10-09, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
+## Responsive follow-up exact-head gates — 2026-10-09 MY
+
+**PR222 IS DEPLOYED; THIS FOLLOW-UP IS NOT DEPLOYED. OVERALL ACCEPTANCE REMAINS
+OPEN.** The separate mobile commercial-history containment repair is committed
+and independently reviewed at `4ef25d921b3c01ae2a1525ec90fa9b24ec91bb94`.
+Production remains `286a77f9d761f3586e2100f9001bdf3bcf2d863f` / OCI
+`sha256:e7a525a0a321d6588ca406504b323bc8e47d2d3bf0fc8b731b11560cae58f918` /
+`139_branch_lifecycle_authority_and_budget_refusals.sql`. The earlier owner's
+approval was for PR222 only. The follow-up needs its own protected image check
+and explicit merge/deploy approval; no additional production release occurred.
+
+The full source/test/gate-input manifest at tested4ef is
+`23e4becac60623a43eb51b560c8f6bec17abf8ba6c92b5155bc8ef3e81cd04f0`.
+The subsequent three-document evidence reconciliation does not change those
+inputs. No authentication, pricing, accounting, RLS, migration, workflow,
+deployment script, Playwright configuration or original smoke-test delta.
+
+### Ordered host gates on the frozen4ef candidate
+
+| Gate | Actual result | Complete log SHA256 |
+| --- | --- | --- |
+| lint |PASS|41e3408ada2a9982f17c8d519a484f676ce18dbb12e65771feb6e66ee0b79f8f|
+| typecheck |PASS|d597b090f6117de7e92d2560aa707d800d98d154dce3f1cf58812f485e5dfe2a|
+| unit/PGlite |1,973 PASS/49 existing native-only skips;382 passed/11 skipped files;492.30s|2d42f8b5ad519691324b6860321135a89011aa06a911b92b9ead64725e67d436|
+| native PostgreSQL |49 PASS/all139 migrations, authorization lifecycle, forced RLS and least-privilege grants|215a407be67f9161474f6a231187825148e19b9391c607de63d62c1fc21ce8d9|
+| production build |PASS, including pg-cloudflare standalone files|876d63f6910c60d4d83aee4e7218beaf78e51c59fbcb6b3e84a12e07bbb087b1|
+| standalone stage |PASS|41b9b16a6d16412835b35158b268e865302cee9baf0eb086b04b2a74b03d2b20|
+| standalone runtime |PASS/2 routes+2 runtime resources|71754b861dabef4d14b9cd3ec5158c1e2b58f5aed324162135a8df07f4d67ab5|
+| deployment assets |PASS/35 assets/7,996,414 bytes;Compose/Caddy/secrets invariants|f30937c65d7ffb73abf2b1aa8c5e47620deb3b6642dcf2aceb78c703607c1e46|
+| original combined E2E+recovery |EXIT0:360 PASS/19 existing skips/ONE unchanged company-create FLAKY,9.7min;recovery7 PASS/8.9s|b6f00f0161ffcec4282b7c2f8d387766751d5f7ed26dc9303443b6340c6418b8|
+| diff-check |PASS/empty log|e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855|
+
+The configured gate passed, but this is **NOT361 clean browser passes**. The
+unchanged desktop company-create test failed first and passed only on its
+existing retry. That route instability remains OPEN; the CSS repair does not
+claim to fix it. Original gallery/product completion, mobile stale-cart and all
+six new history-present responsive cases passed without retries. No retry,
+skip, timeout, assertion or project-order change was introduced. Existing19
+browser skips cover viewport/keyboard/matrix duplicates and disabled opt-in
+integration/email cases; the49 native-only unit cases all ran in the native gate.
+No further full suite was run on the same unchanged application/test head.
+
+Whole browser results and complete logs are retained privately at
+`product-editor-required-4ef-yeLk6S` before any later browser work. Company
+first-failure trace SHA256
+`57b8431d7887859204817ff9ee1d24e4fff2d2c3a67a193ab8a34ed2098ed21c`;
+screenshot `e60ac34903a4c1b487660258f106b97dfcdb69cd9e44337f2f097aaf0133c856`.
+The normal headed EN/AR/MS views and final targeted6 PASS/retry0 evidence below
+remain distinct from this full gate. Owned release servers closed;3100/3101
+listeners absent. Candidate supplied-password scan:145 files/0 matches, values
+suppressed. Credentials, unrelated checkout changes, Contact cap2 and the host
+remain intact. Original audit/setup/deletion, live gallery completion and
+conditional-input limitations below remain unchanged; **NOT DEMO READY**.
+
 ## Post-deploy acceptance checkpoint — 2026-10-09 MY
 
 **STATUS: DEPLOYED / ORIGINAL ACCEPTANCE STILL OPEN.** The owner-approved

@@ -2,6 +2,23 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
+## Responsive follow-up exact4ef checkpoint — 2026-10-09 MY
+
+PR222 is deployed286/OCIe7/schema139. Separate responsive follow-up tested head
+`4ef25d921b3c01ae2a1525ec90fa9b24ec91bb94` is NOT DEPLOYED and requires its own
+protected image check and explicit merge/deploy approval. Three evidence-only
+document updates preserve source/test/gate manifest
+`23e4becac60623a43eb51b560c8f6bec17abf8ba6c92b5155bc8ef3e81cd04f0`.
+
+| Item | Latest evidence / exact limit | Status |
+| --- | --- | --- |
+| Current requested chooser removal |Actual EN/AR/MS production homepage removal verified after approved PR222 release; authenticated assigned-team flow preserved. |DEPLOYED/VERIFIED on286. |
+| Mobile editor repair |Product-editor-only shrinkability and localized keyboard-scroll region; history must be present in new component/browser tests. Final focused6 PASS/retry0; six actual headed EN/AR/MS views overflow0; independent exact4ef review approved. |Implemented/tested; production423px overflow still OPEN until separately approved deployment/real-page acceptance. |
+| Final host gates |Lint/types,unit1973+49 native-only skips,native49/all139/RLS/grants,build/pg-cloudflare,stage/runtime,assets35/7,996,414B,diff-check PASS on4ef. Full hashes in FINAL_REPORT. |Required local checks complete; protected image/new approval pending. |
+| Original browser suite |360 PASS/19 existing intentional skips/ONE unchanged desktop company-create FLAKY9.7min;recovery7 PASS8.9s/EXIT0. Gallery/product/mobile-cart/new6 responsive first attempts PASS. |Not361 clean passes. No added retry/skip/timeout or weakened assertion. |
+| Company navigation |Original first-failure recurrence retained; trace57b8431d…/screenshote60ac349… archived with all results at product-editor-required-4ef-yeLk6S. Existing retry passed. |OPEN; no speculative cause/fix or clean-gate claim. |
+| Remaining original acceptance |Current03 canonical audit guard21→23 FAILED; original6A/6B and fresh-live gallery completion remain partial. No additional email, real-data deletion, invitation replay or service trial. |Overall NOT DEMO READY; exact decisions/designations remain below. |
+
 ## Post-deploy acceptance checkpoint — 2026-10-09 MY
 
 Owner-approved PR222 is merged/deployed at exact main
