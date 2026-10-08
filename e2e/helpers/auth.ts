@@ -15,6 +15,7 @@ export interface DemoRoleSession {
   scopeType: "PLATFORM" | "COMPANY" | "BRANCH" | "DEPARTMENT" | "DELIVERY";
   companyId?: string;
   branchId?: string;
+  roleAssignmentId?: string;
   isOwner?: boolean;
   preferredLocale?: "en" | "ar" | "ms";
 }
@@ -41,6 +42,7 @@ export async function signInAsDemoRole(page: Page, fixture: DemoRoleSession) {
     scopeType: fixture.scopeType,
     companyId: fixture.companyId,
     branchId: fixture.branchId,
+    ...(fixture.roleAssignmentId ? { roleAssignmentId: fixture.roleAssignmentId } : {}),
     isOwner: fixture.isOwner ?? false,
     authVersion: 1,
     preferredLocale: fixture.preferredLocale ?? "en",

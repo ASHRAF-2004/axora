@@ -1,8 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { signInAsDemoOwner } from "./helpers/auth";
+import { E2E_OWNER_EMAIL, signInAsDemoOwner, signInAsDemoRole } from "./helpers/auth";
 
 test("creation and image upload complete their native routes and do not restore the submitted creation draft", async ({ page }) => {
-  await signInAsDemoOwner(page);
+  await signInAsDemoRole(page, {
+    id: "demo-admin", email: E2E_OWNER_EMAIL, name: "Axora demo administrator",
+    role: "PLATFORM_OWNER", accountKind: "PLATFORM", scopeType: "PLATFORM", isOwner: true,
+    roleAssignmentId: "86000000-0000-4000-8000-000000000004",
+  });
   await page.goto("/products/new");
   const name = `E2E action completion ${Date.now()}`;
   const form = page.locator('form[data-draft-id="create-product"]');
@@ -14,6 +18,8 @@ test("creation and image upload complete their native routes and do not restore 
   await expect(page).toHaveURL(/\/products\/[0-9a-f-]+\/edit\?notice=product-created$/i);
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   const editorPath = new URL(page.url()).pathname;
+  const history = page.getByRole("region", { name: "Commercial price history", exact: true });
+  await expect(history.locator("tbody tr")).toHaveCount(1);
   const uploadURL = new RegExp(`${editorPath}\\?notice=product-images-updated&uploaded=[0-9a-f-]{36}$`, "i");
 
   const upload = page.locator("form").filter({ has: page.getByRole("heading", { name: "Image slideshow" }) });
@@ -41,6 +47,8 @@ test("creation and image upload complete their native routes and do not restore 
   await expect(page.getByRole("status").filter({ hasText: "Product images uploaded successfully." })).toBeVisible();
   await expect(gallery.locator("article")).toHaveCount(3);
   await expect(page.getByText("3 of 8 images uploaded", { exact: true })).toBeVisible();
+  await expect(history.locator("tbody tr")).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
   await expect(upload).toHaveCSS("position", "static");
   await gallery.scrollIntoViewIfNeeded();
   const [uploadBox, galleryBox] = await Promise.all([upload.boundingBox(), gallery.boundingBox()]);

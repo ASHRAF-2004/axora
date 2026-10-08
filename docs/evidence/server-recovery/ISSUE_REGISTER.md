@@ -2,6 +2,41 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
+## Post-deploy acceptance checkpoint — 2026-10-09 MY
+
+Owner-approved PR222 is merged/deployed at exact main
+`286a77f9d761f3586e2100f9001bdf3bcf2d863f`, OCI
+`sha256:e7a525a0a321d6588ca406504b323bc8e47d2d3bf0fc8b731b11560cae58f918`,
+unchanged migration 139. Main CI 37824768766 image/deploy SUCCESS; controller
+success 18:34:57.418 UTC/02:34:57 MY. Earlier not-deployed candidate blocks below
+are retained historical checkpoints, not current release identity.
+
+| Item | Current actual evidence / remaining limit | Status |
+| --- | --- | --- |
+| Release / health |Tested123 app/test/gate manifest preserved by the final squash. Current metadata/running app-worker images/OCI revision agree with286; local/public live+ready HTTP200, controller local/external security/readiness gates PASS. |DEPLOYED; mainCI37824768766 SUCCESS. |
+| Backup / host safety |Matching ledger explicitly skipped backup and migration runner; unchanged existing ordinary local backup pointer is not a fresh encrypted/offsite proof. Database/tailscale/tunnel identities/start times and host boot ID unchanged. Expected app/workers/Caddy recreation only. |No new backup, migration, reset or host restart claimed. |
+| Public chooser |Actual headed guest EN/AR/MS: chooser/counters/dialog0/document overflow0; captures visually reviewed. |Production removal VERIFIED; assigned-team profile behavior preserved. |
+| Company tabs / Wallet buttons |Owner all six tabs Light/Dark selected/hover/focus readable. Two Open-wallet rows: white text; Light contrast13.2/15.17hover, Dark4.83/5.81hover; keyboard focus3px. |Actual production contrast VERIFIED. |
+| Branch / overview / detail |Structured branch EN both themes/mobile+AR/MS RTL desktop, aligned Budget and one Edit action. Structured overview with actual loaded reviewed logo; grouped mobile product detail and authorized Owner cost. Initial unloaded-logo capture excluded. |Production rendered evidence PASS; no-logo negative remains isolated, not a live fixture. |
+| Setup Wallet context |Existing Wallet correct company/refresh/direct/away-back valid. No-Wallet pending state remains native/isolated evidence; no Wallet fabricated or balance changed. |Existing-Wallet production route VERIFIED; absent-Wallet live journey not claimed. |
+| Lightweight roles |Current CA malaysiaashrafo@gmail.com Shopping/CYBERJAYA/Cart/budget/Wallet200; cart/item/event snapshots unchanged; management product404/no internal cost. Current Delivery Agent alsaloulashraf@gmail.com portal200/mobile overflow0. |Read-only production regression PASS; live CAM/second Driver absent. |
+| Gallery completion |Current editor displays three existing ready images; no fresh production create/upload/remove. Automated focused/full proofs remain separate. |Production completion acceptance OPEN, not closed by existing-image rendering. |
+| Product editor mobile history |Actual 390px production editor: 423px document overflow, split 358/direct children 782/table minimum 780. Earlier demo history was empty without an assignment claim. Six-file uncommitted scoped follow-up: component 5 PASS/source approval/development build+stage PASS; first focused 24 scheduled/23 PASS/one existing intentional skip, 45.8s/retry 0, all six new responsive cases PASS, log 600593dc… . Root viewed six localhost-DEMO EN/AR/MS Light 1440/Dark 390 views: history 1/document overflow 0/grid escape 0/local table scrolling/console errors 0. Test-only fixture isolation/Escape refinements and targeted rerun pending. |OPEN; not 24 passes or a final gate, and production 423px overflow not claimed fixed. Final follow-up browser/full gates/CI/approval/deploy NOT YET COMPLETE. Public DEMO claim is not native/live assignment validation. |
+| Company navigation |Retained local valid303/correct company redirect but pending source-route failure remains; existing retry and later clean CI do not establish cause/fix. |OPEN; no speculative patch. |
+| Original6A/6B / audit / trial |Current03 temporal guard21→23 still FAILED; no rebase/history rewrite. Existing invitation/product and one remaining service trial untouched. Live disposable account/product/action/recovery designations and separately approved audit contract/migration decision remain missing. |Original whole acceptance NOT fully met; isolated/live duplicate/DEMO deletion proofs stay separate. |
+| Contact / conditional work |Provider/delivery/Inbox confirmed; two smoke slots consumed/no further send/replay/historical release. Existing Slack/SSE/budget/future off-device/cutover dependencies retained individually below. Private input/unrelated tree preserved; owned browser helpers closed EOF0. |Contact CLOSED. Enhancements not recast as core blockers. Overall demo-ready NOT certified. |
+
+Full exact-head gate provenance, deployment timestamps and live/isolated limits
+are in the new leading FINAL_REPORT checkpoint. All historical evidence below
+is preserved.
+
+Final responsive-test refinement supersedes the targeted-rerun pending wording
+in the table: dedicated per-locale/project public DEMO identities and actual
+Escape dismissal are complete. Fresh-owned final rerun 6 PASS/7.5s/retry 0/no skips,
+log `dec1456a2b81fb62d6a0228cffa1648d71f46b5faf9384dd7eb52bdd4b605cf9`;
+unit 5 PASS and targeted lint/diff-check PASS. Final exact-head required full
+gates/CI/new approval/deployment remain pending. Production 286 is unchanged.
+
 ## Latest exact123 candidate closure checkpoint — 2026-10-09 MY
 
 Production remains d82/OCIbc8/schema139. Tested application/test head123c9dc is

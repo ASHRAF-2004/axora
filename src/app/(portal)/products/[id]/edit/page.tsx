@@ -61,7 +61,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       <div className="toolbar-group"><span className="subtle">{product.code}</span><StatusBadge status={product.status}>{localizedStatus(product.status, locale)}</StatusBadge></div>
     </div>
 
-    <section className="split-layout" style={{ alignItems: "start" }}>
+    <section className="split-layout product-editor-layout" style={{ alignItems: "start" }}>
       <ProductActionForm action={updateProductAction.bind(null, product.id)} submitLabel={copy.save}>
         <div className="panel-header"><div><h2>{copy.information}</h2><p>{copy.informationBody}</p></div></div>
         <div className="form-grid">
@@ -82,8 +82,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
       <div className="stack-lg">
         {canViewCommercialHistory ? <section className="panel">
-          <div className="panel-header"><div><h2>{rules.history}</h2><p>{rules.historyBody}</p></div></div>
-          {commercialHistory.length ? <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{rules.baseCost}</th><th>{rules.sellingPrice}</th><th>{rules.markup}</th><th>{rules.version}</th></tr></thead><tbody>{commercialHistory.slice(0, 20).map((entry) => <tr key={entry.id}><td>{formatCurrency(entry.baseCost, locale)}</td><td>{formatCurrency(entry.sellingPrice, locale)}</td><td>{entry.markupPercentage}%</td><td>{entry.pricingRuleVersion}<br /><span className="subtle">{new Date(entry.recordedAt).toLocaleDateString(locale)}</span></td></tr>)}</tbody></table></div> : <div className="empty-state"><strong>{rules.historyEmpty}</strong></div>}
+          <div className="panel-header"><div><h2 id="product-commercial-history-heading">{rules.history}</h2><p>{rules.historyBody}</p></div></div>
+          {commercialHistory.length ? <div className="data-table-wrap" role="region" aria-labelledby="product-commercial-history-heading" tabIndex={0}><table className="data-table"><thead><tr><th>{rules.baseCost}</th><th>{rules.sellingPrice}</th><th>{rules.markup}</th><th>{rules.version}</th></tr></thead><tbody>{commercialHistory.slice(0, 20).map((entry) => <tr key={entry.id}><td>{formatCurrency(entry.baseCost, locale)}</td><td>{formatCurrency(entry.sellingPrice, locale)}</td><td>{entry.markupPercentage}%</td><td>{entry.pricingRuleVersion}<br /><span className="subtle">{new Date(entry.recordedAt).toLocaleDateString(locale)}</span></td></tr>)}</tbody></table></div> : <div className="empty-state"><strong>{rules.historyEmpty}</strong></div>}
         </section> : null}
 
         <form action={addProductImagesAction.bind(null, product.id)} className="panel form-panel" data-draft-id="product-image-upload" style={{ position: "static" }}>

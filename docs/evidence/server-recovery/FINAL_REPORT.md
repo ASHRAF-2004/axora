@@ -2,6 +2,128 @@
 
 Report date: 2026-10-09, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
+## Post-deploy acceptance checkpoint — 2026-10-09 MY
+
+**STATUS: DEPLOYED / ORIGINAL ACCEPTANCE STILL OPEN.** The owner-approved
+[PR222](https://github.com/ASHRAF-2004/axora/pull/222) was squash merged and
+deployed at exact main SHA `286a77f9d761f3586e2100f9001bdf3bcf2d863f`, OCI
+`sha256:e7a525a0a321d6588ca406504b323bc8e47d2d3bf0fc8b731b11560cae58f918`.
+Migration head remains `139_branch_lifecycle_authority_and_budget_refusals.sql`;
+there is no migration source delta. This supersedes
+the earlier not-merged/not-deployed candidate wording below without deleting
+its dated evidence or reopening the two consumed Contact smoke slots.
+
+### Release identity, gates and operational evidence
+
+[Main CI 37824768766](https://github.com/ASHRAF-2004/axora/actions/runs/37824768766)
+completed SUCCESS for the exact merged head: immutable image and production
+deployment. The squash tree matches the final evidence-only candidate; the
+application/test/database/configuration/workflow/script input manifest remains
+the tested 123c9dc manifest `b6ec8389560900f00c828b83f32a5332414a8b3ce40f323de0f46131e83a6fce`.
+The ordered host and protected quality results in the next dated checkpoint
+apply to those unchanged tested inputs, not to the new responsive follow-up.
+
+Only allowlisted deployment stdout was extracted. At 18:33:50 UTC the controller
+reported a matching migration ledger and explicitly skipped the deployment
+backup and migration runner. Local liveness/database readiness passed at
+18:34:57.196 UTC; external HTTPS/redirect/security-header/liveness/database
+readiness passed at 18:34:57.393 UTC. Exact-target deployment success was recorded
+at **2026-10-08 18:34:57.418 UTC / 2026-10-09 02:34:57 MY**. No unexpected pending
+migration, audit repair, fresh deployment backup or offsite recovery proof is
+claimed. The existing ordinary local backup pointer remains
+`axora-20261008T013831Z`, for earlier c3cd1b/migration 138; its presence is not a
+new encrypted/off-machine verification.
+
+Independent post-deploy reads at 18:36:08 UTC confirmed matching current
+SHA/image/image-ID/release metadata, OCI revision and all six app/worker image
+identities. Local/public live and ready each returned HTTP200 with expected
+status. All ten production containers were healthy with restart counters 0.
+Expected app/worker recreation occurred at 18:34:45 UTC and Caddy at 18:34:50 UTC;
+the database, tailscale-db and cloudflared retained their exact prior container
+identities/start times. Host boot ID was unchanged. Previous release d82/OCIbc8
+remains recorded for rollback. The host was not restarted or shut down.
+
+### Actual rendered production acceptance on 286a77f
+
+Root visually reviewed the actual headed Chrome captures, using an existing
+normally authenticated Platform Owner session and a separate guest browser.
+No session was fabricated and no production catalog mutation was performed.
+
+| Journey | Actual current production evidence / limit |
+| --- | --- |
+| Public chooser removal |Guest EN/AR/MS homepages show no chooser, counters or chooser dialog; dialog count 0/document overflow 0. Authenticated assigned-team behavior remains separate and unchanged. |
+| Company setup tabs |Owner clicked all six sections in Light and Dark. Selected text stays white/readable in normal, hover and keyboard-focus states. |
+| Open wallet |Two Owner Wallet-list rows checked. Light normal contrast 13.2/hover 15.17; Dark normal 4.83/hover 5.81. Foreground white; actual keyboard focus has a 3px indicator. |
+| Branch information |Structured General/address/contact/delivery sections and aligned Budget metrics; exactly one Edit delivery address action. EN Light/Dark/mobile and AR/MS desktop, including Arabic RTL, visually reviewed. |
+| Company overview/logo |Structured overview and existing reviewed-logo source rendered. The initial not-yet-loaded logo capture is excluded; the later loaded=true image was actually viewed. No-logo placeholder remains isolated/native evidence because current live companies have logos. |
+| Product detail |Grouped product/delivery/pricing information readable on mobile; confidential cost visible to the authorized Owner. Existing editor gallery has three ready images, with no create/upload/remove command. This is read-only rendering evidence, not fresh gallery-completion acceptance. |
+| Wallet/budgets setup |Existing company Wallet loads with correct company context; refresh, direct navigation and away/back remain valid. Pending no-Wallet setup state remains native/isolated proof, not a new absent-Wallet production journey. |
+| Company Administrator |Current live role verified for malaysiaashrafo@gmail.com. Shopping, CYBERJAYA branch selector, Cart, branch budget and Company Wallet returned 200. Read-only company-cart/item/event snapshots were unchanged; management product route returned 404 and no internal cost was exposed. No financial transaction. |
+| Delivery Agent |Current role verified for alsaloulashraf@gmail.com; portal/navigation returned 200 and mobile had no horizontal overflow. Second Driver and live CAM sessions remain unavailable; no role promotion or fabricated acceptance. |
+
+Owned browser helpers and the normal headed browser were closed successfully
+(EOF/exit 0). This is not a host restart or a new service trial.
+
+### Newly observed responsive follow-up — NOT DEPLOYED
+
+The actual deployed product editor with commercial history still has 423px of
+horizontal document overflow at a 390px viewport: the split layout is 358px,
+its direct children are 782px and the history table has a 780px intrinsic minimum.
+Earlier demo-only views omitted the role-assignment claim and returned empty
+history, so they did not exercise this production composition. This newly
+observed defect is retained, not hidden behind a clean earlier demo screenshot.
+
+The separate `product-editor-responsive` worktree has six uncommitted
+application/test files: a product-editor-only direct-child shrinkability rule,
+localized labelled/focusable local history scrolling and stronger tests that
+require nonempty history plus contained document/grid geometry and three-image
+completion. Focused component tests 5 PASS and independent source review approve
+the scoped design. Development build/stage passed; the first focused browser
+run scheduled 24 cases and actually finished 23 PASS/one existing intentional
+skip, 45.8s, retry 0, including all six new responsive cases. Complete log SHA256
+`600593dcf65e01d7208ce8ab0561d2d6b6e4cf9ebdb9702560b5540936f8167b`.
+This is not 24 passes or a final full release gate. Subsequent test-only
+per-project/locale fixture isolation and Escape-based drawer closure completed;
+their fresh-owned final targeted rerun passed all 6 cases in 7.5s, retry 0, no skips,
+log SHA256 `dec1456a2b81fb62d6a0228cffa1648d71f46b5faf9384dd7eb52bdd4b605cf9`.
+Focused unit 5 PASS and targeted lint/diff-check PASS. Final exact-head/full
+gates, protected CI, new approval and deployment of this follow-up are
+**NOT YET COMPLETE**. Its signed public DEMO assignment claim is not a persisted native/live assignment
+test. No app authentication, pricing, finance, data or migration changes are
+part of that follow-up. These two report files are additional evidence edits,
+not part of the six source/test files.
+
+Root also visually reviewed six actual headed localhost-DEMO views: EN/AR/MS
+Light at 1440px desktop and Dark at 390px mobile, each with one history row,
+document overflow 0/grid escape 0 and a 780px table contained in its local
+overflow-auto region (client 358px desktop/341px mobile). Console errors 0.
+The new automated responsive cases separately exercise both themes, every
+listed width and RTL keyboard scrolling. This is development rendering proof,
+not proof that production's 423px overflow is fixed or that native assignments
+were validated. Owned browser/server were closed; 3100/3101 listeners absent.
+
+### Unchanged original acceptance boundaries
+
+Gallery completion production acceptance remains OPEN: existing loaded images
+and green automated journeys do not replace an authorized fresh live
+create/upload journey. Original company-navigation instability also remains
+OPEN; the retained local first failure is not repaired by its existing retry or
+the later clean CI result. Original registration/setup 6A and product-deletion 6B
+criteria remain only partially evidenced; isolated tests and live duplicate
+refusal are not live setup/deletion or current03 before/after-restart proof.
+
+Current03 canonical audit guard 21→23 remains FAILED; no history, hash, warning
+count or guard was rebased/relaxed. Its invitation, owned product and one
+remaining service trial remain untouched. The separately specified audit
+contract/migration decision and exact live disposable record/action/recovery
+permissions remain necessary. Contact provider/delivery/Inbox confirmation is
+closed; both smoke slots are consumed, with no additional send, replay or
+historical-email release. Conditional Slack, live CAM/second Driver, SSE
+business-change, budget-mutation and future off-device/cutover inputs retain
+their existing exact boundaries below; enhancements are not relabelled core
+fix blockers. Private credentials and unrelated working-tree changes remain
+preserved. **Overall demo-ready is NOT certified.**
+
 ## Latest exact-candidate closure checkpoint — 2026-10-09 MY
 
 **STATUS: NOT DEPLOYED / ORIGINAL ACCEPTANCE STILL OPEN.** Application/test
