@@ -1,9 +1,6 @@
 import { expect, test, type BrowserContext } from "@playwright/test";
-import { installClaimedPublicVisitor } from "./helpers/public-visitor";
 
 const baseURL = "http://127.0.0.1:3100";
-
-test.beforeEach(async ({ page }) => installClaimedPublicVisitor(page));
 
 async function rememberLocale(
   context: BrowserContext,
@@ -193,7 +190,12 @@ test("small-phone keyboard flow exposes language, login, and menu controls", asy
   await page
     .locator("nextjs-portal")
     .evaluateAll((portals) => portals.forEach((portal) => portal.remove()));
-  await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
+  await expect(page.getByRole("heading", {
+    level: 1,
+    name: "One clear path from business need to verified delivery.",
+  })).toBeVisible();
+  await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
+  await expect(page.locator("#visitor-choice-title")).toHaveCount(0);
   const skipLink = page.getByRole("link", { name: "Skip to main content" });
   await expect(skipLink).toHaveAttribute("data-focus-ready", "true");
   await skipLink.focus();
