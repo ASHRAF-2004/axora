@@ -26,6 +26,7 @@ import {
 import { AppearanceSelector } from "@/components/public/AppearanceSelector";
 import { Brand } from "@/components/Brand";
 import type { AppearanceMode } from "@/lib/appearance";
+import { LiveUpdatesProvider, LiveUpdatesStatus, useLiveTopic } from "@/components/LiveUpdatesProvider";
 
 export interface AppNavigationItem {
   href: string;
@@ -88,7 +89,13 @@ function isActive(pathname: string, href: string) {
   return pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
 }
 
-export function AppShell({
+export function AppShell(props: AppShellProps) {
+  return <LiveUpdatesProvider key={`${props.user.id}:${props.user.companyId ?? ""}:${props.user.roleLabel}`} enabled={!props.profileRequired}>
+    <AppShellContent {...props} />
+  </LiveUpdatesProvider>;
+}
+
+function AppShellContent({
   children,
   homeHref = "/dashboard",
   user,
@@ -122,8 +129,6 @@ export function AppShell({
     serverCount: number;
     unreadCount: number;
   } | null>(null);
-  const notificationEtag = useRef<string | undefined>(undefined);
-  const notificationSequence = useRef(0);
   const [languagePending, startLanguageTransition] = useTransition();
   const messages = portalMessages(locale);
   const browserScope = {
@@ -153,123 +158,13 @@ export function AppShell({
     ? polledNotifications.unreadCount
     : unreadNotifications;
 
-  useEffect(() => {
-    if (profileRequired) return;
-    notificationSequence.current = 0;
-    let stopped = false;
-    let source: EventSource | null = null;
-    let fallbackInterval: number | undefined;
-    const controller = new AbortController();
-
-    function applyNotificationSummary(result: {
-      unreadCount?: unknown;
-      versionToken?: unknown;
-    }) {
-      if (!Number.isInteger(result.unreadCount)
-        || Number(result.unreadCount) < 0
-        || typeof result.versionToken !== "string") return;
-      setPolledNotifications({
-        userId: user.id,
-        serverCount: unreadNotifications,
-        unreadCount: Number(result.unreadCount),
-      });
-      window.dispatchEvent(new CustomEvent("axora:notification-summary", {
-        detail: {
-          unreadCount: Number(result.unreadCount),
-          versionToken: result.versionToken,
-        },
-      }));
-    }
-
-    async function pollNotifications() {
-      if (stopped || document.visibilityState === "hidden" || !navigator.onLine) return;
-      try {
-        const response = await fetch("/api/notifications/summary", {
-          cache: "no-store",
-          credentials: "same-origin",
-          headers: notificationEtag.current
-            ? { "If-None-Match": notificationEtag.current }
-            : undefined,
-          signal: controller.signal,
-        });
-        if (response.status === 304 || !response.ok) return;
-        const result = await response.json() as {
-          unreadCount?: unknown;
-          versionToken?: unknown;
-        };
-        const etag = response.headers.get("etag");
-        if (etag) notificationEtag.current = etag;
-        applyNotificationSummary(result);
-      } catch {
-        // Polling is opportunistic. The server-rendered count remains valid
-        // and the next visible interval retries without surfacing private data.
-      }
-    }
-
-    function startFallback() {
-      if (fallbackInterval !== undefined) return;
-      void pollNotifications();
-      fallbackInterval = window.setInterval(pollNotifications, 30_000);
-    }
-
-    function connect() {
-      if (stopped || source || document.visibilityState === "hidden" || !navigator.onLine) return;
-      if (!("EventSource" in window)) {
-        startFallback();
-        return;
-      }
-      source = new EventSource("/api/notifications/summary/stream", { withCredentials: true });
-      source.addEventListener("snapshot", (event) => {
-        try {
-          const message = JSON.parse((event as MessageEvent<string>).data) as {
-            sequence?: unknown;
-            snapshot?: { unreadCount?: unknown; versionToken?: unknown };
-          };
-          if (!Number.isSafeInteger(message.sequence)
-            || Number(message.sequence) <= notificationSequence.current
-            || !message.snapshot) return;
-          notificationSequence.current = Number(message.sequence);
-          if (fallbackInterval !== undefined) {
-            window.clearInterval(fallbackInterval);
-            fallbackInterval = undefined;
-          }
-          applyNotificationSummary(message.snapshot);
-        } catch {
-          // A malformed frame is ignored; the next server snapshot is authoritative.
-        }
-      });
-      source.onerror = () => {
-        // Native EventSource reconnects while bounded polling preserves live
-        // updates until the next authoritative stream snapshot arrives.
-        startFallback();
-      };
-    }
-
-    function updateTransport() {
-      if (document.visibilityState === "hidden" || !navigator.onLine) {
-        source?.close();
-        source = null;
-        return;
-      }
-      connect();
-      if (fallbackInterval !== undefined) void pollNotifications();
-    }
-
-    window.addEventListener("online", updateTransport);
-    window.addEventListener("focus", updateTransport);
-    document.addEventListener("visibilitychange", updateTransport);
-    connect();
-    return () => {
-      stopped = true;
-      controller.abort();
-      source?.close();
-      if (fallbackInterval !== undefined) window.clearInterval(fallbackInterval);
-      window.removeEventListener("online", updateTransport);
-      window.removeEventListener("focus", updateTransport);
-      document.removeEventListener("visibilitychange", updateTransport);
-    };
-  }, [profileRequired, unreadNotifications, user.id]);
-
+  useLiveTopic("notifications", (hint) => {
+    if (!Number.isSafeInteger(hint.unreadCount)) return;
+    setPolledNotifications({ userId: user.id, serverCount: unreadNotifications, unreadCount: hint.unreadCount! });
+    window.dispatchEvent(new CustomEvent("axora:notification-summary", {
+      detail: { unreadCount: hint.unreadCount, versionToken: hint.version },
+    }));
+  });
   useEffect(() => {
     if (!profileOpen) return;
     const focusFrame = window.requestAnimationFrame(() => {
@@ -453,7 +348,10 @@ export function AppShell({
         </div>
       </header>
 
-      <main id="portal-main" tabIndex={-1} className="content-shell app-content">{children}</main>
+      <main id="portal-main" tabIndex={-1} className="content-shell app-content">
+        {!profileRequired ? <LiveUpdatesStatus locale={locale} /> : null}
+        {children}
+      </main>
 
       <dialog ref={drawerRef} className="app-drawer" aria-labelledby="app-drawer-title" onClose={() => menuButtonRef.current?.focus()}>
         <div className="app-drawer-head">

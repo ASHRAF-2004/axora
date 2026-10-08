@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { requirePagePermission } from "@/lib/auth";
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { getCompanyWalletWorkspace } from "@/lib/company-wallet";
 import { loadCompanyLifecycleWorkspace } from "@/lib/company-lifecycle";
 import { walletMessages } from "@/lib/wallet-i18n";
@@ -68,7 +69,7 @@ export default async function CompanyWalletPage({
 
   const workspace = await getCompanyWalletWorkspace(actor, actor.companyId);
   const wallet = workspace.wallets.find((item) => item.companyId === actor.companyId);
-  if (!wallet) return <div className={styles.page}><section className={styles.panel}><p className={styles.empty}>{messages.noWallets}</p></section></div>;
+  if (!wallet) return <div className={styles.page}><LiveWorkspaceSync topics={["wallet"]} locale={locale} /><section className={styles.panel}><p className={styles.empty}>{messages.noWallets}</p></section></div>;
   const result = resultMessages(locale, parameters.outcome, parameters.error);
-  return <WalletDetail wallet={wallet} locale={locale} timeZone={timeZone} messages={messages} outcome={result.outcome} error={result.error} />;
+  return <><LiveWorkspaceSync topics={["wallet"]} locale={locale} /><WalletDetail wallet={wallet} locale={locale} timeZone={timeZone} messages={messages} outcome={result.outcome} error={result.error} /></>;
 }

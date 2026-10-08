@@ -126,9 +126,9 @@ test("Company Administrator places one order and reconciles a lost success respo
     "Your Cart changed after you reviewed it.",
   );
   await expect(page.locator(".cart-purchase-success")).toHaveCount(0);
-  // The Cart snapshot arrives in the typed stale result immediately. The
-  // financial workspace is refreshed independently through the RSC boundary,
-  // so keep the control locked until both authoritative versions agree.
+  // The typed stale result updates the Cart. Review becomes available only
+  // with a matching authoritative financial workspace, from the guarded
+  // known-stale envelope or the ordinary refreshed route.
   await expect(page.getByRole("spinbutton", {
     name: "Quantity",
     exact: true,

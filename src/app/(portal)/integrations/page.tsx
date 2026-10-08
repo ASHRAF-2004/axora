@@ -1,5 +1,6 @@
 import { requirePagePermission } from "@/lib/auth";
-import { externalApiEnabled, integrationWebhooksEnabled } from "@/lib/integrations/config";
+import { externalApiEnabled, integrationWebhooksEnabled, integrationFlagEnabled, INTEGRATION_FLAGS, INTEGRATION_PROVIDER_APPLICATION_SLUGS } from "@/lib/integrations/config";
+import { integrationStatusMessages } from "@/lib/integrations/status-i18n";
 import { getIntegrationWorkspace } from "@/lib/integrations/management";
 import { integrationManagementMessages } from "@/lib/integrations/management-i18n";
 import { getSlackWorkspace } from "@/lib/integrations/slack";
@@ -47,12 +48,17 @@ export default async function IntegrationsPage({searchParams}:{
   const actor = await requirePagePermission("manage_company_integrations");
   const locale = actor.preferredLocale ?? "en";
   const copy = integrationManagementMessages(locale);
+  const statusCopy = integrationStatusMessages(locale);
   const slackCopy=slackIntegrationMessages(locale);
   const query=await searchParams;
   const workspace = await getIntegrationWorkspace(actor);
   const slackWorkspace=await getSlackWorkspace(actor);
   const apiActive = externalApiEnabled();
   const webhooksActive = integrationWebhooksEnabled();
+  const zapierActive = integrationFlagEnabled(INTEGRATION_FLAGS.zapier);
+  const zapierAvailable = zapierActive && workspace.applications.some((application) =>
+    application.slug === INTEGRATION_PROVIDER_APPLICATION_SLUGS.zapier
+    && application.authorizationMode === "AXORA_OAUTH" && application.status === "ACTIVE");
   const webhookWorkspace = webhooksActive
     ? await getWebhookWorkspace(actor)
     : undefined;
@@ -129,8 +135,13 @@ export default async function IntegrationsPage({searchParams}:{
             :slackWorkspace.configured?slackCopy.featureActive
               :slackCopy.featureUnavailable}</span>
         </div>
+        <div className={styles.featureStatus} data-active={String(zapierAvailable)}>
+          {zapierAvailable ? <CheckCircle2 size={18} aria-hidden="true" /> : <CircleOff size={18} aria-hidden="true" />}
+          <span>{!zapierActive ? statusCopy.zapierDisabled : zapierAvailable ? statusCopy.zapierAvailable : statusCopy.zapierSetup}</span>
+        </div>
       </div>
     </header>
+    <p className={styles.description}>{statusCopy.capabilityHelp}</p>
 
     {!apiActive ? <div className={styles.darkLaunchNotice} role="status">
       <ShieldCheck size={18} aria-hidden="true" />
@@ -413,14 +424,17 @@ export default async function IntegrationsPage({searchParams}:{
             <span className={styles.iconBox}><AppWindow size={20} aria-hidden="true" /></span>
             <div><h3>{application.name}</h3><p>{application.description}</p></div>
             <span className={styles.badge} data-status={application.status.toLowerCase()}>
-              {application.status === "ACTIVE" ? copy.active : copy.inactive}
+              {application.status !== "ACTIVE" ? copy.inactive
+                : application.authorizationMode === "PROVIDER_OAUTH" ? statusCopy.adapterAvailable : copy.active}
             </span>
           </div>
           <dl className={styles.detailGrid}>
             <div><dt>{copy.clientId}</dt><dd><code dir="ltr">{application.clientId}</code></dd></div>
-            <div><dt>{copy.clientType}</dt><dd>{application.clientType === "PUBLIC" ? copy.public : copy.confidential}</dd></div>
+            <div><dt>{copy.clientType}</dt><dd>{application.authorizationMode === "PROVIDER_OAUTH" ? statusCopy.providerOAuth
+              : application.clientType === "PUBLIC" ? copy.public : copy.confidential}</dd></div>
             <div><dt>{copy.activeConnections}</dt><dd><bdi dir="ltr">{number.format(application.activeConnectionCount)}</bdi></dd></div>
           </dl>
+          {application.authorizationMode === "PROVIDER_OAUTH" ? <p className={styles.description}>{statusCopy.providerHelp}</p> : <>
           <div className={styles.scopeList} aria-label={copy.allowedScopes}>
             {application.allowedScopes.map((scope) => <span key={scope}><bdi dir="ltr">{scope}</bdi></span>)}
           </div>
@@ -437,6 +451,7 @@ export default async function IntegrationsPage({searchParams}:{
               locale={locale}
             />
           </details>
+          </>}
         </article>)}
       </div> : <div className={styles.emptyState}><CircleOff size={25} aria-hidden="true" /><strong>{copy.noApplications}</strong></div>}
     </section> : null}

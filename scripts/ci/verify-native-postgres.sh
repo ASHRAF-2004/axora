@@ -286,12 +286,15 @@ run_native_test() {
 # Keep these application-level suites sequential. The Prompt 5 suite ends by
 # proving the global last-Platform-Owner invariant and intentionally retires
 # other native owner fixtures only after the PR #137 regression is complete.
+run_native_test tests/company-creation-overload-native-postgres.test.ts
 run_native_test tests/company-activation-contract-native-postgres.test.ts
 run_native_test tests/delivery-guy-invitation-native-postgres.test.ts
 run_native_test tests/operating-model-concurrency-native-postgres.test.ts
 run_native_test tests/company-admin-direct-purchase-native-postgres.test.ts
 run_native_test tests/product-delete-native-postgres.test.ts
+run_native_test tests/branch-budget-lifecycle-native-postgres.test.ts
 run_native_test tests/postgres-idle-pool-native-postgres.test.ts
+run_native_test tests/shared-live-native-postgres.test.ts
 run_native_test tests/existing-user-management-native-postgres.test.ts
 run_native_test tests/integration-webhook-native-postgres.test.ts
 

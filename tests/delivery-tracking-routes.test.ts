@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 describe("delivery tracking route boundaries", () => {
   it("enforces role gates, bounded bodies and non-revealing failures", async () => {
-    const [driver, ownerLive, company] = await Promise.all([
+    const [driver, ownerLive, company, liveReader] = await Promise.all([
       readFile(new URL(
         "../src/app/api/driver/tracking/route.ts",
         import.meta.url,
@@ -16,11 +16,16 @@ describe("delivery tracking route boundaries", () => {
         "../src/app/api/receiving/delivery-tracking/route.ts",
         import.meta.url,
       ), "utf8"),
+      readFile(new URL("../src/lib/live-update-reader.ts", import.meta.url), "utf8"),
     ]);
     expect(driver).toContain('canAccess(actor, "update_assigned_deliveries")');
     expect(driver).toContain("16_384");
     expect(ownerLive).toContain('canAccess(actor, "manage_deliveries")');
-    expect(ownerLive).toContain("snapshotEventStream");
+    expect(ownerLive).toContain("authorizedLiveSnapshotStream");
+    expect(ownerLive).toContain('actor, "driver"');
+    expect(liveReader).toContain("snapshotEventStream(request");
+    expect(liveReader).toContain("const current = await getSession()");
+    expect(liveReader).toContain("authorize: guard.authorize");
     expect(company).toContain('canAccess(actor, "view_receiving")');
     expect(company).toContain('canAccess(actor, "view_deliveries")');
     for (const source of [driver, company]) {

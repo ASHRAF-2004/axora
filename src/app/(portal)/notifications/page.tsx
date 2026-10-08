@@ -162,7 +162,7 @@ export default async function NotificationsPage({
   };
 
   return <section className="notification-centre" lang={locale} dir={LOCALE_NAMES[locale].dir}>
-    <NotificationInboxSync versionToken={snapshot.versionToken} />
+    <NotificationInboxSync versionToken={snapshot.versionToken} locale={locale} />
     <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
 
     {notice ? <div className={notice === "saved" ? "form-success" : "form-alert"} role={notice === "saved" ? "status" : "alert"}>

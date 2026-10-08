@@ -1,4 +1,5 @@
 import { CompanyWorkspaceNav } from "@/components/CompanyWorkspaceNav";
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { WalletDetail } from "@/app/(portal)/wallet/WalletDetail";
 import { requirePagePermission } from "@/lib/auth";
 import { getCompanyWalletWorkspace } from "@/lib/company-wallet";
@@ -33,6 +34,7 @@ export default async function CompanyWalletPage({
   const wallet = workspace.wallets.find((item) => item.companyId === company.id);
   if (!wallet) {
     return <>
+      <LiveWorkspaceSync topics={["wallet"]} context={{ companyId: company.id }} locale={locale} />
       <CompanyWorkspaceNav companyId={company.id} locale={locale} active="wallet" />
       <section className="panel information-panel" aria-labelledby="company-wallet-setup-title">
         <div className="panel-header"><div><h1 id="company-wallet-setup-title">{copy.title}</h1><p>{company.name}</p></div></div>
@@ -49,6 +51,7 @@ export default async function CompanyWalletPage({
   const error = result.error === "invalid" ? messages.invalidSubmission
     : result.error ? messages.unavailable : undefined;
   return <>
+    <LiveWorkspaceSync topics={["wallet"]} context={{ companyId: company.id }} locale={locale} />
     <CompanyWorkspaceNav companyId={company.id} locale={locale} active="wallet" />
     <WalletDetail wallet={wallet} locale={locale} timeZone={timeZone} messages={messages} outcome={outcome} error={error} />
   </>;

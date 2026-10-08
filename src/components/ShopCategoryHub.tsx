@@ -35,6 +35,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProductImage } from "./ProductImage";
 import { useUxFeedback } from "./UxFeedbackProvider";
+import { useLiveTopic } from "./LiveUpdatesProvider";
 
 export function ShopCategoryHub({
   departments,
@@ -75,6 +76,9 @@ export function ShopCategoryHub({
   const [catalog,setCatalog]=useState<CatalogSearchResult|null>(null);
   const [products,setProducts]=useState<CustomerCatalogProduct[]>([]);
   const [loading,setLoading]=useState(false);
+  const [liveVersion,setLiveVersion]=useState("");
+  const loadedCatalogParams=useRef("");
+  useLiveTopic("catalog", (hint) => setLiveVersion(hint.version), { branchId: selectedBranchId });
   const [error,setError]=useState("");
   const [cart,setCart]=useState<ProcurementCartSnapshot|null>(initialCart);
   const [cartBusy,setCartBusy]=useState(false);
@@ -136,13 +140,17 @@ export function ShopCategoryHub({
   useEffect(() => {
     if (!showingProducts) return;
     const controller=new AbortController();
+    const parameters=buildParams().toString();
+    const background=loadedCatalogParams.current===parameters;
     const timer=window.setTimeout(() => {
-      setLoading(true);setError("");
+      if (!background) setLoading(true);
+      setError("");
       void fetch(`/api/catalog?${buildParams()}`,{credentials:"same-origin",signal:controller.signal})
         .then(async (response) => {
           const payload=await response.json() as CatalogSearchResult|{error?:string};
           if (!response.ok || !("products" in payload)) throw new Error("error" in payload && payload.error ? payload.error : shopCopy.loadError);
           setCatalog(payload);setProducts(payload.products);
+          loadedCatalogParams.current=parameters;
           if (payload.page>payload.totalPages) updateUrl({page:String(payload.totalPages)},true);
           if (focusAfterLoad.current) {
             focusAfterLoad.current=false;
@@ -154,7 +162,7 @@ export function ShopCategoryHub({
         }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     },0);
     return () => { window.clearTimeout(timer);controller.abort(); };
-  },[buildParams,shopCopy.loadError,showingProducts,updateUrl]);
+  },[buildParams,shopCopy.loadError,showingProducts,updateUrl,liveVersion]);
 
   function scrollToTop() {
     const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;

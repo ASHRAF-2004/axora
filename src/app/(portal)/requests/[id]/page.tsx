@@ -1,3 +1,4 @@
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { PageHeader } from "@/components/PageHeader";
 import { RequestPricingSummary } from "@/components/RequestPricingSummary";
 import { RequestDraftCleanup } from "@/components/RequestDraftBoundary";
@@ -118,6 +119,7 @@ export default async function RequestDetailPage({
 
   return (
     <>
+      <LiveWorkspaceSync topics={["requests"]} locale={locale} viewKey={request.id} />
       {feedback.notice === "request-submitted" && request.createdById === actor.id
         ? <RequestDraftCleanup scope={{ userId: actor.id, companyId: request.companyId }} />
         : null}

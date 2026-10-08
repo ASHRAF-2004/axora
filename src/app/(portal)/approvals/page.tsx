@@ -1,3 +1,4 @@
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { redirect } from "next/navigation";
 import { requirePagePermission } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
@@ -67,6 +68,7 @@ export default async function ApprovalsPage({
 
   return (
     <div className={styles.page} dir={locale === "ar" ? "rtl" : "ltr"}>
+      <LiveWorkspaceSync topics={["approvals"]} locale={locale} />
       <header className={styles.hero}>
         <span className={styles.eyebrow}>{messages.approvalTitle}</span>
         <h1>{messages.approvalTitle}</h1>

@@ -1,4 +1,5 @@
 "use client";
+import { useLiveRead } from "@/components/LiveUpdatesProvider";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AvailableDeliveryWorkspace } from "@/lib/driver-operations";
@@ -107,8 +108,6 @@ export function AvailableDeliveryJobs({
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const sequence = useRef(0);
-  const connectedRef = useRef(false);
   const claimedJobIds = useRef(new Set<string>());
   const retryTimer = useRef<number | null>(null);
   const restoredClaim = useRef(false);
@@ -151,45 +150,10 @@ export function AvailableDeliveryJobs({
     if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
   }, []);
 
-  useEffect(() => {
-    let source: EventSource | null = null;
-    const setLive = (value: boolean) => { connectedRef.current = value; setConnected(value); };
-    const connect = () => {
-      if (document.hidden || source) return;
-      void refresh().catch(() => setLive(false));
-      source = new EventSource("/api/driver/jobs/live", { withCredentials: true });
-      source.addEventListener("snapshot", ((event: MessageEvent<string>) => {
-        try {
-          const envelope = JSON.parse(event.data) as { sequence: number; snapshot: AvailableDeliveryWorkspace };
-          if (!Number.isSafeInteger(envelope.sequence) || envelope.sequence <= sequence.current) return;
-          sequence.current = envelope.sequence;
-          setWorkspace(normalize(envelope.snapshot));
-          setLive(true);
-        } catch { setLive(false); }
-      }) as EventListener);
-      source.onerror = () => setLive(false);
-    };
-    const fallback = window.setInterval(() => {
-      if (!connectedRef.current && document.visibilityState === "visible" && navigator.onLine) {
-        void refresh().catch(() => undefined);
-      }
-    }, 30_000);
-    const visibility = () => {
-      if (document.hidden) { source?.close(); source = null; setLive(false); }
-      else connect();
-    };
-    const online = () => connect();
-    document.addEventListener("visibilitychange", visibility);
-    window.addEventListener("online", online);
-    connect();
-    return () => {
-      document.removeEventListener("visibilitychange", visibility);
-      window.removeEventListener("online", online);
-      source?.close();
-      window.clearInterval(fallback);
-    };
-  }, [normalize, refresh]);
-
+  useLiveRead<AvailableDeliveryWorkspace>("jobs", "/api/driver/jobs", (next) => {
+    setWorkspace(normalize(next));
+    setConnected(true);
+  }, {}, () => setConnected(false));
   async function availability(value: "AVAILABLE" | "UNAVAILABLE") {
     setBusy("availability"); setError(""); setNotice("");
     try {

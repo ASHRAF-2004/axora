@@ -3,6 +3,8 @@
 import { requirePermission } from "@/lib/auth";
 import { setBranchMonthlyBudget } from "@/lib/budgets";
 import { addBranchBudget, BranchBudgetError } from "@/lib/branch-budget";
+import { canManageBranchLifecycle } from "@/lib/branch-lifecycle-policy";
+import type { BranchBudgetLimits, BranchBudgetRefusalCode } from "@/lib/branch-budget-refusal";
 import { deleteEmptyBranch } from "@/lib/repository";
 import { setMasterActive } from "@/lib/repository";
 import { revalidatePath } from "next/cache";
@@ -31,7 +33,8 @@ export async function setBranchBudgetAction(formData: FormData) {
   redirect(`/branches/${input.branchId}?notice=budget-updated`);
 }
 
-export type AddBranchBudgetActionState = { status: "idle" | "success" | "error"; message: string };
+export type AddBranchBudgetActionState = { status: "idle" | "success" | "error"; message: string;
+  code?: BranchBudgetRefusalCode; limits?: BranchBudgetLimits };
 
 export async function addBranchBudgetAction(
   _state: AddBranchBudgetActionState,
@@ -45,12 +48,11 @@ export async function addBranchBudgetAction(
     await addBranchBudget(actor, { branchId, commandId, amount });
     revalidatePath("/branches"); revalidatePath(`/branches/${branchId}`);
     revalidatePath("/products"); revalidatePath("/cart"); revalidatePath("/dashboard");
-    return { status: "success", message: "Budget updated." };
+    return { status: "success", message: "BUDGET_ADDED" };
   } catch (error) {
-    const message = error instanceof BranchBudgetError && error.code === "INVALID"
-      ? "Enter a valid positive MYR amount with up to two decimal places."
-      : "Budget could not be added. Check available company funds and try again.";
-    return { status: "error", message };
+    const code = error instanceof BranchBudgetError ? error.code : "UNAVAILABLE";
+    return { status: "error",message: code,code,
+      ...(error instanceof BranchBudgetError && error.limits ? { limits: error.limits } : {}) };
   }
 }
 
@@ -63,8 +65,9 @@ export async function setBranchActiveAction(
   const branchId = z.uuid().safeParse(String(formData.get("branchId") ?? ""));
   const active = String(formData.get("active")) === "true";
   if (!branchId.success) return { status: "error", message: "BRANCH_UNAVAILABLE" };
+  const actor = await requirePermission("manage_branches");
+  if (!canManageBranchLifecycle(actor)) return { status: "error", message: "BRANCH_UNAVAILABLE" };
   try {
-    const actor = await requirePermission("manage_branches");
     await setMasterActive("branches", branchId.data, active, actor);
     revalidatePath("/branches"); revalidatePath(`/branches/${branchId.data}`); revalidatePath("/dashboard");
     return { status: "success", message: "BRANCH_UPDATED" };
@@ -82,8 +85,9 @@ export async function deleteBranchAction(
 ): Promise<DeleteBranchActionState> {
   const branchId = z.uuid().safeParse(String(formData.get("branchId") ?? ""));
   if (!branchId.success) return { status: "error", message: "BRANCH_UNAVAILABLE" };
+  const actor = await requirePermission("manage_branches");
+  if (!canManageBranchLifecycle(actor)) return { status: "error", message: "BRANCH_UNAVAILABLE" };
   try {
-    const actor = await requirePermission("manage_branches");
     await deleteEmptyBranch(branchId.data, actor);
     revalidatePath("/branches");
     revalidatePath("/dashboard");

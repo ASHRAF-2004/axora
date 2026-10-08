@@ -6,11 +6,13 @@ import { getDemoOperations } from "./demo-operations";
 import { isDemoMode, query, withAuditTransaction } from "./db";
 import { requireSession, type SessionUser } from "./auth";
 import { canAccess, canManageCommercialCatalog } from "./permissions";
+import { canManageBranchLifecycle } from "./branch-lifecycle-policy";
 import type { Branch, Company, DashboardData, ProcurementRequest, Product, RequestStatus } from "./types";
 import { validateStatusTransition } from "./workflow";
 import { appendWorkflowEvent, notifyWorkflowAudience } from "./workflow-repository";
 import { calculateCommercialSellingPrice, withDemoCommercialDefaults } from "./procurement-rules";
 import { demoCompanyVisibleToActor } from "./company-lifecycle";
+import { getCatalogPurchasingScope } from "./procurement-cart";
 
 function nextCode(prefix: string, count: number, digits = 3) {
   return `${prefix}-${String(count + 1).padStart(digits, "0")}`;
@@ -194,6 +196,32 @@ export async function listProducts(providedActor?: SessionUser): Promise<Product
       AND (offer.company_id IS NULL OR offer.company_id=$1)
     ORDER BY offer.name`, [actor.companyId]);
   return result.rows;
+}
+
+/** Fixed-size change metadata under the exact existing customer catalog scope. */
+export async function customerCatalogLiveVersion(actor: SessionUser, branchId?: string) {
+  if (!canAccess(actor, "view_catalog")) throw new Error("Catalog unavailable");
+  const manager = canAccess(actor, "manage_catalog") && actor.accountKind === "PLATFORM" && actor.scopeType === "PLATFORM";
+  const purchasingScope = actor.accountKind === "COMPANY" && branchId
+    ? await getCatalogPurchasingScope(actor, branchId) : null;
+  if (actor.accountKind === "COMPANY" && !purchasingScope) throw new Error("Catalog context unavailable");
+  if (isDemoMode()) return (await listProducts(actor)).map((product) => ({
+    id: product.id, name: product.name, status: product.status,
+    sellingPrice: product.defaultSellPrice, priceRuleVersion: product.priceRuleVersion,
+    brand: product.brand, size: product.size, unit: product.unit,
+  }));
+  const result = await withAuditTransaction({ actor, reason: "Read customer catalog live version" }, (client) => client.query(`
+    SELECT count(*)::text AS count,
+      max(offer.updated_at)::text AS latest,
+      coalesce(sum(extract(epoch FROM offer.updated_at)),0)::text AS changed,
+      coalesce(sum(extract(epoch FROM offer.price_changed_at)),0)::text AS price_changed,
+      coalesce(sum(offer.price_rule_version),0)::text AS price_rules,
+      coalesce(sum(offer.quantity_rule_version),0)::text AS quantity_rules,
+      coalesce(sum(offer.default_sell_price),0)::text AS prices
+    FROM v_customer_catalog_products offer${manager ? "" : `
+    WHERE offer.active=true AND offer.needs_review=false
+      AND (offer.company_id IS NULL OR offer.company_id=$1)${purchasingScope ? " AND offer.category=ANY($2::text[])" : ""}`}`, manager ? [] : purchasingScope ? [purchasingScope.companyId, purchasingScope.allowedCategories] : [actor.companyId]));
+  return result.rows[0];
 }
 
 interface RequestRow {
@@ -1090,7 +1118,7 @@ export async function updateRequestStatus(id: string, status: RequestStatus, rea
 export type MasterEntity = "companies" | "branches" | "products";
 
 export async function deleteEmptyBranch(id: string, actor: SessionUser) {
-  if (!canAccess(actor, "manage_branches")) throw new Error("Your account cannot change this record.");
+  if (!canManageBranchLifecycle(actor)) throw new Error("Your account cannot change this record.");
   if (isDemoMode()) {
     const store = getDemoStore();
     const branchIndex = store.branches.findIndex((branch) => branch.id === id && branch.companyId === actor.companyId);
@@ -1121,6 +1149,9 @@ export async function setMasterActive(entity: MasterEntity, id: string, active: 
     ? "manage_branches"
     : "manage_catalog";
   if (!canAccess(actor, requiredPermission)) throw new Error("Your account cannot change this record.");
+  if (entity === "branches" && !canManageBranchLifecycle(actor)) {
+    throw new Error("Your account cannot change this record.");
+  }
   if (entity === "products" && !canManageCommercialCatalog(actor)) {
     throw new Error("Only an authorized commercial manager can change product availability.");
   }

@@ -715,7 +715,7 @@ export async function createCompanyWithoutBrand(
   return withAuditTransaction({ actor, reason: "COMPANY_CREATED" }, async (client) => {
     const result = await client.query<SnapshotRow>(`
       SELECT public.axora_create_company_direct(
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::timestamptz
       ) AS snapshot
     `, [
       actor.id,

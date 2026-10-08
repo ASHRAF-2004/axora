@@ -1,4 +1,5 @@
 "use client";
+import { useLiveRead } from "@/components/LiveUpdatesProvider";
 
 import {
   useCallback,
@@ -641,7 +642,6 @@ export function DeliveryTrackingBoard({
   const endpoint = "/api/receiving/delivery-tracking";
   const [workspace, setWorkspace] = useState<TrackingWorkspace | null>(null);
   const [error, setError] = useState("");
-  const sequence = useRef(0);
 
   const refresh = useCallback(async () => {
     const response = await fetch(endpoint, { cache: "no-store" });
@@ -649,51 +649,10 @@ export function DeliveryTrackingBoard({
     setWorkspace(await response.json() as TrackingWorkspace);
   }, [endpoint]);
 
-  useEffect(() => {
-    let source: EventSource | null = null;
-    let fallback: number | undefined;
-    let disposed = false;
-    const connect = async () => {
-      if (disposed || document.hidden) return;
-      await refresh().catch(() => setError(copy.unavailable));
-      if (typeof globalThis.EventSource !== "function") {
-        fallback = window.setInterval(() => void refresh().catch(() => setError(copy.unavailable)), REFRESH_INTERVAL_MS);
-        return;
-      }
-      source = new EventSource("/api/receiving/delivery-tracking/live");
-      source.addEventListener("snapshot", (event) => {
-        const message = JSON.parse((event as MessageEvent<string>).data) as {
-          sequence: number;
-          snapshot: TrackingWorkspace;
-        };
-        if (message.sequence <= sequence.current) return;
-        sequence.current = message.sequence;
-        setWorkspace(message.snapshot);
-        setError("");
-      });
-      source.onerror = () => {
-        source?.close();
-        source = null;
-        if (!fallback) fallback = window.setInterval(() => void refresh().catch(() => setError(copy.unavailable)), REFRESH_INTERVAL_MS);
-      };
-    };
-    const visibility = () => {
-      source?.close();
-      source = null;
-      if (fallback) window.clearInterval(fallback);
-      fallback = undefined;
-      if (!document.hidden) void connect();
-    };
-    document.addEventListener("visibilitychange", visibility);
-    void connect();
-    return () => {
-      disposed = true;
-      document.removeEventListener("visibilitychange", visibility);
-      source?.close();
-      if (fallback) window.clearInterval(fallback);
-    };
-  }, [copy.unavailable, refresh]);
-
+  useLiveRead<TrackingWorkspace>("receiving", endpoint, (next) => {
+    setWorkspace(next);
+    setError("");
+  }, {}, () => setError(copy.unavailable));
   const visibleSessions = workspace?.sessions.filter((session) => (
     !deliveryJobId || deliveryJobId.startsWith("demo-") || session.jobId === deliveryJobId
   ));

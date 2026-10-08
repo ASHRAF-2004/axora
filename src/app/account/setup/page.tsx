@@ -1,8 +1,10 @@
 import { AccountSetupClient } from "@/components/AccountSetupClient";
 import { Brand } from "@/components/Brand";
 import { ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { requestLocaleDecision } from "@/lib/locale-server";
+import styles from "./Setup.module.css";
 
 export const metadata: Metadata = {
   title: "Set up your account",
@@ -19,23 +21,20 @@ export default async function AccountSetupPage() {
   const { locale } = await requestLocaleDecision();
   const copy = pageCopy[locale];
   return (
-    <main className="login-shell account-setup-shell" lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
-      <section className="login-story">
-        <div className="login-brand"><Brand /></div>
-        <div>
-          <span className="pilot-chip"><ShieldCheck size={15} /> {copy.chip}</span>
+    <main className={`simple-auth-page account-setup-shell ${styles.page}`} lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>
+      <div className={`simple-auth-wrap ${styles.workspace}`}>
+        <header className={styles.intro}>
+          <Link className="simple-auth-brand" href={`/${locale}`} aria-label="Axora"><Brand /></Link>
+          <p className={styles.security}><ShieldCheck size={16} aria-hidden="true" />{copy.chip}</p>
           <h1>{copy.title}</h1>
           <p>{copy.body}</p>
-          <ul className="feature-list">
-            {copy.points.map((point) => <li key={point}><ShieldCheck /> {point}</li>)}
-          </ul>
-        </div>
-        <small>{copy.footer}</small>
-      </section>
-
-      <section className="login-panel">
+        </header>
         <AccountSetupClient initialLocale={locale} />
-      </section>
+        <ul className={styles.assurances}>
+          {copy.points.map((point) => <li key={point}><ShieldCheck size={16} aria-hidden="true" />{point}</li>)}
+        </ul>
+        <small className={styles.footer}>{copy.footer}</small>
+      </div>
     </main>
   );
 }

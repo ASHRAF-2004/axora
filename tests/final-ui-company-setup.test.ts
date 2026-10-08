@@ -29,6 +29,9 @@ describe("company setup presentation regression boundaries", () => {
     ]);
     expect(branch).toContain("branch-detail-layout");
     expect(branch).toContain("information-groups");
+    expect(branch).toContain("headings.locationConfirmation");
+    expect(branch).not.toContain("<dt>{local.editLocation}</dt>");
+    expect(branch.match(/>{local\.editLocation}<\/Link>/g)).toHaveLength(1);
     expect(product).toContain("Product details");
     expect(product).toContain("Authorized pricing");
     expect(product).toContain('canAccess(actor, "view_internal_cost")');

@@ -1,33 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { LiveWorkspaceSync } from "./LiveWorkspaceSync";
+import type { SupportedLocale } from "@/lib/i18n";
 
-interface NotificationSummaryDetail {
-  versionToken?: string;
-}
-
-export function NotificationInboxSync({ versionToken }: { versionToken: string }) {
-  const router = useRouter();
-  const currentVersion = useRef(versionToken);
-
-  useEffect(() => {
-    currentVersion.current = versionToken;
-  }, [versionToken]);
-
-  useEffect(() => {
-    function refreshOnChange(event: Event) {
-      const detail = (event as CustomEvent<NotificationSummaryDetail>).detail;
-      if (!detail?.versionToken || detail.versionToken === currentVersion.current) return;
-      currentVersion.current = detail.versionToken;
-      router.refresh();
-    }
-    window.addEventListener("axora:notification-summary", refreshOnChange);
-    return () => window.removeEventListener(
-      "axora:notification-summary",
-      refreshOnChange,
-    );
-  }, [router]);
-
-  return null;
+export function NotificationInboxSync({ versionToken, locale = "en" }: { versionToken: string; locale?: SupportedLocale }) {
+  // Keep the existing server contract; transport epochs/versions own deduplication.
+  void versionToken;
+  return <LiveWorkspaceSync topics={["notifications"]} locale={locale} />;
 }

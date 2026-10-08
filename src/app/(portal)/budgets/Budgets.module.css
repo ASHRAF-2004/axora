@@ -1,0 +1,17 @@
+.workspace { width: 100%; min-width: 0; }
+.tableWrap { width: 100%; overflow-x: auto; border-radius: var(--axora-radius-md, 12px); }
+.tableWrap:focus-visible { outline: 2px solid var(--axora-focus); outline-offset: 3px; }
+.table { width: 100%; min-width: 720px; border-collapse: collapse; text-align: start; }
+.table th { padding: 14px 18px; text-align: start; color: var(--axora-text-secondary); background: var(--axora-surface-muted); font-size: 12px; font-weight: 650; border-bottom: 1px solid var(--axora-border); }
+.table td { padding: 18px; color: var(--axora-text); border-bottom: 1px solid var(--axora-border); vertical-align: middle; font-size: 14px; }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table tbody tr:hover { background: var(--axora-surface-hover); }
+.branch { width: 32%; min-width: 180px; overflow-wrap: anywhere; }
+.branch strong { display: block; font-weight: 650; }
+.branch small { display: block; margin-top: 5px; color: var(--axora-text-muted); font-size: 12px; }
+.table .money { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.actions { width: 1%; white-space: nowrap; }
+@media (max-width: 680px) {
+  .table th, .table td { padding: 14px 12px; }
+  .branch { width: auto; }
+}

@@ -11,6 +11,7 @@ import { PasswordField } from "@/components/PasswordField";
 import { KeyRound, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { LOCALE_NAMES, persistBrowserLocale, type SupportedLocale } from "@/lib/i18n";
+import { localizedAccountRole } from "@/lib/user-form-i18n";
 import {
   useActionState,
   useLayoutEffect,
@@ -220,7 +221,7 @@ function AccountSetupForm({
       <p className="muted">
         {invitation.recipientName} · {invitation.recipientEmail}
       </p>
-      <p className="muted">{copy.role}: {invitation.jobTitle || invitation.role}</p>
+      <p className="muted">{copy.role}: {invitation.jobTitle || localizedAccountRole(invitation.role, locale)?.label || copy.role}</p>
 
       {completion.code ? (
         <div className="form-alert" role="alert" aria-live="polite">

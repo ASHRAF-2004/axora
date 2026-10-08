@@ -1,4 +1,5 @@
 "use client";
+import { useLiveRead } from "@/components/LiveUpdatesProvider";
 
 import { useEffect, useRef, useState } from "react";
 import type { GeoJSONSource, Map as MapLibreMap, Marker as MapLibreMarker, StyleSpecification } from "maplibre-gl";
@@ -56,7 +57,6 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<MapLibreMarker | null>(null);
   const latestPointsRef = useRef(points);
-  const sequence = useRef(0);
   const [livePoints, setLivePoints] = useState(points);
   const [runtimeConfig, setRuntimeConfig] = useState<RuntimeMapConfig | null>(null);
   const [configState, setConfigState] = useState<ConfigState>("checking");
@@ -106,85 +106,7 @@ export function DriverLiveMap({ driverId, points, locale = "en" }: { driverId: s
     return () => controller.abort();
   }, []);
 
-  useEffect(() => {
-    let source: EventSource | null = null;
-    let fallback: number | undefined;
-    let request: AbortController | undefined;
-    let disposed = false;
-    let connecting = false;
-    let generation = 0;
-    const apply = (driver: DriverDetailWorkspace) => setLivePoints(driver.locations);
-    const load = async (expectedGeneration: number) => {
-      request?.abort();
-      request = new AbortController();
-      try {
-        const response = await fetch(`/api/drivers/${encodeURIComponent(driverId)}`, {
-          cache: "no-store",
-          credentials: "same-origin",
-          signal: request.signal,
-        });
-        if (!response.ok || disposed || expectedGeneration !== generation) return false;
-        apply(await response.json() as DriverDetailWorkspace);
-        return !disposed && expectedGeneration === generation;
-      } catch (error) {
-        // Keep the last authoritative route visible during a transient snapshot
-        // failure. Map-source failures are reported separately by the renderer.
-        void error;
-        return false;
-      }
-    };
-    const connect = async () => {
-      if (document.hidden || source || fallback !== undefined || connecting || disposed) return;
-      connecting = true;
-      const expectedGeneration = ++generation;
-      const authorized = await load(expectedGeneration);
-      connecting = false;
-      if (!authorized || document.hidden || source || fallback !== undefined || disposed
-        || expectedGeneration !== generation) return;
-      if (typeof globalThis.EventSource !== "function") {
-        fallback = window.setInterval(() => void load(expectedGeneration), 15_000);
-        return;
-      }
-      sequence.current = 0;
-      source = new EventSource(`/api/drivers/${encodeURIComponent(driverId)}/live`, { withCredentials: true });
-      source.addEventListener("snapshot", (event) => {
-        try {
-          const message = JSON.parse((event as MessageEvent<string>).data) as { sequence: number; version: string; snapshot: DriverDetailWorkspace };
-          if (!Number.isSafeInteger(message.sequence) || message.sequence <= sequence.current
-            || typeof message.version !== "string" || !/^[0-9a-f]{64}$/.test(message.version)) return;
-          sequence.current = message.sequence;
-          apply(message.snapshot);
-        } catch { /* A later authoritative snapshot recovers malformed transport data. */ }
-      });
-    };
-    const pause = () => {
-      generation += 1;
-      request?.abort();
-      request = undefined;
-      source?.close();
-      source = null;
-      if (fallback !== undefined) window.clearInterval(fallback);
-      fallback = undefined;
-    };
-    const visibility = () => document.hidden ? pause() : void connect();
-    document.addEventListener("visibilitychange", visibility);
-    const online = () => void connect();
-    const offline = () => pause();
-    window.addEventListener("online", online);
-    window.addEventListener("offline", offline);
-    void connect();
-    return () => {
-      disposed = true;
-      generation += 1;
-      request?.abort();
-      document.removeEventListener("visibilitychange", visibility);
-      window.removeEventListener("online", online);
-      window.removeEventListener("offline", offline);
-      source?.close();
-      if (fallback !== undefined) window.clearInterval(fallback);
-    };
-  }, [driverId]);
-
+  useLiveRead<DriverDetailWorkspace>("driver", `/api/drivers/${encodeURIComponent(driverId)}`, (driver) => setLivePoints(driver.locations), { driverId });
   useEffect(() => {
     if (!runtimeConfig || configState !== "configured") return;
     if (!livePoints.length) return;

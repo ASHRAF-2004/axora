@@ -3,11 +3,14 @@
 import { requirePermission } from "@/lib/auth";
 import {
   directPurchaseCommandSchema,
+  getCompanyAdminDirectPurchaseWorkspace,
   placeCompanyAdminDirectPurchase,
   reconcileCompanyAdminDirectPurchase,
   type CompanyAdminDirectPurchaseReconciliation,
   type CompanyAdminDirectPurchaseResult,
+  type CompanyAdminDirectPurchaseWorkspace,
 } from "@/lib/company-admin-direct-purchase";
+import { matchesCartRecoveryWorkspace } from "@/lib/cart-workspace-recovery";
 import {
   procurementCartCommandSchema,
   procurementCartErrorCode,
@@ -50,7 +53,7 @@ export async function runCartCommandAction(
 }
 
 export type DirectPurchaseActionResult =
-  | { ok: true; result: CompanyAdminDirectPurchaseResult }
+  | { ok: true; result: CompanyAdminDirectPurchaseResult; staleWorkspace?: CompanyAdminDirectPurchaseWorkspace }
   | { ok: false; code: "UNAVAILABLE" };
 
 export async function runCompanyAdminDirectPurchaseAction(
@@ -61,6 +64,22 @@ export async function runCompanyAdminDirectPurchaseAction(
   if (!parsed.success) return { ok: false, code: "UNAVAILABLE" };
   try {
     const result = await placeCompanyAdminDirectPurchase(actor, parsed.data);
+    let staleWorkspace: CompanyAdminDirectPurchaseWorkspace | undefined;
+    if (result.status === "STALE_CART" && !result.created && result.cart?.status === "ACTIVE"
+      && result.commandId === parsed.data.commandId && result.cartId === parsed.data.cartId
+      && result.expectedCartVersion === parsed.data.expectedCartVersion
+      && result.currentCartVersion === result.cart.version && result.cart.id === result.cartId
+      && result.cart.companyId === actor.companyId && !result.cart.departmentId) {
+      try {
+        const workspace = await getCompanyAdminDirectPurchaseWorkspace(actor, {
+          id: result.cart.id, version: result.cart.version,
+        });
+        if (matchesCartRecoveryWorkspace(workspace, result.cart)) staleWorkspace = workspace;
+      } catch {
+        // A denied, raced, or unavailable read must not erase a known refusal
+        // or turn it into an unknown purchase outcome. Never replay the command.
+      }
+    }
     revalidatePath("/products");
     revalidatePath("/cart");
     revalidatePath("/requests");
@@ -68,7 +87,7 @@ export async function runCompanyAdminDirectPurchaseAction(
     revalidatePath("/wallet");
     revalidatePath("/deliveries");
     if ("requestId" in result) revalidatePath(`/requests/${result.requestId}`);
-    return { ok: true, result };
+    return { ok: true, result, ...(staleWorkspace ? { staleWorkspace } : {}) };
   } catch {
     return { ok: false, code: "UNAVAILABLE" };
   }

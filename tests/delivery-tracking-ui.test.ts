@@ -79,7 +79,8 @@ describe("delivery tracking interfaces", () => {
     ]);
     expect(driver).toContain("<DriverTrackingPanel");
     expect(ownerMap).toContain("/api/drivers/");
-    expect(ownerMap).toContain("EventSource");
+    expect(ownerMap).toContain('useLiveRead<DriverDetailWorkspace>("driver"');
+    expect(ownerMap).not.toContain("new EventSource(");
     expect(receiver).toContain("<DeliveryTrackingBoard");
     expect(receiver).not.toContain("audience=");
   });

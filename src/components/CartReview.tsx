@@ -13,6 +13,7 @@ import {
 import { ProductImage } from "@/components/ProductImage";
 import { cartMessages } from "@/lib/cart-i18n";
 import { publishCartChanged, subscribeCartChanged } from "@/lib/cart-client-events";
+import { matchesCartRecoveryWorkspace, selectCartWorkspace, type CartWorkspaceRecovery } from "@/lib/cart-workspace-recovery";
 import type {
   CompanyAdminDirectPurchaseResult,
   CompanyAdminDirectPurchaseWorkspace,
@@ -105,7 +106,6 @@ export function CartReview({
   const copy = cartMessages(locale);
   const router = useRouter();
   const [cart, setCart] = useState(initialCart);
-  const workspace = directPurchase;
   const pendingPurchaseKey = `${PENDING_PURCHASE_KEY}:${purchaseRecoveryScope}`;
   const [drafts, setDrafts] = useState<Record<string, string>>(() => Object.fromEntries(
     initialCart.items.map((item) => [item.publicRef, String(item.quantity)]),
@@ -120,6 +120,28 @@ export function CartReview({
   const [recoveryReady, setRecoveryReady] = useState(checkoutMode !== "DIRECT");
   const [pendingPurchase, setPendingPurchase] = useState<PendingPurchase>();
   const [confirmation, setConfirmation] = useState<PurchaseConfirmation>();
+  const [recovery, setRecovery] = useState<CartWorkspaceRecovery>();
+  const recoveryInvalidated = recovery && (checkoutMode !== "DIRECT"
+    || recovery.recoveryScope !== purchaseRecoveryScope
+    || initialCart.id !== recovery.workspace.cartId || initialCart.companyId !== recovery.workspace.companyId
+    || initialCart.branchId !== recovery.workspace.branchId || branch.id !== recovery.workspace.branchId
+    || initialCart.status !== "ACTIVE" || Boolean(initialCart.departmentId)
+    || initialCart.version >= recovery.workspace.cartVersion
+    || (directPurchase && (directPurchase.cartId !== recovery.workspace.cartId
+      || directPurchase.companyId !== recovery.workspace.companyId || directPurchase.branchId !== recovery.workspace.branchId
+      || directPurchase.cart.id !== recovery.workspace.cartId || directPurchase.cart.companyId !== recovery.workspace.companyId
+      || directPurchase.cart.branchId !== recovery.workspace.branchId || directPurchase.cart.status !== "ACTIVE"
+      || Boolean(directPurchase.cart.departmentId) || directPurchase.cart.version !== directPurchase.cartVersion
+      || directPurchase.cartVersion >= recovery.workspace.cartVersion)));
+  // Adjust only this component's ephemeral recovery state when route authority
+  // catches up or changes. Once superseded it cannot reappear if older props
+  // are later rendered; Cart state and keyboard drafts remain untouched.
+  if (recoveryInvalidated) setRecovery(undefined);
+  const workspace = checkoutMode === "DIRECT" ? selectCartWorkspace({
+    cart, initialCart, branchId: branch.id, serverWorkspace: directPurchase,
+    recovery: recoveryInvalidated ? undefined : recovery,
+    recoveryScope: purchaseRecoveryScope,
+  }) : directPurchase;
   const cartRef = useRef(cart);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const placeOrderRef = useRef<HTMLButtonElement>(null);
@@ -185,6 +207,7 @@ export function CartReview({
 
   const handlePurchaseResult = useCallback((
     result: CompanyAdminDirectPurchaseResult,
+    staleWorkspace?: CompanyAdminDirectPurchaseWorkspace,
   ) => {
     setUnknownOutcome(false);
     setStatusAction(null);
@@ -207,6 +230,16 @@ export function CartReview({
       setStatus(copy.priceChanged);
     } else if (result.status === "STALE_CART") {
       if (result.cart) applyAuthoritative(result.cart);
+      if (result.cart && result.cartId === cartRef.current.id
+        && result.currentCartVersion === cartRef.current.version
+        && matchesCartRecoveryWorkspace(staleWorkspace, cartRef.current)) {
+        const recovered = staleWorkspace;
+        setRecovery((current) => current?.recoveryScope === purchaseRecoveryScope
+          && current.workspace.cartId === recovered.cartId
+          && current.workspace.cartVersion === recovered.cartVersion
+          && current.workspace.capturedAt > recovered.capturedAt ? current
+          : { recoveryScope: purchaseRecoveryScope, workspace: recovered });
+      }
       setStatus(copy.stalePurchase);
     } else if (result.status === "INSUFFICIENT_BUDGET") {
       setStatus(copy.insufficientBudget(branch.code));
@@ -224,7 +257,7 @@ export function CartReview({
       setStatusAction("BUDGET");
     }
     router.refresh();
-  }, [applyAuthoritative, branch.code, branch.id, copy, pendingPurchaseKey, router]);
+  }, [applyAuthoritative, branch.code, branch.id, copy, pendingPurchaseKey, purchaseRecoveryScope, router]);
 
   const reconcile = useCallback(async (pending: PendingPurchase) => {
     setPendingPurchase(pending);
@@ -280,7 +313,7 @@ export function CartReview({
         commandId: pending.commandId,
       });
       if (response.ok) {
-        handlePurchaseResult(response.result);
+        handlePurchaseResult(response.result, response.staleWorkspace);
         return;
       }
     } catch {

@@ -1,4 +1,5 @@
 import { DeleteProductButton } from "@/components/DeleteProductButton";
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { PageHeader } from "@/components/PageHeader";
 import { ShopCategoryHub } from "@/components/ShopCategoryHub";
 import { ProductImage } from "@/components/ProductImage";
@@ -66,6 +67,7 @@ export default async function ProductsPage({
 
     return (
       <>
+        <LiveWorkspaceSync topics={["catalog"]} context={{ branchId: selectedBranch.id }} locale={locale} viewKey={JSON.stringify(params)} />
         <PageHeader
           eyebrow={copy.shopEyebrow}
           title={`${copy.shopTitle} — ${selectedBranch.code}`}
@@ -87,7 +89,7 @@ export default async function ProductsPage({
 
   const products = await listProducts(actor);
   const canViewCost = canAccess(actor, "view_internal_cost");
-  return <><PageHeader eyebrow={copy.operationsEyebrow} title={isCamCatalogViewer ? copy.management : copy.title}
+  return <><LiveWorkspaceSync topics={["catalog"]} locale={locale} /><PageHeader eyebrow={copy.operationsEyebrow} title={isCamCatalogViewer ? copy.management : copy.title}
     description={copy.operationsDescription} />
     {canManageCatalog ? <div className="page-actions"><Link className="button button-primary" href="/products/new">{copy.create}</Link></div> : null}
 

@@ -2,6 +2,7 @@ import { DashboardPeriodControls } from "@/components/DashboardPeriodControls";
 import { DashboardReportingPreferenceSync } from "@/components/DashboardReportingPreferenceSync";
 import { MetricCard } from "@/components/MetricCard";
 import { PageHeader } from "@/components/PageHeader";
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requireSession } from "@/lib/auth";
 import { corePortalMessages, localizedStatus } from "@/lib/core-portal-i18n";
@@ -173,6 +174,12 @@ export default async function DashboardPage({
 
   return (
     <>
+      <LiveWorkspaceSync topics={[
+        "notifications",
+        ...(canAccess(actor, "view_requests") ? ["requests" as const] : []),
+        ...(actor.accountKind === "COMPANY" && canAccess(actor, "view_budgets") ? ["budgets" as const] : []),
+        ...(actor.accountKind === "COMPANY" && canAccess(actor, "view_wallet") ? ["wallet" as const] : []),
+      ]} locale={locale} />
       <PageHeader
         eyebrow={experience.eyebrow}
         title={timeOfDayGreeting(new Date(), greetingZone, locale) + ", " + greetingName}
