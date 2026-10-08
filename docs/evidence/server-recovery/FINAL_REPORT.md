@@ -2,6 +2,135 @@
 
 Report date: 2026-10-09, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
+## Latest exact-candidate closure checkpoint — 2026-10-09 MY
+
+**STATUS: NOT DEPLOYED / ORIGINAL ACCEPTANCE STILL OPEN.** Application/test
+candidate `123c9dcb096566a3c3a262397dd9178fa0c0fa7a` is pushed in draft
+[PR222](https://github.com/ASHRAF-2004/axora/pull/222). It includes the public
+homepage chooser removal from PR221 plus the separately reviewed native product
+completion/draft/upload-flow repair. Do not merge both as separate releases.
+The older b62/uncommitted wording below is a preserved development checkpoint,
+not the current tested-head identity. Production remains d82/OCIbc8/schema139;
+The owner explicitly approved PR222 squash merge/deployment on2026-10-09 MY.
+That approval covers this UI candidate, not audit-contract changes, additional
+email sends or destructive production acceptance. Merge/deployment are not yet
+performed at this checkpoint.
+
+The full app/test/database/configuration/script input manifest (`git ls-tree -r`
+for src, both E2E trees, tests, database, package files, Next/Playwright/Vitest
+configurations, workflows and scripts) hashes to
+`b6ec8389560900f00c828b83f32a5332414a8b3ce40f323de0f46131e83a6fce`.
+Evidence-only report updates do not change these tested inputs. Complete
+independent source/test review approved123; no auth, finance, RLS, pricing
+permission or migration delta was found. Both Playwright configs/auth fixtures
+are exactly protected main; original product-smoke operations/assertions/
+timeouts are mechanically equal after removing its optional observer wrapper.
+
+### Ordered host gates, once on123c9dc
+
+| Gate | Actual result | Complete log SHA256 |
+| --- | --- | --- |
+| lint |PASS|41e3408ada2a9982f17c8d519a484f676ce18dbb12e65771feb6e66ee0b79f8f|
+| typecheck |PASS|d597b090f6117de7e92d2560aa707d800d98d154dce3f1cf58812f485e5dfe2a|
+| unit/PGlite |1,968PASS/49existing native-only skips;381passed/11skipped files;488.13s|1e3c220c7f2d5c9b06e003ac1dde4e652352f693a0ecce03e314a3662823c003|
+| native PostgreSQL |49PASS/all139 migrations, authorization lifecycles, forced RLS, least-privilege grants|273ac46930e427c6a0ce0b02e7688ca114ba98ce7e376325fbf322ed65c8eff9|
+| production build |PASS, including both pg-cloudflare standalone files|721ea554b54cb64ad93b172af187836c6de0061ad6bc1771a5eae48d145e9394|
+| standalone stage |PASS|41b9b16a6d16412835b35158b268e865302cee9baf0eb086b04b2a74b03d2b20|
+| standalone runtime |PASS/2 production routes+2 self-hosted runtime resources|71754b861dabef4d14b9cd3ec5158c1e2b58f5aed324162135a8df07f4d67ab5|
+| deployment assets |PASS/35 assets/7,996,414bytes;Compose/Caddy/secrets invariants|fb4d4ab6f266bc9f0ba4ff73d3c2a170c2c382aa77558d7506d6371e8b30d3fe|
+| original combined E2E+recovery |EXIT0:354PASS/19existing skips/ONE company-creation FLAKY,9.6min;then recovery7PASS/9.6s|e405c3b1b71f49353394ce6dcbe0db867d6976debf086a01a7ca814ec057bc9c|
+| diff-check |PASS/empty log|e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855|
+
+Original gallery/creation product-smoke, both new product completion/error cases,
+mobile stale-cart and branch-foundation journeys passed on their first attempt
+in this full host run. This is NOT355 clean passes: the unchanged company-create
+case timed out first, then used its existing CI retry. No added retry, skip,
+assertion relaxation, project reorder or test rerun after this gate. Existing19
+browser skips are viewport/keyboard/matrix and disabled opt-in integration/email
+cases;49 unit skips belong to the separate native gate, where all49 executed.
+
+Whole browser results/logs are retained privately at
+`product-native-required-123-cqNes3` before later manual checks. The first-failure
+company trace hashes to
+`6d0bca9b56ba1f8155e199ea8487c1275f6d1f1c82f6fcaa2e55833ff73686af`
+and screenshot to
+`a0f4cf0d51e6a90be35af6bd54b5049bb3a5befafc82816423c06eacd1f48977`.
+Actual valid POST18:02:52.873Z returned303RSC with the correct same-origin company
+UUID/notice/push redirect, total13.143ms, no recorded request failure. The
+browser remained on `/companies/new`. Installed Playwright intentionally omits
+3xx body resources; absent HAR body/size is NOT proof of a truncated response.
+Installed Next can apply redirect Flight without a separate destination GET;
+absence of that GET is NOT proof no navigation started. Exact Flight contents
+and client queue application were not captured. Pointer interception, native
+validation, wrong URL and returned-state-specific product reasoning are not
+supported causes. **Company navigation instability remains OPEN; retry does not
+repair it.** No speculative company, auth or route patch was made.
+
+[Image CI37819767464](https://github.com/ASHRAF-2004/axora/actions/runs/37819767464)
+PASS on123; deployment correctly SKIPPED. Exact123
+[quality37819787012](https://github.com/ASHRAF-2004/axora/actions/runs/37819787012)
+also completed SUCCESS on123: unit1,968PASS/49native-only skips, native49/all139,
+lint/types/build/stage/runtime and Zapier checks PASS. The unchanged original
+combined browser suite had **355PASS/19existing skips/zero retries or flaky
+results**,13.3min, then recovery7PASS/12.4s. Complete quality log SHA256:
+`eb6deb0a1bc6b4c9148dd175aa5b62f1e18cce843114fb99ce5db80577691d80`.
+This separate clean CI result does not erase the local company first failure or
+prove its intermittent cause fixed. The older failed public-only quality1990
+remains preserved separately. Evidence-only final report changes preserve the
+tested application/test/gate input manifest; a new final-head protected image
+check is still required before merge.
+
+### Additional isolated immediate-delete UI evidence
+
+After heavy host gates completed, a fresh owned local DEMO standalone3153 and
+normal public-fixture sign-in created only
+`cb5cb79d-a3fa-4532-81fc-4598ca08e1f1`, named
+“Isolated immediate-delete fixture123c9dc” (the visible name contains a space
+before123). The known own row/UUID links were verified before its one UI Delete
+click. The next snapshot already showed Deleting product; a separate
+confirmation-dialog interaction was not captured and is NOT claimed.
+Before any refresh or navigation, own rows/detail links became0 and the original
+25 rows remained. Direct detail displayed404 and refresh remained404. Root
+visually reviewed screenshot SHA
+`422eb36152d0d849c8a4697164da10e00d944185b6a8bc6f1df9f08138b2ce48`.
+This closes a **local volatile-demo presentation observation only**: no native
+database audit/asset cleanup, production deletion, response-loss/double-click,
+current03 or before/after-restart acceptance follows from it. Existing login
+preload warning1 was retained. Owned browser/server closed (expected130), with
+3100/3101/3152/3153 listeners absent. No real product/history was removed.
+
+### Exact remaining boundaries
+
+Contact delivery and Inbox receipt remain closed; both smoke slots consumed,
+no new send/retry/historical release. Gallery has a reviewed focused+full-suite
+candidate repair, but **production closure is still OPEN**. The public chooser
+is removed in the tested candidate, not yet the deployed site. Registration6A
+and product-deletion6B original whole acceptance criteria remain NOT fully met;
+prior native/isolated/live duplicate refusal proofs are not live setup/deletion
+or current03 lifecycle/restart proof.
+
+Current03 still fails the canonical audit guard21→23; no history/count was
+rebased or relaxed. Read-only design review proposes a separate PRIVATE
+append-link verifier preserving059 temporal diagnostics. It must validate every
+whole-row hash, same-partition predecessor, uniqueness, one root, no fork/
+orphan/cycle/disconnection, complete reachability and exact head anchoring in a
+consistent snapshot. Adding an audit-row column changes historical hashes;
+no column, backfill, timestamp clamp, purge rebuild or grant widening is allowed
+as a shortcut. Exact decision needed: approve hash-linked serialized append
+order as canonical integrity ordering with temporal warnings retained, and a
+separately reviewed forward-only migration/guard contract with deterministic
+native concurrent/tamper/rollback regressions. This is not missing credentials.
+
+The guarded existing invitation/product and one remaining service trial stay
+untouched. Live setup needs a designated disposable company/new recipient/
+intended role and setup-delivery authority; live deletion needs an exact eligible
+disposable UUID/per-action permission and required encrypted backup/restore/
+rollback proof. Live CAM/second Driver fixtures remain absent. Conditional
+Slack and future off-device cutover need their specifically listed provider/
+host/key/destination inputs; neither is relabelled a core fix blocker. Private
+credentials/unrelated live working-tree changes and the host boot identity remain
+intact. **Overall demo-ready is NOT certified.**
+
 ## Native product-action candidate progress — 2026-10-09 MY
 
 **STATUS: NOT DEPLOYED / REQUIRED RELEASE AND OVERALL ACCEPTANCE OPEN.**

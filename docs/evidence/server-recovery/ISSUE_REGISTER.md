@@ -2,6 +2,27 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
+## Latest exact123 candidate closure checkpoint — 2026-10-09 MY
+
+Production remains d82/OCIbc8/schema139. Tested application/test head123c9dc is
+in draftPR222, not merged/deployed; includes PR221's public chooser removal.
+Older b62/uncommitted sections below are historical checkpoints.
+The owner explicitly approved PR222 squash merge/deployment on2026-10-09 MY;
+this does not authorize audit-contract changes, extra email or real-data deletion.
+
+| Item | Latest evidence and exact boundary | Status |
+| --- | --- | --- |
+| Chooser removal |EN/AR/MS homepage-only removal in tested123; assigned-team profile/security/history retained. Public PR221 separately remains unmerged/failed quality1990. |Implemented/tested candidate, NOT LIVE. |
+| Final host release gates |Ordered lint/types,unit1968+49native-only skips,native49/all139/RLS/grants,build/pg-cloudflare,stage/runtime2routes2resources,assets35/7,996,414B,diff-check PASS. |Complete on123; hashes in FINAL_REPORT. |
+| Original combined browser gate |354PASS/19existing skips/ONE unchanged company-create FLAKY9.6min;recovery7PASS9.6s/EXIT0. Gallery, product native/error, mobile cart and branch-foundation first attempts pass. No newretry/skip/assertion/config changes. |Not355 clean passes; earlier failures preserved. |
+| New company-create instability |Valid POST18:02:52.873Z/native303RSC/correct UUID+notice+push; route stayed new30s. HAR3xx body omitted by design; separate UUID GET unnecessary for Next redirect Flight. Exact Flight/client queue missing; no supported precise cause or patch. Trace6d0bca9… archived with whole results at product-native-required-123-cqNes3. |OPEN; existing retry PASS does not fix it. |
+| Protected CI |Image37819767464 PASS/deploySKIPPED; quality37819787012 SUCCESS on123:355PASS/19existing skips/zero retries or flaky results+recovery7PASS; all other required gates PASS. Complete logeb6deb0… . Local company failure remains separate. |Complete on tested123; owner approved PR222. Final evidence-only head needs its protected image check before merge. |
+| Gallery |Focused6/retry0 and original both-project full product journeys pass; rendered English themes/mobile/no-overlap pass. AR/MS native manual limitation retained. |Production acceptance OPEN, not closed by local/CI alone. |
+| Immediate deletion presentation |Fresh own local-DEMO productcb5cb79d… removed via UI; before any reload rows26→25/ownrow+links0;direct+refresh404. Separate confirmation interaction not captured; no real data touched. |Isolated UI observation PASS only; native/live/current03/restart/transport-loss criteria OPEN. |
+| Audit contract decision |Canonical temporal guard21→23 remains FAILED; private hash-link verifier design preserves all hashes/history and temporal diagnostics, requires strict graph/head/reachability and native concurrent/tamper negatives. New audit-row columns would change historical hashes. |Separate canonical-ordering/security decision + forward-only migration authority needed; no guard/history/schema change. |
+| Original6A/6B |Old native/isolated/live duplicate proofs remain separate. Current03 setup/deletion/restart paused at audit guard; live disposable account/product/action/recovery designations missing. |NOT fully accepted; no replay/invite consumption/deletion/trial. |
+| Contact/safety |Contactdelivery/Inbox confirmed/cap2closed;no sends/historicalrelease. Privatefile/dirtyprodcheckout/host preserved; owned3153 stopped130/all local listenersclosed. |Preserved. Overall demo-ready NOT certified. |
+
 ## Native product-action candidate — 2026-10-09 MY
 
 **NOT DEPLOYED. Required release gates and overall acceptance remain OPEN.**

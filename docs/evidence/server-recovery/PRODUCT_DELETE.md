@@ -1,5 +1,22 @@
 # Product deletion recovery evidence
 
+## Latest additional local-demo presentation observation — 2026-10-09 MY
+
+Tested source123c9dc, NOT deployed. After its required host gates, fresh owned
+standalone3153/public demo login created only product
+`cb5cb79d-a3fa-4532-81fc-4598ca08e1f1`, “Isolated immediate-delete fixture 123c9dc”.
+Its exact row/UUID links were verified, then one own UI Delete click was made;
+next snapshot already showed Deleting product, so no separate confirmation
+interaction is claimed. Before any refresh/navigation own row/detail links0
+and total26→25; all25 original demo fixtures remained. Direct detail and refresh
+both displayed404, root visually reviewed the capture (SHA422eb361…).
+Owned browser/server closed/expected130; no real records/history were deleted.
+
+This is volatile-DEMO immediate-render evidence only, NOT native database
+cleanup/audit, production deletion, transport-loss/double-click or current03
+before/after-restart acceptance. The original6B matrix and audit barrier below
+remain open; no existing current03 product was replayed or deleted.
+
 **Historical component investigation.** Current release and later actual
 normal-auth isolated deletion/refusal evidence are in [FINAL_REPORT](FINAL_REPORT.md).
 Pending native-gate wording below is superseded there; original exception and live

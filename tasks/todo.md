@@ -1,5 +1,30 @@
 # Recovery execution checkpoints
 
+## Exact123 release checkpoint — 2026-10-09 MY
+
+- [x] Independently review and finalize combined PR222: public chooser removal,
+  native product completion, scoped safe draft-error recovery and upload reflow.
+- [x] Run all ordered host gates once on123c9dc: lint/types, unit1,968+49native
+  skips, native49/all139/RLS/grants, build/pg-cloudflare, stage/runtime/assets.
+- [x] Preserve local original combined354PASS/19existing skips/ONE unchanged
+  company-create flaky case and recovery7PASS; no added retries or weaker tests.
+- [x] Exact123 protected image CI and quality CI PASS; quality original
+  browser355PASS/19existing skips/zero retries or flaky results+recovery7PASS.
+  Keep the local first-failure trace and company-navigation instability OPEN.
+- [x] Complete headed EN both-theme desktop/mobile product creation/repeated
+  uploads/no-overlap checks and a fresh own volatile-DEMO immediate-delete
+  observation; do not substitute these for native/live whole-flow acceptance.
+- [x] Obtain the owner's explicit PR222 squash merge/deploy approval. Approval
+  does not broaden audit, email, fixture or destructive-production authority.
+- [ ] Commit evidence-only closure updates, verify tested app/test/gate manifest
+  unchanged, and require the final head's protected image check before merge.
+- [ ] Squash merge/deploy approved candidate; verify exact SHA/digest/schema,
+  health and actual production pages. Keep overall acceptance/demo readiness OPEN.
+
+The checklists below preserve earlier development checkpoints. Current results
+above supersede their then-pending release-gate status; original workflow/audit/
+live-fixture gaps remain open. Contact cap2 stays closed; no host restart.
+
 ## Public team chooser removal — 2026-10-08
 
 - [x] Map the public Early Birds/Night Owls intro and inspect the live guest
