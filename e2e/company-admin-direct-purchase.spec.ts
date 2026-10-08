@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { signInAsDemoRole, type DemoRoleSession } from "./helpers/auth";
+import { captureCompanyAdminCartFailure } from "./helpers/cart-failure-diagnostics";
 
 // These journeys move demo financial state. A failed assertion must never make
 // Playwright repeat a purchase command against the retained server process.
@@ -358,4 +359,8 @@ test("direct checkout dialog stays accessible across locales, themes, and narrow
     await expect(dialog).toBeHidden();
     await expect(trigger).toBeFocused();
   }
+});
+
+test.afterEach(async ({ page }, testInfo) => {
+  await captureCompanyAdminCartFailure(page, testInfo);
 });
