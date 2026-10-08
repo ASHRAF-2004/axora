@@ -56,4 +56,20 @@ jobs:
       - name: Production build and standalone staging
         run: npm run build && npm run standalone:stage && npm run standalone:validate
       - name: Browser journeys
+        id: browser_journeys
         run: npx playwright install --with-deps chromium && npm run test:e2e
+      # Only public demo fixtures run here; never upload host/production evidence.
+      - name: Preserve failed demo browser evidence
+        if: failure() && steps.browser_journeys.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/playwright/results/
+            output/playwright/report/
+            output/playwright/visitor-recovery-results/
+            output/playwright/visitor-recovery-report/
+            output/playwright/*.png
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 7

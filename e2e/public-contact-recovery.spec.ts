@@ -45,23 +45,33 @@ for (const copy of cases) {
     await expect(retry).toBeVisible();
     await expect(retry).toBeEnabled();
     await expect(help).toBeVisible();
-    const recoveryLayout = await form.getByRole("status").evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      return { documentOverflow: document.documentElement.scrollWidth - innerWidth,
-        feedbackOverflow: element.scrollWidth - element.clientWidth,
-        controls: [...element.querySelectorAll("button,a")].map((control) => {
-          const rect = control.getBoundingClientRect();
-          return { left: rect.left, right: rect.right, width: rect.width, height: rect.height,
-            contained: rect.left >= box.left - 1 && rect.right <= box.right + 1 };
-        }) };
-    });
-    expect(recoveryLayout.documentOverflow).toBeLessThanOrEqual(0);
-    expect(recoveryLayout.feedbackOverflow).toBeLessThanOrEqual(1);
-    for (const control of recoveryLayout.controls) {
-      expect(control.width).toBeGreaterThan(0);
-      expect(control.height).toBeGreaterThan(0);
-      expect(control.contained).toBe(true);
+    const feedback = form.getByRole("status");
+    // System-font metrics differ across supported browsers and CI hosts.
+    // Reflow must work both naturally and with the wider fallback that
+    // reproduces the Malay feedback's intrinsic-width overflow locally.
+    for (const fontFamily of ["", '"DejaVu Sans", sans-serif']) {
+      await feedback.evaluate((element, fontFamily) => {
+        (element as HTMLElement).style.fontFamily = fontFamily;
+      }, fontFamily);
+      const recoveryLayout = await feedback.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return { documentOverflow: document.documentElement.scrollWidth - innerWidth,
+          feedbackOverflow: element.scrollWidth - element.clientWidth,
+          controls: [...element.querySelectorAll("button,a")].map((control) => {
+            const rect = control.getBoundingClientRect();
+            return { left: rect.left, right: rect.right, width: rect.width, height: rect.height,
+              contained: rect.left >= box.left - 1 && rect.right <= box.right + 1 };
+          }) };
+      });
+      expect(recoveryLayout.documentOverflow).toBeLessThanOrEqual(0);
+      expect(recoveryLayout.feedbackOverflow).toBeLessThanOrEqual(1);
+      for (const control of recoveryLayout.controls) {
+        expect(control.width).toBeGreaterThan(0);
+        expect(control.height).toBeGreaterThan(0);
+        expect(control.contained).toBe(true);
+      }
     }
+    await feedback.evaluate((element) => { (element as HTMLElement).style.removeProperty("font-family"); });
     await retry.click();
     await expect(submit).toBeDisabled();
     expect(await page.evaluate(() => (window as Window & { __contactFixture?: ContactFixture }).__contactFixture?.resets)).toBe(1);

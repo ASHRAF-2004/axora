@@ -1,6 +1,40 @@
 # Recovery execution checkpoints
 
-Latest01:24UTC: exacteb65ef3b7592f948f8835246dc572561366e5606 requiredlocal
+Latest02:57UTC: PR220 exactd8 imageCI PASS, Nightly37718133148 FAILED350/19skip/
+1existing-retry Ownercompanyflake +2mobilefailures. Foundation fails branch-create
+URL at123 BEFORE budget; product uploadresponse<400 but gallery0instead2 at150
+bothattempts. Contact6 and directCart casesPASS. VisitorNOTRUN. No merge/deploy;
+productionc3/24f/139 preserved. Focused source/fresh-standalone diagnosis underway,
+no weakened test/retries/production writes. MissingCIartifacts0 addressed only by
+pending failure-only demo retention + focused invariant3PASS; not a cause fix.
+Passive c3MSContact200/390px/Senddisabled/no failurepanel/no Submit. ContactA
+priorBraveSend/result/time stillpending, A1/Bunused/no historyreplay.
+
+Historical02:25UTC: scoped f09 Contact wrapping fix + strengthened six localized
+render tests reproduces old20px failure then passes focused6 and all required
+local gates: lint/type/unit1914/native49/139/build/stage/runtime/assets/
+originalcombined353+19existing skips/visitor18/retry0. Exact protectedCI and
+Nightly pending before follow-up deployment; failedc3Nightly retained.
+ONE live designated duplicate POST → exactrefusalURL/all4 no-effects PASS;
+originalnoticecheckerFAIL retained, laterGET-only actualcanonicalnoticecaptured.
+Fresh SSE twoautomaticPOSTs classified actualCloudflareRUM/application-or-unknown0;
+transport/reconnect/expiry pass, originalbroadfailure preserved. ContactA still
+requires priorBrave verification-vs-Send/result/time; no additionalSend/B/replay.
+Productionc3/24f/schema139; privateinput/unrelatedtrees intact, no host action.
+
+Historical02:04UTC: PR219 protected image/main deploy PASS; productionc3cd1b2/24f893b4/
+schema139/sealedchecksums/health verified. Actual sixUI OwnerbothTheme/390px,
+CAexistingShopping/Cart/no cart-eventschange, budgets/wallet and BA/Driver read
+smokes pass. ContactA priorBraveSend reconciliation remainspending, current
+DBA/B+all submissions/outboxes0/GmailanywhereAempty; no send/providerproof.
+Live duplicate01+02 bothpreauth/nosubmit stoppedprivatepreflights, exactcauses
+proved UTF8decode and nonexistentassignmentdatecolumns; bounded correctioninprogress.
+Additional exactmainNightly37713703674 FAILED mobile Malayfeedback20px overflow
+afterexistingretry;351PASS/19skip/1CAMcreateflaky, visitorNOTRUN. Localfallbackfont
+reproduces20px; scopedwrappingfix/strongerassertions underway. Requiredgate remains
+unresolved, noDemoReady; originalgreen/failed evidence retained. No host/data deletion.
+
+Historical01:24UTC: exacteb65ef3b7592f948f8835246dc572561366e5606 requiredlocal
 gates ALLPASS: lint/type/unit1914/native49/139migrations/build/stage/runtime/
 assets/originalfull353PASS19existing skip7.0min+visitor18PASS16.8s/diffcheck.
 Protected release nowinprogress; ordinaryauth productionacceptance pending.
@@ -17,16 +51,16 @@ actualnotice/noEffects proof retained; not live acceptance. Private input intact
 - [x] Preserve unrelated worktrees; assign bounded independent specialists.
 - [ ] Core Contact: two-label cap, normal verification, durable/outbox/provider evidence.
 - [x] Core product: actual authenticated isolated owned deletion and protected/CA/DENY refusals; no production deletion.
-- [ ] Core registration: isolated creation/setup/login/used-link and corrected global duplicate notice/noEffects observed; original same-tenant notice/whole-flow guard and live acceptance not claimed.
-- [x] Residual UI: Dark hover and branch-address labels, rendered EN/AR/MS checks; production repetition pending.
+- [x] Core registration evidence: isolated creation/setup/login/used-link plus ONE live cross-scope refusal/no-effects and later visible GET notice; original failed checker/same-tenant/whole-flow boundaries retained.
+- [x] Residual UI: Dark hover and branch-address labels, rendered EN/AR/MS checks and actual c3 production both-theme/mobile acceptance.
 - [x] Issue12: actionable legitimate budget failure and unchanged accounting tests; no live allocation.
-- [x] Issue14: BranchAdmin lifecycle UI/direct boundary denial and native tests;139 deployment pending.
-- [x] Issues10/13: password/invitation and budget-list structure/responsive local acceptance; production repetition pending.
-- [ ] Issue8: shared live updates, reconnect/revoke/snapshot/fallback acceptance.
+- [x] Issue14: BranchAdmin lifecycle UI/direct boundary denial/native tests;139 deployed, actual BA metadata retained/no lifecycle controls.
+- [x] Issues10/13: invitation and budget-list structure/localized local acceptance plus actual c3 missing-link/CA mobile rendered pages.
+- [x] Issue8 bounded acceptance: authorized snapshot/reconnect/expiry/fallback and field retention live; revoke/changed-hint guards automated. RUM POSTs separated; original broad observer failure retained.
 - [x] Issue11: actual integration status and authorized setup checklist; controlled Slack activation inputs absent.
 - [x] Issue9: technical runbooks and rendered illustrated migration PDF; no host/cutover action.
-- [x] Review combined source, preserve secrets and run exact changed-candidate gates at eb65.
-- [ ] Protected release, exact deployed identity and real-browser acceptance.
+- [x] Review combined source, preserve secrets and run exact changed-candidate gates at eb65 and scoped follow-up f09.
+- [ ] Follow-up protected image/exact Nightly, deployment identity and actual browser check; existing PR219 c3 release and six-UI acceptance complete.
 - [x] Current BLOCKED per-item evidence/report; external limitations named specifically, not task-completion acceptance.
 
 Checkpoint00:54UTC: second originalcombined2ae353PASS19skip6.8min +visitor18PASS
