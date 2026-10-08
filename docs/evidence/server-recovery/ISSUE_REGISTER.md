@@ -9,7 +9,8 @@ its counters from EN/AR/MS homepages; not authenticated assigned-team profile
 confirmation. Homepage unmount/snapshot dependency removal implemented;
 focused render/visitor-security/SEO/release-isolation29PASS, including old-page
 RED3 localized render cases. Actual new browser checks/local changed-candidate
-gates complete below; protected CI/explicit release approval PENDING.
+gates complete below; protected image CI PASS, required quality browser gate
+FAILED and explicit release approval absent (latest checkpoint below).
 Earlier d82 release results do not certify these new app/test bytes.
 Production remains d82/bc8/schema139; no deployment, visitor-history deletion,
 Contact Send or auth/profile/financial change. Explicit merge/deploy approval is
@@ -69,6 +70,19 @@ articles establishes a client completion failure in this occurrence; precise
 React/Next internal cause remains unproven. Supported server-redirect/draft-safe
 repair is being developed separately, NOT yet proven or deployed. Gallery and
 creation-transition instability remain OPEN. Contact cap2 unchanged.
+
+Latest exact candidate1990ad6 is pushed in PR221, NOT merged/deployed. Protected
+image37810901425 PASS/deploy correctly skipped. Required quality37810933862
+passed lint/types/unit1,922+49native-only skips/native49+all139/build/stage/runtime,
+then FAILED original browser suite350PASS/19existing skips/ONE desktop Company
+Administrator foundation failure14.8min; visitor NOT RUN. Existing file retries0
+retained. Save branch stayed on `/branches/<owned-demo-id>/edit` after the
+original5second assertion, rendered Saving branch/phone disabled. Trace diagnosis
+is in progress; no retry/timeout/assertion weakening or proven patch. Complete
+log SHA04a04964… and96-file artifact11566896325 retained privately at
+public-chooser-ci-1990-failed-EsWQjO. Failed required CI is a release barrier,
+not cleared by earlier local passes or independent source approval. Production
+d82/bc8/schema139 unchanged; explicit merge/deploy approval still required.
 
 | Additional test-diagnosis finding | Evidence and limitation | Status |
 | --- | --- | --- |

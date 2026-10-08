@@ -38,6 +38,13 @@ failure proven for completed responses; precise framework race unproven.
 Separate supported redirect/draft-safe repair in development, not yet fixed.
 Local chooser gates complete; protected CI/review/explicit release approval remain.
 
+Exact1990 PR221 image37810901425 PASS; quality37810933862 FAILED after every
+non-browser gate passed: original350PASS/19existing skips/ONE desktop branch-edit
+foundation failure, visitor NOT RUN. Existing retries0 and5second assertion
+retained; complete failed evidence archived. Trace diagnosis in progress; no
+merge/deploy approval or production mutation. The required-gates checkbox stays
+open rather than substituting earlier local passes.
+
 ## Final closure audit — 2026-10-08
 
 - [x] Map all six original registration/setup criteria to exact isolated/native/
