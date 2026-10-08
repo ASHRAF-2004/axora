@@ -1,11 +1,15 @@
 # Recovery execution checkpoints
 
-Latest01:07UTC: final five-file Cart recovery independently approved twice;
+Latest01:24UTC: exacteb65ef3b7592f948f8835246dc572561366e5606 requiredlocal
+gates ALLPASS: lint/type/unit1914/native49/139migrations/build/stage/runtime/
+assets/originalfull353PASS19existing skip7.0min+visitor18PASS16.8s/diffcheck.
+Protected release nowinprogress; ordinaryauth productionacceptance pending.
+Final five-file Cart recovery independently approved twice;
 exact old-component held-props render reproduced missing authority/disabled
 Place, new100focused checks/sevenfiles PASS. Null/absent department and permanent
 retirement on fresh/newer/context changes covered; no financial/auth/SQL changes.
 Temporary failure diagnostic removed; original financial E2E assertions intact.
-Fresh ordered candidate gates required next. Productiona40/c944/138 unchanged;
+Productiona40/c944/138 unchanged;
 ContactA reserved/unreconciled, no Send/B/history replay. Duplicate02 isolated
 actualnotice/noEffects proof retained; not live acceptance. Private input intact.
 
@@ -13,7 +17,7 @@ actualnotice/noEffects proof retained; not live acceptance. Private input intact
 - [x] Preserve unrelated worktrees; assign bounded independent specialists.
 - [ ] Core Contact: two-label cap, normal verification, durable/outbox/provider evidence.
 - [x] Core product: actual authenticated isolated owned deletion and protected/CA/DENY refusals; no production deletion.
-- [ ] Core registration: creation/setup/login/used-link observed; duplicate notice uncaptured and original whole-flow guard incomplete.
+- [ ] Core registration: isolated creation/setup/login/used-link and corrected global duplicate notice/noEffects observed; original same-tenant notice/whole-flow guard and live acceptance not claimed.
 - [x] Residual UI: Dark hover and branch-address labels, rendered EN/AR/MS checks; production repetition pending.
 - [x] Issue12: actionable legitimate budget failure and unchanged accounting tests; no live allocation.
 - [x] Issue14: BranchAdmin lifecycle UI/direct boundary denial and native tests;139 deployment pending.
@@ -21,7 +25,7 @@ actualnotice/noEffects proof retained; not live acceptance. Private input intact
 - [ ] Issue8: shared live updates, reconnect/revoke/snapshot/fallback acceptance.
 - [x] Issue11: actual integration status and authorized setup checklist; controlled Slack activation inputs absent.
 - [x] Issue9: technical runbooks and rendered illustrated migration PDF; no host/cutover action.
-- [ ] Review combined source, preserve secrets and run exact changed-candidate gates.
+- [x] Review combined source, preserve secrets and run exact changed-candidate gates at eb65.
 - [ ] Protected release, exact deployed identity and real-browser acceptance.
 - [x] Current BLOCKED per-item evidence/report; external limitations named specifically, not task-completion acceptance.
 

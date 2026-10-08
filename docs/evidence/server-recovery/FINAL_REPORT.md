@@ -2,7 +2,7 @@
 
 Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
-## Current execution checkpoint — 2026-10-08 01:07 UTC
+## Current execution checkpoint — 2026-10-08 01:24 UTC
 
 **STATUS: IN PROGRESS — acceptance gaps remain; no new deployment.**
 
@@ -15,8 +15,32 @@ has been removed (recoverable in its2ae commit); the original direct-purchase
 E2E differs from6f only in its explanatory comment. Assertions, timeouts, retry0,
 project order and fresh standalone-server ownership are unchanged. No Cart SQL,
 domain result, accounting, price authority, authentication or role change.
-Fresh final-candidate release gates are now required; the earlier b7 build and
-two2ae full passes below do not certify the new application source.
+All required local gates now pass on exact application/test candidate
+`eb65ef3b7592f948f8835246dc572561366e5606`. Protected release is in progress;
+production acceptance remains pending. This report update changes documentation
+only, not the gated application/test source. Earlier b7/2ae results are history.
+
+| Final candidate gate | Exact eb65 result |
+| --- | --- |
+| Focused Cart/shopping |100 passed/seven files; old actual-component held-props regression fails at missing authority, then new source passes. |
+| Lint / typecheck |Both EXIT0. |
+| Unit / PGlite |1,914 passed/49 existing native-only skips;376 passed files/11 skipped. |
+| Native PostgreSQL |All49 native tests/11 files executed and passed;139 migrations/replay/forced RLS/grants/lifecycle verified. Production still138. |
+| Production build |EXIT0; both pg-cloudflare standalone files present. |
+| Standalone/runtime/assets |30,377 files/15 symlinks staged;two routes/two resources;35 assets/7,996,414 bytes and deployment invariants passed. Task-owned npm cache; unrelated default-cache failure not altered. |
+| Required original combined E2E |EXIT0,353 passed/19 existing intentional skips in7.0min; visitor recovery18 passed in16.8s. Fresh-owned standalone, original project/order/one-worker and local retry0. |
+| Diff / review / private input |Diff check passed, three source-scope reviews approved,112-file private-password scan0matches; credential input unchanged. |
+
+Full-browser log SHA256
+`d1a95b34e371d9b84459c82f42d761772cdd6861c4381c336a7e021e4457c538`;
+all four artifact directories preserved at
+`output/playwright-eb65ef3-final-green-01`. This is the required full changed-app
+run, not an isolated diagnostic pass. The49 skipped unit cases all passed in
+native PostgreSQL; the19 browser skips remain the original viewport/matrix or
+disabled opt-in cases, with no new skip/retry/assertion weakening. The old-source
+RED command selected one test with `-t`; its32 unselected cases are filter
+exclusions, not added intentional skips. Historical a40 CI retry remains below
+and does not certify this candidate.
 
 - Deterministic old-component render: exact6f CartReview loaded read-only from
   Git into the new held-props test reproduced STALE/quantity2/missing financial
@@ -40,8 +64,9 @@ two2ae full passes below do not certify the new application source.
   `output/playwright-2ae608c-combined-green-01`; log SHA256
   `e2f32aeb86b85aa2c1e68dcf8bd713321c85a77b06d390b30a5ed5a4c1786226`.
   This is a full combined result, not the earlier isolated probe. It does not
-  explain or retroactively repair the6f4 failure; root-cause investigation
-  continues before release. The failure-only attachment was not invoked on
+  explain or retroactively repair the6f4 failure. The controlled old-component
+  regression now proves the render defect; the precise internal scheduling
+  trigger remains unproven. The failure-only attachment was not invoked on
   this passing test.
 - Second bounded exact original combined reproduction also completed EXIT0:
   **353 passed / 19 existing intentional skips in6.8min; visitor18 passed in14.9s**.
@@ -64,11 +89,11 @@ two2ae full passes below do not certify the new application source.
   old typed STALE updated local Cart while review depended solely on a separately
   committed RSC workspace. The new optional authorized pair bridges that exact
   boundary. The internal scheduling trigger is not claimed as proven. Focused
-  regression passed; fresh final gates and actual production acceptance remain.
+  regression and required final local gates passed; actual production acceptance
+  and the internal scheduling trigger remain distinct evidence boundaries.
 - Changed-file lint/full typecheck at2ae and b7 unit/native/build/assets are
-  historical evidence, now invalidated for the application patch. Run the
-  required final-candidate gates in order; do not certify the new source with
-  unchanged-source reruns. Existing failures/retries/skips remain retained.
+  historical evidence, superseded by the fresh ordered eb65 gates above.
+  Existing failures/retries/skips remain retained.
 - Contact read-only checkpoint00:30:05Z: exact A/B and ALL submissions/outboxes
   since A reservation remain0; bounded fixed-category failure logs0; connected
   recipient Gmail exact-A search including Spam/Trash returned no IDs. No
@@ -113,9 +138,17 @@ two2ae full passes below do not certify the new application source.
   `a67e477d2c42a8537a8e5ecf5487a9b6714185532d99acdeb6ab87273cd8af34`
   and its no-submit marker are preserved. Exactly one negative submission total.
 
-No merge, candidate image, deployment or demo-ready claim follows solely from
-the green run. Contact submission/provider/delivery/receipt, cart causation and
-final ordinary-auth production rendering remain distinct open acceptance steps.
+Fresh pre-139 encrypted backup completed and its disposable restore proof
+passed at2026-10-08T01:23:31Z:240 tables/138 migrations/persistent files.
+Archive `/var/lib/axora-production/reset-backups/axora-reset-20261008T012322Z-a40a70bef310.tar.gpg`,
+ciphertext SHA256 `d55606fd7ccf1d92bfff79e66f00c4562240bef96729f1fe68ac5c56f1c7476e`.
+Installed/source backup controllers matched; no production restore/reset or
+host action. This is a verified local recovery point, not an off-device backup.
+
+Protected image/merge/deployment and final ordinary-auth production rendering
+remain pending. Contact submission/provider/delivery/receipt remain unproven;
+the pending Brave Send reconciliation cannot be replaced by green tests or
+healthy workers. No demo-ready or precise internal scheduling claim.
 Private sign-in input and unrelated worktrees remain intact; no host action.
 
 ## Historical checkpoint — 2026-10-07 23:55 UTC (superseded)

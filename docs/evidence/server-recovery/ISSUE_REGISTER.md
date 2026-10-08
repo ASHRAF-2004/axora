@@ -2,21 +2,22 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
-## Current checkpoint — 2026-10-08 01:07 UTC
+## Current checkpoint — 2026-10-08 01:24 UTC
 
-**IN PROGRESS: Cart recovery focused checks pass; final gates/acceptance remain.**
+**IN PROGRESS: final local gates pass; protected release/acceptance remain.**
 Production protected/deployed a40/c944/migration138 unchanged. New five-file
 application Cart recovery is independently approved and100focused checks pass.
 Temporary failure diagnostics removed; old2ae/b7 gates below are historical,
-not final-candidate certification. Original E2E assertions/configuration intact.
+not final-candidate certification. Exact new application/test SHAeb65ef3b7592f948f8835246dc572561366e5606 now passes all required local gates. Original E2E assertions/configuration intact.
 
 | Item | New evidence / remaining step |
 | --- | --- |
-| Required combined E2E / mobile stale Cart | Preserved original6f failure and two fresh2ae353PASS/19skip+visitor18PASS reruns remain separate. Deterministic exact-old-component held-props render now reproduces the actual missing financial authority/disabled Place state, log546b44e8…. New guarded known-STALE authorized-pair recovery passes100focused/sevenfiles, logf8a3cf3f…. Null/undefined absent-department shape and permanent recovery retirement/actor/company/branch/version/projection/draft/unknown locks covered; no forced enablement, math or permission change. Precise internal React/Next scheduling trigger unproven. All invalidated final application gates and original full suite now required before release. |
+| Required combined E2E / mobile stale Cart | Preserved original6f failure and two fresh2ae353PASS/19skip+visitor18PASS reruns remain separate. Deterministic exact-old-component held-props render now reproduces the actual missing financial authority/disabled Place state, log546b44e8…. New guarded known-STALE authorized-pair recovery passes100focused/sevenfiles, logf8a3cf3f…. Null/undefined absent-department shape and permanent recovery retirement/actor/company/branch/version/projection/draft/unknown locks covered; no forced enablement, math or permission change. Precise internal React/Next scheduling trigger unproven. All required final local application gates and the original combined suite passed at exact eb65; protected release and ordinary-auth production acceptance remain pending. |
 | Contact A |00:30:05Z A/B plus ALL since-reservation submissions/outboxes0, fixed failure-log events0, Gmail exact-A IDs empty; no provider ID to look up. Acount1/Bunused and historical holds preserved. Closed Chrome page/no enabled browser surface cannot establish prior Brave Send. Exact reconciliation question pending: verification only vs Send/result/time; do not retry yet. Native validation→Siteverify→schema/rate→atomic persistence/outbox→lease/attempt→provider→signed delivery→mailbox separately traced. Known600010/disabled Send is pre-submission evidence, not a demonstrated worker fault. |
 | Duplicate account |Actual corrected02 isolated b7/fdbd/139 check EXIT0: ONE normal Owner form POST303 → `/users?notice=user-account-exists`, visible EN catalog message captured; no duplicate/invitation/role/credential/sink/selected-finance/files changes, all7 guards/cleanup true. Proof7198ff685b08890534132edfbbd5815abe101d54e881e98cb072b4d2f1d297cd. Prior01 stopped before submit due wrong inactive-company visibility expectation; source125 and actual200/context/empty UI confirm existing policy, no widening. Original failed proofa67e… preserved. Isolated cross-scope acceptance only; original same-tenant/whole-continuation and live acceptance not claimed. |
-| Other gates |Prior2ae/b7 results retained as history; new app patch requires fresh ordered final gates. No retries/skips/assertions/order weakened. Two independent reviews approve exact final five-file slice;112-file private-password scan0matches/private input intact. |
+| Other gates |Exacteb65 lint/type/unit1914+49native-onlyskip/nativeALL49+139migrations/build/stage/runtime/assets/diff PASS. Required original combined353PASS/19existing skips7.0min+visitor18PASS16.8s EXIT0, logd1a95b34e371d9b84459c82f42d761772cdd6861c4381c336a7e021e4457c538, fourdirs retainedgreen archive. No retry/assertion/order/skip changes; old targetedRED32 filter exclusions are not new skips. Source reviews/password scan/input intact. |
 | Release / actual rendered production |Not merged/deployed. Existing fixes and unrelated worktrees preserved. Green automated checks alone do not establish remaining Contact or live workflow acceptance. |
+| Pre-139 backup |Fresh encrypted archive20261008T012322Z-a40a70bef310 verified01:23:31Z;240 tables/138 migrations/files and disposable restore proof. CipherSHA256d55606fd7ccf1d92bfff79e66f00c4562240bef96729f1fe68ac5c56f1c7476e. Local only; no off-device resilience or production restore claimed. |
 
 Details/evidence boundaries are in the current FINAL_REPORT. Older failures and
 all historical statuses below are preserved and superseded, not converted to passes.
