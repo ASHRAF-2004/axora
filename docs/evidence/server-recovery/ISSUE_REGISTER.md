@@ -2,7 +2,34 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
-## Current checkpoint — 2026-10-08 02:57 UTC
+## Current checkpoint — 2026-10-08 03:50 UTC
+
+**DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
+PR220 merged d82a3bb4785e6ba7b7e4e7ec125636a6368f699f; production same SHA,
+OCIbc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8,
+schema139/sealed checksums match/health PASS. Tested exact0040 tree equals
+mergedd82. Protected image37720646333 and Nightly37720771405 PASS; exactmain
+image/deploy37722734699 PASS. Matching ledger skipped backup/migration runner
+per policy; previousc3 retained. No host action or business data removal.
+
+| Item | Final evidence / precise remaining boundary |
+| --- | --- |
+| Required stale Cart | Old combined failure/held-props authority RED retained; guarded authorized recovery deployedc3 and preservedd82. Focused100 and final original combined suites pass; currentCI mobile/direct-Cart cases pass. No isolated-only clearance or financial change. |
+| Contact reflow / UI1–6 | Six scoped CSS lines, original six tests stronger rather than weakened; old20px RED/new local6/full353+19/visitor18 PASS. Actuald82 both-theme/mobile setup tabs and Wallet contrast/focus, branch single action/distinct labels/aligned budgets, reviewed logo, product groups/loaded gallery and company-correct Wallet refresh/direct/history pass. AR RTL/MS rendered labels fit. |
+| Final release gates | Unit1915PASS/49native-only skip; native49/all139/RLS/lifecycle/grants; lint/type/build/stage/runtime/assets PASS. FullCI352PASS/19existing skip/ONE existing galleryretry-pass +visitor18PASS, not353clean. No retries/order/projects/assertions/skips weakened. |
+| Gallery diagnostic | Existing CI initial upload response<400 then gallery0/2 repeated, retryPASS. Exact failing multipart/action/Flight/server-image/DOM evidence unavailable; artifact upload skipped on green/flaky result. Cause unproven, no speculative patch. Prior d8 gallery/branch failures preserved; currentfoundation retries0 PASS does not prove prior cause. |
+| Live Contact A |03:35:40Z A/B and ALL since-reservation persisted submissions/outboxes0; historical8 holds/attempts/queues/controls unchanged. Configured notification recipient matches connected Gmail;03:36:04 exact-A anywhere0. No provider ID/lookup; acceptance/signed delivery/mailbox receipt each UNPROVEN. Passive actual newCSS loaded/200/no overflow/no natural feedback, no fields/reset/Submit. |
+| Contact exact affected pause | Prior Brave verification-only versus Send/result/approximate time is missing. Do not submit again yet. A conservatively counts1/Bunused/limit2; no resend/historical replay. No enquiry means no worker job, not proof that no prior POST reached validation. |
+| Designated duplicate live |ONE prior Owner/ado normal POST→account-exists/all4 no-effects guards PASS; original checkerEXIT1 retained; later GET captures actual canonical notice. No second POST/no duplicate. Cross-scope evidence, not same-tenant/whole-continuation certification. |
+| Registration/product isolation |Actual isolated valid setup/login/used-link and owned deletion/audit/refusals retained separately; no production account creation/product/history deletion. Original incomplete whole-flow guard limits retained. |
+| Actual d82 roles |CA current canonical scope verified; chooser/selectedShopping/existingCart/Budgets/Wallet200. Pre/post exact owned company carts/items/events/authority unchanged, fingerprintsRAM-only. BA retained metadata/four groups/single address/no lifecycle controls; Driver portal/navigation390px fit. No purchasing/funding/claim/location actions. Actual CAM/second Driver not supplied. |
+| Other authorized items8–14 |Bounded shared-live/RUM proof, invitation UI, truthful integrations/checklist, typed budget refusal, aligned keyboard-scroll table,139 BA ceiling and12-page guide/runbooks delivered. Slack app/workspace/channel/private inputs, off-device destination/future host and live negative-state fixtures are specific external dependencies, not optional-enhancement core blockers. Host restart prohibited. |
+
+Full evidence and hashes are in the current FINAL_REPORT. Failure logs and
+initial loading captures are retained; final ready states alone count as live
+acceptance. Private input/unrelated worktrees preserved; no demo-ready claim.
+
+## Historical checkpoint — 2026-10-08 02:57 UTC (superseded)
 
 **BLOCKED FOLLOW-UP RELEASE / CONTACT ACCEPTANCE. Not demo-ready.**
 PR220 exactd8 protected image CI37718133500 PASS; Nightly37718133148 FAILED.
@@ -22,6 +49,14 @@ Production remains c3/24f/schema139; previous repairs and data preserved.
 
 Continue independent diagnosis; neither a passing local run nor healthy workers
 overrides failed required CI or missing Contact acceptance.
+
+Continuation03:10UTC: exact0040beb failure-retention/invariant head has protected
+imageCI37720646333 PASS; Nightly37720771405 still RUNNING, all pre-build quality
+stages green. Productfocused1PASS58.3s and foundationfocused1PASS10s in fresh
+CI=true/process-only2CPU demo diagnostics; neither explains/clears combinedfail.
+No speculative app patch; neither failed route mounts shared-live refresh.
+Contact fresh03:06 A/B+all recent0/held8unchanged/GmailAanywhere0; no Send/provider
+lookup, A1/Bunused. Required CI and human reconciliation remain distinct.
 
 ## Historical checkpoint — 2026-10-08 02:25 UTC (superseded)
 

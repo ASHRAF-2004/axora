@@ -1,6 +1,32 @@
 # Recovery execution checkpoints
 
-Latest02:57UTC: PR220 exactd8 imageCI PASS, Nightly37718133148 FAILED350/19skip/
+Latest03:50UTC: PR220 squashmergedd82a3bb/protectedmain+production same;
+OCIbc8c2933/schema139/checksums/health PASS. Exact0040 tree equals merge;
+imageCI+Nightlygreen: unit1915/native49/all139/lint/type/build/stage/runtime,
+full352PASS+19existing skips+ONE existinggalleryretry-pass/visitor18PASS.
+Not clean353; old d8 failures/gallerycause-unproven preserved, failure-artifact
+upload skipped on green/flaky. No speculative patch or test weakening.
+Actual newrelease OwnerbothThemes/390px/AR RTL/MS/sixUI/loadedlogos+gallery/
+correctWalletrefresh-direct-history PASS. CA validexistingCart before/after
+allownedcompany carts/items/events/authorityunchanged; Shopping/Budgets/Wallet,
+BAmetadata/no lifecycle and Driverportal readsmokes PASS. Initial loading
+captures excluded; OwnerENLight restored/allownedbrowsers closed.
+Contact03:35 A/B+ALLrecent0/held8unchanged; recipientbinding matchesGmail/
+03:36exactAanywhere0. A1/Bunused/no Send/providerlookup/historyreplay.
+Exact humanpause: priorBrave verification-only versus Send/result/time;
+do notsubmitagainyet. Optional activation/resilience/rolefixturedependencies
+named in reports, not core blockers; no hostrestart, privateinput/trees intact.
+
+Historical03:10UTC: exact0040beb failure-artifact retention/invariant committed;
+imageCI37720646333 PASS/Nightly37720771405 RUNNING, nonbrowser gates green sofar.
+ONE focusedproductPASS58.3s/ONE foundationPASS10s (freshCI=true/taskset0,1,
+not identicalGitHubrunner), no application patch or combinedcauseclaim. Initial
+foundationCLInotests logpreserved; no productrawloghashinvented. Both3100closed.
+Sharedlivehypothesis unsupported: neitherfailingroute mountsSync. Contact03:06
+freshA/B+allrecent0/held8unchanged/GmailA0; A1/Bunused/no send/providerlookup.
+No merge/deploy; requiredcombinedCI and priorBrave reconciliation remain.
+
+Historical02:57UTC: PR220 exactd8 imageCI PASS, Nightly37718133148 FAILED350/19skip/
 1existing-retry Ownercompanyflake +2mobilefailures. Foundation fails branch-create
 URL at123 BEFORE budget; product uploadresponse<400 but gallery0instead2 at150
 bothattempts. Contact6 and directCart casesPASS. VisitorNOTRUN. No merge/deploy;
@@ -60,7 +86,7 @@ actualnotice/noEffects proof retained; not live acceptance. Private input intact
 - [x] Issue11: actual integration status and authorized setup checklist; controlled Slack activation inputs absent.
 - [x] Issue9: technical runbooks and rendered illustrated migration PDF; no host/cutover action.
 - [x] Review combined source, preserve secrets and run exact changed-candidate gates at eb65 and scoped follow-up f09.
-- [ ] Follow-up protected image/exact Nightly, deployment identity and actual browser check; existing PR219 c3 release and six-UI acceptance complete.
+- [x] Follow-up protected image/exact Nightly, merged immutable deployment identity and actual d82 browser/role checks; existing PR219 c3 repairs preserved. Gallery retry remains disclosed/unproven, not a first-attempt clean claim.
 - [x] Current BLOCKED per-item evidence/report; external limitations named specifically, not task-completion acceptance.
 
 Checkpoint00:54UTC: second originalcombined2ae353PASS19skip6.8min +visitor18PASS
