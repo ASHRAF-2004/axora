@@ -2,7 +2,28 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
-## Current checkpoint — 2026-10-08 03:50 UTC
+## Current acceptance checkpoint — 2026-10-08 10:09 UTC
+
+**DEPLOYED / CORE ACCEPTANCE PASSED. Contact receipt now independently evidenced
+and explicitly confirmed by the user.** Production d82/OCIbc8/schema139 and
+required gates below remain unchanged; repository edits are report-only, while
+the authorized B created the documented Contact/email records.
+
+| Item | Current evidence / remaining boundary |
+| --- | --- |
+| A reconciliation / cap | Fresh preflight A/B0/no queued/due/in-flight send; all8 historical Infinity holds untouched. A remains unproven/count1. New explicit B authority used exactlyONCE; B1, countedtotal2. No A/B retry, historical release or more Contact sends permitted. |
+| Native Brave submission | Existing user Brave, one new public tab, actual desktop cursor/keyboard, normal verification visibly passed without CAPTCHA interaction. One Send at10:03:39.089UTC/18:03:39Malaysia; success banner captured. Separate sandbox/600010 preparatory windows generated0POST; no security bypass. |
+| Durable request / outbox | Enquiry7378a4d9-7444-44e5-8ba4-84899a6f4f75 created10:03:39.224Z; outbox81857ccc-87fd-45b0-9f9d-8392f54175e3 SENT10:03:49.607496Z; attempt1/accepted1/providerIDs1. Enquiry is the request-record ID, not an unrecorded browser request ID. |
+| Provider / delivery | Provider01a11af8-1832-70f3-901a-e80fee949b45; one submitted event and signature-verifying-ingestion delivery event10:03:51.633Z. Root's ONE read-only boundGET200/ID+subject+recipient match/last_event delivered. Original raw POST response not captured; no invented HTTP code. |
+| Actual mailbox | Userconfirmed, then authorized metadata-only Gmailread: exact B+subject returnsONE message1a11af8219b1b180 inInbox/notSpamTrash, received10:03:50UTC; Bsnippet/subject/To/Delivered-To match. No body/attachments/othermailread or mailbox mutation. |
+| Preserved core checks | Original required full suites/Cart fix/UI6/real-role readsmokes/live duplicate refusal and separately isolated setup/deletion remain as documented. No app/test change, gate weakening or expensive full repeat. |
+| Remaining limitations | Prior A/manual path, gallery first-failure artifacts/cause, isolated whole-flow guard and specifically absent roles/negative fixtures/external activation or future-host inputs remain disclosed. They are not new core Contact blockers or claimed completed work. |
+
+Subject: **New Axora website enquiry**; body reference
+**AXORA-RECOVERY-20261008-B**. Complete stage evidence/hashes in FINAL_REPORT.
+Private credentials/trees preserved; no real data deletion or computer restart.
+
+## Historical checkpoint — 2026-10-08 03:50 UTC (superseded)
 
 **DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
 PR220 merged d82a3bb4785e6ba7b7e4e7ec125636a6368f699f; production same SHA,

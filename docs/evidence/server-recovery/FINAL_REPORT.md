@@ -2,7 +2,103 @@
 
 Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
-## Current execution checkpoint — 2026-10-08 03:50 UTC
+## Current acceptance checkpoint — 2026-10-08 10:09 UTC
+
+**STATUS: DEPLOYED. Core recovery acceptance passed, including actual Contact
+mailbox receipt.** The previous Contact pause below is superseded by the new
+explicit authorization for one controlled B and the evidence here; A's earlier
+manual Send/result remains unproven, not retrospectively rewritten.
+
+Production remains `d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`, immutable
+OCI `bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8`,
+migration139. The exact0040 tested/deployed-tree equivalence, required green
+gates, actual six-UI/role checks, stale-Cart repair, bounded live duplicate
+refusal and distinctly isolated registration/product-deletion evidence below
+remain valid. Repository source changes in this continuation are report-only;
+the authorized B created the documented Contact/email records and private
+evidence. No application/test/config/migration code changed; no costly full suite was invalidated
+or rerun. The gallery retry remains disclosed/unproven, not relabelled fixed.
+
+### Contact A reconciliation and one controlled B
+
+Fresh09:42 and09:56 READ ONLY checks found no A/B or other recent persisted
+Contact submission, notification/outbox/provider ID, due send or active lease.
+Current-container redacted failure logs had0 matching events, but cannot
+reconstruct logs before the03:31 container replacement. A conservatively
+continued to count1; its absence did not restore the two-smoke allowance.
+All eight historical jobs remained PENDING/Infinity/attempt0/no lease/provider.
+The configured notification destination matched the requested recipient.
+
+The computer-use inventory exposed no surfaces, and the pre-existing Brave
+windows had no accessible debugging connection. A separate Brave launch failed
+sandbox configuration before opening Contact; the supported Snap test window
+opened but Cloudflare600010 disabled Send. It generated0 Contact POSTs/no send
+reservation and was later closed with its exact owned child exit confirmed;
+private0700 profiles were retained, not exported. No sandbox/fingerprint/UA
+control, test verification key, callback, CAPTCHA click or security bypass was
+used. Neither failed preparatory approach was a Contact submission.
+
+At the user's explicit request to control the existing open Brave with the
+cursor, the supported desktop fallback focused only window31457284/PID967564
+and opened a new public Contact tab without changing existing tabs. Normal
+verification visibly succeeded without any CAPTCHA interaction. The actual
+desktop cursor/keyboard filled fixed B name/message, the requested email,
+published Axora phone and privacy consent. A private form-only screenshot
+verified those fields, consent and verification success before Send.
+
+The fresh10:02:10Z pre-click snapshot again verified exact A/B0, idle queues and
+unchanged historical holds. The two-slot ledger and shared exclusive/fsynced
+latch were written before ONE physical Send-button click at10:03:39.089Z
+(18:03:39.089 Asia/Kuala_Lumpur, UTC+08:00). No retries, A replay, B replay,
+historical release or additional message send. Total counted slots are now2.
+The preparatory03 attach-only helper was never run.
+
+### Separately proven delivery stages
+
+| Stage | Actual B evidence |
+| --- | --- |
+| Visible submission result | Existing Brave showed “Thank you! Your enquiry has been recorded and Axora will follow up.” Fields reset; success banner captured. |
+| Persisted request/enquiry | `7378a4d9-7444-44e5-8ba4-84899a6f4f75`, created `2026-10-08T10:03:39.224Z`; exactlyONE B, notification state NOTIFIED. |
+| Notification outbox | `81857ccc-87fd-45b0-9f9d-8392f54175e3`; SENT `10:03:49.607496Z`; one attempt row/accepted attempt/distinct accepted provider ID, no lease. No acknowledgement outbox; CANCELLED acknowledgement preserves existing behavior. |
+| Provider acceptance | Recorded provider ID `01a11af8-1832-70f3-901a-e80fee949b45` and one accepted attempt/MESSAGE_SUBMITTED event. Raw POST response was not recorded; no invented original HTTP code/body. |
+| Provider read-only response | ONE bound [Resend GET](https://resend.com/docs/api-reference/emails/retrieve-email) at `10:05:34.973Z`: HTTP200, matching ID/subject/recipient, `last_event: delivered`. No send/list/replay or provider retry. |
+| Delivery event | ONE stored MESSAGE_DELIVERED event at `10:03:51.633Z`; the ingestion route verifies the Svix raw-body signature before normalization/persistence. Signature-verifying source path and actual event are evidence, not a newly fabricated payload or reverified saved raw signature. |
+| Actual mailbox receipt | User explicitly confirmed receipt. With the user's further permission, Gmail's matching-recipient profile and exact B+subject search returned ONE message `1a11af8219b1b180`; metadata places it in INBOX, not Spam/Trash, received `10:03:50Z` /18:03:50 Malaysia. Subject/To/Delivered-To match; B reference is in the snippet. No full MIME body/attachment/unrelated mail was fetched, and no mailbox mutation. |
+
+Subject: **New Axora website enquiry**. Body/name reference:
+**AXORA-RECOVERY-20261008-B**. Enquiry UUID above is the persisted request-record
+ID, not an invented browser transport/Cloudflare request ID. Browser POST
+headers/body/transport ID were not captured in the ordinary native window;
+the visible result and exact durable/provider/mailbox correlation are captured.
+
+Post-send READ ONLY comparison found all eight historical job guard records
+identical to preflight, excluding observation time; A0 and exactlyONE new B/
+notification1. Queue/agent-control/suppression state remained unchanged. These
+are point-in-time acceptance proofs, not a guarantee of future exactly-once
+delivery. No real product/history deletion, financial transaction, role change,
+service/container restart or host shutdown/reboot/restart occurred in this pass.
+The private credential input and unrelated working trees remain intact.
+
+Private evidence SHA256: pre-click `702667f66f30c0d00bedb25ff6d48c519bd9991e91bff77720d7c639aeeeda57`;
+shared/native latch `fac7f4efe7789a4243bfc65217b35c60e7acc56a761ed7d98a15d64b25f19436`;
+prepared/result images `02501b64ed1d8729581b51d78d86f0351829f9cebbe7c6820404e7ea6f24c358` /
+`1b82c06a900546bc77784ff60c3c13ee4e8916111a7f9dac1c6d5e30fb9d77b5`;
+post-send metadata `8b8a9d3a7de6a86360e324515c1ceaf3d43202a49bb63e8f4c3a733d4a29bd48`;
+provider response `b0b9f1779364fca34cec88b1216e88aa4f628172d635e560adf8c33cb8179731`;
+Gmail projection `f6f071a202ece114c62fcdc56184b1bed680cf6cb96c009e7ab844ec77d187dc`.
+Files remain private/outside Git; no credential or verification token was read,
+printed or included in exported evidence logs/reports/images. Private browser
+profiles are retained browser data, not exported evidence. The existing user's
+Brave/new success tab remains
+available; only root-owned separate test processes were closed.
+
+No remaining core Contact input is needed. Actual CAM/second Driver/live
+negative-state fixtures, controlled Slack activation inputs, off-device/future-
+host access, original isolated whole-flow limitations and missing first-failure
+gallery artifacts remain the precise previously documented boundaries—not
+completed enhancements, core blockers or silently deferred authorized changes.
+
+## Historical execution checkpoint — 2026-10-08 03:50 UTC (superseded)
 
 **STATUS: DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
 

@@ -1,6 +1,19 @@
 # Recovery execution checkpoints
 
-Latest03:50UTC: PR220 squashmergedd82a3bb/protectedmain+production same;
+Latest10:09UTC: Contact B closed end-to-end. Newexplicit ONEB authorization,
+fresh nativepreclickA/B0/idlequeues/8holds unchanged, existingBrave newpublictab
+normalverification(noCaptchaClick), oneactualcursorSend10:03:39.089UTC/MY18:03:39.
+Successbanner/enquiry7378a4d9/outbox81857ccc/SENTattempt1/provider01a11af8,
+signed-ingestiondelivered10:03:51.633, ONEboundGET200/delivered; userreceiptconfirmed.
+Authorizedmetadata-onlyGmail exactB+subjectONEInboxmessage1a11af8219b1b180,
+received10:03:50UTC/To+DeliveredTo+snippetmatch. No fullMIMEbody/attachment/othermail
+read ormailmutation. Acount1+B1 total2; nofurtherSend/retry/replay/historyrelease.
+Separate failedsandbox/600010 preparation0POST; nosecuritybypass. Private test
+childclosedconfirmed, userBrave+success tab remains. Reportsupdated/source/runtime
+d82/OCIbc8/139 unchanged; noapp/testgate invalidation. Gallerydiagnostic and
+specificexternal/rolefixture/whole-flow boundaries retained, not core blockers.
+
+Historical03:50UTC: PR220 squashmergedd82a3bb/protectedmain+production same;
 OCIbc8c2933/schema139/checksums/health PASS. Exact0040 tree equals merge;
 imageCI+Nightlygreen: unit1915/native49/all139/lint/type/build/stage/runtime,
 full352PASS+19existing skips+ONE existinggalleryretry-pass/visitor18PASS.
@@ -75,7 +88,7 @@ actualnotice/noEffects proof retained; not live acceptance. Private input intact
 
 - [x] Read final report/register and verify current protected/deployed baseline.
 - [x] Preserve unrelated worktrees; assign bounded independent specialists.
-- [ ] Core Contact: two-label cap, normal verification, durable/outbox/provider evidence.
+- [x] Core Contact: A conservatively counted1, one nativeBrave B submission, durable/outbox/one acceptedprovider/delivery evidence, user-confirmed and independent metadata-only GmailInbox receipt; cap2 consumed/no retry or historical release.
 - [x] Core product: actual authenticated isolated owned deletion and protected/CA/DENY refusals; no production deletion.
 - [x] Core registration evidence: isolated creation/setup/login/used-link plus ONE live cross-scope refusal/no-effects and later visible GET notice; original failed checker/same-tenant/whole-flow boundaries retained.
 - [x] Residual UI: Dark hover and branch-address labels, rendered EN/AR/MS checks and actual c3 production both-theme/mobile acceptance.
@@ -87,7 +100,7 @@ actualnotice/noEffects proof retained; not live acceptance. Private input intact
 - [x] Issue9: technical runbooks and rendered illustrated migration PDF; no host/cutover action.
 - [x] Review combined source, preserve secrets and run exact changed-candidate gates at eb65 and scoped follow-up f09.
 - [x] Follow-up protected image/exact Nightly, merged immutable deployment identity and actual d82 browser/role checks; existing PR219 c3 repairs preserved. Gallery retry remains disclosed/unproven, not a first-attempt clean claim.
-- [x] Current BLOCKED per-item evidence/report; external limitations named specifically, not task-completion acceptance.
+- [x] Current per-item acceptance evidence/report; Contact pause superseded by actual receipt, external limitations named specifically and gallery retry/isolated boundaries preserved.
 
 Checkpoint00:54UTC: second originalcombined2ae353PASS19skip6.8min +visitor18PASS
 14.9s EXIT0/no retry, archivedgreen02/logee9c740a… . Originalfailure retained;
