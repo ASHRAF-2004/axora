@@ -350,6 +350,7 @@ export async function createProductAction(
   } catch (error) {
     return { status: "error", message: validationMessage(error) };
   }
+  let notice = canManageCommercialPricing ? "product-created" : "product-draft-created";
   if (preparedImages.length) {
     try {
       await savePreparedProductImages({
@@ -358,18 +359,14 @@ export async function createProductAction(
         altText: readFormText(formData, "imageAltText"),
       }, user);
     } catch {
-      revalidateProduct(productId);
-      return {
-        status: "success",
-        redirectTo: `/products/${productId}/edit?notice=product-created-image-retry`,
-      };
+      notice = "product-created-image-retry";
     }
   }
   revalidateProduct(productId);
-  return {
-    status: "success",
-    redirectTo: `/products/${productId}/edit?notice=${canManageCommercialPricing ? "product-created" : "product-draft-created"}`,
-  };
+  // Let Next complete the mutation and navigation in one Server Action. A
+  // returned success state followed by a client effect can leave creation
+  // committed while the create form remains pending on the original route.
+  redirect(`/products/${productId}/edit?notice=${notice}`);
 }
 
 export async function updateProductAction(
@@ -416,8 +413,9 @@ export async function addProductImagesAction(productId: string, formData: FormDa
   const user = await requirePermission("manage_catalog");
   const selectedFiles = files(formData, "images");
   if (!selectedFiles.length) redirect(`/products/${productId}/edit?notice=product-image-required`);
-  await saveProductImages({ productId, files: selectedFiles, altText: readFormText(formData, "imageAltText") }, user);
+  const [uploadedImage] = await saveProductImages({ productId, files: selectedFiles, altText: readFormText(formData, "imageAltText") }, user);
   revalidateProduct(productId);
+  redirect(`/products/${productId}/edit?notice=product-images-updated&uploaded=${encodeURIComponent(uploadedImage.id)}`);
 }
 
 export async function setPrimaryProductImageAction(productId: string, imageId: string) {

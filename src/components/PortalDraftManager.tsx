@@ -2,6 +2,8 @@
 
 import {
   createStoredFormDraft,
+  clearSubmittedFormDraft,
+  createFormDraftSaveQueue,
   FORM_DRAFT_PREFIX,
   formDraftStorageKey,
   isDraftableFormMethod,
@@ -95,18 +97,26 @@ export function PortalDraftManager({
   useEffect(() => {
     const storage = window.sessionStorage;
     const registered = new WeakSet<HTMLFormElement>();
-    const timers = new WeakMap<HTMLFormElement, number>();
+    let disposed = false;
     const keyFor = (form: HTMLFormElement) => formDraftStorageKey({
       ...routeContext,
       formId: formIdentifier(form),
     });
     const save = (form: HTMLFormElement, submitted = false) => {
+      if (disposed) return;
+      writes.cancel(form);
       if (form.dataset.draftIgnore === "true" || controls(form).length === 0) return;
       const key = keyFor(form);
       const content = collect(form);
       storage.setItem(key, JSON.stringify(createStoredFormDraft(content.fields, content.fileFields, { submitted })));
     };
+    const writes = createFormDraftSaveQueue(
+      (form: HTMLFormElement) => save(form),
+      { schedule: (callback, delay) => window.setTimeout(callback, delay), cancel: (timer) => window.clearTimeout(timer) },
+    );
     const clear = (form: HTMLFormElement) => {
+      if (disposed) return;
+      writes.cancel(form);
       const key = keyFor(form);
       storage.removeItem(key);
     };
@@ -119,11 +129,7 @@ export function PortalDraftManager({
       const draft = parseStoredFormDraft(raw);
       if (raw && !draft) storage.removeItem(key);
       if (draft) restore(form, draft);
-      form.addEventListener("input", () => {
-        const prior = timers.get(form);
-        if (prior) window.clearTimeout(prior);
-        timers.set(form, window.setTimeout(() => save(form), 300));
-      });
+      form.addEventListener("input", () => writes.schedule(form));
       form.addEventListener("change", () => save(form));
       form.addEventListener("submit", () => save(form, true));
       form.addEventListener("reset", () => clear(form));
@@ -140,7 +146,13 @@ export function PortalDraftManager({
     const observer = new MutationObserver(registerAll);
     observer.observe(document.body, { childList: true, subtree: true });
     const outcome = (event: Event) => {
-      const detail = (event as CustomEvent<{ outcome?: string; formId?: string }>).detail;
+      const detail = (event as CustomEvent<{
+        outcome?: string; formId?: string; completedForm?: unknown;
+      }>).detail;
+      if (detail && typeof detail === "object" && "completedForm" in detail) {
+        if (detail.outcome === "success") clearSubmittedFormDraft(storage, routeContext, detail.completedForm);
+        return;
+      }
       document.querySelectorAll<HTMLFormElement>("form").forEach((form) => {
         if (detail?.formId && formIdentifier(form) !== detail.formId) return;
         const key = keyFor(form);
@@ -152,6 +164,8 @@ export function PortalDraftManager({
     };
     window.addEventListener("axora:form-action-outcome", outcome);
     return () => {
+      disposed = true;
+      writes.dispose();
       observer.disconnect();
       window.removeEventListener("axora:form-action-outcome", outcome);
     };

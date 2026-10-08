@@ -4,6 +4,7 @@ import { useUxFeedback } from "@/components/UxFeedbackProvider";
 import { clearRequestCart } from "@/lib/request-cart";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
+import type { CompletedFormDraft } from "@/lib/form-drafts";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 
@@ -112,6 +113,22 @@ const localizedUserCreationNotices: Record<
   },
 };
 
+const productCompletionNotices = new Set([
+  "product-created", "product-draft-created", "product-created-image-retry", "product-images-updated",
+]);
+
+export function completedProductActionForm(
+  pathname: string,
+  notice: string,
+): CompletedFormDraft | undefined {
+  if (/^\/products\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/edit$/i.test(pathname)
+    && productCompletionNotices.has(notice)) {
+    return notice === "product-images-updated"
+      ? { route: pathname, formId: "product-image-upload" }
+      : { route: "/products/new", formId: "create-product" };
+  }
+}
+
 export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }) {
   const { notify } = useUxFeedback();
   const searchParams = useSearchParams();
@@ -136,11 +153,17 @@ export function NavigationNotice({ locale = "en" }: { locale?: SupportedLocale }
       clearRequestCart();
     }
 
+    const completedForm = completedProductActionForm(window.location.pathname, notice);
     if (feedback) {
       const tone = feedback.tone ?? "success";
       notify(feedback.message, tone);
+    }
+    if (feedback || completedForm) {
       window.dispatchEvent(new CustomEvent("axora:form-action-outcome", {
-        detail: { outcome: tone === "success" ? "success" : "error" },
+        detail: {
+          outcome: completedForm || (feedback?.tone ?? "success") === "success" ? "success" : "error",
+          ...(productCompletionNotices.has(notice) ? { completedForm } : {}),
+        },
       }));
     }
 

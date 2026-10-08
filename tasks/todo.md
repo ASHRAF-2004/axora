@@ -12,6 +12,23 @@
 - [ ] Record exact tested candidate; obtain explicit merge/deploy approval
   before production release. Earlier required gates remain historical evidence.
 
+## Separately scoped product action completion — 2026-10-09 MY
+
+- [x] Retain actual first-failure response/render traces; do not clear gallery
+  instability because existing retries pass.
+- [x] Implement native creation/upload success completion without domain,
+  permission, commercial-input or unrelated mutation changes.
+- [x] Protect scoped submitted-draft completion, unsubmitted/error/other-form
+  retention and disposed/debounced writes; localized honest feedback.
+- [ ] Resolve independent review, run final focused/current-candidate gates
+  and actual first/repeated upload, return-new and local-error browser checks.
+- [ ] Original required suite passes without weakening tests; exact-head
+  protected CI, explicit release approval and actual production acceptance.
+
+Public chooser PR221 remains separate. Neither this candidate nor healthy
+workers can close original registration/deletion integrity/live-fixture gaps.
+Contact cap2 remains closed; private credentials/history/other trees preserved.
+
 ## Final closure audit — 2026-10-08
 
 - [x] Map all six original registration/setup criteria to exact isolated/native/

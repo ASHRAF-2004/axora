@@ -22,6 +22,36 @@ counters; the Arabic chooser title is “أيُّ فريق تختار؟”.
    merge/deploy approval is required by the latest repository instruction;
    no production mutation is part of this implementation slice.
 
+## Product action completion — separately scoped continuation, 2026-10-09 MY
+
+The original required suite now preserves actual initial gallery and creation
+failures despite complete valid responses; existing retries are not a repair.
+The precise internal framework scheduling cause is unproven. This candidate
+uses supported native Server Action redirects at those two successful mutation
+boundaries only. Catalog authorization, commercial inputs, validation,
+persistence, image limits and all other mutation actions stay unchanged.
+
+1. Preserve original traces and assertions. Redirect successful creation to
+   the same product UUID editor/notices; keep validation/storage errors local
+   and the already-created/image-retry distinction honest.
+2. Redirect successful image upload to the same editor, with an actual newly
+   saved image UUID reference for repeated completions; localize success and
+   partial-creation feedback in EN/AR/MS.
+3. Clear only the submitted completed source form's current-user/assignment-
+   scope draft. Preserve other editor/caption, unsubmitted and error drafts;
+   cancel disposed/debounced old writes. Product policy remains in its owning
+   notice layer, not the generic draft/storage helper.
+4. Independent source review, focused action/draft tests, actual first and
+   repeated uploads/error recovery/return-to-new browser checks, then ordered
+   final application gates and the original full suite without weaker assertions,
+   new retries/skips, changed order or reused standalone state. No speculative
+   framework update or DB migration. Production acceptance and explicit
+   release approval remain required; no local-only demo-ready claim.
+
+This worktree is separate from public chooser PR221 and must not alter its
+already-tested candidate. Contact cap2 and the failed current03 audit guard
+are unaffected; no invitation replay, data deletion, service/host action.
+
 Baseline: protected main/deployed a40a70bef3104d7e08959dfdc6e55a36ba6beb31,
 OCI sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2,
 migration138. Earlier evidence and dirty worktrees remain intact.
