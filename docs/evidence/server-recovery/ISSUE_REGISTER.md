@@ -2,7 +2,58 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
-## Current checkpoint — 2026-10-08 01:24 UTC
+## Current checkpoint — 2026-10-08 02:25 UTC
+
+**DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
+Production c3/OCI24f/schema139 remains unchanged. Scoped follow-up source
+f09ecd3f90213a7bc0ec03e37717f65ebd357329 now passes all local required gates:
+lint/typecheck/unit1914+49 native-only skips/native49+139 migrations/build/
+stage/runtime/assets/original combined353+19 existing skips/visitor18, retry0.
+Protected image CI and exact-branch Nightly are the next release gates.
+
+| Item | Current evidence / exact remaining boundary |
+| --- | --- |
+| Mobile stale Cart | Original full failure and deterministic old-component authority-mismatch RED retained; guarded recovery passes focused100 and both final eb65/f09 original combined suites. No semantic/pricing/permission change. Precise internal scheduling trigger unproven. |
+| Contact responsive gate | Old actual-render20px Malay overflow reproduced with wider fallback; strengthened original six tests RED5/1 then GREEN6. Six scoped wrapping CSS lines, no clipping/verification/test weakening. Final full f09 local gate353/19+18 PASS; exact CI pending. Failed c3 Nightly remains failed. |
+| Contact A live | A/B/all recent persisted enquiries/outboxes0; no provider ID; connected Gmail exact-A anywhere empty. Acceptance/delivery/receipt NOT proven. A counts1/B unused. Exact human prerequisite: prior Brave verification-only versus Send, result/time; do not submit again yet. No resend/historical replay. |
+| Designated duplicate live | ONE actual normal Owner submission reaches /users?notice=user-account-exists; all four no-effect guards/cleanup PASS. Original notice checker EXIT1 retained. Later GET-only revisit captures actual canonical visible alert; no second POST. Live cross-scope evidence only, not original same-tenant/whole-continuation certification. |
+| Registration/product boundaries | Actual valid invitation/setup/login/used-link and eligible owned product deletion/audit/refresh/refusals remain isolated proofs; no real product/business history deletion. Live disposable product designation and original whole-flow proof absent. |
+| Shared live | Fresh65s bounded snapshots/peak1/no legacy/stream-poll/reconnect/expiry PASS. Actual two automatic POSTs are Cloudflare RUM (cancelled/204), application-or-unknown0. Original broad failure retained, no zero-HTTP-POST claim. Actual field retention and automated changed-hint dirty guard distinguished. |
+| Six UI / roles / optional items | Actual c3 six UI both-theme/mobile and Owner/CA/BA/Driver read acceptance remains valid; app unchanged except scoped Contact feedback. No live absent-logo/absent-Wallet fixture, no actual CAM/second Driver, no fabricated session. Truthful integrations/guide delivered; Slack activation inputs, off-device destination/future host access are separate dependencies, not core UI blockers. |
+| Release/safety | Existing PR219 deploy/backups healthy; follow-up local candidate green and source independently reviewed. Private credential input/unrelated worktrees/artifacts retained; no host restart, real destructive data or extra email action. |
+
+Final report includes exact proof hashes, failed attempts and per-item limitations.
+Required live Contact acceptance is not replaced by healthy services or tests.
+
+## Historical checkpoint — 2026-10-08 02:04 UTC (superseded)
+
+**DEPLOYED REPAIRS / BLOCKED FINAL ACCEPTANCE. Not demo-ready.**
+PR219 merged/deployedc3cd1b248709c8f74b3260b6d0b0c742d8ac0eec,
+OCI24f893b439b1ef00835cc8a5a7bdeefe69c6668b24274b3f121cdc12d2d4705c,
+schema139/checksums match/no pending migration. Health01:39:20Z PASS.
+Exact localeb65 all gates passed353/19+visitor18, but additional merged-main
+Nightly37713703674 FAILED351PASS/19skip/1existing-retry CAMcreate flaky pass/
+1mobile Malay Contact failure, both attempts20px feedback overflow. Visitor
+NOT RUN; runner artifacts0. No green-local substitution for failed CI.
+
+| Item | Current evidence / next step |
+| --- | --- |
+| Stale Cart | Proven old-component held-props authority mismatch, guarded authorized-pair recovery,100focused and final localoriginalfull353/19+18 pass; actual live existing-cart Shopping/Cart/no cart/event change. Precise internal scheduling trigger unproven; financial guards unchanged. |
+| Contact recovery responsive gate | Required CI20px Malay message overflow reproduced locally with wider fallback font. Non-wrapping flex/min-content layout proven; actual CI font unrecorded. Scoped wrapping fix/stronger unchanged assertions underway; no blind rerun/skip/clipping/verification change. |
+| Contact A live |02:04:01Z A/B and TOTAL since-reservation enquiries/outboxes0; eight held historical jobs/queues/controls unchanged. Connected Gmail exactA anywhere IDs empty; no provider ID, acceptance/delivery/mailbox receipt unproven. Acount1/Bunused. Prior Brave verification-vs-Send/result/time human reconciliation pending; no retry/newSend. |
+| Duplicate live |01 UTF-8 hash preflight stopped before auth/submit; preserved corrected02 READ ONLY preflight42703 from private nonexistent assignment date columns, no auth/submit. Source-derived canonical query correction in progress; failed proofs retained. Isolated7198…actual notice/no-effects remains valid separate, not live. |
+| Product lifecycle |Actual isolated owned deletion/audit/refresh and protected-history/CA/DENY refusals passeda40 unchangedcapability. No real product/history deleted; live disposable target unavailable, not assumed. |
+|1–6 UI |Actual c3Owner both-theme/390px six tabs/wallet contrast, branch groups/one address action, reviewed company logo/four groups/productgallery/pricing/workflow companyWalletrefresh/direct/back-forward pass. No live absent-logo/absent-Wallet company; respective isolated/automated states only. |
+|8 Sharedlive |Actual65s three bounded snapshots/peak1/no legacy, offline/reconnect/expiry poll observed. Two automatic POSTs unclassified; zero-write/full read-only claim withheld while safely classifying. |
+|10/13/14 |Actual compact missing-invitation route/no pwfields; CA aligned mobile-scroll budgets/no document overflow; actual BranchAdmin metadata link/no lifecycle/delete controls. Valid invite isolated only; no live budget/lifecycle commands. |
+|11/9 |Actual truthful native-active/Slack-Zapier-disabled Integrations, guide/runbooks delivered. Slack app/workspace/channel/private inputs, off-device destination and future host access are activation/resilience dependencies only. No host action. |
+|Roles |Actual Owner/CA/BranchAdmin/Driver current-role normal-auth read checks pass; locales preserved. No actual CAM/second Driver provided, no impersonation. |
+|Release/backup |PR219 protectedCI37713329740/main image+deploy37713669762 PASS, exactdeployedc3/OCI/schema verified. Pre139 encrypted local/disposable restore proof and automatic policy backup verified; unrelated worktrees/private input/artifacts preserved. |
+
+Final report contains exact evidence/SHA boundaries and retries/skips. Independent
+work continues; no completed/Demo-ready claim from healthy services or tests alone.
+
+## Historical checkpoint — 2026-10-08 01:24 UTC (superseded)
 
 **IN PROGRESS: final local gates pass; protected release/acceptance remain.**
 Production protected/deployed a40/c944/migration138 unchanged. New five-file

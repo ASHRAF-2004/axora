@@ -2,7 +2,250 @@
 
 Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
-## Current execution checkpoint — 2026-10-08 01:24 UTC
+## Current execution checkpoint — 2026-10-08 02:25 UTC
+
+**STATUS: DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
+
+Protected main/production remain `c3cd1b248709c8f74b3260b6d0b0c742d8ac0eec`,
+OCI `sha256:24f893b439b1ef00835cc8a5a7bdeefe69c6668b24274b3f121cdc12d2d4705c`,
+migration139. The scoped follow-up application/test candidate is
+`f09ecd3f90213a7bc0ec03e37717f65ebd357329`. Its final local required gate is
+green; protected image CI and exact-branch Nightly must pass before follow-up
+merge/deployment. The failed merged-main Nightly remains failed evidence, not
+overwritten by this local result. Existing deployed six UI fixes, Cart repair,
+roles, accounting, authentication, infrastructure and schema are unchanged.
+
+### Required responsive failure: RED, fix and full-suite GREEN
+
+The original c3 Nightly mobile Malay Contact failure was reproduced in the
+actual old rendered component at Pixel7 width with a supported wider fallback
+font:20px feedback overflow, while document overflow stayed0. Actual CI font
+was not recorded. The feedback inherited a non-wrapping flex row, three
+min-content children and the shared action block's top padding/border.
+Natural host font alone passed and was not accepted as failure resolution.
+
+The only application change is six scoped CSS lines: verification feedback
+becomes a shrinkable one-column grid, its paragraphs/actions wrap, the shared
+action decoration is removed locally and buttons may wrap. No clipping,
+verification changes, new colors, translation changes or broad button changes.
+The same six existing EN/AR/MS desktop/mobile cases now run all their original
+overflow/control-containment assertions with both natural and wider font
+metrics, restoring the font afterward. Retry, expiry, field preservation,
+configuration denial, zero POST and Arabic RTL assertions are retained.
+
+Old artifact with strengthened assertions:5 passed/1 failed at the original
+mobile Malay20px assertion, retry0; actual RED screenshot/trace/video preserved
+at `output/playwright-contact-overflow-red-01`. New exact f09 artifact:
+all six focused cases passed in5.0s, retry0, at
+`output/playwright-contact-overflow-green-f09-01`; private focused log SHA256
+`c73a29144f63dc5ced98da82f28b1b95cc6eaf4a074489503a485674726d47a0`.
+Root and independent review approve the strictly visual delta and stronger tests.
+
+| Final local gate | Exact f09 result |
+| --- | --- |
+| Focused |28 Vitest cases/two files and six localized rendered Contact cases pass. |
+| Lint / typecheck |Both EXIT0. |
+| Unit / PGlite |1,914 passed/49 existing native-only skips;376 passed files/11 skipped. |
+| Native PostgreSQL |All49 tests/11 files pass; all139 migrations/replay/RLS/grants/lifecycle verified. |
+| Build |EXIT0, both required pg-cloudflare standalone files present; deployment ID=f09. |
+| Standalone / runtime / assets |30,377 files/15 symlinks;two routes/two resources;35 assets/7,996,414 bytes and deployment invariants pass. |
+| Required original combined E2E |353 passed/19 existing skips in6.6min; visitor recovery18 passed in15.3s; EXIT0/local retry0/fresh-owned servers/original projects and order. |
+| Scope / secrets |Diff check passes;113 changed-candidate files scan0 supplied-password matches. Private input unchanged. |
+
+Final full log SHA256
+`797d5a508b28ee102ee658a3218431c26e1d109994ffd8c0821f2a625b1cfd8e`;
+all four default browser artifact directories preserved at
+`output/playwright-f09ecd3-final-green-01`. This includes the original mobile
+stale-Cart journey, not an isolated diagnostic substitute. Cart application/test
+source is unchanged from the earlier eb65 full-green repair. The49 skipped unit
+cases execute/pass in native PostgreSQL;19 browser skips are existing viewport/
+matrix/disabled opt-in cases. No retries/skips/projects/assertions were weakened.
+The earlier CI CAM-create retry remains a retry-pass with unproven initial
+timeout cause; no clean-first-attempt claim is made for that historical run.
+
+### Live duplicate: one submission and a bounded later notice capture
+
+Pre-auth/pre-submit failures01 (chunked UTF-8 hash) and02 (private READ ONLY
+query's nonexistent assignment date columns) remain preserved. Helper03 uses
+canonical active/nonrevoked assignment fields, without changing authorization.
+Its ONE normal Owner form submission used designated `adoashraf103@gmail.com`
+in the existing cross-scope global employee journey and reached the exact
+`/users?notice=user-account-exists` refusal route. Submitted cap is consumed;
+there was no second submission. All four after-guards and cleanup passed:
+target/Owner identity, credential and authority graph unchanged; global account/
+assignment/invitation/attempt counts unchanged; selected finance and uploads
+unchanged. Ordinary authentication timestamps/session writes are excluded,
+not disguised as zero total database writes.
+
+The original combined notice checker then failed `notice_invalid` and exited1.
+Its exact failed boolean was not retained; cause is not invented. Original
+response rendering is NOT claimed. Live proof SHA256
+`4cbd0bb0569fd5b0bf090bcac1062058cffd5582b8a13d3de98a066fd9fd3e97`.
+A separately reviewed GET-only revisit of the already observed refusal URL
+captured the actual visible canonical English alert in normal production Chrome:
+“This invitation cannot be created with the submitted account details. No
+account was created. Review the workspace or use a different authorized address.”
+This is a later GET capture, not another POST or a repaired original checker.
+Private capture log SHA256
+`11cf388cc48b989f1bafea1003b0e48dd2a414aa9e4a3a96284f2b2980a5e2ba`.
+Thus live cross-scope refusal/no duplicate plus later visible notice have evidence;
+original same-tenant/full-continuation guard is still not certified. Valid account
+setup/login/used-link and product deletion remain actual isolated evidence only.
+No real product or business history was deleted.
+
+### Shared live: transport versus application writes
+
+A fresh65s production observer used a closed metadata-only path classifier.
+Three bounded authorized opaque snapshots, peakONE connection, no legacy streams,
+GET stream/poll200, offline pause/reconnect/resync and expiry polling passed.
+Two automatic POSTs were actually classified as Cloudflare RUM:one cancelled,
+one204; application-or-unknown POSTs0, tracking cap not exceeded. The original
+broad observer's `observationFailure:true` remains preserved: this is not a
+zero-HTTP-POST claim or a retroactive waiver. Network application-command absence
+and SSE transport acceptance are separate evidence. Closed log SHA256
+`b5250a95622bbd9d8c701ae33455a23e2b11568e60790e07fec441420225d59c`.
+Actual unsaved Requests field/focus/route persisted through a later natural live
+cycle and was restored before leaving; changed-business-hint dirty deferral is
+automated coverage, not falsely attributed to this passive live observation.
+
+### Contact remains the exact affected human dependency
+
+The02:04:01Z read-only production checkpoint found A/B and ALL recent enquiries/
+notification outboxes0, no A provider ID; eight historical held jobs unchanged.
+Connected recipient Gmail exact-A search including Spam/Trash returned no IDs.
+Healthy workers cannot establish submission, acceptance, delivery or receipt.
+Source tracing remains: native form/client verification → server Siteverify and
+schema/rate gates → atomic enquiry/notification outbox → leased worker and stable
+provider idempotency → accepted provider ID → signed delivery event → mailbox.
+With no enquiry there is no A outbox job to process; whether the prior Brave POST
+reached the server is unknown. Known Chrome600010 occurs before durable submission;
+no Tunnel-version root cause is proven and no Cloudflare controls were bypassed.
+
+A conservatively counts1 of the two labelled live-smoke limit; B is unused.
+No new Contact Send/reset/retry, provider send or historical replay occurred.
+Exact required user action remains: confirm whether prior Brave only completed
+verification or also pressed Send; if Send, provide result and approximate time.
+**Do not submit again yet.** Once reconciled, only a bounded ordinary manual
+submission, if still appropriate within the original limit, can fill the missing
+live chain; acceptance, signed delivery and actual mailbox receipt must each be
+checked separately. All independent release work continues.
+
+## Historical execution checkpoint — 2026-10-08 02:04 UTC (superseded)
+
+**STATUS: DEPLOYED REPAIRS / BLOCKED FINAL ACCEPTANCE. Not demo-ready.**
+
+PR [219](https://github.com/ASHRAF-2004/axora/pull/219) was squash merged after
+protected immutable-image CI passed. Current protected main and deployed SHA:
+`c3cd1b248709c8f74b3260b6d0b0c742d8ac0eec`; OCI:
+`ghcr.io/ashraf-2004/axora@sha256:24f893b439b1ef00835cc8a5a7bdeefe69c6668b24274b3f121cdc12d2d4705c`.
+Production now has all139 migrations through
+`139_branch_lifecycle_authority_and_budget_refusals.sql`; sealed-release ledger
+checksums match and migration-status returned `none`. Local/public HTTPS,
+headers, liveness and database readiness passed01:39:20Z; app and five workers
+use the exact image, are healthy, restart0/noOOM. No host action occurred.
+
+The final app/test source passed the original local combined gate at exact
+`eb65ef3b7592f948f8835246dc572561366e5606`:353 passes/19 existing skips,
+visitor18 passes, local retry0. Its application tree is unchanged in the merge;
+only the three release-report/task documents differ. Original stale-Cart failure
+and deterministic old-render RED evidence remain preserved below. Cart recovery
+does not change accounting, pricing authority, checkout commands or permissions.
+
+The additional exact merged-main Nightly
+[37713703674](https://github.com/ASHRAF-2004/axora/actions/runs/37713703674)
+**FAILED**:351 passed/19 existing skips/one existing-retry flaky CAM-create pass/
+one mobile Malay Contact failure in13.2min. Both attempts show feedback
+horizontal overflow20px at the unchanged1px assertion. Visitor config was NOT
+RUN because the first config failed. Lint/typecheck/unit/native/build/staging and
+Zapier preceding steps passed; no CI failure is hidden by the earlier local pass.
+Runner artifact count0; no unavailable screenshot/trace inspection is claimed.
+Full private log SHA256
+`881f724110544514c76bd3b061cd09ba26b0016339d4dfc013fdf2d8ae10d685`.
+This is a recoverable required gate: real local Pixel7 geometry reproduces20px
+with a wider supported fallback font. The feedback inherited a non-wrapping flex
+row and min-content sizing. The actual CI font was not captured. A scoped
+wrapping fix/stronger regression is being prepared, without clipping, changing
+verification, or weakening tests. No second full run is launched blindly.
+
+### Actual production acceptance at c3cd1b2 / image24f893b4 / schema139
+
+Normal headed Chrome authentication used authorized accounts and the unchanged
+private input; no fabricated sessions, saved auth, recordings or CAPTCHA bypass.
+The computer-use inventory exposed no enabled browser surface; the explicitly
+authorized real Playwright/terminal fallback was used. Auth necessarily writes
+ordinary session/last-login/throttle timestamps; these are not zero-DB-write
+claims. Saved locales remain English; Owner Light preference restored.
+
+| Item | Actual observation / evidence boundary |
+| --- | --- |
+| 1 Setup tabs | All six routes clicked and rendered in both themes. Light normal13.2/hover15.17 and Dark normal4.83/hover5.81 contrast; keyboard focus3px. All six mobile tabs contained/tappable and navigable. |
+| 2 Branch | Existing openai branch has General/Delivery address/Contact/Delivery, aligned three Budget metrics, distinct Location confirmation label and exactlyONE authorized Edit delivery address action. Actual Owner and BranchAdmin desktop/390px views readable/no document overflow. |
+| 3 Open wallet | Both existing rows readable: Light13.2/15.17 and Dark4.83/5.81 normal/hover, focus3px,44px high. Both-theme390px layouts contained; no disabled link state applies. |
+| 4 Overview / logo | Existing mewo1/C-107 renders four structured identity/business/contact/setup groups and its actual reviewed logo loaded. Both themes/390px fit. No live no-logo record exists; actual isolated new-company placeholder evidence remains separate. |
+| 5 Product | Actual A3Paper UUID4247874e-457e-4de1-8c19-0d1b05068931 renders Product details/Delivery/Authorized pricing, eight rows and loaded gallery. Both themes/390px readable. Owner internal cost allowed; actual Company Admin direct management route renders404 without commercial data. No actual CAM supplied. |
+| 6 Wallet setup | Actual Continue setup→Wallet and budgets loads mewo1 UUID4b5f72eb-303a-4df0-a8fa-f078a97ce0bd at its `/companies/UUID/wallet`, correct company200/no404; refresh/direct/back↔Documents/forward pass, desktop/mobile. All three live companies already have Wallets; missing-Wallet pending state remains automated/isolated proof, not fabricated production evidence. No balances/Wallets changed. |
+| 8 Shared live |65s observation: three bounded authorized opaque snapshots, peakONE connection, no legacy streams; GET stream/poll200, offline pause/reconnect/resync and expiry polling observed. Two initial POST transports remain unclassified, so zero-write/full read-only acceptance is WITHHELD pending safe path-class diagnosis. No raw requests/tokens collected. |
+| 9 Guide |12-page PDF/runbooks delivered and visually verified; future destination/off-device/cutover/host boot untested. Host restart explicitly prohibited. |
+| 10 Invitation UI | Actual blank private-link route200 renders compact Open your invitation email guidance, no password inputs/no overflow. Valid invitation/setup/login/used-link is actual isolated evidence, not a live token acceptance claim. |
+| 11 Integrations | Actual Owner200: native External API/Webhooks active, Slack/Zapier disabled and truthful setup checklist. No activation command. Controlled Slack app/workspace/channel/dedicated private inputs missing for activation only. |
+| 12 Budget refusal | Typed contractual-ceiling refusal and current-authority guards passed focused/native/full E2E; no real allocation or financial command used. |
+| 13 Budget list | Actual Company Admin six aligned headers, desktop1370px region; mobile356px scroll region contains720px table with keyboard tabindex0 and document overflow0. Screenshot visually inspected; no budget mutation. |
+| 14 BranchAdmin | Actual current BranchAdmin scoped branch renders retained metadata Edit branch, structured information and single address action, with no lifecycle/delete button. Additive139 authority tests passed; no real destructive attempt. |
+
+Actual role checks: `malaysiaashrafo@gmail.com` is Company Admin of mewo1;
+unselected Shopping chooser and exact selected branch Shopping/empty Cart,
+Budgets/company Wallet read normally. READ could create an absent cart, so an
+exact own ACTIVE cart was verified before selected Shopping/Cart; selected cart
+rows and events were fingerprinted unchanged afterward. No Add/Place/top-up.
+`shehab111alslool@gmail.com` is BranchAdmin of openai, and
+`alsaloulashraf@gmail.com` is Delivery Agent; fresh clean delivery-only portal
+and phone navigation fit, no Claim/location/availability/workflow action, no
+active assignment. No supplied Owner email is relabelled as CAM.
+
+### Contact and registration boundaries
+
+Read-only Contact checkpoint02:04:01Z: A/B enquiries and notification/ack outboxes
+are0; ALL submissions/notification outboxes since A21:23:08Z are0. Eight
+historical Infinity-held jobs remain PENDING/attempt0/no provider ID/no lease;
+queues idle/six controls unchanged. Metadata/recent log SHA256 respectively
+`2d69ee775d5257f1068fe21df55730b44346eb780a03603ddd20ece8c21accdd` /
+`06c655a58d34137cdce5d54aa16ac85b37d215d5dc4ab5c87f168ce7ad78e47b`.
+Connected recipient Gmail profile matches; fresh exact-A `in:anywhere` search
+including Spam/Trash returned no IDs. No A provider ID exists to query.
+Provider acceptance, signed delivery and actual mailbox receipt are NOT proven.
+A conservatively counts1/B unused, unchanged cap; no Contact submission/retry/
+historical replay. Exact human dependency is reconciliation of prior Brave:
+verification only, or Send pressed; if Send, result and approximate time.
+Please do not submit again yet. Known Chrome600010/disabled Send precedes durable
+submission and is not proof of a Tunnel-version or worker/provider defect.
+
+Live designated duplicate check has not submitted. Helper01 stopped pre-auth
+because per-chunk UTF-8 decoding broke an Arabic source hash. Preserved corrected
+02 then stopped pre-auth at its READ ONLY SQL preflight (42703): its private
+assignment query referenced nonexistent starts_at/ends_at. Graph/finance/hash-
+policy EXPLAINs passed; canonical current schema has active/nonrevoked assignment
+authority, not those fields. A source-derived correction is being prepared;
+all failed proof/markers are retained. No duplicate/role/invitation/provider
+mutation occurred. Actual isolated normal setup/login/used-link, cross-scope
+duplicate notice and eligible product deletion/refusals remain separate evidence
+below; no real product/business history deleted to force live acceptance.
+
+### Release / recovery point
+
+Protected PR CI37713329740 and main image/deploy CI37713669762 passed;
+merge2026-10-08T01:35:13Z. Pre139 encrypted backup/disposable restore proof
+verified01:23:31Z,240 tables/138 migrations/files, archive
+`/var/lib/axora-production/reset-backups/axora-reset-20261008T012322Z-a40a70bef310.tar.gpg`,
+cipher SHA256d55606fd7ccf1d92bfff79e66f00c4562240bef96729f1fe68ac5c56f1c7476e.
+Automatic deployment also verified policy backup
+`/var/lib/axora-production/backups/axora-20261008T013831Z`.
+Local only; no off-device resilience or production restore claimed. App/workers
+and existing controller-selected Caddy replacement are service operations, not a
+host reboot; Tunnel/Tailscale configuration unchanged. Private sign-in input,
+unrelated working trees and original artifacts remain intact. Independent work
+continues; required CI/Contact/live-duplicate evidence is not declared complete.
+
+## Historical execution checkpoint — 2026-10-08 01:24 UTC (superseded)
 
 **STATUS: IN PROGRESS — acceptance gaps remain; no new deployment.**
 
