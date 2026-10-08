@@ -65,11 +65,51 @@ test("a server validation error stays local and retains its submitted creation d
   await form.locator('input[name="customerMarkupPercentage"]').fill("101");
   // Deliberately reach server validation instead of stopping at browser max=100.
   await form.evaluate((element: HTMLFormElement) => { element.noValidate = true; });
-  await form.getByRole("button", { name: "Create product" }).click();
-  await expect(form.getByRole("alert")).toContainText("Profit cannot exceed 100%.");
+  let releaseResponse!: () => void;
+  let responseReady!: () => void;
+  const heldResponse = new Promise<void>((resolve) => { releaseResponse = resolve; });
+  const receivedResponse = new Promise<void>((resolve) => { responseReady = resolve; });
+  // Hold only this isolated demo action's already-fetched response, so the user
+  // can still edit enabled controls while React considers submission pending.
+  await page.route("**/products/new", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    const response = await route.fetch();
+    responseReady();
+    await heldResponse;
+    await route.fulfill({ response });
+  });
+  const pendingName = `${name} edited while pending`;
+  try {
+    await form.getByRole("button", { name: "Create product" }).click();
+    await receivedResponse;
+    await expect(form.getByRole("button", { name: "Create product" })).toBeDisabled();
+    await form.getByLabel("Product name").fill(pendingName);
+    await form.locator('input[name="customerMarkupPercentage"]').fill("102");
+  } finally {
+    releaseResponse();
+  }
+  await expect(form.getByRole("alert")).toHaveText("Markup percentage must be between 0 and 100.");
   await expect(page).toHaveURL(/\/products\/new$/);
-  await expect(form.getByLabel("Product name")).toHaveValue(name);
+  await expect(form.getByLabel("Product name")).toHaveValue(pendingName);
+  await page.unroute("**/products/new");
   await page.reload();
-  await expect(page.getByLabel("Product name")).toHaveValue(name);
-  await expect(page.locator('input[name="customerMarkupPercentage"]')).toHaveValue("101");
+  await expect(page.getByLabel("Product name")).toHaveValue(pendingName);
+  await expect(page.locator('input[name="customerMarkupPercentage"]')).toHaveValue("102");
+
+  const secondName = `${pendingName} second error`;
+  await form.getByLabel("Product name").fill(secondName);
+  await form.locator('input[name="customerMarkupPercentage"]').fill("103");
+  await form.evaluate((element: HTMLFormElement) => { element.noValidate = true; });
+  await form.getByRole("button", { name: "Create product" }).click();
+  await expect(form.getByRole("alert")).toHaveText("Markup percentage must be between 0 and 100.");
+  await expect(form.getByLabel("Product name")).toHaveValue(secondName);
+  await expect(form.locator('input[name="customerMarkupPercentage"]')).toHaveValue("103");
+
+  // An explicit reset after the error must still discard the failed draft.
+  await form.evaluate((element: HTMLFormElement) => element.reset());
+  await page.waitForTimeout(350);
+  await page.reload();
+  await page.waitForTimeout(350);
+  await expect(page.getByLabel("Product name")).toHaveValue("");
+  await expect(page.locator('input[name="customerMarkupPercentage"]')).toHaveValue("10");
 });

@@ -122,4 +122,11 @@ describe("portal draft completion events", () => {
     outcome({ outcome: "success" });
     expect(records.has(key)).toBe(false);
   });
+
+  it("does not change an unrelated submitted form for a scoped creation error", () => {
+    const destinationKey = put(destination);
+    mount();
+    outcome({ outcome: "error", formId: "create-product" });
+    expect(parseStoredFormDraft(records.get(destinationKey)!)?.submittedAt).toEqual(expect.any(Number));
+  });
 });
