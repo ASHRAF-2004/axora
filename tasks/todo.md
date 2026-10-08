@@ -4,10 +4,10 @@
 
 - [x] Map the public Early Birds/Night Owls intro and inspect the live guest
   homepage; distinguish it from assigned-team profile onboarding.
-- [ ] Remove only the public homepage intro/snapshot dependencies.
-- [ ] Localized render and purposeful replacement browser regressions pass;
+- [x] Remove only the public homepage intro/snapshot dependencies.
+- [x] Localized render and purposeful replacement browser regressions pass;
   preserve all backend security and unrelated acceptance assertions.
-- [ ] Actual EN/AR/MS, keyboard, desktop/mobile and both-theme checks pass.
+- [x] Actual EN/AR/MS, keyboard, desktop/mobile and both-theme checks pass.
 - [ ] All required final-candidate gates pass and independent review completes.
 - [ ] Record exact tested candidate; obtain explicit merge/deploy approval
   before production release. Earlier required gates remain historical evidence.
@@ -28,6 +28,33 @@
 Public chooser PR221 remains separate. Neither this candidate nor healthy
 workers can close original registration/deletion integrity/live-fixture gaps.
 Contact cap2 remains closed; private credentials/history/other trees preserved.
+### Preserved public chooser checkpoints
+
+Candidate4fb94af follows source/E2Efd934d3. First unit gate failed1,920/49skip/
+2fail; preserve its evidence. Narrow obsolete homepage accessor allowlist,
+reproduce strict override timestamp boundary in RAM-only PGlite, then correct
+only existing purge fixture chronology/all assertions unchanged:13focusedPASS.
+Run complete ordered gates on final bytes, not a blind failing-test retry.
+
+Continuation2026-10-09Malaysia:4fb lint/type/unit1,922/native49/build/stage/
+runtime/assets PASS. Actual headed standalone12 ready-home views+1 distinct
+footer/keyboard PASS. First combined EXIT1:349PASS/19skip/keyboard FAILED/
+gallery FLAKY; recoveryNOTRUN. Entire evidence archived before narrow retired
+keyboard contract correction, now independently reviewed/focused26PASS+2existing
+skips. Gallery's actual initial trace/screenshot now available; investigate
+cause rather than declaring existing retry a fix. Later combined result below.
+
+Browser-test candidate9a8cc53: optional bounded CDP/gallery observation reviewed
+for noninterference; no app/database/unit/config changes from4fb. Final focused
+desktopPASS/mobileINITIALcreation-routeFAIL/existingretryPASS; completecreate
+response observed but route/button stuck, before upload. Evidence retained;
+not a new repair or clean pass. Original full combined suite completed9a8:
+349PASS/19existing skips/TWO FLAKY9.7min +recovery7PASS9.3s/EXIT0; existing CI
+retries passed desktop gallery and mobile create initial failures. Complete
+results archived public-team-required-9a8-RXEBYD/log031a2d7b… . Client completion
+failure proven for completed responses; precise framework race unproven.
+Separate supported redirect/draft-safe repair in development, not yet fixed.
+Local chooser gates complete; protected CI/review/explicit release approval remain.
 
 ## Final closure audit — 2026-10-08
 
@@ -42,6 +69,9 @@ Contact cap2 remains closed; private credentials/history/other trees preserved.
   strict integrity guard remains failed and no live deletion target is designated.
 - [ ] Finish independent checks for remaining items8–14 and identify precise
   external/account/fixture dependencies, not generic deferrals.
+- [x] Publish refreshed dated13page migration/recovery guide after final all-page
+  visual and in-memory secret/placeholder checks; retain old artifact. No host
+  or service operation is performed by documentation delivery.
 - [ ] Review final evidence, preserve Contact cap2, update both reports and
   publish one passed/open/user-action checklist with a justified readiness verdict.
 

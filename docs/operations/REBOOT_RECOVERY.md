@@ -79,38 +79,34 @@ budget/document, cleanup and integration readiness/useful progress.
 
 ## 3. Bounded service recovery, not a computer restart
 
-1. Identify the exact affected service and boundary. Protect financial/tenant
-   integrity; distinguish expected disconnects during maintenance from recovery
-   errors. Never reset a queue or database to clear a health warning.
-2. Confirm verified encrypted database/files proof, locally available compatible
-   previous image, workload headroom and no conflicting active business work.
-   Save a secret-free checkpoint and one exact resume instruction. The agent
-   or browser may share this host; automatic conversation resumption is not
-   guaranteed. Maintain independent recovery access/observer.
-3. Use the installed **sealed** three-file Compose invocation and root runtime
-   environment. Name only approved Axora components. Drain active work; sender
-   grace is 45 seconds. Stopping Docker, PostgreSQL, network or shared host
-   services is outside the sender-only trial authority.
-4. Perform only the approved graceful service stop/start/restart. No computer
-   reboot, automatic reboot schedule, secret replacement or mass queue release.
-5. Verify useful queue progress and authorized read-only workflows, not only
-   process/container state. Reconcile claim/lease/provider acknowledgement;
-   preserve UNCERTAIN sends and exact historical holds. Do not count an idle
-   queue as evidence of the full delivery lifecycle.
-6. Restore every intentionally stopped component and record measured recovery,
-   controller exit, manual intervention and pending scenarios. If unplanned
-   manual repair was needed, mark that trial failed. Do not escalate to reboot.
+1. Name the exact affected service/boundary. Preserve financial/tenant integrity;
+   distinguish maintenance disconnects from errors. Never reset queues/databases.
+2. Verify encrypted database/files proof, cached compatible previous image,
+   headroom and no conflicting business work. Save a secret-free checkpoint and
+   exact resume instruction. Agent/browser host dependencies mean resumption
+   is not guaranteed; maintain independent recovery access/observer.
+3. Use installed **sealed** three-file Compose/root runtime; approved Axora
+   components only. Drain work; sender grace45seconds. Docker/PostgreSQL/network/
+   shared-host stops are outside sender-only trial authority.
+4. Approved graceful service stop/start/restart only; no computer reboot,
+   scheduled reboot, secret replacement or mass queue release.
+5. Verify useful queue progress and authorized read-only workflows, not health
+   alone. Reconcile claim/lease/provider acknowledgement; preserve UNCERTAIN
+   sends/exact historical holds. Idle queues do not prove full delivery.
+6. Restore every stopped component; record recovery time, controller exit,
+   manual intervention and pending scenarios. Unplanned manual repair means
+   trial failure; never escalate to reboot.
 
 ### Fault decision table
 
 | Observation | Safe next boundary |
 | --- | --- |
-| Public failure, local ready | Verify existing Caddy/Tunnel route and connector, not database restore |
-| Sender ready degraded, app ready | Inspect bounded poll/claim/provider stage and live grants; keep enquiries durable |
-| Idle socket SQLSTATE 57P01 | Verify pool discards dead idle client and next ordinary query recovers; do not replay failed business writes |
-| Image/schema mismatch | Hold deployment, compare exact migration manifest and compatible image; repair forward |
-| Financial or tenant uncertainty | Freeze relevant writes, preserve evidence; no blind restore or grant widening |
-| Manually stopped container | Determine why it was stopped before an explicitly approved start; restart policy is not permission |
+| Public failure, local ready | Check existing Caddy/Tunnel route/connector, not database restore |
+| Sender ready degraded, app ready | Bound poll/claim/provider/grant diagnosis; retain durable enquiries |
+| Idle socket SQLSTATE 57P01 | Dead idle client discarded/next query recovers; no business-write replay |
+| Image/schema mismatch | Hold deployment; exact manifest/compatible image; repair forward |
+| Financial or tenant uncertainty | Freeze relevant writes/preserve evidence; no blind restore/grant widening |
+| Manually stopped container | Establish cause before approved start; restart policy is not permission |
 
 An application-only rollback is available through the installed controller:
 

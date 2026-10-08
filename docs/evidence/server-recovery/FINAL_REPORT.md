@@ -1,6 +1,6 @@
 # Axora runtime recovery — persistent report
 
-Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
+Report date: 2026-10-09, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
 ## Public team intro removal — current candidate, 2026-10-08
 
@@ -16,16 +16,182 @@ Before change, a separate real headed Chrome guest session rendered the live
 saved-choice counters10 (Early6/Night4), in EN and AR. No choice or Contact Send
 was pressed. Focused render regression first failed3 localized cases against the
 old page, then passed after removal; focused render/visitor-security/SEO/release
-isolation checks29PASS. Browser replacement coverage and final candidate gates
-are pending. This app/test change means earlier exact0040/d82 gates remain
+isolation checks29PASS. Browser replacement coverage, actual standalone views
+and local gates are now complete as detailed below; protected candidate CI and
+explicit release approval are still pending. This app/test change means earlier exact0040/d82 gates remain
 historical evidence, NOT certification of the new candidate. Production remains
 d82/bc8/schema139. Merge/deploy requires explicit approval under the latest
 repository instruction. Recovery barriers and the closed Contact cap below
 remain unchanged.
 
+Verification continuation: application/browser-test commit
+`fd934d38358a31e0812fd1863d4999ea5fdc636a` and test-contract correction
+`4fb94af443533de9741b3d433309a0382c5d7d09` are local candidates, NOT deployed.
+Both Playwright configurations, backend visitor security/cookie/migration tests,
+Contact/profile code and existing Cart/gallery assertions remain unchanged.
+The retired feature's main coverage changes22→20 executions and recovery18→7;
+replacement cases require actual localized content/navigation, zero retired
+requests, no counters/scroll lock, keyboard access and recovery/history behavior.
+They are feature-contract replacement, not new skips or relaxed unrelated tests.
+Independent complete source/E2E review approved the feature removal.
+
+The first full unit gate against fd934d3 FAILED:1,920 passed/49 existing
+intentional skips/2 failures/510.67seconds. Failed log SHA256
+`1176694c6d3561ecfd12c56f06355840648ba488487efc8acdf5695b2fdebb4c`
+is retained. One failure was the obsolete homepage entry in the strict
+incomplete-session accessor allowlist; removing only that entry narrows the
+test's permitted routes. The other, previously unchanged purge fixture, failed
+SQLSTATE23514 `user_permission_overrides_check`; migration036 requires
+`ends_at > starts_at`, while096 closes active overrides at the removal time.
+The actual failing call's timestamps were not captured. A fresh RAM-only all139
+diagnostic reproduced exact-equal start/end rejection and complete transaction
+rollback, then verified a positive-interval normal removal. Diagnostic02 log SHA
+`f90d76f157a9a6a776d7e89bc445b3b9d11b1e411e555e94db70f0000d303e8e`.
+Its first diagnostic stopped before this boundary because the chosen time
+preceded actor scopes; it is not a passed reproduction. No live DB/provider call.
+
+The purge test now explicitly represents a pre-existing override with
+`starts_at=now()-interval '1 minute'`. Removal time, all erasure/count/audit/
+email-reuse/reactivation/Owner-refusal assertions, timeouts, constraints and
+production authorization code are unchanged. Actual equal-time or future-start
+override deletion is NOT proven fixed by this fixture correction; no production
+deletion claim is made. Focused final correction13PASS/4.50seconds/retry0;
+earlier unchanged-area focused39PASS and intermediate45PASS are separate runs.
+Final lint/type/unit and subsequent ordered gates run on4fb94af; the failed
+earlier whole suite is retained, not cleared by focused passes alone.
+
+Local verified gates so far: lint/typecheck PASS; full unit1,922PASS/49 existing
+native-only skips/500.54seconds, native49PASS/all139 migrations/forced RLS/
+authorization/grants, production build including both pg-cloudflare artifacts,
+standalone staging30,373files/15symlinks, standalone runtime2routes/2resources,
+and deployment assets35self-hosted files/PASS. Final unit/native/build log SHA256:
+`6f9e687436a74e9d979f0b9ab823aa74573fcfc6dfe113d6cebc41d4add1b8c7` /
+`dbf7a5c113a1deec2c039a042215f90e22847a6294737329b4f61fcc3d18e838` /
+`f81aa9497bbb8e865c8870ec7cbc2c9a093eeb209584ae6803e014c2cf2695ad`.
+Focused browser20PASS/24.2seconds + recovery7PASS/8.9seconds, retry0. Their
+log SHAs `b7753b96851ee544b33343a5db8accecbc19bbcfd3b54894747fedbfc913a72d` /
+`167d77841ad9e20dbfb991a7c773465d58abb6f3a042a656d0b9c690c29eed61`.
+
+Actual new headed Chrome at the production-mode standalone artifact3150 passed
+EN/AR/MS,1440px desktop and390px mobile, both real UI theme choices and Arabic
+RTL. Root visually reviewed twelve ready homepage captures plus one EN footer
+capture; the initial mobile EN footer is not represented as a hero capture
+(the separately named `standalone-en-mobile-hero-light.png` is the actual hero).
+The chooser/counters are absent; observed retired requests0, overflow0 and body
+scroll unlocked. Real keyboard Tab→skip link/Enter→main focus and refresh passed.
+Final console read0 errors/warnings. No Contact navigation/field entry/Send here.
+CLI-owned browser and3150 test process closed; production/recovery containers
+untouched. These are actual staging renders, not post-deploy production proof.
+
+The first required combined suite on4fb94af completed EXIT1:349PASS/19 existing
+skips/one FAILED public-i18n keyboard case/one FLAKY mobile gallery case/9.5min.
+It used `CI=true`, fresh owned standalone and the existing one-retry CI policy
+(no retry/config changes). The keyboard case failed its obsolete positive
+retired-counter expectation on both initial and existing retry. Gallery failed
+the unchanged15second article-count assertion with0 rather than2; its existing
+retry passed. Recovery did NOT run because the main-command failure stops `&&`.
+This is not a green combined result. Complete log SHA256
+`9706de7d82fca67b6049487e2948e4ba52988395e37b40c42ac7a6d3dc501b9c`.
+
+All reports/results and the raw log were archived before subsequent browser
+work at private evidence `public-team-removal-failed-9tYNaj`. The actual initial
+gallery trace is now available (SHA256
+`95f3d9632422d4f8f5ceabb869fce99446a647ff3febaebcd328d75864a65706`),
+along with its rendered screenshot (SHA256
+`420b7d12852c20e7d7ff8910c77d48f806624e55cea96d1a260853c2410be529`).
+Root viewed that first-failure page: selected files2, uploaded0/8, empty Manage
+gallery. This closes the missing-first-failure-artifact gap, NOT gallery
+instability. Actual trace/network/render causality is being investigated; no
+speculative application repair or production mutation has been made.
+
+Recursive review found just one remaining positive counter assertion. Its file
+now removes only the retired visitor stub and requires visible actual EN H1 +
+chooser/counter absence; every following Tab/focus/language/login/menu assertion
+and both existing mobile-duplicate skips remain. Independent final diff review
+approved this contract correction. Focused public-i18n26PASS/2 existing skips/
+14.5seconds; log SHA256
+`096881d5002d5a428122c54ade5b0d41063b5f7a24c21f87c0235e647f3e8251`.
+No Contact Send or assertion/config weakening. The later combined result is
+recorded below; earlier4fb source gates do not by themselves certify later test bytes.
+
+Test-only observability/remaining homepage keyboard correction is committed as
+`9a8cc53de8bfbd30243eda9f10f2a774b3c87631`. Application, database, unit tests,
+both Playwright configs, package/lock and Next config bytes are identical to4fb;
+its successful unit/native/build/stage/assets results remain unchanged-source
+evidence, not a fabricated rerun. Current browser-test lint/typecheck PASS;
+independent review required and verified noninterference corrections: optional
+startup/reporting failure cannot replace an original assertion, callback data
+is runtime-whitelisted, cleanup is guaranteed and observer bridge rejections
+are consumed. Original product journey operations,60s overall/15s operation
+timeouts, all assertions and existing retries are exact (`git diff -w`).
+
+The observer retains at most64 same-origin recognized product requests and64
+gallery-count states, without headers, query strings, multipart, raw Flight,
+cookies/storage or credentials. `revalidated` is only header PRESENCE, not a
+claim of completed invalidation; `receivedBytes` is CDP dataLength, not encoded
+wire size. Failure-only safe attachment/log preserves facts even if an existing
+retry makes the overall run green. It intercepts or mutates no network/DOM state.
+
+Earlier focused diagnostic2PASS/6.3s is separate. The final focused case then
+completed EXIT0 with desktopPASS and mobileINITIALFAIL/existing-retryPASS,
+1.3min: creation response200/revalidated-header present/17,832received bytes/
+Network.loadingFinished, but route remained `/products/new` for15seconds and
+actual Create button remained disabled. No upload/edit request was reached.
+Root reviewed its actual screenshot; this is a distinct creation-transition
+failure, not proof that gallery repaired. Log SHA256
+`485b75febb5b2c62c922129046e4535583d25b9fdfe74621a2d24bfc5d2cf27d`;
+actual first-failure trace SHA256
+`72f29195050c96e9ecb59be126dafd20ae4e0ac9a7c8aaf52c7265f14b81c63e`,
+recoverably archived at private `public-team-action-failed-CVWhJg` before any
+new run.
+
+The required original `CI=true npm run test:e2e` completed on9a8cc53 with
+fresh owned standalone servers and unchanged configurations: main349PASS/
+19existing intentional skips/TWO FLAKY/9.7minutes; recovery7PASS/9.3seconds;
+combined EXIT0. The two initial failures were desktop gallery0/2 after upload
+and mobile creation remaining on `/products/new`; each existing one-retry CI
+attempt passed. This is NOT351 clean passes and neither failure is repaired
+by that exit code. No application/test source changed during this run.
+Complete log SHA256
+`031a2d7b5f630979812f1960dac989d42baa74dc9565a43dbe164e54033f4184`.
+All main/recovery results, reports and raw log are recoverably archived at
+private `public-team-required-9a8-RXEBYD` before further browser work. Actual
+desktop/mobile first-failure traces respectively have SHA256
+`7813292a3424ba323ec313dda5c8b8c8795d60f8c4efe54db3a828301cd4e49d` /
+`f909a0c35c7140cdbe472aef3c76a63081dab262c8d0394ad355c7fb171de7fd`.
+
+The desktop upload completed its HTTP response, with26,673 CDP dataLength
+bytes and Network.loadingFinished; both new image resources returned200, yet
+the observed gallery never committed two articles. The separate focused
+creation failure also had a complete valid success response/destination but
+the form stayed pending without editor navigation. These establish client
+action/route-completion failures in these demo-mode occurrences, not an
+unfinished HTTP response; they are not production durable-write evidence.
+The precise internal React/Next queue/cache
+race is still unproven. A supported native server-redirect alternative is
+being implemented in a separate candidate/worktree, with submitted-draft
+cleanup and error/draft preservation; it has NOT repaired or deployed anything
+yet. The public-removal candidate remains unchanged and independently releasable
+only after its protected CI and explicit merge/deploy approval.
+
 ## Final closure audit — 2026-10-08 14:48 UTC
 
 **STATUS: DEPLOYED REPAIRS / BLOCKED OVERALL ACCEPTANCE. Not demo-ready.**
+
+Guide publication follow-up: the refreshed dated guide is now published at
+`/home/ashraf/Downloads/Reports/Axora_Server_Migration_Guide.pdf`:13pages/
+48,566bytes/SHA256
+`30cbd5a5c61ab7819f7c06a59d82dcd5b88c8b329bc61e31343690a9f0e7e24e`.
+Root inspected every final rendered page; condensed recovery prose/table keeps
+the rollback command and its limits together (the rejected14page preview had an
+orphan command page). Commands/boundaries unchanged; generator unchanged.
+The original12page PDF is recoverably retained in private evidence with its
+original SHA99e9210d… . Final PDF text was scanned in RAM for known private
+passwords, private keys and unresolved placeholders:0hits; genuine screenshot
+provenance remains dated public readiness only. No migration/restore/cutover/
+service trial or host action is implied. Current source SHA256:
+SERVER_MIGRATION `f975ed0170b02990fc137c5275b78a131c29aee4f9c95e52af8325ee0ea8bcd7`;
+REBOOT_RECOVERY `8ccf6b4ad7db51d8e08cafe934b59fbc95fa05ccc2ec9a82899b9fe0127baaca`.
 
 The user's final review requires every original acceptance criterion to be
 classified, not an unconditional completion claim from the earlier checkpoint.
@@ -39,8 +205,9 @@ the app and all five exact-image workers were independently healthy/restart0/
 noOOM at14:48:55UTC. Production checkpoint SHA256
 `2bc663f41b63d03f0137a8794142e58ecb48bca71b6ee188e787d8fa13340e88`.
 Host boot ID remains
-`aaf793bb-7222-4663-8b5a-e84beab01c4b`; no host restart occurred. No app/test/
-migration/configuration change invalidates the exact0040/d82 release gates.
+`aaf793bb-7222-4663-8b5a-e84beab01c4b`; no host restart occurred. At that
+checkpoint no app/test/migration/configuration change invalidated0040/d82 gates;
+the later public-intro removal above requires its own changed-candidate gates.
 
 The prior registration whole-continuation guard was not reached. The prior
 isolated product test reloaded BEFORE checking list absence, so it does not
