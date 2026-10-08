@@ -5,6 +5,33 @@ reboot, shut down, power-cycle or schedule a host restart.** This runbook does
 not authorize one. Future whole-host boot validation requires a separately
 approved window. A container restart is not a host reboot.
 
+## Current checkpoint - 2026-10-08 14:48 UTC
+
+Production is d82 (`d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`), OCI
+`sha256:bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8`,
+schema139. Contact B's direct persistence/provider/delivery/mailbox chain is
+evidenced; the two-smoke cap is closed. No further Send or historical replay.
+The original live queued-across-restart Contact case remains unperformed;
+isolated interrupted-send/lease tests and the historical idle trial are distinct.
+
+Earlier fenced a40/b7 registration/product proofs are not live acceptance.
+Current03 created its company/invitation/product normally, then stopped before
+setup/deletion/restart on its strict audit guard. Corrected read-only preflight
+checks pass; no second controlled trial executed. One remaining trial is reserved
+for complete affected-workflow acceptance. Original exceptions, live disposable
+limits and the final CI's unexplained gallery retry remain disclosed. This update
+creates no current-image/host restart acceptance. See
+SERVER_MIGRATION's current checkpoint and FINAL_REPORT before any future action.
+
+Read-only restored-data audit checks verify complete anchored links and original
+rows. The original21 timestamp-order warnings remain, but two new concurrent
+read audits were appended17microseconds opposite timestamp order; current03's
+canonical verifier reports23. Hash/link errors remain zero. No audit data was
+rewritten and the strict guard remains failed. A restart is not a repair for this
+discrepancy; separately approve a forward-only audit-ordering/verification design.
+Keep its bounded, fenced resources and untaken RAM-only invitation intact until
+that workflow can safely continue. Do not replay or resend its consumed stages.
+
 ## 1. What was and was not proven
 
 One idle email-sender-only graceful stop/start passed on recorded a40/schema138:
@@ -13,10 +40,11 @@ Docker healthy in approximately 6.4 seconds, public readiness HTTP 200 and eight
 historical queue holds unchanged. See the precise restricted events and full
 limitations in `docs/evidence/server-recovery/FINAL_REPORT.md`.
 
-This does not prove an active send survived, recipient mailbox delivery,
-all-worker restart, host boot, disk unlock, off-device restore or loss of power.
-No host shutdown/reboot occurred as part of that authorized trial. Pending
-workflow and provider evidence must stay pending; a health response is insufficient.
+That trial does not prove an active send survived, queued-mail or all-worker
+restart, host boot, disk unlock, off-device restore or loss of power. Contact B's
+later mailbox evidence is independent of the trial. No host shutdown/reboot
+occurred as part of it. Other unverified scenarios must stay pending; a health
+response is insufficient.
 
 ### Recovery order (conceptual, not a new supervisor)
 
@@ -49,42 +77,36 @@ environment/configuration, secret files, invitation links, message bodies or
 provider headers. Public app health must be checked separately from sender,
 budget/document, cleanup and integration readiness/useful progress.
 
-<!-- pdf-page -->
-
 ## 3. Bounded service recovery, not a computer restart
 
-1. Identify the exact affected service and boundary. Protect financial/tenant
-   integrity; distinguish expected disconnects during maintenance from recovery
-   errors. Never reset a queue or database to clear a health warning.
-2. Confirm verified encrypted database/files proof, locally available compatible
-   previous image, workload headroom and no conflicting active business work.
-   Save a secret-free checkpoint and one exact resume instruction. The agent
-   or browser may share this host; automatic conversation resumption is not
-   guaranteed. Maintain independent recovery access/observer.
-3. Use the installed **sealed** three-file Compose invocation and root runtime
-   environment. Name only approved Axora components. Drain active work; sender
-   grace is 45 seconds. Stopping Docker, PostgreSQL, network or shared host
-   services is outside the sender-only trial authority.
-4. Perform only the approved graceful service stop/start/restart. No computer
-   reboot, automatic reboot schedule, secret replacement or mass queue release.
-5. Verify useful queue progress and authorized read-only workflows, not only
-   process/container state. Reconcile claim/lease/provider acknowledgement;
-   preserve UNCERTAIN sends and exact historical holds. Do not count an idle
-   queue as evidence of the full delivery lifecycle.
-6. Restore every intentionally stopped component and record measured recovery,
-   controller exit, manual intervention and pending scenarios. If unplanned
-   manual repair was needed, mark that trial failed. Do not escalate to reboot.
+1. Name the exact affected service/boundary. Preserve financial/tenant integrity;
+   distinguish maintenance disconnects from errors. Never reset queues/databases.
+2. Verify encrypted database/files proof, cached compatible previous image,
+   headroom and no conflicting business work. Save a secret-free checkpoint and
+   exact resume instruction. Agent/browser host dependencies mean resumption
+   is not guaranteed; maintain independent recovery access/observer.
+3. Use installed **sealed** three-file Compose/root runtime; approved Axora
+   components only. Drain work; sender grace45seconds. Docker/PostgreSQL/network/
+   shared-host stops are outside sender-only trial authority.
+4. Approved graceful service stop/start/restart only; no computer reboot,
+   scheduled reboot, secret replacement or mass queue release.
+5. Verify useful queue progress and authorized read-only workflows, not health
+   alone. Reconcile claim/lease/provider acknowledgement; preserve UNCERTAIN
+   sends/exact historical holds. Idle queues do not prove full delivery.
+6. Restore every stopped component; record recovery time, controller exit,
+   manual intervention and pending scenarios. Unplanned manual repair means
+   trial failure; never escalate to reboot.
 
 ### Fault decision table
 
 | Observation | Safe next boundary |
 | --- | --- |
-| Public failure, local ready | Verify existing Caddy/Tunnel route and connector, not database restore |
-| Sender ready degraded, app ready | Inspect bounded poll/claim/provider stage and live grants; keep enquiries durable |
-| Idle socket SQLSTATE 57P01 | Verify pool discards dead idle client and next ordinary query recovers; do not replay failed business writes |
-| Image/schema mismatch | Hold deployment, compare exact migration manifest and compatible image; repair forward |
-| Financial or tenant uncertainty | Freeze relevant writes, preserve evidence; no blind restore or grant widening |
-| Manually stopped container | Determine why it was stopped before an explicitly approved start; restart policy is not permission |
+| Public failure, local ready | Check existing Caddy/Tunnel route/connector, not database restore |
+| Sender ready degraded, app ready | Bound poll/claim/provider/grant diagnosis; retain durable enquiries |
+| Idle socket SQLSTATE 57P01 | Dead idle client discarded/next query recovers; no business-write replay |
+| Image/schema mismatch | Hold deployment; exact manifest/compatible image; repair forward |
+| Financial or tenant uncertainty | Freeze relevant writes/preserve evidence; no blind restore/grant widening |
+| Manually stopped container | Establish cause before approved start; restart policy is not permission |
 
 An application-only rollback is available through the installed controller:
 

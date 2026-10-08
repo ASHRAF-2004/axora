@@ -1,5 +1,109 @@
 # Authorized recovery completion
 
+## Public team chooser removal — 2026-10-08
+
+Latest user request: remove the public Early Birds/Night Owls “Which team”
+intro, not the assigned-team confirmation in authenticated profile onboarding.
+Source mapping: localized homepage → VisitorChoiceChallenge → visitor snapshot
+loader. The live guest homepage currently renders the associated saved-choice
+counters; the Arabic chooser title is “أيُّ فريق تختار؟”.
+
+1. Unmount that public intro and remove its homepage-only snapshot/session
+   dependencies. Keep the existing localized homepage content/navigation,
+   account/profile gates, Contact verification and stored visitor history/API.
+2. Add focused localized render coverage; replace obsolete chooser UI E2E
+   contracts with purposeful absence/navigation/dependency-resilience coverage.
+   Preserve backend security tests, projects, fresh-server ownership, retries
+   and unrelated gallery/Cart assertions.
+3. Verify actual rendered EN/AR/MS pages, keyboard, mobile and both themes;
+   run required gates on the changed candidate. Older d82 gates are historical,
+   not certification of this application/test change.
+4. Preserve all unfinished recovery evidence and unrelated changes. Explicit
+   merge/deploy approval is required by the latest repository instruction;
+   no production mutation is part of this implementation slice.
+
+## Product action completion — separately scoped continuation, 2026-10-09 MY
+
+The original required suite now preserves actual initial gallery and creation
+failures despite complete valid responses; existing retries are not a repair.
+The precise internal framework scheduling cause is unproven. This candidate
+uses supported native Server Action redirects at those two successful mutation
+boundaries only. Catalog authorization, commercial inputs, validation,
+persistence, image limits and all other mutation actions stay unchanged.
+
+1. Preserve original traces and assertions. Redirect successful creation to
+   the same product UUID editor/notices; keep validation/storage errors local
+   and the already-created/image-retry distinction honest.
+2. Redirect successful image upload to the same editor, with an actual newly
+   saved image UUID reference for repeated completions; localize success and
+   partial-creation feedback in EN/AR/MS.
+3. Clear only the submitted completed source form's current-user/assignment-
+   scope draft. Preserve other editor/caption, unsubmitted and error drafts;
+   cancel disposed/debounced old writes. Product policy remains in its owning
+   notice layer, not the generic draft/storage helper.
+4. Independent source review, focused action/draft tests, actual first and
+   repeated uploads/error recovery/return-to-new browser checks, then ordered
+   final application gates and the original full suite without weaker assertions,
+   new retries/skips, changed order or reused standalone state. No speculative
+   framework update or DB migration. Production acceptance and explicit
+   release approval remain required; no local-only demo-ready claim.
+
+This worktree is separate from public chooser PR221 and must not alter its
+already-tested candidate. Contact cap2 and the failed current03 audit guard
+are unaffected; no invitation replay, data deletion, service/host action.
+
+### Native progress and next verification boundary — 2026-10-09 MY
+
+Current local headb62bf60 plus the uncommitted upload-form-only static-position
+and paired overlap-regression delta is NOT deployed or a committed final head.
+Preserve native02's4PASS/2wrong-copy failures and the corrected negative2FAIL
+empty-name traces. The unchanged calculator copy was reconciled in the new
+test; own explicit create-form bounded RAM snapshot now restores errors and
+newer pending edits without new storage, generic restores or financial changes.
+Manual-reset claims are limited to idle/handled-error/no pending reset UI.
+
+Focused child7files63PASS and root6files55PASS are distinct; two nonexistent
+requested root paths are not executed coverage. Actual fresh standalone final
+flow6PASS13.8s/retry0 covers both original smoke cases, first/repeated unique-ID
+uploads, return-new clear, pending-edit error restore and ordinary second error
+after unroute, reload and explicit reset. Actual headed2→3 exposed sticky upload
+overlap; static upload-only reflow and both-project scroll regression passed,
+but final headed theme/mobile follow-up remains in progress.
+
+Next: finish actual rendered follow-up, freeze/commit the complete candidate,
+then ordered final lint/type/unit/native/build/stage/runtime/assets and original
+full E2E/recovery; protected exact-head CI, explicit approval and production
+acceptance. Development build/stage a6506fa…/41b9b16… and focused passes do not
+replace these gates. Gallery stays OPEN until that evidence supports closure.
+Public1990 required CI350PASS/19skip/one branch failure remains failed despite
+isolated branch2PASS17.1s; public report-only3f15 imagePASS is not a quality fix.
+Original current03 audit/lifecycle/live-fixture gaps remain independent, Contact
+cap2 stays closed, and no host/service/data/credential action is authorized here.
+
+Final headed EN follow-up now complete locally: normal DEMO Owner creation and
+first/repeated uploads,3 ready images, static/no overlap atscroll669 and zero
+overflow; root reviewed desktopLight/Dark and390mobileDark/Light. Invalid guessed
+selector was corrected before claims. New console0/0; owned3152 browser/server
+closed and no3100/3101/3152 listener. AR/MS native manual acceptance is not
+claimed because DEMO locale writes intentionally do not persist and actorEN
+wins; existing separate locale evidence remains. Proceed to final candidate
+freeze/commit and ordered gates, not production/demo-ready or gallery closure.
+
+### Preserved public chooser baseline
+
+Scoped-removal baseline is the fresh protected main/deployed
+`d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`, OCIbc8/schema139; the older
+a40 baseline below belongs to the original recovery start. Required9a8 browser
+continuation preserves every original product/Cart assertion and uses bounded
+failure-only transport/render observation, not an unproved application patch.
+That original combined run completed349PASS/19existing skips/TWO FLAKY plus
+recovery7PASS/EXIT0; first failures and reports are privately archived. A
+supported action-completion/draft-safe gallery repair is scoped to a separate
+worktree; it does not alter the tested public-removal candidate or imply a fix.
+The prior mobile gallery failure and newly observed creation-transition
+failure remain open despite their existing retry passes. Earlier failure
+evidence is retained before subsequent runs; exact approval boundary unchanged.
+
 Baseline: protected main/deployed a40a70bef3104d7e08959dfdc6e55a36ba6beb31,
 OCI sha256:c9442d4aea05e00bf849062f2963f529f606f0e4164a1f05e75297b030f8b7f2,
 migration138. Earlier evidence and dirty worktrees remain intact.
@@ -12,8 +116,9 @@ The lead alone owns production writes, release and capped maintenance.
 Never restart/shut down the host, replay historical mail, fabricate sessions,
 delete real products/accounts/history, or change financial semantics.
 Passwords stay in the unchanged private input file and browser memory only.
-Two Contact submissions maximum across the entire pass: A/B, zero confirmed.
-A is conservatively reserved for one manual user attempt; no automatic A retry.
+Two Contact submissions maximum across the entire pass: both slots consumed.
+A remains conservatively counted/unproven; B is delivered and mailbox-confirmed.
+No Contact retry, new submission or historical email release is permitted.
 One of the two allowed service-recovery trials has already been used.
 
 ## Ordered slices
@@ -87,3 +192,40 @@ standalone ownership, existing retry configuration and intentional skip reasons.
 Never equate healthy workers with cleared workflow acceptance. Ask only for a
 specific genuinely missing account, verification interaction, fixture or provider
 dependency while continuing independent work.
+
+### Final closure audit — 2026-10-08
+
+The user requests completion of all independent authorized work and one truthful
+passed/open/user-action checklist. Existing exact0040/d82 release gates and live
+Contact/UI evidence remain valid; report-only edits do not invalidate them.
+
+1. Registration/setup: map each Section6A criterion to its exact isolated/live
+   evidence. Close recoverable isolated final-integrity/restart gaps using only
+   proved fenced disposable resources and the current immutable application.
+   No production invitations, account creation/reset or permission changes.
+2. Product lifecycle/gallery: map Section6B authority, integrity, concurrency and
+   recovery criteria; diagnose the retained gallery instability with source and
+   bounded owned diagnostics. A passing probe is not an application repair.
+   No real catalog/history deletion, and no live destructive trial without
+   separately designated records and action-specific approval.
+3. Remaining issues8–14: verify delivered implementation/evidence and actual
+   integration/runbook state; exhaust safe checks before identifying specific
+   unavailable external activation/role/destination inputs. No host restart.
+4. Lead reviews integrated evidence, updates FINAL_REPORT/ISSUE_REGISTER and
+   final readiness verdict. Run focused/newly invalidated checks only; any app
+   or repository test change requires the applicable full final-candidate gates.
+
+Verification checkpoint: each item has an environment, tested/deployed SHA,
+proof, outcome and exact missing action. Do not retrospectively turn failed
+historical assertions or unobserved original exceptions into passes.
+
+Current03 acceptance stop14:29:55UTC: preserve the exact existing company,
+SENT/untaken invitation and already-created product. Do not replay consumed
+creation phases. Original row checks and complete hash/link graph checks reached,
+but canonical temporal invalid count21→23 from two new concurrent read audits;
+no original event newly invalid. The strict whole-flow invariant is not relaxed.
+An audit-ordering/verification repair is a separate forward-only design/release
+decision, never a history rewrite. Current-image setup/deletion/fanout acceptance
+remains open. Finish independent idle useful-recovery and guide checks only;
+idle probe02's sequence42809/JSON-format preflight failures precede all container
+actions and preserve the remaining trial allowance until actual execution.

@@ -23,10 +23,13 @@ describe("operating model simplification", () => {
     ]) expect(page).not.toContain(`name="${retired}"`);
     expect(actions).toContain("ProductActionState");
     expect(actions).toContain("product-created-image-retry");
-    expect(actions.indexOf("createProduct(input, user)")).toBeLessThan(
-      actions.indexOf("savePreparedProductImages({"),
-    );
-    expect(actions).toContain("redirectTo: `/products/${productId}/edit?notice=product-created-image-retry`");
+    const createProductIndex = actions.indexOf("await createProduct(input as ReturnType<typeof productInput>, user)");
+    const saveImagesIndex = actions.indexOf("await savePreparedProductImages({");
+    expect(createProductIndex).toBeGreaterThanOrEqual(0);
+    expect(saveImagesIndex).toBeGreaterThanOrEqual(0);
+    expect(createProductIndex).toBeLessThan(saveImagesIndex);
+    expect(actions).toContain('notice = "product-created-image-retry"');
+    expect(actions).toContain("redirect(`/products/${productId}/edit?notice=${notice}`)");
     expect(actions).toContain('redirectTo: "/products?notice=product-updated"');
   });
 

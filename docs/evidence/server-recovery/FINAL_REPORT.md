@@ -1,8 +1,962 @@
 # Axora runtime recovery — persistent report
 
-Report date: 2026-10-08, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
+Report date: 2026-10-09, Asia/Kuala_Lumpur. This report distinguishes deployed repairs from workflow acceptance. Earlier component investigation documents retain their original baseline wording; this report is the current status summary.
 
-## Current execution checkpoint — 2026-10-08 02:57 UTC
+## Latest exact-candidate closure checkpoint — 2026-10-09 MY
+
+**STATUS: NOT DEPLOYED / ORIGINAL ACCEPTANCE STILL OPEN.** Application/test
+candidate `123c9dcb096566a3c3a262397dd9178fa0c0fa7a` is pushed in draft
+[PR222](https://github.com/ASHRAF-2004/axora/pull/222). It includes the public
+homepage chooser removal from PR221 plus the separately reviewed native product
+completion/draft/upload-flow repair. Do not merge both as separate releases.
+The older b62/uncommitted wording below is a preserved development checkpoint,
+not the current tested-head identity. Production remains d82/OCIbc8/schema139;
+The owner explicitly approved PR222 squash merge/deployment on2026-10-09 MY.
+That approval covers this UI candidate, not audit-contract changes, additional
+email sends or destructive production acceptance. Merge/deployment are not yet
+performed at this checkpoint.
+
+The full app/test/database/configuration/script input manifest (`git ls-tree -r`
+for src, both E2E trees, tests, database, package files, Next/Playwright/Vitest
+configurations, workflows and scripts) hashes to
+`b6ec8389560900f00c828b83f32a5332414a8b3ce40f323de0f46131e83a6fce`.
+Evidence-only report updates do not change these tested inputs. Complete
+independent source/test review approved123; no auth, finance, RLS, pricing
+permission or migration delta was found. Both Playwright configs/auth fixtures
+are exactly protected main; original product-smoke operations/assertions/
+timeouts are mechanically equal after removing its optional observer wrapper.
+
+### Ordered host gates, once on123c9dc
+
+| Gate | Actual result | Complete log SHA256 |
+| --- | --- | --- |
+| lint |PASS|41e3408ada2a9982f17c8d519a484f676ce18dbb12e65771feb6e66ee0b79f8f|
+| typecheck |PASS|d597b090f6117de7e92d2560aa707d800d98d154dce3f1cf58812f485e5dfe2a|
+| unit/PGlite |1,968PASS/49existing native-only skips;381passed/11skipped files;488.13s|1e3c220c7f2d5c9b06e003ac1dde4e652352f693a0ecce03e314a3662823c003|
+| native PostgreSQL |49PASS/all139 migrations, authorization lifecycles, forced RLS, least-privilege grants|273ac46930e427c6a0ce0b02e7688ca114ba98ce7e376325fbf322ed65c8eff9|
+| production build |PASS, including both pg-cloudflare standalone files|721ea554b54cb64ad93b172af187836c6de0061ad6bc1771a5eae48d145e9394|
+| standalone stage |PASS|41b9b16a6d16412835b35158b268e865302cee9baf0eb086b04b2a74b03d2b20|
+| standalone runtime |PASS/2 production routes+2 self-hosted runtime resources|71754b861dabef4d14b9cd3ec5158c1e2b58f5aed324162135a8df07f4d67ab5|
+| deployment assets |PASS/35 assets/7,996,414bytes;Compose/Caddy/secrets invariants|fb4d4ab6f266bc9f0ba4ff73d3c2a170c2c382aa77558d7506d6371e8b30d3fe|
+| original combined E2E+recovery |EXIT0:354PASS/19existing skips/ONE company-creation FLAKY,9.6min;then recovery7PASS/9.6s|e405c3b1b71f49353394ce6dcbe0db867d6976debf086a01a7ca814ec057bc9c|
+| diff-check |PASS/empty log|e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855|
+
+Original gallery/creation product-smoke, both new product completion/error cases,
+mobile stale-cart and branch-foundation journeys passed on their first attempt
+in this full host run. This is NOT355 clean passes: the unchanged company-create
+case timed out first, then used its existing CI retry. No added retry, skip,
+assertion relaxation, project reorder or test rerun after this gate. Existing19
+browser skips are viewport/keyboard/matrix and disabled opt-in integration/email
+cases;49 unit skips belong to the separate native gate, where all49 executed.
+
+Whole browser results/logs are retained privately at
+`product-native-required-123-cqNes3` before later manual checks. The first-failure
+company trace hashes to
+`6d0bca9b56ba1f8155e199ea8487c1275f6d1f1c82f6fcaa2e55833ff73686af`
+and screenshot to
+`a0f4cf0d51e6a90be35af6bd54b5049bb3a5befafc82816423c06eacd1f48977`.
+Actual valid POST18:02:52.873Z returned303RSC with the correct same-origin company
+UUID/notice/push redirect, total13.143ms, no recorded request failure. The
+browser remained on `/companies/new`. Installed Playwright intentionally omits
+3xx body resources; absent HAR body/size is NOT proof of a truncated response.
+Installed Next can apply redirect Flight without a separate destination GET;
+absence of that GET is NOT proof no navigation started. Exact Flight contents
+and client queue application were not captured. Pointer interception, native
+validation, wrong URL and returned-state-specific product reasoning are not
+supported causes. **Company navigation instability remains OPEN; retry does not
+repair it.** No speculative company, auth or route patch was made.
+
+[Image CI37819767464](https://github.com/ASHRAF-2004/axora/actions/runs/37819767464)
+PASS on123; deployment correctly SKIPPED. Exact123
+[quality37819787012](https://github.com/ASHRAF-2004/axora/actions/runs/37819787012)
+also completed SUCCESS on123: unit1,968PASS/49native-only skips, native49/all139,
+lint/types/build/stage/runtime and Zapier checks PASS. The unchanged original
+combined browser suite had **355PASS/19existing skips/zero retries or flaky
+results**,13.3min, then recovery7PASS/12.4s. Complete quality log SHA256:
+`eb6deb0a1bc6b4c9148dd175aa5b62f1e18cce843114fb99ce5db80577691d80`.
+This separate clean CI result does not erase the local company first failure or
+prove its intermittent cause fixed. The older failed public-only quality1990
+remains preserved separately. Evidence-only final report changes preserve the
+tested application/test/gate input manifest; a new final-head protected image
+check is still required before merge.
+
+### Additional isolated immediate-delete UI evidence
+
+After heavy host gates completed, a fresh owned local DEMO standalone3153 and
+normal public-fixture sign-in created only
+`cb5cb79d-a3fa-4532-81fc-4598ca08e1f1`, named
+“Isolated immediate-delete fixture123c9dc” (the visible name contains a space
+before123). The known own row/UUID links were verified before its one UI Delete
+click. The next snapshot already showed Deleting product; a separate
+confirmation-dialog interaction was not captured and is NOT claimed.
+Before any refresh or navigation, own rows/detail links became0 and the original
+25 rows remained. Direct detail displayed404 and refresh remained404. Root
+visually reviewed screenshot SHA
+`422eb36152d0d849c8a4697164da10e00d944185b6a8bc6f1df9f08138b2ce48`.
+This closes a **local volatile-demo presentation observation only**: no native
+database audit/asset cleanup, production deletion, response-loss/double-click,
+current03 or before/after-restart acceptance follows from it. Existing login
+preload warning1 was retained. Owned browser/server closed (expected130), with
+3100/3101/3152/3153 listeners absent. No real product/history was removed.
+
+### Exact remaining boundaries
+
+Contact delivery and Inbox receipt remain closed; both smoke slots consumed,
+no new send/retry/historical release. Gallery has a reviewed focused+full-suite
+candidate repair, but **production closure is still OPEN**. The public chooser
+is removed in the tested candidate, not yet the deployed site. Registration6A
+and product-deletion6B original whole acceptance criteria remain NOT fully met;
+prior native/isolated/live duplicate refusal proofs are not live setup/deletion
+or current03 lifecycle/restart proof.
+
+Current03 still fails the canonical audit guard21→23; no history/count was
+rebased or relaxed. Read-only design review proposes a separate PRIVATE
+append-link verifier preserving059 temporal diagnostics. It must validate every
+whole-row hash, same-partition predecessor, uniqueness, one root, no fork/
+orphan/cycle/disconnection, complete reachability and exact head anchoring in a
+consistent snapshot. Adding an audit-row column changes historical hashes;
+no column, backfill, timestamp clamp, purge rebuild or grant widening is allowed
+as a shortcut. Exact decision needed: approve hash-linked serialized append
+order as canonical integrity ordering with temporal warnings retained, and a
+separately reviewed forward-only migration/guard contract with deterministic
+native concurrent/tamper/rollback regressions. This is not missing credentials.
+
+The guarded existing invitation/product and one remaining service trial stay
+untouched. Live setup needs a designated disposable company/new recipient/
+intended role and setup-delivery authority; live deletion needs an exact eligible
+disposable UUID/per-action permission and required encrypted backup/restore/
+rollback proof. Live CAM/second Driver fixtures remain absent. Conditional
+Slack and future off-device cutover need their specifically listed provider/
+host/key/destination inputs; neither is relabelled a core fix blocker. Private
+credentials/unrelated live working-tree changes and the host boot identity remain
+intact. **Overall demo-ready is NOT certified.**
+
+## Native product-action candidate progress — 2026-10-09 MY
+
+**STATUS: NOT DEPLOYED / REQUIRED RELEASE AND OVERALL ACCEPTANCE OPEN.**
+The separate `codex/product-action-completion` worktree is at
+`b62bf600d39527b389cffcff3e686de0898d24c7`, plus the currently uncommitted
+two-file upload-flow/rendering delta described below. This is a local candidate,
+not an exact committed final release head. Production remains
+`d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`, OCI
+`bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8`,
+migration139. No application deployment, migration or production catalog command
+was performed in this continuation. All earlier failures and isolated/live
+acceptance boundaries below remain preserved.
+
+### Supported repair and newly observed error-reset defect
+
+Successful product creation now uses a native Server Action redirect to its
+same UUID editor and the three existing created/draft-created/image-retry
+destinations, outside the error-catching blocks. Successful image upload uses
+the same editor with a success notice and an actual newly saved image UUID, so
+two successive uploads have distinguishable completion references. Other
+product mutations, validation, permissions, commercial calculation, persistence
+and image limits remain unchanged. EN/AR/MS feedback now also honestly describes
+draft creation and the already-created-but-images-failed outcome. The precise
+internal framework scheduling cause of the earlier completed-response/render
+stalls remains unproven; native redirects are the supported completion repair,
+not proof of a particular React/Next race.
+
+The initial native focused02 run actually passed4 and failed2: both unchanged
+product-smoke cases and both positive new creation/upload cases passed, while
+the new negative cases expected the wrong error copy. The unchanged Owner
+calculator throws “Markup percentage must be between 0 and 100.” before the
+separate schema's profit message. Only the new test's exact expected copy was
+corrected; no financial validation was changed. Complete failed log SHA256
+`abdbd74de37106b610a6e8b1266ef336e6a54d9ef67a3175afa29c6031f4e196`
+and traces beginning `200b819` / `22422ca` were retained privately at
+`product-native-focused-failed-02-oaPFY4` before another browser run.
+
+The corrected negative-only run then actually failed both desktop and mobile
+retention assertions: the correct error and `/products/new` rendered, but the
+entered product name became empty. Failed log SHA256
+`f2fa1d53d6e286b2a0796e4ddd24347f603330952800eb02503128df0f5ae335`
+and traces beginning `b5e8aab` / `7edf884` are retained privately at
+`product-native-negative-failed-Jwtq2S`. React's fulfilled function-action reset
+and the draft manager's native reset listener explain this separate defect:
+uncontrolled fields reset and the stored submitted draft is cleared before the
+error effect can recover it. A bounded synthetic native-form diagnostic also
+confirmed that reset event/value/storage ordering; it used no auth session.
+
+The narrow repair reuses the existing safe collect/restore filters and bounded
+draft parser. Only the explicit `create-product` form captures a transient RAM
+snapshot, refreshes its own safe edits while pending, and restores its own
+fields after a local error. One bubbling input/change then uses the existing
+scoped autosave and cancellation rules; the error outcome includes its own
+form ID. Other forms and submitted drafts are not swept. No new storage,
+password/token/file-content capture, retry or persistence system was added.
+Idle/handled-error explicit reset clears the draft; manual reset during pending
+is not distinguished from the framework reset, and this UI has no pending reset
+control. Actual local success clears the transient reference; route unmount
+drops it, and each new submission captures the current values.
+
+### Current focused and actual-render evidence
+
+| Check | Actual result and scope |
+| --- | --- |
+| Child action/draft/source-focused tests |7 files /63 passed,847ms; log `c711a6775e5705624379bbff47e3cd731a434d40a36a9b814b44ec1b96d3954a`. Covers scoped completion, safe/oversized/file controls, repeated errors, newer pending edits, explicit reset and unrelated-draft retention. |
+| Root final-flow focused tests |6 files /55 passed,770ms; log `0c61d2be7391d2d029d57a8ec4f2add5e1c26ebe617a6a2cb51885eb8377dd93`. Two requested file paths did not exist; this is the actual6/55 executed result, not8 files or the child63 run. |
+| Latest focused real-browser suite |6 passed,13.8s,retry0, fresh owned standalone, Chromium and Pixel7; log `b93acc6e637863874f49f43930cb43098e56c2bcf385a032eac1c5bdd09148ad`. Two unchanged original product-smoke cases plus four new completion/error cases; not the required full suite. |
+| New positive journeys |Correct created UUID editor, first upload2 images then a second distinct upload3, distinct actual UUID references, visible success, upload-draft blank after reload and creation form blank after return/debounce boundary. |
+| New error journeys |Only an isolated demo action's already-fetched response is held while enabled fields are edited; correct error/route/latest values/reload pass. That route hook is removed before the ordinary second submission, whose error/retention and explicit-reset/reload checks also pass. No production interception or financial command. |
+| Development artifact |Build and standalone staging passed for focused/rendered acceptance; logs `a6506fa50cfa53f1603d609c21169b30bce2275143de5e7e6823cf97d770f61a` / `41b9b16a6d16412835b35158b268e865302cee9baf0eb086b04b2a74b03d2b20`. These are development checks, not the ordered final exact-head release gates. |
+| Review / safety |Independent source review approved the completion, draft/error and scoped upload-flow changes. Targeted lint/diff checks pass; lead reports142 changed files scanned with0 supplied-password matches. The private input remains intact and outside Git. |
+
+Actual headed native rendering showed the gallery count advance2→3, then exposed
+a separate upload-card overlap: at scroll669, the sticky upload card bottom484
+overlaid gallery top290.90625. The only application delta afterb62 is
+`position: static` on that upload form, following the existing RequestForm
+precedent. There is no global CSS/token/label or visual-language change. Its
+paired new browser regression asserts static positioning and non-overlap after
+scroll, on both projects, and passed in the6-case run above. Independent review
+approved the scoped reflow. The final headed theme/mobile follow-up is still in
+progress at this checkpoint; no finished manual or production acceptance is
+claimed.
+
+### Final headed native English follow-up — 2026-10-09 MY
+
+The preceding in-progress manual checkpoint is now superseded by actual headed
+localhost3152 acceptance, not production. Normal DEMO Owner sign-in created
+product `202df5be-da1c-423b-8e4f-8d914fd6f73a` at
+`2026-10-08T17:43:17Z` / `2026-10-09 01:43:17 MY`. The first two-image upload
+showed reference `cbf7be29-07d2-4531-a0cf-6fb8973e216c` at17:43:37Z;
+the repeat third-image upload showed `46f9d597-e947-41f4-804a-044da4bc95f6`
+at17:43:49Z. Actual own upload-form/next-sibling gallery checks found3 articles,
+all3 images ready, static positioning and no horizontal overflow. At scroll669,
+upload bottom290.90625 equalled gallery top290.90625: no overlap. An initial
+guessed `.product-image-manager` selector returned0/undefined; that was an
+invalid diagnostic probe, not an application failure or valid empty-gallery
+observation. The corrected known DOM was checked before the acceptance claim.
+
+Root visually reviewed English Light desktop17:44:04.390Z, Dark desktop
+17:44:25.185Z,390px Dark mobile17:45:13.551Z and390×844 Light mobile
+17:47:10.692Z captures. Controls/cards were clean; the final mobile check also
+confirmed static upload,3 loaded images, upload bottom no lower than gallery
+top and no document overflow. The new final browser console had0 errors and0
+warnings, distinct from the earlier browser's one login preload warning.
+Normal Arabic language selection cannot persist a DEMO profile preference:
+`updateMyPreferredLocale` intentionally does not write the DB in demo mode,
+and the actor's English profile wins the layout. A transient Arabic document
+followed by English is not native AR/MS acceptance. Earlier public homepage
+locale checks and deployed UI locale proofs remain separate; no language/auth
+behavior was changed to manufacture this proof.
+
+The owned `native-product-final` browser closed and its3152 standalone process
+was stopped afterward (expected interrupt exit130);3100/3101/3152 had no active
+listener. No production service/container or host restart occurred. These
+headed checks close the local English manual follow-up only, not full gates,
+AR/MS native acceptance, production acceptance or overall demo readiness.
+
+### Release barriers and preserved original acceptance gaps
+
+The public-removal candidate remains separately unmerged/undeployed in
+[PR221](https://github.com/ASHRAF-2004/axora/pull/221). Exact1990 required
+quality37810933862 still FAILED:350 passes/19 existing skips/one desktop
+branch-foundation failure with its unchanged file retry0; visitor recovery
+NOT RUN. One fresh isolated original branch journey later passed both projects
+in17.1s,retry0 (log beginning `ffbd3f42`), but did not reproduce the failure or
+prove a repair. The first anchored-filter CLI selected0 tests and remains a
+retained no-test attempt, not acceptance. Public report-only commit3f15bc7 has
+[image CI37815313972 PASS](https://github.com/ASHRAF-2004/axora/actions/runs/37815313972)
+with no deployment; its app/test bytes are unchanged from1990, so it cannot
+erase the failed quality gate or authorize release.
+
+For the native candidate, final commit identity and ordered lint/typecheck/full
+unit/native PostgreSQL/build/staging/runtime/assets, original full E2E including
+visitor recovery, exact-head protected CI, explicit merge/deploy approval and
+actual production acceptance remain pending. Existing CI retry1 and the
+financial journey's retry0,19 browser skips and49 native-only unit skips are
+unchanged; focused runs here add no retry/skip/order/assertion weakening.
+**Gallery remains OPEN until the final required gates and production acceptance
+support closure**, not merely because these focused cases pass.
+
+Current03's failed temporal audit guard, incomplete registration/setup and
+immediate product-deletion/whole-flow proof, absent explicitly designated live
+destructive fixture and missing live CAM/second-Driver evidence are unchanged.
+The native gallery candidate does not repair or certify them. Contact delivery
+and Inbox receipt remain confirmed and both smoke slots consumed: no new send,
+provider/mailbox retry or historical release occurred. No host/service action,
+real business-data deletion, role/auth/RLS or financial-model change was made
+by this continuation. **Overall acceptance remains BLOCKED; demo-ready is not
+certified.**
+
+## Public team intro removal — current candidate, 2026-10-08
+
+Latest request is removal of the public Early Birds/Night Owls chooser, whose
+Arabic title is “أيُّ فريق تختار؟”. The scoped candidate unmounts the intro and
+its saved-choice counters from EN/AR/MS homepages and removes the homepage-only
+visitor snapshot/session dependencies. Existing public content, localization,
+profile assigned-team confirmation, authentication/authorization and Contact
+verification remain unchanged. Stored visitor history/API/security tests are
+retained; no business or visitor records are deleted.
+
+Before change, a separate real headed Chrome guest session rendered the live
+saved-choice counters10 (Early6/Night4), in EN and AR. No choice or Contact Send
+was pressed. Focused render regression first failed3 localized cases against the
+old page, then passed after removal; focused render/visitor-security/SEO/release
+isolation checks29PASS. Browser replacement coverage, actual standalone views
+and local gates are now complete as detailed below. The protected image build
+passed, but the required quality browser gate FAILED as detailed below;
+explicit release approval is also absent. This app/test change means earlier exact0040/d82 gates remain
+historical evidence, NOT certification of the new candidate. Production remains
+d82/bc8/schema139. Merge/deploy requires explicit approval under the latest
+repository instruction. Recovery barriers and the closed Contact cap below
+remain unchanged.
+
+Verification continuation: application/browser-test commit
+`fd934d38358a31e0812fd1863d4999ea5fdc636a` and test-contract correction
+`4fb94af443533de9741b3d433309a0382c5d7d09` are local candidates, NOT deployed.
+Both Playwright configurations, backend visitor security/cookie/migration tests,
+Contact/profile code and existing Cart/gallery assertions remain unchanged.
+The retired feature's main coverage changes22→20 executions and recovery18→7;
+replacement cases require actual localized content/navigation, zero retired
+requests, no counters/scroll lock, keyboard access and recovery/history behavior.
+They are feature-contract replacement, not new skips or relaxed unrelated tests.
+Independent complete source/E2E review approved the feature removal.
+
+The first full unit gate against fd934d3 FAILED:1,920 passed/49 existing
+intentional skips/2 failures/510.67seconds. Failed log SHA256
+`1176694c6d3561ecfd12c56f06355840648ba488487efc8acdf5695b2fdebb4c`
+is retained. One failure was the obsolete homepage entry in the strict
+incomplete-session accessor allowlist; removing only that entry narrows the
+test's permitted routes. The other, previously unchanged purge fixture, failed
+SQLSTATE23514 `user_permission_overrides_check`; migration036 requires
+`ends_at > starts_at`, while096 closes active overrides at the removal time.
+The actual failing call's timestamps were not captured. A fresh RAM-only all139
+diagnostic reproduced exact-equal start/end rejection and complete transaction
+rollback, then verified a positive-interval normal removal. Diagnostic02 log SHA
+`f90d76f157a9a6a776d7e89bc445b3b9d11b1e411e555e94db70f0000d303e8e`.
+Its first diagnostic stopped before this boundary because the chosen time
+preceded actor scopes; it is not a passed reproduction. No live DB/provider call.
+
+The purge test now explicitly represents a pre-existing override with
+`starts_at=now()-interval '1 minute'`. Removal time, all erasure/count/audit/
+email-reuse/reactivation/Owner-refusal assertions, timeouts, constraints and
+production authorization code are unchanged. Actual equal-time or future-start
+override deletion is NOT proven fixed by this fixture correction; no production
+deletion claim is made. Focused final correction13PASS/4.50seconds/retry0;
+earlier unchanged-area focused39PASS and intermediate45PASS are separate runs.
+Final lint/type/unit and subsequent ordered gates run on4fb94af; the failed
+earlier whole suite is retained, not cleared by focused passes alone.
+
+Local verified gates so far: lint/typecheck PASS; full unit1,922PASS/49 existing
+native-only skips/500.54seconds, native49PASS/all139 migrations/forced RLS/
+authorization/grants, production build including both pg-cloudflare artifacts,
+standalone staging30,373files/15symlinks, standalone runtime2routes/2resources,
+and deployment assets35self-hosted files/PASS. Final unit/native/build log SHA256:
+`6f9e687436a74e9d979f0b9ab823aa74573fcfc6dfe113d6cebc41d4add1b8c7` /
+`dbf7a5c113a1deec2c039a042215f90e22847a6294737329b4f61fcc3d18e838` /
+`f81aa9497bbb8e865c8870ec7cbc2c9a093eeb209584ae6803e014c2cf2695ad`.
+Focused browser20PASS/24.2seconds + recovery7PASS/8.9seconds, retry0. Their
+log SHAs `b7753b96851ee544b33343a5db8accecbc19bbcfd3b54894747fedbfc913a72d` /
+`167d77841ad9e20dbfb991a7c773465d58abb6f3a042a656d0b9c690c29eed61`.
+
+Actual new headed Chrome at the production-mode standalone artifact3150 passed
+EN/AR/MS,1440px desktop and390px mobile, both real UI theme choices and Arabic
+RTL. Root visually reviewed twelve ready homepage captures plus one EN footer
+capture; the initial mobile EN footer is not represented as a hero capture
+(the separately named `standalone-en-mobile-hero-light.png` is the actual hero).
+The chooser/counters are absent; observed retired requests0, overflow0 and body
+scroll unlocked. Real keyboard Tab→skip link/Enter→main focus and refresh passed.
+Final console read0 errors/warnings. No Contact navigation/field entry/Send here.
+CLI-owned browser and3150 test process closed; production/recovery containers
+untouched. These are actual staging renders, not post-deploy production proof.
+
+The first required combined suite on4fb94af completed EXIT1:349PASS/19 existing
+skips/one FAILED public-i18n keyboard case/one FLAKY mobile gallery case/9.5min.
+It used `CI=true`, fresh owned standalone and the existing one-retry CI policy
+(no retry/config changes). The keyboard case failed its obsolete positive
+retired-counter expectation on both initial and existing retry. Gallery failed
+the unchanged15second article-count assertion with0 rather than2; its existing
+retry passed. Recovery did NOT run because the main-command failure stops `&&`.
+This is not a green combined result. Complete log SHA256
+`9706de7d82fca67b6049487e2948e4ba52988395e37b40c42ac7a6d3dc501b9c`.
+
+All reports/results and the raw log were archived before subsequent browser
+work at private evidence `public-team-removal-failed-9tYNaj`. The actual initial
+gallery trace is now available (SHA256
+`95f3d9632422d4f8f5ceabb869fce99446a647ff3febaebcd328d75864a65706`),
+along with its rendered screenshot (SHA256
+`420b7d12852c20e7d7ff8910c77d48f806624e55cea96d1a260853c2410be529`).
+Root viewed that first-failure page: selected files2, uploaded0/8, empty Manage
+gallery. This closes the missing-first-failure-artifact gap, NOT gallery
+instability. Actual trace/network/render causality is being investigated; no
+speculative application repair or production mutation has been made.
+
+Recursive review found just one remaining positive counter assertion. Its file
+now removes only the retired visitor stub and requires visible actual EN H1 +
+chooser/counter absence; every following Tab/focus/language/login/menu assertion
+and both existing mobile-duplicate skips remain. Independent final diff review
+approved this contract correction. Focused public-i18n26PASS/2 existing skips/
+14.5seconds; log SHA256
+`096881d5002d5a428122c54ade5b0d41063b5f7a24c21f87c0235e647f3e8251`.
+No Contact Send or assertion/config weakening. The later combined result is
+recorded below; earlier4fb source gates do not by themselves certify later test bytes.
+
+Test-only observability/remaining homepage keyboard correction is committed as
+`9a8cc53de8bfbd30243eda9f10f2a774b3c87631`. Application, database, unit tests,
+both Playwright configs, package/lock and Next config bytes are identical to4fb;
+its successful unit/native/build/stage/assets results remain unchanged-source
+evidence, not a fabricated rerun. Current browser-test lint/typecheck PASS;
+independent review required and verified noninterference corrections: optional
+startup/reporting failure cannot replace an original assertion, callback data
+is runtime-whitelisted, cleanup is guaranteed and observer bridge rejections
+are consumed. Original product journey operations,60s overall/15s operation
+timeouts, all assertions and existing retries are exact (`git diff -w`).
+
+The observer retains at most64 same-origin recognized product requests and64
+gallery-count states, without headers, query strings, multipart, raw Flight,
+cookies/storage or credentials. `revalidated` is only header PRESENCE, not a
+claim of completed invalidation; `receivedBytes` is CDP dataLength, not encoded
+wire size. Failure-only safe attachment/log preserves facts even if an existing
+retry makes the overall run green. It intercepts or mutates no network/DOM state.
+
+Earlier focused diagnostic2PASS/6.3s is separate. The final focused case then
+completed EXIT0 with desktopPASS and mobileINITIALFAIL/existing-retryPASS,
+1.3min: creation response200/revalidated-header present/17,832received bytes/
+Network.loadingFinished, but route remained `/products/new` for15seconds and
+actual Create button remained disabled. No upload/edit request was reached.
+Root reviewed its actual screenshot; this is a distinct creation-transition
+failure, not proof that gallery repaired. Log SHA256
+`485b75febb5b2c62c922129046e4535583d25b9fdfe74621a2d24bfc5d2cf27d`;
+actual first-failure trace SHA256
+`72f29195050c96e9ecb59be126dafd20ae4e0ac9a7c8aaf52c7265f14b81c63e`,
+recoverably archived at private `public-team-action-failed-CVWhJg` before any
+new run.
+
+The required original `CI=true npm run test:e2e` completed on9a8cc53 with
+fresh owned standalone servers and unchanged configurations: main349PASS/
+19existing intentional skips/TWO FLAKY/9.7minutes; recovery7PASS/9.3seconds;
+combined EXIT0. The two initial failures were desktop gallery0/2 after upload
+and mobile creation remaining on `/products/new`; each existing one-retry CI
+attempt passed. This is NOT351 clean passes and neither failure is repaired
+by that exit code. No application/test source changed during this run.
+Complete log SHA256
+`031a2d7b5f630979812f1960dac989d42baa74dc9565a43dbe164e54033f4184`.
+All main/recovery results, reports and raw log are recoverably archived at
+private `public-team-required-9a8-RXEBYD` before further browser work. Actual
+desktop/mobile first-failure traces respectively have SHA256
+`7813292a3424ba323ec313dda5c8b8c8795d60f8c4efe54db3a828301cd4e49d` /
+`f909a0c35c7140cdbe472aef3c76a63081dab262c8d0394ad355c7fb171de7fd`.
+
+The desktop upload completed its HTTP response, with26,673 CDP dataLength
+bytes and Network.loadingFinished; both new image resources returned200, yet
+the observed gallery never committed two articles. The separate focused
+creation failure also had a complete valid success response/destination but
+the form stayed pending without editor navigation. These establish client
+action/route-completion failures in these demo-mode occurrences, not an
+unfinished HTTP response; they are not production durable-write evidence.
+The precise internal React/Next queue/cache
+race is still unproven. A supported native server-redirect alternative is
+being implemented in a separate candidate/worktree, with submitted-draft
+cleanup and error/draft preservation; it has NOT repaired or deployed anything
+yet. The public-removal candidate remains unchanged and independently releasable
+only after its protected CI and explicit merge/deploy approval.
+
+### PR221 exact-candidate CI — 2026-10-08 17:10 UTC
+
+Candidate `1990ad6b71fe6d2bdc78b2685be731214e49e555` is pushed in
+[PR221](https://github.com/ASHRAF-2004/axora/pull/221), NOT merged/deployed.
+Its reviewed tree equals the preceding e70ebb1 tree; main-history alignment
+introduces no new application or test bytes. Independent review confirms the
+only application delta from protected main is the38-line localized-homepage
+chooser/snapshot removal. Authenticated team/profile gates, permissions,
+financial/domain code, migrations and infrastructure are unchanged.
+
+[Image CI37810901425](https://github.com/ASHRAF-2004/axora/actions/runs/37810901425)
+passed; deployment was correctly skipped for the PR. Required exact-candidate
+[quality37810933862](https://github.com/ASHRAF-2004/axora/actions/runs/37810933862)
+passed lint/typecheck, unit1,922/49 existing native-only skips, native49/all139,
+build/pg-cloudflare and standalone staging/runtime. Its original browser suite
+FAILED:350PASS/19 existing skips/ONE desktop Company Administrator foundation
+failure/14.8min. The file's existing retries0 prevents replay of these financial
+and tenant mutations; it was not changed. Visitor recovery did NOT run after
+main failure. There is no green-CI or release-ready claim.
+
+After Save branch, the original5second URL assertion remained on the branch
+edit page, with actual rendered disabled “Saving branch…” and phone controls.
+Trace diagnosis is in progress; no increased timeout, retry, skipped test,
+speculative application patch or production mutation. Complete log SHA256
+`04a04964e04ee36563a91dfac9ca7bee07e1aaee8544b0577f6277f2d88dc730`.
+The96-file failed browser artifact was downloaded before expiry into private
+`public-chooser-ci-1990-failed-EsWQjO`; GitHub artifact11566896325 zip digest
+`6c911a816048e5c1cddc4313eddd3d08d5abf2e055ffd459576e2e13476f94a1`.
+Production remains d82/bc8/schema139. Latest repository guidance additionally
+requires explicit approval before merge/deploy; the older autonomous-release
+instruction does not override it. Contact remains closed at two smoke slots.
+
+## Final closure audit — 2026-10-08 14:48 UTC
+
+**STATUS: DEPLOYED REPAIRS / BLOCKED OVERALL ACCEPTANCE. Not demo-ready.**
+
+Guide publication follow-up: the refreshed dated guide is now published at
+`/home/ashraf/Downloads/Reports/Axora_Server_Migration_Guide.pdf`:13pages/
+48,566bytes/SHA256
+`30cbd5a5c61ab7819f7c06a59d82dcd5b88c8b329bc61e31343690a9f0e7e24e`.
+Root inspected every final rendered page; condensed recovery prose/table keeps
+the rollback command and its limits together (the rejected14page preview had an
+orphan command page). Commands/boundaries unchanged; generator unchanged.
+The original12page PDF is recoverably retained in private evidence with its
+original SHA99e9210d… . Final PDF text was scanned in RAM for known private
+passwords, private keys and unresolved placeholders:0hits; genuine screenshot
+provenance remains dated public readiness only. No migration/restore/cutover/
+service trial or host action is implied. Current source SHA256:
+SERVER_MIGRATION `f975ed0170b02990fc137c5275b78a131c29aee4f9c95e52af8325ee0ea8bcd7`;
+REBOOT_RECOVERY `8ccf6b4ad7db51d8e08cafe934b59fbc95fa05ccc2ec9a82899b9fe0127baaca`.
+
+The user's final review requires every original acceptance criterion to be
+classified, not an unconditional completion claim from the earlier checkpoint.
+Contact B's delivery and actual Inbox receipt remain confirmed; both Contact
+slots are consumed. No additional submission, historical-email release or
+provider/mailbox retry is permitted or needed.
+
+Fresh protected-main/runtime inspection confirms d82/bc8/schema139; public
+readiness/liveness and all sealed migration checksums passed at14:48:39UTC;
+the app and all five exact-image workers were independently healthy/restart0/
+noOOM at14:48:55UTC. Production checkpoint SHA256
+`2bc663f41b63d03f0137a8794142e58ecb48bca71b6ee188e787d8fa13340e88`.
+Host boot ID remains
+`aaf793bb-7222-4663-8b5a-e84beab01c4b`; no host restart occurred. At that
+checkpoint no app/test/migration/configuration change invalidated0040/d82 gates;
+the later public-intro removal above requires its own changed-candidate gates.
+
+The prior registration whole-continuation guard was not reached. The prior
+isolated product test reloaded BEFORE checking list absence, so it does not
+prove immediate removal without a manual refresh. New normal-auth scenarios
+using the exact deployed immutable image in a separate fenced database have
+started, not rewritten historical results. Current03 normal logins, ONE ordinary
+company creation/four-group no-logo overview/Owner pending-setup projection,
+ONE normal invitation sent to a RAM-only sink and whole-original-row guards
+passed. Its automatically provisioned zero-balance Wallet was not removed to
+manufacture a missing-Wallet fixture. Earlier catalog-observer stops performed
+no product command. With the corrected private proxy, both catalog observers
+passed; continuation03 then stopped on an unclassified edit-page audit read.
+The read-only projection confirms ONE already-created owned product
+`a23bed0b-656c-4d50-a9e7-f39bd63f300a`, one image/price-history row and no supplier
+link or deletion audit. It was not recreated. No fragment take/password setup
+or controlled restart has executed in that interrupted workflow.
+The SAME company/invitation is retained; no replay/resend/reset.
+
+Original03 stopped on a private checker's unclassified canonical catalog VIEW
+audit. A separately reviewed guard now classifies only the exact known-Owner
+canonical read; all original rows/hashes still apply. Continuation01 stopped
+pre-auth because JavaScript rounded a nanosecond file timestamp; continuation02
+pins exact original nanoseconds and stopped before product commands because
+the catalog observers had no initial snapshot. A bounded read-only diagnostic
+recorded visible/online pages, fallback200 and stream429, but also rejected its
+own dashboard-topic instrumentation. These are retained failed evidence runs,
+not passed application, lifecycle or restart tests. The new private proxy
+correctly forwards downstream cancellation; a bounded read-only diagnostic
+then passed with one HTTP200 catalog stream and no429. This is a test-ingress
+correction, not a production proxy/connection-limit fix.
+
+### Current-image integrity barrier — actual read-only result14:29:55UTC
+
+The new strict guard reached the complete original-row classification and
+anchored hash/link checks, then failed `canonical_temporal_discrepancy_changed`.
+The archived baseline has2,326 events/21 canonical verifier invalid entries;
+current03 has2,383 events/23. All original21 invalid entries remain; **zero
+original events became newly invalid**. The two new invalid entries are the
+owned-product commercial-history VIEW and concurrent catalog VIEW, timestamped
+`14:12:21.624590Z` and `14:12:21.624573Z`, appended in opposite timestamp order.
+The difference is17microseconds. Every hash, predecessor, fork, cycle, root and
+head check is valid; all2,383 events are reachable exactly once. No audit or
+financial data was rewritten.
+
+The existing migration059 verifier orders by `occurred_at,id`, while the
+prepare-event trigger serializes append links under the partition-head lock.
+The timestamp is captured before that lock. The observed ordering disagreement
+is established; it does not demonstrate hash-chain corruption or identify an
+original reported registration/product exception. The canonical verifier is
+**not passing**, and the private guard remains unchanged. Parent04 was NOT RUN;
+new deletion/setup and whole-flow acceptance stay paused at this actual barrier.
+A separately approved audit-ordering/verification repair would need a forward-only
+design, native concurrent regression, release gates and migration approval; it
+must not rewrite existing history or silently accept the changed count. No such
+out-of-scope database repair is deployed or represented as complete here.
+
+Private preflight/result projections SHA256:
+`be999e827f9eab5adca7127d3bb176e31ce115cf00fc5f4fbf5728b3510195db` /
+`09a2d6235c2bb5decd5e1216d7e8dbafa0239d54086c760869e8e4eaa75e5eb9`.
+These are secret-free derived projections of actual tool results, not invented
+raw logs. The one remaining idle service trial is assessed independently; a
+health/restart result will not clear this whole-workflow guard.
+
+The idle probe02 stopped during read-only preflight, before its start/restart
+markers or container action. Diagnostic01 found sequence whole-row conversion
+SQLSTATE42809 and malformed private Docker JSON templates (missing the outer
+closing brace). Rows227/6,938, all three financial views, files, boot and sink
+delivery1/untaken-fragment1 reads passed. Mechanical helper-only corrections
+retain every state field, limit and assertion; this is not an application fix,
+retry allowance or passed restart. Failed result SHA256
+`ab75bc541b1418d156af4d9d1ee1d1e7c9e1f0db6e74acfcd26c8511c826dcff`;
+diagnostic SHA256
+`65f3d454426972d25ea0c53eac0191bbc67532abec0f2f6fc527cd39a84b9868`.
+
+The mechanically corrected read-only diagnostic02 subsequently passed all
+eight components (EXIT0):227 current tables/6,938 rows, nine sequence definitions
+and all three sequence state fields, three financial views, copied files, host
+boot, exact DB/sink state and sinkdelivery1/untaken-fragment1. Result SHA256
+`2b31f492031f66b5223dda8a9a81f3c8cba9a94710af7a13c04c2d62b2fa6969`.
+No before-after restart comparison is implied. No container action ever occurred
+in these attempts; **one of two controlled restart trials remains unused** and
+is reserved for complete affected-workflow acceptance after the audit barrier
+is resolved. Corrected trial03/restart02 source is prepared, NOT RUN. Parent04
+also remains NOT RUN; no new setup/deletion/propagation result is claimed.
+
+Current03's four exact owned containers remain fenced and bounded, ingress
+ports3178–3180 closed, no outbox poller or external provider access. They are
+intentionally retained running to preserve the untaken RAM-only disposable
+invitation, not forgotten cleanup or production services. Earlier02 resources
+are stopped/data retained; unrelated a40 isolation and production are untouched.
+No token/session/credential data is exported. Do not stop its sink merely to
+clear this warning or recreate/resend fixtures to conceal failed acceptance.
+
+ONE expired-token probe now passes against current application source in fresh
+RAM-only PGlite/all139/two grant replays:1PASS/2.83s/retry0. A legitimately
+historical newly inserted invitation is rejected as expired by actual app-role
+inspection and consumption before hashing/activation;229 complete relation,
+sequence and Wallet-view fingerprints are unchanged/provider0/RAMclosed.
+The first probe failed before import/tests due Vitest mock-import resolution;
+the supported import-only correction preserves that failure and all assertions.
+This is isolated expiry evidence, not native/live setup or restart acceptance.
+Result SHA256 `8ef71a89f4e6c888e53d36276504a50b1ec28660123e58ab3c21f6fd0e25e935`.
+
+ONE fresh-owned mobile gallery diagnostic retained the original assertions and
+timeouts and passed2.3s/retry0; no failure metadata was generated. This does NOT
+resolve the CI gallery instability. Original first-failure cause/artifacts remain
+open. Exact diagnostic log SHA256
+`b037677afb4e7cf17ddf1d00de967075cfc5f35b2992190f8622775e6330afad`.
+
+The missing budget-period distinction now has ONE isolated RAM-only PGlite
+characterization:2PASS/2.57s/retry0, canonical139/grants replayed twice. CLOSED
+with no ACTIVE successor returns AX003/BUDGET_UNAVAILABLE; complete guarded
+Wallet/ledger/period/recurring/command/audit state is unchanged. Elapsed dates
+while status remains ACTIVE retain the inherited status-based allocation
+contract:one synthetic allocation/command, no Wallet/recurring/period/schedule
+or refresh change. This is not date-expiry rejection, native/live proof or a new
+financial-policy decision. The old wrong-account expiry claim remains retracted.
+Log SHA256 `bb91da1919ec343f40332aa00b027d0d133ebfb89af6e9ddf1c789b9c76c17ee`.
+
+Current guide/role/integration evidence and the per-criterion verdict below
+supersede the10:09 "core acceptance passed" wording, qualified
+by the isolated/live and restart boundaries, not unconditional demo readiness.
+
+### Original issue register: implementation versus acceptance
+
+| Original item | Passed evidence | Still open / exact boundary |
+| --- | --- | --- |
+| Deployment/startup/runtime |Deployed polling/grants/cast/readiness/idle57P01 recovery fixes, exact image/schema checks, native/process failure tests; historical a40 idle sender trial; corrected current-image read-only capture8/8. |Current-image trial NOT RUN; one allowance remains reserved for complete affected-workflow acceptance. A clean complete workflow after restart, active-send drain, whole-host boot and off-device recovery are not inferred from health. Host boot is prohibited here. |
+| REGISTRATION6A |Cancellation and `$12::timestamptz` defects fixed; native invitation/setup concurrency and company-command replay; RAM expiry1PASS/unchanged229 fingerprints; earlier isolated normal setup/login/used-link; live designated cross-scope duplicate notice/no extra account. |Original reported route/error/request unavailable. Current03 final guard FAIL before setup/restart workflow. No same-tenant duplicate/full HTTP response-loss journey certified. Live valid-input setup needs a named disposable company/new recipient/intended role and permitted setup-delivery action. See REGISTRATION.md's per-criterion matrix. |
+| PRODUCT_DELETE6B |Owner-only capability/raw-DENY/history/cart-FK protection; native reference/DENY races, PGlite replay/cleanup rollback; earlier isolated normal owned deletion and protected/CA/DENY refusals. |Original reported exception unavailable. Earlier UI absence was checked after reload. Current03 new product is retained; strict guard stopped before immediate deletion/list/detail and before-after restart workflow. Live destructive acceptance needs an exact eligible disposable UUID, per-action authority and verified recovery plan. See PRODUCT_DELETE.md. |
+| 1 Active setup tabs |All six actual Owner routes, Light/Dark/hover/keyboard focus/390px; shared semantic tokens. |No outstanding observed contrast defect. |
+| 2 Branch information |Actual Owner/BA grouped rows, aligned metrics, ONE address action, distinct labels; EN/AR RTL/MS desktop/mobile. |No outstanding observed layout/duplicate-label defect. |
+| 3 Open wallet |Both actual rows, both themes/hover/focus/mobile. |No outstanding observed contrast defect. |
+| 4 Overview/logo |Structured actual reviewed-brand logo plus isolated no-logo placeholder/four sections. |No actual live no-logo fixture exists; do not manufacture one in production. |
+| 5 Product details |Actual structured Details/Delivery/authorized Pricing/gallery; Company Admin management-route refusal; automated confidential-data guards. |Live CAM account absent. Gallery upload instability remains OPEN despite retry-pass and bounded diagnostic PASS. |
+| 6 Setup Wallet404 |Owner-only pending-state component/authorization tests, actual correct live company Wallet navigation/direct/refresh/history and isolated setup projection. |All live companies already have Wallets; no live absent-persisted-Wallet fixture tested. No Wallet was fabricated/removed or balances changed. |
+| 7 Contact/email |ONE B visible success, durable enquiry/outbox, one accepted attempt/provider ID, delivery event/provider GET and actual Inbox receipt confirmed; A reconciliation/cap2. |Original live queued-across-restart scenario not performed. Both slots are consumed; no more Contact sends, historical releases or provider/mailbox retries. A's original submission path/outcome remains unknown. |
+| 8 Shared live updates |Bounded authorized transport/reconnect/fallback/dirty-state/native authorization coverage; corrected private proxy's read-only catalog snapshot. |Observer initialization does not prove create/delete propagation. Production business-change fanout and open-stream role/DENY revocation not exercised; requires a controlled owned mutation/revocation fixture, not real business data. |
+| 9 Migration guide |Technical runbooks/reproducible illustrated PDF and genuine dated readiness screenshot; verified encrypted local backup/disposable restore. |Guide refresh/render proof below. Future host/off-device destination/key custody/cutover absent; documentation is not a performed move. No host action. |
+| 10 Invitation UI |Localized compact UI/token/consent contract; earlier isolated valid setup and native/expiry protections. |Current03 valid-token rendered setup/whole continuation did not execute. No real recipient invitation consumed. |
+| 11 Integrations/Slack |Truthful native/disabled-provider UI, enabled API/webhook inventory, disabled Slack/Zapier and exact activation checklist. |Conditional activation only: authorized app/workspace/public channel and protected client/signing secret mounts + app/client IDs absent. Not a core-repair blocker. |
+| 12 Add Budget |Typed legitimate ceiling/refusal/current-actor checks; native success/denial; CLOSED/no-ACTIVE period refusal and elapsed-ACTIVE characterization2PASS. |No live allocation authorized/performed; elapsed ACTIVE is not date-expiry rejection or a new financial policy. Controlled live test would need a named company/branch/period and authorized amount. |
+| 13 Budgets list |Actual CA six-column responsive keyboard-scroll/BDI/RTL metrics/layout, no document overflow. |No outstanding observed layout defect; no metrics changed. |
+| 14 BranchAdmin lifecycle |Migration139 hard ceiling/UI/direct/native custom-GRANT/raw denial; actual BA operational metadata retained/no lifecycle controls. |No destructive live branch action; native isolated authority proof is not live deletion/deactivation. |
+
+**Original-problem verdict:** ordinary Contact delivery and the observed UI/Cart
+defects are resolved with deployed evidence. Identified registration/product
+defects are repaired and have focused/native/earlier isolated coverage, but the
+original reported workflows cannot be declared fully resolved without the
+missing original-case and complete current/live lifecycle acceptance. All
+required gates are not closed; **overall demo-ready is NOT certified**. Optional
+Slack activation and future migration inputs are not presented as blockers to
+the independently deployed core fixes.
+
+## Historical Contact closure checkpoint — 2026-10-08 10:09 UTC
+
+**STATUS: DEPLOYED / CONTACT B LIVE-VERIFIED, including actual mailbox receipt.**
+This checkpoint does not certify the unobserved registration/deletion live
+scenarios or queued-across-restart Contact case. The previous Contact pause below is superseded by the new
+explicit authorization for one controlled B and the evidence here; A's earlier
+manual Send/result remains unproven, not retrospectively rewritten.
+
+Production remains `d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`, immutable
+OCI `bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8`,
+migration139. The exact0040 tested/deployed-tree equivalence, required green
+gates, actual six-UI/role checks, stale-Cart repair, bounded live duplicate
+refusal and distinctly isolated registration/product-deletion evidence below
+remain valid. Repository source changes in this continuation are report-only;
+the authorized B created the documented Contact/email records and private
+evidence. No application/test/config/migration code changed; no costly full suite was invalidated
+or rerun. The gallery retry remains disclosed/unproven, not relabelled fixed.
+
+### Contact A reconciliation and one controlled B
+
+Fresh09:42 and09:56 READ ONLY checks found no A/B or other recent persisted
+Contact submission, notification/outbox/provider ID, due send or active lease.
+Current-container redacted failure logs had0 matching events, but cannot
+reconstruct logs before the03:31 container replacement. A conservatively
+continued to count1; its absence did not restore the two-smoke allowance.
+All eight historical jobs remained PENDING/Infinity/attempt0/no lease/provider.
+The configured notification destination matched the requested recipient.
+
+The computer-use inventory exposed no surfaces, and the pre-existing Brave
+windows had no accessible debugging connection. A separate Brave launch failed
+sandbox configuration before opening Contact; the supported Snap test window
+opened but Cloudflare600010 disabled Send. It generated0 Contact POSTs/no send
+reservation and was later closed with its exact owned child exit confirmed;
+private0700 profiles were retained, not exported. No sandbox/fingerprint/UA
+control, test verification key, callback, CAPTCHA click or security bypass was
+used. Neither failed preparatory approach was a Contact submission.
+
+At the user's explicit request to control the existing open Brave with the
+cursor, the supported desktop fallback focused only window31457284/PID967564
+and opened a new public Contact tab without changing existing tabs. Normal
+verification visibly succeeded without any CAPTCHA interaction. The actual
+desktop cursor/keyboard filled fixed B name/message, the requested email,
+published Axora phone and privacy consent. A private form-only screenshot
+verified those fields, consent and verification success before Send.
+
+The fresh10:02:10Z pre-click snapshot again verified exact A/B0, idle queues and
+unchanged historical holds. The two-slot ledger and shared exclusive/fsynced
+latch were written before ONE physical Send-button click at10:03:39.089Z
+(18:03:39.089 Asia/Kuala_Lumpur, UTC+08:00). No retries, A replay, B replay,
+historical release or additional message send. Total counted slots are now2.
+The preparatory03 attach-only helper was never run.
+
+### Separately proven delivery stages
+
+| Stage | Actual B evidence |
+| --- | --- |
+| Visible submission result | Existing Brave showed “Thank you! Your enquiry has been recorded and Axora will follow up.” Fields reset; success banner captured. |
+| Persisted request/enquiry | `7378a4d9-7444-44e5-8ba4-84899a6f4f75`, created `2026-10-08T10:03:39.224Z`; exactlyONE B, notification state NOTIFIED. |
+| Notification outbox | `81857ccc-87fd-45b0-9f9d-8392f54175e3`; SENT `10:03:49.607496Z`; one attempt row/accepted attempt/distinct accepted provider ID, no lease. No acknowledgement outbox; CANCELLED acknowledgement preserves existing behavior. |
+| Provider acceptance | Recorded provider ID `01a11af8-1832-70f3-901a-e80fee949b45` and one accepted attempt/MESSAGE_SUBMITTED event. Raw POST response was not recorded; no invented original HTTP code/body. |
+| Provider read-only response | ONE bound [Resend GET](https://resend.com/docs/api-reference/emails/retrieve-email) at `10:05:34.973Z`: HTTP200, matching ID/subject/recipient, `last_event: delivered`. No send/list/replay or provider retry. |
+| Delivery event | ONE stored MESSAGE_DELIVERED event at `10:03:51.633Z`; the ingestion route verifies the Svix raw-body signature before normalization/persistence. Signature-verifying source path and actual event are evidence, not a newly fabricated payload or reverified saved raw signature. |
+| Actual mailbox receipt | User explicitly confirmed receipt. With the user's further permission, Gmail's matching-recipient profile and exact B+subject search returned ONE message `1a11af8219b1b180`; metadata places it in INBOX, not Spam/Trash, received `10:03:50Z` /18:03:50 Malaysia. Subject/To/Delivered-To match; B reference is in the snippet. No full MIME body/attachment/unrelated mail was fetched, and no mailbox mutation. |
+
+Subject: **New Axora website enquiry**. Body/name reference:
+**AXORA-RECOVERY-20261008-B**. Enquiry UUID above is the persisted request-record
+ID, not an invented browser transport/Cloudflare request ID. Browser POST
+headers/body/transport ID were not captured in the ordinary native window;
+the visible result and exact durable/provider/mailbox correlation are captured.
+
+Post-send READ ONLY comparison found all eight historical job guard records
+identical to preflight, excluding observation time; A0 and exactlyONE new B/
+notification1. Queue/agent-control/suppression state remained unchanged. These
+are point-in-time acceptance proofs, not a guarantee of future exactly-once
+delivery. No real product/history deletion, financial transaction, role change,
+service/container restart or host shutdown/reboot/restart occurred in this pass.
+The private credential input and unrelated working trees remain intact.
+
+Private evidence SHA256: pre-click `702667f66f30c0d00bedb25ff6d48c519bd9991e91bff77720d7c639aeeeda57`;
+shared/native latch `fac7f4efe7789a4243bfc65217b35c60e7acc56a761ed7d98a15d64b25f19436`;
+prepared/result images `02501b64ed1d8729581b51d78d86f0351829f9cebbe7c6820404e7ea6f24c358` /
+`1b82c06a900546bc77784ff60c3c13ee4e8916111a7f9dac1c6d5e30fb9d77b5`;
+post-send metadata `8b8a9d3a7de6a86360e324515c1ceaf3d43202a49bb63e8f4c3a733d4a29bd48`;
+provider response `b0b9f1779364fca34cec88b1216e88aa4f628172d635e560adf8c33cb8179731`;
+Gmail projection `f6f071a202ece114c62fcdc56184b1bed680cf6cb96c009e7ab844ec77d187dc`.
+Files remain private/outside Git; authorized authentication/provider secrets were
+handled in memory, never printed or included in exported evidence logs/reports/images. Private browser
+profiles are retained browser data, not exported evidence. The existing user's
+Brave/new success tab remains
+available; only root-owned separate test processes were closed.
+
+No remaining input is needed for ordinary Contact delivery. The original live
+queued-across-restart Contact scenario was not performed and cannot be retried
+within the closed cap. The original isolated whole-flow integrity/current-image
+restart gaps are required acceptance gaps, being investigated independently;
+they are not optional enhancements. Actual CAM/second Driver/live negative-state
+fixtures and missing first-failure gallery evidence remain separate limitations.
+Controlled Slack activation inputs and off-device/future-host access block only
+those conditional provider or future operations, not deployment of independent
+core repairs. Nothing in this checkpoint certifies unobserved acceptance.
+
+## Historical execution checkpoint — 2026-10-08 03:50 UTC (superseded)
+
+**STATUS: DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
+
+PR [220](https://github.com/ASHRAF-2004/axora/pull/220) was squash merged at
+03:26:29Z under the standing release authorization. Protected main and deployed
+SHA are `d82a3bb4785e6ba7b7e4e7ec125636a6368f699f`. OCI is
+`ghcr.io/ashraf-2004/axora@sha256:bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8`.
+Migration remains `139_branch_lifecycle_authority_and_budget_refusals.sql`;
+all139 sealed-release/ledger checksums match and migration-status returns `none`.
+Follow-up before-state was c3/OCI24f/schema139, recorded below. Previous c3
+release is retained for rollback. This checkpoint is report-only work after
+deployment, not a claim that these later report edits are in the deployed image.
+
+### Exact candidate, gates and release
+
+The tested final candidate is `0040bebcdf1f9e1246942d7623824c5fa3894228`.
+Its committed tree equals the d82 squash-merge tree. Application source remains
+f09: six Contact-feedback CSS lines and stronger assertions in the same six
+existing localized browser cases. Subsequent0040 changes are failure-only
+public-demo artifact retention, its invariant and evidence documents. No
+financial model, Wallet/budget accounting, pricing permissions, authentication,
+tenant/RLS controls, production infrastructure configuration, test order/projects,
+assertion weakening, new retries or new skips were introduced in this follow-up.
+Independent code review and the115-file supplied-password scan passed.
+
+| Gate | Final evidence |
+| --- | --- |
+| Focused | Cart100/seven files and Contact28/two files plus original localized Contact6 pass; old Cart authority-mismatch and old Contact20px overflow RED proofs retained. Retention/isolation3 pass. |
+| Lint / typecheck | Local final source and exact0040 [Nightly37720771405](https://github.com/ASHRAF-2004/axora/actions/runs/37720771405) both pass. |
+| Unit / PGlite | Exact0040:1,915 passed/49 existing native-only skips;376 passed files/11 skipped. The added retention invariant explains1914→1915. |
+| Native PostgreSQL |49 tests/11 files pass; all139 migrations, deployment replay, forced RLS, authorization lifecycle and grants verified. |
+| Build / staging / runtime | Exact0040 build passes;98 static pages,30,401 staged files/15 symlinks;two routes/two resources validate. Required pg-cloudflare standalone files present. |
+| Deployment assets | Final application f09 local gate:35 assets/7,996,414 bytes and Compose/Caddy/secrets invariants pass. No application/build/production deployment config change afterward. |
+| Original full E2E | Final local f09:353 passed/19 existing skips, retry0; visitor18 passed. Exact0040 Nightly:352 passed/19 skips/ONE flaky retry-pass in10.0min; visitor18 passed23.2s. Full original mobile stale-Cart/direct-purchase and all six Contact cases pass, not merely an isolated diagnostic. |
+| Protected image CI | Exact0040 [37720646333](https://github.com/ASHRAF-2004/axora/actions/runs/37720646333) success. |
+| Merged-main image / deployment | Exactd82 [37722734699](https://github.com/ASHRAF-2004/axora/actions/runs/37722734699) success; controller deployment success03:31:13Z. App and all five workers use the exact above OCI/revision; healthy, restart0, no OOM. |
+| Health / migration | Independent local/public HTTPS, redirect, security headers, liveness and DB readiness pass; final health03:47Z and migration-status `none`. DB/Tunnel/Tailscale-DB containers unchanged. |
+| Backup policy | Controller confirmed matching139 ledger and skipped deployment backup/migration runner. Existing verified pre139 encrypted backup/disposable-restore proof and automatic01:38 backup remain; no new backup/restore is claimed. |
+
+Final exact0040 complete private CI log SHA256
+`34bcb64a3c39a9edf044d0988aa3cd6a1ee421779fb32e41d701e72a01999e61`;
+d82 main image/deployment log
+`fdf1bf9e69322485291933c605ad5f039d7a1ed7250cd74da73d4a5abe2cd4da`;
+final independent health log
+`0190271c0fc6619fc7e49b7e9702f3301f7d66840e23ee0a340b538e2b191eea`.
+The controller's ordinary retention policy pruned obsolete generated release
+`cccd272be606cb2d05bd0f097cd725427506fb45`; its source remains recoverable in
+Git. No business data/uploads/backup was removed; previous c3 remains retained.
+No computer shutdown, reboot or host restart occurred.
+
+### Retries, skips and the still-unproven gallery instability
+
+The49 skipped unit cases execute/pass in native PostgreSQL. The19 browser skips
+are existing viewport/matrix/disabled opt-in cases. Existing CI global retry1
+and financially sensitive journeys' retry0 are unchanged; no failing assertion
+was removed, softened or skipped. Repository policy does not configure a
+zero-flaky rule, and the final quality command exited0. It is NOT a clean
+353-first-attempt CI pass.
+
+Final0040 mobile product-gallery creation again initially observed an upload
+next-action response HTTP<400, then expected2 gallery articles but received0 at
+150. Its existing retry passed. Earlierd8 both-attempt gallery failure and
+branch-create failure remain FAILED evidence, not relabelled fixed. Current0040
+mobile foundation passes with retries0, but that does not prove the prior cause.
+Separate fresh-owned/process-only2CPU focused product and foundation journeys
+passed58.3s/10.0s without retry; these are supported diagnostics, not identical
+GitHub runner reproduction or a substitute for a combined gate.
+
+Source tracing excludes the proposed shared-live refresh on those routes and
+file-input restoration by the draft manager. HTTP<400 alone is not upload
+success evidence. Exact failing multipart/matched response/Flight/server-image
+count/DOM evidence is still missing; no speculative application patch or
+invented root cause is claimed. Failure-artifact upload was SKIPPED because the
+final job succeeded; runner artifacts remain0, and the first-attempt trace was
+not inspected. This remains an open diagnostic limitation, not a hidden failure
+or an optional feature represented as a core blocker.
+
+### Actual post-deploy production acceptance
+
+Normal headed Chrome used current authorized accounts and real authentication.
+The computer-use inventory exposed no enabled browser, so the explicitly
+authorized terminal/real-browser fallback was used. No fabricated session,
+saved auth, authentication screenshot, HAR, trace or CAPTCHA bypass. Ordinary
+auth/profile timestamps and explicitly tested appearance/locale writes are
+excluded from no-business-mutation claims. Owner English/Light was restored;
+all owned contexts/browser closed. Initial image-loading/session-skeleton and
+pre-commit empty-heading reads are retained but excluded from acceptance; final
+loaded/visible states were inspected separately.
+
+| Item | Actual d82 result / boundary |
+| --- | --- |
+| 1 Active setup tabs |All six company routes clicked in both themes. White text; Light normal13.2/hover15.17 and Dark4.83/5.81 contrast. Keyboard focus3px; mobile44px tabs fit/navigate. Disabled link state not applicable. |
+| 2 Branch information |Existing openai branch:four General/address/contact/delivery groups, distinct Location confirmation label, exactlyONE Edit delivery address, three aligned Budget values. Owner13/BranchAdmin12 label-value rows; desktop/390px readable and no document overflow. Actual EN/AR RTL/MS labels and wrapping visually checked. |
+| 3 Open wallet |Both actual company rows readable in both themes with the same above contrast, hover and3px keyboard focus. Mobile281×44px actions contained. No financial action ran. |
+| 4 Company overview |mewo1/C-107 has identity/business/contact/setup panels and its actual reviewed-brand logo loaded. Light desktop, Dark390px and Arabic RTL390px inspected. No live no-logo fixture exists; no-logo placeholder remains isolated/automated evidence. |
+| 5 Product information |Actual A3Paper:Product details/Delivery/Authorized pricing, eight rows, stronger labels/values and loaded gallery; Light desktop/Dark390px/Arabic structure fit. Owner cost is authorized. Actual Company Admin direct management route renders404/no pricing rows (Next streamed HTTP200); CAM pricing guards pass automated checks, but no actual CAM account was supplied. |
+| 6 Setup Wallet |Continue setup→Wallet and budgets reaches `/companies/4b5f72eb-303a-4df0-a8fa-f078a97ce0bd/wallet`, correct mewo1 company200/no404. Direct URL, refresh, Back to Wallet and Forward to Documents checked after visible navigation waits. All live companies already have Wallets; absent-Wallet owner-only pending state remains non-live coverage. No Wallet fabricated or balance command used. |
+| Company Administrator |Current malaysiaashrafo account is verified active/company-scoped with one canonical COMPANY_ADMIN assignment. Unselected Shopping chooser, selected CYBERJAYA-01 Shopping, existing Cart, company Wallet and Budgets200. Before/after bounded READ ONLY checks confirm exact owned active null-department Cart/authority and all its company carts/items/events unchanged; fingerprints kept only in RAM. Mobile budget region356px/table720px is keyboard-scrollable; document overflow0. No Add/Place/allocation/top-up. |
+| Branch Administrator / Delivery |Current shehab Branch Administrator sees retained Edit branch/four groups/single address action and no lifecycle/delete controls. Current alsaloulashraf Delivery Agent portal200/assigned-deliveries and available-jobs navigation fits390px. No claim, location, availability or delivery workflow action. |
+| Other original authorized items |Delivered code/documents for8/9/10/11/12/13/14 remain unchanged. Transport/reconnect is not business-change propagation or open-stream revocation proof; native budget/branch denial is not a live allocation/deactivation trial; a delivered guide/disabled Slack checklist is not cutover/provider activation. Compact invitation UI and actual budget table checks are separately evidenced. See the final per-item matrix rather than infer completion from implementation or health. |
+
+Private browser05 log SHA256
+`50867a8b6024737716015a6be4cf657bba114eb2ee93d811a7e4d5bc4eaf5601`;
+reviewed private helper05 SHA256
+`3711c64da76f936fecaf348d83b159027ee8ac4725e65e61d7a4b04b17e03577`.
+Actual rendered evidence is private, outside Git; ready BranchAdmin and budget
+images SHA256 `810d6dcf4fd6e909e7c71e07305026c1f5e61a48513d77b9036f163c52b8b958`
+and `5832276f2403bcd5f280be2f63db31b315361c48c760500b8152bf56f82669e3`.
+The UI/UX approach preserved the existing visual language and used only scoped
+reflow; no global redesign was introduced.
+
+### Historical core acceptance / Contact pause — superseded at 10:09 UTC
+
+Do not follow the earlier Contact action instructions in this subsection.
+Contact B is now delivered and received; A1+B1 consumes the cap of two. No
+further Send, A/B replay, provider retry or historical-email release is allowed.
+The historical failure and missing-A evidence below remain preserved.
+
+**Contact A:** fresh03:35:40Z READ ONLY metadata finds A/B enquiries,
+notification/acknowledgement outboxes and ALL submissions/notifications since
+reservation0. Eight historical Infinity-held jobs remain unchanged, attempt0/no
+lease/no provider ID; queues idle and six controls unpaused/revision1. Logs:
+`7202a12213e738c4ad4f8923b0b589e4ca88db40238bf96c24fb407da7205b44` /
+`ef4c5cf6db508347d0e6be5e8d868d617774673feccb63c91df494a70f583dc3`.
+The current configured notification destination matches the connected recipient
+mailbox (closed booleans only). Its03:36:04Z exact-A search including Spam/Trash
+returns0 IDs/no next page. There is no A provider ID to look up; provider
+acceptance, signed delivery and actual mailbox receipt are each **UNPROVEN**.
+
+Trace: native validity/client verification → server privacy/honeypot/Siteverify
+and schema/rate checks → atomic enquiry+notification outbox → leased worker/
+attempt → stable provider idempotency/accepted ID → verified signed delivery
+event → actual mailbox receipt. No durable enquiry means no A job for a worker
+to send. It does NOT prove no Brave POST: pre-submit validity/verification or
+pre-commit validation/refusal/honeypot paths could leave no rows. Which path A
+took remains unknown without the prior user's Send/result/time evidence.
+Cloudflare identifies600-series errors as generic challenge failures, with
+browser/network/configuration possibilities; this does not prove an obsolete
+Tunnel-version cause. See the official [error reference](https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/)
+and [challenge troubleshooting](https://developers.cloudflare.com/cloudflare-challenges/troubleshooting/challenge-solve-issues/).
+No Cloudflare controls/configuration were changed or bypassed.
+
+Passive actual d82 Malay Contact at390px:200, no document overflow, all six
+new CSS rules loaded, Send disabled, no natural feedback error appeared. No
+field/challenge token read, callback/reset/fill/Send used. This verifies deployed
+styles, not actual production error-panel or submission acceptance. All six
+localized error-panel render cases pass the original required combined suite.
+
+**Exact user action needed:** say whether the earlier Brave attempt only
+completed verification or also pressed Send; if Send, provide its visible
+result and approximate time. **Do not submit again yet.** A conservatively
+counts1 of the two labelled live-smoke limit; B is unused. There was no new Send,
+provider send/lookup or historical replay. Only after that reconciliation may a
+bounded ordinary manual submission, if appropriate within the original limit,
+complete the missing chain. The prepared passive observer remains NOT RUN.
+
+**Designated duplicate:** ONE prior actual Owner form submission using
+adoashraf103 reached `/users?notice=user-account-exists`; all four identity/
+authority/account/invitation/selected-finance/files after-guards passed, no
+duplicate created. Original notice checker EXIT1 remains preserved; later
+GET-only capture shows the actual canonical visible refusal. No second POST
+was made. Live cross-scope refusal is evidenced; original same-tenant/whole-
+continuation certification is not invented.
+
+**Registration and product deletion:** valid invitation/password setup/login/
+used-link refusal and eligible owned product deletion/audit/refresh plus
+protected-history/Company Admin/DENY refusals remain actual authenticated
+isolated-environment proofs, not live production account creation/deletion.
+No real product or business history was deleted. Existing isolated guards and
+the original whole-flow limitations remain documented below.
+
+Other precise dependencies are not blockers to the deployed core repairs:
+actual CAM/second Driver accounts for those live role checks; an existing
+no-logo/absent-Wallet company for live negative-state checks; controlled Slack
+app/workspace/channel/dedicated private inputs for activation; off-device backup
+destination/future-host access for resilience/cutover proof. The12-page migration
+guide and runbooks are delivered; no host restart test is permitted. Private
+credential input remains available and unchanged, passwords absent from source/
+logs/artifacts/commits, and unrelated working trees remain intact.
+
+## Historical execution checkpoint — 2026-10-08 02:57 UTC (superseded)
 
 **STATUS: BLOCKED FOLLOW-UP RELEASE / CONTACT ACCEPTANCE. Not demo-ready.**
 
@@ -48,6 +1002,36 @@ owned context/browser closed. This is not actual recovery-panel acceptance or
 Contact submission proof. The earlier linked live duplicate and shared-live
 evidence below remains valid. Contact A still requires prior-Brave Send/result/
 time reconciliation; cap A1/Bunused, no new Send or historical replay.
+
+### Continuation — 2026-10-08 03:10 UTC
+
+Follow-up head `0040bebcdf1f9e1246942d7623824c5fa3894228` commits the
+failure-evidence retention/invariant and preserves the failed d8 report. No app
+change from f09. Protected image CI37720646333 passed. Evidence-enabled exact-head
+Nightly37720771405 is RUNNING: lint/typecheck/unit/native passed, build/browser
+completion still required. No merge/deploy or passing-suite claim yet.
+
+Supported focused alternatives: ONE original mobile product journey, CI=true,
+fresh-owned standalone and process-only CPUs0,1, passed in58.3s without retry;
+ONE original mobile foundation journey passed in10.0s, retries0/trace retained,
+including its later budget steps. These are resource-constrained diagnostics,
+not identical GitHub runners or substitutes for the failed combined gate.
+An initial foundation CLI selection matched no tests and performed no journey;
+its log is retained separately. Product successful-run raw log was not saved;
+tool completion and private output artifacts exist, no invented log hash.
+Both diagnostic servers closed. Source tracing rules out the proposed shared-live
+refresh path: neither failing edit/create route mounts that sync. No speculative
+application fix is justified before actual failing action/DOM/Flight evidence.
+
+Fresh read-only Contact03:06:04Z still finds A/B and all submissions/notification
+outboxes since reservation0; eight historical holds/attempts/queues/controls
+unchanged. Metadata/recent log SHA256
+`69a8b425dd610f79f0f8b716e331e698f75e5e357ffecee6646e9dc1d98f137c` /
+`ee41b505257f96e4f675de6304be740661f51b084ce46d1aba2f84313fbb7529`.
+Fresh connected-recipient Gmail03:06:37Z exact-A anywhere search again returned
+0 IDs/no next page. No provider lookup without an A provider ID; acceptance,
+signed delivery and mailbox receipt remain unproven. A1/Bunused/no Submit,
+verification reset or historical replay; prior-Brave reconciliation still needed.
 
 ## Historical execution checkpoint — 2026-10-08 02:25 UTC (superseded)
 
@@ -655,11 +1639,12 @@ and required exact-head gates and core workflow evidence are complete.
 
 ## Historical deployed-core record (superseded status; evidence retained)
 
-The remainder preserves the earlier deployed-core checkpoint and its original
-evidence. Its current/remaining/deferred wording is historical, not the 22:26 UTC
-status above. In particular, mailbox access, local shared-live/UI work, native139
-coverage and delivered guides have advanced; no earlier gate certifies the new
-candidate. The historical retry/skips/failure explanations remain visible.
+The remainder, including every following sibling heading, preserves the earlier
+deployed-core checkpoint and its original evidence. Its current/remaining/
+deferred wording is historical, not the final closure status at the top.
+Mailbox receipt, shared-live/UI work, native139 coverage and delivered guides
+have advanced. Historical failure, retry and skip explanations remain visible;
+do not treat older pending wording as the present release identity or verdict.
 
 **Core fixes deployed; overall recovery acceptance BLOCKED. Not demo-ready.**
 
@@ -671,7 +1656,7 @@ The computer was not shut down, rebooted, restarted or power-cycled by this task
 
 No financial transaction, payment, purchase, Wallet credit, budget increase, real product/account deletion, delivery claim/completion or account-role/password change was performed for acceptance. Private supplied account input remains intact outside Git; no credentials are included here. Existing dirty root checkout, prior worktrees and unrelated PR215 were preserved.
 
-## Production identity and release
+## Historical core record — Production identity and release
 
 | Boundary | Verified identity/status |
 | --- | --- |
@@ -696,7 +1681,7 @@ No financial transaction, payment, purchase, Wallet credit, budget increase, rea
 
 PR218 changes only three lines in one E2E file. It does not modify application behavior, migrations, routing, financial semantics, dependencies, retries, timeouts, test order or infrastructure. Existing immutable-image automation owns its normal release; no parallel manual deployment is introduced.
 
-## Proven core failure boundaries
+## Historical core record — Proven failure boundaries
 
 ### Runtime and transactional email
 
@@ -724,7 +1709,7 @@ Migration138 exposes one audited Owner/DENY-aware capability with current actor/
 
 Typed EN/AR/MS inline feedback and the existing Deactivate alternative replace generic failure. Native concurrency proof covers references arriving while deletion waits, committed references preserving assets and a DENY change during a lock wait. **No real product deletion/deactivation was executed; disposable live success acceptance remains unverified.**
 
-## Contact routing, backlog and receipt evidence
+## Historical core record — Contact routing, backlog and receipt evidence
 
 - Existing route preserved: public support address `support@axora.management`; Contact internal recipient `thalththanwyd@gmail.com`; existing Resend outbound sender/transport retained. No visitor acknowledgement or CAM broadcast was enabled. Mail routing/provider secrets were not replaced.
 - Exactly eight historical zero-attempt PENDING jobs were Infinity-held in one guarded audited transaction before repaired claims became active. Exactly eight corresponding audit UPDATE rows were verified. Original due timestamps are preserved in private operational SQL. Four historical UNCERTAIN jobs remain review-only.
@@ -733,7 +1718,7 @@ Typed EN/AR/MS inline feedback and the existing Deactivate alternative replace g
 - Provider acceptance, signed delivery event and recipient Inbox/spam receipt are separate evidence stages. **None is claimed for these new live smokes.** No recipient mailbox access was supplied.
 - The queued-across-restart B scenario is not performed. Prepared private helper is not evidence of a trial. Never send a false durable-B handoff.
 
-## Service recovery trials and observers
+## Historical core record — Service recovery trials and observers
 
 Production controlled trial count: **one of at most two**. Trial1 is idle sender-only, expressly not queued-mail or complete core-workflow acceptance. No second trial was performed: queued-B has no verified submission, and random repeat restarts are not justified. No host/database/network/shared-Docker/proxy or unrelated workload was stopped for this trial.
 
@@ -751,7 +1736,7 @@ The independent180-second trial observer completed exit0 with90 complete samples
 
 The task did not operate unrelated stethofuse services. Their current start times19:19:09–15Z were independently observed; do not claim all unrelated container identities remained unchanged or attribute their restart to this task.
 
-## Existing issue register:1–14
+## Historical core record — Existing issue register:1–14
 
 | Issue | Current status and acceptance boundary |
 | --- | --- |
@@ -772,7 +1757,7 @@ The task did not operate unrelated stethofuse services. Their current start time
 
 Separate register entries: **deployment/startup/runtime** deployed/isolated-verified/idle sender trial passed, full affected workflow acceptance incomplete; **REGISTRATION** deployed for proven cancellation defect, original live report not reproduced/evidence gap; **PRODUCT_DELETE** deployed/isolated-verified, original live success/destructive scenario unverified.
 
-## Browser and role acceptance
+## Historical core record — Browser and role acceptance
 
 Real production headed Chrome was used through the task-authorized normal login UI after Computer Use surfaces and Chrome DevTools MCP were unavailable. Private account input is read in memory; no auth storage state, password screenshots, traces/HAR or bearer links retained. Captures are not made on login/account routes. Actual role/scope was verified from live metadata and UI, not email labels.
 
@@ -785,7 +1770,7 @@ Real production headed Chrome was used through the task-authorized normal login 
 
 Screenshots remain private under `/home/ashraf/Documents/Axora Recovery Evidence/2026-10-08/output/playwright/`. Loading-state captures are not used as layout/no-logo acceptance. The UI/UX skill's state-contrast and responsive checks exposed the residual Dark-hover defect; no global redesign/new palette was applied.
 
-## Tests and required gates
+## Historical core record — Tests and required gates
 
 | Gate | Exact-source evidence/result |
 | --- | --- |
@@ -811,7 +1796,7 @@ No retries/skips/projects/order/assertions were weakened. Fresh standalone owner
 
 App/server/migration/test sources matched between testedc7c48e6 and core candidate except the narrow verified Zapier dev-lock patch. PR218 changes only the stale URL expectation, so unchanged application evidence is reusable. The repository's required broad final Nightly completed once on exacta40, including its browser gate; no duplicate full suite was launched locally after PR218.
 
-## Backups, installed configuration and rollback
+## Historical core record — Backups, installed configuration and rollback
 
 - Pre-change encrypted artifact: `/var/lib/axora-production/reset-backups/axora-reset-20261007T175617Z-cccd272be606.tar.gpg`. AES256/decrypt/isolated240-table/136-migration/uploads restore verified17:56:26Z. Ciphertext SHA256 `4b812fed5e4f0a414db80b4dfc5a49dfd6993ba3b948fa56d2a365350a779bb7`.
 - Policy pre-migration backup: `/var/lib/axora-production/backups/axora-20261007T185834Z`.
@@ -823,7 +1808,7 @@ App/server/migration/test sources matched between testedc7c48e6 and core candida
 - Previous core939 immutable image is locally available and compatible with schema138; its application source is identical to currenta40. Application rollback does not reverse migrations, audited holds, data or external effects. Rolling back farther to the pre-137/138 baseline image blocks its legacy permanent product deletion through revoked raw DELETE and restores its old email failure. Such baseline rollback is containment, not a weakening of grants. Inspect current `previous` before using the existing root rollback script.
 - Short operations and rollback instructions: `docs/operations/RUNTIME_RECOVERY.md`; original component evidence: `CONTACT_EMAIL.md`, `REGISTRATION.md`, `PRODUCT_DELETE.md`, `ISSUE_REGISTER.md` in this directory.
 
-## Deferred deliverables and exact blockers
+## Historical core record — Deferred deliverables and exact blockers
 
 1. Real Contact verification is not ready; no safe provider/recipient evidence can be inferred. Recipient Inbox/spam access unavailable. Historical UNCERTAIN/held backlog requires individual evidence reconciliation, not bulk replay.
 2. Original live registration journey/exception and explicitly disposable lifecycle targets are unavailable. No questions are being repeated; no unsafe target is assumed disposable.

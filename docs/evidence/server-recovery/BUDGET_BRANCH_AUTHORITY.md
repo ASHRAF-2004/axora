@@ -1,5 +1,40 @@
 # Add Budget refusal and branch lifecycle authority
 
+**Historical component investigation.** Current schema139 deployment, executed
+native gates and actual read-only role/UI evidence are in
+[FINAL_REPORT](FINAL_REPORT.md). Pending release/native wording below is superseded
+there. The retracted expired-period probe and absence of real financial/destructive
+acceptance remain limitations, not retrospectively converted into passes.
+
+## Current focused period characterization — 2026-10-08
+
+One separately reviewed, private in-memory PGlite run applied the immutable
+139-migration chain and canonical application grants. It passed both focused
+cases in 2.57 seconds with zero retries; no production financial mutation,
+application change, migration change or new financial policy was made.
+
+- A correctly selected `CLOSED` period with no `ACTIVE` successor returned
+  SQLSTATE `AX003`, mapped to `BUDGET_UNAVAILABLE`. Selected complete budget,
+  Wallet, recurring-allocation, schedule/refresh, ledger, command and audit
+  fingerprints were unchanged.
+- A correctly selected elapsed period still marked `ACTIVE` permitted the
+  existing status-based Add Budget allocation: one allocation entry and one
+  command in that same period. It did not automatically refresh or expire the
+  period, change Wallet or recurring allocation, or alter the other selected
+  financial/schedule rows. This characterizes the inherited contract; it is
+  **not** proof of date-expiry refusal or a decision to change renewal semantics.
+
+Private evidence: `budget-period-probe-01/run-01.log`, SHA-256
+`bb91da1919ec343f40332aa00b027d0d133ebfb89af6e9ddf1c789b9c76c17ee`;
+reviewed test SHA-256
+`e7f0845ba99d2ba542bfbe432076a3c279d8d8688186b034186c82a106288f29`.
+Fixture seeding respected the existing immutable-active-period trigger; no
+trigger was disabled. This focused PGlite evidence is distinct from native
+permission-GRANT expiry during a lock wait and from live acceptance. The earlier
+wrong-account expired-period probe below remains retracted.
+
+## Historical investigation
+
 Baseline: `a40a70bef3104d7e08959dfdc6e55a36ba6beb31`. This specialist work used
 an isolated worktree and migrated PGlite fixtures. It performed no live budget,
 Wallet, branch lifecycle, account or permission mutation. Production control and

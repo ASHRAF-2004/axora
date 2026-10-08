@@ -2,7 +2,242 @@
 
 This register contains no account secrets, invitation tokens, private enquiry bodies, or provider credentials.
 
-## Current checkpoint — 2026-10-08 02:57 UTC
+## Latest exact123 candidate closure checkpoint — 2026-10-09 MY
+
+Production remains d82/OCIbc8/schema139. Tested application/test head123c9dc is
+in draftPR222, not merged/deployed; includes PR221's public chooser removal.
+Older b62/uncommitted sections below are historical checkpoints.
+The owner explicitly approved PR222 squash merge/deployment on2026-10-09 MY;
+this does not authorize audit-contract changes, extra email or real-data deletion.
+
+| Item | Latest evidence and exact boundary | Status |
+| --- | --- | --- |
+| Chooser removal |EN/AR/MS homepage-only removal in tested123; assigned-team profile/security/history retained. Public PR221 separately remains unmerged/failed quality1990. |Implemented/tested candidate, NOT LIVE. |
+| Final host release gates |Ordered lint/types,unit1968+49native-only skips,native49/all139/RLS/grants,build/pg-cloudflare,stage/runtime2routes2resources,assets35/7,996,414B,diff-check PASS. |Complete on123; hashes in FINAL_REPORT. |
+| Original combined browser gate |354PASS/19existing skips/ONE unchanged company-create FLAKY9.6min;recovery7PASS9.6s/EXIT0. Gallery, product native/error, mobile cart and branch-foundation first attempts pass. No newretry/skip/assertion/config changes. |Not355 clean passes; earlier failures preserved. |
+| New company-create instability |Valid POST18:02:52.873Z/native303RSC/correct UUID+notice+push; route stayed new30s. HAR3xx body omitted by design; separate UUID GET unnecessary for Next redirect Flight. Exact Flight/client queue missing; no supported precise cause or patch. Trace6d0bca9… archived with whole results at product-native-required-123-cqNes3. |OPEN; existing retry PASS does not fix it. |
+| Protected CI |Image37819767464 PASS/deploySKIPPED; quality37819787012 SUCCESS on123:355PASS/19existing skips/zero retries or flaky results+recovery7PASS; all other required gates PASS. Complete logeb6deb0… . Local company failure remains separate. |Complete on tested123; owner approved PR222. Final evidence-only head needs its protected image check before merge. |
+| Gallery |Focused6/retry0 and original both-project full product journeys pass; rendered English themes/mobile/no-overlap pass. AR/MS native manual limitation retained. |Production acceptance OPEN, not closed by local/CI alone. |
+| Immediate deletion presentation |Fresh own local-DEMO productcb5cb79d… removed via UI; before any reload rows26→25/ownrow+links0;direct+refresh404. Separate confirmation interaction not captured; no real data touched. |Isolated UI observation PASS only; native/live/current03/restart/transport-loss criteria OPEN. |
+| Audit contract decision |Canonical temporal guard21→23 remains FAILED; private hash-link verifier design preserves all hashes/history and temporal diagnostics, requires strict graph/head/reachability and native concurrent/tamper negatives. New audit-row columns would change historical hashes. |Separate canonical-ordering/security decision + forward-only migration authority needed; no guard/history/schema change. |
+| Original6A/6B |Old native/isolated/live duplicate proofs remain separate. Current03 setup/deletion/restart paused at audit guard; live disposable account/product/action/recovery designations missing. |NOT fully accepted; no replay/invite consumption/deletion/trial. |
+| Contact/safety |Contactdelivery/Inbox confirmed/cap2closed;no sends/historicalrelease. Privatefile/dirtyprodcheckout/host preserved; owned3153 stopped130/all local listenersclosed. |Preserved. Overall demo-ready NOT certified. |
+
+## Native product-action candidate — 2026-10-09 MY
+
+**NOT DEPLOYED. Required release gates and overall acceptance remain OPEN.**
+Separate candidate `b62bf600d39527b389cffcff3e686de0898d24c7` plus an uncommitted
+two-file upload-flow/rendering delta; not a committed final tested release head.
+Production stays d82/OCIbc8/schema139. All older evidence below is retained.
+
+| Item | New actual evidence / remaining boundary | Status |
+| --- | --- | --- |
+| Creation/gallery completion |Supported native successful create/upload redirects preserve same UUID/context/permissions/validation/storage. Upload notices distinguish successive actual saved image UUIDs; EN/AR/MS draft/image-retry/success feedback. Original product-smoke assertions/timeouts unchanged. Precise framework scheduling cause unproven. |Implemented in local candidate; gallery OPEN until required full gates and production acceptance. |
+| Failed product draft retention |First native02:4PASS/2FAIL wrong new-test copy, archived `product-native-focused-failed-02-oaPFY4`, logabdbd74de…/traces200b819…/22422ca… . Corrected negatives:2FAIL/entered name emptied, archived `product-native-negative-failed-Jwtq2S`, logf2fa1d53…/tracesb5e8aab…/7edf884… . Fulfilled action/native reset clears uncontrolled fields and stored draft before error handling. Central calculator message was never changed. |Own explicit create-form bounded safe RAM snapshot/error restore implemented; no financial patch/new storage. |
+| Scoped draft safety |Same safe collection/restore/parser, own form ID outcome, newer own pending edits protected, other forms unchanged; idle/handled-error resets discard. Pending manual reset not distinguished/no pending reset control. No sensitive/file contents captured. |Child7files63PASS/logc711a677…; independent source review and targeted lint/diff pass. |
+| Current native browser proof |Fresh standalone/retry0/Chromium+Pixel7:6PASS13.8s/logb93acc6e…; unchanged original smoke2 plus new positive/error4. First/repeated upload2→3 and distinct UUIDs, return-new/upload draft clear, held isolated-demo response/pending edits, unroute then ordinary second error, reload retention and explicit reset pass. |Focused acceptance only; not original full suite or production. |
+| Upload card overlap |Actual headed scroll669 showed sticky card bottom484/gallery top290.90625. Scoped upload-form `position: static` only, existing RequestForm precedent; new both-project scroll/non-overlap regression passes in6-case run. |Local repair independently reviewed; final headed theme/mobile follow-up in progress, not claimed complete. |
+| Current gates |Root focused6files55PASS/log0c61d2be… (two requested paths absent; not8files), distinct from child63. Development build/stage logs a6506fa…/41b9b16… pass; lead142-file supplied-password scan0. |Final commit, ordered full local gates, original combined E2E/recovery, protected CI, explicit approval and production acceptance PENDING. |
+| Public release barrier |1990 PR221 quality37810933862 FAILED350/19existing skips/one branch-foundation/retry0; visitor NOT RUN. Isolated original branch2PASS17.1s/logffbd3f42… does not reproduce/fix cause; earlier filter0 attempt retained. Public report-only3f15bc7 image37815313972 PASS/no deployment/app-test unchanged1990. |Failed required CI remains a barrier; native focused results do not certify public-only release. |
+| Original workflow gaps / safety |Current03 audit guard FAIL; setup/immediate removal/whole-flow/live disposable fixture gaps and missing CAM/second Driver unchanged. Contact B delivery/Inbox confirmed, cap2 consumed/no new send or historical release. No real data deletion, host/service operation, auth/RLS/financial change. |Overall BLOCKED; not demo-ready. |
+
+Full log hashes, provenance and explicit limits are in the latest native section
+of FINAL_REPORT. No earlier failed run or live/isolated boundary is relabelled.
+
+Final headed follow-up supersedes the in-progress English manual row above:
+normal DEMO Owner localhost3152 created product202df5be… at17:43:17Z, first
+upload2/cbf7be29… at17:43:37Z, repeat third/46f9d597… at17:43:49Z. Correct own
+form/next-sibling gallery DOM had3 ready images/static/no overflow; atscroll669
+uploadBottom=galleryTop290.90625/no overlap. Initial guessed selector0/undefined
+was an invalid probe, not an app failure. Root reviewed EN desktopLight/Dark
+and390mobileDark/Light final captures; new console0errors/0warnings. AR/MS
+native manual proof is NOT claimed: demo locale preference intentionally does
+not persist and the English actor profile wins. Earlier locale proof stays
+separate. Owned browser3152 closed/server interrupt130;3100/3101/3152 closed,
+no production/container/host restart. Final gates/prod/gallery closure still OPEN.
+
+## Public team intro removal — 2026-10-08
+
+Latest requested change: remove the public Early Birds/Night Owls chooser and
+its counters from EN/AR/MS homepages; not authenticated assigned-team profile
+confirmation. Homepage unmount/snapshot dependency removal implemented;
+focused render/visitor-security/SEO/release-isolation29PASS, including old-page
+RED3 localized render cases. Actual new browser checks/local changed-candidate
+gates complete below; protected image CI PASS, required quality browser gate
+FAILED and explicit release approval absent (latest checkpoint below).
+Earlier d82 release results do not certify these new app/test bytes.
+Production remains d82/bc8/schema139; no deployment, visitor-history deletion,
+Contact Send or auth/profile/financial change. Explicit merge/deploy approval is
+required by the latest repository instruction. All prior recovery barriers,
+gallery instability and Contact cap2 remain as documented below.
+
+Historical correction checkpoint: feature commitfd934d3 independently reviewed;
+the then-current test candidate was4fb94af (later finalized browser candidate9a8 below).
+First full fd934d3 unit gate FAILED1,920PASS/49 existing skips/2 failures; retained
+log SHA1176694c… . Obsolete homepage allowlist entry removed (narrower access
+contract). Existing purge fixture's23514 strict override interval rejection was
+reproduced in RAM-only all139; normal positive interval passed and failed
+transaction rolled back. Fixture now uses a pre-existing grant; every purge/
+audit/email-release/Owner-refusal assertion and all production logic unchanged.
+Actual failing timestamps were not captured; actual equal-time/future-start
+deletion is not claimed fixed. Final focused13PASS/4.50s; at that checkpoint full
+changed-candidate gates were still pending, not cleared by isolated passes. Main retired UI contracts
+22→20/recovery18→7 replaced with meaningful direct-home regressions; no new
+retry/skip/config/project change. Contact remains navigation-only in that coverage.
+
+Actual production-mode headed Chrome EN/AR/MS/both themes/1440desktop/390mobile/
+Arabic RTL/keyboard skip-to-main and refresh passed; chooser/counters/retired
+requests/overflow0. Root reviewed12 ready-home views +1 distinct EN footer view.
+No Contact Send. Owned browser/test3150 closed; no production/recovery operation.
+Local full unit1,922PASS/49native-only skips, native49/all139/RLS/grants, lint,
+typecheck, build/pg-cloudflare, stage/runtime/deployment-assets PASS. Focused
+main20PASS24.2s/recovery7PASS8.9s/retry0. First required combinedCI=true suite
+finished EXIT1:349PASS/19 existing skips/one FAILED obsolete public-i18n
+counter expectation (initial+retry)/one FLAKY unchanged mobile gallery0/2
+(initial failed/existing retry passed),9.5min. Recovery NOT RUN after mainfailure.
+Complete failure log SHA9706de7d… and private archived results retained before
+the narrow keyboard contract correction. Actual first-failure gallery trace
+SHA95f3d963… and screenshot420b7d12… are now available and were inspected;
+uploaded0/8/selectedfiles2/galleryempty. Missing artifact gap closed; gallery
+cause/fix still OPEN, not cleared by retry. All actual keyboard/locale/menu/
+Contact assertions remain. Narrow correction independently approved; focused
+26PASS/2 unchanged mobile-duplicate skips14.5s/logSHA096881d5… . The later combined
+result follows; production unchanged/approval still required.
+
+Final browser candidate9a8cc53 includes bounded failure-only observation, no
+app/backend/config/unit/financial delta from successful4fb gates. Independent
+review's noninterference corrections verified; original product assertions/
+operations/timeouts exact, no added retry. Earlier2focusedPASS is distinct from
+finalfocused desktopPASS/mobileINITIALFAIL-then-existing-retryPASS1.3min.
+Actual creationPOST200/17,832CDP bytes/loadingFinished but `/products/new`
+stayed15seconds/Create disabled; upload never reached. New trace72f29195…,
+log485b75fe… and private archivepublic-team-action-failed-CVWhJg retained.
+Creation-transition failure and gallery cause remain OPEN, not cleared by retry.
+Required original combined suite completed on9a8cc53:349PASS/19existing skips/
+TWO FLAKY9.7min, followed by recovery7PASS9.3s/EXIT0. Desktop initial gallery0/2
+and mobile initial create-route timeout each passed only on the unchanged CI
+retry. No clean351-pass claim, no source changes during the run. Log SHA031a2d7b…;
+first-failure traces7813292a…/f909a0c3… and all main/recovery results archived
+privately at public-team-required-9a8-RXEBYD. Completed upload response26,673CDP
+bytes/loadingFinished plus successful image resources but zero committed gallery
+articles establishes a client completion failure in this occurrence; precise
+React/Next internal cause remains unproven. Supported server-redirect/draft-safe
+repair is being developed separately, NOT yet proven or deployed. Gallery and
+creation-transition instability remain OPEN. Contact cap2 unchanged.
+
+Latest exact candidate1990ad6 is pushed in PR221, NOT merged/deployed. Protected
+image37810901425 PASS/deploy correctly skipped. Required quality37810933862
+passed lint/types/unit1,922+49native-only skips/native49+all139/build/stage/runtime,
+then FAILED original browser suite350PASS/19existing skips/ONE desktop Company
+Administrator foundation failure14.8min; visitor NOT RUN. Existing file retries0
+retained. Save branch stayed on `/branches/<owned-demo-id>/edit` after the
+original5second assertion, rendered Saving branch/phone disabled. Trace diagnosis
+is in progress; no retry/timeout/assertion weakening or proven patch. Complete
+log SHA04a04964… and96-file artifact11566896325 retained privately at
+public-chooser-ci-1990-failed-EsWQjO. Failed required CI is a release barrier,
+not cleared by earlier local passes or independent source approval. Production
+d82/bc8/schema139 unchanged; explicit merge/deploy approval still required.
+
+| Additional test-diagnosis finding | Evidence and limitation | Status |
+| --- | --- | --- |
+| Account purge override interval | RAM-only diagnostic02 reproduces equal removal/start time23514 with full rollback;036's strict interval and096's closure also imply a future-start edge. Existing general purge fixture now explicitly models a pre-existing grant, with every assertion retained. No live failure or application repair is claimed. | OPEN, separately tracked production timestamp edge; no schema/authorization changes authorized or made in this public-home slice. |
+
+## Final closure audit — 2026-10-08 (in progress)
+
+Item9 dated guide refresh is now complete:13pages/48,566bytes, every final page
+visually reviewed, zero known private-secret/placeholder text hits. Published
+PDF SHA30cbd5a5c61ab7819f7c06a59d82dcd5b88c8b329bc61e31343690a9f0e7e24e;
+old12page artifact retained recoverably. This closes documentation delivery,
+not future migration/host boot/cutover or the failed workflow integrity guard.
+
+Contact is closed/cap2; no additional Send or historical-email release. Production
+remains d82/bc8/schema139; its historical exact-head gates do not certify the
+later public-intro candidate. The prior
+overall acceptance wording does not certify unobserved original live lifecycle
+cases or the live queued-Contact restart scenario.
+
+Current03 is paused at the actual strict integrity guard, not an unexplained
+tool failure: canonical timestamp-verifier invalid count21→23 from two newly
+added read audits appended17microseconds opposite timestamp order. All original
+events/21 warnings remain and no original event became newly invalid; all hash/
+link/head/fork/cycle checks are valid. No guard was weakened or history rewritten.
+ONE owned product already exists (`a23bed0b-656c-4d50-a9e7-f39bd63f300a`), created
+normally and never replayed/deleted. The current invitation remains SENT/untaken.
+Parent04 was not executed. Full registration integrity/setup and immediate
+product removal/current-image before-after workflow proof remain unverified.
+The one remaining idle service trial and dated guide refresh are independent;
+neither can turn this failed whole-workflow guard into a pass.
+
+| Newly identified item | Exact evidence / required boundary | Status |
+| --- | --- | --- |
+| AUDIT_TIMESTAMP_APPEND_ORDER |14:29:55UTC read-only baseline2,326/21 → current2,383/23; zero hash/link errors; new invalid original0/new invalid added2. Migration059 uses timestamp/id ordering but links under a partition-head lock after timestamp capture. Preflight SHAbe999e82…/diagnostic09a2d623… in FINAL_REPORT. No production audit mutation/repair. |OPEN; a forward-only audit-verifier/order repair requires separately approved design, native concurrent regression and release/migration authority, without rewriting history. Current03 workflow guard remains FAILED. |
+| Current03 product partial |ONE exact new product/image/price-history, supplier0/deletionAudit0, owned original phase marker retained. The old earlier deletion proof reloaded before absence and cannot certify current immediate removal. |OPEN; do not replay create/delete or claim a full current-image lifecycle pass. |
+| Current03 registration partial |ONE company/zero finance, one SENT invitation/one RAM sink delivery/fragment untaken; earlier isolated valid setup/native concurrency/expiry proofs remain distinct. |OPEN; no current03 setup, login, consumed-link or post-restart whole-flow result. |
+
+Gallery remains OPEN: the later required combined run above now reproduces the
+actual initial mobile0/2 failure and preserves its trace/rendered evidence.
+Its retry and the earlier bounded2.3second isolated pass do not establish a fix.
+Fresh role
+inventory still has no CAM/second Driver; all3 live companies have displayable
+logos and Wallets. Conditional Slack checklist is complete; activation requires
+its specifically missing controlled provider inputs.
+
+Item12 period characterization:ONE private PGlite run2PASS/retry0. CLOSED/no
+ACTIVE successor returns BUDGET_UNAVAILABLE with guarded finances unchanged;
+elapsed-but-still-ACTIVE follows the existing allocation contract without Wallet,
+recurring or period changes. It is not a new date-expiry refusal/policy fix or
+production proof. The earlier wrong-account expiry probe remains retracted.
+
+## Historical Contact closure checkpoint — 2026-10-08 10:09 UTC
+
+**DEPLOYED / CONTACT B LIVE-VERIFIED. Contact receipt independently evidenced
+and explicitly confirmed by the user; this is not blanket lifecycle or restart
+acceptance.** Production d82/OCIbc8/schema139 and
+required gates below remain unchanged; repository edits are report-only, while
+the authorized B created the documented Contact/email records.
+
+| Item | Current evidence / remaining boundary |
+| --- | --- |
+| A reconciliation / cap | Fresh preflight A/B0/no queued/due/in-flight send; all8 historical Infinity holds untouched. A remains unproven/count1. New explicit B authority used exactlyONCE; B1, countedtotal2. No A/B retry, historical release or more Contact sends permitted. |
+| Native Brave submission | Existing user Brave, one new public tab, actual desktop cursor/keyboard, normal verification visibly passed without CAPTCHA interaction. One Send at10:03:39.089UTC/18:03:39Malaysia; success banner captured. Separate sandbox/600010 preparatory windows generated0POST; no security bypass. |
+| Durable request / outbox | Enquiry7378a4d9-7444-44e5-8ba4-84899a6f4f75 created10:03:39.224Z; outbox81857ccc-87fd-45b0-9f9d-8392f54175e3 SENT10:03:49.607496Z; attempt1/accepted1/providerIDs1. Enquiry is the request-record ID, not an unrecorded browser request ID. |
+| Provider / delivery | Provider01a11af8-1832-70f3-901a-e80fee949b45; one submitted event and signature-verifying-ingestion delivery event10:03:51.633Z. Root's ONE read-only boundGET200/ID+subject+recipient match/last_event delivered. Original raw POST response not captured; no invented HTTP code. |
+| Actual mailbox | Userconfirmed, then authorized metadata-only Gmailread: exact B+subject returnsONE message1a11af8219b1b180 inInbox/notSpamTrash, received10:03:50UTC; Bsnippet/subject/To/Delivered-To match. No body/attachments/othermailread or mailbox mutation. |
+| Preserved core checks | Original required full suites/Cart fix/UI6/real-role readsmokes/live duplicate refusal and separately isolated setup/deletion remain as documented. No app/test change, gate weakening or expensive full repeat. |
+| Remaining limitations | Prior A/manual path, gallery first-failure artifacts/cause, isolated whole-flow guard and specifically absent roles/negative fixtures/external activation or future-host inputs remain disclosed. They are not new core Contact blockers or claimed completed work. |
+
+Subject: **New Axora website enquiry**; body reference
+**AXORA-RECOVERY-20261008-B**. Complete stage evidence/hashes in FINAL_REPORT.
+Private credentials/trees preserved; no real data deletion or computer restart.
+
+## Historical checkpoint — 2026-10-08 03:50 UTC (superseded)
+
+**DEPLOYED REPAIRS / BLOCKED CONTACT ACCEPTANCE. Not demo-ready.**
+PR220 merged d82a3bb4785e6ba7b7e4e7ec125636a6368f699f; production same SHA,
+OCIbc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8,
+schema139/sealed checksums match/health PASS. Tested exact0040 tree equals
+mergedd82. Protected image37720646333 and Nightly37720771405 PASS; exactmain
+image/deploy37722734699 PASS. Matching ledger skipped backup/migration runner
+per policy; previousc3 retained. No host action or business data removal.
+
+| Item | Final evidence / precise remaining boundary |
+| --- | --- |
+| Required stale Cart | Old combined failure/held-props authority RED retained; guarded authorized recovery deployedc3 and preservedd82. Focused100 and final original combined suites pass; currentCI mobile/direct-Cart cases pass. No isolated-only clearance or financial change. |
+| Contact reflow / UI1–6 | Six scoped CSS lines, original six tests stronger rather than weakened; old20px RED/new local6/full353+19/visitor18 PASS. Actuald82 both-theme/mobile setup tabs and Wallet contrast/focus, branch single action/distinct labels/aligned budgets, reviewed logo, product groups/loaded gallery and company-correct Wallet refresh/direct/history pass. AR RTL/MS rendered labels fit. |
+| Final release gates | Unit1915PASS/49native-only skip; native49/all139/RLS/lifecycle/grants; lint/type/build/stage/runtime/assets PASS. FullCI352PASS/19existing skip/ONE existing galleryretry-pass +visitor18PASS, not353clean. No retries/order/projects/assertions/skips weakened. |
+| Gallery diagnostic | Existing CI initial upload response<400 then gallery0/2 repeated, retryPASS. Exact failing multipart/action/Flight/server-image/DOM evidence unavailable; artifact upload skipped on green/flaky result. Cause unproven, no speculative patch. Prior d8 gallery/branch failures preserved; currentfoundation retries0 PASS does not prove prior cause. |
+| Live Contact A |03:35:40Z A/B and ALL since-reservation persisted submissions/outboxes0; historical8 holds/attempts/queues/controls unchanged. Configured notification recipient matches connected Gmail;03:36:04 exact-A anywhere0. No provider ID/lookup; acceptance/signed delivery/mailbox receipt each UNPROVEN. Passive actual newCSS loaded/200/no overflow/no natural feedback, no fields/reset/Submit. |
+| Contact exact affected pause | Prior Brave verification-only versus Send/result/approximate time is missing. Do not submit again yet. A conservatively counts1/Bunused/limit2; no resend/historical replay. No enquiry means no worker job, not proof that no prior POST reached validation. |
+| Designated duplicate live |ONE prior Owner/ado normal POST→account-exists/all4 no-effects guards PASS; original checkerEXIT1 retained; later GET captures actual canonical notice. No second POST/no duplicate. Cross-scope evidence, not same-tenant/whole-continuation certification. |
+| Registration/product isolation |Actual isolated valid setup/login/used-link and owned deletion/audit/refusals retained separately; no production account creation/product/history deletion. Original incomplete whole-flow guard limits retained. |
+| Actual d82 roles |CA current canonical scope verified; chooser/selectedShopping/existingCart/Budgets/Wallet200. Pre/post exact owned company carts/items/events/authority unchanged, fingerprintsRAM-only. BA retained metadata/four groups/single address/no lifecycle controls; Driver portal/navigation390px fit. No purchasing/funding/claim/location actions. Actual CAM/second Driver not supplied. |
+| Other authorized items8–14 |Bounded shared-live/RUM proof, invitation UI, truthful integrations/checklist, typed budget refusal, aligned keyboard-scroll table,139 BA ceiling and12-page guide/runbooks delivered. Slack app/workspace/channel/private inputs, off-device destination/future host and live negative-state fixtures are specific external dependencies, not optional-enhancement core blockers. Host restart prohibited. |
+
+Full evidence and hashes are in the current FINAL_REPORT. Failure logs and
+initial loading captures are retained; final ready states alone count as live
+acceptance. Private input/unrelated worktrees preserved; no demo-ready claim.
+
+## Historical checkpoint — 2026-10-08 02:57 UTC (superseded)
 
 **BLOCKED FOLLOW-UP RELEASE / CONTACT ACCEPTANCE. Not demo-ready.**
 PR220 exactd8 protected image CI37718133500 PASS; Nightly37718133148 FAILED.
@@ -22,6 +257,14 @@ Production remains c3/24f/schema139; previous repairs and data preserved.
 
 Continue independent diagnosis; neither a passing local run nor healthy workers
 overrides failed required CI or missing Contact acceptance.
+
+Continuation03:10UTC: exact0040beb failure-retention/invariant head has protected
+imageCI37720646333 PASS; Nightly37720771405 still RUNNING, all pre-build quality
+stages green. Productfocused1PASS58.3s and foundationfocused1PASS10s in fresh
+CI=true/process-only2CPU demo diagnostics; neither explains/clears combinedfail.
+No speculative app patch; neither failed route mounts shared-live refresh.
+Contact fresh03:06 A/B+all recent0/held8unchanged/GmailAanywhere0; no Send/provider
+lookup, A1/Bunused. Required CI and human reconciliation remain distinct.
 
 ## Historical checkpoint — 2026-10-08 02:25 UTC (superseded)
 

@@ -12,6 +12,11 @@ export interface FormDraftContext {
   formId: string;
 }
 
+export interface CompletedFormDraft {
+  route: string;
+  formId: string;
+}
+
 export interface StoredFormDraft {
   schemaVersion: number;
   savedAt: number;
@@ -44,6 +49,58 @@ export function formDraftStorageKey(context: FormDraftContext) {
     context.route,
     context.formId,
   ].map(boundedSegment).join(":")}`;
+}
+
+/** A redirected action may complete a submitted form on its previous route. */
+export function clearSubmittedFormDraft(
+  storage: Pick<Storage, "getItem" | "removeItem">,
+  scope: Pick<FormDraftContext, "userId" | "scopeKey">,
+  completed: unknown,
+) {
+  if (!completed || typeof completed !== "object") return false;
+  const { route, formId } = completed as Partial<CompletedFormDraft>;
+  if (typeof route !== "string" || route.length > 512
+    || !/^\/(?!\/)[^?#\\\s]*$/.test(route)
+    || typeof formId !== "string" || !formId.trim()
+    || formId !== formId.trim() || formId.length > 200) return false;
+  const key = formDraftStorageKey({ ...scope, route, formId });
+  const draft = parseStoredFormDraft(storage.getItem(key));
+  if (!draft || !Number.isFinite(draft.submittedAt)) return false;
+  storage.removeItem(key);
+  return true;
+}
+
+/** Cancel debounced writes when a form completes or its route/scope unmounts. */
+export function createFormDraftSaveQueue<Target, Timer>(
+  save: (target: Target) => void,
+  timers: {
+    schedule: (callback: () => void, delay: number) => Timer;
+    cancel: (timer: Timer) => void;
+  },
+) {
+  const pending = new Map<Target, Timer>();
+  let disposed = false;
+  const cancel = (target: Target) => {
+    const timer = pending.get(target);
+    if (timer !== undefined) timers.cancel(timer);
+    pending.delete(target);
+  };
+  return {
+    cancel,
+    schedule(target: Target) {
+      if (disposed) return;
+      cancel(target);
+      pending.set(target, timers.schedule(() => {
+        pending.delete(target);
+        if (!disposed) save(target);
+      }, 300));
+    },
+    dispose() {
+      disposed = true;
+      for (const timer of pending.values()) timers.cancel(timer);
+      pending.clear();
+    },
+  };
 }
 
 export function parseStoredFormDraft(raw: string | null, now = Date.now()) {

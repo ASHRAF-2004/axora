@@ -86,7 +86,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           {commercialHistory.length ? <div className="data-table-wrap"><table className="data-table"><thead><tr><th>{rules.baseCost}</th><th>{rules.sellingPrice}</th><th>{rules.markup}</th><th>{rules.version}</th></tr></thead><tbody>{commercialHistory.slice(0, 20).map((entry) => <tr key={entry.id}><td>{formatCurrency(entry.baseCost, locale)}</td><td>{formatCurrency(entry.sellingPrice, locale)}</td><td>{entry.markupPercentage}%</td><td>{entry.pricingRuleVersion}<br /><span className="subtle">{new Date(entry.recordedAt).toLocaleDateString(locale)}</span></td></tr>)}</tbody></table></div> : <div className="empty-state"><strong>{rules.historyEmpty}</strong></div>}
         </section> : null}
 
-        <form action={addProductImagesAction.bind(null, product.id)} className="panel form-panel">
+        <form action={addProductImagesAction.bind(null, product.id)} className="panel form-panel" data-draft-id="product-image-upload" style={{ position: "static" }}>
           <div className="panel-header"><div><h2>{copy.slideshow}</h2><p>{copy.uploadCount(images.length, MAX_PRODUCT_IMAGES)}</p></div><ImagePlus aria-hidden="true" size={22} /></div>
           <div className="form-grid">
             <label className="field-full">{copy.addImages}<input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple required disabled={images.length >= MAX_PRODUCT_IMAGES} />

@@ -1,189 +1,148 @@
+import { createHmac } from "node:crypto";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { LOCALE_NAMES, publicMessages, type SupportedLocale } from "../src/lib/i18n";
+import { publicVisitorCopy } from "../src/lib/public-visitor-copy";
 
 const baseURL = "http://127.0.0.1:3100";
 
-async function rememberLocale(context: BrowserContext, locale: "en" | "ar" | "ms") {
+async function rememberLocale(context: BrowserContext, locale: SupportedLocale) {
   await context.addCookies([{ name: "axora_locale", value: locale, url: baseURL }]);
 }
 
-async function installVisitorFixture(page: Page, options: { claimed?: boolean } = {}) {
-  let claimed = options.claimed ?? false;
-  let posts = 0;
-  let gets = 0;
-  let streamRequests = 0;
-  let aggregate = { version: claimed ? 13 : 12, totalCount: claimed ? 13 : 12, earlyBirdCount: claimed ? 8 : 7, nightOwlCount: 5 };
-  await page.addInitScript(() => {
-    let options: Record<string, unknown> | undefined;
-    window.turnstile = {
-      render: (_container, next) => { options = next; return "fixture-widget"; },
-      execute: () => queueMicrotask(() => (options?.callback as ((token: string) => void) | undefined)?.("test-turnstile-token")),
-      reset: () => undefined,
-      remove: () => { options = undefined; },
-    };
+async function monitorRemovedDependencies(page: Page) {
+  const requests = { visitor: 0, turnstile: 0 };
+  await page.route(/\/api\/public\/visitor-choice(?:\/stream)?(?:\?|$)/, async (route) => {
+    requests.visitor += 1;
+    await route.fulfill({ status: 503, contentType: "application/json", body: '{"error":"unavailable"}' });
   });
-  await page.route("https://challenges.cloudflare.com/turnstile/**", (route) => route.fulfill({ status: 200, contentType: "application/javascript", body: "" }));
-  await page.route(/\/api\/public\/visitor-choice$/, async (route) => {
-    if (route.request().method() === "POST") {
-      posts += 1;
-      claimed = true;
-      aggregate = { version: 13, totalCount: 13, earlyBirdCount: 8, nightOwlCount: 5 };
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...aggregate, visitorNumber: 13, choice: "EARLY_BIRD", claimedNew: true }) });
-    }
-    gets += 1;
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(claimed
-      ? { ...aggregate, visitorNumber: 13, choice: "EARLY_BIRD", eligible: true }
-      : { ...aggregate, eligible: true }) });
+  await page.route("https://challenges.cloudflare.com/turnstile/**", async (route) => {
+    requests.turnstile += 1;
+    await route.abort("blockedbyclient");
   });
-  await page.route("**/api/public/visitor-choice/stream", (route) => {
-    streamRequests += 1;
-    return route.fulfill({ status: 204 });
-  });
-  return {
-    postCount: () => posts,
-    getCount: () => gets,
-    streamCount: () => streamRequests,
-    updateAggregate: (next: typeof aggregate) => { aggregate = next; },
-  };
+  return requests;
 }
 
-const localeCases = [
-  { locale: "en" as const, title: "Which side are you on?", early: "Choose Early Birds", night: "Choose Night Owls", privacy: "Privacy" },
-  { locale: "ar" as const, title: "أيُّ فريق تختار؟", early: "اختيار فريق الصباح الباكر", night: "اختيار فريق السهر", privacy: "الخصوصية" },
-  { locale: "ms" as const, title: "Anda di pihak mana?", early: "Pilih Pasukan Awal Pagi", night: "Pilih Pasukan Kaki Malam", privacy: "Privasi" },
-] as const;
-
-for (const localeCase of localeCases) {
-  test(`${localeCase.locale} homepage exposes the required localized visitor-choice modal`, async ({ context, page }, testInfo) => {
-    await rememberLocale(context, localeCase.locale);
-    await installVisitorFixture(page);
-    await page.goto(`/${localeCase.locale}`);
-    const dialog = page.getByRole("dialog", { name: localeCase.title });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("button", { name: localeCase.early })).toBeEnabled();
-    await expect(dialog.getByRole("button", { name: localeCase.night })).toBeEnabled();
-    await expect(dialog.getByRole("link", { name: localeCase.privacy })).toHaveAttribute("href", `/${localeCase.locale}/privacy`);
-    await expect(dialog.locator("strong").first()).toHaveText("12");
-    if (localeCase.locale === "en") {
-      await page.screenshot({ animations: "disabled", path: `output/playwright/v2-visitor-choice-modal-${testInfo.project.name}.png`, fullPage: true });
-    }
-  });
-}
-
-test("the mandatory modal traps focus and cannot be dismissed before success", async ({ context, page }) => {
-  await rememberLocale(context, "en");
-  await installVisitorFixture(page);
-  await page.goto("/en");
-  const dialog = page.getByRole("dialog", { name: "Which side are you on?" });
-  await expect(dialog).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(dialog).toBeVisible();
-  await page.mouse.click(2, 2);
-  await expect(dialog).toBeVisible();
-  await page.keyboard.press("Shift+Tab");
-  await expect(dialog).toContainText("Which side are you on?");
-  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
-});
-
-test("one double click submits once, closes immediately, and leaves compact live counters", async ({ context, page }) => {
-  await rememberLocale(context, "en");
-  const fixture = await installVisitorFixture(page);
-  await page.goto("/en");
-  const choice = page.getByRole("button", { name: "Choose Early Birds" });
-  await expect(choice).toBeEnabled();
-  await choice.evaluate((element) => {
-    (element as HTMLElement).click();
-    (element as HTMLElement).click();
-  });
-  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
-  await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
-  expect(fixture.postCount()).toBe(1);
-  await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
-});
-
-test("the modal and counters exist only on the public homepage", async ({ context, page }) => {
-  await rememberLocale(context, "en");
-  await installVisitorFixture(page);
-  await page.goto("/en/about");
-  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
+async function expectNoTeamChooser(page: Page, locale: SupportedLocale) {
+  const copy = publicVisitorCopy[locale];
+  await expect(page.getByRole("dialog", { name: copy.title })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: copy.chooseEarly })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: copy.chooseNight })).toHaveCount(0);
+  await expect(page.locator("#visitor-choice-title")).toHaveCount(0);
   await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
-});
+  await expect(page.locator("#axora-visitor-turnstile")).toHaveCount(0);
+  await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+}
 
-test("an anonymous visitor with a valid recorded claim sees only compact live results", async ({ context, page }, testInfo) => {
-  await rememberLocale(context, "en");
-  await installVisitorFixture(page, { claimed: true });
-  await page.goto("/en");
-  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
-  await expect(page.locator('[data-visitor-claimed="true"]')).toBeVisible();
-  await page.screenshot({ animations: "disabled", path: `output/playwright/v2-visitor-claimed-counters-${testInfo.project.name}.png`, fullPage: false });
-});
+async function expectOpenHome(page: Page, locale: SupportedLocale) {
+  const messages = publicMessages(locale);
+  await expect(page.getByRole("heading", { level: 1, name: messages.home.title })).toBeVisible();
+  await expect(page.locator(".public-site")).toHaveAttribute("lang", locale);
+  await expect(page.locator(".public-site")).toHaveAttribute("dir", LOCALE_NAMES[locale].dir);
+  const actions = page.locator(".public-hero-actions");
+  await expect(actions.getByRole("link", { name: messages.home.primaryAction })).toHaveAttribute("href", `/${locale}/how-it-works`);
+  await expect(actions.getByRole("link", { name: messages.home.secondaryAction })).toHaveAttribute("href", `/${locale}/contact`);
+  await page.waitForLoadState("networkidle");
+  await expectNoTeamChooser(page, locale);
+}
 
-test("near-live polling applies monotonic snapshots and never opens EventSource", async ({ context, page }) => {
-  await rememberLocale(context, "en");
-  const fixture = await installVisitorFixture(page);
-  await page.goto("/en");
-  const dialog = page.getByRole("dialog", { name: "Which side are you on?" });
-  await expect(dialog.locator("strong").first()).toHaveText("12");
-  const initialGets = fixture.getCount();
-  expect(fixture.streamCount()).toBe(0);
-
-  await page.evaluate(() => {
-    Object.defineProperty(document, "hidden", { configurable: true, value: true });
-    document.dispatchEvent(new Event("visibilitychange"));
+// These public-home regressions replace the deliberately removed visitor-choice
+// UI contract. Backend cookie, API authorization and migration tests stay intact.
+for (const locale of ["en", "ar", "ms"] as const) {
+  test(`${locale} homepage opens directly without a team choice or visitor dependency`, async ({ context, page }) => {
+    await rememberLocale(context, locale);
+    const requests = await monitorRemovedDependencies(page);
+    await page.goto(`/${locale}`);
+    await expectOpenHome(page, locale);
+    expect(requests).toEqual({ visitor: 0, turnstile: 0 });
   });
-  fixture.updateAggregate({ version: 13, totalCount: 13, earlyBirdCount: 7, nightOwlCount: 6 });
-  await page.waitForTimeout(250);
-  expect(fixture.getCount()).toBe(initialGets);
+}
 
-  await page.evaluate(() => {
-    Object.defineProperty(document, "hidden", { configurable: true, value: false });
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-  await expect(dialog.locator("strong").first()).toHaveText("13");
-  expect(fixture.getCount()).toBe(initialGets + 1);
-  expect(fixture.streamCount()).toBe(0);
-
-  fixture.updateAggregate({ version: 12, totalCount: 12, earlyBirdCount: 7, nightOwlCount: 5 });
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  await page.waitForTimeout(250);
-  await expect(dialog.locator("strong").first()).toHaveText("13");
+test("keyboard users can reach the homepage without a team-choice focus trap", async ({ context, page }) => {
+  await rememberLocale(context, "en");
+  const requests = await monitorRemovedDependencies(page);
+  await page.goto("/en");
+  await expectOpenHome(page, "en");
+  const skipLink = page.getByRole("link", { name: publicMessages("en").skipToContent });
+  await expect(skipLink).toHaveAttribute("data-focus-ready", "true");
+  await page.keyboard.press("Tab");
+  await expect(skipLink).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("main")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expectNoTeamChooser(page, "en");
+  expect(requests).toEqual({ visitor: 0, turnstile: 0 });
 });
 
-test("authenticated owner, delivery, and company users never receive the public choice modal", async ({ page }) => {
+test("a saved signed visitor cookie neither restores counters nor changes on a home visit", async ({ context, page }) => {
+  await rememberLocale(context, "en");
+  // Public demo key only: this is an old browser cookie, not a real account or
+  // a newly recorded claim. Visiting home must not read, rotate or submit it.
+  const token = Buffer.alloc(32, 7).toString("base64url");
+  const signature = createHmac("sha256", "public-e2e-session-key-not-for-production-0001")
+    .update("axora-public-visitor-cookie-v2\0", "utf8")
+    .update(token, "utf8")
+    .digest("base64url");
+  const value = `v2.${token}.${signature}`;
+  await context.addCookies([{ name: "axora_visitor_claim", value, url: baseURL, httpOnly: true, sameSite: "Lax" }]);
+  const requests = await monitorRemovedDependencies(page);
+  await page.goto("/en");
+  await expectOpenHome(page, "en");
+  await page.reload();
+  await expectOpenHome(page, "en");
+  expect((await context.cookies()).find((cookie) => cookie.name === "axora_visitor_claim")?.value).toBe(value);
+  expect(requests).toEqual({ visitor: 0, turnstile: 0 });
+});
+
+test("other public pages remain accessible without a team choice", async ({ context, page }) => {
+  await rememberLocale(context, "en");
+  const requests = await monitorRemovedDependencies(page);
+  await page.goto("/en/about");
+  await expect(page.getByRole("heading", { level: 1, name: publicMessages("en").pages.about.title })).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await expectNoTeamChooser(page, "en");
+  expect(requests).toEqual({ visitor: 0, turnstile: 0 });
+});
+
+test("authenticated owner, delivery and company fixtures still see the ordinary public homepage", async ({ context, page }) => {
   const { signInAsDemoOwner, signInAsDemoRole } = await import("./helpers/auth");
+  await rememberLocale(context, "en");
+  const requests = await monitorRemovedDependencies(page);
   await signInAsDemoOwner(page);
   await page.goto("/en");
-  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
-  await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
+  await expectOpenHome(page, "en");
 
   const sessions = [
     { id: "40444444-4444-4444-8444-444444444444", email: "driver.fixture@axora.invalid", name: "Delivery fixture", role: "DELIVERY_GUY", accountKind: "DELIVERY", scopeType: "DELIVERY" },
     { id: "30333333-3333-4333-8333-333333333333", email: "company.fixture@axora.invalid", name: "Company fixture", role: "COMPANY_ADMIN", accountKind: "COMPANY", scopeType: "COMPANY", companyId: "10000000-0000-4000-8000-000000000001" },
   ] as const;
   for (const session of sessions) {
-    await page.context().clearCookies();
+    await context.clearCookies();
+    await rememberLocale(context, "en");
     await signInAsDemoRole(page, session);
     await page.goto("/en");
-    await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
-    await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
+    await expectOpenHome(page, "en");
   }
+  expect(requests).toEqual({ visitor: 0, turnstile: 0 });
 });
 
-test("an explicitly privacy-ineligible visitor never receives the modal", async ({ context, page }) => {
-  await rememberLocale(context, "en");
-  await page.setExtraHTTPHeaders({ DNT: "1" });
-  await page.goto("/en");
-  await expect(page.getByRole("dialog", { name: "Which side are you on?" })).toHaveCount(0);
-  await expect(page.locator('[data-visitor-claimed="true"]')).toHaveCount(0);
-});
+for (const privacyHeader of ["DNT", "Sec-GPC"] as const) {
+  test(`${privacyHeader} visitors can use home without a team choice or visitor requests`, async ({ context, page }) => {
+    await rememberLocale(context, "en");
+    await page.setExtraHTTPHeaders({ [privacyHeader]: "1" });
+    const requests = await monitorRemovedDependencies(page);
+    await page.goto("/en");
+    await expectOpenHome(page, "en");
+    expect(requests).toEqual({ visitor: 0, turnstile: 0 });
+  });
+}
 
-test("visitor choice remains usable without overflow and motion under restrained preferences", async ({ context, page }) => {
-  await rememberLocale(context, "en");
+test("the unobstructed Arabic homepage wraps on a reduced-motion small phone", async ({ context, page }) => {
+  await rememberLocale(context, "ar");
   await page.setViewportSize({ width: 320, height: 700 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await installVisitorFixture(page);
-  await page.goto("/en");
-  const early = page.getByRole("button", { name: "Choose Early Birds" });
-  await expect(early).toBeVisible();
-  expect(Number.parseFloat(await early.evaluate((element) => getComputedStyle(element).transitionDuration))).toBeLessThanOrEqual(0.001);
+  const requests = await monitorRemovedDependencies(page);
+  await page.goto("/ar");
+  await expectOpenHome(page, "ar");
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
+  expect(requests).toEqual({ visitor: 0, turnstile: 0 });
 });

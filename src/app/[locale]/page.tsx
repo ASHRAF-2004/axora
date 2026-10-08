@@ -1,4 +1,3 @@
-import { VisitorChoiceChallenge } from "@/components/public/VisitorChoiceChallenge";
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
@@ -15,14 +14,6 @@ import {
   Truck,
 } from "lucide-react";
 import { isSupportedLocale, publicMessages, type SupportedLocale } from "@/lib/i18n";
-import { getAccountLifecycleSession } from "@/lib/auth";
-import { isDemoMode } from "@/lib/db";
-import {
-  buildVisitorIdentity,
-  getPublicVisitorSnapshot,
-  VISITOR_CLAIM_COOKIE,
-} from "@/lib/public-visitor-counter";
-import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -54,37 +45,8 @@ export default async function PublicHome({ params }: { params: Promise<{ locale:
   const locale = rawLocale as SupportedLocale;
   const messages = publicMessages(locale);
   const prefix = `/${locale}`;
-  const [session, requestHeaders, cookieStore] = await Promise.all([
-    getAccountLifecycleSession(),
-    headers(),
-    cookies(),
-  ]);
-  const privacyOptOut = requestHeaders.get("sec-gpc") === "1" || requestHeaders.get("dnt") === "1";
-  let initialVisitorSnapshot;
-  if (!session && !privacyOptOut) {
-    if (isDemoMode()) {
-      initialVisitorSnapshot = { version: 0, totalCount: 0, earlyBirdCount: 0, nightOwlCount: 0 };
-    } else {
-      try {
-        initialVisitorSnapshot = await getPublicVisitorSnapshot(buildVisitorIdentity({
-          cookieValue: cookieStore.get(VISITOR_CLAIM_COOKIE)?.value,
-        }));
-      } catch {
-        initialVisitorSnapshot = undefined;
-      }
-    }
-  }
-
   return (
     <>
-      {!session && !privacyOptOut ? (
-        <VisitorChoiceChallenge
-          locale={locale}
-          siteKey={process.env.TURNSTILE_SITE_KEY?.trim()}
-          initialSnapshot={initialVisitorSnapshot}
-        />
-      ) : null}
-
       <section className="public-hero simple-public-hero" aria-labelledby="public-home-title">
         <div className="public-hero-copy">
           <p className="eyebrow">{messages.home.eyebrow}</p>

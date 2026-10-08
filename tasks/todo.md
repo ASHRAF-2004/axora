@@ -1,6 +1,198 @@
 # Recovery execution checkpoints
 
-Latest02:57UTC: PR220 exactd8 imageCI PASS, Nightly37718133148 FAILED350/19skip/
+## Exact123 release checkpoint — 2026-10-09 MY
+
+- [x] Independently review and finalize combined PR222: public chooser removal,
+  native product completion, scoped safe draft-error recovery and upload reflow.
+- [x] Run all ordered host gates once on123c9dc: lint/types, unit1,968+49native
+  skips, native49/all139/RLS/grants, build/pg-cloudflare, stage/runtime/assets.
+- [x] Preserve local original combined354PASS/19existing skips/ONE unchanged
+  company-create flaky case and recovery7PASS; no added retries or weaker tests.
+- [x] Exact123 protected image CI and quality CI PASS; quality original
+  browser355PASS/19existing skips/zero retries or flaky results+recovery7PASS.
+  Keep the local first-failure trace and company-navigation instability OPEN.
+- [x] Complete headed EN both-theme desktop/mobile product creation/repeated
+  uploads/no-overlap checks and a fresh own volatile-DEMO immediate-delete
+  observation; do not substitute these for native/live whole-flow acceptance.
+- [x] Obtain the owner's explicit PR222 squash merge/deploy approval. Approval
+  does not broaden audit, email, fixture or destructive-production authority.
+- [ ] Commit evidence-only closure updates, verify tested app/test/gate manifest
+  unchanged, and require the final head's protected image check before merge.
+- [ ] Squash merge/deploy approved candidate; verify exact SHA/digest/schema,
+  health and actual production pages. Keep overall acceptance/demo readiness OPEN.
+
+The checklists below preserve earlier development checkpoints. Current results
+above supersede their then-pending release-gate status; original workflow/audit/
+live-fixture gaps remain open. Contact cap2 stays closed; no host restart.
+
+## Public team chooser removal — 2026-10-08
+
+- [x] Map the public Early Birds/Night Owls intro and inspect the live guest
+  homepage; distinguish it from assigned-team profile onboarding.
+- [x] Remove only the public homepage intro/snapshot dependencies.
+- [x] Localized render and purposeful replacement browser regressions pass;
+  preserve all backend security and unrelated acceptance assertions.
+- [x] Actual EN/AR/MS, keyboard, desktop/mobile and both-theme checks pass.
+- [ ] All required final-candidate gates pass and independent review completes.
+- [ ] Record exact tested candidate; obtain explicit merge/deploy approval
+  before production release. Earlier required gates remain historical evidence.
+
+## Separately scoped product action completion — 2026-10-09 MY
+
+- [x] Retain actual first-failure response/render traces; do not clear gallery
+  instability because existing retries pass.
+- [x] Implement native creation/upload success completion without domain,
+  permission, commercial-input or unrelated mutation changes.
+- [x] Protect scoped submitted-draft completion, unsubmitted/error/other-form
+  retention and disposed/debounced writes; localized honest feedback.
+- [ ] Resolve independent review, run final focused/current-candidate gates
+  and actual first/repeated upload, return-new and local-error browser checks.
+- [ ] Original required suite passes without weakening tests; exact-head
+  protected CI, explicit release approval and actual production acceptance.
+
+Public chooser PR221 remains separate. Neither this candidate nor healthy
+workers can close original registration/deletion integrity/live-fixture gaps.
+Contact cap2 remains closed; private credentials/history/other trees preserved.
+
+### Latest native checkpoints — 2026-10-09 MY
+
+- [x] Preserve native02 actual4PASS/2wrong-copy failures and corrected negative
+  actual2FAIL empty-name artifacts before subsequent runs; financial validation
+  unchanged, new test copy now matches the actual calculator.
+- [x] Scope bounded RAM error recovery to the explicit create form; protect
+  newer own pending edits, sensitive/file exclusions and unrelated drafts;
+  idle/handled-error reset and successful completion lifetimes tested.
+- [x] Independent source review, child7files63PASS/logc711a677…, targeted lint
+  and diff-check; root distinct6files55PASS/log0c61d2be… (not8 requested files).
+- [x] Actual fresh standalone final-flow6PASS13.8s/retry0/logb93acc6e…:
+  unchanged original smoke2 plus new positive/error4, first/repeated UUID upload,
+  return-new clear, held demo response/pending edits, unroute before ordinary
+  second error, reload retention and explicit reset.
+- [x] Diagnose actual headed sticky upload overlap at scroll669; implement
+  upload-form-only static-position reflow and pass both-project non-overlap
+  regression; no global CSS/token/label change.
+- [x] Final headed native EN desktopLight/Dark and390mobileDark/Light reviewed:
+  normal DEMO Owner create, first/repeated upload,3 loaded images, static card/
+  no overlap/no overflow, console0/0; owned3152 browser/server closed. Invalid
+  guessed selector excluded; AR/MS native proof not claimed because demo locale
+  writes do not persist. Earlier separate locale evidence retained; not production.
+- [ ] Commit final local headb62 plus two-file flow delta; run all required
+  ordered exact-candidate gates. Development build/stage a6506fa…/41b9b16… are
+  focused-acceptance artifacts, not completed final release gates.
+- [ ] Original full E2E/recovery and protected CI green; explicit merge/deploy
+  approval plus production acceptance. Keep gallery OPEN until then.
+
+Public1990 quality remains FAILED350/19existing skips/one branch/retry0,
+visitor NOT RUN; isolated original branch2PASS17.1s proves no cause/fix.
+Public report-only3f15 image37815313972PASS/no deployment preserves app/test
+bytes1990. Current03 audit/setup/deletion/live-fixture gaps unchanged, Contact
+cap2 consumed/no send or historical release, no host/service/real-data action.
+
+### Preserved public chooser checkpoints
+
+Candidate4fb94af follows source/E2Efd934d3. First unit gate failed1,920/49skip/
+2fail; preserve its evidence. Narrow obsolete homepage accessor allowlist,
+reproduce strict override timestamp boundary in RAM-only PGlite, then correct
+only existing purge fixture chronology/all assertions unchanged:13focusedPASS.
+Run complete ordered gates on final bytes, not a blind failing-test retry.
+
+Continuation2026-10-09Malaysia:4fb lint/type/unit1,922/native49/build/stage/
+runtime/assets PASS. Actual headed standalone12 ready-home views+1 distinct
+footer/keyboard PASS. First combined EXIT1:349PASS/19skip/keyboard FAILED/
+gallery FLAKY; recoveryNOTRUN. Entire evidence archived before narrow retired
+keyboard contract correction, now independently reviewed/focused26PASS+2existing
+skips. Gallery's actual initial trace/screenshot now available; investigate
+cause rather than declaring existing retry a fix. Later combined result below.
+
+Browser-test candidate9a8cc53: optional bounded CDP/gallery observation reviewed
+for noninterference; no app/database/unit/config changes from4fb. Final focused
+desktopPASS/mobileINITIALcreation-routeFAIL/existingretryPASS; completecreate
+response observed but route/button stuck, before upload. Evidence retained;
+not a new repair or clean pass. Original full combined suite completed9a8:
+349PASS/19existing skips/TWO FLAKY9.7min +recovery7PASS9.3s/EXIT0; existing CI
+retries passed desktop gallery and mobile create initial failures. Complete
+results archived public-team-required-9a8-RXEBYD/log031a2d7b… . Client completion
+failure proven for completed responses; precise framework race unproven.
+Separate supported redirect/draft-safe repair in development, not yet fixed.
+Local chooser gates complete; protected CI/review/explicit release approval remain.
+
+Exact1990 PR221 image37810901425 PASS; quality37810933862 FAILED after every
+non-browser gate passed: original350PASS/19existing skips/ONE desktop branch-edit
+foundation failure, visitor NOT RUN. Existing retries0 and5second assertion
+retained; complete failed evidence archived. Trace diagnosis in progress; no
+merge/deploy approval or production mutation. The required-gates checkbox stays
+open rather than substituting earlier local passes.
+
+## Final closure audit — 2026-10-08
+
+- [x] Map all six original registration/setup criteria to exact isolated/native/
+  live evidence; diagnose and retain current03 temporal-guard failure.
+- [ ] Complete current-image setup/whole integrity and before-after workflow
+  acceptance; blocked by audit ordering guard and missing designated live fixture.
+- [x] Map all six product criteria; retain unchanged-assertion gallery diagnostic
+  PASS without declaring the unresolved CI failure fixed; identify the exact owned
+  already-created current03 product without replay/deletion.
+- [ ] Complete immediate product removal and before-after workflow acceptance;
+  strict integrity guard remains failed and no live deletion target is designated.
+- [ ] Finish independent checks for remaining items8–14 and identify precise
+  external/account/fixture dependencies, not generic deferrals.
+- [x] Publish refreshed dated13page migration/recovery guide after final all-page
+  visual and in-memory secret/placeholder checks; retain old artifact. No host
+  or service operation is performed by documentation delivery.
+- [ ] Review final evidence, preserve Contact cap2, update both reports and
+  publish one passed/open/user-action checklist with a justified readiness verdict.
+
+Current14:29:55UTC: current03 strict guard reached complete original-row and
+append-graph checks but failed canonical_temporal_discrepancy_changed. Baseline
+21 warnings remain/original-new-invalid0; two new pure read audits appended17us
+opposite timestamp order produce23. No audit rewrite/guard weakening. Parent04
+not run; one existing owned product retained/noDELETE, invitationSENT/untaken.
+Idle probe02 stopped before any container action: sequence42809 and malformed
+private Docker JSON formats diagnosed separately; mechanical corrections only
+are being checked. No restart slot, Contact send or host action in that stop.
+
+Latest10:09UTC: Contact B closed end-to-end. Newexplicit ONEB authorization,
+fresh nativepreclickA/B0/idlequeues/8holds unchanged, existingBrave newpublictab
+normalverification(noCaptchaClick), oneactualcursorSend10:03:39.089UTC/MY18:03:39.
+Successbanner/enquiry7378a4d9/outbox81857ccc/SENTattempt1/provider01a11af8,
+signed-ingestiondelivered10:03:51.633, ONEboundGET200/delivered; userreceiptconfirmed.
+Authorizedmetadata-onlyGmail exactB+subjectONEInboxmessage1a11af8219b1b180,
+received10:03:50UTC/To+DeliveredTo+snippetmatch. No fullMIMEbody/attachment/othermail
+read ormailmutation. Acount1+B1 total2; nofurtherSend/retry/replay/historyrelease.
+Separate failedsandbox/600010 preparation0POST; nosecuritybypass. Private test
+childclosedconfirmed, userBrave+success tab remains. Reportsupdated/source/runtime
+d82/OCIbc8/139 unchanged; noapp/testgate invalidation. Gallerydiagnostic and
+Mandatory whole-flow acceptance gaps remain open. Conditional external setup
+inputs and absent live role/fixture evidence are separately classified; none is
+silently treated as a passed core criterion.
+
+Historical03:50UTC: PR220 squashmergedd82a3bb/protectedmain+production same;
+OCIbc8c2933/schema139/checksums/health PASS. Exact0040 tree equals merge;
+imageCI+Nightlygreen: unit1915/native49/all139/lint/type/build/stage/runtime,
+full352PASS+19existing skips+ONE existinggalleryretry-pass/visitor18PASS.
+Not clean353; old d8 failures/gallerycause-unproven preserved, failure-artifact
+upload skipped on green/flaky. No speculative patch or test weakening.
+Actual newrelease OwnerbothThemes/390px/AR RTL/MS/sixUI/loadedlogos+gallery/
+correctWalletrefresh-direct-history PASS. CA validexistingCart before/after
+allownedcompany carts/items/events/authorityunchanged; Shopping/Budgets/Wallet,
+BAmetadata/no lifecycle and Driverportal readsmokes PASS. Initial loading
+captures excluded; OwnerENLight restored/allownedbrowsers closed.
+Contact03:35 A/B+ALLrecent0/held8unchanged; recipientbinding matchesGmail/
+03:36exactAanywhere0. A1/Bunused/no Send/providerlookup/historyreplay.
+Exact humanpause: priorBrave verification-only versus Send/result/time;
+do notsubmitagainyet. Optional activation/resilience/rolefixturedependencies
+named in reports, not core blockers; no hostrestart, privateinput/trees intact.
+
+Historical03:10UTC: exact0040beb failure-artifact retention/invariant committed;
+imageCI37720646333 PASS/Nightly37720771405 RUNNING, nonbrowser gates green sofar.
+ONE focusedproductPASS58.3s/ONE foundationPASS10s (freshCI=true/taskset0,1,
+not identicalGitHubrunner), no application patch or combinedcauseclaim. Initial
+foundationCLInotests logpreserved; no productrawloghashinvented. Both3100closed.
+Sharedlivehypothesis unsupported: neitherfailingroute mountsSync. Contact03:06
+freshA/B+allrecent0/held8unchanged/GmailA0; A1/Bunused/no send/providerlookup.
+No merge/deploy; requiredcombinedCI and priorBrave reconciliation remain.
+
+Historical02:57UTC: PR220 exactd8 imageCI PASS, Nightly37718133148 FAILED350/19skip/
 1existing-retry Ownercompanyflake +2mobilefailures. Foundation fails branch-create
 URL at123 BEFORE budget; product uploadresponse<400 but gallery0instead2 at150
 bothattempts. Contact6 and directCart casesPASS. VisitorNOTRUN. No merge/deploy;
@@ -49,7 +241,7 @@ actualnotice/noEffects proof retained; not live acceptance. Private input intact
 
 - [x] Read final report/register and verify current protected/deployed baseline.
 - [x] Preserve unrelated worktrees; assign bounded independent specialists.
-- [ ] Core Contact: two-label cap, normal verification, durable/outbox/provider evidence.
+- [x] Core Contact: A conservatively counted1, one nativeBrave B submission, durable/outbox/one acceptedprovider/delivery evidence, user-confirmed and independent metadata-only GmailInbox receipt; cap2 consumed/no retry or historical release.
 - [x] Core product: actual authenticated isolated owned deletion and protected/CA/DENY refusals; no production deletion.
 - [x] Core registration evidence: isolated creation/setup/login/used-link plus ONE live cross-scope refusal/no-effects and later visible GET notice; original failed checker/same-tenant/whole-flow boundaries retained.
 - [x] Residual UI: Dark hover and branch-address labels, rendered EN/AR/MS checks and actual c3 production both-theme/mobile acceptance.
@@ -60,8 +252,8 @@ actualnotice/noEffects proof retained; not live acceptance. Private input intact
 - [x] Issue11: actual integration status and authorized setup checklist; controlled Slack activation inputs absent.
 - [x] Issue9: technical runbooks and rendered illustrated migration PDF; no host/cutover action.
 - [x] Review combined source, preserve secrets and run exact changed-candidate gates at eb65 and scoped follow-up f09.
-- [ ] Follow-up protected image/exact Nightly, deployment identity and actual browser check; existing PR219 c3 release and six-UI acceptance complete.
-- [x] Current BLOCKED per-item evidence/report; external limitations named specifically, not task-completion acceptance.
+- [x] Follow-up protected image/exact Nightly, merged immutable deployment identity and actual d82 browser/role checks; existing PR219 c3 repairs preserved. Gallery retry remains disclosed/unproven, not a first-attempt clean claim.
+- [x] Current per-item acceptance evidence/report; Contact pause superseded by actual receipt, external limitations named specifically and gallery retry/isolated boundaries preserved.
 
 Checkpoint00:54UTC: second originalcombined2ae353PASS19skip6.8min +visitor18PASS
 14.9s EXIT0/no retry, archivedgreen02/logee9c740a… . Originalfailure retained;

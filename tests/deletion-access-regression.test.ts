@@ -127,10 +127,12 @@ describe("deletion and access regressions", () => {
       const permission = await db.query<{ id: string }>(`
         SELECT id::text FROM permissions WHERE permission_code='product.manage'
       `);
+      // This purge fixture represents a pre-existing grant. Creating and ending
+      // it in the same clock tick violates the strict ends_at > starts_at check.
       await db.query(`
         INSERT INTO user_permission_overrides(
           id,user_id,permission_id,effect,scope_type,starts_at,active,reason,changed_by
-        ) VALUES ($1,$2,$3,'GRANT','PLATFORM',now(),true,'Removal fixture',$4)
+        ) VALUES ($1,$2,$3,'GRANT','PLATFORM',now()-interval '1 minute',true,'Removal fixture',$4)
       `, [ids.override, ids.target, permission.rows[0]?.id, ids.owner]);
 
       const removed = await db.query<{ snapshot: Record<string, unknown> }>(`
