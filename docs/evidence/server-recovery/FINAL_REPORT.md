@@ -17,8 +17,9 @@ saved-choice counters10 (Early6/Night4), in EN and AR. No choice or Contact Send
 was pressed. Focused render regression first failed3 localized cases against the
 old page, then passed after removal; focused render/visitor-security/SEO/release
 isolation checks29PASS. Browser replacement coverage, actual standalone views
-and local gates are now complete as detailed below; protected candidate CI and
-explicit release approval are still pending. This app/test change means earlier exact0040/d82 gates remain
+and local gates are now complete as detailed below. The protected image build
+passed, but the required quality browser gate FAILED as detailed below;
+explicit release approval is also absent. This app/test change means earlier exact0040/d82 gates remain
 historical evidence, NOT certification of the new candidate. Production remains
 d82/bc8/schema139. Merge/deploy requires explicit approval under the latest
 repository instruction. Recovery barriers and the closed Contact cap below
@@ -173,6 +174,38 @@ being implemented in a separate candidate/worktree, with submitted-draft
 cleanup and error/draft preservation; it has NOT repaired or deployed anything
 yet. The public-removal candidate remains unchanged and independently releasable
 only after its protected CI and explicit merge/deploy approval.
+
+### PR221 exact-candidate CI — 2026-10-08 17:10 UTC
+
+Candidate `1990ad6b71fe6d2bdc78b2685be731214e49e555` is pushed in
+[PR221](https://github.com/ASHRAF-2004/axora/pull/221), NOT merged/deployed.
+Its reviewed tree equals the preceding e70ebb1 tree; main-history alignment
+introduces no new application or test bytes. Independent review confirms the
+only application delta from protected main is the38-line localized-homepage
+chooser/snapshot removal. Authenticated team/profile gates, permissions,
+financial/domain code, migrations and infrastructure are unchanged.
+
+[Image CI37810901425](https://github.com/ASHRAF-2004/axora/actions/runs/37810901425)
+passed; deployment was correctly skipped for the PR. Required exact-candidate
+[quality37810933862](https://github.com/ASHRAF-2004/axora/actions/runs/37810933862)
+passed lint/typecheck, unit1,922/49 existing native-only skips, native49/all139,
+build/pg-cloudflare and standalone staging/runtime. Its original browser suite
+FAILED:350PASS/19 existing skips/ONE desktop Company Administrator foundation
+failure/14.8min. The file's existing retries0 prevents replay of these financial
+and tenant mutations; it was not changed. Visitor recovery did NOT run after
+main failure. There is no green-CI or release-ready claim.
+
+After Save branch, the original5second URL assertion remained on the branch
+edit page, with actual rendered disabled “Saving branch…” and phone controls.
+Trace diagnosis is in progress; no increased timeout, retry, skipped test,
+speculative application patch or production mutation. Complete log SHA256
+`04a04964e04ee36563a91dfac9ca7bee07e1aaee8544b0577f6277f2d88dc730`.
+The96-file failed browser artifact was downloaded before expiry into private
+`public-chooser-ci-1990-failed-EsWQjO`; GitHub artifact11566896325 zip digest
+`6c911a816048e5c1cddc4313eddd3d08d5abf2e055ffd459576e2e13476f94a1`.
+Production remains d82/bc8/schema139. Latest repository guidance additionally
+requires explicit approval before merge/deploy; the older autonomous-release
+instruction does not override it. Contact remains closed at two smoke slots.
 
 ## Final closure audit — 2026-10-08 14:48 UTC
 
