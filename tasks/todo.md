@@ -1,5 +1,29 @@
 # Recovery execution checkpoints
 
+## Deployed PR222 / responsive follow-up — 2026-10-09 MY
+
+- [x] Squash merge owner-approved PR222 and deploy exact286/OCIe7/schema139;
+  mainCI37824768766 SUCCESS, local/external health+identity checks PASS.
+- [x] Verify actual production EN/AR/MS public chooser removal and read-only
+  Owner/Company Administrator/Delivery Agent rendered journeys; retain live
+  CAM, no-logo, absent-Wallet and fresh create/upload evidence limitations.
+- [x] Preserve pre-existing423px mobile-editor overflow with real history;
+  implement/review narrowly scoped containment and keyboard-accessible region.
+- [x] Freeze tested4ef; focused5 unit/final6 browser PASS, headed EN/AR/MS
+  actual-history views PASS; unique public fixtures and actual Escape dismissal.
+- [x] Ordered exact4ef lint/types/unit1973+49native-only skips/native49/all139/
+  RLS/grants/build/stage/runtime/assets/diff-check gates PASS.
+- [x] Original full browser gate360 PASS/19 existing skips/ONE company-create
+  FLAKY using existing retry; visitor recovery7 PASS. Preserve full failure
+  archive; do not mislabel this361 clean passes or close route instability.
+- [ ] Protected image check and separate explicit responsive-PR merge/deploy
+  approval, then actual production history-present mobile acceptance.
+- [ ] Original audit-contract decision and whole registration/deletion/live
+  gallery acceptance. Keep Contact cap2 closed, real data/private file/host safe.
+
+All dated checklists below are preserved history; current status is above and
+in the latest FINAL_REPORT/ISSUE_REGISTER checkpoints. Overall NOT DEMO READY.
+
 ## Exact123 release checkpoint — 2026-10-09 MY
 
 - [x] Independently review and finalize combined PR222: public chooser removal,

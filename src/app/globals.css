@@ -136,6 +136,8 @@ summary { min-height: 44px; }
 .search-input:focus, .toolbar select:focus, input:focus, select:focus, textarea:focus { border-color: var(--blue-600); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
 
 .split-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+.product-editor-layout > * { min-inline-size: 0; }
+.product-editor-layout .data-table-wrap:focus-visible { outline: 3px solid var(--axora-focus); outline-offset: -3px; }
 .form-panel { padding: 21px; position: sticky; top: 94px; }
 .form-panel h2 { margin: 0 0 4px; color: var(--navy-900); font-size: 17px; }
 .form-panel > p { margin: 0 0 18px; color: var(--slate-500); font-size: 12px; }
