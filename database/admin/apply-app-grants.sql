@@ -958,6 +958,9 @@ BEGIN
     REVOKE ALL ON FUNCTION public.axora_audit_redact(jsonb) FROM axora_app;
     REVOKE ALL ON FUNCTION public.axora_audit_hash(public.audit_logs) FROM axora_app;
   END IF;
+  IF to_regprocedure('public.axora_verify_audit_append_integrity(text)') IS NOT NULL THEN
+    REVOKE ALL ON FUNCTION public.axora_verify_audit_append_integrity(text) FROM axora_app;
+  END IF;
 END
 $$;
 
