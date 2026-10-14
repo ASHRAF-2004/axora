@@ -41,7 +41,7 @@ for (const [locale, budgets, requests] of [
   });
 }
 
-test("Operations dashboard opens paid requests, deliveries, catalog and branches", async ({ page }) => {
+test("Operations dashboard opens operational workspaces and omits unauthorized branch administration", async ({ page }) => {
   const failures: string[] = [];
   page.on("pageerror", error => failures.push(error.message));
   await signInAsDemoRole(page, {
@@ -56,7 +56,6 @@ test("Operations dashboard opens paid requests, deliveries, catalog and branches
     ["Review paid requests", "/requests"],
     ["Coordinate deliveries", "/deliveries"],
     ["Manage catalog", "/products"],
-    ["Company operations", "/branches"],
   ]) {
     await page.goto("/dashboard");
     const link = page.locator(".dashboard-role-actions").getByRole("link", { name: label, exact: true });
@@ -65,6 +64,8 @@ test("Operations dashboard opens paid requests, deliveries, catalog and branches
     await expect(page).toHaveURL(new RegExp(`${destination}$`));
     await expect(page.locator("#portal-main h1")).toBeVisible();
   }
+  await page.goto("/dashboard");
+  await expect(page.locator(".dashboard-role-actions").getByRole("link", { name: "Company operations", exact: true })).toHaveCount(0);
   expect(failures).toEqual([]);
 });
 

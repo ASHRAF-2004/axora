@@ -2,7 +2,7 @@
 
 import { createUserAction } from "@/app/(portal)/users/actions";
 import type { Branch, Company, UserRole } from "@/lib/types";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { LOCALE_NAMES, SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n";
 import { userFormMessages } from "@/lib/user-form-i18n";
@@ -25,12 +25,12 @@ export interface UserRoleOption {
   customizablePermissions?: readonly PermissionChecklistOption[];
 }
 
-function CreateAccountButton({ disabled, locale }: { disabled: boolean; locale: SupportedLocale }) {
+function CreateAccountButton({ disabled, locale, nativePending }: { disabled: boolean; locale: SupportedLocale; nativePending: boolean }) {
   const { pending } = useFormStatus();
   const copy = userFormMessages(locale);
   return (
-    <button className="button button-primary" type="submit" disabled={disabled || pending} aria-busy={pending} data-feedback-label={copy.creating}>
-      {pending ? copy.sending : copy.create}
+    <button className="button button-primary" type="submit" disabled={disabled || pending || nativePending} aria-busy={pending || nativePending} data-feedback-label={copy.creating}>
+      {pending || nativePending ? copy.sending : copy.create}
     </button>
   );
 }
@@ -61,6 +61,7 @@ export function UserCreateForm({
   createAction?: (formData: FormData) => void | Promise<void>;
 }) {
   const [role, setRole] = useState<UserRole | "">("");
+  const [nativePending, setNativePending] = useState(false);
   const [companyId, setCompanyId] = useState(fixedCompanyId ?? actorCompanyId ?? "");
   const [branchId, setBranchId] = useState(actorBranchId ?? "");
   const [roleChanged, setRoleChanged] = useState(false);
@@ -127,8 +128,24 @@ export function UserCreateForm({
       : showBranch && !branchId ? false
         : true;
 
+  function submitNativeAction(event: FormEvent<HTMLFormElement>) {
+    const form = event.currentTarget;
+    // Use React's existing progressive form metadata and the browser's normal
+    // POST/303 navigation. A captured invitation response can have the correct
+    // redirect while the Flight client remains pending on this form.
+    if (!form.querySelector('input[name^="$ACTION_ID_"],input[name^="$ACTION_REF_"]')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (nativePending || !form.reportValidity()) return;
+    setNativePending(true);
+    form.method = "post";
+    form.enctype = "multipart/form-data";
+    form.action = window.location.href;
+    HTMLFormElement.prototype.submit.call(form);
+  }
+
   return (
-    <form action={createAction} data-draft-id="create-user">
+    <form action={createAction} data-draft-id="create-user" onSubmitCapture={submitNativeAction}>
       <input type="hidden" name="creationContext" value={creationContext ?? (fixedCompanyId || actorCompanyId ? "COMPANY" : "PLATFORM")} />
       {customizePermissions
         ? <input type="hidden" name="permissionsCustomized" value="true" />
@@ -236,7 +253,7 @@ export function UserCreateForm({
         </div>
       </div>
       <div className="form-actions">
-        <CreateAccountButton disabled={!selectedRole || !scopeReady} locale={defaultLocale} />
+        <CreateAccountButton disabled={!selectedRole || !scopeReady} locale={defaultLocale} nativePending={nativePending} />
       </div>
     </form>
   );
