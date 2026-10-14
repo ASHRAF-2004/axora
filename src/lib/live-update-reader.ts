@@ -11,6 +11,7 @@ import { requestLiveVersion } from "./request-reader";
 import { getApprovalWorkspace } from "./request-approval";
 import { getProcurementVarianceApprovalWorkspace } from "./budget-variance";
 import { getCatalogPurchasingScope } from "./procurement-cart";
+import { loadCompanyLifecycleWorkspace } from "./company-lifecycle";
 import { authoritativeSnapshotVersion, eventStreamsEnabled, snapshotEventStream } from "./server-event-stream";
 import type { LiveContext, LiveSnapshot, LiveTopic } from "./live-update-contract";
 
@@ -29,6 +30,7 @@ function allowed(actor: SessionUser, topic: LiveTopic) {
   if (topic === "wallet") return canAccess(actor, "view_wallet");
   if (topic === "requests") return canAccess(actor, "view_requests");
   if (topic === "approvals") return canAccess(actor, "view_approvals");
+  if (topic === "companies") return canAccess(actor, "manage_companies");
   return canAccess(actor, "view_catalog");
 }
 
@@ -101,6 +103,13 @@ export function createLiveReader(opening: AuthenticatedSessionUser, topics: Live
         variance: stableSnapshot(await getProcurementVarianceApprovalWorkspace(actor)),
       };
       else if (topic === "catalog") value = await customerCatalogLiveVersion(actor, context.branchId);
+      else if (topic === "companies") {
+        const workspace = await loadCompanyLifecycleWorkspace(actor);
+        value = { canCreate: workspace.canCreate, companies: workspace.companies.map(company => ({
+          id: company.id, name: company.name, code: company.code, industry: company.industry,
+          mainContactName: company.mainContactName, status: company.status, version: company.version,
+        })) };
+      }
       if (value === null || value === undefined) throw new Error("Live context unavailable");
       const snapshot = versionSnapshot(topic, value);
       if (Buffer.byteLength(JSON.stringify(snapshot)) > 64 * 1024) throw new Error("Live snapshot unavailable");

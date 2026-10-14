@@ -4,6 +4,7 @@ import {
 } from "@/components/CompanyActivationControls";
 import { CompanyWorkspaceNav } from "@/components/CompanyWorkspaceNav";
 import { PageHeader } from "@/components/PageHeader";
+import { NativeActionForm } from "@/components/NativeActionForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { requirePagePermission } from "@/lib/auth";
 import { isDemoMode } from "@/lib/db";
@@ -271,7 +272,7 @@ export default async function CompanyOverviewPage({ params, searchParams }: {
         {actions.has("SUSPEND") ? <form action={suspendCompanyAction}><input type="hidden" name="companyId" value={company.id} /><button className="button button-secondary" type="submit" title={local.confirmSuspend}>{local.suspend}</button></form> : null}
       </div>
     </section> : null}
-    {actor.isOwner ? <details className="panel"><summary>{local.remove}</summary><form action={deleteOrArchiveCompanyAction.bind(null, company.id)} className="form-grid"><input type="hidden" name="commandId" value={randomUUID()} /><label className="field-full"><input name="confirmed" type="checkbox" value="confirmed" required /> {local.confirmRemove}</label><div className="form-actions field-full"><button className="button button-danger" type="submit">{local.remove}</button></div></form></details> : null}
+    {actor.isOwner ? <details className="panel"><summary>{local.remove}</summary><NativeActionForm action={deleteOrArchiveCompanyAction.bind(null, company.id)} className="form-grid"><input type="hidden" name="commandId" value={randomUUID()} /><label className="field-full"><input name="confirmed" type="checkbox" value="confirmed" required /> {local.confirmRemove}</label><div className="form-actions field-full"><button className="button button-danger" type="submit">{local.remove}</button></div></NativeActionForm></details> : null}
     <div className="page-actions"><Link className="button button-secondary" href="/companies">{local.back}</Link></div>
   </>;
 }

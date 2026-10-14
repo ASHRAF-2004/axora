@@ -6,6 +6,7 @@ import {
   CompanyCreationCommandConflictError,
   createCompanyWithoutBrand,
 } from "@/lib/company-lifecycle";
+import { deleteOrArchiveCompany, getCompanyDeletionImpact } from "@/lib/company-deletion";
 
 const native = process.env.AXORA_NATIVE_POSTGRES_INTEGRATION === "true" ? describe : describe.skip;
 const ambiguousSql = `SELECT public.axora_create_company_direct(
@@ -58,6 +59,32 @@ native.sequential("no-brand company creation native parameter inference", () => 
     await global.__axoraPool?.end();
     delete global.__axoraPool;
     await admin?.end();
+  });
+
+  it("removes a disposable company while preserving its immutable integration event", async () => {
+    const created = await createCompanyWithoutBrand({ name: `Native retained event ${randomUUID()}`, mainContactName: "Synthetic contact" }, owner, randomUUID());
+    const eventId = randomUUID();
+    await admin.query(`INSERT INTO integration_events(id,event_type,company_id,resource_type,resource_id,resource_url,
+      source_name,source_id,source_version,occurred_at,summary)
+      VALUES ($1,'company.created',$2,'company',$2,$3,'COMPANIES',$2,1,now(),'{}')`,
+    [eventId, created.companyId, `/companies/${created.companyId}`]);
+    const impact = await getCompanyDeletionImpact(owner, created.companyId);
+    expect(impact.hardDeleteEligible).toBe(true);
+    expect(impact.ownership.integration_events).toMatchObject({ count: 1, unprotectedAction: "RETAIN_WITH_ACCESS_REVOKED" });
+    const command = { companyId: created.companyId, commandId: randomUUID(), confirmation: impact.confirmation, reason: "Synthetic company deletion retention regression" };
+    expect(await deleteOrArchiveCompany(owner, command)).toMatchObject({ companyId: created.companyId, mode: "HARD_DELETED", commandId: command.commandId });
+    expect(await deleteOrArchiveCompany(owner, command)).toMatchObject({ companyId: created.companyId, mode: "HARD_DELETED", commandId: command.commandId });
+    const result = await admin.query<{ companies: number; events: number; commands: number }>(`SELECT
+      (SELECT count(*)::int FROM companies WHERE id=$1) AS companies,
+      (SELECT count(*)::int FROM integration_events WHERE id=$2 AND company_id=$1) AS events,
+      (SELECT count(*)::int FROM company_deletion_commands WHERE command_id=$3 AND status='COMPLETE') AS commands`,
+    [created.companyId, eventId, command.commandId]);
+    expect(result.rows[0]).toEqual({ companies: 0, events: 1, commands: 1 });
+    await expect(admin.query("DELETE FROM integration_events WHERE id=$1", [eventId])).rejects.toMatchObject({ code: "55000" });
+    await expect(admin.query("UPDATE integration_events SET summary='{}' WHERE id=$1", [eventId])).rejects.toMatchObject({ code: "55000" });
+    const app = new Client(appConfig); await app.connect();
+    try { await expect(app.query("DELETE FROM integration_events WHERE id=$1", [eventId])).rejects.toMatchObject({ code: "42501" }); }
+    finally { await app.end(); }
   });
 
   it("proves unknown node-pg parameters choose the defaulted branded overload", async () => {

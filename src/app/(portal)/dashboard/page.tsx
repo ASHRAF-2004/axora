@@ -19,7 +19,7 @@ import {
 } from "@/lib/dashboard-reader";
 import { formatCurrency, formatDate, timeOfDayGreeting } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/i18n";
-import { canAccess } from "@/lib/permissions";
+import { canAccess, type Permission } from "@/lib/permissions";
 import { isDeliveryAgentSession } from "@/lib/session-landing";
 import {
   AlertTriangle,
@@ -52,15 +52,15 @@ function roleDashboard(
   const role = corePortalMessages(locale).dashboard.role;
   const paths: Record<keyof typeof role, string[]> = {
     owner: ["/companies", "/users", "/products", "/email-operations"],
-    hr: ["/companies", "/users", "/branches"],
+    hr: ["/users", "/companies", "/users"],
     agent: ["/companies/new", "/companies", "/requests", "/deliveries"],
-    operations: ["/deliveries", "/products", "/requests"],
+    operations: ["/requests", "/deliveries", "/products", "/branches"],
     deliveryGuy: ["/deliveries", "/dashboard"],
-    companyAdmin: ["/users", "/branches", "/requests", "/wallet"],
-    branchAdmin: ["/users", "/branches", "/requests", "/deliveries"],
-    approver: ["/approvals", "/requests", "/branches"],
-    finance: ["/finance", "/invoices", "/requests"],
-    auditor: ["/requests", "/invoices"],
+    companyAdmin: ["/users", "/branches", "/budgets", "/requests"],
+    branchAdmin: ["/users", "/budgets", "/requests", "/deliveries"],
+    approver: ["/approvals", "/requests", "/budgets"],
+    finance: ["/requests", "/requests", "/requests", "/requests"],
+    auditor: ["/requests", "/requests", "/deliveries"],
     requester: ["/products", "/requests/new", "/requests", "/deliveries"],
   };
   const key: keyof typeof role = actor.isOwner
@@ -96,6 +96,21 @@ function roleDashboard(
     )),
   };
 }
+
+const dashboardActionPermissions: Record<string, Permission> = {
+  "/companies": "manage_companies",
+  "/companies/new": "create_companies",
+  "/users": "manage_users",
+  "/products": "view_catalog",
+  "/email-operations": "view_email_operations",
+  "/branches": "view_branches",
+  "/budgets": "view_budgets",
+  "/requests": "view_requests",
+  "/requests/new": "create_requests",
+  "/approvals": "view_approvals",
+  "/deliveries": "view_deliveries",
+  "/dashboard": "view_dashboard",
+};
 
 export default async function DashboardPage({
   searchParams,
@@ -190,7 +205,8 @@ export default async function DashboardPage({
       <nav className="dashboard-role-actions" aria-label={copy.recommendedActions}>
         {experience.actions
           .filter(([, href]) => (
-            href !== "/requests/new" || canAccess(actor, "create_requests")
+            Boolean(href) && Boolean(dashboardActionPermissions[href])
+              && canAccess(actor, dashboardActionPermissions[href])
           ))
           .map(([label, href]) => (
             <Link href={href} key={`${label}-${href}`}>

@@ -1,4 +1,4 @@
-export const LIVE_TOPICS = ["notifications", "jobs", "drivers", "driver", "receiving", "budgets", "wallet", "requests", "approvals", "catalog"] as const;
+export const LIVE_TOPICS = ["notifications", "jobs", "drivers", "driver", "receiving", "budgets", "wallet", "requests", "approvals", "catalog", "companies"] as const;
 export type LiveTopic = (typeof LIVE_TOPICS)[number];
 export interface LiveContext { driverId?: string; companyId?: string; branchId?: string }
 export interface LiveHint { version: string; unreadCount?: number }

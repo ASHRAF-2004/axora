@@ -7,12 +7,14 @@ vi.mock("@/lib/driver-operations", () => ({ getAvailableDeliveryJobs: vi.fn(asyn
 vi.mock("@/lib/delivery-tracking", () => ({ getCompanyDeliveryTracking: vi.fn(async () => ({ sessions: [] })) }));
 vi.mock("@/lib/budget-ledger", () => ({ getBudgetWorkspace: vi.fn(async () => state.budget) }));
 vi.mock("@/lib/company-wallet", () => ({ getCompanyWalletWorkspace: vi.fn(async () => null) }));
+vi.mock("@/lib/company-lifecycle", () => ({ loadCompanyLifecycleWorkspace: vi.fn() }));
 vi.mock("@/lib/repository", () => ({ customerCatalogLiveVersion: vi.fn(async () => ({ count: "5" })) }));
 vi.mock("@/lib/request-reader", () => ({ requestLiveVersion: vi.fn(async () => ({ count: "7" })) }));
 vi.mock("@/lib/procurement-cart", () => ({ getCatalogPurchasingScope: vi.fn(async () => ({ companyId: "safe", allowedCategories: [] })) }));
 import { getSession } from "@/lib/auth";
 import { createLiveReader } from "@/lib/live-update-reader";
 import { getCompanyWalletWorkspace } from "@/lib/company-wallet";
+import { loadCompanyLifecycleWorkspace } from "@/lib/company-lifecycle";
 import { GET } from "@/app/api/live/route";
 
 const actor: AuthenticatedSessionUser = {
@@ -78,5 +80,26 @@ describe("authorized shared live snapshots", () => {
     expect(snapshot.topics.requests).toEqual({ version: expect.stringMatching(/^[a-f0-9]{64}$/) });
     expect(JSON.stringify(snapshot)).not.toContain('"count"');
     expect(getSession).toHaveBeenCalledTimes(5);
+  });
+  it("rejects company subscriptions without the page permission before reading companies", async () => {
+    const response = await GET(new Request("https://axora.invalid/api/live?topics=companies&transport=poll"));
+    expect(response.status).toBe(403);
+    expect(loadCompanyLifecycleWorkspace).not.toHaveBeenCalled();
+  });
+  it("versions only the current actor's authorized company register and emits no company data", async () => {
+    const manager = { ...actor, role: "CLIENT_ACCOUNT_MANAGER", accountKind: "PLATFORM", scopeType: "PLATFORM", companyId: undefined, effectivePermissions: ["manage_companies"] } as AuthenticatedSessionUser;
+    state.session = manager;
+    const company = { id: "private-company", name: "Private customer", code: "PRIVATE", industry: "Private industry", mainContactName: "Private contact", status: "DRAFT", version: 1 };
+    vi.mocked(loadCompanyLifecycleWorkspace).mockResolvedValue({ canCreate: true, companies: [company] } as Awaited<ReturnType<typeof loadCompanyLifecycleWorkspace>>);
+    const reader = createLiveReader(manager, ["companies"], {});
+    const before = await reader.load();
+    expect(loadCompanyLifecycleWorkspace).toHaveBeenLastCalledWith(manager);
+    expect(JSON.stringify(before)).not.toMatch(/private|customer|contact|industry/i);
+    expect(before.topics.companies?.version).toMatch(/^[a-f0-9]{64}$/);
+    vi.mocked(loadCompanyLifecycleWorkspace).mockResolvedValue({ canCreate: true, companies: [{ ...company, status: "ACTIVE", version: 2 }] } as Awaited<ReturnType<typeof loadCompanyLifecycleWorkspace>>);
+    expect((await reader.load()).topics.companies?.version).not.toBe(before.topics.companies?.version);
+    state.session = { ...manager, effectivePermissions: [] };
+    await expect(reader.load()).rejects.toThrow("Live authorization unavailable");
+    expect(loadCompanyLifecycleWorkspace).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
+import { NativeActionForm } from "@/components/NativeActionForm";
 import { requirePagePermission } from "@/lib/auth";
 import { companyLifecycleMessages } from "@/lib/company-lifecycle-i18n";
 import { createCompanyAction } from "../../masters/actions";
@@ -18,7 +19,7 @@ export default async function NewCompanyPage({
   return <>
     <PageHeader eyebrow={copy.eyebrow} title={copy.createTitle} description={copy.createIntro} />
     {query.notice === "company-command-conflict" ? <section className="panel" role="alert"><strong>{copy.creationCommandConflict}</strong></section> : null}
-    <form action={createCompanyAction} className="panel form-panel">
+    <NativeActionForm action={createCompanyAction} className="panel form-panel">
       <input type="hidden" name="commandId" value={commandId} />
       <div className="form-grid">
         <label>{copy.displayName}<input name="name" required maxLength={300} /></label>
@@ -29,6 +30,6 @@ export default async function NewCompanyPage({
         <label className="field-full">{copy.logo}<input name="logo" type="file" accept="image/png,image/jpeg,image/webp" /><small>{copy.logoHelp}</small></label>
       </div>
       <div className="form-actions"><Link className="button button-secondary" href="/companies">{copy.back}</Link><button className="button button-primary" type="submit">{copy.submit}</button></div>
-    </form>
+    </NativeActionForm>
   </>;
 }

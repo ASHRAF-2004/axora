@@ -600,12 +600,22 @@ describe("immersive world V2 repair migrations", () => {
           (SELECT count(*)::int FROM company_deletion_ownership_rules rule
             WHERE rule.table_name NOT IN (
               'companies','company_deletion_tombstones','audit_logs',
-              'integration_api_audit'
+              'integration_api_audit','integration_events'
             )
               AND NOT EXISTS (SELECT 1 FROM company_deletion_ownership_dag dag
                 WHERE dag.table_name=rule.table_name)) AS missing_dag
       `);
       expect(inventory.rows[0]).toEqual({ unclassified: 0, missing_dag: 0 });
+      const retainedEvents = await db.query<{ unprotected: string; protected: string; in_dag: boolean; immutable: boolean }>(`
+        SELECT rule.unprotected_action AS unprotected,rule.protected_action AS protected,
+          EXISTS(SELECT 1 FROM company_deletion_ownership_dag dag WHERE dag.table_name=rule.table_name) AS in_dag,
+          EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.integration_events'::regclass
+            AND tgname='integration_events_immutable' AND tgenabled='O') AS immutable
+        FROM company_deletion_ownership_rules rule WHERE rule.table_name='integration_events'
+      `);
+      expect(retainedEvents.rows[0]).toEqual({
+        unprotected: "RETAIN_WITH_ACCESS_REVOKED", protected: "RETAIN_WITH_ACCESS_REVOKED", in_dag: false, immutable: true,
+      });
       const cleanupPrivileges = await db.query<{ app_can_execute: boolean; worker_can_execute: boolean }>(`
         SELECT
           has_function_privilege('axora_app',

@@ -259,12 +259,14 @@ describe("deletion and access regressions", () => {
   }, 45_000);
 
   it("exposes explicit irreversible owner deletion controls", async () => {
-    const [companies, company, users] = await Promise.all([
+    const [companies, register, company, users] = await Promise.all([
       readFile(new URL("../src/app/(portal)/companies/page.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/lib/company-register.ts", import.meta.url), "utf8"),
       readFile(new URL("../src/app/(portal)/companies/[companyId]/page.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/app/(portal)/users/page.tsx", import.meta.url), "utf8"),
     ]);
-    expect(companies).toContain('company.status !== "ARCHIVED"');
+    expect(companies).toContain("companyRegisterRows(workspace.companies");
+    expect(register).toContain('company.status !== "ARCHIVED"');
     expect(company).toContain("deleteOrArchiveCompanyAction.bind(null, company.id)");
     expect(company).toContain('name="confirmed"');
     expect(users).toContain("actor.isOwner && !isPlatformOwner");
