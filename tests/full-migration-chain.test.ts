@@ -11,7 +11,7 @@ describe("complete forward migration chain", () => {
     const db = new PGlite();
     try {
       const available = await migrationFiles();
-      expect(available.slice(-95)).toEqual([
+      expect(available.slice(-96)).toEqual([
         "047_isolation_closure_capabilities.sql",
         "048_isolation_transaction_lock_hardening.sql",
         "049_active_request_write_boundary.sql",
@@ -107,6 +107,7 @@ describe("complete forward migration chain", () => {
         "139_branch_lifecycle_authority_and_budget_refusals.sql",
         "140_audit_append_link_verification.sql",
         "141_pending_company_administrator_visibility.sql",
+        "142_company_deletion_retained_integration_events.sql",
       ]);
       expect(new Set(available).size).toBe(available.length);
       expect(new Set(available.map((filename) => filename.slice(0, 3))).size)

@@ -11,11 +11,13 @@ describe("company deletion visibility", () => {
   });
 
   it("does not offer archived tenants in normal lists or details", async () => {
-    const [list,detail] = await Promise.all([
+    const [list,register,detail] = await Promise.all([
       readFile("src/app/(portal)/companies/page.tsx","utf8"),
+      readFile("src/lib/company-register.ts","utf8"),
       readFile("src/app/(portal)/companies/[companyId]/page.tsx","utf8"),
     ]);
-    expect(list).toContain('company.status !== "ARCHIVED"');
+    expect(list).toContain("companyRegisterRows(workspace.companies");
+    expect(register).toContain('company.status !== "ARCHIVED"');
     expect(detail).toContain('company.status === "ARCHIVED"');
   });
 });
