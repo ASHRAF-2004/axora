@@ -525,7 +525,8 @@
       ],
       "mode": "mixed",
       "apis": [
-        "/api/company-brand/[companyId]/logo"
+        "/api/company-brand/[companyId]/logo",
+        "/api/companies/register"
       ],
       "expectedFinalUrl": "/companies",
       "landmark": "main h1"
@@ -1364,6 +1365,12 @@
       "route": "/api/drivers",
       "authentication": "authenticated",
       "scope": "platform-delivery",
+      "mode": "read-only"
+    },
+    {
+      "route": "/api/companies/register",
+      "authentication": "manage_companies-current-role",
+      "scope": "authorized-company-lifecycle-register-columns-only",
       "mode": "read-only"
     },
     {
