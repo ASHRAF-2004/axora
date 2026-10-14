@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { signInAsDemoRole } from "./helpers/auth";
 import { installReliabilityGuard } from "./helpers/reliability";
 
+test.describe.configure({ retries: 0 });
+
 const companyId = "11111111-1111-4111-8111-111111111111";
 const isNextDevelopmentStyleNoise = (message: string) => (
   process.env.AXORA_PLAYWRIGHT_STANDALONE !== "true"
@@ -83,10 +85,12 @@ test("verified company activates on the first click and remains active through h
   const reliability = installReliabilityGuard(page, {
     ignoreConsoleError: isNextDevelopmentStyleNoise,
   });
-  const mutationRequests: string[] = [];
+  const mutationRequests: Array<{ path: string; navigation: boolean; actionHeader: boolean }> = [];
   page.on("request", (request) => {
     if (request.method() === "POST" && new URL(request.url()).pathname.includes("companies")) {
-      mutationRequests.push(new URL(request.url()).pathname);
+      mutationRequests.push({ path: new URL(request.url()).pathname,
+        navigation: request.isNavigationRequest(),
+        actionHeader: request.headers()["next-action"] !== undefined });
     }
   });
   await page.emulateMedia({
@@ -115,6 +119,7 @@ test("verified company activates on the first click and remains active through h
     { exact: true },
   )).toBeVisible();
   await expect(page.getByText("Company verification is approved.", { exact: true })).toBeVisible();
+  expect(mutationRequests).toEqual([{ path: `/companies/${companyId}`, navigation: true, actionHeader: false }]);
   const activation = page.getByRole("button", { name: "Activate company", exact: true });
   await expect(activation).toBeEnabled();
 
@@ -124,6 +129,7 @@ test("verified company activates on the first click and remains active through h
     `/companies/${companyId}\\?notice=company-activated$`,
   ));
   expect(mutationRequests).toHaveLength(beforeActivation + 1);
+  expect(mutationRequests.at(-1)).toEqual({ path: `/companies/${companyId}`, navigation: true, actionHeader: false });
   await expect(page.getByText(
     "Company activated successfully. Portal access is now enabled.",
     { exact: true },
