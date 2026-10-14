@@ -1,0 +1,64 @@
+name: Readiness verification
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verification:
+    name: Linux unit, native PostgreSQL and browser verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    concurrency:
+      group: readiness-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      AXORA_DRIVER_MAP_OPERATIONAL_READY: "true"
+      NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID: axora-mvp-klang-valley
+      NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME: Axora self-hosted Klang Valley streets
+      NEXT_PUBLIC_AXORA_MAP_STYLE_URL: /maps/axora-mvp-operational-style.json
+      NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION: OpenStreetMap contributors
+      NEXT_PUBLIC_AXORA_MAP_ATTRIBUTION_URL: https://www.openstreetmap.org/copyright
+      NEXT_PUBLIC_AXORA_MAP_COVERAGE_BOUNDS: 101.35,2.70,102.00,3.45
+      NEXT_PUBLIC_AXORA_MAP_COVERAGE_LABEL: Klang Valley, Putrajaya and Cyberjaya pilot region
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.21.0"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run test:postgres-native
+      - run: npm run build
+      - run: npm run standalone:stage
+      - run: scripts/production/validate-assets.sh
+      - name: Desktop, mobile and reduced-motion journeys
+        run: npx playwright test --reporter=line,json
+        env:
+          AXORA_PLAYWRIGHT_STANDALONE: "true"
+          PLAYWRIGHT_JSON_OUTPUT_FILE: output/playwright/main-results.json
+      - name: Visitor recovery journeys
+        run: npx playwright test --config=playwright.visitor-recovery.config.ts --reporter=line,json
+        env:
+          AXORA_PLAYWRIGHT_STANDALONE: "true"
+          PLAYWRIGHT_JSON_OUTPUT_FILE: output/playwright/visitor-results.json
+      - run: git diff --check
+      - name: Preserve verification and failure evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: readiness-evidence
+          path: output/playwright/
+          retention-days: 7
