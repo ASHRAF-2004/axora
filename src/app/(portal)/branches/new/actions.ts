@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requirePermission } from "@/lib/auth";
@@ -49,4 +50,13 @@ export async function createBranchWithLocationAction(_state: BranchCreateState, 
       : "The branch could not be created. Review the details and try again.";
     return { status: "error", message, submissionId };
   }
+}
+
+/** Complete a successful form POST without waiting for a client Flight merge. */
+export async function createBranchWithLocationNavigationAction(state: BranchCreateState, formData: FormData): Promise<BranchCreateState> {
+  const outcome = await createBranchWithLocationAction(state, formData);
+  if (outcome.status === "success" && outcome.branchId) {
+    redirect(`/branches/${outcome.branchId}?notice=branch-created`);
+  }
+  return outcome;
 }

@@ -119,8 +119,15 @@ test("Company Administrator completes users, branch location and first budget on
   await page.evaluate(() => scrollTo(0, 0));
   await page.screenshot({ animations: "disabled", fullPage: true,
     path: `output/playwright/company-admin-branch-${testInfo.project.name}.png` });
+  const branchPosts: { navigation: boolean; actionHeader: string | undefined }[] = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/branches/new") {
+      branchPosts.push({ navigation: request.isNavigationRequest(), actionHeader: request.headers()["next-action"] });
+    }
+  });
   await page.getByRole("button", { name: "Create branch" }).click();
   await expect(page).toHaveURL(/\/branches\/br-[a-z0-9-]+\?notice=branch-created$/, { timeout: 15_000 });
+  expect(branchPosts).toEqual([{ navigation: true, actionHeader: undefined }]);
   const createdBranchId = new URL(page.url()).pathname.split("/").at(-1)!;
   await expect(page.getByRole("heading", { level: 1, name: branchName })).toBeVisible();
   await page.reload();
@@ -168,6 +175,30 @@ test("Company Administrator completes users, branch location and first budget on
   await expect(page.getByText(/Something went wrong|This page could not be restored|Reference:/i)).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
   expect(browserFailures).toEqual([]);
+});
+
+test("native branch validation returns an editable form without creating a branch", async ({ page }, testInfo) => {
+  await signInAsDemoRole(page, companyAdmin(`validation-${testInfo.project.name}`));
+  await page.goto("/branches/new");
+  const branchName = `Validation branch ${testInfo.project.name}`;
+  await page.getByLabel("Branch name").fill(branchName);
+  await page.getByLabel("Branch short code").fill(`VALIDATION-${testInfo.project.name}`);
+  await page.getByLabel("City / area").fill("Cyberjaya");
+  await page.getByLabel("Contact name").fill("Validation contact");
+  await page.getByLabel("Contact phone").fill("+12025550123");
+  await page.getByLabel("Search place, building or address").fill("verdi");
+  await page.getByRole("option").filter({ hasText: "Verdi Eco-Dominiums" }).first().getByRole("button").click();
+  await page.getByRole("button", { name: "Confirm location" }).click();
+  // A forged hidden value must be rejected by the server, including native POST.
+  await page.locator('input[name="latitude"]').evaluate((input: HTMLInputElement) => { input.value = "999"; });
+  await page.getByRole("button", { name: "Create branch" }).click();
+  await expect(page.locator("#portal-main form").getByRole("alert")).toContainText("Check the marked branch and delivery details, then try again.");
+  await expect(page).toHaveURL(/\/branches\/new$/);
+  await expect(page.getByLabel("Branch name")).toHaveValue(branchName);
+  await expect(page.getByLabel("Contact phone")).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Confirm location" })).toBeDisabled();
+  await page.goto("/branches");
+  await expect(page.locator("tr").filter({ hasText: branchName })).toHaveCount(0);
 });
 
 async function geolocationPage(browser: Browser, mode: "allowed" | "denied" | "timeout") {

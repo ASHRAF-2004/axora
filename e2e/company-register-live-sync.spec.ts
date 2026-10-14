@@ -26,6 +26,7 @@ test("an open company register sees a company created by another owner session w
     await observer.goto("http://127.0.0.1:3100/companies");
     await expect(observer.getByRole("heading", { name: "Company register", exact: true })).toBeVisible();
     const observerNavigation = await observer.evaluate(() => performance.timeOrigin);
+    await observer.getByLabel("Search companies", { exact: true }).fill("Keep my unsent search");
     await creator.goto("http://127.0.0.1:3100/companies/new");
     const name = `Live register company ${testInfo.project.name} ${Date.now()}`;
     await creator.getByLabel("Company name", { exact: true }).fill(name);
@@ -35,6 +36,7 @@ test("an open company register sees a company created by another owner session w
     await expect(creator.getByRole("heading", { level: 1, name, exact: true })).toBeVisible();
     await observer.bringToFront();
     await expect(observer.locator("tr").filter({ hasText: name })).toHaveCount(1, { timeout: 20_000 });
+    await expect(observer.getByLabel("Search companies", { exact: true })).toHaveValue("Keep my unsent search");
     expect(await observer.evaluate(() => performance.timeOrigin)).toBe(observerNavigation);
     expect(failures).toEqual([]);
   } finally {

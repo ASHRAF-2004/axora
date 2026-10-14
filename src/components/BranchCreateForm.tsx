@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 
-import { createBranchWithLocationAction, type BranchCreateState } from "@/app/(portal)/branches/new/actions";
+import { createBranchWithLocationNavigationAction, type BranchCreateState } from "@/app/(portal)/branches/new/actions";
 import { BranchDeliveryLocationPicker, type DeliveryLocationSelection } from "@/components/BranchDeliveryLocationPicker";
 import { InternationalPhoneInput } from "@/components/InternationalPhoneInput";
 import { branchDeliveryLocationMessages } from "@/lib/branch-delivery-location-i18n";
 import { corePortalMessages } from "@/lib/core-portal-i18n";
 import type { SupportedLocale } from "@/lib/i18n";
+import { submitNativeServerAction } from "@/lib/native-form-submit";
 
 const initialState: BranchCreateState = { status: "idle", message: "", submissionId: "" };
 
@@ -24,19 +25,30 @@ export function BranchCreateForm({ companyId, companyName, locale, showCompany }
   const router = useRouter();
   const [selection, setSelection] = useState<DeliveryLocationSelection | null>(null);
   const [confirmed, setConfirmed] = useState<DeliveryLocationSelection | null>(null);
-  const [state, action, pending] = useActionState(createBranchWithLocationAction, initialState);
+  const [state, action, actionPending] = useActionState(createBranchWithLocationNavigationAction, initialState);
+  const [nativePending, setNativePending] = useState(false);
+  const pending = actionPending || nativePending;
   const [commandId] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     if (state.status === "success" && state.branchId) router.push(`/branches/${state.branchId}?notice=branch-created`);
   }, [router, state]);
 
+  useEffect(() => {
+    const restored = () => setNativePending(false);
+    window.addEventListener("pageshow", restored);
+    return () => window.removeEventListener("pageshow", restored);
+  }, []);
+
   const ready = Boolean(selection && confirmed
     && selection.latitude === confirmed.latitude
     && selection.longitude === confirmed.longitude
     && selection.addressLabel === confirmed.addressLabel);
 
-  return <form action={action} className="panel form-panel" aria-busy={pending} noValidate>
+  return <form action={action} className="panel form-panel" aria-busy={pending} noValidate onSubmitCapture={event => {
+    if (pending || !ready) { event.preventDefault(); event.stopPropagation(); return; }
+    if (submitNativeServerAction(event)) setNativePending(true);
+  }}>
     <input type="hidden" name="companyId" value={companyId} />
     <input type="hidden" name="commandId" value={commandId} />
     <input type="hidden" name="addressLabel" value={confirmed?.addressLabel ?? ""} />
