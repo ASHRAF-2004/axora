@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { LiveWorkspaceSync } from "@/components/LiveWorkspaceSync";
 import { requirePagePermission } from "@/lib/auth";
 import { getCompanyDeletionCommandStatus } from "@/lib/company-deletion";
 import { loadCompanyLifecycleWorkspace } from "@/lib/company-lifecycle";
@@ -43,6 +44,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
   const failedTasks = deletionCommand?.tasks.filter((task) => task.status === "TERMINAL_FAILED").length ?? 0;
 
   return <>
+    <LiveWorkspaceSync topics={["companies"]} locale={locale} viewKey={`${rawStatus ?? ""}:${query}`} />
     <PageHeader eyebrow={copy.eyebrow} title={copy.title} description={copy.description} />
     {deletionCommand ? <section className="panel" role={deletionCommand.status === "FAILED" ? "alert" : "status"}>
       <strong>{deletionCommand.status === "FAILED" ? local.cleanupFailed : deletionCommand.status === "CLEANUP_PENDING" ? local.cleanupPending : local.cleanupComplete}</strong>
