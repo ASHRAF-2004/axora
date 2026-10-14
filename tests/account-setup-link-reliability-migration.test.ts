@@ -247,6 +247,61 @@ describe("account setup link reliability migration", () => {
     }
   }, 30_000);
 
+  it("lets the authorized Owner see and recover a pending administrator before activation", async () => {
+    const db = await fixture("ONBOARDING");
+    try {
+      await db.exec("SET ROLE axora_app");
+      const listed = await db.query<{ user_id: string }>(
+        "SELECT user_id FROM axora_user_directory_rows($1,$2,now())",
+        [ids.owner, ids.ownerAssignment],
+      );
+      expect(listed.rows.map(row => row.user_id)).toContain(ids.administrator);
+      await db.exec("RESET ROLE");
+      const operational = await db.query<{ allowed: boolean }>(`
+        SELECT axora_snapshot_has_permission(
+          axora_live_authorization_snapshot($1,$2,now()),
+          'request.view','COMPANY',$3,NULL,NULL,NULL
+        ) AS allowed
+      `, [ids.owner, ids.ownerAssignment, ids.company]);
+      expect(operational.rows[0]?.allowed).toBe(false);
+    } finally { await db.exec("RESET ROLE"); await db.close(); }
+  }, 30_000);
+
+  it("keeps pending administrator visibility closed to customer actors and invalid Owner claims", async () => {
+    const db = await fixture("ONBOARDING");
+    try {
+      const customer = await db.query<{ user_id: string }>(
+        "SELECT user_id FROM axora_user_directory_rows($1,$2,now())",
+        [ids.administrator, ids.administratorAssignment],
+      );
+      expect(customer.rows).toEqual([]);
+      const revoked = await db.query<{ user_id: string }>(
+        "SELECT user_id FROM axora_user_directory_rows($1,$2,now())",
+        [ids.owner, ids.administratorAssignment],
+      );
+      expect(revoked.rows).toEqual([]);
+    } finally { await db.close(); }
+  }, 30_000);
+
+  it("preserves explicit company-user visibility DENY for a pending administrator", async () => {
+    const db = await fixture("ONBOARDING");
+    try {
+      await db.query(`
+        INSERT INTO user_permission_overrides(
+          user_id,permission_id,effect,scope_type,company_id,starts_at,
+          active,reason,changed_by
+        ) SELECT $1,id,'DENY','COMPANY',$2,now(),true,
+          'Pending administrator visibility denial',$1
+        FROM permissions WHERE permission_code='company_user.view'
+      `, [ids.owner, ids.company]);
+      const listed = await db.query<{ user_id: string }>(
+        "SELECT user_id FROM axora_user_directory_rows($1,$2,now())",
+        [ids.owner, ids.ownerAssignment],
+      );
+      expect(listed.rows.map(row => row.user_id)).not.toContain(ids.administrator);
+    } finally { await db.close(); }
+  }, 30_000);
+
   it("does not broaden the onboarding exception across competing administrators", async () => {
     const db = await fixture("ONBOARDING");
     const competingUser = "b1000000-0000-4000-8000-000000000007";

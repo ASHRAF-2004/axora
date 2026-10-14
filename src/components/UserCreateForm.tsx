@@ -2,7 +2,8 @@
 
 import { createUserAction } from "@/app/(portal)/users/actions";
 import type { Branch, Company, UserRole } from "@/lib/types";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { submitNativeServerAction } from "@/lib/native-form-submit";
 import { useFormStatus } from "react-dom";
 import { LOCALE_NAMES, SUPPORTED_LOCALES, type SupportedLocale } from "@/lib/i18n";
 import { userFormMessages } from "@/lib/user-form-i18n";
@@ -62,6 +63,11 @@ export function UserCreateForm({
 }) {
   const [role, setRole] = useState<UserRole | "">("");
   const [nativePending, setNativePending] = useState(false);
+  useEffect(() => {
+    const restored = () => setNativePending(false);
+    window.addEventListener("pageshow", restored);
+    return () => window.removeEventListener("pageshow", restored);
+  }, []);
   const [companyId, setCompanyId] = useState(fixedCompanyId ?? actorCompanyId ?? "");
   const [branchId, setBranchId] = useState(actorBranchId ?? "");
   const [roleChanged, setRoleChanged] = useState(false);
@@ -129,19 +135,8 @@ export function UserCreateForm({
         : true;
 
   function submitNativeAction(event: FormEvent<HTMLFormElement>) {
-    const form = event.currentTarget;
-    // Use React's existing progressive form metadata and the browser's normal
-    // POST/303 navigation. A captured invitation response can have the correct
-    // redirect while the Flight client remains pending on this form.
-    if (!form.querySelector('input[name^="$ACTION_ID_"],input[name^="$ACTION_REF_"]')) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (nativePending || !form.reportValidity()) return;
-    setNativePending(true);
-    form.method = "post";
-    form.enctype = "multipart/form-data";
-    form.action = window.location.href;
-    HTMLFormElement.prototype.submit.call(form);
+    if (nativePending) { event.preventDefault(); event.stopPropagation(); return; }
+    if (submitNativeServerAction(event)) setNativePending(true);
   }
 
   return (
