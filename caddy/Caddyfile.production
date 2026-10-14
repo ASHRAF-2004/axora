@@ -57,6 +57,9 @@
 		health_uri /api/health/ready
 		health_interval 10s
 		health_timeout 3s
+		# One slow probe during sign-in must not remove the only upstream.
+		# Sustained readiness failures still make it unavailable.
+		health_fails 3
 		lb_try_duration 5s
 	}
 
