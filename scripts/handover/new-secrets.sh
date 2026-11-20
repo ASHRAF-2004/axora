@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-dir="${AXORA_SECRETS_DIR:-./secrets}"
+dir="$(sed -n "s/^AXORA_SECRETS_DIR=//p" .env 2>/dev/null)"; dir="${dir:-./secrets}"
 mkdir -p "$dir" data/uploads
 chmod 0750 "$dir" 2>/dev/null || true
 

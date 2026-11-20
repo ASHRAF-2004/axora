@@ -11,7 +11,7 @@ dump="database/handover/axora-initial.dump"
 
 echo "Starting the database (first start creates roles and runs all migrations)..."
 docker compose up -d --wait db
-db="$(docker compose exec -T db printenv POSTGRES_DB)"
+db="$(docker compose exec -T db printenv POSTGRES_DB </dev/null)"
 psql() { docker compose exec -T db psql -U postgres -v ON_ERROR_STOP=1 "$@"; }
 
 docker compose run --rm migrate >/dev/null

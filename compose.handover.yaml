@@ -9,6 +9,13 @@
 #   public site). Without it, Caddy listens on AXORA_ORIGIN_BIND:AXORA_ORIGIN_PORT
 #   (default 127.0.0.1:8080) for a local test or your own reverse proxy.
 services:
+  db:
+    healthcheck:
+      # TCP check: on first start the init server is socket-only while it runs
+      # all migrations, so a socket check would report "ready" too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d ${AXORA_HYBRID_DB_NAME:-axora_hybrid}"]
+      start_period: 300s
+
   tailscale-db:
     profiles: ["tailscale"]
 
