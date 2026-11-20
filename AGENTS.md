@@ -1,5 +1,12 @@
 # Axora repository guidance
 
+This copy was handed over to a new owner in November 2026. Read `HANDOVER.md`
+first: it describes the single-host deployment (`compose.handover.yaml`, `.env`
+from `.env.handover.example`, secrets in `secrets/`, scripts in
+`scripts/handover/`). In that deployment `tailscale-db` is disabled by a Compose
+profile; the rules below about `tailscale-db` and the guarded reset workflow
+describe the previous owner's server.
+
 Axora is a production multi-tenant procurement platform. Treat changes as
 security- and data-sensitive, not as a demo application.
 

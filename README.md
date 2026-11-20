@@ -1,5 +1,8 @@
 # Axora procurement
 
+> **New owner or developer?** Start with [HANDOVER.md](HANDOVER.md): install,
+> deployment on your own server and domain, first Owner sign-in and backups.
+
 Axora is a self-hosted, secure multi-company procurement platform. It gives
 company requesters and approvers, Axora Agents, HR Management, and Delivery Agents,
 Human Resources Management users, Client Account Managers, and Delivery Agents focused workspaces
