@@ -1,0 +1,23 @@
+AXORA HANDOVER  -  20 November 2026
+===================================
+
+Read in this order / اقرأ بهذا الترتيب:
+
+1. HANDOVER.md (or handover/1-Developer-Guide.pdf)
+   Install, deploy, configure and operate Axora. / دليل المطوّر: التثبيت والنشر والتشغيل.
+2. handover/OWNER-ACCOUNT.txt
+   First Owner account and how to set its password. / حساب المالك الأول وطريقة تعيين كلمة المرور.
+3. docs/AI-ASSISTANT-PROMPT.md
+   Copy-paste prompt if you use an AI coding assistant. / نص جاهز لمساعد البرمجة بالذكاء الاصطناعي.
+4. handover/3-Domain-Transfer-Requirements.pdf
+   What the buyer must provide to receive axora.management. / المعلومات المطلوبة لنقل ملكية النطاق.
+5. handover/How-To-Extract-Axora-Handover.pdf
+   Only if you received this package as a .7z file. / فقط إذا استلمت الحزمة كملف ‎.7z.
+
+Quick start (Linux / macOS / Windows Git Bash, Docker required):
+
+    cp .env.handover.example .env          # edit AXORA_HOST
+    sudo bash scripts/handover/new-secrets.sh
+    docker compose build app
+    bash scripts/handover/restore-initial-data.sh
+    bash scripts/handover/reset-owner-password.sh owner@axora.management

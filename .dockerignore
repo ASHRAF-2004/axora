@@ -49,3 +49,4 @@ scripts/production/*
 
 # Handover database snapshot is restored on the host, not baked into images
 database/handover
+handover

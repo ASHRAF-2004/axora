@@ -2,7 +2,7 @@
 
 How to use:
 
-1. Open a terminal in the project folder (`source/`, the folder that contains
+1. Open a terminal in the project folder (the folder that contains
    `HANDOVER.md`).
 2. Start your assistant there (for example: `claude`).
 3. Copy everything inside the box below, replace the **TASK** line with what you
@@ -56,7 +56,8 @@ TASK: <write here, for example:
 
 - **First installation (test PC):** "Install Axora locally with
   AXORA_HOST=localhost following HANDOVER.md section 4, then confirm I can open
-  http://localhost:8080 and sign in with OWNER-ACCOUNT.txt."
+  http://localhost:8080 and sign in as owner@axora.management with the
+  password I set using scripts/handover/reset-owner-password.sh."
 - **Production server:** "Install Axora on this Ubuntu 24.04 server for
   axora.management with Cloudflare Tunnel (HANDOVER.md 3, 4, 6.1). Set up the
   firewall and daily backups (sections 8 and 10)."

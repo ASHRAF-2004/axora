@@ -11,12 +11,13 @@ previous owner.
 
 | Item | Description |
 |---|---|
-| `source/` | Complete source code of the live version (release `7ac61cb`, 14 Oct 2026) plus handover changes. |
-| `source/database/handover/axora-initial.dump` | Clean PostgreSQL snapshot: all 142 migrations, **one Owner account**, **24 catalogue products with 75 images**. No previous users, companies, orders, emails or logs. |
-| `OWNER-ACCOUNT.txt` | Email and password of the first Owner account. |
-| `1-Developer-Guide.pdf` | This guide. |
-| `2-AI-Assistant-Prompt.md` | Ready prompt if you use an AI coding assistant (same as `source/docs/AI-ASSISTANT-PROMPT.md`). |
-| `3-Domain-Transfer-Requirements.pdf` | Information the domain buyer must provide. |
+| Repository root | Complete source code of the live version (release `7ac61cb`, 14 Oct 2026) plus handover changes, on branch `handover-20261120`. |
+| `database/handover/axora-initial.dump` | Clean PostgreSQL snapshot: all 142 migrations, **one Owner account** (`owner@axora.management`), **24 catalogue products with 75 images**. No previous users, companies, orders, emails or logs. |
+| `handover/OWNER-ACCOUNT.txt` | The first Owner account. No password is stored anywhere in the repository: you set it yourself (section 4, step 5). |
+| `handover/1-Developer-Guide.pdf` | This guide as PDF. |
+| `docs/AI-ASSISTANT-PROMPT.md` | Ready prompt if you use an AI coding assistant. |
+| `handover/3-Domain-Transfer-Requirements.pdf` | Information the domain buyer must provide (English and Arabic). |
+| `handover/How-To-Extract-Axora-Handover.pdf` | How to open a `.7z` copy of this package on Windows/macOS. |
 
 What was removed for privacy: the previous owner's phone number, name and
 address on the Contact page, personal emails in the database, internal
@@ -70,8 +71,8 @@ docker compose version
 
 ## 4. Install (same steps for a test PC and for the server)
 
-Copy the `source/` folder to the machine (for a server, for example to
-`/srv/axora`) and run, inside that folder:
+Clone the repository (branch `handover-20261120`) to the machine (for a
+server, for example to `/srv/axora`) and run, inside that folder:
 
 ```bash
 # 1. Settings
@@ -86,6 +87,9 @@ docker compose build app
 
 # 4. Create the database and load the handover snapshot, then start everything
 bash scripts/handover/restore-initial-data.sh
+
+# 5. Set the Owner password (asks twice, 15-128 characters)
+bash scripts/handover/reset-owner-password.sh owner@axora.management
 ```
 
 Step 4 prints `owner account: owner@axora.management` and `products: 24`.
@@ -109,9 +113,9 @@ first installation only.
 ## 5. First sign-in
 
 1. Open the site and select **Login**.
-2. Use the email and password in `OWNER-ACCOUNT.txt`.
+2. Use `owner@axora.management` and the password you set in section 4, step 5.
 3. Axora first asks the Owner to complete the profile (name, phone, team).
-4. Immediately change the password: open `/account` (**Account security**).
+4. Later password changes: open `/account` (**Account security**).
 5. The sign-in email `owner@axora.management` cannot be changed inside the
    app. After the domain is yours, create that address as a mailbox or forward
    it to your real inbox (Cloudflare dashboard, **Email**, **Email Routing**,
@@ -120,7 +124,7 @@ first installation only.
 6. Create the team: HR Management, Client Account Managers, Delivery Agents.
    Invitations are sent by email, so configure Resend first (section 6.2).
 
-Lost Owner password and no email configured? On the server run:
+Lost Owner password and no email configured? Run the same command again:
 
 ```bash
 bash scripts/handover/reset-owner-password.sh owner@axora.management
@@ -196,10 +200,11 @@ requires it (they currently name only `axora.management`).
 ### 6.5 Code repository
 
 The previous owner's GitHub repository is public and belongs to them. Create
-your own private repository and push `source/`:
+your own private repository and push the handover branch without the old history:
 
 ```bash
-cd source && git init && git add -A && git commit -m "Axora handover baseline"
+git clone --branch handover-20261120 --depth 1 <previous-owner-repo-url> axora
+cd axora && rm -rf .git && git init -b main && git add -A && git commit -m "Axora handover baseline"
 git remote add origin git@github.com:YOUR-ACCOUNT/axora.git && git push -u origin main
 ```
 
@@ -309,7 +314,7 @@ Test a restore at least once.
 You can do every step above with an AI assistant (Claude Code, Codex,
 Cursor, GitHub Copilot agent mode):
 
-1. Open a terminal in the `source/` folder on the server or test PC.
+1. Open a terminal in the project folder on the server or test PC.
 2. Start the assistant in that folder (for example `claude`).
 3. Paste the prompt from `2-AI-Assistant-Prompt.md`, and fill in the task
    line (install, deploy with my domain, configure email, add a feature...).

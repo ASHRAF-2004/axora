@@ -1,0 +1,14 @@
+AXORA - FIRST OWNER ACCOUNT  /  حساب المالك الأول
+=====================================================
+
+Role / الصلاحية : Platform Owner (full administrator) / مالك المنصة (مدير كامل)
+Email / البريد  : owner@axora.management
+Password        : NOT stored in this repository. Set it yourself after installation:
+كلمة المرور     : غير محفوظة في المستودع. عيّنها بنفسك بعد التثبيت:
+
+    bash scripts/handover/reset-owner-password.sh owner@axora.management
+
+Then sign in at /login. Axora first asks you to complete the Owner profile.
+ثم سجّل الدخول من /login. سيطلب النظام أولاً إكمال الملف الشخصي للمالك.
+
+See HANDOVER.md sections 4 and 5. / راجع HANDOVER.md القسمين 4 و5.
