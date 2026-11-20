@@ -63,7 +63,7 @@ describe("database-owner transactional email reconciliation", () => {
       SELECT axora_record_public_contact_submission(jsonb_build_object(
         'idempotencyKey',repeat('a',64),'locale','en',
         'fullName','Controlled reconciliation','email','visitor@example.com',
-        'phone','+60183816023','message','Controlled reconciliation fixture.',
+        'phone','+60123456789','message','Controlled reconciliation fixture.',
         'privacyPolicyVersion','2026-08-28','sourcePage','/en/contact',
         'sourceMetadata','{}'::jsonb,'networkRateKey',repeat('b',64),
         'senderRateKey',repeat('c',64),'turnstileChallengeAt',now()::text,

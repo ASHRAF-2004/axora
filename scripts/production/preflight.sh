@@ -24,7 +24,7 @@ done
 
 valid_database_name "$AXORA_DATABASE_NAME" || die "Unsafe database name: $AXORA_DATABASE_NAME"
 [[ "$AXORA_MAIN_REF" == "refs/heads/main" ]] || die "Only refs/heads/main may trigger production deployments."
-[[ "$AXORA_IMAGE_REPOSITORY" == "ghcr.io/ashraf-2004/axora" ]] \
+[[ "$AXORA_IMAGE_REPOSITORY" == "ghcr.io/your-github-user/axora" ]] \
   || die "AXORA_IMAGE_REPOSITORY must use the approved private GHCR package."
 [[ "$AXORA_REGISTRY_HOST" == "ghcr.io" ]] || die "Only GHCR is approved for production images."
 [[ "$AXORA_REGISTRY_USERNAME" =~ ^[A-Za-z0-9-]+$ ]] || die "Unsafe registry username."

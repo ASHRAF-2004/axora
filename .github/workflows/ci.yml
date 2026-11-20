@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE_REPOSITORY: ghcr.io/ashraf-2004/axora
+  IMAGE_REPOSITORY: ghcr.io/your-github-user/axora
   AXORA_DRIVER_MAP_OPERATIONAL_READY: "true"
   NEXT_PUBLIC_AXORA_MAP_PROVIDER_ID: axora-mvp-klang-valley
   NEXT_PUBLIC_AXORA_MAP_PROVIDER_NAME: Axora self-hosted Klang Valley streets

@@ -300,12 +300,16 @@ test("Contact verification gates submission and public contact details stay prac
 
   await expect(page.getByRole("link", { name: "support@axora.management" }))
     .toHaveAttribute("href", "mailto:support@axora.management");
-  await expect(page.getByRole("link", { name: "+60183816023" }))
-    .toHaveAttribute("href", "tel:+60183816023");
-  await expect(page.getByRole("link", { name: "WhatsApp" }))
-    .toHaveAttribute("href", "https://wa.me/60183816023");
-  await expect(page.locator(".public-contact-card address"))
-    .toContainText("06-A02, Kenwingston Business Centre,");
+  // Phone, WhatsApp and address render only when the owner configures AXORA_SUPPORT_* values.
+  if (process.env.AXORA_SUPPORT_PHONE) {
+    const phone = process.env.AXORA_SUPPORT_PHONE.replace(/[^\d+]/g, "");
+    await expect(page.getByRole("link", { name: phone }))
+      .toHaveAttribute("href", `tel:${phone}`);
+    await expect(page.getByRole("link", { name: "WhatsApp" }))
+      .toHaveAttribute("href", `https://wa.me/${phone.replace("+", "")}`);
+  } else {
+    await expect(page.getByRole("link", { name: "WhatsApp" })).toHaveCount(0);
+  }
 
   const formBox = await form.boundingBox();
   const cardBox = await page.locator(".public-contact-card").boundingBox();

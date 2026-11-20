@@ -1,0 +1,16 @@
+# Handover override for a single Docker host.
+#
+# Used together with compose.yaml, compose.hybrid.yaml and compose.production.yaml
+# (the same files the original production server used). The COMPOSE_FILE line in
+# .env selects all four, so plain `docker compose ...` commands work.
+#
+# - The private Tailscale database link of the previous owner is disabled.
+# - Cloudflare Tunnel starts only with `--profile tunnel` (recommended for the
+#   public site). Without it, Caddy listens on AXORA_ORIGIN_BIND:AXORA_ORIGIN_PORT
+#   (default 127.0.0.1:8080) for a local test or your own reverse proxy.
+services:
+  tailscale-db:
+    profiles: ["tailscale"]
+
+  cloudflared:
+    profiles: ["tunnel"]

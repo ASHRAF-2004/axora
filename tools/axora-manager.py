@@ -419,7 +419,7 @@ class Manager(Gtk.Window):
             # Explicit Brave invocations (most reliable on this machine).
             (Path("/snap/bin/brave"), ["--new-window", url], {"CHROME_DEVEL_SANDBOX": "/snap/brave/current/opt/brave.com/brave/chrome-sandbox"}),
             (Path("/usr/bin/brave-browser"), [url], {"CHROME_DEVEL_SANDBOX": "/snap/brave/current/opt/brave.com/brave/chrome-sandbox"}),
-            (Path("/home/ashraf/.local/bin/brave-browser"), [url], {"CHROME_DEVEL_SANDBOX": "/snap/brave/current/opt/brave.com/brave/chrome-sandbox"}),
+            (Path.home() / ".local/bin/brave-browser", [url], {"CHROME_DEVEL_SANDBOX": "/snap/brave/current/opt/brave.com/brave/chrome-sandbox"}),
             # Fallback through xdg-open stack.
             Path("/usr/bin/xdg-open"),
             Path("/snap/bin/brave"),
@@ -427,8 +427,8 @@ class Manager(Gtk.Window):
             Path("/usr/bin/brave-browser"),
             Path("/usr/local/bin/brave"),
             Path("/usr/local/bin/brave-browser"),
-            Path("/home/ashraf/.local/bin/xdg-open"),
-            Path("/home/ashraf/.local/bin/brave-browser"),
+            Path.home() / ".local/bin/xdg-open",
+            Path.home() / ".local/bin/brave-browser",
         ]
 
         if "://" not in url:

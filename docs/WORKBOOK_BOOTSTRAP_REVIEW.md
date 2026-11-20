@@ -15,7 +15,7 @@ The validator uses only the Python standard library. The output directory is man
 
 ```bash
 npm run bootstrap:review-workbook -- \
-  --workbook "/home/ashraf/Documents/Axora PDFs/Axora excelsheet database of products (version 1).xlsx" \
+  --workbook "/path/to/products-workbook.xlsx" \
   --output-dir "/path/chosen/by/operator/axora-workbook-review"
 ```
 

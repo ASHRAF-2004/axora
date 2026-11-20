@@ -12,7 +12,7 @@ describe("audit filters", () => {
       recordId: "77C4B8D9-1ED2-4A73-8A42-5DC3202123C4",
       from: "2026-08-01", to: "2026-08-31",
     })).toEqual({
-      entityType: "requests", action: "UPDATE", actor: "Ashraf Omar",
+      entityType: "requests", action: "UPDATE", actor: "Sara Omar",
       recordId: "77c4b8d9-1ed2-4a73-8a42-5dc3202123c4",
       from: "2026-08-01", to: "2026-08-31",
     });
@@ -33,7 +33,7 @@ describe("audit filters", () => {
   it("escapes LIKE metacharacters and applies the same filters to safe fixtures", () => {
     expect(escapeAuditLikeFragment("A%_\\B")).toBe("A\\%\\_\\\\B");
     const record = {
-      entityType: "requests", action: "UPDATE", actorName: "Ashraf Omar",
+      entityType: "requests", action: "UPDATE", actorName: "Sara Omar",
       recordId: "77c4b8d9-1ed2-4a73-8a42-5dc3202123c4",
       occurredAt: "2026-08-02T12:00:00.000Z",
     };

@@ -90,7 +90,7 @@ journals do not turn a service trial into a host reboot test.
 ## Rollback and stop conditions
 
 The previous immutable baseline is locally present:
-`ghcr.io/ashraf-2004/axora@sha256:c66d304fbfba7af37869790f3216df7867d0cd5bc9f55a626a291c23fef485ad`.
+`ghcr.io/your-github-user/axora@sha256:c66d304fbfba7af37869790f3216df7867d0cd5bc9f55a626a291c23fef485ad`.
 
 ```bash
 sudo /usr/local/libexec/axora-production/rollback.sh previous

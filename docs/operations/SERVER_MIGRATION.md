@@ -77,7 +77,7 @@ secret files, Docker environment arrays, queue bodies or bearer links.
 | OS / architecture | Ubuntu 26.04 LTS / x86_64 |
 | CPU | AMD Ryzen 5 9600X, 6 cores / 12 logical CPUs; recheck destination RAM/disk/headroom |
 | Docker / Compose | Engine 29.7.1 / Compose 5.4.0 |
-| Current application | `ghcr.io/ashraf-2004/axora@sha256:bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8` |
+| Current application | `ghcr.io/your-github-user/axora@sha256:bc8c29336bdf44ef9c01096bf957c67ec5e58986548074ba5204d7b688d07bf8` |
 | PostgreSQL | 18.4-alpine3.24; digest pinned in sealed Compose |
 | Caddy / cloudflared / Tailscale | 2.11.4 / 2026.7.3 / 1.98.8; exact digests in sealed Compose |
 | Database / persistent volume | `axora_hybrid` / `axora_postgres_data`; inspect exact current mounts privately |
