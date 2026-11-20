@@ -63,7 +63,7 @@ load_config() {
   # shellcheck disable=SC1090
   source "$AXORA_CONFIG_FILE"
 
-  : "${AXORA_REPOSITORY_SSH:=git@github.com:ASHRAF-2004/axora.git}"
+  : "${AXORA_REPOSITORY_SSH:=git@github.com:your-github-user/axora.git}"
   : "${AXORA_MAIN_REF:=refs/heads/main}"
   : "${AXORA_RUNTIME_ROOT:=/srv/axora}"
   : "${AXORA_RUNTIME_ENV_FILE:=/etc/axora-production/runtime.env}"
@@ -77,9 +77,9 @@ load_config() {
   : "${AXORA_KNOWN_HOSTS:=/etc/axora-production/github_known_hosts}"
   : "${AXORA_COMPOSE_PROJECT:=axora}"
   : "${AXORA_COMPOSE_FILES:=compose.yaml:compose.hybrid.yaml:compose.production.yaml}"
-  : "${AXORA_IMAGE_REPOSITORY:=ghcr.io/ashraf-2004/axora}"
+  : "${AXORA_IMAGE_REPOSITORY:=ghcr.io/your-github-user/axora}"
   : "${AXORA_REGISTRY_HOST:=ghcr.io}"
-  : "${AXORA_REGISTRY_USERNAME:=ASHRAF-2004}"
+  : "${AXORA_REGISTRY_USERNAME:=your-github-user}"
   : "${AXORA_REGISTRY_TOKEN_FILE:=$AXORA_SECRETS_DIR/ghcr_read_token}"
   : "${AXORA_DATABASE_NAME:=axora_hybrid}"
   : "${AXORA_POSTGRES_IMAGE:=postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15}"

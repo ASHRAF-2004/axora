@@ -46,3 +46,8 @@ scripts/*
 !scripts/production/
 scripts/production/*
 !scripts/production/check-driver-map-config.mjs
+
+# Handover database snapshot is restored on the host, not baked into images
+database/handover
+handover
+tools/handover-pdf

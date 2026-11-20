@@ -2,7 +2,7 @@
 
 ## Scope and immutable baseline
 
-- Repository: `ASHRAF-2004/axora`
+- Repository: `your-github-user/axora`
 - Audited protected base: `2d679ee762ae10dc0ee9bdb8cdb7028de6f0a8d7`
 - Base commit: `feat(users): complete existing-user access management (#138)`
 - Parent: `e70638a6625296f43d4705665880ff7fa690cfea`

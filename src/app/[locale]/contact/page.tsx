@@ -45,10 +45,15 @@ export default async function ContactPage({
     return (typeof value === "string" ? value : "").slice(0, 200);
   };
   const contactCopy = locale === "ar"
-    ? { home: "الرئيسية", details: "معلومات التواصل", email: "البريد الإلكتروني", phone: "واتساب / اتصال", person: "السيد أشرف", address: "العنوان", privacyLink: "سياسة الخصوصية" }
+    ? { home: "الرئيسية", details: "معلومات التواصل", email: "البريد الإلكتروني", phone: "واتساب / اتصال", address: "العنوان", privacyLink: "سياسة الخصوصية" }
     : locale === "ms"
-      ? { home: "Laman utama", details: "Maklumat hubungan", email: "E-mel", phone: "WhatsApp / Panggilan", person: "Encik Ashraf", address: "Alamat", privacyLink: "Dasar Privasi" }
-      : { home: "Home", details: "Contact information", email: "Email", phone: "WhatsApp / Call", person: "Mr. Ashraf", address: "Address", privacyLink: "Privacy Policy" };
+      ? { home: "Laman utama", details: "Maklumat hubungan", email: "E-mel", phone: "WhatsApp / Panggilan", address: "Alamat", privacyLink: "Dasar Privasi" }
+      : { home: "Home", details: "Contact information", email: "Email", phone: "WhatsApp / Call", address: "Address", privacyLink: "Privacy Policy" };
+  // Owner-specific contact details come from the server environment; empty values hide the row.
+  const supportEmail = process.env.AXORA_SUPPORT_EMAIL?.trim() || "support@axora.management";
+  const supportPhone = process.env.AXORA_SUPPORT_PHONE?.replace(/[^\d+]/g, "") ?? "";
+  const supportContactName = process.env.AXORA_SUPPORT_CONTACT_NAME?.trim() ?? "";
+  const supportAddressLines = (process.env.AXORA_SUPPORT_ADDRESS ?? "").split("|").map((line) => line.trim()).filter(Boolean);
   return <>
     <section className="public-page-hero public-contact-hero">
       <nav className="public-breadcrumb" aria-label={locale === "ar" ? "مسار التنقل" : "Breadcrumb"}>
@@ -80,9 +85,9 @@ export default async function ContactPage({
       </form>
       <aside className="public-contact-card" aria-labelledby="contact-information-title">
         <h2 id="contact-information-title">{contactCopy.details}</h2>
-        <div className="public-contact-detail"><Mail size={21} aria-hidden="true" /><div><strong>{contactCopy.email}</strong><a href="mailto:support@axora.management"><bdi dir="ltr">support@axora.management</bdi></a></div></div>
-        <div className="public-contact-detail"><MessageCircle size={21} aria-hidden="true" /><div><strong>{contactCopy.phone}</strong><span>{contactCopy.person}</span><div className="public-contact-actions"><a href="tel:+60183816023"><bdi dir="ltr">+60183816023</bdi></a><a href="https://wa.me/60183816023" rel="noreferrer">WhatsApp</a></div></div></div>
-        <div className="public-contact-detail"><MapPin size={21} aria-hidden="true" /><div><strong>{contactCopy.address}</strong><address>06-A02, Kenwingston Business Centre,<br />Persiaran Bestari, Cyber 9<br />63000 Cyberjaya, Selangor</address></div></div>
+        <div className="public-contact-detail"><Mail size={21} aria-hidden="true" /><div><strong>{contactCopy.email}</strong><a href={`mailto:${supportEmail}`}><bdi dir="ltr">{supportEmail}</bdi></a></div></div>
+        {supportPhone ? <div className="public-contact-detail"><MessageCircle size={21} aria-hidden="true" /><div><strong>{contactCopy.phone}</strong>{supportContactName ? <span>{supportContactName}</span> : null}<div className="public-contact-actions"><a href={`tel:${supportPhone}`}><bdi dir="ltr">{supportPhone}</bdi></a><a href={`https://wa.me/${supportPhone.replace("+", "")}`} rel="noreferrer">WhatsApp</a></div></div></div> : null}
+        {supportAddressLines.length ? <div className="public-contact-detail"><MapPin size={21} aria-hidden="true" /><div><strong>{contactCopy.address}</strong><address>{supportAddressLines.map((line, index) => <span key={index}>{index ? <br /> : null}{line}</span>)}</address></div></div> : null}
       </aside>
     </section>
   </>;

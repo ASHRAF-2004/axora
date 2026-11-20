@@ -497,7 +497,7 @@ fi
 printf '\nInstalled root-owned Axora production orchestration.\n'
 printf 'The installed service never executes scripts from the mutable repository checkout.\n\n'
 printf 'Required one-time steps before enabling automatic deployment:\n'
-printf '  1. Add the following key as a READ-ONLY deploy key for ASHRAF-2004/axora:\n'
+printf '  1. Add the following key as a READ-ONLY deploy key for your-github-user/axora:\n'
 printf '     sudo cat %s/github_deploy_key.pub\n' "$CONFIG_DIR"
 printf '  2. Protect the main branch and require the GitHub-hosted verification workflow.\n'
 printf '  3. Configure the pinned production SSH secrets used by .github/workflows/ci.yml.\n'

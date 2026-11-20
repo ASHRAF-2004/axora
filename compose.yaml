@@ -109,6 +109,11 @@ services:
       AXORA_UPLOADS_CONTAINER_DIR: /app/data/uploads
       # Server-only monitored inbox; never expose this as NEXT_PUBLIC_*.
       AXORA_CONTACT_NOTIFICATION_TO: "${AXORA_CONTACT_NOTIFICATION_TO:-}"
+      # Public Contact page details. Empty phone/address values hide those rows.
+      AXORA_SUPPORT_EMAIL: "${AXORA_SUPPORT_EMAIL:-support@axora.management}"
+      AXORA_SUPPORT_PHONE: "${AXORA_SUPPORT_PHONE:-}"
+      AXORA_SUPPORT_CONTACT_NAME: "${AXORA_SUPPORT_CONTACT_NAME:-}"
+      AXORA_SUPPORT_ADDRESS: "${AXORA_SUPPORT_ADDRESS:-}"
       TURNSTILE_SITE_KEY: "${TURNSTILE_SITE_KEY:-}"
       TURNSTILE_SECRET_FILE: /run/secrets/turnstile_secret
       TURNSTILE_HOSTNAMES: "${TURNSTILE_HOSTNAMES:-axora.management}"

@@ -45,7 +45,7 @@ changed.
 
 ## Critical governance boundary
 
-`ASHRAF-2004/axora` intentionally remains public. Public source visibility does
+`your-github-user/axora` intentionally remains public. Public source visibility does
 not authorize public access to production credentials, deployment transport, or
 production images. Do not install a GitHub Actions self-hosted runner. Before
 SSH-triggered automation is enabled:
@@ -54,7 +54,7 @@ SSH-triggered automation is enabled:
 2. Block force pushes and branch deletion.
 3. Scope SSH and Tailscale deployment credentials to the GitHub `production`
    Environment and never commit or log them.
-4. Keep `ghcr.io/ashraf-2004/axora` private with granular permissions, disable
+4. Keep `ghcr.io/your-github-user/axora` private with granular permissions, disable
    repository permission inheritance, grant Actions explicit write access, and
    grant production only read access.
 5. Restrict the Tailscale federated identity to this exact repository,

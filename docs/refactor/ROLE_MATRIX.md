@@ -119,6 +119,6 @@ legacy columns a second authority, and no unknown role is silently mapped.
 The supplied workbook currently lacks stable tenant/product keys, account
 emails, and reliable normalized role/scope data. Its named rows are therefore
 quarantined by the validator. A later import may create reviewed generic role
-assignments, but it must never encode Ashraf, Omar, or any other person's name
+assignments, but it must never encode any specific person's name
 inside authorization logic. See `WORKBOOK_IMPORT_REPORT.md` for the exact
 blocked-row report.

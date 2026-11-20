@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="style.css">
+<style>
+  .cover h1 { margin-top: 30mm; }
+  .step p { margin: 0 0 3pt; }
+  .step .ar { margin-top: 2pt; }
+  .apps td:first-child { width: 22%; font-weight: 700; color: var(--navy); }
+  h2 .ar { display: inline; }
+  .shot { max-height: 92mm; object-fit: contain; background: #eef2f7; }
+</style></head><body>
+
+<section class="cover">
+  <div class="brand"><img src="logo.svg" alt="Axora"></div>
+  <div>
+    <h1>How to extract the<br>Axora handover file</h1>
+    <p class="sub">Step-by-step for Windows and macOS · file: <b>Axora-Handover-2026-11-20.7z</b></p>
+    <h1 class="ar" style="font-size:26pt;margin-top:12mm">طريقة فك ضغط ملف<br>تسليم Axora</h1>
+    <p class="sub ar">شرح خطوة بخطوة لنظامي ويندوز وماك</p>
+  </div>
+  <div class="meta">Format: 7z (LZMA2, maximum "Ultra" compression) · Download: GitHub release "Axora handover 2026-11-20"</div>
+</section>
+
+<h2>1. Recommended programs · <span class="ar">البرامج الموصى بها</span></h2>
+<table class="apps">
+  <tr><th>System</th><th>Program (free)</th><th class="ar">ملاحظات</th></tr>
+  <tr><td>Windows 10 / 11</td><td><b>7-Zip</b> — <a href="https://www.7-zip.org">www.7-zip.org</a> (recommended, made by the author of the 7z format)</td><td class="ar">‏7-Zip مجاني ومفتوح المصدر وهو الأفضل لهذا الملف.</td></tr>
+  <tr><td>macOS</td><td><b>Keka</b> — <a href="https://www.keka.io">www.keka.io</a> (free download; paid in the Mac App Store)<br>or <b>The Unarchiver</b> (free, Mac App Store)</td><td class="ar">‏Keka مجاني من موقعه الرسمي، أو The Unarchiver المجاني من متجر التطبيقات.</td></tr>
+  <tr><td>Linux / server</td><td><code>sudo apt install 7zip</code> then <code>7z x Axora-Handover-2026-11-20.7z</code></td><td class="ar">للخوادم وأنظمة لينكس.</td></tr>
+</table>
+<div class="box note"><b>Why 7z?</b> It is the strongest common compression format, so the download is as small as possible. Windows 11 can open 7z files without extra software, but 7-Zip is faster and more reliable for large archives. macOS cannot open 7z files without Keka or The Unarchiver.
+<div class="ar" style="margin-top:4pt">لماذا صيغة 7z؟ لأنها أقوى صيغة ضغط شائعة فيكون حجم الملف أصغر ما يمكن. يستطيع ويندوز 11 فتحها مباشرة، لكن برنامج 7-Zip أسرع وأكثر موثوقية. أما ماك فلا يفتحها بدون Keka أو The Unarchiver.</div></div>
+
+<h2 class="pagebreak">2. Windows · <span class="ar">ويندوز</span></h2>
+<div class="step"><div class="num">1</div><div>
+  <p>Open <b>www.7-zip.org</b> and click <b>Download</b> next to <i>64-bit Windows x64</i> (use <i>arm64</i> only on ARM laptops).</p>
+  <p class="ar">افتح الموقع www.7-zip.org واضغط <b>Download</b> بجانب ‎64-bit Windows x64 (اختر arm64 فقط لأجهزة ARM).</p>
+  <img class="shot" src="img-w1.png"></div></div>
+<div class="step"><div class="num">2</div><div>
+  <p>Run the downloaded file, keep the folder, click <b>Install</b>, then <b>Close</b>.</p>
+  <p class="ar">شغّل الملف الذي نزّلته، اترك المجلد كما هو، واضغط <b>Install</b> ثم <b>Close</b>.</p>
+  <img class="shot" src="img-w2.png"></div></div>
+<div class="step"><div class="num">3</div><div>
+  <p>Right-click <b>Axora-Handover-2026-11-20.7z</b>. On Windows 11 first click <b>Show more options</b> (or press Shift + F10). Choose <b>7-Zip</b> then <b>Extract to "Axora-Handover-2026-11-20\"</b>.</p>
+  <p class="ar">اضغط بزر الفأرة الأيمن على الملف. في ويندوز 11 اضغط أولاً <b>Show more options</b> (أو Shift + F10)، ثم اختر <b>7-Zip</b> ثم <b>‎Extract to "Axora-Handover-2026-11-20\"‎</b>.</p>
+  <img class="shot" src="img-w3.png"></div></div>
+<div class="step"><div class="num">4</div><div>
+  <p>Wait for the progress window to finish (a few seconds). It must end without errors.</p>
+  <p class="ar">انتظر حتى تنتهي نافذة التقدّم (بضع ثوانٍ) دون أي رسالة خطأ.</p>
+  <img class="shot" src="img-w4.png"></div></div>
+<div class="step"><div class="num">5</div><div>
+  <p>Open the new folder, then <b>Axora-Handover</b>, and start with <b>00-START-HERE.txt</b>.</p>
+  <p class="ar">افتح المجلد الجديد ثم <b>Axora-Handover</b>، وابدأ بالملف <b>00-START-HERE.txt</b>.</p>
+  <img class="shot" src="img-w5.png"></div></div>
+
+<h2 class="pagebreak">3. macOS · <span class="ar">ماك</span></h2>
+<div class="step"><div class="num">1</div><div>
+  <p>Download <b>Keka</b> from <b>www.keka.io</b> (free) and drag it to <i>Applications</i>. Or install <b>The Unarchiver</b> from the App Store.</p>
+  <p class="ar">نزّل برنامج <b>Keka</b> من الموقع www.keka.io مجاناً واسحبه إلى مجلد التطبيقات Applications، أو ثبّت <b>The Unarchiver</b> من متجر التطبيقات.</p>
+  <img class="shot" src="img-m1.png"></div></div>
+<div class="step"><div class="num">2</div><div>
+  <p>In Finder, right-click (or Control-click) <b>Axora-Handover-2026-11-20.7z</b>, choose <b>Open With</b>, then <b>Keka</b>. The first time, macOS may ask to allow Keka to access the Downloads folder: click <b>Allow</b>.</p>
+  <p class="ar">في Finder اضغط بالزر الأيمن (أو Control مع النقر) على الملف، واختر <b>Open With</b> ثم <b>Keka</b>. في المرة الأولى قد يطلب النظام السماح لـ Keka بالوصول إلى مجلد التنزيلات: اضغط <b>Allow</b>.</p>
+  <img class="shot" src="img-m2.png"></div></div>
+<div class="step"><div class="num">3</div><div>
+  <p>Keka creates the folder <b>Axora-Handover</b> next to the file. Open it and start with <b>00-START-HERE.txt</b>.</p>
+  <p class="ar">ينشئ Keka المجلد <b>Axora-Handover</b> بجانب الملف. افتحه وابدأ بالملف <b>00-START-HERE.txt</b>.</p>
+  <img class="shot" src="img-m3.png"></div></div>
+
+<h2 class="pagebreak">4. Linux server or terminal · <span class="ar">خادم لينكس أو الطرفية</span></h2>
+<p>Copy the file to the server (for example with <code>scp</code>), install 7-Zip and extract:</p>
+<pre><code>scp Axora-Handover-2026-11-20.7z user@SERVER:/srv/
+ssh user@SERVER
+cd /srv && sudo apt install -y 7zip
+7z x Axora-Handover-2026-11-20.7z
+cd Axora-Handover/source   # then follow 1-Developer-Guide.pdf</code></pre>
+<p class="ar">انسخ الملف إلى الخادم ثم ثبّت 7-Zip وفك الضغط بالأوامر أعلاه، ثم اتبع دليل المطوّر.</p>
+<img class="shot" src="img-t1.png">
+
+<h2>5. Check the file (optional) · <span class="ar">التحقق من سلامة الملف (اختياري)</span></h2>
+<p>The SHA-256 fingerprint must match the value in the file <code>Axora-Handover-2026-11-20.7z.sha256</code> published next to the archive in the GitHub release:</p>
+<pre><code># Windows PowerShell
+Get-FileHash .\Axora-Handover-2026-11-20.7z -Algorithm SHA256
+# macOS / Linux
+shasum -a 256 Axora-Handover-2026-11-20.7z</code></pre>
+<p class="ar">يجب أن تطابق البصمة القيمة الموجودة في ملف ‎.sha256 المنشور مع الملف في GitHub تماماً؛ إذا اختلفت فالملف تالف أو غير مكتمل، فأعد تنزيله.</p>
+
+<h2>6. Problems · <span class="ar">حل المشاكل</span></h2>
+<table>
+  <tr><th>Problem</th><th>Solution</th><th class="ar">الحل</th></tr>
+  <tr><td>"Can not open file as archive" / "Unsupported format"</td><td>Download/copy the file again (incomplete). Check the SHA-256.</td><td class="ar">الملف ناقص؛ أعد تنزيله وتحقق من البصمة.</td></tr>
+  <tr><td>"Path too long" on Windows</td><td>Extract to a short folder such as <code>C:\Axora</code>.</td><td class="ar">فك الضغط في مجلد قصير مثل ‎C:\Axora.</td></tr>
+  <tr><td>macOS: "Keka can't be opened"</td><td>System Settings, Privacy &amp; Security, <b>Open Anyway</b>.</td><td class="ar">إعدادات النظام ثم الخصوصية والأمان ثم Open Anyway.</td></tr>
+  <tr><td>Scripts fail with <code>^M</code> / bad interpreter</td><td>Do not open/save the <code>.sh</code> files with Notepad; extract again.</td><td class="ar">لا تحفظ ملفات ‎.sh بالمفكرة؛ أعد فك الضغط.</td></tr>
+</table>
+<div class="box note"><b>Keep the extracted folder private:</b> <i>OWNER-ACCOUNT.txt</i> contains the first Owner password. Change it after the first sign-in.
+<div class="ar" style="margin-top:4pt">احتفظ بالمجلد بسرية: الملف OWNER-ACCOUNT.txt يحتوي كلمة مرور المالك الأول. غيّرها بعد أول تسجيل دخول.</div></div>
+</body></html>

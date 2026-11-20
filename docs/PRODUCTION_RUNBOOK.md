@@ -32,7 +32,7 @@ recorded before automatic deployment is enabled:
 - [ ] The Tailscale federated identity matches this repository, the
       `production` Environment, `.github/workflows/ci.yml` on `main`, and a
       GitHub-hosted runner; its tag can reach only production TCP/22.
-- [ ] `ghcr.io/ashraf-2004/axora` is private, uses granular permissions without
+- [ ] `ghcr.io/your-github-user/axora` is private, uses granular permissions without
       repository inheritance, grants this repository Actions write access, and
       grants the production pull identity read access only.
 - [ ] The generated Axora production SSH public key is registered in GitHub as
@@ -131,7 +131,7 @@ Review `/etc/axora-production/deploy.env` and
 `/etc/axora-production/runtime.env` without printing credentials. Confirm that
 together they identify:
 
-- repository `ASHRAF-2004/axora`;
+- repository `your-github-user/axora`;
 - branch `refs/heads/main`;
 - database `axora_hybrid`;
 - public URL `https://axora.management`;

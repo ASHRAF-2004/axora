@@ -42,7 +42,7 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     PORT=3000
 LABEL org.opencontainers.image.revision="${AXORA_REVISION}" \
-      org.opencontainers.image.source="https://github.com/ASHRAF-2004/axora"
+      org.opencontainers.image.source="https://github.com/your-github-user/axora"
 
 RUN command -v tar >/dev/null \
     && groupadd --system --gid 1001 axora \
