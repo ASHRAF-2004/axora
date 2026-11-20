@@ -12,3 +12,4 @@
 *.pdf binary
 *.xlsx binary
 *.dump binary
+*.7z binary

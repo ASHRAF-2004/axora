@@ -21,3 +21,9 @@ Quick start (Linux / macOS / Windows Git Bash, Docker required):
     docker compose build app
     bash scripts/handover/restore-initial-data.sh
     bash scripts/handover/reset-owner-password.sh owner@axora.management
+
+Ready-to-send package / الحزمة الجاهزة للإرسال:
+
+    handover/package/Axora-Handover-2026-11-20.7z   (everything above in one file)
+    handover/How-To-Extract-Axora-Handover.pdf      (how to open it)
+    handover/3-Domain-Transfer-Requirements.pdf     (send to the domain buyer)
