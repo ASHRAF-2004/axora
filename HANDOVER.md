@@ -111,9 +111,12 @@ first installation only.
 1. Open the site and select **Login**.
 2. Use the email and password in `OWNER-ACCOUNT.txt`.
 3. Axora first asks the Owner to complete the profile (name, phone, team).
-4. Immediately change the password: profile menu, **Security**, change password.
-5. Change the sign-in email to the real owner's email when email is configured
-   (or keep `owner@axora.management` and create that mailbox).
+4. Immediately change the password: open `/account` (**Account security**).
+5. The sign-in email `owner@axora.management` cannot be changed inside the
+   app. After the domain is yours, create that address as a mailbox or forward
+   it to your real inbox (Cloudflare dashboard, **Email**, **Email Routing**,
+   free). Do the same for `support@axora.management` and
+   `noreply@axora.management` replies.
 6. Create the team: HR Management, Client Account Managers, Delivery Agents.
    Invitations are sent by email, so configure Resend first (section 6.2).
 
