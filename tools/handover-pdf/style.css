@@ -1,0 +1,50 @@
+@font-face { font-family: "Thmanyah Sans"; font-weight: 300; src: url("fonts/thmanyahsans/woff2/thmanyahsans-Light.woff2"); }
+@font-face { font-family: "Thmanyah Sans"; font-weight: 400; src: url("fonts/thmanyahsans/woff2/thmanyahsans-Regular.woff2"); }
+@font-face { font-family: "Thmanyah Sans"; font-weight: 500; src: url("fonts/thmanyahsans/woff2/thmanyahsans-Medium.woff2"); }
+@font-face { font-family: "Thmanyah Sans"; font-weight: 700; src: url("fonts/thmanyahsans/woff2/thmanyahsans-Bold.woff2"); }
+@font-face { font-family: "Thmanyah Display"; font-weight: 700; src: url("fonts/thmanyahserifdisplay/woff2/thmanyahserifdisplay-Bold.woff2"); }
+@font-face { font-family: "Thmanyah Display"; font-weight: 900; src: url("fonts/thmanyahserifdisplay/woff2/thmanyahserifdisplay-Black.woff2"); }
+@font-face { font-family: "Thmanyah Text"; font-weight: 400; src: url("fonts/thmanyahseriftext/woff2/thmanyahseriftext-Regular.woff2"); }
+
+:root { --navy: #0d2b4c; --ink: #1d2733; --muted: #5b6878; --line: #dbe2ea; --soft: #f3f6f9; --accent: #e9a23b; --ok: #1f7a4d; --warn: #9a5b00; }
+@page { size: A4; margin: 16mm 15mm 18mm; }
+* { box-sizing: border-box; }
+html { font-family: "Thmanyah Sans", "Segoe UI", sans-serif; font-size: 10.4pt; color: var(--ink); line-height: 1.55; }
+body { margin: 0; }
+h1, h2, h3 { font-family: "Thmanyah Display", "Thmanyah Sans", serif; color: var(--navy); line-height: 1.25; break-after: avoid; }
+h1 { font-size: 24pt; margin: 0 0 8pt; }
+h2 { font-size: 15pt; margin: 18pt 0 6pt; padding-bottom: 4pt; border-bottom: 2px solid var(--line); }
+h3 { font-size: 12pt; margin: 12pt 0 4pt; }
+p, li { orphans: 3; widows: 3; }
+a { color: #1559a6; text-decoration: none; }
+code, pre { font-family: Consolas, "Cascadia Mono", monospace; font-size: 8.6pt; direction: ltr; unicode-bidi: embed; }
+code { background: var(--soft); padding: 0 3px; border-radius: 3px; }
+pre { background: #0f1e2e; color: #e6edf5; padding: 8pt 10pt; border-radius: 6px; white-space: pre-wrap; word-break: break-word; break-inside: avoid; }
+pre code { background: none; padding: 0; color: inherit; }
+table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; font-size: 9.4pt; break-inside: auto; }
+th, td { border: 1px solid var(--line); padding: 4pt 6pt; vertical-align: top; text-align: start; }
+th { background: var(--soft); color: var(--navy); font-weight: 700; }
+tr { break-inside: avoid; }
+blockquote { margin: 8pt 0; padding: 6pt 10pt; border-inline-start: 4px solid var(--accent); background: #fff8ec; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 12pt 0; }
+.cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; padding: 8mm 4mm; break-after: page; }
+.cover .brand img { height: 34px; }
+.cover h1 { font-size: 34pt; margin-top: 40mm; }
+.cover .sub { font-size: 14pt; color: var(--muted); }
+.cover .meta { border-top: 3px solid var(--accent); padding-top: 8pt; color: var(--muted); font-size: 9.5pt; }
+.ar { direction: rtl; text-align: right; font-family: "Thmanyah Sans", sans-serif; }
+.ar p, .ar li { font-family: "Thmanyah Text", "Thmanyah Sans", serif; font-size: 10.8pt; line-height: 1.75; }
+.box { border: 1px solid var(--line); border-radius: 8px; padding: 8pt 11pt; margin: 8pt 0; break-inside: avoid; }
+.note { background: #fff8ec; border-color: #f1d4a4; }
+.okbox { background: #eef8f2; border-color: #b9dfc8; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12pt; break-inside: avoid; margin: 6pt 0 10pt; }
+.pair > div { min-width: 0; }
+.pair h3 { margin-top: 0; }
+.tag { display: inline-block; background: var(--navy); color: #fff; border-radius: 999px; padding: 0 8pt; font-size: 8.5pt; font-weight: 700; }
+.fill td { height: 22pt; }
+.fill td:first-child { width: 46%; }
+.step { display: grid; grid-template-columns: 30px 1fr; gap: 8pt; margin: 10pt 0; break-inside: avoid; }
+.num { width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 11pt; }
+.shot { width: 100%; border: 1px solid var(--line); border-radius: 8px; margin-top: 5pt; }
+.small { font-size: 8.8pt; color: var(--muted); }
+.pagebreak { break-before: page; }

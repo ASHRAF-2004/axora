@@ -1,0 +1,158 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body { margin: 0; padding: 20px; background: #e9edf2; font-family: "Segoe UI", sans-serif; }
+.fig { width: 760px; padding: 22px; margin-bottom: 30px; background: linear-gradient(135deg,#dfe8f3,#eef2f7); border-radius: 14px; position: relative; }
+.mac { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; background: linear-gradient(135deg,#d9d4ec,#f1e6ea); }
+.win { background: #fff; border: 1px solid #c9d1db; border-radius: 8px; box-shadow: 0 10px 30px rgba(20,40,70,.18); overflow: hidden; }
+.bar { height: 34px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: #333; background: #f3f3f3; border-bottom: 1px solid #ddd; }
+.bar .ctl { margin-left: auto; letter-spacing: 18px; color: #555; }
+.mbar { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #ececec; border-bottom: 1px solid #d5d5d5; font-size: 13px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.callout { position: absolute; background: #e9a23b; color: #1b1b1b; font-weight: 700; border-radius: 50%; width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+.hl { outline: 3px solid #e9a23b; outline-offset: 2px; border-radius: 4px; }
+.btn { display: inline-block; padding: 7px 16px; border-radius: 6px; background: #0067c0; color: #fff; font-size: 13px; }
+.btn.gray { background: #e8e8e8; color: #222; border: 1px solid #ccc; }
+.menu { position: absolute; background: #fbfbfb; border: 1px solid #cfcfcf; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-size: 13px; padding: 4px 0; min-width: 230px; }
+.menu div { padding: 6px 14px; display: flex; gap: 10px; align-items: center; }
+.menu .sep { border-top: 1px solid #e3e3e3; padding: 0; margin: 4px 0; }
+.menu .on { background: #dbe9f7; }
+.file { display: flex; flex-direction: column; align-items: center; width: 110px; font-size: 12px; text-align: center; gap: 4px; }
+.icon7z { width: 54px; height: 64px; border-radius: 6px; background: linear-gradient(#f4f4f4,#dcdcdc); border: 1px solid #b9b9b9; display: grid; place-items: center; font-weight: 800; color: #1a1a1a; font-size: 15px; }
+.icon7z b { background: #000; color: #fff; padding: 1px 4px; border-radius: 3px; }
+.folder { width: 64px; height: 50px; background: linear-gradient(#ffd767,#f4b400); border-radius: 4px 4px 6px 6px; position: relative; }
+.folder:before { content: ""; position: absolute; top: -8px; left: 0; width: 28px; height: 10px; background: #f4b400; border-radius: 3px 3px 0 0; }
+.doc { width: 44px; height: 56px; background: #fff; border: 1px solid #bbb; border-radius: 3px; display: grid; place-items: end center; font-size: 9px; font-weight: 700; padding-bottom: 4px; }
+.doc.pdf { color: #c62828; } .doc.txt { color: #555; } .doc.md { color: #1565c0; }
+.prog { height: 14px; background: #e6e6e6; border-radius: 7px; overflow: hidden; } .prog i { display: block; height: 100%; width: 62%; background: #06b025; }
+.label { font-size: 12px; color: #555; }
+</style></head><body>
+
+<!-- W1: download 7-Zip -->
+<div class="fig" id="w1"><div class="win">
+  <div class="bar">🌐&nbsp; https://www.7-zip.org <span class="ctl">— ▢ ✕</span></div>
+  <div style="padding:20px 26px;font-family:Tahoma,Arial;font-size:13px">
+    <div style="font-size:22px;font-weight:700;color:#003399">7-Zip</div>
+    <p>7-Zip is a free file archiver with a high compression ratio.</p>
+    <p style="margin-bottom:6px">Download 7-Zip 26.04 for Windows:</p>
+    <table style="border-collapse:collapse;font-size:13px">
+      <tr style="background:#f0f0f0"><td style="padding:6px 10px">Link</td><td style="padding:6px 10px">Type</td><td style="padding:6px 10px">Windows</td></tr>
+      <tr><td style="padding:6px 10px"><span class="hl" style="color:#0645ad;text-decoration:underline">Download</span></td><td style="padding:6px 10px">.exe</td><td style="padding:6px 10px">64-bit Windows x64</td></tr>
+      <tr><td style="padding:6px 10px;color:#0645ad;text-decoration:underline">Download</td><td style="padding:6px 10px">.exe</td><td style="padding:6px 10px">64-bit Windows arm64</td></tr>
+    </table>
+  </div></div>
+  <div class="callout" style="left:16px;top:196px">1</div>
+</div>
+
+<!-- W2: installer -->
+<div class="fig" id="w2"><div class="win" style="width:470px;margin:0 auto">
+  <div class="bar">7-Zip 26.04 (x64) Setup <span class="ctl">✕</span></div>
+  <div style="padding:18px 20px;font-size:13px">
+    <div style="display:flex;gap:14px;align-items:center"><div class="icon7z"><b>7z</b></div><div>Choose Destination Folder:<div style="margin-top:6px;border:1px solid #aaa;padding:4px 8px;width:300px">C:\Program Files\7-Zip\</div></div></div>
+    <div style="text-align:right;margin-top:22px"><span class="btn hl">Install</span> &nbsp;<span class="btn gray">Cancel</span></div>
+  </div></div>
+  <div class="callout" style="left:660px;top:120px">2</div>
+</div>
+
+<!-- W3: right click menu -->
+<div class="fig" id="w3" style="height:420px"><div class="win" style="height:380px">
+  <div class="bar">📁&nbsp; Downloads <span class="ctl">— ▢ ✕</span></div>
+  <div style="padding:22px">
+    <div class="file hl" style="background:#cce4f7;border-radius:4px;padding:6px"><div class="icon7z"><b>7z</b></div>Axora-Handover-2026-11-20.7z</div>
+  </div></div>
+  <div class="menu" style="left:150px;top:110px">
+    <div>📂 Open</div><div class="sep"></div>
+    <div class="on">7-Zip ▸</div>
+    <div>CRC SHA ▸</div><div class="sep"></div>
+    <div>✂ Cut</div><div>⧉ Copy</div><div>Properties</div>
+  </div>
+  <div class="menu" style="left:385px;top:142px">
+    <div>Open archive</div>
+    <div>Extract files...</div>
+    <div>Extract Here</div>
+    <div class="on hl">Extract to "Axora-Handover-2026-11-20\"</div>
+    <div>Test archive</div>
+  </div>
+  <div class="callout" style="left:22px;top:60px">3</div>
+  <div class="callout" style="left:700px;top:208px">4</div>
+</div>
+
+<!-- W4: progress -->
+<div class="fig" id="w4"><div class="win" style="width:470px;margin:0 auto">
+  <div class="bar">62% Extracting Axora-Handover-2026-11-20.7z <span class="ctl">✕</span></div>
+  <div style="padding:16px 20px;font-size:12.5px;line-height:1.9">
+    <div style="display:flex;justify-content:space-between"><span>Elapsed time: 00:00:04</span><span>Total size: 43 MB</span></div>
+    <div style="display:flex;justify-content:space-between"><span>Remaining time: 00:00:03</span><span>Files: 1 430</span></div>
+    <div class="label">source\public\maps\mvp-klang-valley-places.geojson</div>
+    <div class="prog"><i></i></div>
+    <div style="text-align:right;margin-top:12px"><span class="btn gray">Background</span> <span class="btn gray">Pause</span> <span class="btn gray">Cancel</span></div>
+  </div></div>
+</div>
+
+<!-- W5: result folder -->
+<div class="fig" id="w5"><div class="win">
+  <div class="bar">📁&nbsp; Downloads › Axora-Handover-2026-11-20 › Axora-Handover <span class="ctl">— ▢ ✕</span></div>
+  <div style="padding:22px;display:flex;gap:18px;flex-wrap:wrap">
+    <div class="file"><div class="folder"></div>source</div>
+    <div class="file hl"><div class="doc txt">TXT</div>00-START-HERE.txt</div>
+    <div class="file"><div class="doc pdf">PDF</div>1-Developer-Guide.pdf</div>
+    <div class="file"><div class="doc md">MD</div>2-AI-Assistant-Prompt.md</div>
+    <div class="file"><div class="doc pdf">PDF</div>3-Domain-Transfer-Requirements.pdf</div>
+    <div class="file"><div class="doc txt">TXT</div>OWNER-ACCOUNT.txt</div>
+  </div></div>
+  <div class="callout" style="left:150px;top:150px">5</div>
+</div>
+
+<!-- M1: Keka download -->
+<div class="fig mac" id="m1"><div class="win">
+  <div class="mbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span style="margin:0 auto;color:#555">keka.io</span></div>
+  <div style="padding:26px;text-align:center">
+    <div style="font-size:30px;font-weight:800;color:#2b2b2b">Keka</div>
+    <div style="color:#555;margin:6px 0 18px">The macOS file archiver · 7z, zip, rar, tar…</div>
+    <span class="btn hl" style="background:#2b2b2b;border-radius:20px;padding:9px 22px">Download (free)</span>
+    &nbsp; <span class="btn" style="background:#0a84ff;border-radius:20px;padding:9px 22px">Mac App Store</span>
+  </div></div>
+  <div class="callout" style="left:200px;top:168px">1</div>
+</div>
+
+<!-- M2: Finder open with -->
+<div class="fig mac" id="m2" style="height:400px"><div class="win" style="height:360px">
+  <div class="mbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span style="margin:0 auto;color:#555">Downloads</span></div>
+  <div style="padding:24px"><div class="file hl" style="background:#d7e6fb;border-radius:6px;padding:6px"><div class="icon7z"><b>7z</b></div>Axora-Handover-2026-11-20.7z</div></div>
+  </div>
+  <div class="menu" style="left:160px;top:105px;min-width:200px">
+    <div>Open</div><div class="on">Open With ▸</div><div class="sep"></div><div>Move to Trash</div><div>Get Info</div><div>Rename</div><div>Compress</div>
+  </div>
+  <div class="menu" style="left:355px;top:132px;min-width:200px">
+    <div class="on hl">📦 Keka (default)</div><div>The Unarchiver</div><div class="sep"></div><div>App Store…</div><div>Other…</div>
+  </div>
+  <div class="callout" style="left:22px;top:56px">2</div>
+  <div class="callout" style="left:590px;top:140px">3</div>
+</div>
+
+<!-- M3: result folder mac -->
+<div class="fig mac" id="m3"><div class="win">
+  <div class="mbar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span style="margin:0 auto;color:#555">Axora-Handover</span></div>
+  <div style="padding:22px;display:flex;gap:18px;flex-wrap:wrap">
+    <div class="file"><div class="folder" style="background:linear-gradient(#7cc4ff,#3b9bf3)"></div>source</div>
+    <div class="file hl"><div class="doc txt">TXT</div>00-START-HERE.txt</div>
+    <div class="file"><div class="doc pdf">PDF</div>1-Developer-Guide.pdf</div>
+    <div class="file"><div class="doc md">MD</div>2-AI-Assistant-Prompt.md</div>
+    <div class="file"><div class="doc pdf">PDF</div>3-Domain-Transfer-Requirements.pdf</div>
+    <div class="file"><div class="doc txt">TXT</div>OWNER-ACCOUNT.txt</div>
+  </div></div>
+  <div class="callout" style="left:150px;top:150px">4</div>
+</div>
+
+<!-- T: terminal -->
+<div class="fig" id="t1"><div class="win" style="background:#0f1e2e">
+  <div class="bar" style="background:#1b2b3d;color:#cfd8e3;border-color:#26384c">Terminal <span class="ctl" style="color:#cfd8e3">— ▢ ✕</span></div>
+  <pre style="margin:0;padding:16px 18px;color:#e6edf5;font:13px Consolas,monospace;line-height:1.6">$ 7z x Axora-Handover-2026-11-20.7z
+7-Zip 26.04 : Copyright (c) 1999-2026 Igor Pavlov
+Extracting archive: Axora-Handover-2026-11-20.7z
+Everything is Ok
+Files: 1430    Size: 43188404
+
+$ cd Axora-Handover && ls
+00-START-HERE.txt  1-Developer-Guide.pdf  2-AI-Assistant-Prompt.md
+3-Domain-Transfer-Requirements.pdf  OWNER-ACCOUNT.txt  source</pre></div>
+</div>
+</body></html>
